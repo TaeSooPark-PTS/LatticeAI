@@ -3,28 +3,47 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Send to Lattice AI</title>
+  <title>Lattice AI</title>
   <style>
     :root { color-scheme: light dark; }
-    body { font: 13px/1.4 -apple-system, system-ui, sans-serif; width: 280px; margin: 0; padding: 14px; }
+    body { font: 13px/1.4 -apple-system, system-ui, sans-serif; width: 320px; margin: 0; padding: 14px; }
     h1 { font-size: 14px; margin: 0 0 4px; }
     p.sub { margin: 0 0 12px; color: #888; font-size: 11px; }
     label { display: block; font-size: 11px; color: #888; margin: 8px 0 3px; }
-    input { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #5557; border-radius: 6px; background: transparent; color: inherit; }
-    button { width: 100%; margin-top: 12px; padding: 9px; border: 0; border-radius: 8px; background: #4f46e5; color: #fff; font-weight: 600; cursor: pointer; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #5557; border-radius: 6px; background: transparent; color: inherit; font: inherit; }
+    textarea { resize: vertical; min-height: 44px; }
+    button { width: 100%; margin-top: 10px; padding: 9px; border: 0; border-radius: 8px; background: #4f46e5; color: #fff; font-weight: 600; cursor: pointer; }
+    button.secondary { background: transparent; border: 1px solid #5557; color: inherit; }
     button:disabled { opacity: .6; cursor: default; }
     .status { margin-top: 10px; font-size: 12px; min-height: 16px; }
-    .ok { color: #16a34a; } .err { color: #dc2626; }
+    .ok { color: #16a34a; } .err { color: #dc2626; } .warn { color: #b45309; }
     .local { margin-top: 12px; font-size: 10px; color: #999; }
+    section { border-top: 1px solid #5553; margin-top: 14px; padding-top: 10px; }
+    .answer { margin-top: 8px; font-size: 12px; white-space: pre-wrap; max-height: 160px; overflow: auto; }
+    .badge { margin-top: 6px; font-size: 11px; font-weight: 700; }
+    .badge.is-supported { color: #16a34a; }
+    .badge.is-none { color: #b45309; }
+    .badge.is-unknown { color: #888; }
+    .approvals { margin-top: 10px; font-size: 11px; color: #b45309; min-height: 14px; }
   </style>
 </head>
 <body>
-  <h1>Send page to Lattice AI</h1>
-  <p class="sub">Adds this page to your local Knowledge Graph.</p>
+  <h1>Lattice AI</h1>
+  <p class="sub">Capture pages into — and recall from — your local Knowledge Graph.</p>
   <label for="port">Local runtime port</label>
   <input id="port" type="number" value="4825" min="1" max="65535" />
   <button id="send">Send this page</button>
   <div id="status" class="status"></div>
+
+  <section>
+    <label for="question">Ask your Brain</label>
+    <textarea id="question" placeholder="What did I save about the budget?"></textarea>
+    <button id="ask" class="secondary">Ask</button>
+    <div id="answer" class="answer" data-testid="answer"></div>
+    <div id="grounding" class="badge" data-testid="grounding"></div>
+  </section>
+
+  <div id="approvals" class="approvals" data-testid="approvals"></div>
   <div class="local">Local-only — posts to http://127.0.0.1 on your machine. No cloud upload.</div>
   <script src="popup.js"></script>
 </body>

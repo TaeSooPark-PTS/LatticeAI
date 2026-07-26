@@ -172,6 +172,77 @@ export function summarizeRun(payload: unknown, language: "ko" | "en" = "ko"): Ru
   };
 }
 
+/**
+ * One live `agent_step` frame as an output-channel line (v9.9.7).
+ *
+ * The web timeline renders the same frames; this is the editor's rendering of
+ * the identical payload — no VS Code-specific event shape, no re-derived
+ * verdict. Unknown events degrade to a neutral marker rather than vanishing,
+ * so a future backend addition is still visible.
+ */
+export function stepLine(step: unknown): string {
+  const frame = asRecord(step);
+  const phase = text(frame.phase) || "run";
+  const event = text(frame.event) || "step";
+  const marker =
+    event === "blocked" || event === "parse_error"
+      ? STEP_MARKERS.blocked
+      : frame.ok === false
+        ? STEP_MARKERS.blocked
+        : STEP_MARKERS[event] ?? "$(circle-outline)";
+  const parts: string[] = [`${marker} ${phase}/${event}`];
+  for (const key of ["action", "path", "decision", "verdict", "state", "reason"]) {
+    const value = text(frame[key]);
+    if (value) parts.push(`${key}=${value}`);
+  }
+  if (typeof frame.steps === "number") parts.push(`steps=${frame.steps}`);
+  if (frame.ok === false) parts.push("failed");
+  return parts.join(" ");
+}
+
+export type EvidenceAction = {
+  id: string;
+  kind: string;
+  label: string;
+  prompt: string;
+  suggestedPath: string;
+};
+
+/**
+ * `POST /api/evidence/actions` → the rows an editor quick pick renders.
+ *
+ * Actions without a prompt are dropped: an action the editor cannot actually
+ * send is worse than no action. Labels come from the server's localized pair,
+ * so VS Code and the web app offer the same wording.
+ */
+export function parseEvidenceActions(payload: unknown, language: "ko" | "en" = "ko"): EvidenceAction[] {
+  const root = asRecord(payload);
+  return asArray(root.actions).flatMap((raw): EvidenceAction[] => {
+    const action = asRecord(raw);
+    const prompt = text(action.prompt);
+    const id = text(action.id);
+    if (!prompt || !id) return [];
+    const label = asRecord(action.label);
+    return [{
+      id,
+      kind: text(action.kind),
+      label: text(label[language]) || text(label.en) || id,
+      prompt,
+      suggestedPath: text(action.suggested_path),
+    }];
+  });
+}
+
+/** Cited source ids from a `/chat` grounding verdict, for evidence actions. */
+export function citedSourceIds(payload: unknown): string[] {
+  const grounding = asRecord(asRecord(payload).grounding);
+  const fromCited = asArray(grounding.cited)
+    .map((entry) => text(asRecord(entry).id))
+    .filter(Boolean);
+  if (fromCited.length) return fromCited;
+  return asArray(grounding.source_ids).map((entry) => text(entry)).filter(Boolean);
+}
+
 /** Multi-line run report for `showInformationMessage` / the output channel. */
 export function runReport(payload: unknown, language: "ko" | "en" = "ko"): string {
   const summary = summarizeRun(payload, language);

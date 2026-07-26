@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.",
-  "version": "9.9.6",
+  "version": "9.9.7",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
@@ -57,7 +57,9 @@
     "onCommand:ltcai.rejectAgent",
     "onCommand:ltcai.askBrain",
     "onCommand:ltcai.reviewCenter",
-    "onCommand:ltcai.runAgent"
+    "onCommand:ltcai.runAgent",
+    "onCommand:ltcai.evidenceActions",
+    "onCommand:ltcai.runAgentLive"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -141,6 +143,14 @@
       {
         "command": "ltcai.runAgent",
         "title": "Lattice AI: Run Agent Task"
+      },
+      {
+        "command": "ltcai.evidenceActions",
+        "title": "Lattice AI: Build From This Evidence"
+      },
+      {
+        "command": "ltcai.runAgentLive",
+        "title": "Lattice AI: Run Agent Task (Live Steps)"
       }
     ],
     "configuration": {

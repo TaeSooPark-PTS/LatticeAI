@@ -233,7 +233,9 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
 
   // The detailed memory visualization stays out of the primary home flow,
   // then remains fully interactive when the user asks to see it.
-  await page.getByTestId("brain-insights-shelf").locator("summary").click();
+  // The shelf's OWN toggle — it now contains nested collapsibles (the
+  // knowledge garden), so a descendant-wide `summary` match is ambiguous.
+  await page.getByTestId("brain-insights-shelf").locator("> summary").click();
   const topicsChip = page.locator(".ring-label-bottom");
   await expect(topicsChip).toContainText("주제");
   await topicsChip.click();
@@ -292,7 +294,9 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   const composer = page.getByPlaceholder("질문하거나, 자료를 붙여 넣거나, 할 일을 적어보세요");
   await expect(page.getByRole("button", { name: /초점 정리/ })).toBeVisible();
 
-  await page.getByTestId("brain-insights-shelf").locator("summary").click();
+  // The shelf's OWN toggle — it now contains nested collapsibles (the
+  // knowledge garden), so a descendant-wide `summary` match is ambiguous.
+  await page.getByTestId("brain-insights-shelf").locator("> summary").click();
   await expect(page.locator(".brain-home-insights-content")).toBeVisible();
   await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).toHaveCount(0);
   await expect(page.locator("body")).toContainText("Brain 한눈에 보기");

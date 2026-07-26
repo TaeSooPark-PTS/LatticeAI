@@ -10002,6 +10002,160 @@ body {
   font-size: 0.72rem;
 }
 
+/* ── 폴더별 기억 상태 (v9.9.7) ────────────────────────────────────────── */
+.folder-memory-health {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: hsl(var(--surface) / 0.4);
+}
+
+.folder-memory-health h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.folder-memory-health > ul {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.folder-memory-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.folder-memory-head strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-memory-coverage {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.folder-memory-bar {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 999px;
+  background: hsl(var(--border) / 0.5);
+}
+
+.folder-memory-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: hsl(var(--memory));
+}
+
+.folder-memory-health small,
+.folder-memory-errors summary {
+  color: hsl(var(--fg-muted));
+  font-size: 0.66rem;
+}
+
+.folder-memory-errors summary {
+  cursor: pointer;
+  color: hsl(var(--warning, 32 78% 42%));
+  font-weight: 700;
+}
+
+.folder-memory-errors ul {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0.25rem 0 0;
+  padding-left: 0.9rem;
+  font-size: 0.65rem;
+}
+
+.folder-memory-errors code {
+  margin-right: 0.3rem;
+  font-size: 0.63rem;
+}
+
+/* ── 지식 정원 (v9.9.7): 네 개의 화단 ──────────────────────────────────── */
+.brain-garden {
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  background: hsl(var(--surface) / 0.4);
+}
+
+.brain-garden > summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.brain-garden-beds {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.brain-garden-beds h4 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.brain-garden-count {
+  border-radius: 999px;
+  background: hsl(var(--memory) / 0.16);
+  padding: 0 0.45rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.brain-garden-beds ul {
+  display: grid;
+  gap: 0.22rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-garden-beds li {
+  display: grid;
+  gap: 0.05rem;
+  border-radius: 6px;
+  background: hsl(var(--surface) / 0.5);
+  padding: 0.28rem 0.36rem;
+}
+
+.brain-garden-beds li strong {
+  overflow: hidden;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-garden-beds li em,
+.brain-garden-beds li small,
+.brain-garden p.is-muted {
+  color: hsl(var(--fg-muted));
+  font-size: 0.63rem;
+  font-style: normal;
+}
+
 /* ── 실행 결과 설명 (v9.9.6): 숫자가 아니라 문장으로 ────────────────────── */
 /* 임베딩 모델 교체 복구 (v9.9.6): 문제를 이름 붙이고, 고치는 버튼을 준다 */
 .brain-stale-embedder {

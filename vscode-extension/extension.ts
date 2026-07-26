@@ -2,15 +2,35 @@ import * as vscode from "vscode";
 import { ChatPanel } from "./ChatPanel";
 import { LatticeAIClient } from "./client";
 import { ModelPicker } from "./modelPicker";
-import { groundingLine, parseProposals, runReport, type ProposalSummary } from "./surface";
+import {
+  citedSourceIds,
+  groundingBadge,
+  groundingLine,
+  parseEvidenceActions,
+  parseProposals,
+  runReport,
+  stepLine,
+  type EvidenceAction,
+  type ProposalSummary,
+} from "./surface";
 
 let client: LatticeAIClient;
 let statusBar: vscode.StatusBarItem;
 let syncStatusBar: vscode.StatusBarItem;
 let extensionVersion = "";
 let syncTimer: NodeJS.Timeout | undefined;
+let agentOutput: vscode.OutputChannel | undefined;
+
+// Last recall's question + cited source ids, so "이 근거로 만들기" has real
+// evidence to act on. Cleared implicitly by the next recall; never persisted.
+let lastRecall: { question: string; sourceIds: string[] } | null = null;
 
 const _diffDocs = new Map<string, string>();
+
+function outputChannel(): vscode.OutputChannel {
+  if (!agentOutput) agentOutput = vscode.window.createOutputChannel("Lattice AI");
+  return agentOutput;
+}
 
 class DiffContentProvider implements vscode.TextDocumentContentProvider {
   provideTextDocumentContent(uri: vscode.Uri): string {
@@ -339,6 +359,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand("ltcai.runAgent", async () => {
       await runAgentWithSummary(client);
+    }),
+
+    // ── Evidence → action + live step timeline (SURFACE_PARITY, v9.9.7) ──
+    vscode.commands.registerCommand("ltcai.evidenceActions", async () => {
+      await showEvidenceActions(client, context);
+    }),
+
+    vscode.commands.registerCommand("ltcai.runAgentLive", async () => {
+      await runAgentLive(client);
     })
   );
 
@@ -359,17 +388,115 @@ async function showRecallGrounding(question: string, message: string): Promise<v
       async () => client.chat(message),
     );
     const line = groundingLine(payload);
+    // Remember what this answer actually cited so "이 근거로 만들기" has real
+    // evidence to work from (SURFACE_PARITY v9.9.7).
+    const sourceIds = citedSourceIds(payload);
+    lastRecall = { question, sourceIds };
+    const buildFrom = "Build from this evidence";
     const openWeb = "Open Web UI";
+    const actions = groundingBadge(payload).status === "supported" && sourceIds.length
+      ? [buildFrom, openWeb]
+      : [openWeb];
     const pick = await vscode.window.showInformationMessage(
       `Lattice AI — ${question.slice(0, 60)}\n${line}`,
-      openWeb,
+      ...actions,
     );
-    if (pick === openWeb) await openAppSurface("/app");
+    if (pick === buildFrom) await showEvidenceActions(client);
+    else if (pick === openWeb) await openAppSurface("/app");
   } catch (err: any) {
     // No verdict is not a passing verdict — say so rather than badge nothing.
     vscode.window.showWarningMessage(
       `Lattice AI: could not confirm evidence for this answer (${err?.message || err}).`,
     );
+  }
+}
+
+interface EvidenceActionItem extends vscode.QuickPickItem {
+  action: EvidenceAction;
+}
+
+/**
+ * Evidence → action parity (v9.9.7). The sources the last recall actually
+ * cited become one-click follow-ups, composed server-side by the same
+ * `/api/evidence/actions` surface the web card uses. File-producing actions
+ * run through the agent so the artifact lands in the workspace; chat actions
+ * open in the panel.
+ */
+async function showEvidenceActions(
+  c: LatticeAIClient,
+  context?: vscode.ExtensionContext,
+): Promise<void> {
+  if (!lastRecall || !lastRecall.sourceIds.length) {
+    vscode.window.showInformationMessage(
+      "Lattice AI: ask your Brain something first — evidence actions need a grounded answer.",
+    );
+    return;
+  }
+  let actions: EvidenceAction[];
+  try {
+    const payload = await c.evidenceActions(lastRecall.question, lastRecall.sourceIds);
+    actions = parseEvidenceActions(payload);
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Lattice AI: evidence actions unavailable (${err?.message || err}).`);
+    return;
+  }
+  if (!actions.length) {
+    vscode.window.showInformationMessage(
+      "Lattice AI: nothing can be built directly from this answer's sources.",
+    );
+    return;
+  }
+  const items: EvidenceActionItem[] = actions.map((action) => ({
+    label: action.label,
+    description: action.suggestedPath || undefined,
+    action,
+  }));
+  const chosen = await vscode.window.showQuickPick(items, {
+    placeHolder: `Build from ${lastRecall.sourceIds.length} cited source(s)`,
+  });
+  if (!chosen) return;
+  if (chosen.action.kind === "file") {
+    // A file action must actually produce a file — that is the agent's job.
+    await runAgentLive(c, chosen.action.prompt);
+    return;
+  }
+  if (context) ChatPanel.createOrShow(context.extensionUri, c);
+  ChatPanel.sendMessage(chosen.action.prompt);
+  vscode.window.showInformationMessage("Lattice AI: sent to chat with the cited evidence.");
+}
+
+/**
+ * Live step timeline parity (v9.9.7): run the agent with `stream:true` and
+ * write every named `agent_step` frame to the output channel as it happens,
+ * instead of only reporting after the run ends.
+ */
+async function runAgentLive(c: LatticeAIClient, presetGoal?: string): Promise<void> {
+  const goal = presetGoal ?? await vscode.window.showInputBox({
+    prompt: "What should the Lattice agent do? (live step timeline)",
+    placeHolder: "e.g. write a README for this project",
+  });
+  if (!goal) return;
+  const output = outputChannel();
+  output.appendLine(`--- ${goal} ---`);
+  output.show(true);
+  try {
+    const payload = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "Lattice AI: agent running (live)..." },
+      async () => c.runAgentLive(goal, (step) => output.appendLine(`  ${stepLine(step)}`)),
+    );
+    const status = String(payload?.status || "");
+    if (status === "awaiting_approval" || status === "waiting_approval") {
+      const approve = "Review approvals";
+      const pick = await vscode.window.showInformationMessage(
+        `Lattice AI: the plan needs approval.\n${String(payload?.approval?.plan_summary || "").slice(0, 300)}`,
+        approve,
+      );
+      if (pick === approve) await showPendingApprovals(c, true);
+      return;
+    }
+    output.appendLine(runReport(payload));
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Lattice AI: live agent run failed (${err?.message || err}).`);
   }
 }
 
@@ -466,10 +593,9 @@ async function runAgentWithSummary(c: LatticeAIClient): Promise<void> {
       if (pick === approve) await showPendingApprovals(c, true);
       return;
     }
-    const report = runReport(payload);
-    const output = vscode.window.createOutputChannel("Lattice AI");
+    const output = outputChannel();
     output.appendLine(`--- ${goal} ---`);
-    output.appendLine(report);
+    output.appendLine(runReport(payload));
     output.show(true);
   } catch (err: any) {
     vscode.window.showErrorMessage(`Lattice AI: agent run failed (${err?.message || err}).`);

@@ -200,6 +200,11 @@
             ],
             "title": "Source"
           },
+          "stream": {
+            "default": false,
+            "title": "Stream",
+            "type": "boolean"
+          },
           "temperature": {
             "default": 0.1,
             "title": "Temperature",
@@ -425,6 +430,35 @@
           "file"
         ],
         "title": "Body_upload_document_upload_document_post",
+        "type": "object"
+      },
+      "Body_voice_capture_api_capture_voice_post": {
+        "properties": {
+          "conversation_id": {
+            "default": "",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "transcript": {
+            "default": "",
+            "title": "Transcript",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_voice_capture_api_capture_voice_post",
         "type": "object"
       },
       "ChangePasswordRequest": {
@@ -4252,7 +4286,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.9.6"
+    "version": "9.9.7"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6362,6 +6396,45 @@
         "summary": "Brain Duplicates"
       }
     },
+    "/api/brain/garden": {
+      "get": {
+        "description": "Knowledge garden overview (v9.9.7): recent / contradictions /\nstale / frequent, read-only and workspace-scoped.",
+        "operationId": "brain_garden_api_brain_garden_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Garden"
+      }
+    },
     "/api/brain/health": {
       "get": {
         "operationId": "brain_health_api_brain_health_get",
@@ -6588,6 +6661,58 @@
           }
         },
         "summary": "Read Url"
+      }
+    },
+    "/api/capture/voice": {
+      "post": {
+        "operationId": "voice_capture_api_capture_voice_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_voice_capture_api_capture_voice_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Voice Capture"
+      }
+    },
+    "/api/capture/voice/status": {
+      "get": {
+        "operationId": "voice_status_api_capture_voice_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Voice Status"
       }
     },
     "/api/command/briefing": {
@@ -10983,6 +11108,45 @@
           }
         },
         "summary": "Knowledge Graph Local Audit"
+      }
+    },
+    "/knowledge-graph/local/health": {
+      "get": {
+        "description": "Per-folder memory state (v9.9.7): indexing coverage, failures with\ntheir stored reasons, and watch state.\n\nVector freshness rides along as an explicitly **global** figure \u2014 the\nvector index is not per-folder, and claiming otherwise would invent a\nnumber.",
+        "operationId": "knowledge_graph_local_health_knowledge_graph_local_health_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "error_samples",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "title": "Error Samples",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Local Health"
       }
     },
     "/knowledge-graph/local/index": {

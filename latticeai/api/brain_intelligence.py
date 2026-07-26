@@ -57,6 +57,14 @@ def create_brain_intelligence_router(
         scope = gate_read(request)
         return service.contradictions(user_email=user, workspace_id=scope)
 
+    @router.get("/api/brain/garden")
+    async def brain_garden(request: Request, limit: int = 8):
+        """Knowledge garden overview (v9.9.7): recent / contradictions /
+        stale / frequent, read-only and workspace-scoped."""
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.garden_overview(user_email=user, workspace_id=scope, limit=limit)
+
     @router.get("/api/brain/vector-freshness")
     async def brain_vector_freshness(request: Request):
         """Vector index freshness summary (read-only, never raises).

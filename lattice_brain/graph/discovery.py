@@ -454,6 +454,82 @@ class KnowledgeGraphDiscoveryMixin:
             source["file_status"] = counts.get(source["id"], {})
         return {"sources": sources}
 
+    def local_source_health(self, *, error_samples: int = 3) -> Dict[str, Any]:
+        """Per-folder memory state (v9.9.7).
+
+        ``local_sources`` answers "which folders are connected"; a user asking
+        "is this folder actually in my Brain?" needs three more facts per
+        folder, and this is the single read that provides them:
+
+        * **coverage** — indexed / known files, so a half-indexed folder is
+          visible instead of looking connected;
+        * **failed / skipped counts** — what did not make it in;
+        * **recent error samples** — *why*, with the stored message.
+
+        Vector freshness is deliberately **not** claimed per folder: the vector
+        index is global, so a per-folder number would be invented. Callers pair
+        this with ``vector_freshness()`` and label it as global.
+        """
+        try:
+            samples = max(0, min(int(error_samples), 20))
+        except (TypeError, ValueError):
+            samples = 3
+        payload = self.local_sources()
+        sources = payload.get("sources") or []
+        by_id = {str(source.get("id")): source for source in sources}
+        errors: Dict[str, List[Dict[str, Any]]] = {}
+        if by_id:
+            with self._connect() as conn:
+                for source_id in by_id:
+                    rows = conn.execute(
+                        """
+                            SELECT relative_path, status, error_message, last_scanned_at
+                            FROM local_file_index
+                            WHERE source_id=? AND error_message IS NOT NULL AND error_message<>''
+                            ORDER BY last_scanned_at DESC
+                            LIMIT ?
+                            """,
+                        (source_id, samples or 1),
+                    ).fetchall()
+                    if samples:
+                        errors[source_id] = [
+                            {
+                                "path": row["relative_path"],
+                                "status": row["status"],
+                                "detail": str(row["error_message"] or "")[:300],
+                                "at": row["last_scanned_at"],
+                            }
+                            for row in rows
+                        ]
+
+        folders: List[Dict[str, Any]] = []
+        for source in sources:
+            counts = source.get("file_status") or {}
+            total = sum(int(value or 0) for value in counts.values())
+            indexed = int(counts.get("indexed") or 0)
+            failed = int(counts.get("failed") or 0) + int(counts.get("error") or 0)
+            skipped = int(counts.get("skipped") or 0)
+            folders.append({
+                "id": source.get("id"),
+                "label": source.get("label") or source.get("root_path"),
+                "root_path": source.get("root_path"),
+                "status": source.get("status"),
+                "watch_enabled": bool(source.get("watch_enabled")),
+                "last_scanned_at": source.get("last_scanned_at"),
+                "files": {
+                    "total": total,
+                    "indexed": indexed,
+                    "failed": failed,
+                    "skipped": skipped,
+                    "pending": max(0, total - indexed - failed - skipped),
+                },
+                # None (not 0) when nothing is known yet — an empty folder must
+                # not read as "0% indexed".
+                "coverage": round(indexed / total, 4) if total else None,
+                "recent_errors": errors.get(str(source.get("id")), []),
+            })
+        return {"folders": folders, "count": len(folders)}
+
     def set_local_source_watch(self, source_id: str, enabled: bool) -> Dict[str, Any]:
         source_id = str(source_id or "").strip()
         if not source_id:

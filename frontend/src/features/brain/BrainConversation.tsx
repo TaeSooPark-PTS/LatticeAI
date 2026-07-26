@@ -27,6 +27,7 @@ import type { ApprovalResolution } from "./approvalFlow";
 import { AnswerProofCard, InlineCitationMarkers } from "./AnswerProof";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainIntelligencePanel } from "./BrainIntelligencePanel";
+import { KnowledgeGardenPanel } from "./KnowledgeGarden";
 import { DailyBriefingPanel } from "@/features/command/DailyBriefingPanel";
 import { PendingProposalsPanel } from "@/features/command/PendingProposalsPanel";
 import { BrainComposer } from "./BrainComposer";
@@ -546,6 +547,7 @@ export function BrainConversation({
                             remaining insight panels. */}
                         <PendingProposalsPanel language={language} />
                         <BrainIntelligencePanel language={language} />
+                        <KnowledgeGardenPanel language={language} />
                         <BrainCarePanel language={language} />
                       </div>
                     </details>
@@ -631,6 +633,7 @@ export function BrainConversation({
               <DailyBriefingPanel language={language} />
               <PendingProposalsPanel language={language} />
               <BrainIntelligencePanel language={language} />
+              <KnowledgeGardenPanel language={language} />
               <BrainCarePanel language={language} />
             </div>
           </details> : null}

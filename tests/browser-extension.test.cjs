@@ -20,7 +20,10 @@ const captureSource = fs.readFileSync(
 const {
   DEFAULT_PORT,
   REQUEST_TIMEOUT_MS,
+  RECALL_TIMEOUT_MS,
+  approvalsView,
   fetchWithTimeout,
+  groundingView,
   normalizePort,
 } = require("../browser-extension/popup.js");
 
@@ -120,4 +123,56 @@ test("a completed request clears its abort timer", async () => {
   assert.equal(response.ok, true);
   await new Promise((resolve) => setTimeout(resolve, 15));
   assert.equal(signal.aborted, false);
+});
+
+// ── v9.9.7: recall + approval visibility ─────────────────────────────────────
+// The browser extension was capture-only. It now asks the same `/chat` surface
+// every other client uses and renders the server's own grounding verdict — it
+// never computes one locally, and never promotes an absent verdict.
+
+test("popup markup exposes the recall and approval surfaces", () => {
+  assert.match(popupHtml, /id="question"/);
+  assert.match(popupHtml, /id="ask"/);
+  assert.match(popupHtml, /data-testid="grounding"/);
+  assert.match(popupHtml, /data-testid="approvals"/);
+});
+
+test("a supported verdict names the sources the answer used", () => {
+  const view = groundingView({
+    grounding: { status: "supported", cited: [{ title: "예산 계획" }, { title: "회의 메모" }] },
+  });
+  assert.equal(view.kind, "supported");
+  assert.match(view.text, /예산 계획/);
+  assert.match(view.text, /회의 메모/);
+});
+
+test("unsupported and no_context read as not grounded, with the server's reason", () => {
+  for (const status of ["unsupported", "no_context"]) {
+    const view = groundingView({ grounding: { status, reason: "검색된 출처가 없습니다" } });
+    assert.equal(view.kind, "none");
+    assert.match(view.text, /검색된 출처가 없습니다/);
+  }
+});
+
+test("an absent or unknown verdict is never rendered as grounded", () => {
+  for (const payload of [null, {}, { grounding: null }, { grounding: {} }, { grounding: { status: "weird" } }]) {
+    const view = groundingView(payload);
+    assert.equal(view.kind, "unknown");
+    assert.doesNotMatch(view.text, /근거 있음/);
+  }
+});
+
+test("pending approvals surface only when runs are actually waiting", () => {
+  assert.equal(approvalsView({ pending: [] }), "");
+  assert.equal(approvalsView(null), "");
+  assert.equal(approvalsView({ pending: [{ nope: 1 }] }), "");
+  assert.match(approvalsView({ pending: [{ run_id: "a" }, { run_id: "b" }] }), /2건/);
+});
+
+test("recall gets a longer timeout than a capture round-trip", () => {
+  assert.ok(RECALL_TIMEOUT_MS > REQUEST_TIMEOUT_MS);
+});
+
+test("the extension still posts only to the local runtime", () => {
+  assert.doesNotMatch(popupSource, /https?:\/\/(?!127\.0\.0\.1)/);
 });

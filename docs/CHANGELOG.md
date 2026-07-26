@@ -4,6 +4,47 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.7] - 2026-07-27
+
+### Added
+- `POST /agent` accepts `stream: true` and emits the same named `agent_step`
+  SSE frames the web chat route already produced; the terminal payload is
+  identical to the JSON response (`tests/unit/test_agent_stream_parity.py`).
+- VS Code: `ltcai.runAgentLive` (live step timeline) and
+  `ltcai.evidenceActions` (one-click follow-ups from the last recall's cited
+  sources, file actions routed through the agent).
+- Telegram: grounding badge on every answer plus `/review` — a Review Center
+  over `/api/proposals` with inline approve/reject and honest 409 reporting.
+- Browser extension: "Ask your Brain" with the server's grounding verdict, and
+  pending-approval visibility. Still posts only to `127.0.0.1`.
+- `GET /api/brain/garden` + `KnowledgeGardenPanel`: the knowledge garden in
+  four beds (recent / contradictions / stale / frequent), where "frequent" is
+  real graph degree and Chunk nodes are excluded.
+- `latticeai/core/agent_profiles.py`: `standard` / `compact` agent profiles
+  selected from the model id (or `LATTICEAI_AGENT_PROFILE`), with a
+  direct-path fallback that writes the plan's files without any JSON tool call
+  when a small model cannot hold the protocol.
+- `GET /knowledge-graph/local/health` + `FolderMemoryHealthCard`: per-folder
+  indexing coverage, failures with their stored reasons, and one explicitly
+  global vector-freshness figure.
+- Skills `meeting_notes` and `weekly_review`, with a contract test that rejects
+  a skill whose `action` is not a registered tool.
+- `POST /api/capture/voice` + `GET /api/capture/voice/status`
+  (`latticeai/services/voice_capture.py`): voice memo ingestion with an
+  optional local transcriber and honest degradation when none exists.
+
+### Changed
+- `docs/SURFACE_PARITY.md` contains no `✖` entries; every remaining `—` states
+  why it is a design boundary.
+- The browser extension is no longer described as capture-only (manifest name,
+  popup, README).
+
+### Fixed
+- The VS Code SSE reader kept the `event:` name, so named `agent_step` frames
+  are no longer misread as chat chunks.
+- `garden_overview` clamps an explicit `limit=0` to 1 instead of silently
+  re-expanding it to the default.
+
 ## [9.9.6] - 2026-07-27
 
 ### Added

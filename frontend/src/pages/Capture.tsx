@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
 import { asArray } from "@/lib/utils";
+import { FolderMemoryHealthCard } from "@/features/capture/FolderMemoryHealth";
 import { useAppStore } from "@/store/appStore";
 import { navigateHash } from "@/features/brain/navigation";
 
@@ -396,6 +397,7 @@ function LocalPanel() {
           <DocumentUploadQueue queue={folderQueue} onRetry={(file) => beginBrowserFolderUpload([file], browserFolderName)} />
         </CardContent>
       </Card>
+      <FolderMemoryHealthCard language={language} />
       <DataPanel title={t(language, "capture.local.sources")} result={local.data}>
         {(data) => (
           <div className="space-y-3">

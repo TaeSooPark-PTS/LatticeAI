@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "weekly_review",
+  "version": "1.0.0",
+  "action": "write_file",
+  "input": {
+    "required": ["path", "content"],
+    "optional": ["week", "project_id"],
+    "properties": {
+      "path":       { "type": "string", "description": "저장할 회고 경로 (워크스페이스 상대 경로, .md)" },
+      "content":    { "type": "string", "description": "Brain 기록을 근거로 작성한 회고 본문 (각 항목에 출처 표기)" },
+      "week":       { "type": "string", "description": "대상 주 (예: 2026-W30). 생략 시 이번 주" },
+      "project_id": { "type": "string", "description": "프로젝트 세션 id — 남은 할 일을 함께 반영" }
+    }
+  },
+  "output": {
+    "oneOf": [
+      {
+        "title": "success",
+        "properties": {
+          "success": { "const": true },
+          "path":    { "type": "string" },
+          "bytes":   { "type": "integer" }
+        },
+        "required": ["path"]
+      },
+      {
+        "title": "failure",
+        "properties": {
+          "success": { "const": false },
+          "error":   { "type": "string", "enum": ["INVALID_INPUT","MODEL_NOT_LOADED"] },
+          "message": { "type": "string" }
+        },
+        "required": ["success","error","message"]
+      }
+    ]
+  },
+  "evals": [
+    {
+      "id": "writes_a_review",
+      "description": "근거가 표기된 회고 문서를 저장한다",
+      "input": {
+        "path": "reviews/weekly-review-eval.md",
+        "content": "# 2026-W30 주간 회고\n\n## 이번 주 들어온 것\n- 1분기 예산 확정 (출처: docs/budget.md)\n\n## 남은 할 일\n- [ ] 2분기 계획 승인 받기\n\n## 다음 주\n- 이사회 일정 확정\n"
+      },
+      "pass_criteria": "success == true"
+    },
+    {
+      "id": "rejects_missing_path",
+      "description": "저장 경로 없이 호출하면 거절한다",
+      "input": { "content": "x" },
+      "pass_criteria": "success == false"
+    }
+  ]
+}

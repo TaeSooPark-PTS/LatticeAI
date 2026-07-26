@@ -1109,6 +1109,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/brain/garden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brain Garden
+         * @description Knowledge garden overview (v9.9.7): recent / contradictions /
+         *     stale / frequent, read-only and workspace-scoped.
+         */
+        get: operations["brain_garden_api_brain_garden_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/brain/health": {
         parameters: {
             query?: never;
@@ -1273,6 +1294,40 @@ export interface paths {
          * @description Fetch a public URL locally and ingest it as a web_url source.
          */
         post: operations["read_url_api_browser_read_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/capture/voice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Voice Capture */
+        post: operations["voice_capture_api_capture_voice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/capture/voice/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Voice Status */
+        get: operations["voice_status_api_capture_voice_status_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3255,6 +3310,31 @@ export interface paths {
         put?: never;
         /** Knowledge Graph Local Audit */
         post: operations["knowledge_graph_local_audit_knowledge_graph_local_audit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge-graph/local/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Knowledge Graph Local Health
+         * @description Per-folder memory state (v9.9.7): indexing coverage, failures with
+         *     their stored reasons, and watch state.
+         *
+         *     Vector freshness rides along as an explicitly **global** figure — the
+         *     vector index is not per-folder, and claiming otherwise would invent a
+         *     number.
+         */
+        get: operations["knowledge_graph_local_health_knowledge_graph_local_health_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6702,6 +6782,11 @@ export interface components {
             /** Source */
             source?: string | null;
             /**
+             * Stream
+             * @default false
+             */
+            stream: boolean;
+            /**
              * Temperature
              * @default 0.1
              */
@@ -6782,6 +6867,26 @@ export interface components {
         Body_upload_document_upload_document_post: {
             /** File */
             file: string;
+        };
+        /** Body_voice_capture_api_capture_voice_post */
+        Body_voice_capture_api_capture_voice_post: {
+            /**
+             * Conversation Id
+             * @default
+             */
+            conversation_id: string;
+            /** File */
+            file: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
+             * Transcript
+             * @default
+             */
+            transcript: string;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -10565,6 +10670,37 @@ export interface operations {
             };
         };
     };
+    brain_garden_api_brain_garden_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     brain_health_api_brain_health_get: {
         parameters: {
             query?: never;
@@ -10793,6 +10929,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    voice_capture_api_capture_voice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_voice_capture_api_capture_voice_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    voice_status_api_capture_voice_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -14532,6 +14721,37 @@ export interface operations {
                 "application/json": components["schemas"]["LocalKnowledgeAuditRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    knowledge_graph_local_health_knowledge_graph_local_health_get: {
+        parameters: {
+            query?: {
+                error_samples?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

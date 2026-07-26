@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.9.6 — Same Brain Everywhere**.
+Current release: **9.9.7 — No Gaps Left**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -164,3 +164,56 @@ def test_telegram_explains_a_strained_but_successful_run():
     })
     assert text.startswith("✅")
     assert "형식을 3번 고쳤습니다." in text
+
+
+# ── Recall + Review Center parity (v9.9.7) ───────────────────────────────────
+# The 9.9.6 SURFACE_PARITY gaps for Telegram, closed: the bot now badges the
+# grounding verdict the server issued and can review staged change proposals.
+
+def test_telegram_badges_the_grounding_verdict_it_was_given():
+    from latticeai.integrations.telegram_bot import format_grounding_badge
+
+    supported = format_grounding_badge({
+        "grounding": {"status": "supported", "cited": [{"title": "예산 계획"}]}
+    })
+    assert supported.startswith("✅")
+    assert "예산 계획" in supported
+
+    for status in ("unsupported", "no_context"):
+        text = format_grounding_badge({
+            "grounding": {"status": status, "reason": "검색된 출처가 없습니다"}
+        })
+        assert text.startswith("⚠️")
+        assert "검색된 출처가 없습니다" in text
+
+
+def test_telegram_never_promotes_a_missing_grounding_verdict():
+    from latticeai.integrations.telegram_bot import format_grounding_badge
+
+    # No verdict at all → no badge (nothing to report).
+    for empty in (None, {}, {"grounding": None}, {"grounding": {}}, 7):
+        assert format_grounding_badge(empty) == ""
+    # An unrecognized verdict is "unknown", never "근거 있음".
+    unknown = format_grounding_badge({"grounding": {"status": "weird"}})
+    assert unknown.startswith("❔")
+    assert "근거 있음" not in unknown
+
+
+def test_telegram_proposal_rows_drop_unactionable_entries():
+    from latticeai.integrations.telegram_bot import format_proposals
+
+    rows = format_proposals({
+        "items": [
+            {"id": "a", "title": "Update README.md", "payload": {"change_class": "modify_existing"}},
+            {"id": "", "title": "no id"},
+            {"id": "b", "provenance": {"path": "src/app.py"}},
+            "garbage",
+        ]
+    })
+    assert [item[0] for item in rows] == ["a", "b"]
+    assert "modify_existing" in rows[0][1]
+    assert rows[1][1] == "src/app.py"
+    # Tolerates a bare list and junk payloads.
+    assert format_proposals([{"id": "c", "title": "C"}])[0][0] == "c"
+    for bad in (None, 3, "x", {}):
+        assert format_proposals(bad) == []

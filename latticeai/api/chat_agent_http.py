@@ -14,10 +14,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.chat_contracts import AgentEvalRequest, AgentRequest, AgentResumeRequest
 from latticeai.api.chat_helpers import _LANG_HINT, detect_language, workspace_scope_from_request
+from latticeai.api.chat_stream import agent_live_stream
 from latticeai.core.agent import AgentRunContext, AgentState, normalize_plan
 from latticeai.core.run_explain import explain_run
 from latticeai.core.run_store import (
@@ -100,6 +102,24 @@ class AgentHTTPController:
 
         @router.post("/agent")
         async def agent(req: AgentRequest, request: Request):
+            if req.stream:
+                # Surface parity (v9.9.7): the web app already watches the loop
+                # live through the chat route. `/agent` clients (VS Code) get
+                # the same named `agent_step` frames here, followed by the
+                # exact terminal payload the JSON response returns — a client
+                # that ignores named events sees the historical shape.
+                async def start(observer):
+                    return await self.agent(req, request, on_step=observer)
+
+                return StreamingResponse(
+                    agent_live_stream(
+                        start,
+                        router=self.model_router,
+                        model_id=req.executing_model,
+                    ),
+                    media_type="text/event-stream",
+                    headers={"X-Routed-To": "agent"},
+                )
             return await self.agent(req, request)
 
         @router.post("/agent/resume")

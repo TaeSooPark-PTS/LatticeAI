@@ -1168,6 +1168,25 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         )
     )
 
+    # Voice memo capture (v9.9.7): the shortest path from a thought to the
+    # Brain. Transcription is an optional local port — absent, the memo is
+    # still stored and the response says it is not searchable.
+    from latticeai.api.voice_capture import create_voice_capture_router
+    from latticeai.services.voice_capture import VoiceCaptureService
+
+    VOICE_CAPTURE = VoiceCaptureService(
+        pipeline=INGESTION_PIPELINE if ENABLE_GRAPH else None,
+        transcriber=None,
+    )
+    app.include_router(
+        create_voice_capture_router(
+            service=VOICE_CAPTURE,
+            require_user=require_user,
+            gate_write=PLATFORM.gate_write,
+            append_audit_event=append_audit_event,
+        )
+    )
+
     # Multi-turn project loop (v9.9.6): work that spans several runs keeps its
     # files, open TODOs, and last honest verification in one project session.
     from latticeai.api.project_sessions import create_project_sessions_router

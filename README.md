@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v9.9.6 Living Brain walkthrough](output/release/v9.9.6/gifs/v9.9.6-living-brain-walkthrough.gif)
+![v9.9.7 Living Brain walkthrough](output/release/v9.9.7/gifs/v9.9.7-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.6/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.6/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.6/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.6/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.6/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.6/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.7/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.7/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.7/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.7/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.7/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.7/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,54 +57,48 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v9.9.6/screenshots/01-login.png) | ![Model install](output/release/v9.9.6/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.6/screenshots/07-model-library.png) |
+| ![Login](output/release/v9.9.7/screenshots/01-login.png) | ![Model install](output/release/v9.9.7/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.7/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v9.9.6/SCREENSHOT_INDEX.md](output/release/v9.9.6/SCREENSHOT_INDEX.md)
+[output/release/v9.9.7/SCREENSHOT_INDEX.md](output/release/v9.9.7/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **9.9.6 — Same Brain Everywhere**:
+The current release is **9.9.7 — No Gaps Left**:
 
-- **The same Brain on every surface.** VS Code gains the grounding badge on
-  recall, a Review Center for staged change proposals, and an agent run
-  summary; Telegram repeats the same plain-language outcome. What each
-  surface does and does not provide is recorded in
-  [docs/SURFACE_PARITY.md](docs/SURFACE_PARITY.md).
-- **Evidence becomes action.** The sources an answer actually used turn into
-  one-click follow-ups — 요약, 체크리스트, 문서 파일, 한 페이지 — as
-  evidence-scoped prompts that run through the normal chat path.
-- **Weak models explained in plain language.** Every run returns an honest
-  sentence about how it ended and how hard the model had to work, plus one
-  concrete next step. It never upgrades a non-success into a success.
-- **Sharper citations.** A new sentence-aware `prose` chunking strategy keeps
-  Korean claims whole, and citations name where inside a document they came
-  from (`Guide > Setup · p.4`).
-- **One context contract.** Chat and document generation now share the same
-  budget, the same `context_quality` signal, and the same assembly trace.
-- **A graph that knows meaning from coincidence.** Relations carry their
-  evidence class (`verb` vs `cooccurrence`); enumerations no longer
-  manufacture relation chains.
-- **Projects that continue.** `/api/projects` remembers the files a project
-  produced, what is still open, and the last honest verification — and the
-  next run reads it, including what the last failure said to do differently.
-- **Loops closed.** Files a run just wrote are recallable immediately; a
-  critic PASS that left a requested file unwritten is `NEEDS_REVIEW`, not
-  `DONE`.
-- **Funnel metrics become decisions.** Admin funnel metrics now return named
-  alerts with the number that triggered them, silent below 10 samples.
-- **Embedding-swap recovery.** A stale embedder index is named on screen with
-  a one-click re-index instead of silently degrading recall.
+- **No `✖` left in the parity matrix.** Every gap 9.9.6 wrote down is closed,
+  and every remaining `—` states *why* it is a boundary
+  ([docs/SURFACE_PARITY.md](docs/SURFACE_PARITY.md)).
+- **VS Code watches the loop live.** `POST /agent` streams the same
+  `agent_step` frames the web app gets, and cited evidence turns into one-click
+  follow-ups in the editor.
+- **Telegram badges its recall and reviews changes.** The server's grounding
+  verdict is shown as-is, and `/review` approves or rejects staged proposals
+  inline.
+- **The browser extension recalls, not just captures.** Ask your Brain from the
+  popup with the same badge, and see how many runs await approval — still
+  posting only to `127.0.0.1`.
+- **A knowledge garden in four beds** — what arrived, what disagrees, what went
+  stale, what the rest leans on.
+- **A profile for small local models.** Under 4B, the loop shortens its window,
+  escalates sooner, and — when JSON tool calls keep failing — writes the
+  planned files directly instead of ending empty-handed.
+- **Folder memory state.** How much of each connected folder is really in your
+  Brain, what failed, and the reason it failed.
+- **Two skills that pay off on install** — meeting notes and a weekly review
+  written only from what the Brain actually recorded.
+- **Voice memos** go straight into the Brain; when no local transcriber exists
+  the memo is still stored and honestly marked not-searchable.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 9.9.6 release must use exact filenames:
+Expected artifacts for 9.9.7 release must use exact filenames:
 
-- `dist/ltcai-9.9.6-py3-none-any.whl`
-- `dist/ltcai-9.9.6.tar.gz`
-- `ltcai-9.9.6.tgz`
-- `dist/ltcai-9.9.6.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.6_aarch64.dmg`
+- `dist/ltcai-9.9.7-py3-none-any.whl`
+- `dist/ltcai-9.9.7.tar.gz`
+- `ltcai-9.9.7.tgz`
+- `dist/ltcai-9.9.7.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.7_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -136,6 +130,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 9.9.7 | No Gaps Left |
 | 9.9.6 | Same Brain Everywhere |
 | 9.9.5 | Closed Gaps |
 | 9.9.4 | Durable Loops |

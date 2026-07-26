@@ -1,3 +1,17 @@
+# [v9.9.7 - No Gaps Left] (2026-07-27)
+
+Closes every `✖` the 9.9.6 parity matrix recorded, plus the documented design
+boundaries: `/agent` SSE + live step timeline and evidence→action in VS Code,
+grounding badge and Review Center in Telegram, recall and approval visibility
+in the browser extension, a four-bed knowledge garden, a compact profile for
+small local models with a direct-path fallback, per-folder memory state, two
+pay-off-on-install skills, and voice memo capture with honest degradation.
+
+See [RELEASE_NOTES_v9.9.7.md](RELEASE_NOTES_v9.9.7.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v9.9.6 - Same Brain Everywhere] (2026-07-27)
 
 Answers the 2026-07-27 full-stack review: VS Code/Telegram surface parity
@@ -26,12 +40,13 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.6**.
+This repository keeps public release history from **8.0.0 through 9.9.7**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
 ## Current Release
 
+- [v9.9.7 - No Gaps Left](RELEASE_NOTES_v9.9.7.md)
 - [v9.9.6 - Same Brain Everywhere](RELEASE_NOTES_v9.9.6.md)
 - [v9.9.5 - Closed Gaps](RELEASE_NOTES_v9.9.5.md)
 - [v9.9.4 - Durable Loops](RELEASE_NOTES_v9.9.4.md)

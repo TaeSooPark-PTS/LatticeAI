@@ -12,14 +12,18 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.9.6 — Same Brain Everywhere.** The extension follows
+**9.9.7 — No Gaps Left.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. The 9.9.6 line closes the editor's
 surface-parity gaps: recall answers carry the same grounding verdict the web
 app badges (`Lattice AI: Ask Your Brain`, `Ask About Current File`), staged
 change proposals can be reviewed and applied in place
 (`Lattice AI: Review Center`), and `Lattice AI: Run Agent Task` reports a
-run's steps, files, and plain-language outcome. It connects editor actions to the same
+run's steps, files, and plain-language outcome. 9.9.7 adds the last two
+editor gaps: `Lattice AI: Run Agent Task (Live Steps)` streams the same
+`agent_step` frames the web timeline renders, and
+`Lattice AI: Build From This Evidence` turns the sources your last recall
+actually cited into one-click follow-ups. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
 separated Admin surface used by the desktop app. The v9.9.0 line hardens
 trust: change proposals record the original content hash and refuse to apply

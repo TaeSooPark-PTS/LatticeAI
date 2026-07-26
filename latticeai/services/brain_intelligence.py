@@ -391,6 +391,111 @@ class BrainIntelligenceService:
             "generated_at": _now(),
         }
 
+    def garden_overview(
+        self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None,
+        limit: int = 8,
+    ) -> Dict[str, Any]:
+        """The knowledge garden in four beds (v9.9.7).
+
+        Living Brain answers "how healthy is my knowledge?" in aggregate.
+        A gardener asks four concrete questions instead, and this answers all
+        four from one workspace-scoped graph sample plus the memory tier:
+
+        * **recent** — what came in lately (the garden's new growth);
+        * **contradictions** — what disagrees with itself (needs weeding);
+        * **stale** — what has not been touched in a long time;
+        * **frequent** — what the rest of the graph leans on most (by degree).
+
+        Read-only and honest: when the graph is unavailable every bed is empty
+        and ``available`` is false — the view never invents plants.
+        """
+        # Explicit 0 clamps to 1 — `limit or 8` would silently re-expand it.
+        try:
+            limit = max(1, min(int(limit), 50))
+        except (TypeError, ValueError):
+            limit = 8
+        sample = self._graph_sample(workspace_id=workspace_id)
+        nodes, edges = sample["nodes"], sample["edges"]
+        now = datetime.now(timezone.utc)
+        recent_cutoff = now - timedelta(days=_RECENT_DAYS)
+        stale_cutoff = now - timedelta(days=_STALE_DAYS)
+
+        def _slim(node: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
+            return {
+                "id": node.get("id"),
+                "type": node.get("type"),
+                "title": str(node.get("title") or "")[:120],
+                "updated_at": node.get("updated_at"),
+                **extra,
+            }
+
+        recent: List[Dict[str, Any]] = []
+        stale: List[Dict[str, Any]] = []
+        for node in nodes:
+            # Chunks are retrieval plumbing, not knowledge a gardener tends.
+            if str(node.get("type") or "") == "Chunk":
+                continue
+            ts = _parse_ts(node.get("updated_at"))
+            if ts is None:
+                continue
+            if ts >= recent_cutoff:
+                recent.append(node)
+            elif ts < stale_cutoff:
+                stale.append(node)
+        recent.sort(key=lambda n: str(n.get("updated_at") or ""), reverse=True)
+        stale.sort(key=lambda n: str(n.get("updated_at") or ""))
+
+        # "Frequent" is degree, not a guess: how many relations actually point
+        # at a node. Chunks are retrieval plumbing, never garden plants.
+        degree: Dict[str, int] = {}
+        for edge in edges:
+            for key in ("source", "target"):
+                node_id = str(edge.get(key) or "")
+                if node_id:
+                    degree[node_id] = degree.get(node_id, 0) + 1
+        by_id = {str(node.get("id")): node for node in nodes}
+        frequent = [
+            _slim(by_id[node_id], degree=count)
+            for node_id, count in sorted(degree.items(), key=lambda kv: kv[1], reverse=True)
+            if node_id in by_id and str(by_id[node_id].get("type") or "") != "Chunk"
+        ][:limit]
+
+        contradiction_items: List[Dict[str, Any]] = []
+        contradiction_count = 0
+        try:
+            found = self.contradictions(user_email=user_email, workspace_id=workspace_id)
+            items = found.get("items") if isinstance(found, dict) else None
+            if isinstance(items, list):
+                contradiction_count = len(items)
+                contradiction_items = items[:limit]
+        except Exception:  # noqa: BLE001 — one empty bed, never a broken view
+            LOGGER.exception("garden overview contradictions failed")
+
+        return {
+            "available": sample["available"],
+            "window_days": _RECENT_DAYS,
+            "stale_threshold_days": _STALE_DAYS,
+            "beds": {
+                "recent": {
+                    "count": len(recent),
+                    "items": [_slim(node) for node in recent[:limit]],
+                },
+                "contradictions": {
+                    "count": contradiction_count,
+                    "items": contradiction_items,
+                },
+                "stale": {
+                    "count": len(stale),
+                    "items": [_slim(node) for node in stale[:limit]],
+                },
+                "frequent": {
+                    "count": len(frequent),
+                    "items": frequent,
+                },
+            },
+            "generated_at": _now(),
+        }
+
     # ── graph-layer proactive quality (v9.6.x) ───────────────────────────
 
     def graph_duplicates(

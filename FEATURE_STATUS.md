@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v9.9.6)
+# Lattice AI Feature Status (v9.9.7)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **9.9.6 — Same Brain Everywhere**.
+Current release: **9.9.7 — No Gaps Left**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -30,7 +30,9 @@ device analysis no longer fabricates a "ready" model card on probe failure. The
 9.9.6 line makes the Brain the same everywhere: the editor and the chat bot
 report the same grounding verdict and the same plain-language run outcome, an
 answer's evidence turns into one-click follow-ups, and work that spans several
-runs keeps its state in a project session.
+runs keeps its state in a project session. The 9.9.7 line closes the last
+recorded gaps — no `✖` remains in the surface parity matrix, and every
+remaining `—` states why it is a design boundary.
 
 ## Current Feature Status
 
@@ -55,7 +57,13 @@ runs keeps its state in a project session.
 | Agent Runtime | Current | AgentRuntime preview/readiness contracts avoid tool execution during preview, reject unknown roles, require explicit human approval for non-auto-approved plans, tolerate legacy run events with contract envelopes, and expose orchestration boundaries. |
 | Tool Registry / MCP | Current | ToolRegistry diagnostics, explicit desktop/knowledge/network policy gates, masked MCP paths, and MCP install state are separated from app-factory helpers and covered by focused tests. |
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
-| VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. Recall carries the same `grounding` verdict as the web badge, staged change proposals are reviewable in place (409 conflicts reported honestly), and agent runs report steps/files/outcome. Evidence→action and live step SSE are web-only (`docs/SURFACE_PARITY.md`). |
+| VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. Recall carries the same `grounding` verdict as the web badge, staged change proposals are reviewable in place (409 conflicts reported honestly), agent runs report steps/files/outcome, and 9.9.7 adds a live `agent_step` timeline (`POST /agent` `stream:true`) plus evidence→action follow-ups from the last recall's cited sources. |
+| Browser Extension | Current | Capture, recall, and approval visibility (9.9.7). Asking the Brain shows the server's own grounding verdict — an absent verdict reads "근거 확인 불가", never "근거 있음". Approval *decisions* stay off this surface by design (they need a signed short-TTL token); the extension shows that runs are waiting. Posts only to `127.0.0.1`. |
+| Telegram Review | Current | `/review` lists staged change proposals from the same `/api/proposals` surface with inline approve/reject; a 409 reports that nothing was written. Answers carry the server's grounding verdict. |
+| Knowledge Garden | Current | `GET /api/brain/garden` answers four gardener questions from one scoped read: recent, contradictions, stale, and most-relied-on (real graph degree; Chunk nodes excluded). An unavailable graph yields empty beds, never invented ones. |
+| Agent Profiles | Current | `standard` / `compact` profiles selected from the model id (or `LATTICEAI_AGENT_PROFILE`). Under ~4B the loop shortens its transcript window, escalates corrections sooner, and falls back to writing the plan's files directly when JSON tool calls keep failing. A failed or staged write is reported as *not* written. |
+| Folder Memory State | Current | `GET /knowledge-graph/local/health` reports per-folder indexing coverage, failures with their stored reasons, and watch state. An unscanned folder reports unknown, never "0% indexed"; vector freshness is reported once and explicitly labelled global. |
+| Voice Capture | Current (transcriber optional) | `POST /api/capture/voice` ingests a memo through the unified pipeline. Transcription is an injected local port: without one the memo is still stored and reported `transcription: "unavailable"` / `searchable: false` — never an invented transcript, never a silent drop. |
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
 | Trusted Agent Loop | Current | LoopTrace observability + `loop` API payload, python-literal weak-model repair with escalating corrections, deterministic agent-eval CI gate, and proposal-first change governance (`/api/proposals`, 변경 제안 panel) where edits/deletions of existing files are reviewed before applying. |
 | Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. |
@@ -65,7 +73,7 @@ runs keeps its state in a project session.
 | Citation Precision | Current | A sentence-aware `prose` chunking strategy keeps Korean claims whole for `.txt/.pdf/.docx/.html`; chunk hits carry a locator (`Guide > Setup · p.4`) and stay silent when they cannot prove it. `plain` chunking is byte-identical to the legacy walk. |
 | Graph Relation Evidence | Current | Relations record whether they came from a verb or from co-occurrence, with matching weights; enumerations no longer manufacture relation chains, and the curator can demote weak/hub adjacency edges without touching verb-backed or legacy ones. |
 | Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
-| Release Assets | Current | 9.9.6 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 9.9.7 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -79,10 +87,16 @@ runs keeps its state in a project session.
   labeled as model-free rather than autonomous model execution.
 - Local file privacy depends on the user's OS account, disk encryption, and
   backup policy outside Lattice AI.
-- Surface parity is documented, not universal: VS Code has no evidence→action
-  one-click and no live step SSE timeline; Telegram has no grounding badge or
-  Review Center. The browser extension is capture-only **by design**. See
-  `docs/SURFACE_PARITY.md`.
+- Surface parity has no recorded gaps as of 9.9.7; every remaining "—" in
+  `docs/SURFACE_PARITY.md` is a design boundary that states its reason (e.g.
+  approval *decisions* stay off the browser extension because they need a
+  signed, single-use, short-TTL token).
+- Voice transcription ships with **no bundled transcriber**. Memos are stored
+  and honestly marked not-searchable until a local transcriber is wired in;
+  `GET /api/capture/voice/status` reports which case applies.
+- The compact agent profile is chosen from the model id. A model whose id names
+  no size keeps the standard loop, so an unlabelled small model needs
+  `LATTICEAI_AGENT_PROFILE=compact`.
 - The conversation artifact ledger is process-local and bounded — it answers
   "what did this conversation just make?" for minutes, not days. After a
   restart, normal retrieval covers it because indexing has caught up.

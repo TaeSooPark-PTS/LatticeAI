@@ -31,8 +31,10 @@ from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Mapping, Opt
 
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
+from latticeai.core.agent_profiles import AgentProfile, profile_for_model
 from latticeai.core.agent_trace import LoopTrace
 from latticeai.core.file_generation import (
+    generate_file_content,
     infer_file_target,
     infer_project_manifest,
     sanitize_write_content,
@@ -639,6 +641,12 @@ class AgentDeps:
     # can also be attached on AgentRunContext.on_step. Both are advisory.
     on_step: Optional[Callable[[Dict[str, Any]], None]] = None
 
+    # ── agent profile (optional, v9.9.7) ─────────────────────────────
+    # How hard the loop works to keep a weak model on contract. None selects
+    # per-run from the executing model id (``profile_for_model``); tests
+    # inject a fixed profile.
+    agent_profile: Optional["AgentProfile"] = None
+
 
 class SingleAgentRuntime:
     """Drives the agent state machine over injected :class:`AgentDeps`."""
@@ -667,6 +675,18 @@ class SingleAgentRuntime:
         if getattr(self, "_env_transcript_budget", None) is None:
             self._env_transcript_budget = TranscriptBudget.from_env()
         return self._env_transcript_budget
+
+    def profile_for(self, model_id: Optional[str]) -> AgentProfile:
+        """Loop profile for the model actually executing this run (v9.9.7).
+
+        An injected ``AgentDeps.agent_profile`` wins (tests, explicit config);
+        otherwise the profile is derived from the model id, so a small local
+        model gets the compact loop without any extra configuration.
+        """
+        injected = getattr(self.deps, "agent_profile", None)
+        if injected is not None:
+            return injected
+        return profile_for_model(model_id)
 
     def _emit_step(self, ctx: AgentRunContext, phase: str, event: str, **details: Any) -> None:
         """Fire the per-run / deps step observers (review Wave 1.1).
@@ -848,13 +868,16 @@ class SingleAgentRuntime:
     ) -> None:
         """EXECUTE: Executor role calls tools one at a time until final or budget exhausted."""
         d = self.deps
+        profile = self.profile_for(model_id)
         exec_count = sum(1 for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value)
         budget = max(1, max_steps - exec_count)
         parse_failures = 0
 
         for _ in range(budget):
             request_workspace = getattr(req, "workspace_id", None)
-            context = self._executor_context(ctx, req, lang_hint, current_user, request_workspace)
+            context = self._executor_context(
+                ctx, req, lang_hint, current_user, request_workspace, profile=profile
+            )
             raw = await d.generate_as(
                 model_id,
                 message="Execute the next step.",
@@ -867,7 +890,15 @@ class SingleAgentRuntime:
                 ctx.trace.repair("execute", repairs=exec_repairs)
             except ValueError as exc:
                 parse_failures += 1
-                if self._note_parse_failure(ctx, raw, exc, parse_failures):
+                if self._note_parse_failure(ctx, raw, exc, parse_failures, profile):
+                    # Direct-path fallback (v9.9.7): a small model that cannot
+                    # hold the tool-call protocol can still write a file. Run
+                    # the plan's own file steps without asking for any JSON.
+                    if profile.direct_path_fallback and await self._direct_file_path(
+                        ctx, req, current_user, model_id
+                    ):
+                        ctx.state = AgentState.VERIFYING
+                        return
                     break
                 continue
 
@@ -934,6 +965,7 @@ class SingleAgentRuntime:
     def _executor_context(
         self, ctx: AgentRunContext, req: Any, lang_hint: str,
         current_user: str, request_workspace: Optional[str],
+        profile: Optional[AgentProfile] = None,
     ) -> str:
         """Assemble one executor turn's prompt (plan, corrections, recent chat)."""
         d = self.deps
@@ -953,9 +985,12 @@ class SingleAgentRuntime:
             recent_kwargs["workspace_id"] = request_workspace
         recent_conversation = d.recent_chat_context(**recent_kwargs) or "(none)"
         budget = self.transcript_budget
+        # A small model drowns in a long transcript far sooner than a large
+        # one, so the profile may narrow the window (v9.9.7).
+        window = min(budget.window, profile.transcript_window) if profile else budget.window
         bounded_transcript = compact_transcript(
             ctx.transcript,
-            window=budget.window,
+            window=window,
             result_chars=budget.result_chars,
         )
         # Mid-run workspace awareness (review L5): later steps must see what
@@ -977,13 +1012,15 @@ class SingleAgentRuntime:
 
     def _note_parse_failure(
         self, ctx: AgentRunContext, raw: Any, exc: ValueError, parse_failures: int,
+        profile: Optional[AgentProfile] = None,
     ) -> bool:
         """Record one executor parse slip; True when the run should stop retrying."""
+        profile = profile or self.profile_for(None)
         ctx.transcript.append({
             "state": AgentState.EXECUTING.value, "action": "parse_error",
             "raw": str(raw)[:400], "error": str(exc),
         })
-        if parse_failures >= 3:
+        if parse_failures >= profile.parse_failure_budget:
             ctx.trace.parse_error("execute", error=str(exc), recovered=False)
             self._emit_step(ctx, "execute", "parse_error", recovered=False)
             return True
@@ -997,9 +1034,10 @@ class SingleAgentRuntime:
             'EXACTLY one JSON object like {"thoughts": "...", "action": '
             '"tool_name", "args": {...}} and nothing else.'
         )
-        if parse_failures >= 2:
+        if parse_failures >= profile.escalate_after:
             # Escalate: name the valid tools so the model stops
-            # inventing action names or prose.
+            # inventing action names or prose. The compact profile escalates
+            # a slip earlier — a small model needs the list sooner.
             valid = ", ".join(sorted(self.deps.tool_governance.keys()))
             hint = (
                 f"{hint} Valid action values are: {valid}, final. "
@@ -1009,6 +1047,84 @@ class SingleAgentRuntime:
             ctx.corrections.append(hint)
             ctx.trace.correction("execute", hint=hint)
         return False
+
+    async def _direct_file_path(
+        self, ctx: AgentRunContext, req: Any, current_user: str,
+        model_id: Optional[str],
+    ) -> bool:
+        """Write the plan's file steps without asking the model for JSON (v9.9.7).
+
+        The compact profile's escape hatch. A 1–4B local model that cannot hold
+        the tool-call protocol can still write a file, so when JSON tool calls
+        are exhausted the loop drops the protocol entirely: it takes the paths
+        the *planner* already chose and asks only for file content in plain
+        text, through the same validated
+        :func:`~latticeai.core.file_generation.generate_file_content` pipeline
+        the direct chat path uses.
+
+        Returns True when at least one file was actually written. Honest
+        failure modes: no planned paths, a governor that stages the write as a
+        proposal, or a tool error all return False and leave the run to end as
+        it would have — this never fabricates evidence.
+        """
+        d = self.deps
+        planned: List[str] = []
+        for step in ctx.plan.get("steps") or []:
+            if not isinstance(step, dict) or step.get("action") not in d.file_create_actions:
+                continue
+            path = str((step.get("args") or {}).get("path") or "").strip()
+            if path and path not in planned:
+                planned.append(path)
+        if not planned:
+            inferred = infer_file_target(getattr(req, "message", "") or "")
+            if inferred:
+                planned = [inferred]
+        if not planned:
+            return False
+
+        goal = str(ctx.plan.get("goal") or getattr(req, "message", "") or "")
+
+        async def _generate(context: str) -> Any:
+            return await d.generate_as(
+                model_id,
+                message="Write the file content.",
+                context=context,
+                max_tokens=self.phase_budgets.execute_tokens,
+                temperature=0.2,
+            )
+
+        wrote = False
+        for path in planned[:6]:
+            try:
+                content, meta = await generate_file_content(
+                    _generate,
+                    target_path=path,
+                    user_request=goal,
+                    bundle_files=planned if len(planned) > 1 else None,
+                )
+            except Exception as exc:  # noqa: BLE001 — fallback must not raise
+                logging.warning("direct file path generation failed for %s: %s", path, exc)
+                continue
+            ctx.trace.llm_call("execute", model=model_id)
+            ctx.trace.repair("execute", repairs=["direct_path_fallback"])
+            args = {"path": path, "content": content}
+            policy = d.policy_for("write_file", args)
+            risk = d.risk_level(policy)
+            before = len(ctx.transcript)
+            self._dispatch_step(ctx, "write_file", "direct path fallback", args, policy, risk, current_user)
+            last = ctx.transcript[-1] if len(ctx.transcript) > before else {}
+            if isinstance(last.get("result"), dict) and not last["result"].get("proposed"):
+                wrote = True
+                last["direct_path"] = True
+                last["generation"] = {"repaired": bool(meta.get("repaired"))}
+        if wrote:
+            ctx.trace.decision("execute", decision="direct_path_fallback", files=len(planned))
+            self._emit_step(ctx, "execute", "direct_path", files=len(planned))
+            ctx.final_message = (
+                "도구 호출 형식을 계속 벗어나서, 계획에 있던 파일을 직접 생성했습니다. "
+                "내용을 확인해 주세요."
+            )
+        return wrote
 
     def _is_repeated_create(self, ctx: AgentRunContext, name: Any, args: dict) -> bool:
         """Loop guard: the same file-create action+args re-issued right after a result."""

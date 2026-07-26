@@ -220,6 +220,56 @@ export class LatticeAIClient {
     return result;
   }
 
+  /**
+   * Live agent run (SURFACE_PARITY v9.9.7). POSTs `/agent` with `stream:true`
+   * and calls `onStep` for every named `agent_step` frame, so the editor
+   * watches the loop work instead of staring at a spinner. Resolves with the
+   * same terminal payload the JSON response returns.
+   */
+  async runAgentLive(
+    message: string,
+    onStep: (step: any) => void,
+    opts: { human_in_loop?: boolean; project_id?: string } = {}
+  ): Promise<any> {
+    const body = JSON.stringify({
+      message,
+      source: "vscode",
+      stream: true,
+      human_in_loop: opts.human_in_loop ?? false,
+      project_id: opts.project_id,
+    });
+    let final: any = null;
+    for await (const frame of this._streamEvents("/agent", body)) {
+      if (frame.event === "agent_step") {
+        onStep(frame.data);
+        continue;
+      }
+      if (frame.data && typeof frame.data === "object" && frame.data.agent) {
+        final = frame.data.agent;
+      }
+    }
+    if (final) {
+      const status = String(final?.status || "");
+      if (status === "awaiting_approval" || status === "waiting_approval") {
+        this.cacheApprovalToken(
+          String(final?.run_id || final?.context_id || ""),
+          String(final?.approval?.token || "")
+        );
+      }
+    }
+    return final;
+  }
+
+  // ── Evidence → action (SURFACE_PARITY v9.9.7) ─────────────────────────────
+
+  async evidenceActions(question: string, sourceIds: string[], language = "ko"): Promise<any> {
+    return this._post("/api/evidence/actions", {
+      question,
+      source_ids: sourceIds,
+      language,
+    });
+  }
+
   // ── Review Center (change proposals, SURFACE_PARITY v9.9.6) ───────────────
   // The same /api/proposals surface the web Review Center uses: mutations to
   // existing files are staged, never applied, until a human approves them.
@@ -289,6 +339,90 @@ export class LatticeAIClient {
       req.write(bodyStr);
       req.end();
     });
+  }
+
+  /**
+   * SSE frames from a POST, preserving the `event:` name.
+   *
+   * `_streamPost` below only understands anonymous `data:` chat chunks, so a
+   * named `agent_step` frame would be misread as a chunk. This parser keeps
+   * the event name, which is what the live step timeline needs.
+   */
+  private async *_streamEvents(
+    path: string,
+    body: string
+  ): AsyncGenerator<{ event: string; data: any }> {
+    const url = new URL(this.baseUrl + path);
+    const mod = url.protocol === "https:" ? https : http;
+
+    const frames: Array<{ event: string; data: any }> = [];
+    let resolve: (() => void) | null = null;
+    let done = false;
+    let failure: Error | null = null;
+
+    const req = mod.request(
+      {
+        hostname: url.hostname,
+        port: url.port || (url.protocol === "https:" ? 443 : 80),
+        path: url.pathname + url.search,
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+      },
+      (res) => {
+        if ((res.statusCode ?? 0) >= 400) {
+          failure = new Error(`HTTP ${res.statusCode}`);
+          (failure as any).status = res.statusCode;
+          done = true;
+          resolve?.();
+          resolve = null;
+          res.resume();
+          return;
+        }
+        let buffer = "";
+        let pendingEvent = "message";
+        res.on("data", (raw: Buffer) => {
+          buffer += raw.toString();
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              pendingEvent = line.slice(7).trim();
+              continue;
+            }
+            if (!line.startsWith("data: ")) continue;
+            const payload = line.slice(6).trim();
+            const event = pendingEvent;
+            pendingEvent = "message";
+            if (payload === "[DONE]") {
+              done = true;
+            } else {
+              try {
+                frames.push({ event, data: JSON.parse(payload) });
+              } catch {
+                // A malformed frame is dropped, never guessed at.
+              }
+            }
+            resolve?.();
+            resolve = null;
+          }
+        });
+        res.on("end", () => { done = true; resolve?.(); resolve = null; });
+      }
+    );
+
+    req.on("error", (err) => { failure = err; done = true; resolve?.(); resolve = null; });
+    req.write(body);
+    req.end();
+
+    while (!done || frames.length > 0) {
+      if (frames.length === 0) {
+        await new Promise<void>((r) => { resolve = r; });
+      }
+      while (frames.length > 0) {
+        yield frames.shift()!;
+      }
+    }
+    if (failure) throw failure;
   }
 
   private async *_streamPost(path: string, body: string): AsyncGenerator<string> {

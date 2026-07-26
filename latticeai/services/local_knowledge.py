@@ -293,6 +293,32 @@ def create_local_knowledge_router(
         payload["watch"] = watch_status
         return payload
 
+    @router.get("/knowledge-graph/local/health")
+    async def knowledge_graph_local_health(request: Request, error_samples: int = 3):
+        """Per-folder memory state (v9.9.7): indexing coverage, failures with
+        their stored reasons, and watch state.
+
+        Vector freshness rides along as an explicitly **global** figure — the
+        vector index is not per-folder, and claiming otherwise would invent a
+        number.
+        """
+        require_user(request)
+        kg = graph()
+        payload = kg.local_source_health(error_samples=error_samples)
+        watch_status = watcher.status() if watcher else {"available": False, "active": {}}
+        active = watch_status.get("active", {})
+        for folder in payload.get("folders", []):
+            folder["watch_active"] = folder.get("id") in active
+        payload["watch"] = watch_status
+        try:
+            payload["vector_freshness_global"] = kg.vector_freshness()
+        except Exception as exc:  # noqa: BLE001 — one missing signal, not a 500
+            payload["vector_freshness_global"] = {
+                "status": "unavailable", "detail": str(exc),
+                "pending_items": 0, "total_items": 0,
+            }
+        return payload
+
     @router.get("/knowledge-graph/local/watch/status")
     async def knowledge_graph_local_watch_status(request: Request):
         require_user(request)

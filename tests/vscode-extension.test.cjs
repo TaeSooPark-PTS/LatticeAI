@@ -146,3 +146,52 @@ test("English language selection picks the English explanation strings", () => {
   );
   assert.equal(summary.headline, "English");
 });
+
+// ── v9.9.7: evidence → action + live step timeline ───────────────────────────
+// The 9.9.6 SURFACE_PARITY gaps for VS Code, closed. Same sidecar payloads the
+// web app consumes; the editor only renders them differently.
+
+const { citedSourceIds, parseEvidenceActions, stepLine } = require("../vscode-extension/out/surface.js");
+
+test("cited source ids come from the same grounding verdict the badge uses", () => {
+  assert.deepEqual(
+    citedSourceIds({ grounding: { status: "supported", cited: [{ id: "n1" }, { id: "n2" }] } }),
+    ["n1", "n2"],
+  );
+  // Older payloads carry only source_ids.
+  assert.deepEqual(
+    citedSourceIds({ grounding: { status: "supported", source_ids: ["n3"] } }),
+    ["n3"],
+  );
+  for (const bad of [null, {}, { grounding: {} }, { grounding: { cited: "nope" } }]) {
+    assert.deepEqual(citedSourceIds(bad), []);
+  }
+});
+
+test("evidence actions parse with localized labels and drop unusable rows", () => {
+  const payload = {
+    actions: [
+      { id: "summary", kind: "chat", label: { ko: "요약 만들기", en: "Summarize" }, prompt: "P1" },
+      { id: "document", kind: "file", label: { ko: "문서", en: "Document" }, prompt: "P2", suggested_path: "a.md" },
+      { id: "broken", kind: "chat", label: { ko: "x", en: "x" } },
+      { kind: "chat", label: { ko: "y", en: "y" }, prompt: "P3" },
+    ],
+  };
+  const ko = parseEvidenceActions(payload, "ko");
+  assert.deepEqual(ko.map((a) => a.id), ["summary", "document"]);
+  assert.equal(ko[0].label, "요약 만들기");
+  assert.equal(ko[1].suggestedPath, "a.md");
+  assert.equal(parseEvidenceActions(payload, "en")[0].label, "Summarize");
+  assert.deepEqual(parseEvidenceActions(null), []);
+});
+
+test("live step frames render with their phase, event and detail", () => {
+  assert.match(stepLine({ phase: "plan", event: "planned", steps: 3 }), /plan\/planned/);
+  assert.match(stepLine({ phase: "execute", event: "tool", action: "write_file", path: "a.html", ok: true }), /write_file/);
+  assert.match(stepLine({ phase: "execute", event: "tool", action: "x", ok: false }), /failed/);
+  assert.match(stepLine({ phase: "execute", event: "blocked", reason: "destructive" }), /circle-slash/);
+  assert.match(stepLine({ phase: "verify", event: "verdict", verdict: "PASS" }), /verdict=PASS/);
+  // Unknown events stay visible rather than vanishing.
+  assert.match(stepLine({ phase: "future", event: "brand_new" }), /future\/brand_new/);
+  assert.match(stepLine(null), /run\/step/);
+});

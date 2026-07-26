@@ -1,7 +1,17 @@
-# Send to Lattice AI — browser extension (Manifest V3)
+# Lattice AI — browser extension (Manifest V3)
 
-A minimal Chrome/Edge (Manifest V3) extension that sends the current page into
-your **local** Lattice AI Knowledge Graph.
+A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
+Knowledge Graph. It does three things:
+
+1. **Capture** — send the current page into the graph;
+2. **Recall** (v9.9.7) — ask your Brain a question and see the *server's own*
+   grounding verdict on the answer;
+3. **Approvals** (v9.9.7) — show how many agent runs are waiting for approval,
+   so a paused run is never invisible from here.
+
+Recall and approvals use the same `/chat` and `/agent/approvals` endpoints
+every other surface uses. The extension never computes a grounding verdict
+itself: an absent verdict renders as "근거 확인 불가", never as "근거 있음".
 
 ## Local-first guarantee
 

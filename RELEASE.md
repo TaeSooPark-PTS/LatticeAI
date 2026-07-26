@@ -13,6 +13,18 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v9.9.7 — No Gaps Left (2026-07-27)
+
+9.9.7 closes every `✖` the 9.9.6 parity matrix recorded plus the documented
+design boundaries: `/agent` SSE with a live VS Code step timeline and
+evidence→action in the editor, Telegram grounding badge and Review Center,
+recall + approval visibility in the browser extension, a four-bed knowledge
+garden, a compact agent profile for small local models with a direct-path
+fallback, per-folder memory state, two pay-off-on-install skills, and voice
+memo capture with honest degradation when no local transcriber exists.
+
+- 상세: [RELEASE_NOTES_v9.9.7.md](RELEASE_NOTES_v9.9.7.md)
+
 ## v9.9.6 — Same Brain Everywhere (2026-07-27)
 
 9.9.6 answers the 2026-07-27 full-stack review: VS Code/Telegram surface

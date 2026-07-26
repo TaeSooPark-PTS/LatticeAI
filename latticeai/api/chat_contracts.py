@@ -40,6 +40,11 @@ class AgentRequest(BaseModel):
     # accumulated state (files, open TODOs, last verification) and folds its
     # own outcome back in when it finishes.
     project_id: Optional[str] = None
+    # Live loop visibility (v9.9.7): stream named `agent_step` SSE frames while
+    # the run executes, then the same terminal payload as the JSON response.
+    # Surface parity — the web app already gets this through the chat route;
+    # `/agent` clients (VS Code) need it on their own endpoint.
+    stream: bool = False
 
 
 class AgentResumeRequest(BaseModel):

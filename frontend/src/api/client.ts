@@ -608,6 +608,13 @@ export const latticeApi = {
   resumeIngestionJob: (jobId: string) => post(`/api/ingestion/jobs/${encodeURIComponent(jobId)}/resume`, {}, {}),
   brainInsights: () => get("/api/brain/insights", { activity: {}, attention: {}, suggested_questions: [] }),
   brainContradictions: () => get("/api/brain/contradictions", { items: [], count: 0 }),
+  // Knowledge garden overview (v9.9.7): recent / contradictions / stale /
+  // frequent in one read-only call.
+  brainGarden: (limit = 8) => get<Record<string, unknown>>(
+    "/api/brain/garden",
+    { available: false, beds: {} },
+    { limit },
+  ),
   brainConsolidate: (apply = false) => post("/api/brain/consolidate", { apply }, {}),
   memoryCompact: () => post("/api/memory/compact", {}, {}),
   memoryRebuild: () => post("/api/memory/rebuild", { target: "vector" }, {}),
@@ -658,6 +665,12 @@ export const latticeApi = {
   uploadDocument,
   documents: (limit = 200) => get("/knowledge-graph/documents", { documents: [] }, { limit }),
   localSources: () => get("/knowledge-graph/local/sources", { sources: [], watch: { available: false, active: {} } }),
+  // Per-folder memory state (v9.9.7): indexing coverage, failures with their
+  // stored reasons, and a single explicitly-global vector freshness figure.
+  localFolderHealth: () => get<Record<string, unknown>>(
+    "/knowledge-graph/local/health",
+    { folders: [], count: 0 },
+  ),
   localAgent: () => get("/api/local-agent/status", { agent: { online: false }, sources: [] }),
   connectFolder: (path: string) => post("/knowledge-graph/local/index", { path, approved: true, watch_enabled: true, consent: { approved: true, source: "desktop-spa" } }, {}),
   localWatchStop: (source_id: string) => post("/knowledge-graph/local/watch/stop", { source_id }, {}),

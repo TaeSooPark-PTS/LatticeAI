@@ -36,6 +36,7 @@ STATUS_URL     = f"{BASE_URL}/status"
 MODELS_URL     = f"{BASE_URL}/models"
 GRAPH_STATS_URL = f"{BASE_URL}/knowledge-graph/stats"
 UPLOAD_DOC_URL  = f"{BASE_URL}/upload/document"
+PROPOSALS_URL   = f"{BASE_URL}/api/proposals"
 
 AGENT_RESUME_URL      = f"{BASE_URL}/agent/resume"
 AGENT_WORKSPACE       = Path(env_value("LATTICEAI_AGENT_ROOT", "agent_workspace")).resolve()
@@ -296,6 +297,9 @@ MAIN_MENU = {
         [
             {"text": "🔗 웹 UI 열기",           "callback_data": "cmd:web"},
             {"text": "🔌 MCP 도구 목록",        "callback_data": "cmd:mcp"},
+        ],
+        [
+            {"text": "🗂 변경 제안 검토",        "callback_data": "cmd:review"},
         ],
     ]
 }
@@ -665,6 +669,141 @@ def collect_generated_files(agent_data):
             files.append((path, target))
     return files
 
+def format_grounding_badge(data, *, language: str = "ko") -> str:
+    """Answer-grounding badge line for a `/chat` reply (v9.9.7).
+
+    Telegram used to show only the answer text, so a reply the Brain could not
+    ground looked identical to one built on real sources. This renders exactly
+    the verdict the server issued — and reports an absent verdict as unknown
+    rather than promoting it to "근거 있음".
+    """
+    if not isinstance(data, dict):
+        return ""
+    grounding = data.get("grounding")
+    if not isinstance(grounding, dict):
+        return ""
+    status = str(grounding.get("status") or "")
+    if not status:
+        return ""
+    korean = not str(language or "ko").startswith("en")
+    cited = [
+        str(item.get("title") or "").strip()
+        for item in (grounding.get("cited") or [])
+        if isinstance(item, dict) and str(item.get("title") or "").strip()
+    ]
+    if status == "supported":
+        head = "✅ 근거 있음" if korean else "✅ grounded"
+        if cited:
+            head += " — " + ", ".join(cited[:3])
+        return head
+    if status in {"unsupported", "no_context"}:
+        head = "⚠️ 근거 없음" if korean else "⚠️ not grounded"
+        reason = str(grounding.get("reason") or "").strip()
+        return f"{head} — {reason}" if reason else head
+    return "❔ 근거 확인 불가" if korean else "❔ grounding unknown"
+
+
+async def send_grounding_badge(client, chat_id, data):
+    text = format_grounding_badge(data)
+    if text:
+        await send_message(client, chat_id, text)
+
+
+def format_proposals(payload) -> list:
+    """`GET /api/proposals` → ``[(item_id, label)]`` for the Review Center.
+
+    Rows without an id are dropped: an un-actionable row is worse than none.
+    """
+    root = payload if isinstance(payload, dict) else {}
+    rows = payload if isinstance(payload, list) else (root.get("items") or [])
+    out = []
+    for raw in rows if isinstance(rows, list) else []:
+        if not isinstance(raw, dict):
+            continue
+        item_id = str(raw.get("id") or "").strip()
+        if not item_id:
+            continue
+        body = raw.get("payload") if isinstance(raw.get("payload"), dict) else {}
+        provenance = raw.get("provenance") if isinstance(raw.get("provenance"), dict) else {}
+        path = str(body.get("path") or provenance.get("path") or "")
+        title = str(raw.get("title") or path or item_id)
+        change_class = str(body.get("change_class") or provenance.get("change_class") or "")
+        label = title if not change_class else f"{title} ({change_class})"
+        out.append((item_id, label))
+    return out
+
+
+async def show_review_center(client, chat_id):
+    """Review Center parity (v9.9.7): staged change proposals with inline
+    approve/reject, using the same `/api/proposals` surface as the web app."""
+    try:
+        async with _server_client() as sc:
+            res = await sc.get(PROPOSALS_URL, timeout=30.0)
+        if res.status_code != 200:
+            await send_message(client, chat_id, f"검토함을 불러오지 못했습니다 ({res.status_code})")
+            return
+        items = format_proposals(res.json())
+    except Exception as exc:
+        await send_message(client, chat_id, f"검토함 조회 실패: {exc}")
+        return
+    if not items:
+        await send_message(client, chat_id, "🗂 검토할 변경 제안이 없습니다.")
+        return
+    lines = ["🗂 변경 제안 (승인해야 적용됩니다)"]
+    keyboard = []
+    for item_id, label in items[:8]:
+        lines.append(f"- {label}")
+        keyboard.append([
+            {"text": f"✅ 승인 — {label}"[:64], "callback_data": f"proposal:approve:{item_id}"[:64]},
+            {"text": "❌ 거절"[:64], "callback_data": f"proposal:reject:{item_id}"[:64]},
+        ])
+    if len(items) > 8:
+        lines.append(f"… 외 {len(items) - 8}건")
+    await send_message(
+        client, chat_id, "\n".join(lines),
+        reply_markup={"inline_keyboard": keyboard},
+    )
+
+
+async def handle_proposal_callback(client, chat_id, data: str):
+    """Apply or reject one staged proposal.
+
+    A 409 means the target file changed since staging — nothing was written,
+    and the user is told exactly that instead of a silent retry.
+    """
+    try:
+        _, decision, item_id = data.split(":", 2)
+    except ValueError:
+        return
+    if not item_id:
+        return
+    suffix = "approve" if decision == "approve" else "reject"
+    url = f"{PROPOSALS_URL}/{item_id}/{suffix}"
+    try:
+        async with _server_client() as sc:
+            res = await sc.post(url, json={}, timeout=120.0)
+    except Exception as exc:
+        await send_message(client, chat_id, f"❌ 처리 실패: {exc}")
+        return
+    if res.status_code == 409:
+        await send_message(
+            client, chat_id,
+            "⚠️ 제안을 만든 뒤 파일이 바뀌어서 적용하지 않았습니다. 아무것도 쓰지 않았습니다.",
+        )
+        return
+    if res.status_code != 200:
+        await send_message(client, chat_id, f"❌ 서버 에러 ({res.status_code})")
+        return
+    if suffix == "approve":
+        try:
+            applied = res.json().get("path") or item_id
+        except Exception:
+            applied = item_id
+        await send_message(client, chat_id, f"✅ 적용했습니다: {applied}")
+    else:
+        await send_message(client, chat_id, "🚫 제안을 거절했습니다.")
+
+
 def format_run_explanation(agent_data, *, language: str = "ko") -> str:
     """Plain-language outcome line for a finished agent run (v9.9.6).
 
@@ -898,6 +1037,10 @@ async def process_ai_request(client, chat_id, user_text, image_data=None):
         if not ans or not str(ans).strip():
             ans = "⚠️ AI가 답변을 생성하지 못했습니다."
         await send_message(client, chat_id, str(ans))
+        if isinstance(data, dict):
+            # Recall parity (v9.9.7): the same grounding verdict the web app
+            # badges, never promoted when the server issued none.
+            await send_grounding_badge(client, chat_id, data)
         if not image_data and isinstance(data, dict):
             await send_run_explanation(client, chat_id, data)
             await send_generated_files(client, chat_id, collect_generated_files(data))
@@ -924,6 +1067,7 @@ HELP_TEXT = """\
 /clear [n] — 기록 정리 (마지막 n건 유지)
 /web — 웹 UI 링크
 /mcp — MCP 도구 목록
+/review — 변경 제안 검토함 (승인/거절)
 /help — 이 도움말
 
 /agent <작업> — 멀티 LLM 에이전트 (계획 확인 후 실행)
@@ -962,6 +1106,8 @@ async def handle_command(client, chat_id, command: str, args: str):
         await send_web_link(client, chat_id)
     elif cmd == "mcp":
         await send_mcp_tools(client, chat_id)
+    elif cmd in {"review", "proposals"}:
+        await show_review_center(client, chat_id)
     elif cmd in {"help", "h"}:
         await send_message(client, chat_id, HELP_TEXT)
     elif cmd == "agent":
@@ -1023,6 +1169,8 @@ async def handle_callback_query(client, callback_query):
         await send_web_link(client, chat_id)
     elif data == "cmd:mcp":
         await send_mcp_tools(client, chat_id)
+    elif data == "cmd:review":
+        await show_review_center(client, chat_id)
     elif data == "cmd:menu":
         await show_menu(client, chat_id)
     elif data.startswith("model:unload:"):
@@ -1030,6 +1178,9 @@ async def handle_callback_query(client, callback_query):
         await do_unload_model(client, chat_id, model_id)
     elif data.startswith("plan:"):
         task = asyncio.create_task(handle_plan_callback(client, chat_id, data))
+        task.add_done_callback(_log_task_exception)
+    elif data.startswith("proposal:"):
+        task = asyncio.create_task(handle_proposal_callback(client, chat_id, data))
         task.add_done_callback(_log_task_exception)
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
