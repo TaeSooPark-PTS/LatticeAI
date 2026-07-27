@@ -13,6 +13,36 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.0.1 — One Source of Truth (2026-07-28)
+
+A patch release with no behaviour change. The single-agent runtime module was
+carrying its state machine, its state vocabulary, and ~440 lines of pure
+functions in one 82KB file; the pure parts now live in sibling modules and
+`latticeai/core/agent.py` holds only the loop (1769 → 1326 lines).
+
+The re-export is the point. Every name callers already imported from
+`latticeai.core.agent` — `AgentState`, `normalize_plan`, `extract_action`,
+`PhaseBudgets`, `requirement_coverage`, and the rest — still resolves there and
+is the same object, so the HTTP layer, `run_store`, `computer_use`, both bench
+scripts and eight test modules are untouched. `__all__` now states that contract
+rather than leaving it implied.
+
+One real defect was fixed on the way in. The extracted helpers compared
+transcript steps against the bare string `"EXECUTING"` rather than
+`AgentState.EXECUTING.value`, because the enum lived in the module that imports
+them — a circular import. Renaming an enum value would have silently stopped
+matching, leaving `files_written` and `artifact_checklist` reporting nothing
+while every test still passed. `AgentState` now has its own module
+(`agent_state.py`) that both sides import.
+
+All 18 extracted symbols were AST-compared against the originals before the
+originals were deleted. Verification: pytest 1747 passed / 11 skipped,
+`scripts/agent_eval.py` 23/23 (100%), ruff clean.
+
+Also: home-screen spacing polish (CSS only) — the secondary control row is
+visually demoted so one primary action reads first, with thumb-sized spacing
+on small screens.
+
 ## v10.0.0 — Plain Language (2026-07-28)
 
 10.0.0 is the release where the product stopped being read by its author. Every

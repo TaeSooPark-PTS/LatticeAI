@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **10.0.0 — Plain Language**.
+Current release: **10.0.1 — One Source of Truth**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -291,7 +291,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 10.0.0:
+The 8.0 architecture contract remains active in 10.0.1:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -330,11 +330,51 @@ Change governance and agent-eval extend the contract:
   judged by one dial (`services/permission_mode_service.py`,
   `runtime/permission_mode_wiring.py`, `/api/permission-mode`).
 
+## Single-Agent Runtime Composition
+
+The Discover→Plan→Implement→Verify loop is three modules, split by what each
+one is allowed to touch:
+
+```
+core/agent_state.py     AgentState, AGENT_TERMINAL_STATES
+                        no imports from the other two — the shared vocabulary
+        ▲                                    ▲
+        │                                    │
+core/agent_helpers.py                core/agent.py
+pure functions:                      the state machine:
+ extract_action(_details)             AgentRunContext
+ normalize_plan                       AgentDeps  (the ports)
+ filter_learnings                     SingleAgentRuntime
+ compact_transcript                          │
+ files_written                               │ imports
+ artifact_checklist                          ▼
+ requirement_coverage                 core/agent_helpers.py
+ format_* reporters
+ TranscriptBudget, PhaseBudgets
+deterministic, no I/O
+```
+
+Two rules hold this shape:
+
+- **`agent_state.py` depends on neither sibling.** It exists because both need
+  the enum and neither can own it: if `AgentState` lived in `agent.py`, the
+  helpers could not import it — `agent.py` imports *them* — and would fall back
+  to comparing against the literal `"EXECUTING"`. A rename of an enum value
+  would then stop matching silently, with no failing test.
+- **`latticeai.core.agent` re-exports every moved name** and declares the set in
+  `__all__`. The import path callers have always used is the contract; the file
+  layout behind it is not. `chat_agent_http`, `chat_intents`, `computer_use`,
+  `run_store`, `tool_dispatch`, both bench scripts, and the agent test modules
+  import from `latticeai.core.agent` and are unaffected by the split.
+
+Anything deterministic and I/O-free belongs in `agent_helpers.py`; anything that
+advances or inspects run state belongs in `agent.py`.
+
 ## Storage And Portability
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 10.0.0. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 10.0.1. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -345,13 +385,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-10.0.0 exact artifact names:
+10.0.1 exact artifact names:
 
-- `dist/ltcai-10.0.0-py3-none-any.whl`
-- `dist/ltcai-10.0.0.tar.gz`
-- `ltcai-10.0.0.tgz`
-- `dist/ltcai-10.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.0.0_aarch64.dmg`
+- `dist/ltcai-10.0.1-py3-none-any.whl`
+- `dist/ltcai-10.0.1.tar.gz`
+- `ltcai-10.0.1.tgz`
+- `dist/ltcai-10.0.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.0.1_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

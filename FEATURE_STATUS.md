@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v10.0.0)
+# Lattice AI Feature Status (v10.0.1)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **10.0.0 — Plain Language**.
+Current release: **10.0.1 — One Source of Truth**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -37,10 +37,13 @@ explicit: a `strict` / `trusted` / `bypass` dial widens what runs without an
 extra approval prompt, scoped per user and per workspace, while hard circuit
 breakers stay mode-invariant. The dial is set in 환경설정 → 에이전트 자율성;
 the default stays `strict`, so behaviour is unchanged from 9.9.7 until a user
-deliberately raises it. The 10.0.0 line makes the product legible to someone who did not build it:
+deliberately raises it. The 10.0 line makes the product legible to someone who did not build it:
 the first screen is four zones, capture lives in the composer, and both
-languages are complete. The 9.9.9 line made the shell lean: copy follows its
-route instead of the entry chunk, cutting first-paint JavaScript by a third.
+languages are complete. 10.0.1 carries that inward — the agent loop module
+holds the loop and nothing else, with its state vocabulary and pure helpers
+in single-source sibling modules. The 9.9.9 line made the shell lean: copy
+follows its route instead of the entry chunk, cutting first-paint JavaScript
+by a third.
 
 ## Current Feature Status
 
@@ -83,7 +86,7 @@ route instead of the entry chunk, cutting first-paint JavaScript by a third.
 | Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
 | Frontend Payload | Current | Every route is a `React.lazy` boundary and copy follows the route: `shell` copy registers eagerly, `brain` / `workspace` / `onboarding` register inside the lazy chunk that needs them. Initial static JS is ~99 KiB gzip against a 150 KiB budget. `npm run check:i18n-namespaces` walks the real module graph and fails the build when a chunk reads a key it never imported — the failure mode is otherwise silent, because `t()` returns the raw key and the UI renders an identifier instead of text. |
 | Permission Modes | Current | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. Set it in **환경설정 → 에이전트 자율성** (`SystemPage` settings tab) or through `POST /api/permission-mode`. The selector renders the server's own catalog rather than a hardcoded mode list, and refuses to send a `bypass` switch until the risk acknowledgement the server requires is ticked. |
-| Release Assets | Current | 10.0.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 10.0.1 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 

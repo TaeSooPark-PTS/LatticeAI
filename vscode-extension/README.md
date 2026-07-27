@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.0.0 — Plain Language.** This release is frontend-side: the Lattice AI app's
+**10.0.1 — One Source of Truth.** This release is frontend-side: the Lattice AI app's
 first screen is four zones, capture moved into the composer, and the interface
 is fully bilingual (한국어 / English) with a switch in the top bar. The
 extension talks to the same sidecar API and is unchanged by it.

@@ -1,3 +1,20 @@
+# [v10.0.1 - One Source of Truth] (2026-07-28)
+
+A patch release with no behaviour change. `latticeai/core/agent.py` now holds
+only the state machine (1769 → 1326 lines); its pure functions move to
+`agent_helpers.py` and the `AgentState` vocabulary to `agent_state.py`. Every
+name callers already imported from `latticeai.core.agent` still resolves there
+as the same object, so nothing downstream changed. One latent defect was fixed
+in the move: the helpers compared transcript steps against the literal string
+`"EXECUTING"` rather than the enum, which would have silently broken artifact
+reporting on any enum rename with no failing test. Home-screen spacing polish
+is CSS only.
+
+See [RELEASE_NOTES_v10.0.1.md](RELEASE_NOTES_v10.0.1.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.0.0 - Plain Language] (2026-07-28)
 
 Every screen was opened with a real local model loaded and every control
@@ -86,7 +103,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.0.0**.
+This repository keeps public release history from **8.0.0 through 10.0.1**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

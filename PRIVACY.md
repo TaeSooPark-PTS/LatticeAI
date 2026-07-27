@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **10.0.0 — Plain Language**.
+Current release: **10.0.1 — One Source of Truth**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

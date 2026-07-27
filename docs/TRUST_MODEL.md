@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.0.0 — Plain Language**.
+Current release: **10.0.1 — One Source of Truth**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

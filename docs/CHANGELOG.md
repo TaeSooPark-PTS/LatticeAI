@@ -4,6 +4,38 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.0.1] - 2026-07-28
+
+### Changed
+- `latticeai/core/agent.py` holds only the state machine (1769 → 1326 lines).
+  Its pure functions move to `latticeai/core/agent_helpers.py`: action parsing
+  (`extract_action`, `extract_action_details`), plan normalization
+  (`normalize_plan`), learning filters, transcript compaction, artifact and
+  requirement reporting, and the `TranscriptBudget` / `PhaseBudgets` dataclasses.
+- `AgentState` and `AGENT_TERMINAL_STATES` move to a new
+  `latticeai/core/agent_state.py`. Both `agent.py` and `agent_helpers.py` import
+  from it, which is what lets the helpers reference the enum instead of a
+  literal state string.
+- `latticeai.core.agent` re-exports every moved name as the same object and
+  declares the set in `__all__`. No caller changed: the HTTP layer, `run_store`,
+  `computer_use`, `bench_agent_smoke`, `bench_models`, and eight test modules
+  import exactly as before.
+- The home's secondary control row is visually demoted (opacity, tighter gaps,
+  softer divider) and gets larger touch spacing under 640px. The sticky top bar
+  border is softened. CSS only.
+
+### Fixed
+- `files_written` and `artifact_checklist` matched transcript steps against the
+  literal `"EXECUTING"` instead of `AgentState.EXECUTING.value`. A rename of the
+  enum value would have made both silently return empty results with no failing
+  test. Both now reference the enum.
+
+### Verification
+- pytest 1747 passed / 11 skipped; `scripts/agent_eval.py` 23/23 (100%); ruff
+  clean across `latticeai/`, `lattice_brain/`, `scripts/`, `tests/`.
+- All 18 extracted symbols were AST-compared against their originals before the
+  originals were removed.
+
 ## [10.0.0] - 2026-07-28
 
 ### Changed
