@@ -653,4 +653,13 @@ def register_review_and_brain_tail_routers(
             workspace_service=workspace_service,
         ),
     )
+    # Permission mode dial (v9.9.8): mount last so data_dir + audit are known.
+    from latticeai.runtime.permission_mode_wiring import register_permission_mode_router
+
+    register_permission_mode_router(
+        app,
+        require_user=require_user,
+        data_dir=data_dir,
+        append_audit_event=append_audit_event,
+    )
     return brain_network
