@@ -1,12 +1,12 @@
 # Hybrid Cloud + Local Knowledge Graph Streaming
 
-> Status: **design + scaffolding** on branch `feature/hybrid-cloud-kg-streaming`  
-> Target release window: experimental / post-10.0.x  
+> Status: **Phase 1 scaffolding live** on branch `feature/hybrid-cloud-kg-streaming-phase1`  
+> Base design branch: `feature/hybrid-cloud-kg-streaming`  
 > Principle: **Local Brain is the asset. Cloud is an opt-in worker.**
 
 ## Goal
 
-Allow users to optionally use a cloud LLM (and later video models) in a **streaming** conversation while keeping the durable Knowledge Graph local.
+Allow users to optionally use a cloud LLM in a **streaming** conversation while keeping the durable Knowledge Graph local.
 
 Core loop:
 
@@ -24,7 +24,7 @@ Local-only users never leave the machine. Cloud users still grow their local Bra
 | Mode | Default | Network | What is sent | KG expansion |
 |------|---------|---------|--------------|--------------|
 | `local_only` | **Yes** | None | Nothing | Local model answers only |
-| `cloud_allowed` | No (explicit opt-in) | Opt-in cloud LLM | Minimal related nodes + compact summary | Cloud response is ingested back into local KG |
+| `cloud_allowed` | No (explicit opt-in) | Opt-in cloud LLM | Minimal related nodes + compact summary | Cloud response is staged into local KG with provenance |
 
 Switching to `cloud_allowed` requires an explicit acknowledgement (same pattern as PermissionMode.bypass).
 
@@ -42,76 +42,66 @@ MinimalContextExtractor
     • hybrid_search on local KG (top-k, type filters, sensitivity filter)
     • compact context assembly (title + short summary + node ids)
     ▼
-CloudStreamingBridge
+CloudStreamingBridge + OpenAICompatibleAdapter
     • send minimal context + user message
-    • receive token / chunk stream
+    • receive token / chunk stream (SSE)
     • emit intermediate events to UI
     ▼
 CloudResponseIngestor
     • turn streamed answer into candidate nodes / edges
     • attach provenance: "derived_from_cloud" + source_node_ids that were sent
-    • quality gate or proposal (configurable)
-    • write into local Knowledge Graph
+    • quality gate / proposal (auto_commit=False by default)
+    • stage into local Knowledge Graph
 ```
 
-## Key Contracts
+## Phase status
 
-### 1. NetworkBoundaryMode (`latticeai/core/network_boundary.py`)
+### Phase 0 (design branch)
+- Architecture document
+- `NetworkBoundaryMode` enum + contract
+- `MinimalContext` + extractor skeleton
+- `CloudStreamingBridge` + `CloudResponseIngestor` interfaces
 
-Mirrors the style of `PermissionMode`:
+### Phase 1 (this branch) — implemented
+- **NetworkBoundaryService** — persisted dial (user / workspace / default), ack required for cloud
+- **HTTP API** — `GET/POST /api/network-boundary`, catalog endpoint
+- **Wiring** — `latticeai/runtime/network_boundary_wiring.py` (mirror of permission_mode_wiring)
+- **ChatRequest.network_mode** — optional per-request override
+- **OpenAICompatibleAdapter** — real streaming via `openai` SDK; env-configured (`LATTICEAI_CLOUD_API_KEY`, `LATTICEAI_CLOUD_BASE_URL`, `LATTICEAI_CLOUD_MODEL`)
+- **hybrid_chat** — `run_hybrid_cloud_turn` + `stream_hybrid_cloud_turn` (SSE: hybrid_context → token* → hybrid_done)
+- **KG expansion** — conversation node + `grounded_on` edges; staged (`auto_commit=False`)
+- **Unit tests** — `tests/unit/test_network_boundary.py`
 
-- `LOCAL_ONLY` (default)
-- `CLOUD_ALLOWED` (requires_ack = true)
+### Phase 2 (next)
+- Wire hybrid path as a first-class branch inside `/chat` when mode is cloud_allowed
+- UI mode switch + transparency panel (nodes about to be sent)
+- Token accounting / cost guardrails
+- Richer concept/decision extraction from cloud answers
 
-Rules:
-- Mode is resolved per user + workspace (or per session).
-- Circuit-breaker style: certain node types or sensitivity tags can never be sent even in `CLOUD_ALLOWED`.
-- Changing mode mid-conversation is allowed but should be logged in the audit trail.
+### Phase 3
+- Optional video / multimodal streaming (same boundary)
+- User-configurable sensitivity filters and auto-commit policy
 
-### 2. MinimalContextExtractor (`latticeai/services/hybrid_context.py`)
+## Configuration (Phase 1)
 
-Input: user message + current mode + workspace scope  
-Output: `MinimalContext` object
-
-```python
-@dataclass
-class MinimalContext:
-    query: str
-    keywords: list[str]
-    node_ids: list[str]
-    compact_text: str          # what actually goes to the cloud
-    nodes: list[dict]          # full local nodes (for provenance)
-    token_estimate: int
-    quality: dict              # re-uses context_quality_signal shape
+```bash
+# Required only when using cloud path
+export LATTICEAI_CLOUD_API_KEY=sk-...
+# Optional
+export LATTICEAI_CLOUD_BASE_URL=https://api.openai.com/v1
+export LATTICEAI_CLOUD_MODEL=gpt-4o-mini
+# Process default network mode (still requires per-user ack to switch to cloud)
+export LATTICEAI_NETWORK_MODE=local_only
 ```
 
-Selection rules (v1):
-- Use existing `hybrid_search` / `context_for_query_with_meta`.
-- Hard limit: top 6–8 nodes, prefer Decision / Concept / Document / Task.
-- Drop nodes marked sensitive or belonging to excluded types.
-- Prefer summary over full body; never send raw large blobs.
+## API (Phase 1)
 
-### 3. CloudStreamingBridge (`latticeai/services/cloud_streaming.py`)
-
-Responsibilities:
-- Hold the cloud provider adapter (OpenAI-compatible, Anthropic, etc.).
-- Accept `MinimalContext` + user message.
-- Yield an async stream of text chunks (and later media chunks).
-- On completion, return a `CloudTurnResult` containing the full answer + the exact node_ids that were sent.
-
-No cloud call is allowed unless `NetworkBoundaryMode == CLOUD_ALLOWED`.
-
-### 4. CloudResponseIngestor
-
-Takes `CloudTurnResult` and expands the local KG:
-
-- Create a Conversation / Message node for the cloud turn.
-- Extract candidate Concept / Decision / Task nodes from the answer (lightweight, deterministic first; LLM extraction later if needed).
-- Link them with provenance edges:
-  - `derived_from_cloud`
-  - `grounded_on` → the original local node_ids that were sent
-- Default behaviour (v1): stage as **proposals** or low-confidence nodes that go through the existing quality / review path.
-- Optional aggressive mode (user setting): auto-commit high-confidence extractions.
+```
+GET  /api/network-boundary
+GET  /api/network-boundary/catalog
+POST /api/network-boundary
+     { "mode": "cloud_allowed", "acknowledge_risk": true, "workspace_id": null }
+```
 
 ## Privacy & Safety Rules
 
@@ -119,53 +109,8 @@ Takes `CloudTurnResult` and expands the local KG:
 2. `cloud_allowed` requires explicit user acknowledgement.
 3. Only the compact text assembled by MinimalContextExtractor leaves the machine.
 4. Sensitive node types / tags are blocked by a hard filter (mode-invariant).
-5. Every cloud turn records:
-   - which node_ids were sent
-   - which model / provider was used
-   - the resulting new node ids
+5. Every cloud turn records which node_ids were sent and stages expansion with provenance.
 6. User can later purge all “derived_from_cloud” subgraphs.
-
-## Integration Points (existing code)
-
-| Existing piece | How it is reused |
-|----------------|------------------|
-| `PermissionMode` | Orthogonal; network boundary is a separate dial |
-| `hybrid_search` / `context_for_query_with_meta` | Core of MinimalContextExtractor |
-| `context_quality_signal` | Exposed to UI so the user sees how thin the sent context was |
-| Change Governor / Review Queue | Cloud-derived nodes can be staged as proposals |
-| Chat streaming path | CloudStreamingBridge plugs into the same event channel |
-| Audit / process_audit | Mode changes and cloud turns are audited |
-
-## UI Sketch
-
-- Composer or top-bar toggle: **로컬만** | **클라우드 스트리밍 허용**
-- When switching to cloud: confirmation dialog (same tone as Bypass mode).
-- During a cloud turn: small indicator “클라우드로 최소 근거 N개 전송 중…” + optional expandable list of the node titles that were sent.
-- After the turn: “Brain이 이 답변으로 기억을 확장했습니다” with link to the new nodes.
-
-## Implementation Phases
-
-### Phase 0 (this branch)
-- Architecture document
-- `NetworkBoundaryMode` enum + contract
-- `MinimalContext` + extractor skeleton
-- `CloudStreamingBridge` + `CloudResponseIngestor` interfaces / no-op implementations
-- Unit-test stubs
-
-### Phase 1
-- Wire mode into chat request path
-- Real MinimalContextExtractor using existing hybrid_search
-- One concrete cloud provider adapter (OpenAI-compatible streaming)
-- Basic KG expansion (conversation node + provenance only)
-
-### Phase 2
-- Quality-gated concept/decision extraction from cloud answers
-- UI mode switch + transparency panel
-- Token accounting and cost guardrails
-
-### Phase 3
-- Optional video / multimodal streaming (still behind the same boundary)
-- User-configurable sensitivity filters and auto-commit policy
 
 ## Non-Goals (for now)
 
@@ -183,4 +128,4 @@ Takes `CloudTurnResult` and expands the local KG:
 
 ---
 
-This document is the source of truth for the hybrid design on this branch.
+This document is the source of truth for the hybrid design.
