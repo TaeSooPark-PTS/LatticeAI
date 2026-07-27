@@ -1,8 +1,4 @@
-"""Wire NetworkBoundaryMode into the running app (hybrid Phase 1–2).
-
-Creates one process-wide :class:`NetworkBoundaryService` and registers the
-HTTP dial (including the Phase 2 transparency preview endpoint).
-"""
+"""Wire NetworkBoundaryMode + HybridPolicy into the running app (Phase 1–3)."""
 
 from __future__ import annotations
 
@@ -15,10 +11,12 @@ from latticeai.core.network_boundary import (
     DEFAULT_NETWORK_MODE,
     normalize_network_mode,
 )
+from latticeai.services.hybrid_policy import HybridPolicyService
 from latticeai.services.network_boundary_service import NetworkBoundaryService
 
 _LOCK = threading.Lock()
 _SHARED: Optional[NetworkBoundaryService] = None
+_POLICY: Optional[HybridPolicyService] = None
 
 
 def _default_data_dir() -> Path:
@@ -55,6 +53,26 @@ def get_network_boundary_service(
         return _SHARED
 
 
+def get_hybrid_policy_service(
+    *,
+    data_dir: Optional[Path] = None,
+    audit: Optional[Callable[..., None]] = None,
+) -> HybridPolicyService:
+    global _POLICY
+    with _LOCK:
+        if _POLICY is None:
+            _POLICY = HybridPolicyService(
+                data_dir=Path(data_dir) if data_dir is not None else _default_data_dir(),
+                audit=audit,
+            )
+            return _POLICY
+        if data_dir is not None:
+            _POLICY.rebind_data_dir(Path(data_dir))
+        if audit is not None:
+            _POLICY.rebind_audit(audit)
+        return _POLICY
+
+
 def resolve_active_network_mode(
     *,
     user_email: Optional[str] = None,
@@ -73,10 +91,10 @@ def register_network_boundary_router(
     append_audit_event: Optional[Callable[..., None]] = None,
     knowledge_graph: Any = None,
 ) -> Any:
-    """Install network-boundary routes on ``app``. Idempotent by route path."""
     from latticeai.api.network_boundary import create_network_boundary_router
 
     svc = get_network_boundary_service(data_dir=data_dir, audit=append_audit_event)
+    policy = get_hybrid_policy_service(data_dir=data_dir, audit=append_audit_event)
     existing = {
         getattr(route, "path", None)
         for route in getattr(app, "routes", ())
@@ -88,6 +106,7 @@ def register_network_boundary_router(
             service=svc,
             require_user=require_user,
             knowledge_graph=knowledge_graph,
+            policy_service=policy,
         )
     )
     return svc
@@ -95,6 +114,7 @@ def register_network_boundary_router(
 
 __all__ = [
     "get_network_boundary_service",
+    "get_hybrid_policy_service",
     "resolve_active_network_mode",
     "register_network_boundary_router",
 ]

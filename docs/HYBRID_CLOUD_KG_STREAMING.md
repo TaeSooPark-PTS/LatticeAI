@@ -1,98 +1,101 @@
 # Hybrid Cloud + Local Knowledge Graph Streaming
 
-> Status: **Phase 2 live** on branch `feature/hybrid-cloud-kg-streaming-phase2`  
-> Previous: Phase 1 on `feature/hybrid-cloud-kg-streaming-phase1`  
+> Status: **Phase 3 live** on branch `feature/hybrid-cloud-kg-streaming-phase3`  
+> Chain: phase0 → phase1 → phase2 → **phase3**  
 > Principle: **Local Brain is the asset. Cloud is an opt-in worker.**
 
 ## Goal
 
-Allow users to optionally use a cloud LLM in a **streaming** conversation while keeping the durable Knowledge Graph local.
+Local Knowledge Graph stays on-device. Cloud LLMs (and optional multimodal) are opt-in workers. Minimal related nodes leave the machine; streamed answers expand the local Brain with provenance and review gates.
 
-Core loop:
+## Phase summary
 
-1. User speaks / types.
-2. System detects whether the session is in **Cloud-allowed** mode.
-3. From the local Knowledge Graph, extract **only the minimal related nodes**.
-4. Send that minimal context to the cloud LLM (token minimization + privacy).
-5. Receive the answer as a **real-time stream**.
-6. Expand the local Knowledge Graph with provenance (conversation + heuristic Concept/Decision/Task candidates).
+| Phase | Branch | Delivered |
+|-------|--------|-----------|
+| 0 | `feature/hybrid-cloud-kg-streaming` | Architecture + core contracts |
+| 1 | `…-phase1` | Dial, OpenAI adapter, hybrid helpers, basic expansion |
+| 2 | `…-phase2` | `/chat` branch, token guardrails, extraction, preview API |
+| **3** | `…-phase3` | **Policy, Review Queue write path, multimodal contracts, UI panel module** |
 
-## Phase status
+## Phase 3 details
 
-### Phase 0
-- Architecture + core contracts (`NetworkBoundaryMode`, `MinimalContext`, bridge/ingestor)
+### Hybrid policy (`HybridPolicyService`)
+Persisted dial for:
+- `blocked_node_types` / `blocked_metadata_flags` (unioned with hard circuit breakers)
+- `auto_commit` (default **false**)
+- `allow_multimodal` (default **false**)
+- `min_extraction_confidence`
 
-### Phase 1
-- Persisted dial + HTTP API
-- OpenAI-compatible streaming adapter
-- hybrid_chat helpers + basic KG expansion staging
-- Unit tests for mode / context / provenance
-
-### Phase 2 (this branch) — implemented
-- **Router wiring**: `/api/network-boundary` mounted next to permission-mode in `register_review_and_brain_tail_routers`
-- **Chat path branch**: `latticeai/api/chat_hybrid.py` — when mode is `cloud_allowed`, `/chat` can return hybrid SSE instead of local stream
-- **Token / cost guardrails**: `cloud_token_guard.py` (per-turn + per-session budgets via env)
-- **Richer extraction**: `cloud_extraction.py` — Decision / Task / Concept candidates from answer text (always staged)
-- **Transparency preview API**: `POST /api/network-boundary/preview` — nodes/keywords/token estimate that *would* leave the machine
-- **SSE dual shape**: hybrid events (`hybrid_context`, `token`, `hybrid_done`) plus classic `chunk` for existing clients
-- **Unit tests**: `tests/unit/test_hybrid_phase2.py`
-
-### Phase 3 (future)
-- Full React UI toggle + live transparency panel
-- Optional video / multimodal streaming (same boundary)
-- User-configurable sensitivity filters and auto-commit policy
-- Stronger write path into Change Governor / Review Queue
-
-## How `/chat` chooses the path (Phase 2)
-
+API:
 ```
-resolve network mode (request.network_mode override → persisted dial)
-    │
-    ├── local_only  → existing local stream_chat / generate path
-    └── cloud_allowed
-            └── maybe_hybrid_stream_response(...)
-                    → stream_hybrid_cloud_turn (minimal KG → cloud SSE → stage KG)
+GET  /api/network-boundary/policy
+POST /api/network-boundary/policy
+     { "auto_commit": false, "allow_multimodal": false, "blocked_node_types": ["Secret"] }
 ```
 
-Integration helper: `latticeai.api.chat_hybrid.maybe_hybrid_stream_response`.
-Call sites should invoke it **before** the local `stream_chat` path when the user message is a normal chat turn (not file-intent / clear / network-status shortcuts).
+### Review Queue write path
+`CloudResponseIngestor` now:
+1. Always enqueues a `change_proposal` review item when a ReviewQueueService is bound
+2. Only auto-writes to the graph when `plan.auto_commit` is true **and** a store write API exists
+
+Users approve cloud-derived memory growth in the existing Review Center.
+
+### Multimodal / video
+`latticeai/services/multimodal_streaming.py`:
+- Same `NetworkBoundaryMode.CLOUD_ALLOWED` gate
+- Additional `allow_multimodal` policy flag
+- Adapter protocol for future Runway/Luma/Veo-compatible providers
+
+### UI progressive enhancement
+`static/app/network-boundary-panel.js` + `GET /api/network-boundary/ui-state`:
+- Toggle local ↔ cloud (with ack)
+- Transparency preview of nodes about to be sent
+- Shows current policy flags
+
+Mount point:
+```html
+<div id="lattice-network-boundary-root"></div>
+<script src="/static/app/network-boundary-panel.js" defer></script>
+```
+
+(Full React integration can consume the same `/ui-state` and `/preview` APIs.)
+
+## End-to-end flow (Phase 3)
+
+```
+User toggles cloud_allowed (UI panel or API)
+    → optional policy: auto_commit / multimodal / sensitivity
+User sends chat message
+    → /chat resolves mode
+    → if cloud_allowed: minimal KG context + token budget check
+    → cloud stream (SSE)
+    → rich extraction (Decision/Task/Concept)
+    → Review Queue item (change_proposal)
+    → optional auto-commit when policy allows
+```
 
 ## Configuration
 
 ```bash
 export LATTICEAI_CLOUD_API_KEY=sk-...
-export LATTICEAI_CLOUD_BASE_URL=https://api.openai.com/v1   # optional
-export LATTICEAI_CLOUD_MODEL=gpt-4o-mini                    # optional
-export LATTICEAI_NETWORK_MODE=local_only                    # process default
+export LATTICEAI_CLOUD_MODEL=gpt-4o-mini
+export LATTICEAI_NETWORK_MODE=local_only
 export LATTICEAI_CLOUD_MAX_TOKENS_PER_TURN=2500
 export LATTICEAI_CLOUD_MAX_TOKENS_PER_SESSION=50000
 ```
 
-## API
+## Privacy (unchanged core rules)
 
-```
-GET  /api/network-boundary
-GET  /api/network-boundary/catalog
-POST /api/network-boundary
-     { "mode": "cloud_allowed", "acknowledge_risk": true }
+1. Default `local_only`
+2. Cloud requires explicit ack
+3. Only minimal compact context leaves the host
+4. Hard + user sensitivity filters
+5. Cloud-derived nodes go through Review Queue unless user opts into auto_commit
+6. Multimodal is off unless policy explicitly enables it
 
-POST /api/network-boundary/preview
-     { "message": "...", "workspace_id": null, "top_k": 6 }
-     → node_ids, titles, token_estimate, would_block, compact_preview
-```
+## Success criteria (Phase 3)
 
-## Privacy & Safety
-
-1. Default remains `local_only`.
-2. `cloud_allowed` requires explicit acknowledgement.
-3. Only compact minimal context leaves the machine.
-4. Sensitive metadata flags still hard-block nodes.
-5. Cloud-derived nodes are **staged** (`auto_commit=False`) with full provenance.
-6. Token budgets refuse oversized turns before any network call.
-
-## Success criteria (Phase 2)
-
-- Cloud path is a first-class option behind the dial, not a side script.
-- Preview API lets UI show exactly what would be sent.
-- Oversized context is refused before the provider is called.
-- Cloud answers grow the local Brain as reviewable proposals, not silent writes.
+- User can configure sensitivity and auto-commit without code changes
+- Cloud KG growth appears in Review Center as actionable proposals
+- Multimodal path cannot fire without both cloud mode and policy flag
+- UI panel works without rebuilding the main React bundle

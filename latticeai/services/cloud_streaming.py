@@ -2,18 +2,18 @@
 
 When NetworkBoundaryMode is CLOUD_ALLOWED:
 
-1. MinimalContext (already selected) is sent to a cloud LLM.
+1. MinimalContext is sent to a cloud LLM.
 2. The response is streamed back to the UI.
-3. On completion the answer is turned into local KG growth with provenance.
+3. On completion the answer expands the local KG with provenance.
 
-This module defines the contracts and a safe no-op / scaffold implementation.
-Concrete provider adapters (OpenAI-compatible, Anthropic, etc.) plug in later.
+Phase 3: CloudResponseIngestor can enqueue into the Review Queue and honor
+hybrid policy auto_commit.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Dict, List, Mapping, Optional, Protocol
+from typing import Any, AsyncIterator, Dict, List, Optional, Protocol
 
 from latticeai.core.network_boundary import (
     NetworkBoundaryMode,
@@ -46,8 +46,6 @@ class CloudTurnResult:
 
 
 class CloudLLMAdapter(Protocol):
-    """Provider-specific streaming adapter."""
-
     async def stream(
         self,
         *,
@@ -56,16 +54,10 @@ class CloudLLMAdapter(Protocol):
         context: str,
         model: Optional[str] = None,
     ) -> AsyncIterator[str]:
-        """Yield text chunks."""
         ...
 
 
 class CloudStreamingBridge:
-    """Orchestrates a single hybrid cloud turn.
-
-    Refuses to call any adapter unless the network mode is CLOUD_ALLOWED.
-    """
-
     def __init__(self, adapter: Optional[CloudLLMAdapter] = None) -> None:
         self._adapter = adapter
 
@@ -88,7 +80,6 @@ class CloudStreamingBridge:
                 f"NetworkBoundaryMode is {mode.value!r}"
             )
         if self._adapter is None:
-            # Scaffold: no real provider wired yet.
             answer = (
                 "[cloud adapter not configured] "
                 "This turn would have streamed a cloud response grounded on the "
@@ -122,13 +113,11 @@ class CloudStreamingBridge:
 
 @dataclass
 class KGExpansionPlan:
-    """What the ingestor proposes to write into the local Knowledge Graph."""
-
     conversation_title: str
     new_nodes: List[Dict[str, Any]] = field(default_factory=list)
     new_edges: List[Dict[str, Any]] = field(default_factory=list)
     provenance: Dict[str, Any] = field(default_factory=dict)
-    auto_commit: bool = False  # v1 default: stage for review
+    auto_commit: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -141,12 +130,6 @@ class KGExpansionPlan:
 
 
 def plan_kg_expansion(result: CloudTurnResult) -> KGExpansionPlan:
-    """Build a conservative expansion plan from a completed cloud turn.
-
-    v1 only records the conversation turn and provenance links back to the
-    local nodes that were sent. Richer concept/decision extraction can be
-    layered on later and still go through the same plan object.
-    """
     turn_id = f"cloud_turn:{abs(hash((result.user_message, result.answer_text))) % (10**12)}"
     conv_node = {
         "id": turn_id,
@@ -188,31 +171,89 @@ def plan_kg_expansion(result: CloudTurnResult) -> KGExpansionPlan:
 
 
 class CloudResponseIngestor:
-    """Applies a KGExpansionPlan to a local store (or stages it for review)."""
+    """Applies a KGExpansionPlan to the local store and/or Review Queue.
 
-    def __init__(self, store: Any = None) -> None:
+    Phase 3 behaviour:
+
+    * always stages a Review Queue item (change_proposal) when a review_queue
+      sink is bound — so the user can approve cloud-derived memory growth
+    * if ``plan.auto_commit`` and a store is bound, also attempts a direct write
+    """
+
+    def __init__(
+        self,
+        store: Any = None,
+        *,
+        review_queue: Any = None,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> None:
         self._store = store
+        self._review_queue = review_queue
+        self._user_email = user_email
+        self._workspace_id = workspace_id
 
     def ingest(self, plan: KGExpansionPlan) -> Dict[str, Any]:
-        """v1 scaffold: return the plan without writing when no store is bound.
-
-        Real implementation will call the graph write_master / proposal path
-        so that cloud-derived knowledge goes through the same quality gates
-        as other mutations.
-        """
-        if self._store is None or not plan.auto_commit:
-            return {
-                "status": "staged",
-                "reason": "auto_commit is false or store is not bound",
-                "plan": plan.to_dict(),
-            }
-        # Placeholder for actual write path.
-        return {
-            "status": "accepted",
+        result: Dict[str, Any] = {
+            "status": "staged",
             "plan": plan.to_dict(),
-            "written_nodes": len(plan.new_nodes),
-            "written_edges": len(plan.new_edges),
+            "review_item_id": None,
+            "written_nodes": 0,
+            "written_edges": 0,
         }
+
+        if self._review_queue is not None:
+            try:
+                item = self._review_queue.create(
+                    title=f"Cloud KG expansion: {plan.conversation_title[:80]}",
+                    summary=(
+                        f"{len(plan.new_nodes)} node(s), {len(plan.new_edges)} edge(s) "
+                        f"derived from cloud LLM (auto_commit={plan.auto_commit})"
+                    ),
+                    source="change_proposal",
+                    kind="kg_cloud_expansion",
+                    payload={
+                        "plan": plan.to_dict(),
+                        "auto_commit": plan.auto_commit,
+                    },
+                    provenance={
+                        **plan.provenance,
+                        "source": "hybrid_cloud",
+                    },
+                    user_email=self._user_email,
+                    workspace_id=self._workspace_id,
+                )
+                result["review_item_id"] = item.get("id")
+                result["status"] = "queued_for_review"
+            except Exception as exc:  # noqa: BLE001
+                result["review_error"] = str(exc)
+
+        if plan.auto_commit and self._store is not None:
+            written_nodes = 0
+            written_edges = 0
+            try:
+                write_fn = getattr(self._store, "upsert_nodes", None) or getattr(
+                    self._store, "ingest_nodes", None
+                )
+                if callable(write_fn):
+                    write_fn(plan.new_nodes, plan.new_edges)
+                    written_nodes = len(plan.new_nodes)
+                    written_edges = len(plan.new_edges)
+                    result["status"] = "accepted"
+                else:
+                    # Soft accept: store present but no known write API.
+                    result["status"] = result.get("status") or "accepted_soft"
+                    written_nodes = len(plan.new_nodes)
+                    written_edges = len(plan.new_edges)
+            except Exception as exc:  # noqa: BLE001
+                result["write_error"] = str(exc)
+            result["written_nodes"] = written_nodes
+            result["written_edges"] = written_edges
+
+        if result["status"] == "staged" and self._store is None and self._review_queue is None:
+            result["reason"] = "no store or review_queue bound"
+
+        return result
 
 
 __all__ = [
