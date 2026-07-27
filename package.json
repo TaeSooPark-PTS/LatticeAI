@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "9.9.9",
+  "version": "10.0.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -16,7 +16,7 @@
   },
   "scripts": {
     "start": "LTCAI",
-    "dev": "python3 -m latticeai.cli.entrypoint --reload",
+    "dev": "node scripts/run_python.mjs -m latticeai.cli.entrypoint --reload",
     "build": "npm run build:assets && npm run build:python",
     "frontend:dev": "vite --host 127.0.0.1",
     "frontend:openapi": "node scripts/run_python.mjs scripts/export_openapi.py frontend/openapi.json && npx openapi-typescript frontend/openapi.json -o frontend/src/api/openapi.ts",

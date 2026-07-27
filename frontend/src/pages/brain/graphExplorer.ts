@@ -1,6 +1,6 @@
 import type { ElementDefinition } from "cytoscape";
 import { t, type Language } from "@/i18n";
-import { asArray, isRecord as isRecordValue, shortId } from "@/lib/utils";
+import { asArray, isRecord as isRecordValue, plainText, shortId } from "@/lib/utils";
 
 export type LabelMode = "important" | "all" | "off";
 
@@ -121,11 +121,14 @@ export function parseGraph(data: unknown, language: Language): ParsedGraph {
     const metadata = nestedRecord(node, "metadata");
     const metrics = nestedRecord(metadata, "graph_metrics");
     const type = field(node, ["type", "kind", "category"], "Node");
-    const label = field(node, ["title", "label", "name"], shortId(id, 38));
+    // Node titles come from ingested text, so a Markdown heading a model wrote
+    // showed up on the map as "**Enterprise IT 인프라 관점**".
+    const label = plainText(field(node, ["title", "label", "name"], "")) || shortId(id, 38);
     const explicitImportance = numberField(node, ["importance_norm", "importance", "score"]) || numberField(metrics, ["importance_norm", "importance", "centrality"]);
     const nodeDegree = degree.get(id) || 0;
     const importance = Math.max(0.08, Math.min(1, explicitImportance || (nodeDegree / maxDegree) * 0.8 + 0.12));
-    const summary = field(node, ["summary", "description", "snippet"]) || field(metadata, ["summary", "description", "relative_path", "filename"]);
+    const summary = plainText(field(node, ["summary", "description", "snippet"]))
+      || plainText(field(metadata, ["summary", "description", "relative_path", "filename"]));
     const source = field(node, ["source", "path"]) || field(metadata, ["source", "relative_path", "filename"]);
     const searchText = [id, label, type, summary, source, Object.keys(metadata).join(" ")].join(" ").toLowerCase();
     return [{ id, label, type, group: groupForType(type), summary, source, importance, degree: nodeDegree, searchText, raw: node }];

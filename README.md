@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v9.9.9 Living Brain walkthrough](output/release/v9.9.9/gifs/v9.9.9-living-brain-walkthrough.gif)
+![v10.0.0 Living Brain walkthrough](output/release/v10.0.0/gifs/v10.0.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.9/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.9/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.9/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.9/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.9/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.9/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.0.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.0.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.0.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.0.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.0.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.0.0/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,48 +57,41 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v9.9.9/screenshots/01-login.png) | ![Model install](output/release/v9.9.9/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.9/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.0.0/screenshots/01-login.png) | ![Model install](output/release/v10.0.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.0.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v9.9.9/SCREENSHOT_INDEX.md](output/release/v9.9.9/SCREENSHOT_INDEX.md)
+[output/release/v10.0.0/SCREENSHOT_INDEX.md](output/release/v10.0.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **9.9.9 — Lean Shell**:
+The current release is **10.0.0 — Plain Language**:
 
-- **No `✖` left in the parity matrix.** Every gap 9.9.6 wrote down is closed,
-  and every remaining `—` states *why* it is a boundary
-  ([docs/SURFACE_PARITY.md](docs/SURFACE_PARITY.md)).
-- **VS Code watches the loop live.** `POST /agent` streams the same
-  `agent_step` frames the web app gets, and cited evidence turns into one-click
-  follow-ups in the editor.
-- **Telegram badges its recall and reviews changes.** The server's grounding
-  verdict is shown as-is, and `/review` approves or rejects staged proposals
-  inline.
-- **The browser extension recalls, not just captures.** Ask your Brain from the
-  popup with the same badge, and see how many runs await approval — still
-  posting only to `127.0.0.1`.
-- **A knowledge garden in four beds** — what arrived, what disagrees, what went
-  stale, what the rest leans on.
-- **A profile for small local models.** Under 4B, the loop shortens its window,
-  escalates sooner, and — when JSON tool calls keep failing — writes the
-  planned files directly instead of ending empty-handed.
-- **Folder memory state.** How much of each connected folder is really in your
-  Brain, what failed, and the reason it failed.
-- **Two skills that pay off on install** — meeting notes and a weekly review
-  written only from what the Brain actually recorded.
-- **Voice memos** go straight into the Brain; when no local transcriber exists
-  the memo is still stored and honestly marked not-searchable.
+- **The first screen is four things.** Your Brain, one input box, the autonomy
+  dial, and the capture controls — file, folder, note, web — now sit inside the
+  composer instead of a separate panel. The knowledge graph opens by clicking
+  the Brain, so the home shows no diagram at all.
+- **Korean and English, everywhere.** A language switch sits in the top bar on
+  every screen, and the interface is fully translated in both directions:
+  memory tiers, agent roles, automation recipes, entity types, and every
+  backend payload label read in the language you picked.
+- **Numbers say what they counted.** "출처 반영률 12%" is now "출처가 남은
+  기억 · 35 / 291개" with the sentence that explains it. Model names read
+  "Gemma 4 26B A4B Instruct", never `mlx-community/gemma-4-26b-a4b-it-4bit`.
+- **Defects found by using it with a model loaded.** The conversation header
+  Brain rendered at 311px and covered 46% of the viewport; the sticky composer
+  hid the end of every answer; a nested payload printed its field names where
+  its values belonged; the folder button never opened a picker in a browser.
+  All fixed, each with a test.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 9.9.9 release must use exact filenames:
+Expected artifacts for 10.0.0 release must use exact filenames:
 
-- `dist/ltcai-9.9.9-py3-none-any.whl`
-- `dist/ltcai-9.9.9.tar.gz`
-- `ltcai-9.9.9.tgz`
-- `dist/ltcai-9.9.9.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.9_aarch64.dmg`
+- `dist/ltcai-10.0.0-py3-none-any.whl`
+- `dist/ltcai-10.0.0.tar.gz`
+- `ltcai-10.0.0.tgz`
+- `dist/ltcai-10.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.0.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -118,18 +111,22 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 9.9.5.
+  live local Brain store in 10.0.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and
   update checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded. Agent and
   workflow simulation without a loaded LLM is deterministic and LLM-free (it
   does not call a model) — labeled as such, never presented as autonomous
   model success.
+- Some backend-generated messages (for example the Postgres DSN notice) are
+  produced server-side in English and are shown as-is; server-side i18n is not
+  part of 10.0.0.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 10.0.0 | Plain Language |
 | 9.9.9 | Lean Shell |
 | 9.9.8 | Autonomy Dial |
 | 9.9.7 | No Gaps Left |

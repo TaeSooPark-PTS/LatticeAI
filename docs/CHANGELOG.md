@@ -4,6 +4,47 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.0.0] - 2026-07-28
+
+### Changed
+- The Brain home is four zones: the living Brain, one composer, the autonomy
+  dial, and capture. `BrainHomeHero` replaces the knowledge-flow canvas on the
+  home; the graph is reached by clicking the Brain.
+- File / folder / note / web capture render inside the composer toolbar
+  (`BrainIngestionDock variant="inline"`), on both the home and the active
+  conversation. The standalone "Brain에게 가르치기" panel is removed.
+- The top bar carries the language switch and the appearance toggle, so both
+  are reachable from every screen.
+- Provenance coverage is reported as counts with an explanation
+  (`CoverageMeter`) instead of a bare percentage.
+- Model identifiers are humanized for display (`humanizeModelId`); the catalog
+  display name wins when the id is known.
+- Settings splits appearance (light/dark) from detail level (basic/advanced/
+  admin); they were one card labeled "화면 모양".
+- Model list is ordered by what can be used now: loaded, ready, downloaded,
+  then the rest.
+
+### Fixed
+- The folder button did nothing in a browser: `pickFolder` called the
+  desktop-only `selectFolder`. `frontend/src/lib/folderPicker.ts` now owns the
+  desktop / File System Access / file-input decision for every surface.
+- The conversation header Brain rendered at 311px — `size="trace"` had no size
+  rule and inherited the base `clamp(220px, 28vw, 320px)`.
+- The sticky composer covered the end of the newest answer; the stream now
+  reserves room, and nothing renders after the composer.
+- `ValuePreview` printed a nested object's field names as its value
+  ("Runtime → Ready, Version, Execution Mode, Mode +4").
+- `white-space: nowrap` on controls was inherited by descriptive text inside
+  them, clipping a 347px sentence to 288px in the autonomy panel.
+- Markdown written by a model leaked into search-result titles and graph node
+  labels; `plainText` strips it.
+- Duplicate `ui.field.health` keys in the shell namespace.
+
+### Added
+- ko/en parity across memory tiers, agent roles, automation recipes and their
+  outputs, entity types, status badges, and backend payload field labels.
+- `plainText` and `humanizeModelId` in `frontend/src/lib/utils.ts`, with tests.
+
 ## [9.9.9] - 2026-07-27
 
 ### Changed

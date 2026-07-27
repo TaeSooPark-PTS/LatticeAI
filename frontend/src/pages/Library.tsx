@@ -15,6 +15,33 @@ import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 import { navigateHash } from "@/features/brain/navigation";
 
+/** Say what the search engine can do, not which provider is wired in. */
+function embeddingStateLabel(state: unknown, language: Language) {
+  const value = String(state || "").toLowerCase();
+  if (value === "production") return t(language, "library.embedding.state.production");
+  if (value === "fallback" || value === "hash" || value === "local") {
+    return t(language, "library.embedding.state.fallback");
+  }
+  return t(language, "library.embedding.state.unknown");
+}
+
+/** Name the machine the way its owner would, not the way `uname` does. */
+function describeComputer(profile: Record<string, unknown> | undefined, language: Language) {
+  const os = String(profile?.os || "").toLowerCase();
+  const arch = String(profile?.arch || "").toLowerCase();
+  if (!os) return t(language, "library.value.detected");
+  if (os === "darwin" && arch.startsWith("arm")) return t(language, "library.runtime.appleSilicon");
+  if (os === "darwin") return "Mac";
+  if (os === "win32" || os.startsWith("win")) return "Windows";
+  if (os === "linux") return "Linux";
+  return t(language, "library.runtime.thisComputer");
+}
+
+// Statuses the server is known to emit; anything else is shown neutrally.
+const MODEL_STATUS_KEYS = new Set([
+  "loaded", "ready", "download_required", "unavailable", "unsupported",
+]);
+
 type LibraryTab = "models" | "skills" | "mcp" | "marketplace";
 
 const tabs: Array<{ id: LibraryTab; labelKey: string }> = [
@@ -66,16 +93,30 @@ function ModelsPanel() {
   const [lastResult, setLastResult] = React.useState<Record<string, unknown> | null>(null);
   const [lastError, setLastError] = React.useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const loadedIds = asArray<string>((models.data?.data as Record<string, unknown> | undefined)?.loaded);
+  const currentId = String((models.data?.data as Record<string, unknown> | undefined)?.current || "");
+  // Order by what the person can actually do right now. The catalog arrives in
+  // recommendation order, which buried the one downloaded, ready model behind
+  // five cards whose only button was disabled — the screen read as "nothing
+  // here works". Loaded first, then ready to use, then everything else.
+  const catalogRank = (model: Record<string, unknown>) => {
+    const id = String(model.id || model.model_id || "");
+    if (loadedIds.includes(id) || id === currentId) return 0;
+    if (model.load_available || model.load_status === "ready") return 1;
+    if (model.pulled) return 2;
+    return 3;
+  };
   const catalog = [
     ...asArray<Record<string, unknown>>((models.data?.data as Record<string, unknown>)?.catalog),
     ...asArray<Record<string, unknown>>((models.data?.data as Record<string, unknown>)?.recommended),
-  ];
+  ]
+    .map((model, index) => ({ model, index }))
+    .sort((a, b) => catalogRank(a.model) - catalogRank(b.model) || a.index - b.index)
+    .map((entry) => entry.model);
   const recommendationRows = asArray<Record<string, unknown>>(
     ((recs.data?.data as Record<string, unknown>)?.recommendations as Record<string, unknown> | undefined)?.models,
   );
   const recommendationById = new Map(recommendationRows.map((item) => [String(item.id), item]));
-  const loadedIds = asArray<string>((models.data?.data as Record<string, unknown> | undefined)?.loaded);
-  const currentId = String((models.data?.data as Record<string, unknown> | undefined)?.current || "");
   const current = catalog.find((model) => loadedIds.includes(String(model.id)) || String(model.id) === currentId);
   const topPick = (((recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined)?.top_pick || null) as Record<string, unknown> | null;
   const latestProgress = progress[progress.length - 1] || null;
@@ -140,7 +181,10 @@ function ModelsPanel() {
                     if (currentId) void latticeApi.unloadModel(currentId).then(() => qc.invalidateQueries({ queryKey: ["models"] }));
                   }}
                 />
-                <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+                {/* These six are a progress track, not choices. As bordered cards they
+                    looked tappable and invited clicks that do nothing, so they read as a
+                    connected sequence now: where setup has got to, at a glance. */}
+                <ol className="library-setup-track" aria-label={t(language, "library.steps.aria")}>
                   {[
                     [t(language, "library.step.environment"), true, Cpu],
                     [t(language, "library.step.recommend"), Boolean(topPick || catalog.length), CheckCircle2],
@@ -149,13 +193,17 @@ function ModelsPanel() {
                     [t(language, "library.step.validate"), Boolean(current || latestProgress?.stage === "smoke_test"), ShieldAlert],
                     [t(language, "library.step.ready"), Boolean(current || lastResult), PlayCircle],
                   ].map(([label, done, Icon]) => (
-                    <div key={String(label)} className="rounded-lg border border-border bg-background/55 p-3">
-                      {React.createElement(Icon as typeof Cpu, { className: "h-4 w-4 text-primary" })}
-                      <div className="mt-2 text-sm font-medium">{String(label)}</div>
-                      <Badge variant={done ? "success" : "muted"}>{done ? t(language, "library.step.done") : t(language, "library.step.pending")}</Badge>
-                    </div>
+                    <li key={String(label)} className={done ? "is-done" : ""}>
+                      <span className="library-setup-mark" aria-hidden="true">
+                        {React.createElement(Icon as typeof Cpu, { className: "h-3.5 w-3.5" })}
+                      </span>
+                      <span className="library-setup-label">{String(label)}</span>
+                      <span className="library-setup-state">
+                        {done ? t(language, "library.step.done") : t(language, "library.step.pending")}
+                      </span>
+                    </li>
                   ))}
-                </div>
+                </ol>
                 <label className="flex items-start gap-2 rounded-lg border border-border bg-background/55 p-3 text-sm leading-6">
                   <input className="mt-1" type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
                   <span>
@@ -189,21 +237,44 @@ function ModelsPanel() {
               const recommendationVerification = asRecord(recommendation.verification);
               const modelHardware = asRecord(model.hardware);
               const recommendationHardware = asRecord(recommendation.hardware);
-              const hardwareNote = modelHardware.notes || recommendationHardware.notes || (modelHardware.recommended_ram_gb
-                ? t(language, "library.model.ramRecommended", { ram: String(modelHardware.recommended_ram_gb) })
-                : "");
+              const downloadRequired = Boolean(model.download_required);
+              // `hardware.notes` is untranslated engineering commentary from the model
+              // registry ("Tiny but capable vision; great first local VLM."), and it
+              // was winning over the localized sentence built from the RAM figures.
+              // Lead with the sentence people can act on; keep the raw note only as a
+              // last resort, and never in the simplified view.
+              const recommendedRam = modelHardware.recommended_ram_gb || recommendationHardware.recommended_ram_gb;
+              const hardwareNote = recommendedRam
+                ? t(language, "library.model.ramRecommended", { ram: String(recommendedRam) })
+                : mode === "basic"
+                  ? ""
+                  : String(modelHardware.notes || recommendationHardware.notes || "");
               const safetyNotes = model.safety_notes || recommendation.safety_notes;
               const licenseText = model.license || recommendation.license;
               const compatibility = (model.runtime_compatibility || recommendation.runtime_compatibility || {}) as Record<string, unknown>;
               const fallbackAvailable = String(compatibility.status || "") === "fallback_available";
               const unsupported = model.load_status === "unsupported" || compatibility.supported === false;
-              const downloadRequired = Boolean(model.download_required);
               const loadAvailable = (Boolean(model.load_available) || loaded) && !unsupported;
               const loadStatus = String(model.load_status || (loaded ? "loaded" : "unavailable"));
-              const unavailableReason = modelMessage(model.unavailable_reason || t(language, "library.model.notReady"));
+              // The server's `unavailable_reason` is English prose ("Model files are not
+              // present locally…") and `modelMessage` only rewrites tokens, so it reached
+              // the screen untranslated. When the reason is simply "not downloaded yet" —
+              // already said by the badge and the size chip — use plain localized copy.
+              const unavailableReason = downloadRequired
+                ? t(language, "library.model.needsDownloadFirst")
+                : modelMessage(model.unavailable_reason || t(language, "library.model.notReady"));
               const runtimeLabel = String(model.runtime_label || compatibility.preferred_runtime || engine || "local_mlx");
               const actionLabel = String(compatibility.action || loadStatus.replace(/_/g, " "));
-              const badgeLabel = unsupported && mode === "basic" ? t(language, "library.model.needsAttention") : unsupported ? actionLabel : loadStatus;
+              // `load_status` is a server enum (`download_required`, `unsupported`, …).
+              // It used to be printed straight onto the badge, so the screen showed
+              // people raw identifiers. Map it to real copy and fall back to a neutral
+              // phrase rather than leaking an unknown token.
+              const statusLabel = MODEL_STATUS_KEYS.has(loadStatus)
+                ? t(language, `library.model.status.${loadStatus}`)
+                : t(language, "library.model.status.unknown");
+              const badgeLabel = unsupported && mode === "basic"
+                ? t(language, "library.model.needsAttention")
+                : statusLabel;
               const canPrepare = loadAvailable || downloadRequired;
               const downloadSize = model.download_size || model.estimated_size || recommendation.download_size || recommendation.estimated_size || model.size || recommendation.size;
               const maker = model.provider || recommendation.provider || model.organization || recommendation.organization;
@@ -214,7 +285,7 @@ function ModelsPanel() {
                         <div className="text-base font-semibold">{String(model.name || id)}</div>
                       {topPick?.id === id || model.recommended_default ? <Badge variant="success">{t(language, "library.model.recommended")}</Badge> : null}
                       {String(model.modality || recommendation.modality || "").includes("multi") || String(model.modality || "") === "multimodal" ? <Badge variant="muted">{t(language, "library.model.multimodal")}</Badge> : null}
-                      {modelVerification.verified || recommendationVerification.verified ? <Badge variant="success" title={t(language, "library.model.hfVerified")}>✓ HF</Badge> : null}
+                      {modelVerification.verified || recommendationVerification.verified ? <Badge variant="success" title={t(language, "library.model.hfVerified")}>{t(language, "library.model.sourceVerified")}</Badge> : null}
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
                       {mode === "basic"
@@ -269,6 +340,15 @@ function ModelsPanel() {
                       <Button
                         variant="outline"
                         disabled={busy || unsupported || !canPrepare || (downloadRequired && !consent)}
+                        // A disabled primary action has to say why. The most common
+                        // reason here is the download consent box a few rows up, which
+                        // left people staring at a greyed button with no explanation.
+                        title={
+                          unsupported ? t(language, "library.model.status.unsupported")
+                          : downloadRequired && !consent ? t(language, "library.btn.needsConsent")
+                          : !canPrepare ? unavailableReason
+                          : undefined
+                        }
                         onClick={() => prepareModel(loadId, engine || "local_mlx", consent)}
                       >
                         {activeModel === loadId && busy ? t(language, "library.btn.preparing") : downloadRequired ? t(language, "library.btn.installLoad") : t(language, "library.btn.validateLoad")}
@@ -289,7 +369,17 @@ function ModelsPanel() {
       </div>
       <div className="space-y-4">
         <DataPanel title={mode === "basic" ? t(language, "library.models.embedding.basic") : t(language, "library.models.embedding.advanced")} result={emb.data}>
-          {(data) => mode === "basic" ? <ValuePreview value={(data as Record<string, unknown>).state || t(language, "library.value.ready")} /> : <StructuredView value={data} />}
+          {(data) => (
+            // `state` is the provider enum ("fallback" | "production"). Advanced
+            // mode used to show only the raw table, so the answer to "is search
+            // any good right now?" was spelled `Grade: fallback`. Lead with the
+            // plain sentence in every mode; the table stays underneath for
+            // anyone who wants the detail.
+            <div className="space-y-3">
+              <ValuePreview value={embeddingStateLabel((data as Record<string, unknown>).state, language)} />
+              {mode === "basic" ? null : <StructuredView value={data} />}
+            </div>
+          )}
         </DataPanel>
         <DataPanel title={mode === "basic" ? t(language, "library.models.validation") : t(language, "library.models.validationAdvanced")} result={models.data}>
           {(data) => {
@@ -357,10 +447,10 @@ function ModelRuntimeSummary({
   return (
     <div className="space-y-3">
       <StatGrid stats={basic ? [
-        { label: t(language, "library.runtime.computer"), value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : t(language, "library.value.detected") },
+        { label: t(language, "library.runtime.computer"), value: describeComputer(profile, language) },
         { label: t(language, "library.runtime.loaded"), value: loadedName || t(language, "library.runtime.noneShort") },
       ] : [
-        { label: t(language, "library.runtime.computer"), value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : t(language, "library.value.detected") },
+        { label: t(language, "library.runtime.computer"), value: describeComputer(profile, language) },
         { label: t(language, "library.runtime.engine"), value: engine },
         { label: t(language, "library.runtime.loaded"), value: loadedName || t(language, "library.runtime.noLoaded") },
         { label: t(language, "library.runtime.state"), value: progressStage },

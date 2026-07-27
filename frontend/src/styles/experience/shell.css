@@ -10,6 +10,12 @@
 :root {
   --experience-content: 64rem;
   --experience-reading: 46rem;
+  /* Elevation: three steps, one shadow colour. There were 82 distinct
+     box-shadow values across the app — depth read as noise rather than
+     hierarchy. Resting surface, raised surface, floating surface. */
+  --elev-1: 0 6px 18px hsl(30 18% 18% / 0.06);
+  --elev-2: 0 14px 34px hsl(30 18% 18% / 0.09);
+  --elev-3: 0 26px 60px hsl(30 18% 18% / 0.14);
   --experience-radius: 14px;
   --experience-control-radius: 10px;
   --experience-header-height: 4.25rem;
@@ -100,7 +106,7 @@ summary {
 
 .core-service-unavailable span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: 0.76rem;
 }
 
 .core-service-unavailable button {
@@ -110,10 +116,10 @@ summary {
   align-items: center;
   gap: 0.35rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--background));
   padding: 0.35rem 0.6rem;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
@@ -134,8 +140,8 @@ summary {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   padding: 0.65rem 1rem;
-  font-size: 0.82rem;
-  font-weight: 760;
+  font-size: 0.86rem;
+  font-weight: 700;
   transition: transform 140ms ease;
 }
 
@@ -164,8 +170,8 @@ summary {
   gap: 0.55rem;
   min-height: 2.75rem;
   padding: 0 0.35rem 0 0;
-  font-size: 1rem;
-  font-weight: 780;
+  font-size: 0.95rem;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -200,7 +206,7 @@ summary {
   color: hsl(var(--muted-foreground));
   padding: 0 0.78rem;
   font-size: 0.86rem;
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
   transition: color 140ms ease, background 140ms ease;
 }
@@ -227,7 +233,7 @@ summary {
   bottom: 0.22rem;
   left: 0.75rem;
   height: 2px;
-  border-radius: 99px;
+  border-radius: 999px;
   background: currentColor;
 }
 
@@ -253,8 +259,8 @@ summary {
 }
 
 .brain-more-button span {
-  font-size: 0.82rem;
-  font-weight: 680;
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 
 .brain-more-button:hover,
@@ -295,7 +301,7 @@ summary {
 }
 
 .brain-more-popover-head strong {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
 }
 
 .brain-more-section {
@@ -310,8 +316,8 @@ summary {
   display: block;
   padding: 0.2rem 0.7rem 0.45rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.74rem;
-  font-weight: 660;
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .brain-more-nav {
@@ -361,5 +367,5 @@ summary {
   border: 0;
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }

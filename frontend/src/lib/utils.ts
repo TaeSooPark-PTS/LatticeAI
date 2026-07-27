@@ -39,3 +39,45 @@ export function titleize(value: unknown) {
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
 }
+
+/**
+ * Read text that came from a document or a model as plain words.
+ *
+ * Titles and summaries carry whatever Markdown the source had, so search
+ * results and graph nodes showed "**요약하자면,**" verbatim — which reads as a
+ * rendering fault, not as emphasis. Returns "" for an absent value so callers
+ * can fall through to the next candidate.
+ */
+export function plainText(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  const text = String(value)
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$)/g, "$1$2")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text === "-" ? "" : text;
+}
+
+/**
+ * "mlx-community/gemma-4-26b-a4b-it-4bit" is a package coordinate, not a name a
+ * person recognises. Keep the words, drop the registry and the quantisation.
+ */
+export function humanizeModelId(id: string): string {
+  const tail = id.split("/").pop() || id;
+  const words = tail
+    .replace(/[-_]/g, " ")
+    .replace(/\b(4bit|8bit|6bit|bf16|fp16|gguf|mlx|q4[\w]*|k m)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!words) return id;
+  return words
+    .split(" ")
+    .map((word) => (/^[a-z]/.test(word) ? word[0].toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}

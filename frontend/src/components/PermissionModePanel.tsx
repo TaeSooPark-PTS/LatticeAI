@@ -137,9 +137,9 @@ export function PermissionModePanel() {
                     <Badge variant="muted">{t(language, "system.permission.current")}</Badge>
                   ) : null}
                 </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
+                <p className="mt-1 block text-xs text-muted-foreground">
                   {optionSummary(option, language)}
-                </span>
+                </p>
               </button>
             );
           })}

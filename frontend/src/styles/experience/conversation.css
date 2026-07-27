@@ -62,15 +62,15 @@
   display: block;
   margin: 0.08rem 0 0.35rem;
   color: hsl(var(--primary));
-  font-size: 0.78rem;
-  font-weight: 720;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .brain-home-welcome h1 {
   margin: 0;
   color: hsl(var(--foreground));
   font-size: clamp(1.85rem, 4.2vw, 2.65rem);
-  font-weight: 760;
+  font-weight: 700;
   line-height: 1.18;
   letter-spacing: -0.025em;
 }
@@ -79,7 +79,7 @@
   max-width: 38rem;
   margin: 0.7rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1.68;
 }
 
@@ -90,7 +90,7 @@
   gap: 0.45rem;
   margin-top: 0.55rem;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: hsl(var(--muted-foreground));
   padding: 0 0.25rem;
@@ -114,7 +114,7 @@
 .brain-chat-home-card.has-messages > .brain-composer {
   width: 100%;
   border: 1px solid hsl(var(--border));
-  border-radius: 20px;
+  border-radius: 16px;
   background: hsl(var(--surface));
   box-shadow: var(--experience-shadow);
   padding: 0.55rem;
@@ -125,12 +125,12 @@
 .brain-chat-home-card.has-messages .brain-composer textarea {
   min-height: 4.25rem;
   border: 0;
-  border-radius: 14px;
+  border-radius: 16px;
   background: transparent;
   box-shadow: none;
   padding: 0.9rem 1rem 0.65rem;
   color: hsl(var(--foreground));
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1.55;
 }
 
@@ -177,8 +177,8 @@
   background: transparent;
   color: hsl(var(--muted-foreground));
   padding: 0 0.72rem;
-  font-size: 0.78rem;
-  font-weight: 650;
+  font-size: 0.76rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -191,7 +191,7 @@
 .brain-composer-hint {
   margin-left: auto;
   color: hsl(var(--muted-foreground) / 0.8);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   white-space: nowrap;
 }
 
@@ -199,11 +199,11 @@
   min-width: 5.2rem;
   min-height: 2.65rem;
   margin-left: 0.35rem;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .brain-quiet-success {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-home-suggestions,
@@ -221,8 +221,8 @@
 .brain-home-suggestions-head {
   margin: 0 0 0.65rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.78rem;
-  font-weight: 680;
+  font-size: 0.76rem;
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -256,7 +256,7 @@
 
 .brain-home-suggestions-grid strong {
   font-size: 0.86rem;
-  font-weight: 720;
+  font-weight: 700;
 }
 
 .brain-home-suggestions-grid span {
@@ -274,7 +274,7 @@
   min-height: 2.65rem;
   border-color: hsl(var(--border));
   background: transparent;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .brain-history-panel {
@@ -291,13 +291,13 @@
 }
 
 .brain-history-head strong {
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 700;
 }
 
 .brain-history-head span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.74rem;
+  font-size: 0.76rem;
 }
 
 .brain-history-list {
@@ -313,7 +313,7 @@
 .brain-history-resume {
   min-height: 3.35rem;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   padding: 0.65rem 0.55rem;
 }
@@ -324,7 +324,7 @@
 }
 
 .brain-history-title {
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .brain-history-delete {
@@ -339,7 +339,7 @@
   min-height: 2.65rem;
   margin-top: 0.45rem;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
 }
 
 .brain-home-insights {
@@ -378,13 +378,13 @@
 }
 
 .brain-home-insights > summary strong {
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .brain-home-insights > summary small {
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 450;
+  font-size: 0.68rem;
+  font-weight: 400;
 }
 
 .brain-home-insights-content {

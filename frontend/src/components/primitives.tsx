@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/appStore";
-import { t } from "@/i18n";
-import { cn, asArray, fmtNumber, isRecord, shortId, titleize } from "@/lib/utils";
+
+export { plainText } from "@/lib/utils";
+import { t, type Language } from "@/i18n";
+import { cn, asArray, fmtNumber, humanizeModelId, isRecord, plainText, shortId, titleize } from "@/lib/utils";
 
 export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "ok" | "status"> }) {
   const mode = useAppStore((state) => state.mode);
@@ -108,6 +110,21 @@ function hideInBasic(key: string) {
   return BASIC_HIDDEN_KEY.test(key);
 }
 
+
+const RECORD_SUMMARY_KEYS = ["status", "state", "name", "title", "label", "summary", "version", "ready"];
+
+/** The one field of a nested object worth showing in a single-line preview. */
+function recordSummary(value: Record<string, unknown>) {
+  for (const key of RECORD_SUMMARY_KEYS) {
+    const candidate = value[key];
+    if (candidate === null || candidate === undefined || candidate === "") continue;
+    if (typeof candidate === "object") continue;
+    const text = scalarText(candidate);
+    if (text && text !== "-") return text.length > 96 ? shortId(text, 96) : text;
+  }
+  return "";
+}
+
 function humanText(value: unknown) {
   const text = scalarText(value);
   if (text === "-") return text;
@@ -149,7 +166,13 @@ export function ValuePreview({ value }: { value: unknown }) {
   if (isRecord(value)) {
     const keys = Object.keys(value);
     if (!keys.length) return <span className="text-muted-foreground">{t(language, "ui.value.noFields")}</span>;
-    return <span className="text-muted-foreground">{keys.slice(0, 4).map(titleize).join(", ")}{keys.length > 4 ? ` +${keys.length - 4}` : ""}</span>;
+    // Listing the field NAMES rendered "Runtime → Ready, Version, Execution
+    // Mode, Mode +4", which reads like the value when it is really the schema.
+    // Summarise with a value a person can act on, and otherwise just say how
+    // much is in there.
+    const summary = recordSummary(value);
+    if (summary) return <span className="break-words">{summary}</span>;
+    return <span className="text-muted-foreground">{t(language, "ui.value.fields", { count: fmtNumber(keys.length) })}</span>;
   }
   const text = scalarText(value);
   return <span className="break-words">{text.length > 96 ? shortId(text, 96) : text}</span>;
@@ -166,8 +189,8 @@ export function KeyValueList({ data, limit = 8 }: { data: Record<string, unknown
     <div className="divide-y divide-border rounded-md border border-border">
       {rows.map(([key, value]) => (
         <div key={key} className="grid grid-cols-[minmax(9rem,0.5fr)_1fr] gap-3 p-3 text-sm">
-          <span className="font-medium text-muted-foreground">{titleize(key)}</span>
-          <span className="min-w-0 break-words"><ValuePreview value={value} /></span>
+          <span className="font-medium text-muted-foreground">{fieldLabel(key, language)}</span>
+          <span className="min-w-0 break-words"><ValuePreview value={fieldValue(key, value)} /></span>
         </div>
       ))}
     </div>
@@ -270,16 +293,99 @@ export function OperationResult({
   );
 }
 
+/**
+ * Graph node types arrive as backend class names ("Chunk", "AIResponse"). Those
+ * are schema words, so translate the ones we know and titleize the rest.
+ */
+/**
+ * Backend payload keys are schema words. The server-health panel printed
+ * "Status / Version / Mode / Platform / Current Model" in English to a Korean
+ * reader; translate the ones we know and titleize the rest.
+ */
+function fieldLabel(key: string, language: Language) {
+  const token = `ui.field.${key.toLowerCase()}`;
+  const label = t(language, token);
+  return label === token ? titleize(key) : label;
+}
+
+/** A model coordinate is never the right thing to show as a value. */
+function fieldValue(key: string, value: unknown) {
+  if (!/model/i.test(key)) return value;
+  if (typeof value === "string" && value.includes("/")) return humanizeModelId(value);
+  // "loaded_models" is a list of the same coordinates.
+  if (Array.isArray(value)) {
+    return value.map((item) => (typeof item === "string" && item.includes("/") ? humanizeModelId(item) : item));
+  }
+  return value;
+}
+
+function entityTypeLabel(value: unknown, language: Language) {
+  const raw = scalarText(value);
+  // Backends spell the same state as "Indexed", "indexed", or "INDEXED".
+  const canonical = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  for (const candidate of [raw, canonical]) {
+    const key = `ui.entity.${candidate}`;
+    const label = t(language, key);
+    if (label !== key) return label;
+  }
+  return humanText(raw);
+}
+
+/** Row copy from the i18n table when this list has a known set of ids. */
+function localized(prefix: string | undefined, item: Record<string, unknown>, suffix: string, language: Language) {
+  if (!prefix) return "";
+  // Registry ids are namespaced ("agent:researcher"); `type` carries the bare
+  // role. Try both, most specific first.
+  const candidates = [item.type, item.id, item.name]
+    .map((value) => String(value || "").toLowerCase().split(":").pop() || "")
+    .filter(Boolean);
+  for (const id of candidates) {
+    const key = `${prefix}.${id}${suffix}`;
+    const label = t(language, key);
+    if (label !== key) return label;
+  }
+  return "";
+}
+
+function rowTitle(item: Record<string, unknown>, titleKey: string, index: number, mode: string) {
+  for (const candidate of [item[titleKey], item.name, item.label, mode === "basic" ? "" : item.id]) {
+    const text = plainText(candidate);
+    if (text) return text;
+  }
+  return `#${index + 1}`;
+}
+
+/**
+ * Many payloads repeat the title as the summary. Printing both looked like the
+ * list had rendered twice, so only show a detail that adds something.
+ */
+function rowDetail(item: Record<string, unknown>, titleKey: string, index: number, mode: string) {
+  const title = rowTitle(item, titleKey, index, mode);
+  for (const candidate of [item.summary, item.description, item.path]) {
+    const text = plainText(candidate);
+    if (text && text !== title) return text;
+  }
+  return "";
+}
+
 export function EntityList({
   items,
   titleKey = "title",
   metaKey = "type",
   limit = 8,
+  labelPrefix,
 }: {
   items: unknown;
   titleKey?: string;
   metaKey?: string;
   limit?: number;
+  /**
+   * When the rows are a known, fixed set (agent roles, for instance), the
+   * backend ships English names. Give the i18n prefix and each row is looked up
+   * as `${labelPrefix}.${id}` and `${labelPrefix}.${id}.detail`, falling back to
+   * whatever the server sent.
+   */
+  labelPrefix?: string;
 }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
@@ -287,20 +393,34 @@ export function EntityList({
   if (!rows.length) return <EmptyState detail={t(language, "ui.empty.listDetail")} />;
   return (
     <div className="entity-list grid gap-2">
-      {rows.map((item, index) => (
+      {rows.map((item, index) => {
+        const labelledTitle = localized(labelPrefix, item, "", language);
+        const title = labelledTitle || rowTitle(item, titleKey, index, mode);
+        // A labelled row is already named by its role, so its type badge would
+        // only repeat it in the other language.
+        const badge = labelledTitle ? "" : entityTypeLabel(item[metaKey] || item.status || item.state || "ready", language);
+        return (
         <div key={String(item.id || item.name || index)} className="entity-list-row rounded-lg border border-border bg-background/55 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-medium">{mode === "basic" ? humanText(item[titleKey] || item.name || item.label || `Item ${index + 1}`) : String(item[titleKey] || item.name || item.id || `Record ${index + 1}`)}</div>
-            <Badge variant="muted">{mode === "basic" ? humanText(item[metaKey] || item.status || item.state || "ready") : String(item[metaKey] || item.status || item.state || "record")}</Badge>
+            <div className="font-medium">{title}</div>
+            {/* A type badge is a label for a person in every mode, not only in
+                basic — "Task" told an advanced user nothing extra. It is also
+                dropped when it merely repeats the title. */}
+            {badge && badge.toLowerCase() !== title.toLowerCase()
+              ? <Badge variant="muted">{badge}</Badge>
+              : null}
           </div>
-          {item.summary || item.description || item.path || (item.id && item[titleKey] !== item.id) ? (
-            <p className="mt-1 text-sm text-muted-foreground">{String(item.summary || item.description || item.path || item.id)}</p>
+          {localized(labelPrefix, item, ".detail", language) || rowDetail(item, titleKey, index, mode) ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {localized(labelPrefix, item, ".detail", language) || rowDetail(item, titleKey, index, mode)}
+            </p>
           ) : null}
           {mode !== "basic" && item.id && item[titleKey] !== item.id ? (
             <div className="mt-1 text-xs text-muted-foreground">{shortId(item.id, 48)}</div>
           ) : null}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

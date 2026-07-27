@@ -1,0 +1,110 @@
+/* ── The conversation screen ─────────────────────────────────────────────
+   Three defects found by measuring the live screen with a model loaded:
+
+   1. The header Brain rendered at 311px. `size="trace"` is meant to be a small
+      presence mark, but no rule ever sized it, so it inherited the base
+      `clamp(220px, 28vw, 320px)` and ate 46% of the viewport — permanently,
+      because the header is sticky.
+   2. The sticky composer covered the end of the last answer. The stream had no
+      bottom padding, so the newest text sat underneath it and was unreadable.
+   3. Reply actions sat below that same fold.
+
+   Loaded after conversation-active.css so these win. */
+
+/* 1. A trace-sized Brain is a mark beside the title, not a hero. */
+.brain-header-presence .brain-organism,
+.brain-organism.size-trace {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.brain-chat-header {
+  min-height: 0;
+  padding-block: 0.5rem;
+}
+
+.brain-header-presence {
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.brain-header-presence .brain-presence {
+  min-height: 0;
+  padding: 0;
+}
+
+/* 2. Reserve room for the sticky composer so the newest answer is never
+      hidden behind it. */
+.brain-chat-home-card.has-messages .brain-stream {
+  padding-bottom: 11rem;
+}
+
+/* The model name is a label, not a package coordinate — keep it from
+   stretching the header when a long id does slip through. */
+.brain-model-pill {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .brain-header-presence .brain-organism,
+  .brain-organism.size-trace {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .brain-chat-home-card.has-messages .brain-stream {
+    padding-bottom: 12rem;
+  }
+}
+
+/* 3. Nothing may follow the sticky composer.
+
+   The suggestion panel, the save toast, and the "Brain 세부 정보" drawer were
+   rendered after it, so the input box floated in the middle of the page with
+   content scrolling past underneath — it read as stuck, not as the place you
+   type. Make the card a column and push the composer to the end. */
+.brain-chat-home-card.has-messages {
+  display: flex;
+  flex-direction: column;
+}
+
+.brain-chat-home-card.has-messages > * {
+  order: 1;
+}
+
+.brain-chat-home-card.has-messages > .brain-composer {
+  order: 2;
+}
+
+/* ── The provenance meter ────────────────────────────────────────────────
+   It used to be a bare percentage in the page header. It now carries the two
+   counts and one line saying what was counted, so it needs room to read. */
+.brain-layer-meter {
+  display: flex;
+  max-width: min(22rem, 46vw);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+}
+
+.brain-layer-meter > small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .brain-layer-meter {
+    max-width: 100%;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .brain-layer-meter > small {
+    text-align: left;
+  }
+}

@@ -17,7 +17,7 @@ import { BrainHome } from "@/features/brain/BrainHome";
 import { StaleEmbedderNotice, VectorFreshnessNotice } from "@/features/brain/BrainSignals";
 import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
-import { asArray, fmtNumber, pct, titleize } from "@/lib/utils";
+import { asArray, fmtNumber, titleize } from "@/lib/utils";
 import { CytoscapeGraph } from "./brain/CytoscapeGraph";
 import { buildExplorerModel, isRecord, parseGraph, type LabelMode } from "./brain/graphExplorer";
 import { navigateHash } from "@/features/brain/navigation";
@@ -52,10 +52,9 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(language, tab)}</div>
           <h1>{tabHeadline(language, tab)}</h1>
         </div>
-        <div className="brain-layer-meter">
-          <span>{t(language, "graph.coverage")}</span>
-          <strong>{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</strong>
-        </div>
+        {/* A bare "12%" told nobody whether that was good, or of what. Say what
+            was counted: 291 memories, 35 of them with a recorded source. */}
+        <CoverageMeter language={language} data={coverage.data?.data as Record<string, unknown> | undefined} />
       </header>
       <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => selectTab(id as BrainTab)} />
       <StaleEmbedderNotice language={language} />
@@ -78,6 +77,44 @@ function normalizeBrainTab(tab?: string): BrainTab {
   if (tab === "knowledge" || tab === "search") return "knowledge";
   if (tab === "memory" || tab === "relationships" || tab === "provenance" || tab === "sources" || tab === "portability" || tab === "care") return "memory";
   return "graph";
+}
+
+/**
+ * Provenance coverage as a sentence, not a ratio. The payload counts nodes that
+ * record where they came from; a reader needs the two numbers to judge it, and
+ * the reason some memories have no source at all.
+ */
+/** Graph node classes are schema words; show the reader's language. */
+function graphTypeLabel(type: string, language: Language) {
+  const raw = String(type || "");
+  const canonical = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  for (const candidate of [raw, canonical]) {
+    const key = `ui.entity.${candidate}`;
+    const label = t(language, key);
+    if (label !== key) return label;
+  }
+  return titleize(raw);
+}
+
+function CoverageMeter({ language, data }: { language: Language; data: Record<string, unknown> | undefined }) {
+  const total = Math.max(0, Math.round(Number(data?.total_nodes) || 0));
+  const covered = Math.max(0, Math.round(Number(data?.nodes_with_provenance) || 0));
+  if (!total) {
+    return (
+      <div className="brain-layer-meter">
+        <span>{t(language, "graph.coverage")}</span>
+        <strong>{t(language, "graph.coverage.empty")}</strong>
+      </div>
+    );
+  }
+  const detail = t(language, "graph.coverage.detail", { covered: fmtNumber(covered), total: fmtNumber(total) });
+  return (
+    <div className="brain-layer-meter" title={detail}>
+      <span>{t(language, "graph.coverage")}</span>
+      <strong>{t(language, "graph.coverage.value", { covered: fmtNumber(covered), total: fmtNumber(total) })}</strong>
+      <small>{detail}</small>
+    </div>
+  );
 }
 
 function tabLabel(language: Language, tab: BrainTab) {
@@ -264,7 +301,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                   <div>
                     <div className="text-lg font-semibold">{selected.label}</div>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      <Badge variant="muted">{selected.type}</Badge>
+                      <Badge variant="muted">{graphTypeLabel(selected.type, language)}</Badge>
                       <Badge variant="muted">{model.groups.find((group) => group.id === selected.group)?.label || selected.group}</Badge>
                       <Badge variant="success">{t(language, "graph.importanceBadge", { n: Math.round(selected.importance * 100) })}</Badge>
                     </div>
@@ -311,7 +348,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{node.label}</span>
-                    <Badge variant="muted">{node.type}</Badge>
+                    <Badge variant="muted">{graphTypeLabel(node.type, language)}</Badge>
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">{t(language, "brain.graph.nodeStats", { importance: Math.round(node.importance * 100), links: fmtNumber(node.degree) })}</div>
                 </button>
@@ -512,7 +549,14 @@ function SourceProvenanceList({ items, limit = 8 }: { items: unknown; limit?: nu
   return (
     <div className="grid gap-2">
       {rows.map((item, index) => {
-        const title = String(item.title || item.label || item.source_title || item.filename || item.path || item.source || t(language, "brain.sources.fallback", { index: index + 1 }));
+        // The backend names memory tiers in English ("Workspace Memory"). The
+        // id is the contract; the label is display, so localize by id and fall
+        // back to whatever the server sent for tiers we do not know.
+        const tierKey = `brain.memoryTier.${String(item.id || "")}`;
+        const tierLabel = t(language, tierKey);
+        const title = tierLabel !== tierKey
+          ? tierLabel
+          : String(item.title || item.label || item.source_title || item.filename || item.path || item.source || t(language, "brain.sources.fallback", { index: index + 1 }));
         const path = String(item.path || item.source_path || item.source || item.conversation_id || "");
         const type = sourceType(item, language);
         const created = sourceCreatedAt(item);

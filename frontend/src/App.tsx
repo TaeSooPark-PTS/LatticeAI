@@ -4,11 +4,12 @@ import { readProductFlowComplete } from "@/components/productFlowState";
 import { useAppStore } from "@/store/appStore";
 import { parseHash, productShellRoutes } from "@/routes";
 import { WorkspaceProfileSwitcher } from "@/components/WorkspaceProfileSwitcher";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { t, type Language } from "@/i18n";
 import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
-import { Brain, Ellipsis, X } from "lucide-react";
+import { Brain, Ellipsis, Moon, Sun, X } from "lucide-react";
 import { navigateHash } from "@/features/brain/navigation";
 import { clamp } from "@/lib/utils";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
@@ -117,6 +118,8 @@ function BrainShell({
   children: React.ReactNode;
 }) {
   const language = useAppStore((state) => state.language);
+  const theme = useAppStore((state) => state.theme);
+  const setTheme = useAppStore((state) => state.setTheme);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuPanelRef = React.useRef<HTMLDivElement>(null);
   const desktopMenuButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -241,6 +244,22 @@ function BrainShell({
         </nav>
 
         <div className="brain-shell-actions">
+          {/* Language belongs beside appearance: both are "how this app talks to
+              me" decisions, and an English speaker must be able to find it on
+              the very first screen without reading Korean to get there. */}
+          <LanguageSwitcher compact />
+          {/* Appearance is a one-tap decision people make once, so it lives in
+              the topbar next to the menu rather than inside a screen. */}
+          <button
+            type="button"
+            className="brain-theme-toggle"
+            data-testid="topbar-theme-toggle"
+            aria-label={t(language, theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark")}
+            title={t(language, theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark")}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            {theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+          </button>
           <button
             ref={desktopMenuButtonRef}
             type="button"

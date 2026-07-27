@@ -13,6 +13,34 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.0.0 — Plain Language (2026-07-28)
+
+10.0.0 is the release where the product stopped being read by its author. Every
+screen was opened with a real model loaded (Gemma 4 26B on MLX) and every
+control pressed; what broke or read as jargon was fixed.
+
+**The first screen.** The home is four zones — the Brain, the composer, the
+autonomy dial, and capture. File / folder / note / web moved into the composer's
+own toolbar beside 문서 / 이미지, so "Brain에게 가르치기" is gone as a separate
+panel. Nothing graph-shaped renders on the home: the knowledge graph opens by
+clicking the Brain itself.
+
+**Both languages, on every screen.** The top bar carries a 한국어 / English
+switch. Memory tiers, agent roles, automation recipes, entity types, status
+badges and payload field labels are all translated by their stable id, so the
+server keeps one vocabulary and the reader sees theirs.
+
+**Measured fixes, not impressions.** The conversation header Brain rendered at
+311px because `size="trace"` had no size rule and inherited
+`clamp(220px, 28vw, 320px)`; the sticky composer covered the end of every answer
+because the stream had no bottom padding; `ValuePreview` printed a nested
+object's field names where its value belonged; `pickFolder` called a
+desktop-only API and so did nothing in a browser.
+
+**Numbers that say what they counted.** "출처 반영률 12%" became "출처가 남은
+기억 · 35 / 291개" with the sentence explaining it, and model coordinates became
+model names.
+
 ## v9.9.9 — Lean Shell (2026-07-27)
 
 9.9.9 fixes the cause behind the 9.9.8 bundle-budget bump. `frontend/src/i18n/*`

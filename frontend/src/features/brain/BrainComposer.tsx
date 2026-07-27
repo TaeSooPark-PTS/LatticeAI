@@ -14,6 +14,7 @@ export function BrainComposer({
   onUploadDocument,
   onSend,
   onStop,
+  attachments,
 }: {
   language: Language;
   draft: string;
@@ -25,6 +26,8 @@ export function BrainComposer({
   onUploadDocument: (file: File) => void;
   onSend: () => void;
   onStop?: () => void;
+  /** Extra capture controls (file · folder · note · web) shown beside 문서/이미지. */
+  attachments?: React.ReactNode;
 }) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -90,6 +93,7 @@ export function BrainComposer({
               }}
             />
           </label>
+          {attachments}
           {imageData ? <span className="brain-quiet-success">{t(language, "brain.imageAttached")}</span> : null}
         </div>
         <span id="brain-composer-hint" className="brain-composer-hint">{t(language, "brain.composer.hint")}</span>

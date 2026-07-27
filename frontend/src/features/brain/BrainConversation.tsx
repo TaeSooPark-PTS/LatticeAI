@@ -32,9 +32,6 @@ import { DailyBriefingPanel } from "@/features/command/DailyBriefingPanel";
 import { PendingProposalsPanel } from "@/features/command/PendingProposalsPanel";
 import { BrainComposer } from "./BrainComposer";
 import { BrainOverviewPanel } from "./BrainOverviewPanel";
-import { FirstFiveCard } from "./FirstFiveCard";
-import type { FirstFiveStep } from "./firstFive";
-import { FirstValueLoopCard } from "./FirstValueLoopCard";
 import {
   BrainBriefPanel,
   handleBriefAction,
@@ -44,7 +41,9 @@ import {
 } from "./HomePanels";
 import { BrainIngestionDock, BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
 import { IngestionJobsPanel, PendingApprovalsNotice, StaleEmbedderNotice, VectorFreshnessNotice, WatchHealthCard } from "./BrainSignals";
-import { BrainKnowledgeFlow, BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
+import { BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
+import { BrainHomeHero } from "./BrainHomeHero";
+import { BrainQuickControls } from "./BrainQuickControls";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
 import { MemoryRings } from "./MemoryRings";
 import { navigateHash } from "./navigation";
@@ -153,58 +152,14 @@ export function BrainConversation({
   // First-five guided card wiring: each step drives a real, already-existing
   // surface on this screen (composer, ingestion dock, insights shelf).
   const homeDeckRef = React.useRef<HTMLDivElement>(null);
-  const sourceDockRef = React.useRef<HTMLDivElement>(null);
+  useDismissHomeShelves();
   const insightsShelfRef = React.useRef<HTMLDetailsElement>(null);
-
-  const firstFiveAutoDone = React.useMemo(
-    () => ({
-      // Any past conversation means the user already asked the Brain something.
-      ask: pastConversations.length > 0,
-      // "Add" completes only when a non-chat source really lands in the Brain.
-      add: [ingestionStates.file, ingestionStates.folder, ingestionStates.note, ingestionStates.web].some(Boolean),
-    }),
-    [pastConversations.length, ingestionStates],
-  );
-
-  // Shared "take me to the ingestion dock" behavior: used by the first-five
-  // "add" step and the First Value Loop "내 폴더 연결하기" CTA.
-  const focusSourceDock = React.useCallback(() => {
-    const dock = sourceDockRef.current;
-    if (!dock) return;
-    dock.scrollIntoView?.({ behavior: "smooth", block: "center" });
-    window.setTimeout(() => {
-      dock.querySelector<HTMLElement>("button, input, [tabindex]")?.focus({ preventScroll: true });
-    }, 0);
-  }, []);
 
   // Approval runs already represented by an inline card — the pending-
   // approvals notice only surfaces runs that would otherwise be invisible.
   const knownApprovalRunIds = React.useMemo(
     () => messages.flatMap((message) => (message.approval ? [message.approval.runId] : [])),
     [messages],
-  );
-
-  const handleFirstFiveStep = React.useCallback(
-    (step: FirstFiveStep) => {
-      if (step === "ask") {
-        const prompt = starterPrompts[0] || t(language, "brain.prompt.remember");
-        onDraftChange(prompt);
-        window.setTimeout(() => {
-          homeDeckRef.current?.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
-        }, 0);
-      } else if (step === "add") {
-        focusSourceDock();
-      } else {
-        const shelf = insightsShelfRef.current;
-        if (!shelf) return;
-        shelf.open = true;
-        shelf.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
-        window.setTimeout(() => {
-          shelf.querySelector<HTMLElement>(".brain-home-shelf-close")?.focus({ preventScroll: true });
-        }, 0);
-      }
-    },
-    [starterPrompts, language, onDraftChange, focusSourceDock],
   );
 
   return (
@@ -329,7 +284,16 @@ export function BrainConversation({
                 })}
               </div>
 
+              <BrainMemoryAutomation
+                language={language}
+                brief={brief}
+                activities={proactiveActivities}
+                streaming={streaming}
+                onAction={onProactiveAction}
+              />
               {modelReady ? null : <ModelMissingNotice language={language} />}
+              {/* Same capture controls as the home — a person should not have to
+                  go back to the first screen to add a folder mid-conversation. */}
               <BrainComposer
                 language={language}
                 draft={draft}
@@ -341,32 +305,66 @@ export function BrainConversation({
                 onUploadDocument={onUploadDocument}
                 onSend={onSend}
                 onStop={onStop}
-              />
-              <BrainMemoryAutomation
-                language={language}
-                brief={brief}
-                activities={proactiveActivities}
-                streaming={streaming}
-                onAction={onProactiveAction}
+                attachments={
+                  <BrainIngestionDock
+                    language={language}
+                    variant="inline"
+                    uploadingDocument={uploadingDocument}
+                    ingestionStates={ingestionStates}
+                    onUploadDocument={onUploadDocument}
+                    onPickFolder={onPickFolder}
+                    onConnectFolder={onConnectFolder}
+                    onIngestNote={onIngestNote}
+                    onIngestWeb={onIngestWeb}
+                  />
+                }
               />
             </>
           ) : (
             <div className="brain-centered-home" data-testid="brain-home-stage">
-              <BrainKnowledgeFlow
+              <BrainHomeHero
                 language={language}
                 brainState={brainState}
                 intensity={intensity}
-                graph={graph}
                 readiness={readiness}
-                brief={brief}
                 memories={memories}
-                ingestionStates={ingestionStates}
-                emergenceEvents={emergenceEvents}
-                streaming={streaming}
+                graph={graph}
                 onExploreBrain={onExploreBrain}
               />
 
               {modelReady ? null : <ModelMissingNotice language={language} />}
+
+              {/* Autonomy belongs with the box you type into: it is the answer
+                  to "how much may Brain do with what I just asked?", so it sits
+                  on the composer's own footer instead of a separate row. */}
+              <div className="brain-home-do" ref={homeDeckRef}>
+                <BrainComposer
+                  language={language}
+                  draft={draft}
+                  streaming={streaming}
+                  imageData={imageData}
+                  uploadingDocument={uploadingDocument}
+                  onDraftChange={onDraftChange}
+                  onImageDataChange={onImageDataChange}
+                  onUploadDocument={onUploadDocument}
+                  onSend={onSend}
+                  onStop={onStop}
+                  attachments={
+                    <BrainIngestionDock
+                      language={language}
+                      variant="inline"
+                      uploadingDocument={uploadingDocument}
+                      ingestionStates={ingestionStates}
+                      onUploadDocument={onUploadDocument}
+                      onPickFolder={onPickFolder}
+                      onConnectFolder={onConnectFolder}
+                      onIngestNote={onIngestNote}
+                      onIngestWeb={onIngestWeb}
+                    />
+                  }
+                />
+                <BrainQuickControls language={language} />
+              </div>
 
               {suggestedQuestions.length ? (
                 <section className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
@@ -407,45 +405,10 @@ export function BrainConversation({
                 </div>
               )}
 
-              <div className="brain-home-control-deck" ref={homeDeckRef}>
-                <div className="brain-live-source-panel" ref={sourceDockRef}>
-                  <BrainIngestionDock
-                    language={language}
-                    uploadingDocument={uploadingDocument}
-                    ingestionStates={ingestionStates}
-                    onUploadDocument={onUploadDocument}
-                    onPickFolder={onPickFolder}
-                    onConnectFolder={onConnectFolder}
-                    onIngestNote={onIngestNote}
-                    onIngestWeb={onIngestWeb}
-                  />
-                  <WatchHealthCard language={language} />
-                  <IngestionJobsPanel language={language} />
-                </div>
-
-                <BrainComposer
-                  language={language}
-                  draft={draft}
-                  streaming={streaming}
-                  imageData={imageData}
-                  uploadingDocument={uploadingDocument}
-                  onDraftChange={onDraftChange}
-                  onImageDataChange={onImageDataChange}
-                  onUploadDocument={onUploadDocument}
-                  onSend={onSend}
-                  onStop={onStop}
-                />
-
-                <aside className="brain-home-action-dock" aria-label={t(language, "brain.automation.title")}>
-                  <BrainMemoryAutomation
-                    language={language}
-                    brief={brief}
-                    activities={proactiveActivities}
-                    streaming={streaming}
-                    onAction={onProactiveAction}
-                    compact
-                  />
-
+              {/* Everything that is not "greet, ask, add material, set autonomy"
+                  lives in this quiet row: still one click away, never competing
+                  with the composer for the first screen. */}
+              <footer className="brain-home-quiet">
                   <div className="brain-home-shelves">
                     <details
                       className="brain-home-history-shelf"
@@ -505,6 +468,13 @@ export function BrainConversation({
                         >
                           <X className="h-4 w-4" aria-hidden="true" />
                         </button>
+                        <BrainMemoryAutomation
+                          language={language}
+                          brief={brief}
+                          activities={proactiveActivities}
+                          streaming={streaming}
+                          onAction={onProactiveAction}
+                        />
                         <MemoryRings
                           language={language}
                           brainState={brainState}
@@ -542,9 +512,9 @@ export function BrainConversation({
                             />
                           </>
                         )}
-                        {/* Daily briefing now lives directly on the empty home
-                            (brain-home-intro-row), so the shelf only keeps the
-                            remaining insight panels. */}
+                        <DailyBriefingPanel language={language} variant="home" />
+                        <WatchHealthCard language={language} />
+                        <IngestionJobsPanel language={language} />
                         <PendingProposalsPanel language={language} />
                         <BrainIntelligencePanel language={language} />
                         <KnowledgeGardenPanel language={language} />
@@ -552,22 +522,7 @@ export function BrainConversation({
                       </div>
                     </details>
                   </div>
-                </aside>
-              </div>
-
-              {/* First-run guidance + today's briefing live below the primary
-                  controls so compact viewports keep the composer and docks
-                  fully on screen. */}
-              <div className="brain-home-intro-row">
-                <FirstValueLoopCard
-                  language={language}
-                  streaming={streaming}
-                  onSendText={onSendText}
-                  onConnectData={focusSourceDock}
-                />
-                <FirstFiveCard language={language} autoDone={firstFiveAutoDone} onStep={handleFirstFiveStep} />
-                <DailyBriefingPanel language={language} variant="home" />
-              </div>
+              </footer>
             </div>
           )}
 
@@ -684,6 +639,34 @@ function ContextQualityNote({ language, reason }: { language: Language; reason: 
       {reason ? <small>{t(language, "brain.contextQuality.reason", { reason })}</small> : null}
     </p>
   );
+}
+
+/**
+ * Close an open home shelf when attention moves elsewhere.
+ *
+ * These shelves are `<details>` whose panel floats over the composer at
+ * z-index 90. Without this, an open shelf stayed open and intercepted pointer
+ * events on the send button: the primary action of the screen became a dead
+ * target with nothing on screen explaining why.
+ */
+function useDismissHomeShelves() {
+  React.useEffect(() => {
+    const dismiss = (event: Event) => {
+      const target = event.target as Node | null;
+      for (const details of document.querySelectorAll<HTMLDetailsElement>(
+        ".brain-home-history-shelf[open], .brain-home-insights[open]",
+      )) {
+        if (target && details.contains(target)) continue;
+        details.removeAttribute("open");
+      }
+    };
+    document.addEventListener("pointerdown", dismiss, true);
+    document.addEventListener("focusin", dismiss, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss, true);
+      document.removeEventListener("focusin", dismiss, true);
+    };
+  }, []);
 }
 
 function closeHomeShelf(target: HTMLElement) {

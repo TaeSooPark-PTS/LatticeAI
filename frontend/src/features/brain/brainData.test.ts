@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   agentPayloadFiles,
+  currentModelName,
+  humanizeModelId,
   buildBrainProof,
   buildConversationSummaries,
   extractIngestionEvidence,
@@ -247,5 +249,31 @@ describe("brainData parsers", () => {
     ]);
     expect(status.watches[1].lastResult).toBeNull();
     expect(status.watches[1].lastErrors).toEqual([]);
+  });
+});
+
+describe("currentModelName", () => {
+  it("prefers the catalog display name for the loaded model", () => {
+    const payload = {
+      current_model: "mlx-community/gemma-4-26b-a4b-it-4bit",
+      recommended: [
+        { id: "mlx-community/gemma-4-26b-a4b-it-4bit", display_name: "Gemma 4 26B Instruct" },
+      ],
+    };
+    expect(currentModelName(payload)).toBe("Gemma 4 26B Instruct");
+  });
+
+  it("tidies the raw id when the catalog has no entry", () => {
+    expect(currentModelName({ current_model: "mlx-community/gemma-4-26b-a4b-it-4bit" }))
+      .toBe("Gemma 4 26b A4b It");
+  });
+
+  it("falls back to a placeholder when nothing is loaded", () => {
+    expect(currentModelName({})).toBe("local mind");
+  });
+
+  it("never shows a package coordinate", () => {
+    expect(humanizeModelId("mlx-community/Qwen3-VL-8B-Instruct-4bit")).not.toContain("/");
+    expect(humanizeModelId("mlx-community/Qwen3-VL-8B-Instruct-4bit")).not.toContain("4bit");
   });
 });

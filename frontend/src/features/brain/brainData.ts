@@ -1,4 +1,5 @@
-import { asArray, isRecord as isRecordValue } from "@/lib/utils";
+import { asArray, humanizeModelId, isRecord as isRecordValue } from "@/lib/utils";
+import { t, type Language } from "@/i18n";
 import type { AgentStepEvent, ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, IngestionWatch, IngestionWatchStatus, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageBrainIngest, MessageContextQuality, MessageFile, MessageGrounding, MessageLoopSummary, MessageRunExplanation, PendingApprovalSummary, RelationshipThread, VectorFreshness } from "./types";
 import { clamp } from "./graphLayout";
 
@@ -28,14 +29,29 @@ export function parseConversationMessages(data: unknown): Message[] {
   });
 }
 
-export function buildMemoryFragments(memoryData: unknown, historyData: unknown): MemoryFragment[] {
+/**
+ * The memory manager labels its tiers in English ("Workspace Memory"). The id
+ * is the contract, so translate on the way in and keep the server label for
+ * anything we do not recognise.
+ */
+function memoryTierTitle(item: ApiRecord, language: Language, fallback: string) {
+  const id = textValue(item, ["id"]);
+  if (id) {
+    const key = `brain.memoryTier.${id}`;
+    const label = t(language, key);
+    if (label !== key) return label;
+  }
+  return fallback;
+}
+
+export function buildMemoryFragments(memoryData: unknown, historyData: unknown, language: Language = "ko"): MemoryFragment[] {
   const memory = isRecord(memoryData) ? memoryData : {};
   const sourceRows = asArray<ApiRecord>(memory.sources).length
     ? asArray<ApiRecord>(memory.sources)
     : asArray<ApiRecord>(memory.tiers);
   const sourceFragments = sourceRows.map((item, index) => ({
     id: textValue(item, ["id", "source", "label"], `memory-${index}`),
-    title: textValue(item, ["title", "label", "source", "path", "name"], "Workspace memory"),
+    title: memoryTierTitle(item, language, textValue(item, ["title", "label", "source", "path", "name"], "Workspace memory")),
     kind: titleValue(item, ["type", "source_type", "kind", "health"], "Memory"),
     tags: [],
     agentGenerated: false,
@@ -450,13 +466,33 @@ export function parseIngestionJobs(data: unknown): IngestionJob[] {
   });
 }
 
+
+function catalogDisplayName(record: ApiRecord, id: string) {
+  const pools = ["recommended", "cloud", "loaded", "loaded_models", "models"];
+  for (const pool of pools) {
+    for (const item of asArray<ApiRecord>(record[pool])) {
+      const itemId = textValue(item, ["id", "model_id", "name"]);
+      if (itemId !== id) continue;
+      const label = textValue(item, ["display_name", "model_name", "name"]);
+      if (label && label !== id) return label;
+    }
+  }
+  return "";
+}
+
+export { humanizeModelId } from "@/lib/utils";
+
 export function currentModelName(data: unknown) {
   const record = isRecord(data) ? data : {};
   const current = textValue(record, ["current", "current_model", "local_model"]);
-  if (current) return current;
+  if (current) return catalogDisplayName(record, current) || humanizeModelId(current);
   const loaded = asArray<ApiRecord>(record.loaded || record.loaded_models);
   const firstLoaded = loaded.find((item) => item.id || item.name || item.model_id);
-  return firstLoaded ? textValue(firstLoaded, ["name", "id", "model_id"], "local mind") : "local mind";
+  if (!firstLoaded) return "local mind";
+  const label = textValue(firstLoaded, ["display_name", "model_name", "name"]);
+  const id = textValue(firstLoaded, ["id", "model_id"]);
+  if (label && label !== id) return label;
+  return id ? catalogDisplayName(record, id) || humanizeModelId(id) : "local mind";
 }
 
 export function hasLoadedModel(data: unknown) {

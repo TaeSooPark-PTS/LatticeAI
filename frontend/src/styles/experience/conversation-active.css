@@ -30,7 +30,7 @@
 
 .brain-header-title span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-header-actions {
@@ -47,7 +47,7 @@
   background: transparent;
   color: hsl(var(--muted-foreground));
   padding: 0 0.68rem;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
 }
 
 .brain-deeper-btn:hover {
@@ -70,7 +70,7 @@
 .brain-message-bubble {
   max-width: min(88%, 42rem);
   border-radius: 16px;
-  font-size: 0.96rem;
+  font-size: 0.95rem;
   line-height: 1.72;
 }
 
@@ -94,8 +94,8 @@
 
 .brain-message-actions button {
   min-height: 2.35rem;
-  border-radius: 8px;
-  font-size: 0.72rem;
+  border-radius: 10px;
+  font-size: 0.68rem;
 }
 
 .brain-chat-home-card.has-messages > .brain-composer {
@@ -125,8 +125,8 @@
   justify-content: flex-start;
   padding: 0 0.35rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.78rem;
-  font-weight: 640;
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .brain-utility-drawer > summary:hover,

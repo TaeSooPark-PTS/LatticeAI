@@ -42,7 +42,7 @@ export function BrainHome({
   const history = useBrainHistory({ language, setMemoryFeedback });
 
   const memoryFragments = React.useMemo(
-    () => buildMemoryFragments(memoriesQ.data?.data, history.historyQ.data?.data),
+    () => buildMemoryFragments(memoriesQ.data?.data, history.historyQ.data?.data, language),
     [history.historyQ.data, memoriesQ.data],
   );
   const graphModel = React.useMemo(() => parseKnowledgeGraph(graphQ.data?.data), [graphQ.data]);

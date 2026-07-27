@@ -376,6 +376,17 @@ function SettingsPanel() {
         <CardContent className="flex flex-wrap gap-2">
           <Button variant={theme === "dark" ? "default" : "outline"} onClick={() => setTheme("dark")}>{t(language, "system.theme.dark")}</Button>
           <Button variant={theme === "light" ? "default" : "outline"} onClick={() => setTheme("light")}>{t(language, "system.theme.light")}</Button>
+        </CardContent>
+      </Card>
+      {/* Basic/advanced/admin decide how much detail a screen shows — that is not
+          "appearance", and sitting in the same row as light/dark read as if it
+          were a fourth colour theme. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t(language, "system.panel.detailLevel")}</CardTitle>
+          <CardDescription>{t(language, "system.panel.detailLevel.hint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
           {(["basic", "advanced", "admin"] as const).map((item) => (
             <Button key={item} variant={mode === item ? "default" : "outline"} onClick={() => setMode(item)}>{t(language, `shell.mode.${item}`)}</Button>
           ))}

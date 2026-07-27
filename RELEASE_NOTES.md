@@ -1,3 +1,19 @@
+# [v10.0.0 - Plain Language] (2026-07-28)
+
+Every screen was opened with a real local model loaded and every control
+pressed. The home became four zones — Brain, composer, autonomy, capture — with
+file / folder / note / web moved into the composer itself and the knowledge
+graph behind the Brain. A 한국어 / English switch sits in the top bar and the
+interface is fully translated both ways. Five defects that only appear in use
+were fixed: a 311px header Brain, answers hidden behind the sticky composer, a
+panel printing field names as values, clipped descriptions inside controls, and
+a folder button that never opened a picker in a browser.
+
+See [RELEASE_NOTES_v10.0.0.md](RELEASE_NOTES_v10.0.0.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v9.9.9 - Lean Shell] (2026-07-27)
 
 Cuts the first-paint JavaScript payload from 150.0 KiB to 99.3 KiB gzip (-34%)
@@ -70,7 +86,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.9**.
+This repository keeps public release history from **8.0.0 through 10.0.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

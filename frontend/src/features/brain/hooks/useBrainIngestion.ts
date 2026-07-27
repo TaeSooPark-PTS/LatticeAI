@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";
 import { triggerBrainRecall, type BrainState } from "@/components/LivingBrain";
 import { t, type Language } from "@/i18n";
+import { browserFolderNameFromFiles, pickFolder as pickFolderSelection } from "@/lib/folderPicker";
 import { buildBrainReadiness, extractIngestionEvidence, parseKnowledgeGraph } from "../brainData";
 import type {
   BrainReadiness,
@@ -250,14 +251,61 @@ export function useBrainIngestion({
     triggerBrainRecall();
   }, [beginIngestion, completeIngestion, failIngestion, language, onBrainChange, setLastRecallQuery, setMemoryFeedback]);
 
+  // The folder button used to call the desktop-only picker, so in a browser it
+  // resolved to null and the button did nothing. Route through the shared
+  // picker, which falls back to reading the directory in the browser.
   const pickFolder = React.useCallback(async () => {
-    const selectedPath = await latticeApi.selectFolder();
-    if (!selectedPath) {
-      setMemoryFeedback(t(language, "capture.local.pickUnavailable"));
+    const selection = await pickFolderSelection();
+    if (selection.kind === "cancelled") return;
+    if (selection.kind === "unavailable") {
+      setMemoryFeedback(t(language, "brain.ingest.folder.unavailable"));
       return;
     }
-    await connectFolder(selectedPath);
-  }, [connectFolder, language, setMemoryFeedback]);
+    if (selection.kind === "path") {
+      await connectFolder(selection.path);
+      return;
+    }
+
+    const folderName = selection.name || browserFolderNameFromFiles(selection.files);
+    if (!selection.files.length) {
+      setMemoryFeedback(t(language, "brain.ingest.folder.empty"));
+      failIngestion("folder", "empty");
+      return;
+    }
+
+    // No server-side path to watch here — the browser hands us the files, so
+    // each one goes in as a document and the folder tile reports the batch.
+    setMemoryFeedback(t(language, "brain.ingest.folder.reading"));
+    onBrainChange("recalling", 0.84);
+    beginIngestion("folder", folderName);
+    let added = 0;
+    let lastResult: Awaited<ReturnType<typeof latticeApi.uploadDocument>> | null = null;
+    for (const file of selection.files) {
+      const result = await latticeApi.uploadDocument(file);
+      if (result.ok) {
+        added += 1;
+        lastResult = result;
+      }
+    }
+    if (!added) {
+      setMemoryFeedback(t(language, "brain.ingest.folder.empty"));
+      failIngestion("folder", "empty");
+      return;
+    }
+    setMemoryFeedback(t(language, "brain.ingest.folder.browserSaved", { name: folderName, count: added }));
+    setLastRecallQuery(folderName);
+    await completeIngestion("folder", lastResult?.data);
+    triggerBrainRecall();
+  }, [
+    beginIngestion,
+    completeIngestion,
+    connectFolder,
+    failIngestion,
+    language,
+    onBrainChange,
+    setLastRecallQuery,
+    setMemoryFeedback,
+  ]);
 
   const ingestNote = React.useCallback(async (note: string) => {
     const content = note.trim();

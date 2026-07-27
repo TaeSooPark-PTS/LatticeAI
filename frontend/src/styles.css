@@ -99,7 +99,7 @@
 .signal-tile {
   width: 5.5rem;
   height: 3.25rem;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .signal-tile-a {
@@ -208,7 +208,7 @@
 .flow-panel {
   width: min(100%, 58rem);
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.82)),
     linear-gradient(90deg, hsl(var(--primary) / 0.08), transparent 45%, hsl(var(--ask) / 0.06));
@@ -228,7 +228,7 @@
   gap: 0.45rem;
   color: hsl(var(--primary));
   font-size: 0.76rem;
-  font-weight: 790;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -238,7 +238,7 @@
   margin: 0.35rem 0 0;
   font-size: clamp(2.15rem, 6vw, 4.4rem);
   line-height: 0.96;
-  font-weight: 830;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -262,8 +262,8 @@
 
 .login-form label span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.78rem;
-  font-weight: 760;
+  font-size: 0.76rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -302,7 +302,7 @@
 .install-step,
 .model-recommendation-card {
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--background) / 0.5);
 }
 
@@ -319,7 +319,7 @@
 
 .analysis-fact span {
   font-size: 0.76rem;
-  font-weight: 780;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -355,7 +355,7 @@
 .recommendation-callout span {
   margin-top: 0.22rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .model-recommendation-list {
@@ -387,7 +387,7 @@
 .model-rank {
   color: hsl(var(--primary));
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -426,7 +426,7 @@
   min-height: 3.35rem;
   padding: 0.8rem;
   color: hsl(var(--muted-foreground));
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .install-step.is-active {
@@ -460,7 +460,7 @@
 .install-progress span,
 .flow-actions span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .install-bar {
@@ -485,7 +485,7 @@
 
 .flow-error {
   border: 1px solid hsl(var(--destructive) / 0.42);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--destructive) / 0.12);
   color: hsl(var(--foreground));
   padding: 0.82rem;
@@ -534,27 +534,27 @@
 .brand-mark {
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 8px;
+  border-radius: 10px;
   color: hsl(var(--primary));
 }
 
 .mobile-menu {
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 7px;
+  border-radius: 6px;
 }
 
 .brand-name {
-  font-size: 1rem;
-  font-weight: 780;
+  font-size: 0.95rem;
+  font-weight: 700;
   line-height: 1.1;
 }
 
 .brand-subtitle {
   margin-top: 0.15rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 650;
+  font-size: 0.68rem;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -565,7 +565,7 @@
   max-width: 100%;
   padding: 0.3rem;
   border: 1px solid hsl(var(--border) / 0.78);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--card) / 0.66);
 }
 
@@ -581,7 +581,7 @@
   border-radius: 6px;
   color: hsl(var(--muted-foreground));
   font-size: 0.86rem;
-  font-weight: 720;
+  font-weight: 700;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
@@ -609,11 +609,11 @@
   min-height: 2.5rem;
   max-width: 100%;
   border: 1px solid hsl(var(--border));
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--card) / 0.7);
   color: hsl(var(--foreground));
   padding: 0 0.8rem;
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   font-weight: 700;
 }
 
@@ -646,7 +646,7 @@
   margin-bottom: 1rem;
   padding: 1rem;
   border: 1px solid hsl(var(--border) / 0.62);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--background) / 0.54);
   backdrop-filter: blur(18px);
 }
@@ -654,9 +654,9 @@
 .workspace-ribbon h1 {
   margin: 0.35rem 0 0;
   max-width: 52rem;
-  font-size: 1.55rem;
+  font-size: 1.45rem;
   line-height: 1.18;
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .ribbon-kicker,
@@ -665,8 +665,8 @@
   align-items: center;
   gap: 0.45rem;
   color: hsl(var(--primary));
-  font-size: 0.78rem;
-  font-weight: 760;
+  font-size: 0.76rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -682,7 +682,7 @@
   min-height: 2.5rem;
   padding: 0.22rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--card) / 0.72);
 }
 
@@ -691,8 +691,8 @@
   border-radius: 6px;
   padding: 0 0.65rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8rem;
-  font-weight: 760;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .mode-switch button.is-active {
@@ -706,7 +706,7 @@
   gap: 1rem;
   margin-bottom: 1.25rem;
   border: 1px solid hsl(var(--border) / 0.78);
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     linear-gradient(135deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.76)),
     linear-gradient(90deg, hsl(var(--primary) / 0.12), transparent 42%, hsl(var(--act) / 0.08));
@@ -720,16 +720,16 @@
 .arrival-copy h2 {
   margin: 0.7rem 0 0;
   max-width: 36rem;
-  font-size: 2.25rem;
+  font-size: 2.2rem;
   line-height: 1.02;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .arrival-copy p {
   margin: 0.85rem 0 0;
   max-width: 39rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   line-height: 1.65;
 }
 
@@ -743,7 +743,7 @@
   margin: 0.55rem;
   padding: 0.8rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--background) / 0.5);
 }
 
@@ -780,7 +780,7 @@
   gap: 0.65rem;
   min-height: 4rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--card) / 0.56);
   padding: 0.65rem;
   text-align: left;
@@ -796,7 +796,7 @@
   place-items: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--primary) / 0.14);
   color: hsl(var(--primary));
 }
@@ -819,7 +819,7 @@
   margin: 4.5rem auto 0;
   overflow: hidden;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--card) / 0.96);
   box-shadow: 0 24px 70px hsl(200 22% 3% / 0.34);
 }
@@ -843,7 +843,7 @@
   gap: 0.75rem;
   width: 100%;
   min-height: 3.5rem;
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 0.6rem;
   text-align: left;
 }
@@ -923,7 +923,7 @@ body {
   width: min(100%, 72rem);
   margin: 0 auto 1.1rem;
   border: 1px solid hsl(var(--border) / 0.66);
-  border-radius: 14px;
+  border-radius: 16px;
   background: hsl(var(--surface-glass));
   padding: 0.4rem 0.55rem;
   backdrop-filter: blur(18px);
@@ -936,8 +936,8 @@ body {
   gap: 0.45rem;
   padding: 0 0.35rem;
   color: hsl(var(--fg));
-  font-size: 0.92rem;
-  font-weight: 750;
+  font-size: 0.95rem;
+  font-weight: 700;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -947,7 +947,7 @@ body {
   place-items: center;
   width: 1.7rem;
   height: 1.7rem;
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     radial-gradient(circle at 32% 30%, hsl(var(--brain-core) / 0.9), hsl(var(--brain-core) / 0.55)),
     hsl(var(--surface));
@@ -963,7 +963,7 @@ body {
 .brain-topbar-crumb {
   color: hsl(var(--fg-muted));
   font-size: 0.86rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .brain-topbar-crumb::before {
@@ -1037,8 +1037,8 @@ body {
 }
 
 .brain-sidebar-title {
-  font-size: 0.8rem;
-  font-weight: 720;
+  font-size: 0.76rem;
+  font-weight: 700;
   color: hsl(var(--fg-muted));
 }
 
@@ -1057,8 +1057,8 @@ body {
   background: transparent;
   color: hsl(var(--fg-muted));
   padding: 0 0.7rem;
-  font-size: 0.92rem;
-  font-weight: 650;
+  font-size: 0.95rem;
+  font-weight: 600;
   letter-spacing: 0;
   text-align: left;
   cursor: pointer;
@@ -1087,7 +1087,7 @@ body {
   border-color: hsl(var(--primary) / 0.4);
   background: hsl(var(--primary) / 0.14);
   color: hsl(var(--fg));
-  font-weight: 720;
+  font-weight: 700;
 }
 
 .brain-sidebar-item.is-active .nav-icon {
@@ -1105,8 +1105,8 @@ body {
 
 .brain-sidebar-section-label {
   padding: 0 0.55rem;
-  font-size: 0.7rem;
-  font-weight: 720;
+  font-size: 0.68rem;
+  font-weight: 700;
   color: hsl(var(--faint, var(--fg-muted)));
 }
 
@@ -1129,11 +1129,11 @@ body {
   display: grid;
   place-items: center;
   border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
   color: hsl(var(--fg-muted));
-  font-size: 0.82rem;
-  font-weight: 760;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 /* Subtle living field behind everything */
@@ -1560,7 +1560,7 @@ body {
 /* Gentle label / state under the organism */
 .brain-presence-label {
   margin-top: 1.1rem;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   font-weight: 600;
@@ -1602,7 +1602,7 @@ body {
   gap: 0.75rem;
   padding-bottom: 0.65rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   letter-spacing: 0.4px;
   text-transform: uppercase;
 }
@@ -1623,8 +1623,8 @@ body {
   display: block;
   margin-top: 0.18rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
-  font-weight: 760;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0;
   line-height: 1.25;
   text-transform: none;
@@ -1645,8 +1645,8 @@ body {
   background: hsl(var(--surface-glass));
   padding: 0.28rem 0.58rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 780;
+  font-size: 0.6rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1671,7 +1671,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.62rem;
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
   transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
@@ -1712,7 +1712,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.56rem;
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
 }
@@ -1743,9 +1743,9 @@ body {
   min-width: 0;
   min-height: min(64vh, 42rem);
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
-  box-shadow: 0 12px 30px hsl(200 30% 3% / 0.1);
+  box-shadow: var(--elev-2);
   overflow: hidden;
   backdrop-filter: blur(14px);
 }
@@ -1759,8 +1759,8 @@ body {
 .brain-chat-home-head span {
   display: inline-flex;
   color: hsl(var(--memory));
-  font-size: 0.72rem;
-  font-weight: 820;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -1769,7 +1769,7 @@ body {
   margin: 0.18rem 0 0.32rem;
   color: hsl(var(--fg));
   font-size: clamp(1.8rem, 4vw, 2.65rem);
-  font-weight: 760;
+  font-weight: 700;
   line-height: 1.02;
   letter-spacing: 0;
 }
@@ -1778,7 +1778,7 @@ body {
   max-width: 36rem;
   margin: 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.94rem;
+  font-size: 0.95rem;
   line-height: 1.5;
 }
 
@@ -1839,8 +1839,8 @@ body {
 
 .brain-first-status span {
   color: hsl(var(--memory));
-  font-size: 0.72rem;
-  font-weight: 820;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .brain-first-meter {
@@ -1869,7 +1869,7 @@ body {
   max-width: 58ch;
   margin: 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   line-height: 1.42;
 }
 
@@ -1883,7 +1883,7 @@ body {
   min-width: 0;
   padding: 0.64rem 0.7rem;
   border: 1px solid hsl(var(--border) / 0.52);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
 }
 
@@ -1898,7 +1898,7 @@ body {
   margin-top: 0.35rem;
   color: hsl(var(--fg-muted));
   font-size: 0.68rem;
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .brain-first-memory strong,
@@ -1917,7 +1917,7 @@ body {
   align-items: start;
   padding: 0.64rem 0.7rem;
   border: 1px solid hsl(var(--memory) / 0.34);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--memory) / 0.07);
 }
 
@@ -1939,11 +1939,11 @@ body {
   align-items: center;
   gap: 0.42rem;
   border: 1px solid hsl(var(--border) / 0.65);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
   color: hsl(var(--fg));
   padding: 0 0.78rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .brain-first-actions button.is-primary {
@@ -1992,7 +1992,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.56rem;
   font-size: 0.68rem;
-  font-weight: 780;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
   white-space: nowrap;
@@ -2022,7 +2022,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.56rem;
   font-size: 0.68rem;
-  font-weight: 780;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -2082,8 +2082,8 @@ body {
   align-items: center;
   justify-content: center;
   color: hsl(var(--fg-muted));
-  font-size: 0.78rem;
-  font-weight: 820;
+  font-size: 0.76rem;
+  font-weight: 700;
   list-style: none;
   transition: color 150ms ease, background 150ms ease;
 }
@@ -2129,8 +2129,8 @@ body {
   background: hsl(var(--brain-core) / 0.1);
   color: hsl(var(--fg));
   padding: 0 0.48rem;
-  font-size: 0.62rem;
-  font-weight: 820;
+  font-size: 0.6rem;
+  font-weight: 700;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -2146,7 +2146,7 @@ body {
   bottom: 0.35rem;
   transform: translateX(50%);
   background: hsl(var(--surface-glass));
-  box-shadow: 0 10px 24px hsl(200 30% 3% / 0.18);
+  box-shadow: var(--elev-1);
 }
 
 .brain-command-center {
@@ -2154,10 +2154,10 @@ body {
   gap: 0.72rem;
   margin: 0 0 0.85rem;
   border: 1px solid hsl(var(--brain-core) / 0.36);
-  border-radius: 8px;
+  border-radius: 10px;
   background: linear-gradient(135deg, hsl(var(--surface-glass)), hsl(var(--brain-core) / 0.07));
   padding: 0.82rem;
-  box-shadow: 0 14px 34px hsl(200 30% 3% / 0.16);
+  box-shadow: var(--elev-2);
   backdrop-filter: blur(18px);
 }
 
@@ -2179,15 +2179,15 @@ body {
 .brain-command-score span {
   display: block;
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
-  font-weight: 840;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .brain-command-head strong {
   display: block;
   margin-top: 0.12rem;
-  font-size: 0.98rem;
+  font-size: 0.95rem;
 }
 
 .brain-command-score {
@@ -2205,7 +2205,7 @@ body {
 .brain-command-next {
   min-height: 2.35rem;
   border: 1px solid hsl(var(--border) / 0.54);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.34);
   padding: 0.5rem 0.58rem;
 }
@@ -2217,7 +2217,7 @@ body {
 .brain-command-next strong {
   min-width: 0;
   color: hsl(var(--fg));
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   line-height: 1.25;
 }
 
@@ -2237,7 +2237,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.5rem;
   font-size: 0.68rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .brain-command-actions {
@@ -2252,7 +2252,7 @@ body {
   align-content: start;
   gap: 0.28rem;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.64);
   color: hsl(var(--fg));
   padding: 0.58rem;
@@ -2273,8 +2273,8 @@ body {
 }
 
 .brain-command-actions span {
-  font-size: 0.78rem;
-  font-weight: 820;
+  font-size: 0.76rem;
+  font-weight: 700;
   line-height: 1.18;
 }
 
@@ -2306,7 +2306,7 @@ body {
   }
 
   .brain-first-copy h3 {
-    font-size: 1.08rem;
+    font-size: 1.05rem;
   }
 
   .brain-first-copy p {
@@ -2383,7 +2383,7 @@ body {
 .brain-ingestion-panel {
   margin: 0 0 0.85rem;
   border: 1px solid hsl(var(--memory) / 0.34);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--memory) / 0.06);
   padding: 0.78rem;
 }
@@ -2398,14 +2398,14 @@ body {
 
 .brain-ingestion-head span {
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
-  font-weight: 840;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .brain-ingestion-head strong {
   color: hsl(var(--fg));
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .brain-ingestion-grid {
@@ -2421,7 +2421,7 @@ body {
   align-content: start;
   gap: 0.28rem;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.58);
   color: hsl(var(--fg));
   padding: 0.62rem;
@@ -2451,8 +2451,8 @@ body {
 }
 
 .brain-ingest-tile span {
-  font-size: 0.78rem;
-  font-weight: 820;
+  font-size: 0.76rem;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -2470,16 +2470,16 @@ body {
   background: hsl(var(--bg) / 0.45);
   color: hsl(var(--fg));
   padding: 0.38rem 0.44rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-overview-panel {
   margin: 0 0 1rem;
   border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
   padding: 0.8rem;
-  box-shadow: 0 14px 34px hsl(200 30% 3% / 0.16);
+  box-shadow: var(--elev-2);
   backdrop-filter: blur(18px);
 }
 
@@ -2495,13 +2495,13 @@ body {
   display: block;
   color: hsl(var(--fg-muted));
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .brain-overview-head strong {
   display: block;
   margin-top: 0.14rem;
-  font-size: 0.94rem;
+  font-size: 0.95rem;
 }
 
 .brain-overview-head button {
@@ -2511,8 +2511,8 @@ body {
   background: hsl(var(--brain-core) / 0.08);
   color: hsl(var(--fg));
   padding: 0 0.75rem;
-  font-size: 0.78rem;
-  font-weight: 760;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .brain-overview-grid {
@@ -2527,7 +2527,7 @@ body {
   align-content: start;
   gap: 0.34rem;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.38);
   color: hsl(var(--fg));
   padding: 0.66rem;
@@ -2550,7 +2550,7 @@ body {
 .brain-overview-column span {
   color: hsl(var(--fg-muted));
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .brain-overview-column strong {
@@ -2558,13 +2558,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   line-height: 1.2;
 }
 
 .brain-overview-column em {
   color: hsl(var(--fg-muted));
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-style: normal;
   line-height: 1.35;
 }
@@ -2576,7 +2576,7 @@ body {
   gap: 0.7rem;
   margin-top: 0.75rem;
   border: 1px solid hsl(var(--brain-core) / 0.28);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--brain-core) / 0.06);
   padding: 0.66rem;
 }
@@ -2584,15 +2584,15 @@ body {
 .brain-readiness-strip span {
   display: block;
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
-  font-weight: 820;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .brain-readiness-strip strong {
   display: block;
   margin-top: 0.12rem;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   line-height: 1.2;
 }
 
@@ -2604,7 +2604,7 @@ body {
   color: hsl(var(--fg));
   padding: 0 0.72rem;
   font-size: 0.76rem;
-  font-weight: 760;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -2637,7 +2637,7 @@ body {
   gap: 0.12rem 0.44rem;
   min-height: 4.1rem;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.56);
   padding: 0.58rem;
   color: hsl(var(--fg));
@@ -2651,8 +2651,8 @@ body {
 .brain-proof-point span {
   overflow: hidden;
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 820;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -2660,7 +2660,7 @@ body {
 
 .brain-proof-point strong {
   overflow: hidden;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2672,7 +2672,7 @@ body {
   gap: 0.2rem;
   margin-top: 0.62rem;
   border: 1px solid hsl(var(--memory) / 0.34);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--memory) / 0.07);
   color: hsl(var(--fg));
   padding: 0.68rem;
@@ -2686,8 +2686,8 @@ body {
 
 .brain-recall-proof span {
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
-  font-weight: 820;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -2715,7 +2715,7 @@ body {
   gap: 0.58rem;
   margin: 0 0 1rem;
   border: 1px solid hsl(var(--knowledge) / 0.3);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--knowledge) / 0.06);
   padding: 0.66rem;
 }
@@ -2723,8 +2723,8 @@ body {
 .brain-model-demo span {
   display: block;
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 840;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -2737,13 +2737,13 @@ body {
 }
 
 .brain-model-demo strong {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   line-height: 1.2;
 }
 
 .brain-model-demo small {
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-model-demo button {
@@ -2756,8 +2756,8 @@ body {
   background: hsl(var(--surface) / 0.72);
   color: hsl(var(--fg));
   padding: 0 0.64rem;
-  font-size: 0.72rem;
-  font-weight: 780;
+  font-size: 0.68rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -2767,19 +2767,19 @@ body {
   align-items: center;
   gap: 0.22rem 0.48rem;
   border: 1px solid hsl(var(--memory) / 0.38);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--memory) / 0.08);
   color: hsl(var(--fg));
   padding: 0.58rem 0.72rem;
-  font-size: 0.84rem;
-  font-weight: 720;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .brain-save-feedback small {
   grid-column: 2;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
-  font-weight: 560;
+  font-size: 0.68rem;
+  font-weight: 600;
 }
 
 .brain-message {
@@ -2792,8 +2792,8 @@ body {
 
 .brain-message-bubble {
   padding: 0.85rem 1.1rem;
-  border-radius: 18px;
-  font-size: 1.01rem;
+  border-radius: 16px;
+  font-size: 1.05rem;
   line-height: 1.45;
   white-space: pre-wrap;
   box-shadow: 0 1px 2px hsl(0 0% 0% / 0.12);
@@ -2826,11 +2826,11 @@ body {
   align-items: center;
   gap: 0.28rem;
   padding: 0.24rem 0.6rem;
-  border-radius: 99px;
+  border-radius: 999px;
   border: 1px solid hsl(var(--border) / 0.55);
   background: transparent;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   cursor: pointer;
   transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
@@ -2873,7 +2873,7 @@ body {
 }
 
 .brain-md .brain-md-heading {
-  font-weight: 760;
+  font-weight: 700;
   margin: 0.7rem 0 0.3rem;
 }
 
@@ -2913,7 +2913,7 @@ body {
   font-size: 0.88em;
   background: hsl(var(--bg) / 0.72);
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 5px;
+  border-radius: 6px;
   padding: 0.08em 0.34em;
 }
 
@@ -2955,7 +2955,7 @@ body {
 .brain-code-lang {
   color: hsl(var(--fg-muted));
   font-size: 0.68rem;
-  font-weight: 760;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -2974,8 +2974,8 @@ body {
   background: hsl(var(--surface));
   color: hsl(var(--fg));
   padding: 0.22rem 0.62rem;
-  font-size: 0.74rem;
-  font-weight: 660;
+  font-size: 0.76rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -2993,7 +2993,7 @@ body {
   margin: 0;
   padding: 0.7rem 0.8rem;
   overflow-x: auto;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   line-height: 1.5;
   white-space: pre;
 }
@@ -3048,7 +3048,7 @@ body {
   flex-wrap: wrap;
   gap: 0.45rem;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.92);
   padding: 0.42rem 0.58rem;
 }
@@ -3057,13 +3057,13 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 700;
 }
 
 .brain-created-files li small {
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-created-files li button {
@@ -3075,7 +3075,7 @@ body {
   background: hsl(var(--brain-core) / 0.12);
   color: hsl(var(--fg));
   padding: 0.28rem 0.72rem;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -3091,7 +3091,7 @@ body {
 
 .brain-created-files-hint {
   color: hsl(var(--fg-muted));
-  font-size: 0.74rem;
+  font-size: 0.76rem;
 }
 
 .brain-created-files-error {
@@ -3107,7 +3107,7 @@ body {
   background: hsl(38 92% 50% / 0.14);
   color: hsl(38 92% 68%);
   padding: 0.16rem 0.55rem;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -3121,11 +3121,11 @@ body {
   margin-top: 0.5rem;
   border: 1px solid hsl(38 92% 42% / 0.5);
   border-left-width: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(38 92% 50% / 0.1);
   color: hsl(38 92% 70%);
   padding: 0.5rem 0.7rem;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 600;
 }
 
@@ -3148,7 +3148,7 @@ body {
   gap: 0.45rem;
   margin-top: 0.45rem;
   border: 1px solid hsl(var(--memory) / 0.34);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--memory) / 0.06);
   padding: 0.58rem;
 }
@@ -3162,8 +3162,8 @@ body {
 .brain-answer-proof-head span,
 .brain-answer-proof li span {
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 840;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -3213,13 +3213,13 @@ body {
   gap: 4px;
   margin-top: 2px;
   text-transform: none;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 600;
 }
 
 .brain-citation-locator {
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-style: normal;
   font-weight: 700;
 }
@@ -3227,7 +3227,7 @@ body {
 .brain-citation-confidence {
   font-style: normal;
   font-size: 0.6rem;
-  font-weight: 800;
+  font-weight: 700;
   padding: 1px 7px;
   border-radius: 999px;
   letter-spacing: 0.04em;
@@ -3256,11 +3256,11 @@ body {
 }
 
 .brain-citation-why mark {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: hsl(var(--fg) / 0.85);
   background: hsl(var(--memory) / 0.18);
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 0 5px;
 }
 
@@ -3274,7 +3274,7 @@ body {
 
 .brain-evidence-actions small {
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
 }
 
@@ -3314,7 +3314,7 @@ body {
 .brain-answer-proof li small,
 .brain-answer-proof > small {
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 /* === Track: Chat inline source citations + a11y === */
@@ -3332,11 +3332,11 @@ body {
   align-items: center;
   margin-left: 0.18rem;
   border: 1px solid hsl(var(--memory) / 0.4);
-  border-radius: 4px;
+  border-radius: 6px;
   background: hsl(var(--memory) / 0.18);
   padding: 0.04rem 0.34rem;
   color: hsl(var(--fg));
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.1;
   vertical-align: super;
@@ -3377,7 +3377,7 @@ body {
 
 .brain-citation-tip {
   color: hsl(var(--fg-muted));
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-style: italic;
 }
 /* === End track: Chat inline source citations + a11y === */
@@ -3404,7 +3404,7 @@ body {
   border: 1px solid hsl(var(--border) / 0.8);
   border-radius: 16px;
   padding: 0.95rem 1.15rem;
-  font-size: 1.02rem;
+  font-size: 1.05rem;
   line-height: 1.4;
   color: hsl(var(--fg));
   outline: none;
@@ -3445,7 +3445,7 @@ body {
   align-items: center;
   gap: 0.4rem;
   padding: 0.38rem 0.95rem;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   letter-spacing: 0.2px;
   color: hsl(var(--fg-muted));
   border-radius: 999px;
@@ -3498,7 +3498,7 @@ body {
 
 .chamber-title {
   font-size: 1.05rem;
-  font-weight: 620;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -3514,7 +3514,7 @@ body {
 /* The Map — artistic, slow, contemplative. Not a tool. */
 .mind-map-frame {
   height: calc(100vh - 9.5rem);
-  border-radius: 18px;
+  border-radius: 16px;
   border: 1px solid hsl(var(--border) / 0.55);
   background: hsl(var(--bg-elevated));
   overflow: hidden;
@@ -3549,7 +3549,7 @@ body {
   background: hsl(var(--memory) / 0.85);
   color: hsl(var(--bg));
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   padding: 0.25rem 0.6rem;
   box-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
   white-space: nowrap;
@@ -3564,14 +3564,14 @@ body {
 
 .memory-orb {
   background: hsl(var(--memory));
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   padding: 0.2rem 0.5rem;
 }
 
 .knowledge-node {
   background: hsl(var(--knowledge) / 0.9);
-  border-radius: 8px;
-  font-size: 0.72rem;
+  border-radius: 10px;
+  font-size: 0.68rem;
 }
 
 .brain-exploration[data-depth="2"] .memory-orb,
@@ -3622,7 +3622,7 @@ body {
   top: 1rem;
   right: 1rem;
   z-index: 10;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   padding: 0.25rem 0.6rem;
   background: hsl(var(--surface-glass));
   border: 1px solid hsl(var(--border) / 0.6);
@@ -3639,7 +3639,7 @@ body {
   bottom: -1.6rem;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: hsl(var(--fg-muted));
@@ -3691,7 +3691,7 @@ body {
   position: absolute;
   top: 1.1rem;
   left: 1.35rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: hsl(var(--fg-muted) / 0.7);
@@ -3739,8 +3739,8 @@ body {
 
 .brain-product-kicker {
   color: hsl(var(--brain-core));
-  font-size: 0.72rem;
-  font-weight: 860;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -3748,8 +3748,8 @@ body {
 .brain-product-line {
   margin-top: 0.22rem;
   color: hsl(var(--fg));
-  font-size: 1rem;
-  font-weight: 620;
+  font-size: 0.95rem;
+  font-weight: 600;
   line-height: 1.35;
 }
 
@@ -3803,18 +3803,18 @@ body {
   background: hsl(var(--surface-glass));
   padding: 0.48rem 0.95rem;
   backdrop-filter: blur(18px);
-  box-shadow: 0 12px 32px hsl(200 30% 3% / 0.22);
+  box-shadow: var(--elev-2);
 }
 
 .brain-depth-badge span {
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .brain-depth-badge strong {
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   line-height: 1.05;
 }
 
@@ -3867,7 +3867,7 @@ body {
 .brain-memory-ring strong {
   border-radius: 999px;
   background: hsl(var(--surface-glass));
-  box-shadow: 0 8px 24px hsl(200 30% 3% / 0.14);
+  box-shadow: var(--elev-1);
   backdrop-filter: blur(16px);
 }
 
@@ -3875,8 +3875,8 @@ body {
   margin-right: 0.22rem;
   padding: 0.14rem 0.38rem;
   color: hsl(var(--brain-core));
-  font-size: 0.58rem;
-  font-weight: 900;
+  font-size: 0.6rem;
+  font-weight: 700;
 }
 
 .brain-memory-ring strong {
@@ -3885,8 +3885,8 @@ body {
   padding: 0.14rem 0.46rem;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.66rem;
-  font-weight: 760;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .brain-memory-ring:hover,
@@ -3915,7 +3915,7 @@ body {
   border-radius: 999px;
   background: hsl(var(--surface-glass));
   padding: 0.32rem;
-  box-shadow: 0 14px 38px hsl(200 30% 3% / 0.22);
+  box-shadow: var(--elev-2);
   backdrop-filter: blur(18px);
 }
 
@@ -3926,8 +3926,8 @@ body {
   background: transparent;
   color: hsl(var(--fg-muted));
   padding: 0 0.68rem;
-  font-size: 0.78rem;
-  font-weight: 760;
+  font-size: 0.76rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -3952,7 +3952,7 @@ body {
   border-radius: 999px;
   background: hsl(var(--surface-glass));
   padding: 0.32rem;
-  box-shadow: 0 12px 30px hsl(200 30% 3% / 0.18);
+  box-shadow: var(--elev-2);
   backdrop-filter: blur(18px);
 }
 
@@ -3971,15 +3971,15 @@ body {
 }
 
 .brain-depth-rail span {
-  font-size: 0.58rem;
-  font-weight: 840;
+  font-size: 0.6rem;
+  font-weight: 700;
 }
 
 .brain-depth-rail strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   line-height: 1.05;
 }
 
@@ -4015,7 +4015,7 @@ body {
   max-width: 12.5rem;
   gap: 0.12rem;
   border-color: hsl(var(--memory) / 0.38);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.58rem 0.7rem;
   box-shadow:
     0 0 0 1px hsl(var(--memory) / 0.08) inset,
@@ -4028,15 +4028,15 @@ body {
 .brain-graph-head span,
 .brain-graph-focus span {
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .memory-fragment strong {
   overflow: hidden;
   color: hsl(var(--fg));
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   line-height: 1.18;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4070,7 +4070,7 @@ body {
   border-radius: 999px;
   padding: 0.42rem 0.72rem;
   color: hsl(var(--fg));
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   white-space: nowrap;
 }
 
@@ -4099,7 +4099,7 @@ body {
   display: grid;
   grid-template-rows: auto minmax(18rem, 1fr) auto;
   gap: 0.75rem;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--brain-core) / 0.38);
   background:
     radial-gradient(42% 46% at 50% 42%, hsl(var(--brain-core) / 0.12), transparent 72%),
@@ -4154,7 +4154,7 @@ body {
   min-height: 19rem;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     radial-gradient(ellipse at center, hsl(var(--brain-core) / 0.09), transparent 54%),
     linear-gradient(hsl(var(--border) / 0.12) 1px, transparent 1px),
@@ -4174,7 +4174,7 @@ body {
   min-width: 5.3rem;
   gap: 0.08rem;
   border-color: hsl(var(--knowledge) / 0.4);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.42rem 0.55rem;
   font-size: 0.76rem;
   line-height: 1.14;
@@ -4190,7 +4190,7 @@ body {
   align-items: flex-start;
   gap: 0.72rem;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.48);
   padding: 0.72rem;
 }
@@ -4207,7 +4207,7 @@ body {
 .brain-graph-focus p {
   margin: 0.18rem 0 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   line-height: 1.45;
 }
 
@@ -4257,7 +4257,7 @@ body {
 /* Match highlight inside node labels and typeahead suggestions */
 .brain-graph-canvas mark,
 .brain-graph-typeahead mark {
-  border-radius: 3px;
+  border-radius: 6px;
   background: hsl(var(--brain-core) / 0.34);
   color: hsl(var(--fg));
   padding: 0 0.08em;
@@ -4291,7 +4291,7 @@ body {
 .brain-graph-typeahead li.is-empty {
   padding: 0.5rem 0.55rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.82rem;
+  font-size: 0.86rem;
 }
 
 .brain-graph-typeahead li button {
@@ -4299,7 +4299,7 @@ body {
   gap: 0.08rem;
   width: 100%;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   padding: 0.4rem 0.55rem;
   text-align: left;
@@ -4317,7 +4317,7 @@ body {
 .brain-graph-typeahead li button span {
   color: hsl(var(--fg-muted));
   font-size: 0.6rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4348,8 +4348,8 @@ body {
   align-items: center;
   gap: 0.3rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.66rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -4367,7 +4367,7 @@ body {
   background: hsl(var(--surface) / 0.6);
   padding: 0.22rem 0.62rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
   transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
@@ -4401,7 +4401,7 @@ body {
   background: transparent;
   padding: 0.22rem 0.5rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
   transition: color 140ms ease;
@@ -4482,7 +4482,7 @@ body {
 .brain-conversation-header h1 {
   margin: 0;
   color: hsl(var(--fg));
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1.05;
 }
 
@@ -4494,12 +4494,12 @@ body {
 .brain-care-panel {
   display: grid;
   border: 1px solid hsl(var(--border) / 0.64);
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     linear-gradient(135deg, hsl(var(--surface-glass)), hsl(var(--bg) / 0.68)),
     linear-gradient(90deg, hsl(var(--memory) / 0.08), transparent 45%, hsl(var(--brain-core) / 0.08));
   overflow: hidden;
-  box-shadow: 0 14px 36px hsl(200 30% 3% / 0.2);
+  box-shadow: var(--elev-2);
   backdrop-filter: blur(18px);
 }
 
@@ -4534,14 +4534,14 @@ body {
 .brain-care-note,
 .brain-care-result {
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-care-summary-main span {
   display: inline-flex;
   align-items: center;
   gap: 0.36rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4549,7 +4549,7 @@ body {
   display: block;
   overflow: hidden;
   color: hsl(var(--fg));
-  font-size: 0.94rem;
+  font-size: 0.95rem;
   line-height: 1.16;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4597,7 +4597,7 @@ body {
   display: grid;
   gap: 0.12rem;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.4);
   padding: 0.5rem 0.6rem;
 }
@@ -4609,7 +4609,7 @@ body {
 
 .brain-intelligence-dimension strong {
   color: hsl(var(--fg));
-  font-size: 1.02rem;
+  font-size: 1.05rem;
 }
 
 .brain-intelligence-insights {
@@ -4627,12 +4627,12 @@ body {
   background: hsl(var(--bg) / 0.42);
   padding: 0.24rem 0.5rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-intelligence-actions small {
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -4643,7 +4643,7 @@ body {
   display: grid;
   gap: 0.2rem;
   color: hsl(var(--fg));
-  font-size: 0.8rem;
+  font-size: 0.76rem;
 }
 
 .brain-care-actions,
@@ -4664,7 +4664,7 @@ body {
   align-items: center;
   gap: 0.52rem;
   border: 1px solid hsl(var(--border) / 0.68);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.42);
   padding: 0.58rem 0.62rem;
   color: hsl(var(--fg));
@@ -4698,7 +4698,7 @@ body {
 
 .brain-care-button strong {
   overflow: hidden;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4720,12 +4720,12 @@ body {
   min-height: 2.2rem;
   flex: 1 1 12rem;
   border: 1px solid hsl(var(--border) / 0.68);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.5);
   color: hsl(var(--fg));
   outline: none;
   padding: 0 0.68rem;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
 }
 
 .brain-care-archive input:focus {
@@ -4741,7 +4741,7 @@ body {
 .brain-care-archive-actions button {
   flex: 1 1 6.6rem;
   min-height: 2.2rem;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .brain-care-note,
@@ -4752,7 +4752,7 @@ body {
 
 .brain-care-result {
   border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.38);
   padding: 0.48rem 0.58rem;
 }
@@ -4809,8 +4809,8 @@ body {
 .admin-console-header > div > span,
 .admin-panel-head span,
 .admin-metric span {
-  font-size: 0.72rem;
-  font-weight: 850;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -4854,11 +4854,11 @@ body {
 .admin-metric,
 .admin-panel {
   border: 1px solid hsl(var(--border) / 0.68);
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     linear-gradient(180deg, hsl(var(--surface-glass)), hsl(var(--bg) / 0.68)),
     linear-gradient(90deg, hsl(var(--memory) / 0.06), transparent 42%, hsl(var(--knowledge) / 0.06));
-  box-shadow: 0 18px 46px hsl(200 30% 3% / 0.22);
+  box-shadow: var(--elev-2);
   backdrop-filter: blur(18px);
 }
 
@@ -4874,7 +4874,7 @@ body {
   width: 2.1rem;
   height: 2.1rem;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--brain-core) / 0.12);
   color: hsl(var(--brain-core));
 }
@@ -4889,7 +4889,7 @@ body {
 
 .admin-metric small {
   overflow: hidden;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4912,7 +4912,7 @@ body {
 }
 
 .admin-panel-head h2 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
 .admin-list {
@@ -4933,7 +4933,7 @@ body {
   align-items: center;
   gap: 0.4rem;
   border: 1px solid hsl(var(--border) / 0.54);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.34);
   padding: 0.44rem 0.52rem;
   color: hsl(var(--fg-muted));
@@ -4948,7 +4948,7 @@ body {
   background: transparent;
   color: hsl(var(--fg));
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .admin-log-filters span,
@@ -4964,7 +4964,7 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   border: 1px solid hsl(var(--border) / 0.48);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.35);
   padding: 0.58rem 0.65rem;
 }
@@ -4978,13 +4978,13 @@ body {
 
 .admin-list-row strong {
   min-width: 0;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .admin-list-row span {
   flex: 0 1 45%;
   text-align: right;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
 }
 
 .admin-empty {
@@ -4992,7 +4992,7 @@ body {
   min-height: 11rem;
   place-items: center;
   border: 1px dashed hsl(var(--border) / 0.6);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.28);
   font-size: 0.86rem;
   text-align: center;
@@ -5004,7 +5004,7 @@ body {
   justify-content: space-between;
   gap: 0.85rem;
   border: 1px solid hsl(var(--border) / 0.48);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.35);
   padding: 0.78rem;
 }
@@ -5016,7 +5016,7 @@ body {
 }
 
 .admin-operation span {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   line-height: 1.35;
 }
 
@@ -5032,21 +5032,21 @@ body {
   background: hsl(var(--bg) / 0.42);
   color: hsl(var(--fg-muted));
   padding: 0.32rem 0.56rem;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
 }
 
 .admin-retention {
   display: grid;
   gap: 0.18rem;
   border: 1px solid hsl(var(--border) / 0.48);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.35);
   padding: 0.68rem;
 }
 
 .admin-retention strong {
   color: hsl(var(--fg));
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .admin-runtime-trust {
@@ -5059,28 +5059,28 @@ body {
   grid-template-columns: minmax(8rem, 1fr) auto;
   gap: 0.2rem 0.75rem;
   border: 1px solid hsl(var(--border) / 0.48);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.35);
   padding: 0.72rem;
 }
 
 .admin-runtime-row strong {
   color: hsl(var(--fg));
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .admin-runtime-row > span {
   align-self: start;
   border-radius: 999px;
   padding: 0.18rem 0.48rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
 .admin-runtime-row > small {
   grid-column: 1 / -1;
   color: hsl(var(--fg-muted));
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.35;
 }
 
@@ -5104,14 +5104,14 @@ body {
   border-radius: 999px;
   padding: 0.42rem 0.78rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .brain-document-input {
   border-color: hsl(var(--memory) / 0.42);
   background: hsl(var(--memory) / 0.08);
   color: hsl(var(--fg));
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .brain-document-input.is-disabled,
@@ -5122,8 +5122,8 @@ body {
 
 .mind-empty-kicker {
   margin-bottom: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   opacity: 0.52;
@@ -5163,7 +5163,7 @@ body {
 
 .flow-ritual p {
   color: hsl(var(--fg-muted));
-  font-size: 1.01rem;
+  font-size: 1.05rem;
   max-width: 42ch;
   margin: 0 auto;
 }
@@ -5199,15 +5199,15 @@ body {
   max-width: 34rem;
   margin: 0 0 0.32rem;
   color: hsl(var(--fg));
-  font-size: 1rem;
-  font-weight: 720;
+  font-size: 0.95rem;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .mind-empty p {
   max-width: 39rem;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   line-height: 1.45;
 }
 
@@ -5223,8 +5223,8 @@ body {
   background: hsl(var(--memory) / 0.1);
   color: hsl(var(--fg));
   padding: 0.55rem 0.9rem;
-  font-size: 0.82rem;
-  font-weight: 820;
+  font-size: 0.86rem;
+  font-weight: 700;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
@@ -5239,7 +5239,7 @@ body {
   display: block;
   margin-top: 0.42rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .mind-empty-prompts {
@@ -5254,11 +5254,11 @@ body {
   max-width: 100%;
   min-width: 0;
   border: 1px solid hsl(var(--border) / 0.62);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.46);
   color: hsl(var(--fg));
   padding: 0.62rem 0.7rem;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.15;
   text-align: left;
   overflow-wrap: anywhere;
@@ -5288,8 +5288,8 @@ body {
   background: hsl(var(--surface-glass));
   color: hsl(var(--fg-muted));
   padding: 0.34rem 0.62rem;
-  font-size: 0.72rem;
-  font-weight: 720;
+  font-size: 0.68rem;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -5310,7 +5310,7 @@ body {
 
 /* Success is quiet */
 .brain-quiet-success {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: hsl(var(--memory));
   display: inline-flex;
   align-items: center;
@@ -5367,7 +5367,7 @@ body {
   .brain-memory-ring.ring-5 { --ring-size: 20.2rem; --ring-radius: 10.1rem; }
   .brain-memory-ring strong {
     max-width: 4.6rem;
-    font-size: 0.58rem;
+    font-size: 0.6rem;
   }
   .brain-depth-rail {
     top: 0.35rem;
@@ -5476,7 +5476,7 @@ body {
 
 .ritual-wake-plan div {
   border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.46);
   padding: 0.82rem 0.75rem;
   text-align: left;
@@ -5490,14 +5490,14 @@ body {
   border-radius: 999px;
   background: hsl(var(--primary) / 0.12);
   color: hsl(var(--primary));
-  font-size: 0.72rem;
-  font-weight: 750;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .ritual-wake-plan strong {
   display: block;
   margin-top: 0.45rem;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   line-height: 1.22;
 }
 
@@ -5511,7 +5511,7 @@ body {
 
 .ritual-value-card {
   border: 1px solid hsl(var(--border) / 0.54);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
   padding: 0.78rem 0.82rem;
   text-align: left;
@@ -5530,16 +5530,16 @@ body {
   align-items: center;
   gap: 0.42rem;
   color: hsl(var(--primary));
-  font-size: 0.74rem;
-  font-weight: 720;
+  font-size: 0.76rem;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
 .ritual-value-body {
   margin-top: 0.24rem;
   color: hsl(var(--fg));
-  font-size: 0.84rem;
-  font-weight: 620;
+  font-size: 0.86rem;
+  font-weight: 600;
   line-height: 1.28;
 }
 
@@ -5550,7 +5550,7 @@ body {
   background: hsl(var(--surface-glass));
   color: hsl(var(--fg));
   padding: 0 1.1rem;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   transition: border-color 140ms ease, background 140ms ease;
 }
@@ -5564,7 +5564,7 @@ body {
 
 .ritual-title {
   font-size: clamp(1.85rem, 5vw, 2.85rem);
-  font-weight: 680;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.05;
   margin-bottom: 0.5rem;
@@ -5576,7 +5576,7 @@ body {
 
 .ritual-subtitle {
   color: hsl(var(--fg-muted));
-  font-size: 1.02rem;
+  font-size: 1.05rem;
   max-width: 44ch;
   margin: 0 auto 1.5rem;
   word-break: keep-all;
@@ -5593,7 +5593,7 @@ body {
 
 .ritual-promise div {
   border: 1px solid hsl(var(--border) / 0.54);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.42);
   padding: 0.72rem 0.78rem;
   text-align: left;
@@ -5603,7 +5603,7 @@ body {
   display: block;
   color: hsl(var(--fg-muted));
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -5611,8 +5611,8 @@ body {
   display: block;
   margin-top: 0.18rem;
   color: hsl(var(--fg));
-  font-size: 0.84rem;
-  font-weight: 620;
+  font-size: 0.86rem;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -5632,7 +5632,7 @@ body {
 .ritual-card {
   background: hsl(var(--surface-glass));
   border: 1px solid hsl(var(--border) / 0.65);
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 1.25rem 1.5rem;
   text-align: left;
   margin-bottom: 1rem;
@@ -5662,8 +5662,8 @@ body {
 .ritual-field-label {
   margin-bottom: 0.25rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.75rem;
-  font-weight: 760;
+  font-size: 0.76rem;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -5672,9 +5672,9 @@ body {
   margin-top: 0.85rem;
   padding: 0.6rem 0.85rem;
   border: 1px solid hsl(var(--destructive) / 0.4);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--destructive) / 0.12);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .ritual-full-button,
@@ -5690,7 +5690,7 @@ body {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   padding: 0 1.2rem;
-  font-weight: 720;
+  font-weight: 700;
   cursor: pointer;
   margin-top: 1rem;
   box-shadow: 0 8px 24px hsl(var(--primary) / 0.2);
@@ -5722,14 +5722,14 @@ body {
   min-width: min(100%, 18rem);
   margin-top: 0;
   padding: 0.85rem 2.15rem;
-  font-size: 1.02rem;
-  font-weight: 820;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .ritual-note,
 .ritual-local-note {
   color: hsl(var(--fg-muted));
-  font-size: 0.75rem;
+  font-size: 0.76rem;
 }
 
 .ritual-note {
@@ -5750,13 +5750,13 @@ body {
 .ritual-fact {
   background: hsl(var(--bg) / 0.6);
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 0.85rem 1rem;
   text-align: left;
 }
 
 .ritual-fact-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: hsl(var(--fg-muted));
@@ -5765,7 +5765,7 @@ body {
 
 .ritual-fact-value {
   font-size: 1.05rem;
-  font-weight: 620;
+  font-weight: 600;
   color: hsl(var(--fg));
 }
 
@@ -5778,7 +5778,7 @@ body {
 
 .ritual-fact-detail {
   margin-top: 0.2rem;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
 }
 
 .ritual-analysis-card,
@@ -5802,11 +5802,11 @@ body {
 }
 
 .ritual-strong-text {
-  font-weight: 620;
+  font-weight: 600;
 }
 
 .ritual-muted-text {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .ritual-wide-button {
@@ -5834,7 +5834,7 @@ body {
   margin-bottom: 0.7rem;
   cursor: pointer;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 18px;
+  border-radius: 16px;
   background: hsl(var(--surface));
   transition: all 160ms ease;
 }
@@ -5869,7 +5869,7 @@ body {
 }
 
 .ritual-model-card .role {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: hsl(var(--primary));
@@ -5877,12 +5877,12 @@ body {
 }
 
 .ritual-model-card .name {
-  font-size: 1.15rem;
-  font-weight: 650;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .ritual-model-card .reason {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   color: hsl(var(--fg-muted));
   margin-top: 0;
 }
@@ -5897,13 +5897,13 @@ body {
   gap: 0.25rem;
   margin-top: 0.2rem;
   color: hsl(var(--primary));
-  font-weight: 720;
+  font-weight: 700;
 }
 
 .ritual-model-warning {
   margin-top: 0.35rem;
   color: hsl(var(--destructive));
-  font-size: 0.85rem;
+  font-size: 0.86rem;
 }
 
 .ritual-action-row,
@@ -5924,13 +5924,13 @@ body {
 }
 
 .ritual-muted-hint {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
 }
 
 .ritual-start-note {
   margin-top: 0.8rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .ritual-install-brain {
@@ -5945,7 +5945,7 @@ body {
   margin: 0 auto 1rem;
   padding: 1rem;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.48);
   text-align: left;
 }
@@ -5958,7 +5958,7 @@ body {
 .ritual-consent-panel p {
   margin: 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .ritual-consent-panel dl {
@@ -5975,7 +5975,7 @@ body {
 
 .ritual-consent-panel dt {
   color: hsl(var(--fg-muted));
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .ritual-consent-panel dd {
@@ -6079,7 +6079,7 @@ body {
 
 .ritual-error-detail {
   margin-top: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
 }
 
 .ritual-button-row {
@@ -6118,14 +6118,14 @@ body {
   max-width: 56rem;
   font-size: clamp(1.5rem, 1.1rem + 1.4vw, 1.95rem);
   line-height: 1.25;
-  font-weight: 740;
+  font-weight: 700;
 }
 
 .page-copy {
   margin-top: 0.55rem;
   max-width: 44rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   line-height: 1.62;
 }
 
@@ -6161,7 +6161,7 @@ body {
   position: relative;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.76);
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     linear-gradient(145deg, hsl(var(--card) / 0.94), hsl(210 18% 9% / 0.82)),
     linear-gradient(90deg, hsl(var(--primary) / 0.12), transparent 40%, hsl(var(--library) / 0.1));
@@ -6192,9 +6192,9 @@ body {
 
 .brain-presence-head h2 {
   margin: 0.28rem 0 0;
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   line-height: 1.12;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .brain-presence-kicker,
@@ -6204,7 +6204,7 @@ body {
   gap: 0.45rem;
   color: hsl(var(--primary));
   font-size: 0.76rem;
-  font-weight: 780;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -6345,8 +6345,8 @@ body {
   border-radius: 999px;
   background: hsl(var(--background) / 0.76);
   padding: 0 0.85rem;
-  font-size: 0.84rem;
-  font-weight: 780;
+  font-size: 0.86rem;
+  font-weight: 700;
   backdrop-filter: blur(16px);
 }
 
@@ -6374,7 +6374,7 @@ body {
 .brain-vital {
   min-width: 0;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--background) / 0.48);
   padding: 0.72rem;
 }
@@ -6392,8 +6392,8 @@ body {
 .brain-vital span {
   margin-top: 0.45rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 740;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -6402,7 +6402,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   line-height: 1.15;
 }
 
@@ -6418,7 +6418,7 @@ body {
 .brain-side-panel {
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.74);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--card) / 0.72);
   padding: 0.85rem;
 }
@@ -6431,8 +6431,8 @@ body {
 
 .brain-side-head h3 {
   margin: 0 0 0.28rem;
-  font-size: 0.94rem;
-  font-weight: 780;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .brain-conversation-list {
@@ -6447,7 +6447,7 @@ body {
   gap: 0.45rem;
   min-height: 3.7rem;
   border: 1px solid hsl(var(--border) / 0.68);
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--background) / 0.44);
   padding: 0.35rem 0.35rem 0.35rem 0.65rem;
 }
@@ -6472,12 +6472,12 @@ body {
 
 .brain-conversation-item span {
   font-size: 0.86rem;
-  font-weight: 720;
+  font-weight: 700;
 }
 
 .brain-conversation-item small {
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-delete-button {
@@ -6513,7 +6513,7 @@ body {
   margin: 0.34rem 0 0;
   font-size: 1.8rem;
   line-height: 1.05;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .brain-chat-model {
@@ -6551,10 +6551,10 @@ body {
 .brain-message-bubble {
   max-width: min(78%, 44rem);
   border: 1px solid hsl(var(--border) / 0.74);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--background) / 0.7);
   padding: 0.9rem;
-  font-size: 0.94rem;
+  font-size: 0.95rem;
   line-height: 1.65;
 }
 
@@ -6566,8 +6566,8 @@ body {
 .brain-message-role {
   margin-bottom: 0.35rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 780;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -6595,31 +6595,31 @@ body {
   align-items: end;
   gap: 1rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--background) / 0.48);
   padding: 1rem;
 }
 
 .brain-layer-header h1 {
   margin: 0.35rem 0 0;
-  font-size: 1.85rem;
+  font-size: 1.8rem;
   line-height: 1.08;
-  font-weight: 810;
+  font-weight: 700;
 }
 
 .brain-layer-meter {
   display: grid;
   min-width: 10rem;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--card) / 0.68);
   padding: 0.85rem;
 }
 
 .brain-layer-meter span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 760;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -6709,7 +6709,7 @@ body {
 
 .react-flow__node {
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--card));
   color: hsl(var(--foreground));
   padding: 8px 10px;
@@ -6785,7 +6785,7 @@ body {
   }
 
   .workspace-ribbon h1 {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
 
   .ribbon-meta {
@@ -6793,7 +6793,7 @@ body {
   }
 
   .arrival-copy h2 {
-    font-size: 1.85rem;
+    font-size: 1.8rem;
   }
 
   .journey-steps {
@@ -6801,7 +6801,7 @@ body {
   }
 
   .page-title {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
   }
 
   .page-hero {
@@ -6911,13 +6911,13 @@ body {
 }
 
 .ritual-time-estimate {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   color: hsl(var(--fg-muted));
   margin-top: 0.4rem;
 }
 
 .ritual-time-note {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: hsl(var(--fg-muted));
   text-align: center;
   margin-top: 0.6rem;
@@ -6939,7 +6939,7 @@ body {
 .ritual-model-choose {
   display: inline-block;
   margin-top: 0.55rem;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 600;
   color: hsl(var(--primary));
 }
@@ -6958,7 +6958,7 @@ body {
 
 .ritual-next-hint {
   margin-top: 0.3rem;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
 }
 
 .ritual-expected-card {
@@ -6967,7 +6967,7 @@ body {
 }
 
 .ritual-expected-line {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: hsl(var(--fg));
   margin-top: 0.25rem;
   margin-bottom: 0.6rem;
@@ -6989,18 +6989,18 @@ body {
   gap: 0.75rem;
   padding: 0.45rem 0.7rem;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 12px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.5);
 }
 
 .ritual-timeline-name {
-  font-size: 0.9rem;
-  font-weight: 560;
+  font-size: 0.86rem;
+  font-weight: 600;
   color: hsl(var(--fg));
 }
 
 .ritual-timeline-time {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   color: hsl(var(--fg-muted));
   white-space: nowrap;
 }
@@ -7030,8 +7030,8 @@ body {
 
 .brain-ingest-cta {
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
-  font-weight: 620;
+  font-size: 0.6rem;
+  font-weight: 600;
   line-height: 1.2;
 }
 
@@ -7056,8 +7056,8 @@ body {
   background: hsl(var(--surface) / 0.6);
   color: hsl(var(--fg-muted));
   padding: 0.08rem 0.34rem;
-  font-size: 0.58rem;
-  font-weight: 760;
+  font-size: 0.6rem;
+  font-weight: 700;
   letter-spacing: 0.01em;
   transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
 }
@@ -7097,14 +7097,14 @@ body {
 
 .brain-ingest-stage-hint {
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 620;
+  font-size: 0.6rem;
+  font-weight: 600;
   line-height: 1.2;
 }
 
 .brain-ingest-stage-hint.is-emerged {
   color: hsl(var(--memory));
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .brain-ingest-stage-hint.is-failed {
@@ -7115,7 +7115,7 @@ body {
 .brain-ingest-quality-note {
   margin-top: 0.35rem;
   border: 1px solid hsl(var(--warning) / 0.32);
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--warning) / 0.08);
   padding: 0.42rem 0.55rem;
 }
@@ -7124,7 +7124,7 @@ body {
   margin: 0;
   color: hsl(var(--fg));
   font-size: 0.68rem;
-  font-weight: 680;
+  font-weight: 600;
   line-height: 1.35;
 }
 
@@ -7132,7 +7132,7 @@ body {
   margin: 0.3rem 0 0;
   padding-left: 1rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   line-height: 1.35;
 }
 
@@ -7148,8 +7148,8 @@ body {
   background: hsl(var(--brain-core) / 0.08);
   padding: 0.3rem 0.7rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
-  font-weight: 660;
+  font-size: 0.68rem;
+  font-weight: 600;
   line-height: 1.3;
 }
 
@@ -7172,7 +7172,7 @@ body {
 }
 
 .brain-context-quality-note small {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: hsl(var(--fg-muted) / 0.85);
   overflow-wrap: anywhere;
 }
@@ -7181,7 +7181,7 @@ body {
 .brain-jobs-panel {
   margin-top: 0.6rem;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.58);
   padding: 0.6rem 0.7rem;
 }
@@ -7189,7 +7189,7 @@ body {
 .brain-jobs-head strong {
   color: hsl(var(--fg));
   font-size: 0.76rem;
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .brain-jobs-list {
@@ -7209,8 +7209,8 @@ body {
 
 .brain-jobs-status {
   color: hsl(var(--fg));
-  font-size: 0.66rem;
-  font-weight: 720;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .brain-jobs-item.is-failed .brain-jobs-status,
@@ -7220,8 +7220,8 @@ body {
 
 .brain-jobs-counts {
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
-  font-weight: 640;
+  font-size: 0.6rem;
+  font-weight: 600;
 }
 
 .brain-jobs-failed {
@@ -7229,7 +7229,7 @@ body {
   align-items: center;
   gap: 0.24rem;
   color: hsl(var(--warning));
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
 }
 
@@ -7260,11 +7260,11 @@ body {
   gap: 0.3rem;
   margin-top: 0.4rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--surface));
   padding: 0.28rem 0.6rem;
   color: hsl(var(--fg));
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -7287,7 +7287,7 @@ body {
 .brain-emergence-timeline {
   margin: 0 0 1rem;
   border: 1px solid hsl(var(--memory) / 0.3);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--memory) / 0.05);
   padding: 0.72rem 0.78rem;
 }
@@ -7305,15 +7305,15 @@ body {
 
 .brain-emergence-head strong {
   color: hsl(var(--fg));
-  font-size: 0.84rem;
-  font-weight: 820;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .brain-emergence-head span {
   margin-left: auto;
   color: hsl(var(--fg-muted));
   font-size: 0.6rem;
-  font-weight: 760;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -7321,7 +7321,7 @@ body {
 .brain-emergence-empty {
   margin: 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   line-height: 1.3;
 }
 
@@ -7339,7 +7339,7 @@ body {
   align-items: center;
   gap: 0.2rem 0.5rem;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--surface) / 0.58);
   padding: 0.42rem 0.55rem;
   animation: brain-emergence-enter 280ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -7369,14 +7369,14 @@ body {
   color: hsl(var(--fg));
   padding: 0.05rem 0.4rem;
   font-size: 0.6rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .brain-emergence-label {
   overflow: hidden;
   color: hsl(var(--fg));
-  font-size: 0.74rem;
-  font-weight: 680;
+  font-size: 0.76rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -7390,8 +7390,8 @@ body {
 
 .brain-emergence-counts strong {
   color: hsl(var(--memory));
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-size: 0.6rem;
+  font-weight: 700;
 }
 
 .brain-emergence-at {
@@ -7399,8 +7399,8 @@ body {
   grid-row: 1 / span 2;
   align-self: center;
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 640;
+  font-size: 0.6rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -7422,7 +7422,7 @@ body {
   align-items: center;
   gap: 0.7rem;
   border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
   color: hsl(var(--fg));
   padding: 0.7rem 0.78rem;
@@ -7450,11 +7450,11 @@ body {
 }
 
 .feedback-state.is-compact .feedback-state-body strong {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .feedback-state.is-compact .feedback-state-body span {
-  font-size: 0.66rem;
+  font-size: 0.68rem;
 }
 
 .feedback-state.is-compact .feedback-state-action {
@@ -7490,13 +7490,13 @@ body {
 }
 
 .feedback-state-body strong {
-  font-size: 0.78rem;
-  font-weight: 820;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .feedback-state-body span {
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   line-height: 1.35;
 }
 
@@ -7507,12 +7507,12 @@ body {
   flex: 0 0 auto;
   min-height: 1.9rem;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 7px;
+  border-radius: 6px;
   background: hsl(var(--surface) / 0.72);
   color: hsl(var(--fg));
   padding: 0 0.62rem;
   font-size: 0.68rem;
-  font-weight: 760;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -7540,7 +7540,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.62rem;
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
   transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
@@ -7576,8 +7576,8 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.58rem;
-  font-weight: 640;
+  font-size: 0.6rem;
+  font-weight: 600;
   color: hsl(var(--fg-muted));
 }
 
@@ -7591,7 +7591,7 @@ body {
   flex-direction: column;
   gap: 0.7rem;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: 10px;
   background: hsl(var(--surface));
   padding: 0.85rem;
   box-shadow: 0 18px 48px -24px hsl(24 14% 4% / 0.8);
@@ -7613,8 +7613,8 @@ body {
   align-items: center;
   gap: 0.35rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
-  font-weight: 820;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -7628,7 +7628,7 @@ body {
 
 .workspace-profile-owner-label {
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 .workspace-profile-owner-value {
@@ -7637,14 +7637,14 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: hsl(var(--fg));
-  font-size: 0.74rem;
-  font-weight: 720;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .workspace-profile-empty {
   margin: 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .workspace-profile-list {
@@ -7664,12 +7664,12 @@ body {
   width: 100%;
   min-height: 2.1rem;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: hsl(var(--fg));
   padding: 0 0.62rem;
-  font-size: 0.74rem;
-  font-weight: 680;
+  font-size: 0.76rem;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease;
@@ -7685,7 +7685,7 @@ body {
 .workspace-profile-item.is-active {
   border-color: hsl(var(--brain-core) / 0.66);
   background: hsl(var(--brain-core) / 0.1);
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .workspace-profile-item-name {
@@ -7701,8 +7701,8 @@ body {
   align-items: center;
   gap: 0.25rem;
   flex: 0 0 auto;
-  font-size: 0.62rem;
-  font-weight: 740;
+  font-size: 0.6rem;
+  font-weight: 700;
 }
 
 .workspace-profile-item-flag {
@@ -7720,8 +7720,8 @@ body {
   background: transparent;
   color: hsl(var(--brain-core));
   padding: 0.2rem 0;
-  font-size: 0.7rem;
-  font-weight: 760;
+  font-size: 0.68rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -7748,7 +7748,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.62rem;
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
   transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
@@ -7796,13 +7796,13 @@ body {
 
 .vscode-sync-copy strong {
   color: hsl(var(--fg));
-  font-size: 0.66rem;
+  font-size: 0.68rem;
 }
 
 .vscode-sync-copy small {
   color: hsl(var(--fg-muted));
-  font-size: 0.56rem;
-  font-weight: 680;
+  font-size: 0.6rem;
+  font-weight: 600;
 }
 
 .admin-access-button {
@@ -7816,7 +7816,7 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0 0.62rem;
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
   transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
@@ -7859,8 +7859,8 @@ body {
   background: transparent;
   color: hsl(var(--fg-muted));
   padding: 0 0.5rem;
-  font-size: 0.64rem;
-  font-weight: 820;
+  font-size: 0.6rem;
+  font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
 }
@@ -7954,7 +7954,7 @@ body {
   }
 
   .brain-first-copy h3 {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .brain-first-copy p {
@@ -7966,7 +7966,7 @@ body {
   }
 
   .brain-first-status span {
-    font-size: 0.64rem;
+    font-size: 0.6rem;
   }
 
   .brain-first-memory {
@@ -7980,7 +7980,7 @@ body {
 
   .brain-first-memory strong,
   .brain-first-next strong {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     line-height: 1.2;
   }
 
@@ -7997,7 +7997,7 @@ body {
   .brain-first-actions button {
     min-height: 2rem;
     padding: 0 0.62rem;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
   }
 
   .brain-conversation-header {
@@ -8031,7 +8031,7 @@ body {
 
   .brain-chat-home-head h2 {
     margin-bottom: 0;
-    font-size: 1.18rem;
+    font-size: 1.2rem;
   }
 
   .brain-chat-presence.brain-presence {
@@ -8170,7 +8170,7 @@ body {
 
 .ring-label em {
   font-style: normal;
-  font-weight: 800;
+  font-weight: 700;
   color: hsl(var(--fg) / 0.4);
 }
 
@@ -8227,7 +8227,7 @@ body {
   width: min(340px, 88vw);
   margin-bottom: clamp(0.7rem, 1.6vw, 1rem);
   padding: 0.7rem 0.85rem;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid hsl(var(--border) / 0.6);
   background: hsl(var(--surface) / 0.94);
   text-align: left;
@@ -8242,12 +8242,12 @@ body {
 }
 
 .brain-ring-peek header strong {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   color: hsl(var(--fg));
 }
 
 .brain-ring-peek header span {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: hsl(var(--fg) / 0.55);
   margin-right: auto;
 }
@@ -8256,11 +8256,11 @@ body {
   border: none;
   background: transparent;
   color: hsl(var(--fg) / 0.55);
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .brain-ring-peek header button:hover {
@@ -8277,7 +8277,7 @@ body {
 }
 
 .brain-ring-peek li {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: hsl(var(--fg) / 0.78);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -8291,14 +8291,14 @@ body {
 }
 
 .brain-ring-peek p {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: hsl(var(--fg) / 0.6);
   margin: 0 0 0.55rem;
   line-height: 1.45;
 }
 
 .brain-ring-peek-deeper {
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: hsl(var(--brain-core));
   border: 1px solid hsl(var(--brain-core) / 0.4);
@@ -8336,14 +8336,14 @@ body {
 
 .brain-home-welcome h2 {
   font-size: clamp(1.35rem, 2.6vw, 1.65rem);
-  font-weight: 750;
+  font-weight: 700;
   margin-bottom: 0.55rem;
   letter-spacing: 0;
   color: hsl(var(--fg));
 }
 
 .brain-home-welcome p {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   color: hsl(var(--fg) / 0.65);
   line-height: 1.45;
   margin-bottom: 0.85rem;
@@ -8354,10 +8354,10 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.85rem;
-  border-radius: 99px;
+  border-radius: 999px;
   background: hsl(var(--surface-glass));
   border: 1px solid hsl(var(--border) / 0.6);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: hsl(var(--fg-muted));
 }
@@ -8374,12 +8374,12 @@ body {
 /* 완전 빈 상태(quiet + 기억 0) 전용 한 줄 안내 — 첫 행동을 바로 알려준다 */
 .brain-home-waking-hint {
   margin-top: 0.6rem;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   line-height: 1.5;
   color: hsl(var(--fg) / 0.72);
   background: hsl(var(--memory) / 0.1);
   border: 1px dashed hsl(var(--memory) / 0.45);
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 0.55rem 0.85rem;
 }
 
@@ -8411,7 +8411,7 @@ body {
   margin-bottom: 0.5rem;
   color: hsl(var(--brain-core));
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -8435,7 +8435,7 @@ body {
   gap: 0.18rem;
   align-content: center;
   padding: 0.65rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border) / 0.45);
   background: hsl(var(--surface-glass));
   color: hsl(var(--fg));
@@ -8468,15 +8468,15 @@ body {
 
 .brain-home-suggestions-grid strong,
 .brain-home-proactive-grid strong {
-  font-size: 0.82rem;
-  font-weight: 850;
+  font-size: 0.86rem;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .brain-home-suggestions-grid span,
 .brain-home-proactive-grid span {
   color: hsl(var(--fg) / 0.62);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   line-height: 1.3;
 }
 
@@ -8501,7 +8501,7 @@ body {
   align-items: center;
   min-height: 3rem;
   padding: 0.55rem 0.7rem;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border) / 0.45);
   background: hsl(var(--surface-glass));
 }
@@ -8523,21 +8523,21 @@ body {
 .brain-proactive-trail strong {
   min-width: 0;
   color: hsl(var(--fg));
-  font-size: 0.8rem;
-  font-weight: 850;
+  font-size: 0.76rem;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .brain-proactive-trail span {
   justify-self: end;
   color: hsl(var(--fg) / 0.68);
-  font-size: 0.72rem;
-  font-weight: 780;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .brain-proactive-trail small {
   color: hsl(var(--fg) / 0.58);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 /* "No model yet" notice: turn the refusal into a one-click path to Models. */
@@ -8549,7 +8549,7 @@ body {
   max-width: 640px;
   margin: 0.4rem auto 0;
   padding: 0.6rem 0.9rem;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--brain-core) / 0.35);
   background: hsl(var(--brain-core) / 0.08);
   color: hsl(var(--fg));
@@ -8572,11 +8572,11 @@ body {
   gap: 0.3rem;
   flex-shrink: 0;
   padding: 0.42rem 0.85rem;
-  border-radius: 99px;
+  border-radius: 999px;
   border: 1px solid hsl(var(--brain-core) / 0.5);
   background: hsl(var(--brain-core) / 0.14);
   color: hsl(var(--fg));
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.16s ease, border-color 0.16s ease;
@@ -8609,8 +8609,8 @@ body {
 }
 
 .brain-history-head strong {
-  font-size: 0.92rem;
-  font-weight: 760;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .brain-history-head span {
@@ -8644,7 +8644,7 @@ body {
   align-items: center;
   gap: 0.55rem;
   padding: 0.6rem 0.85rem;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border) / 0.6);
   background: hsl(var(--surface) / 0.9);
   color: hsl(var(--fg));
@@ -8665,7 +8665,7 @@ body {
 .brain-history-title {
   flex: 1;
   min-width: 0;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -8673,7 +8673,7 @@ body {
 
 .brain-history-resume small {
   flex-shrink: 0;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: hsl(var(--fg-muted));
 }
 
@@ -8682,12 +8682,12 @@ body {
   align-items: center;
   gap: 0.3rem;
   padding: 0 0.6rem;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border) / 0.5);
   background: transparent;
   color: hsl(var(--fg-muted));
   cursor: pointer;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
@@ -8704,7 +8704,7 @@ body {
   gap: 0.3rem;
   margin-top: 0.5rem;
   padding: 0.35rem 0.8rem;
-  border-radius: 99px;
+  border-radius: 999px;
   border: 1px solid hsl(var(--border) / 0.5);
   background: transparent;
   color: hsl(var(--fg-muted));
@@ -8720,10 +8720,10 @@ body {
 
 .brain-prompt-pill {
   padding: 0.5rem 1rem;
-  border-radius: 99px;
+  border-radius: 999px;
   background: hsl(var(--surface-glass));
   border: 1px solid hsl(var(--border) / 0.5);
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   color: hsl(var(--fg) / 0.8);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -8741,7 +8741,7 @@ body {
   margin-top: 1rem;
   padding: 0.85rem;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
   display: grid;
   gap: 0.75rem;
@@ -8756,15 +8756,15 @@ body {
 .brain-brief-copy span,
 .brain-brief-focus span {
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   color: hsl(var(--brain-core));
   letter-spacing: 0.04em;
 }
 
 .brain-brief-copy strong {
-  font-size: 0.98rem;
-  font-weight: 850;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: hsl(var(--fg));
 }
 
@@ -8773,7 +8773,7 @@ body {
 .brain-brief-actions small {
   margin: 0;
   color: hsl(var(--fg) / 0.62);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.35;
 }
 
@@ -8783,7 +8783,7 @@ body {
   gap: 0.65rem;
   align-items: start;
   padding: 0.7rem;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border) / 0.38);
   background: hsl(var(--surface) / 0.45);
 }
@@ -8816,16 +8816,16 @@ body {
   display: grid;
   gap: 0.12rem;
   padding: 0.55rem;
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.4);
   border: 1px solid hsl(var(--border) / 0.32);
   color: hsl(var(--fg) / 0.62);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-brief-evidence strong {
   color: hsl(var(--fg));
-  font-size: 0.98rem;
+  font-size: 0.95rem;
 }
 
 .brain-brief-actions button {
@@ -8837,7 +8837,7 @@ body {
   row-gap: 0.1rem;
   align-content: center;
   padding: 0.65rem;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border) / 0.45);
   background: hsl(var(--surface) / 0.5);
   color: hsl(var(--fg));
@@ -8859,8 +8859,8 @@ body {
 }
 
 .brain-brief-actions span {
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 @media (max-width: 680px) {
@@ -8897,8 +8897,8 @@ body {
   align-items: center;
   gap: 0.65rem;
   padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 10px;
+  font-size: 0.86rem;
   font-weight: 600;
   margin: 1rem 0;
   border-width: 1px;
@@ -8982,15 +8982,15 @@ body {
 }
 
 .brain-header-title strong {
-  font-size: 0.9rem;
-  font-weight: 800;
+  font-size: 0.86rem;
+  font-weight: 700;
   color: hsl(var(--fg));
 }
 
 .brain-header-title span {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: hsl(var(--fg) / 0.5);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .brain-header-actions {
@@ -9000,13 +9000,13 @@ body {
 }
 
 .brain-deeper-btn {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: hsl(var(--brain-core));
   background: hsl(var(--brain-core) / 0.08);
   border: 1px solid hsl(var(--brain-core) / 0.25);
   padding: 0.35rem 0.75rem;
-  border-radius: 99px;
+  border-radius: 999px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -9059,7 +9059,7 @@ body {
   display: flex;
   flex-direction: column;
   border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 14px;
+  border-radius: 16px;
   background: hsl(var(--surface));
   box-shadow: 0 24px 64px hsl(var(--bg) / 0.5);
   overflow: hidden;
@@ -9081,7 +9081,7 @@ body {
   outline: none;
   background: transparent;
   color: hsl(var(--fg));
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
 .command-palette-hint {
@@ -9091,7 +9091,7 @@ body {
   border: 1px solid hsl(var(--border) / 0.7);
   border-radius: 6px;
   padding: 0.1rem 0.4rem;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 .command-palette-results {
@@ -9117,11 +9117,11 @@ body {
   gap: 0.55rem;
   width: 100%;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: hsl(var(--fg));
   padding: 0.5rem 0.6rem;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   text-align: left;
   cursor: pointer;
 }
@@ -9144,13 +9144,13 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: hsl(var(--fg-muted));
-  font-size: 0.74rem;
+  font-size: 0.76rem;
 }
 
 .command-palette-note {
   margin: 0.6rem 0.6rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.82rem;
+  font-size: 0.86rem;
 }
 
 .command-palette-footer {
@@ -9158,7 +9158,7 @@ body {
   padding: 0.5rem 0.9rem;
   border-top: 1px solid hsl(var(--border) / 0.6);
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .daily-briefing-stats {
@@ -9171,14 +9171,14 @@ body {
   display: grid;
   gap: 0.12rem;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.4);
   padding: 0.5rem 0.6rem;
 }
 
 .daily-briefing-stat strong {
   color: hsl(var(--fg));
-  font-size: 1.02rem;
+  font-size: 1.05rem;
 }
 
 .daily-briefing-stat span {
@@ -9192,7 +9192,7 @@ body {
   display: grid;
   gap: 0.2rem;
   color: hsl(var(--fg));
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .daily-briefing-actions {
@@ -9206,11 +9206,11 @@ body {
   justify-content: space-between;
   gap: 0.5rem;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.35);
   color: hsl(var(--fg));
   padding: 0.5rem 0.65rem;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   text-align: left;
   cursor: pointer;
 }
@@ -9264,10 +9264,10 @@ body {
   max-height: 180px;
   overflow: auto;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--bg) / 0.6);
   padding: 0.5rem 0.6rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   line-height: 1.4;
   white-space: pre;
 }
@@ -9309,7 +9309,7 @@ body {
   width: min(860px, 100%);
   max-height: 88vh;
   border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 14px;
+  border-radius: 16px;
   background: hsl(var(--surface));
   box-shadow: 0 24px 64px hsl(var(--bg) / 0.5);
   overflow: hidden;
@@ -9327,7 +9327,7 @@ body {
 .file-preview-name {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
 }
 
 .file-preview-actions {
@@ -9345,7 +9345,7 @@ body {
   background: hsl(var(--surface));
   color: hsl(var(--fg));
   padding: 0.28rem 0.7rem;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -9383,7 +9383,7 @@ body {
   padding: 0.9rem 1rem;
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   line-height: 1.5;
   color: hsl(var(--fg));
   white-space: pre-wrap;
@@ -9394,7 +9394,7 @@ body {
   margin: 0;
   padding: 1rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.85rem;
+  font-size: 0.86rem;
 }
 
 .file-preview-note.is-error {
@@ -9408,7 +9408,7 @@ body {
   padding: 0.45rem 0.8rem;
   border-top: 1px solid hsl(var(--border) / 0.6);
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 /* Global drag-and-drop capture overlay (Brain home) */
@@ -9444,7 +9444,7 @@ body {
 }
 
 .brain-drop-overlay-card span {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   color: hsl(var(--fg-muted));
 }
 
@@ -9469,7 +9469,7 @@ body {
   align-items: center;
   gap: 0.4rem;
   color: hsl(var(--fg));
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .brain-jobs-report-head svg {
@@ -9502,7 +9502,7 @@ body {
   background: hsl(var(--surface) / 0.92);
   color: hsl(var(--fg));
   padding: 0.14rem 0.55rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -9518,7 +9518,7 @@ body {
 
 .brain-jobs-report-samples small {
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -9531,7 +9531,7 @@ body {
 
 .brain-jobs-report-samples li {
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   overflow-wrap: anywhere;
 }
 
@@ -9542,7 +9542,7 @@ body {
   margin-top: 0.6rem;
   border: 1px solid hsl(var(--warning) / 0.5);
   border-left-width: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--warning) / 0.1);
   padding: 0.55rem 0.7rem;
 }
@@ -9552,13 +9552,13 @@ body {
   align-items: center;
   gap: 0.4rem;
   color: hsl(var(--warning));
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .proposal-conflict-note p {
   margin: 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.45;
 }
 
@@ -9577,7 +9577,7 @@ body {
   background: hsl(var(--surface));
   color: hsl(var(--fg));
   padding: 0.32rem 0.8rem;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -9593,7 +9593,7 @@ body {
 
 .proposal-conflict-error {
   color: hsl(0 72% 58%);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 :root[data-theme="light"] .proposal-conflict-head {
@@ -9709,7 +9709,7 @@ body {
   align-items: center;
   gap: 0.45rem;
   color: hsl(38 92% 70%);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .brain-approval-summary {
@@ -9719,7 +9719,7 @@ body {
 
 .brain-approval-summary-label {
   color: hsl(var(--muted-foreground));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -9728,11 +9728,11 @@ body {
   max-height: 14rem;
   overflow: auto;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.85);
   color: hsl(var(--foreground));
   padding: 0.5rem 0.6rem;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
@@ -9740,7 +9740,7 @@ body {
 
 .brain-approval-expiry {
   color: hsl(var(--muted-foreground));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 .brain-approval-actions {
@@ -9759,7 +9759,7 @@ body {
   color: hsl(var(--foreground));
   padding: 0.34rem 0.8rem;
   font-size: 0.76rem;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -9778,7 +9778,7 @@ body {
   border-color: hsl(38 92% 42% / 0.75);
   background: hsl(38 92% 50% / 0.18);
   color: hsl(38 92% 74%);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .brain-approval-editor {
@@ -9788,7 +9788,7 @@ body {
 
 .brain-approval-editor label {
   color: hsl(var(--muted-foreground));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -9796,18 +9796,18 @@ body {
   width: 100%;
   resize: vertical;
   border: 1px solid hsl(var(--border) / 0.85);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.9);
   color: hsl(var(--foreground));
   padding: 0.5rem 0.6rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   line-height: 1.45;
 }
 
 .brain-approval-edit-error {
   color: hsl(0 80% 72%);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 /* Terminal approval outcomes persist as small honest notes on the message. */
@@ -9816,11 +9816,11 @@ body {
   margin-top: 0.5rem;
   border: 1px solid hsl(var(--border) / 0.8);
   border-left-width: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.8);
   color: hsl(var(--muted-foreground));
   padding: 0.45rem 0.65rem;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
 }
 
@@ -9861,7 +9861,7 @@ body {
   border: 1px solid hsl(var(--border) / 0.8);
   border-radius: 999px;
   padding: 0.12rem 0.5rem;
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -9884,16 +9884,16 @@ body {
 .brain-step-timeline {
   margin-top: 0.5rem;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.5);
   padding: 0.4rem 0.6rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .brain-step-timeline > summary {
   cursor: pointer;
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   user-select: none;
 }
@@ -9904,7 +9904,7 @@ body {
   gap: 0.4rem;
   margin: 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -9947,7 +9947,7 @@ body {
 
 .brain-step-label {
   color: hsl(var(--fg));
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .brain-step-item.is-error .brain-step-label,
@@ -9963,7 +9963,7 @@ body {
   overflow-wrap: anywhere;
   color: hsl(var(--fg-muted));
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.66rem;
+  font-size: 0.68rem;
 }
 
 .brain-step-detail {
@@ -9971,7 +9971,7 @@ body {
   overflow-wrap: anywhere;
   padding-left: 0.84rem;
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
+  font-size: 0.6rem;
 }
 
 :root[data-theme="light"] .brain-step-item.is-error .brain-step-label,
@@ -9999,7 +9999,7 @@ body {
   display: block;
   margin: 0.4rem 0 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 /* ── 폴더별 기억 상태 (v9.9.7) ────────────────────────────────────────── */
@@ -10014,8 +10014,8 @@ body {
 
 .folder-memory-health h3 {
   margin: 0;
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .folder-memory-health > ul {
@@ -10064,7 +10064,7 @@ body {
 .folder-memory-health small,
 .folder-memory-errors summary {
   color: hsl(var(--fg-muted));
-  font-size: 0.66rem;
+  font-size: 0.68rem;
 }
 
 .folder-memory-errors summary {
@@ -10078,12 +10078,12 @@ body {
   gap: 0.15rem;
   margin: 0.25rem 0 0;
   padding-left: 0.9rem;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
 }
 
 .folder-memory-errors code {
   margin-right: 0.3rem;
-  font-size: 0.63rem;
+  font-size: 0.6rem;
 }
 
 /* ── 지식 정원 (v9.9.7): 네 개의 화단 ──────────────────────────────────── */
@@ -10096,8 +10096,8 @@ body {
 
 .brain-garden > summary {
   cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .brain-garden-beds {
@@ -10113,16 +10113,16 @@ body {
   justify-content: space-between;
   gap: 0.4rem;
   margin: 0 0 0.25rem;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .brain-garden-count {
   border-radius: 999px;
   background: hsl(var(--memory) / 0.16);
   padding: 0 0.45rem;
-  font-size: 0.66rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .brain-garden-beds ul {
@@ -10143,7 +10143,7 @@ body {
 
 .brain-garden-beds li strong {
   overflow: hidden;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -10152,7 +10152,7 @@ body {
 .brain-garden-beds li small,
 .brain-garden p.is-muted {
   color: hsl(var(--fg-muted));
-  font-size: 0.63rem;
+  font-size: 0.6rem;
   font-style: normal;
 }
 
@@ -10164,7 +10164,7 @@ body {
   gap: 0.55rem;
   margin: 0.4rem 0;
   border: 1px solid hsl(var(--warning, 32 78% 42%) / 0.4);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--warning, 32 78% 42%) / 0.08);
   padding: 0.55rem 0.65rem;
 }
@@ -10176,13 +10176,13 @@ body {
 }
 
 .brain-stale-embedder strong {
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .brain-stale-embedder small {
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 .brain-stale-embedder small.is-error {
@@ -10195,7 +10195,7 @@ body {
   background: hsl(var(--surface));
   cursor: pointer;
   padding: 0.25rem 0.7rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -10211,10 +10211,10 @@ body {
   margin-top: 0.4rem;
   border: 1px solid hsl(var(--border) / 0.6);
   border-left-width: 3px;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.5rem 0.6rem;
   background: hsl(var(--surface) / 0.5);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
 }
 
 .brain-run-explanation.is-caution {
@@ -10228,7 +10228,7 @@ body {
 
 .brain-run-explanation strong {
   color: hsl(var(--fg));
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .brain-run-explanation ul {
@@ -10241,14 +10241,14 @@ body {
 
 .brain-run-explanation small {
   color: hsl(var(--fg-muted));
-  font-size: 0.66rem;
+  font-size: 0.68rem;
 }
 
 /* ── Approval TTL: countdown + urgency ───────────────────────────────────── */
 .brain-approval-countdown {
   margin-left: auto;
   color: hsl(var(--muted-foreground));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -10264,7 +10264,7 @@ body {
 
 .brain-approval-urgency {
   color: hsl(38 92% 70%);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -10288,7 +10288,7 @@ body {
   background: hsl(38 92% 50% / 0.14);
   color: inherit;
   padding: 0.26rem 0.72rem;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -10306,7 +10306,7 @@ body {
   margin: 0 0 0.6rem;
   border: 1px solid hsl(38 92% 42% / 0.5);
   border-left-width: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(38 92% 50% / 0.08);
   padding: 0.5rem 0.7rem;
 }
@@ -10319,14 +10319,14 @@ body {
 
 .brain-pending-approvals span {
   color: hsl(38 92% 70%);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .brain-pending-approvals small {
   color: hsl(var(--fg-muted));
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 :root[data-theme="light"] .brain-pending-approvals span {
@@ -10337,7 +10337,7 @@ body {
 .brain-watch-card {
   margin-top: 0.6rem;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface) / 0.58);
   padding: 0.6rem 0.7rem;
 }
@@ -10351,7 +10351,7 @@ body {
 
 .brain-watch-head strong {
   font-size: 0.76rem;
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .brain-watch-note {
@@ -10360,8 +10360,8 @@ body {
   gap: 0.3rem;
   margin: 0.35rem 0 0;
   color: hsl(var(--fg-muted));
-  font-size: 0.66rem;
-  font-weight: 640;
+  font-size: 0.68rem;
+  font-weight: 600;
 }
 
 .brain-watch-list {
@@ -10382,18 +10382,18 @@ body {
 .brain-watch-path {
   overflow-wrap: anywhere;
   color: hsl(var(--fg));
-  font-size: 0.72rem;
-  font-weight: 720;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .brain-watch-scan {
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
+  font-size: 0.6rem;
 }
 
 .brain-watch-stat {
   color: hsl(var(--success));
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -10406,7 +10406,7 @@ body {
 
 .brain-watch-tracked {
   color: hsl(var(--fg-muted));
-  font-size: 0.62rem;
+  font-size: 0.6rem;
 }
 
 .brain-watch-errors {
@@ -10415,7 +10415,7 @@ body {
 
 .brain-watch-errors small {
   color: hsl(var(--warning));
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
 }
 
@@ -10430,7 +10430,7 @@ body {
 .brain-watch-errors li {
   overflow-wrap: anywhere;
   color: hsl(var(--fg-muted));
-  font-size: 0.64rem;
+  font-size: 0.6rem;
 }
 
 /* ── "Brain remembered" chip on created-file rows ─────────────────────────
@@ -10440,7 +10440,7 @@ body {
   border: 1px solid hsl(var(--border) / 0.7);
   border-radius: 999px;
   padding: 0.16rem 0.55rem;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -10490,7 +10490,7 @@ body {
   justify-self: start;
   margin-top: 0.15rem;
   color: hsl(var(--memory));
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
 }
 
@@ -10526,8 +10526,8 @@ body {
 
 .source-chunk-provenance > small {
   color: hsl(var(--fg-muted));
-  font-size: 0.66rem;
-  font-weight: 780;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -10548,33 +10548,16 @@ body {
 
 .source-chunk-provenance li span {
   color: hsl(var(--fg-muted));
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
 .source-chunk-provenance li code {
   overflow-wrap: anywhere;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 /* ── First Value Loop done-state CTAs ────────────────────────────────────── */
-.brain-fvl-done {
-  display: grid;
-  gap: 0.4rem;
-}
 
-.brain-fvl-done p {
-  margin: 0;
-}
 
-.brain-fvl-done-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
 
-.brain-fvl-chip.is-connect {
-  border-color: hsl(var(--brain-core) / 0.65);
-  background: hsl(var(--brain-core) / 0.14);
-  font-weight: 750;
-}

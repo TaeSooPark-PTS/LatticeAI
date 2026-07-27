@@ -31,16 +31,44 @@ import type {
   MemoryFragment,
 } from "./types";
 
+// Node cards are centred on their point (`translate(-50%, -50%)`) and are up to
+// 8.2rem wide by 2.75rem tall — roughly 12% of the canvas width and 17% of its
+// height. Two cards therefore only avoid each other when they clear that on at
+// least one axis. The previous layout packed all eight into x 62–94%, i.e. under
+// three card-widths of room, so with real Korean labels they overlapped in a
+// dozen pairs. These rows are 27% apart vertically, which separates every pair
+// across rows no matter their x, and 15–16% apart horizontally within a row.
+// Keep x within 7–93 so a centred card cannot be clipped by the canvas, and y
+// at or under 61 so the bottom row stays clear of the live-status bar, which
+// covers roughly the last 27% of the shortened home canvas.
 const GRAPH_POSITIONS = [
-  { x: 68, y: 16 },
-  { x: 84, y: 20 },
-  { x: 94, y: 39 },
-  { x: 91, y: 63 },
-  { x: 73, y: 69 },
-  { x: 62, y: 52 },
-  { x: 76, y: 43 },
-  { x: 84, y: 55 },
+  { x: 62, y: 26 },
+  { x: 78, y: 26 },
+  { x: 93, y: 26 },
+  { x: 62, y: 45 },
+  { x: 78, y: 45 },
+  { x: 93, y: 45 },
+  { x: 70, y: 64 },
+  { x: 86, y: 64 },
 ] as const;
+
+
+/**
+ * A title a person would recognise, or nothing.
+ *
+ * Generated identifiers (`brain-1782904609263`, bare uuids, `doc_8837261`) reach
+ * these slots whenever a conversation or source has no subject yet. They are not
+ * titles, so callers should fall through to the next candidate rather than print
+ * them.
+ */
+function humanTitle(value: unknown): string {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  if (/^[A-Za-z][\w-]*[-_]?\d{6,}$/.test(text)) return "";
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) return "";
+  if (/^\d+$/.test(text)) return "";
+  return text;
+}
 
 const SOURCE_ORDER: IngestionSourceType[] = ["chat", "file", "folder", "note", "web"];
 
@@ -114,10 +142,15 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
   const emergingNodeIds = React.useMemo(() => new Set(latestEvent?.nodeIds ?? []), [latestEvent]);
   const absorbing = streaming || Boolean(activeIngestion);
   const sourceType = streaming ? "chat" : activeIngestion?.sourceType;
-  const sourceLabel = activeIngestion?.label
-    || latestEvent?.label
-    || brief.focus.title
-    || memories[0]?.title
+  // Titles fall back through several sources, and one of them (a conversation
+  // with no subject yet) is a generated id like `brain-1782904609263`. Printing
+  // it told the reader "brain-1782904609263 주변의 기억을 지키는 중", which is
+  // noise wearing the clothes of a title. Skip id-shaped values and keep falling
+  // through to something a person actually wrote.
+  const sourceLabel = humanTitle(activeIngestion?.label)
+    || humanTitle(latestEvent?.label)
+    || humanTitle(brief.focus.title)
+    || humanTitle(memories[0]?.title)
     || t(language, "brain.flow.source.empty");
   const statusText = activeIngestion
     ? t(language, `brain.ingest.stage.${activeIngestion.stage}.hint`)
@@ -127,7 +160,9 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
           entities: latestEvent.newEntities,
         })
       : nodes.length
-        ? t(language, "brain.flow.status.ready", { focus: brief.focus.title || nodes[0]?.label || "Brain" })
+        ? t(language, "brain.flow.status.ready", {
+            focus: humanTitle(brief.focus.title) || humanTitle(nodes[0]?.label) || "Brain",
+          })
         : t(language, "brain.flow.status.empty");
   const memoryCount = Math.max(readiness.signals.memoryCount, memories.length);
   const conceptCount = Math.max(readiness.signals.conceptCount, graph.nodes.length);

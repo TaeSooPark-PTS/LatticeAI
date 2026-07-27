@@ -12,10 +12,10 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.9.9 — Lean Shell.** This release is frontend-side: the Lattice AI app now
-loads each route's copy with that route instead of shipping all of it up front,
-cutting first-paint JavaScript by a third. The extension talks to the same
-sidecar API and is unchanged by it.
+**10.0.0 — Plain Language.** This release is frontend-side: the Lattice AI app's
+first screen is four zones, capture moved into the composer, and the interface
+is fully bilingual (한국어 / English) with a switch in the top bar. The
+extension talks to the same sidecar API and is unchanged by it.
 
 9.9.8 added a `strict` / `trusted` / `bypass` permission mode. Editor actions
 run through the same governed tool path, so the mode set in the Lattice AI app

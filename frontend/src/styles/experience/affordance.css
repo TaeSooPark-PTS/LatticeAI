@@ -1,0 +1,304 @@
+/* ── Affordances: make controls read as controls ──────────────────────────
+   Loaded last so it settles the app-wide rules every screen depends on.
+   It deliberately changes no layout and hides nothing — it only makes what is
+   already there unmistakable:
+
+   1. A button never wraps its label. A 59px-wide Korean "찾기" broke onto two
+      lines and read as a rendering fault.
+   2. Disabled looks disabled. The same search button was disabled while the
+      input was empty but styled like a live control, so it just felt broken.
+   3. Everything clickable answers the pointer. Several panels and list rows
+      were clickable with no hover feedback, so nothing invited a click.
+   4. Keyboard focus is always visible.                                      */
+
+/* 1 · Labels stay on one line ------------------------------------------- */
+button,
+[role="button"],
+.brain-prompt-pill,
+.brain-flow-node {
+  white-space: nowrap;
+}
+
+/* Long-form controls opt back in — these wrap on purpose.
+
+   A button that contains a sentence is a card, not a label: the autonomy
+   options in Settings each carry a description, and nowrap clipped them to
+   288px of a 347px sentence, so the rule that was meant to stop a 59px label
+   breaking in two silently hid what a mode actually does. Any block-level
+   text inside a control wraps. */
+button :is(p, div, ul, ol, li, small, span[class~="block"]),
+[role="button"] :is(p, div, ul, ol, li, small, span[class~="block"]),
+.brain-flow-node > strong,
+.brain-home-prompt-strip > button,
+.brain-quick-confirm p,
+.brain-composer button[data-multiline="true"] {
+  white-space: normal;
+}
+
+/* 2 · Disabled reads as disabled ---------------------------------------- */
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.45;
+  filter: grayscale(0.35);
+  box-shadow: none;
+}
+
+button:disabled:hover,
+[role="button"][aria-disabled="true"]:hover {
+  transform: none;
+}
+
+/* 3 · Pointer feedback on anything actionable --------------------------- */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+summary,
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]) {
+  cursor: pointer;
+}
+
+button:not(:disabled),
+a[href] {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+/* A hover that is felt, not guessed. Kept subtle so dense screens stay calm. */
+button:not(:disabled):hover {
+  border-color: hsl(var(--primary) / 0.45);
+}
+
+/* Cards and rows that behave like buttons get a lift instead of a tint, so
+   their own colour scheme survives. */
+.brain-flow-node:hover,
+.brain-home-prompt-strip > button:hover,
+.brain-prompt-pill:hover {
+  transform: translateY(-1px);
+}
+
+/* 4 · Focus is never invisible ------------------------------------------ */
+:where(button, a[href], input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.85);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* 5 · A primary action always looks like the primary action -------------- */
+.brain-composer-submit:not(:disabled),
+.brain-quick-confirm button.is-primary {
+  font-weight: 700;
+}
+
+.brain-composer-submit:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px hsl(var(--primary) / 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  a[href],
+  .brain-flow-node,
+  .brain-prompt-pill {
+    transition: none;
+  }
+
+  button:not(:disabled):hover,
+  .brain-flow-node:hover,
+  .brain-home-prompt-strip > button:hover,
+  .brain-prompt-pill:hover,
+  .brain-composer-submit:not(:disabled):hover {
+    transform: none;
+  }
+}
+
+/* ── Setup progress: a track, not six buttons ────────────────────────────
+   The model setup steps were bordered cards identical to the clickable ones
+   elsewhere, so they invited clicks that do nothing. They are a sequence, and
+   now they look like one: a connected run of steps with the finished part
+   filled in. Nothing here is interactive, so nothing here has a hover. */
+.library-setup-track {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 0.15rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  list-style: none;
+}
+
+.library-setup-track > li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  padding: 0.55rem 0.25rem 0;
+  text-align: center;
+}
+
+/* The connecting rail sits behind the marks. */
+.library-setup-track > li::before {
+  content: "";
+  position: absolute;
+  top: 1.42rem;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: hsl(var(--border));
+}
+
+.library-setup-track > li:first-child::before {
+  display: none;
+}
+
+.library-setup-track > li.is-done::before {
+  background: hsl(var(--primary) / 0.55);
+}
+
+.library-setup-mark {
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  position: relative;
+  z-index: 1;
+  place-items: center;
+  border: 1px solid hsl(var(--border));
+  border-radius: 50%;
+  background: hsl(var(--surface));
+  color: hsl(var(--muted-foreground));
+}
+
+.library-setup-track > li.is-done .library-setup-mark {
+  border-color: transparent;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground, 0 0% 100%));
+}
+
+.library-setup-label {
+  color: hsl(var(--foreground));
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.library-setup-state {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6rem;
+}
+
+.library-setup-track > li.is-done .library-setup-state {
+  color: hsl(var(--primary));
+}
+
+@media (max-width: 760px) {
+  .library-setup-track {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 0.9rem;
+  }
+
+  /* The rail only reads left-to-right, so drop it when the track wraps. */
+  .library-setup-track > li::before {
+    display: none;
+  }
+}
+
+/* ── Reading-width pages sit centred ─────────────────────────────────────
+   Capture and Act deliberately cap their content at the reading width
+   (`--experience-reading`, 46rem) — a form is easier to follow in a narrow
+   column than stretched across 1500px. But the column was pinned to the left
+   edge, so on a wide display roughly a third of the page was blank on the
+   right and the page read as truncated rather than composed. Centring the
+   whole page keeps the heading and the form on the same axis and makes the
+   narrow measure look like the choice it is. */
+.product-page:is(.capture-page, .act-page) {
+  width: min(100%, calc(var(--experience-reading) + 8rem));
+  margin-inline: auto;
+}
+
+/* Their inner blocks already carry the cap; let them fill the centred page. */
+.product-page:is(.capture-page, .act-page) .capture-files-flow,
+.product-page:is(.capture-page, .act-page) > * {
+  margin-inline: auto;
+}
+
+/* ── Page shell: give the screen back to the work ────────────────────────
+   Every content page opened the same way: 79px of top padding, an eyebrow, a
+   41px marketing-sized title, then a description — 302px of a 744px window, so
+   41% of the screen was spent before the first thing you can touch. On a
+   utility screen the heading is a signpost, not a billboard, and the nav
+   already says which section you are in.
+
+   This compacts the opening to about 180px and keeps the same information:
+   the title stays, the description stays, the eyebrow folds onto the title
+   line where it costs nothing. Content now starts roughly a screen-third
+   higher on every page. */
+.brain-shell-content > .space-y-5 {
+  padding: clamp(1rem, 2vw, 1.6rem) 0 2.5rem;
+}
+
+.page-hero {
+  display: grid;
+  gap: 0.28rem;
+}
+
+/* The eyebrow rides with the title instead of stacking above it. */
+.page-hero .page-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  order: 1;
+  font-size: 0.68rem;
+}
+
+.page-hero .page-title {
+  order: 2;
+  margin: 0;
+  font-size: clamp(1.45rem, 2.4vw, 1.85rem);
+  line-height: 1.18;
+}
+
+.page-hero .page-copy {
+  order: 3;
+  margin-top: 0.15rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* The stack between header, tabs and content was two 22px gaps; on a utility
+   page that is a whole line of content given away twice. */
+.product-page.space-y-5 > * + * {
+  margin-top: 0.85rem;
+}
+
+/* Tabs are an underline bar by design (capture.css) — keep that, but answer the
+   pointer. `background: transparent !important` there blocks the usual hover
+   tint, so hover is carried by colour and a ghost of the active underline; you
+   can now tell a tab is a tab before you click it. Slightly shorter too. */
+.product-tabs > button {
+  min-height: 2.4rem;
+}
+
+.product-tabs > button:hover:not([aria-selected="true"]) {
+  color: hsl(var(--foreground));
+}
+
+.product-tabs > button:not([aria-selected="true"])::after {
+  content: "";
+  position: absolute;
+  right: 0.85rem;
+  bottom: -1px;
+  left: 0.85rem;
+  height: 2px;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.32);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.product-tabs > button:hover:not([aria-selected="true"])::after {
+  opacity: 1;
+}

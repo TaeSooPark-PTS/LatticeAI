@@ -5,4 +5,10 @@
 @import "./experience/conversation-active.css";
 @import "./experience/capture.css";
 @import "./experience/graph-home.css";
+/* The simplified first screen wins over the older graph-home layout. */
+@import "./experience/home-simple.css";
+/* Measured fixes for the active conversation screen. */
+@import "./experience/conversation-fixes.css";
 @import "./experience/responsive.css";
+/* Last: app-wide control affordances settle over every screen. */
+@import "./experience/affordance.css";

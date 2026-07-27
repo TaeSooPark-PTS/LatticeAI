@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **9.9.9 — Lean Shell**.
+Current release: **10.0.0 — Plain Language**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -18,7 +18,7 @@ flowchart TB
 
   subgraph surfaces["Surfaces — every one talks to the same localhost sidecar"]
     direction LR
-    ui["React / Vite app<br/>lazy routes · per-route i18n"]
+    ui["React / Vite app<br/>lazy routes · per-route i18n<br/>ko · en switch in the top bar"]
     desktop["Tauri<br/>desktop shell"]
     editor["VS Code<br/>extension"]
     browser["Browser<br/>extension"]
@@ -110,6 +110,50 @@ Key boundaries:
   the store's public APIs. Storage engines live in `lattice_brain/storage/`
   (SQLite live engine, optional Postgres scale/migration tooling).
 
+## First Screen Composition
+
+The Brain home is four zones. Capture is part of the composer, not a panel
+beside it, and nothing graph-shaped renders here — the knowledge graph opens by
+clicking the Brain itself.
+
+```mermaid
+flowchart TB
+  subgraph shell["Top bar — on every screen"]
+    direction LR
+    nav["대화 · 자료 · 기억 · 작업"]
+    lang["한국어 / English"]
+    theme["light / dark"]
+    more["더보기"]
+    nav ~~~ lang ~~~ theme ~~~ more
+  end
+
+  subgraph home["Brain home — brain-centered-home"]
+    direction TB
+    hero["1 · BrainHomeHero<br/>living Brain · greeting · what is remembered"]
+
+    subgraph composer["2 · BrainComposer"]
+      direction TB
+      input["textarea — the one thing you do here"]
+      capture["문서 · 이미지 · 파일 · 폴더 · 노트 · 웹<br/>BrainIngestionDock variant=inline"]
+      dial["3 · BrainQuickControls — autonomy dial"]
+      input --> capture --> dial
+    end
+
+    chips["suggested questions"]
+    quiet["4 · quiet row — 지난 대화 · Brain이 정리한 내용"]
+    hero --> composer --> chips --> quiet
+  end
+
+  graph["Knowledge graph<br/>#/knowledge-graph"]
+  shelf["Insights shelf<br/>automation · briefing · health · garden"]
+
+  hero -- "click the Brain" --> graph
+  quiet -- "one click" --> shelf
+```
+
+Everything not in those four zones is one click away in the shelf; nothing was
+removed to get here.
+
 ## Runtime Flow
 
 ```mermaid
@@ -182,10 +226,20 @@ enter the governed workspace file tool path.
 The app is a React/Vite static bundle served by the local FastAPI sidecar.
 Current UX rules:
 
-- Brain Home is the default product surface.
-- The composer is the primary action.
-- Source capture, model setup, graph exploration, automation, and admin controls
-  are reachable but not mixed into the first screen.
+- Brain Home is the default product surface, composed of exactly four zones
+  (see First Screen Composition).
+- The composer is the primary action, and capture (file · folder · note · web)
+  renders inside its toolbar rather than as a separate panel.
+- Nothing graph-shaped renders on the home; the knowledge graph opens by
+  clicking the living Brain.
+- Model setup, automation, briefings, and admin controls are reachable in one
+  click but are not mixed into the first screen.
+- Copy is fully bilingual. Backend payloads are labeled by their stable id
+  (`ui.field.*`, `ui.entity.*`, `act.agentRole.*`, `brain.memoryTier.*`), so the
+  server keeps one vocabulary and the reader sees their own language.
+- Identifiers are never shown where a name belongs: `humanizeModelId` and
+  `plainText` (`frontend/src/lib/utils.ts`) turn package coordinates and
+  model-written Markdown into readable text.
 - Mobile layouts preserve the Brain and composer in the first viewport.
 - Static release assets are generated under `static/app` and must match
   `asset-manifest.json`.
@@ -237,7 +291,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.9.9:
+The 8.0 architecture contract remains active in 10.0.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -280,7 +334,7 @@ Change governance and agent-eval extend the contract:
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.9.9. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 10.0.0. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -291,13 +345,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.9.9 exact artifact names:
+10.0.0 exact artifact names:
 
-- `dist/ltcai-9.9.9-py3-none-any.whl`
-- `dist/ltcai-9.9.9.tar.gz`
-- `ltcai-9.9.9.tgz`
-- `dist/ltcai-9.9.9.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.9_aarch64.dmg`
+- `dist/ltcai-10.0.0-py3-none-any.whl`
+- `dist/ltcai-10.0.0.tar.gz`
+- `ltcai-10.0.0.tgz`
+- `dist/ltcai-10.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.0.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

@@ -1,0 +1,400 @@
+/* ── The first screen ────────────────────────────────────────────────────
+   Four things, top to bottom, in the order a person uses them:
+
+     1. the Brain          — who you are talking to (click it for the map)
+     2. the composer       — the one thing you do here
+     3. add material       — file · folder · note · web
+     4. a quiet row        — autonomy, appearance, and everything else
+
+   Anything graph-shaped moved behind the Brain itself: the knowledge graph
+   opens when you click the organism, so the home never shows a diagram.
+   This file loads after graph-home.css and is the authority on home layout. */
+
+.brain-centered-home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: min(100%, 44rem);
+  margin-inline: auto;
+  padding: 0.4rem 0 0.45rem;
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+
+/* Flex column children default to shrinking, which silently squashed the last
+   row when the page ran long. Every zone keeps its own height instead. */
+.brain-centered-home > * {
+  flex: none;
+}
+
+/* ── 1. the Brain ─────────────────────────────────────────────────────── */
+
+.brain-centered-home > .brain-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18rem;
+  width: 100%;
+  text-align: center;
+}
+
+.brain-hero-organism {
+  display: grid;
+  margin-top: 1.35rem;
+  place-items: center;
+}
+
+.brain-hero-organism .brain-presence {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* The organism has no intrinsic size — every host sets it. */
+.brain-hero-organism .brain-organism {
+  width: 7rem;
+  height: 7rem;
+  cursor: pointer;
+  transition: transform 180ms ease;
+}
+
+.brain-hero-organism .brain-organism:hover,
+.brain-hero-organism .brain-organism:focus-visible {
+  transform: scale(1.04);
+}
+
+.brain-centered-home > .brain-hero h1 {
+  margin: 0.1rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.brain-hero-line {
+  margin: 0;
+  font-size: 0.95rem;
+  color: hsl(var(--muted-foreground));
+}
+
+/* The map hint rides the same line as the counts — it is a footnote to them,
+   not a third statement competing for the first screen. */
+.brain-hero-hint {
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground) / 0.75);
+}
+
+/* A model notice is a one-line prompt, not a banner. */
+.brain-centered-home > .brain-model-missing {
+  padding-block: 0.45rem;
+  font-size: 0.86rem;
+}
+
+/* ── 2. the composer ──────────────────────────────────────────────────── */
+
+.brain-centered-home {
+  width: min(100%, 48rem);
+}
+
+.brain-centered-home > .brain-home-do {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg, 0.9rem);
+  background: hsl(var(--card));
+  box-shadow: var(--elev-2, 0 6px 20px hsl(var(--foreground) / 0.06));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.brain-centered-home > .brain-home-do:focus-within {
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: var(--elev-3, 0 10px 30px hsl(var(--primary) / 0.14));
+}
+
+.brain-centered-home > .brain-home-do > .brain-composer {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The dial sits on the composer's own footer, hairline-separated. */
+.brain-home-do > .brain-quick-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin: 0;
+  padding: 0.5rem 0.9rem 0.6rem;
+  border: 0;
+  border-top: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brain-home-do > .brain-quick-controls .brain-quick-confirm,
+.brain-home-do > .brain-quick-controls .brain-quick-error {
+  flex-basis: 100%;
+}
+
+.brain-centered-home > .brain-home-do .brain-composer textarea {
+  min-height: 2.9rem;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+/* Suggestion chips read as "you could also ask…", not as a toolbar. */
+.brain-centered-home > .brain-home-prompt-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.brain-centered-home > .brain-home-prompt-strip > button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.34rem 0.7rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--card));
+  font-size: 0.82rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.brain-centered-home > .brain-home-prompt-strip > button:hover:not(:disabled) {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.07);
+}
+
+/* A chip carries its label; the full sentence stays in the tooltip so three
+   suggestions always fit one line instead of wrapping into a second block. */
+.brain-centered-home > .brain-home-prompt-strip > button > span {
+  display: none;
+}
+
+.brain-centered-home > .brain-home-prompt-strip > button > strong {
+  font-weight: 600;
+}
+
+/* ── 3. capture, inside the composer ──────────────────────────────────────
+   File · folder · note · web used to be a separate "Brain에게 가르치기" panel
+   below the composer. They are attachments to what you are typing, so they now
+   sit beside 문서/이미지 in the composer's own toolbar. */
+
+.brain-ingestion-dock.is-inline {
+  /* The panel anchors to the composer, so the dock must not be a containing
+     block — as a positioned 24px pill row it pinned the panel to itself. */
+  position: static;
+  display: inline-flex;
+  height: auto;
+  min-height: 0;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-actions {
+  display: contents;
+}
+
+/* One size for every capture control in the toolbar, 문서/이미지 included. */
+.brain-composer-attachments > :is(.brain-document-input, .brain-image-input),
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-action {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  padding: 0.26rem 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  /* Background and colour ease; the border does not. Keyboard focus has to be
+     visible the instant it lands, not 150ms later. */
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.brain-composer-attachments > :is(.brain-document-input, .brain-image-input):hover,
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-action:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.07);
+  color: hsl(var(--primary));
+}
+
+.brain-composer-attachments > :is(.brain-document-input, .brain-image-input):focus-within,
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-action:focus-within,
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-action:focus-visible {
+  border-color: hsl(var(--primary) / 0.6);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-action[aria-expanded="true"] {
+  border-color: hsl(var(--primary) / 0.6);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+}
+
+.brain-composer-attachments :is(svg, .brain-ingestion-dock-action > svg) {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* The stage dot the tile carries has no room in a pill. */
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-action > i {
+  display: none;
+}
+
+.brain-composer-attachments {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+/* English labels are longer than Korean ones: "Document · Image · File ·
+   Folder · Note · Web" plus the keyboard hint overflowed one line and pushed
+   Send onto its own row. Send always keeps the right edge; the hint yields
+   first, then hides on narrow rows. */
+/* The row must shrink, not wrap: with flex-wrap the hint's full width was
+   honoured and Send was pushed onto a line of its own. The attachment pills
+   still wrap inside their own box. */
+.brain-composer-actions {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+/* Wrap the keyboard hint rather than truncating it — "Shift+Enter for a new …"
+   loses the only part that matters. */
+.brain-composer-actions > .brain-composer-hint {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 11rem;
+  margin-left: auto;
+  line-height: 1.3;
+  text-align: right;
+  white-space: normal;
+}
+
+.brain-composer-actions > .brain-composer-submit {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.brain-composer-actions > .brain-composer-hint + .brain-composer-submit {
+  margin-left: 0;
+}
+
+@media (max-width: 900px) {
+  .brain-composer-actions > .brain-composer-hint {
+    display: none;
+  }
+}
+
+/* The capture panel belongs to the composer it opens from. It anchors to the
+   composer in both surfaces, and opens whichever way there is room: down on the
+   home (upward covered the model notice), up in the conversation, where the
+   composer is stuck to the bottom of the screen. */
+.brain-composer {
+  position: relative;
+}
+
+.brain-ingestion-dock.is-inline .brain-ingestion-dock-popover {
+  right: 0;
+  left: 0;
+  z-index: 80;
+  width: auto;
+}
+
+.brain-home-do .brain-ingestion-dock.is-inline .brain-ingestion-dock-popover {
+  top: calc(100% + 0.4rem);
+  bottom: auto;
+}
+
+.has-messages .brain-ingestion-dock.is-inline .brain-ingestion-dock-popover {
+  top: auto;
+  bottom: calc(100% + 0.5rem);
+}
+
+/* ── 4. the quiet row ─────────────────────────────────────────────────── */
+
+.brain-centered-home > .brain-home-quiet {
+  display: flex;
+  min-height: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+  margin-top: 0;
+  padding-top: 0.4rem;
+  border-top: 1px solid hsl(var(--border) / 0.55);
+}
+
+.brain-home-quiet > .brain-quick-controls {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brain-home-quiet .brain-home-shelves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* The model notice is part of the flow now — it used to be absolutely
+   positioned over the graph canvas that no longer exists here. */
+.brain-centered-home > .brain-model-missing {
+  position: static;
+  left: auto;
+  top: auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .brain-centered-home {
+    gap: 0.85rem;
+    padding: 1rem 0 1.25rem;
+  }
+
+  .brain-hero-organism {
+    width: 6.5rem;
+    height: 6.5rem;
+  }
+
+  .brain-centered-home > .brain-hero h1 {
+    font-size: 1.3rem;
+  }
+}

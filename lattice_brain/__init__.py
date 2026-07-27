@@ -26,7 +26,7 @@ from .storage import (
     storage_from_env,
 )
 
-__version__ = "9.9.9"
+__version__ = "10.0.0"
 
 __all__ = [
     "AgentRuntime",

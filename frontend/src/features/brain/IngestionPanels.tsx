@@ -125,6 +125,7 @@ export function BrainIngestionDock({
   onConnectFolder,
   onIngestNote,
   onIngestWeb,
+  variant = "panel",
 }: {
   language: Language;
   uploadingDocument: boolean;
@@ -134,6 +135,8 @@ export function BrainIngestionDock({
   onConnectFolder: (path: string) => void;
   onIngestNote: (note: string) => void;
   onIngestWeb: (url: string) => void;
+  /** "inline" drops the section header so the actions can sit in a toolbar. */
+  variant?: "panel" | "inline";
 }) {
   const [activeSource, setActiveSource] = React.useState<DockSource | null>(null);
   const [folderPath, setFolderPath] = React.useState("");
@@ -164,20 +167,22 @@ export function BrainIngestionDock({
 
   return (
     <section
-      className="brain-ingestion-dock"
+      className={`brain-ingestion-dock${variant === "inline" ? " is-inline" : ""}`}
       data-testid="brain-ingestion-dock"
       aria-label={t(language, "brain.ingest.aria")}
       onKeyDown={(event) => {
         if (event.key === "Escape") setActiveSource(null);
       }}
     >
-      <div className="brain-ingestion-dock-head">
-        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>
-          <small>{t(language, "brain.ingest.kicker")}</small>
-          <strong>{t(language, "brain.ingest.dock.title")}</strong>
-        </span>
-      </div>
+      {variant === "inline" ? null : (
+        <div className="brain-ingestion-dock-head">
+          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>
+            <small>{t(language, "brain.ingest.kicker")}</small>
+            <strong>{t(language, "brain.ingest.dock.title")}</strong>
+          </span>
+        </div>
+      )}
 
       <div className="brain-ingestion-dock-actions">
         <label className={`brain-ingestion-dock-action ${tileStateClass(ingestionStates.file)} ${uploadingDocument ? "is-disabled" : ""}`}>

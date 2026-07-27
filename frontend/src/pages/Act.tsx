@@ -146,7 +146,7 @@ function AgentsPanel() {
           <DataPanel title={t(language, "act.panel.agentTeam")} result={registry.data}>
             {(data) => (
               <div className="space-y-3">
-                <EntityList items={(data as Record<string, unknown>).agents} titleKey="name" metaKey="type" />
+                <EntityList items={(data as Record<string, unknown>).agents} titleKey="name" metaKey="type" labelPrefix="act.agentRole" />
                 <div className="flex gap-2">
                   <Input value={agentName} onChange={(e) => setAgentName(e.target.value)} placeholder={t(language, "act.agent.namePlaceholder")} />
                   <Button disabled={!agentName.trim() || register.isPending} onClick={() => register.mutate()}>{t(language, "act.agent.register")}</Button>
@@ -309,6 +309,17 @@ function WorkflowsPanel() {
             <div className="grid gap-3 lg:grid-cols-3">
               {items.map((recipe) => {
                 const id = String(recipe.id || "");
+                // Recipe copy ships from the backend in English; the id is the
+                // contract, so translate by id and keep the server text for
+                // recipes we do not know yet.
+                const copy = (suffix: string, fallback: string) => {
+                  const key = `act.recipe.${id}${suffix}`;
+                  const value = t(language, key);
+                  return value === key ? fallback : value;
+                };
+                const cadenceRaw = String(recipe.cadence || "");
+                const cadenceKey = `act.cadence.${cadenceRaw}`;
+                const cadence = t(language, cadenceKey);
                 const consent = (recipe.consent || {}) as Record<string, unknown>;
                 const creates = asArray<string>(recipe.creates);
                 return (
@@ -316,17 +327,21 @@ function WorkflowsPanel() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2 font-medium">
-                          <CalendarClock className="h-4 w-4" /> {String(recipe.name || id)}
+                          <CalendarClock className="h-4 w-4" /> {copy("", String(recipe.name || id))}
                         </div>
-                        <p className="mt-2 text-sm text-muted-foreground">{String(recipe.summary || "")}</p>
+                        <p className="mt-2 text-sm text-muted-foreground">{copy(".summary", String(recipe.summary || ""))}</p>
                       </div>
-                      <Badge variant="muted">{String(recipe.cadence || t(language, "act.status.draft"))}</Badge>
+                      <Badge variant="muted">{cadence !== cadenceKey ? cadence : cadenceRaw || t(language, "act.status.draft")}</Badge>
                     </div>
-                    <p className="mt-3 text-sm">{String(recipe.user_value || "")}</p>
+                    <p className="mt-3 text-sm">{copy(".value", String(recipe.user_value || ""))}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Badge variant="success"><ShieldCheck className="h-3 w-3" /> {t(language, "act.automation.local")}</Badge>
                       {consent.requires_user_enable ? <Badge variant="warning">{t(language, "act.automation.consent")}</Badge> : null}
-                      {creates.slice(0, 2).map((item) => <Badge key={item} variant="muted">{item}</Badge>)}
+                      {creates.slice(0, 2).map((item) => {
+                        const key = `act.creates.${item}`;
+                        const label = t(language, key);
+                        return <Badge key={item} variant="muted">{label === key ? item : label}</Badge>;
+                      })}
                     </div>
                     {(() => {
                       const installedWorkflow = installedRecipes.get(id);

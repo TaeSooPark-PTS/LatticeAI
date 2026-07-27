@@ -3,16 +3,17 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **9.9.9 — Lean Shell**.
+Current release: **10.0.0 — Plain Language**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 9.9.9. Security
+The public Git tree keeps release history from 8.0.0 through 10.0.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 9.9.x (latest) | Supported |
+| 10.0.x (latest) | Supported |
+| 9.9.x | Supported |
 | 9.8.x | Supported |
 | 9.7.x | Supported |
 | 9.6.x | Supported |
