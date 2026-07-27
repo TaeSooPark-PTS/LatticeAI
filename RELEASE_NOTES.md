@@ -1,3 +1,17 @@
+# [v9.9.9 - Lean Shell] (2026-07-27)
+
+Cuts the first-paint JavaScript payload from 150.0 KiB to 99.3 KiB gzip (-34%)
+by splitting the i18n table per lazy route: namespaces register on import, and
+each route pulls only the copy it reads. The 9.9.8 budget bump is reverted — the
+ceiling is back at its original 150 KiB with real headroom under it. A new
+coverage check fails the build if a chunk reads a key it never imported, which
+would otherwise render the raw key instead of translated text.
+
+See [RELEASE_NOTES_v9.9.9.md](RELEASE_NOTES_v9.9.9.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v9.9.8 - Autonomy Dial] (2026-07-27)
 
 Adds a strict / trusted / bypass permission mode dial over the existing
@@ -56,7 +70,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.8**.
+This repository keeps public release history from **8.0.0 through 9.9.9**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

@@ -1,4 +1,7 @@
 import * as React from "react";
+// Route-scoped copy: importing the namespace registers it into the shared
+// table and keeps it inside this lazy chunk instead of the entry bundle.
+import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactFlow, { Background, Controls, Edge, Node } from "reactflow";
 import { Bot, CalendarClock, GitBranch, PauseCircle, Play, ShieldCheck, Workflow } from "lucide-react";

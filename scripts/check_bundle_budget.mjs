@@ -24,17 +24,17 @@ const manifestPath = join(outDir, "asset-manifest.json");
 // code-splitting win and catch regressions that pull heavy code back onto the
 // first-paint path. Raise it only with a deliberate, reviewed reason.
 //
-// 9.9.8: 150 KiB → 152 KiB. The 9.9.7 tree sat at 149.3 KiB, i.e. 0.7 KiB of
-// headroom, and the autonomy-dial settings panel needed ~1.0 KiB — almost all
-// of it bilingual UI copy. Page components are already lazy (the panel itself
-// lands in the System chunk), but `frontend/src/i18n/*` is merged into one
-// synchronous table that `t()` reads, so *every* surface's copy is on the
-// first-paint path by construction. That is the real constraint here, not code
-// weight, and the headroom was accidental rather than chosen. Splitting i18n
-// per lazy route is the durable fix and is deliberately NOT bundled into this
-// release. Until then this ceiling still catches what it was built to catch:
-// a heavy module escaping its lazy boundary moves this by tens of KiB, not one.
-const INITIAL_JS_GZIP_BUDGET = 155_648; // 152 KiB
+// 9.9.8 raised this to 152 KiB because `frontend/src/i18n/*` was one synchronous
+// table, so every route's copy sat in the entry chunk and the tree had ~0.7 KiB
+// of headroom left. 9.9.9 fixed the cause instead: namespaces register on
+// import and each lazy route pulls only the copy it reads, which dropped the
+// initial closure from 150.0 KiB to ~99 KiB gzip. The ceiling is back at its
+// original 150 KiB with real headroom underneath it again.
+//
+// `scripts/check_i18n_namespace_coverage.mjs` guards the split — it fails if a
+// module reads a key whose namespace its chunk never imports, which would
+// otherwise render the raw key instead of translated text.
+const INITIAL_JS_GZIP_BUDGET = 153_600; // 150 KiB
 
 function build() {
   rmSync(outDir, { recursive: true, force: true });

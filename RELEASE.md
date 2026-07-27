@@ -13,6 +13,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v9.9.9 — Lean Shell (2026-07-27)
+
+9.9.9 fixes the cause behind the 9.9.8 bundle-budget bump. `frontend/src/i18n/*`
+was one synchronous table, so every route's copy sat in the entry chunk by
+construction and each new UI surface grew first paint. Namespaces now register
+on import and each lazy route pulls only the copy it reads; the admin console
+moved behind a lazy boundary too. Initial JS drops from 150.0 KiB to 99.3 KiB
+gzip and the budget returns to its original 150 KiB. A new
+`check_i18n_namespace_coverage` gate walks the real module graph and fails the
+build if a chunk reads a key whose namespace it never imported — the one failure
+mode of this split that is otherwise silent.
+
+- 상세: [RELEASE_NOTES_v9.9.9.md](RELEASE_NOTES_v9.9.9.md)
+
 ## v9.9.8 — Autonomy Dial (2026-07-27)
 
 9.9.8 gives the agent an explicit autonomy dial — `strict` (default),

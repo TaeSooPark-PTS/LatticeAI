@@ -1,4 +1,8 @@
 import * as React from "react";
+// Route-scoped copy: importing the namespace registers it into the shared
+// table and keeps it inside this lazy chunk instead of the entry bundle.
+import "@/i18n/brain";
+import "@/i18n/onboarding";
 import { latticeApi } from "@/api/client";
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { t } from "@/i18n";

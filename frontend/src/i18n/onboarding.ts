@@ -1,3 +1,4 @@
+import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
 export const onboardingCopy: NamespaceCopy = {
@@ -360,3 +361,6 @@ export const onboardingCopy: NamespaceCopy = {
     "flow.consent.externalNone": "No external connection before selection",
   },
 };
+
+// Route-scoped: registered when the onboarding flow's lazy chunk loads.
+registerCopy(onboardingCopy);

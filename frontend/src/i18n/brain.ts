@@ -1,3 +1,4 @@
+import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
 export const brainCopy: NamespaceCopy = {
@@ -29,7 +30,6 @@ export const brainCopy: NamespaceCopy = {
     "brain.aria.starterPrompts": "시작 프롬프트",
     "brain.aria.overview": "Brain 한눈에 보기",
     "brain.aria.graph": "지식 그래프",
-    "brain.title": "Lattice Brain",
     "brain.edition": "정식 제품",
     "brain.edition.tip": "Lattice AI {version} — 한눈에 바로 쓰는 디지털 브레인",
     "brain.local": "로컬 우선",
@@ -821,7 +821,6 @@ export const brainCopy: NamespaceCopy = {
     "brain.aria.starterPrompts": "Starter prompts",
     "brain.aria.overview": "Brain overview",
     "brain.aria.graph": "Knowledge Graph",
-    "brain.title": "Lattice Brain",
     "brain.edition": "Production Ready",
     "brain.edition.tip": "Lattice AI {version} — a Digital Brain you can understand and use at a glance",
     "brain.local": "Local-first",
@@ -1586,3 +1585,6 @@ export const brainCopy: NamespaceCopy = {
     "brain.portability.importCompleted": "Import preview completed",
   },
 };
+
+// Route-scoped: registered when a Brain surface's lazy chunk loads.
+registerCopy(brainCopy);

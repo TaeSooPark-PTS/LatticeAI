@@ -1,4 +1,7 @@
 import * as React from "react";
+// Route-scoped copy: importing the namespace registers it into the shared
+// table and keeps it inside this lazy chunk instead of the entry bundle.
+import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Boxes, CheckCircle2, Cpu, Download, PackagePlus, PlayCircle, Plug, ShieldAlert } from "lucide-react";
 import { latticeApi } from "@/api/client";

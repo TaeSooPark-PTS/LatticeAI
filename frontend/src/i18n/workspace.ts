@@ -1,3 +1,4 @@
+import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
 export const workspaceCopy: NamespaceCopy = {
@@ -1180,3 +1181,6 @@ export const workspaceCopy: NamespaceCopy = {
     "system.security.riskRate": "Risk rate",
   },
 };
+
+// Route-scoped: registered when Act/Capture/Library/System/Admin loads.
+registerCopy(workspaceCopy);

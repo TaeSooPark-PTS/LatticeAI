@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **9.9.8 — Autonomy Dial**.
+Current release: **9.9.9 — Lean Shell**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 9.9.8. Security
+The public Git tree keeps release history from 8.0.0 through 9.9.9. Security
 support follows that same product era.
 
 | Version | Support |

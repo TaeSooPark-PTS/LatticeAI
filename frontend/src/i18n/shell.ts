@@ -1,7 +1,9 @@
+import { registerCopy } from "./registry";
 import type { NamespaceCopy } from "./types";
 
 export const shellCopy: NamespaceCopy = {
   ko: {
+    "brain.title": "Lattice Brain",
     "language.label": "언어",
     "language.ko": "한국어",
     "language.en": "English",
@@ -146,6 +148,7 @@ export const shellCopy: NamespaceCopy = {
     "proposals.conflict.failed": "다시 적용을 준비하지 못했어요: {reason}",
   },
   en: {
+    "brain.title": "Lattice Brain",
     "language.label": "Language",
     "language.ko": "한국어",
     "language.en": "English",
@@ -290,3 +293,7 @@ export const shellCopy: NamespaceCopy = {
     "proposals.conflict.failed": "Could not prepare the re-apply: {reason}",
   },
 };
+
+// Eager: the app frame, language switcher, and generic `ui.*` outcomes
+// render before any route resolves, so this namespace ships in the entry chunk.
+registerCopy(shellCopy);

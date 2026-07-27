@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **9.9.8 — Autonomy Dial**.
+Current release: **9.9.9 — Lean Shell**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release

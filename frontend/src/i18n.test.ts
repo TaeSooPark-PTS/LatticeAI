@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { APP_VERSION, COPY, t } from "./i18n";
+// Namespaces register on import. The app pulls them in per lazy route; the
+// parity check needs all of them, so import every one explicitly.
+import "./i18n/brain";
+import "./i18n/onboarding";
+import "./i18n/workspace";
 
 describe("i18n namespaces", () => {
   it("keeps Korean and English namespace keys aligned", () => {

@@ -3,7 +3,6 @@ import { type BrainState } from "@/components/LivingBrain";
 import { readProductFlowComplete } from "@/components/productFlowState";
 import { useAppStore } from "@/store/appStore";
 import { parseHash, productShellRoutes } from "@/routes";
-import { AdminConsole } from "@/features/admin/AdminConsole";
 import { WorkspaceProfileSwitcher } from "@/components/WorkspaceProfileSwitcher";
 import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { t, type Language } from "@/i18n";
@@ -27,6 +26,9 @@ const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ d
 const CapturePage = React.lazy(() => import("@/pages/Capture").then((module) => ({ default: module.CapturePage })));
 const LibraryPage = React.lazy(() => import("@/pages/Library").then((module) => ({ default: module.LibraryPage })));
 const SystemPage = React.lazy(() => import("@/pages/System").then((module) => ({ default: module.SystemPage })));
+// The admin console is a rare, separate surface and carries the whole
+// workspace copy namespace. Splitting it keeps both off first paint.
+const AdminConsole = React.lazy(() => import("@/features/admin/AdminConsole").then((module) => ({ default: module.AdminConsole })));
 
 export default function App() {
   const theme = useAppStore((state) => state.theme);
@@ -55,7 +57,9 @@ export default function App() {
       <CoreServiceUnavailableBanner />
       <CommandPaletteHost language={language} />
       {rawRoute.startsWith("/admin") ? (
-        <AdminConsole onBack={() => navigateHash("/brain")} />
+        <React.Suspense fallback={<PageLoader language={language} />}>
+          <AdminConsole onBack={() => navigateHash("/brain")} />
+        </React.Suspense>
       ) : parsed.primary === "act" ? (
         <BrainShell active={parsed.primary}>
           <React.Suspense fallback={<PageLoader language={language} />}>

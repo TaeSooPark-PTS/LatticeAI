@@ -4,6 +4,37 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.9] - 2026-07-27
+
+### Changed
+- i18n is split per lazy route. `frontend/src/i18n/registry.ts` holds a shared
+  mutable table; `shell` registers eagerly (app frame, language switcher,
+  generic `ui.*`) and `brain` / `workspace` / `onboarding` register themselves
+  when their module is imported, which happens inside the lazy chunk of the
+  route that needs them. Initial static JS drops from 150.0 KiB to 99.3 KiB
+  gzip (505.1 KiB → 317.3 KiB raw), and lazy chunks kept off first paint go
+  from 25 to 32.
+- The bundle budget returns to its original 150 KiB. 9.9.8 raised it to 152 KiB
+  because the shared i18n table made the ceiling unreachable without one; that
+  cause is gone.
+- The admin console is behind a `React.lazy` boundary. It is a rare, separate
+  surface and it was pulling the whole workspace copy namespace onto first
+  paint.
+- `brain.title` (the product wordmark) moved from the `brain` namespace to
+  `shell` — it renders in the app frame before any route resolves.
+
+### Added
+- `scripts/check_i18n_namespace_coverage.mjs`, wired into `npm run lint`. It
+  walks the real module graph and, for the eager root and every `React.lazy`
+  boundary, verifies each `t(lang, "key")` in that chunk's static closure is
+  covered by a namespace the chunk imports. Without it the split fails
+  silently: `t()` returns the raw key, so the UI shows `system.permission.title`
+  instead of Korean text with no error raised. Type-only imports are not
+  counted as runtime edges.
+- `frontend/src/test/setup.ts` registers every namespace, because a unit test
+  renders a component without its route. Production coverage is proven by the
+  script above, not by this file.
+
 ## [9.9.8] - 2026-07-27
 
 ### Added

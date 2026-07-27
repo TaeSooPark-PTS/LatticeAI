@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **9.9.8 — Autonomy Dial**.
+Current release: **9.9.9 — Lean Shell**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -14,47 +14,76 @@ registries, and import-safe server composition.
 
 ```mermaid
 flowchart TB
-  user["User"]
-  desktop["Tauri desktop shell"]
-  browser["Browser extension"]
-  editor["VS Code extension"]
-  ui["React / Vite Brain Home"]
-  api["FastAPI localhost sidecar"]
-  runtime["Runtime composition root<br/>latticeai.runtime"]
-  services["Product services<br/>chat, memory, model, ingestion, search, review"]
-  agent["AgentRuntime<br/>preview, readiness, orchestration"]
-  tools["ToolRegistry / MCP<br/>permissions, dispatch, diagnostics"]
-  brain["Brain Core<br/>lattice_brain"]
-  kg["Knowledge Graph<br/>nodes, edges, provenance"]
-  store["Local storage<br/>SQLite live store, Postgres scale tooling"]
-  archive["Portable archives<br/>.latticebrain"]
-  trust["Trust gates<br/>auth, consent, audit, redaction"]
-  models["Model runtimes<br/>local first, cloud opt-in"]
+  user(["User"])
 
-  user --> desktop
-  user --> browser
-  user --> editor
-  desktop --> ui
-  ui --> api
-  browser --> api
-  editor --> api
-  api --> trust
-  trust --> runtime
+  subgraph surfaces["Surfaces — every one talks to the same localhost sidecar"]
+    direction LR
+    ui["React / Vite app<br/>lazy routes · per-route i18n"]
+    desktop["Tauri<br/>desktop shell"]
+    editor["VS Code<br/>extension"]
+    browser["Browser<br/>extension"]
+    telegram["Telegram<br/>bridge"]
+    desktop ~~~ ui ~~~ editor ~~~ browser ~~~ telegram
+  end
+
+  api["FastAPI localhost sidecar — latticeai.app_factory"]
+
+  subgraph gates["Trust boundary — every request crosses this"]
+    direction LR
+    trust["auth · consent<br/>audit · redaction"]
+    mode["PermissionMode dial<br/>strict · trusted · bypass"]
+    breakers["Circuit breakers<br/>mode-invariant"]
+    trust ~~~ mode ~~~ breakers
+  end
+
+  runtime["Runtime composition root — latticeai.runtime"]
+
+  subgraph exec["Execution"]
+    direction LR
+    agent["AgentRuntime<br/>plan · approve · execute · verify"]
+    governor["Change Governor<br/>proposal-first"]
+    tools["ToolRegistry / MCP<br/>policy · dispatch"]
+    agent --> governor
+    agent --> tools
+  end
+
+  subgraph data["Brain Core — lattice_brain"]
+    direction LR
+    kg["Knowledge Graph<br/>nodes · edges · provenance"]
+    store["Local storage<br/>SQLite live · Postgres optional"]
+    archive["Portable archives<br/>.latticebrain"]
+    kg ~~~ store ~~~ archive
+  end
+
+  services["Product services<br/>chat · memory · model · ingestion · search · review"]
+  models["Model runtimes<br/>local first · cloud opt-in"]
+
+  user --> surfaces
+  surfaces --> api
+  api --> gates
+  gates --> runtime
+  runtime --> exec
   runtime --> services
-  runtime --> agent
-  runtime --> tools
-  services --> brain
-  agent --> tools
   tools --> services
   services --> models
-  brain --> kg
-  brain --> store
-  brain --> archive
+  services --> data
+
+  mode -. "widens approval only" .-> tools
+  breakers -. "no mode ever widens these" .-> tools
 ```
 
 Key boundaries:
 
-- `frontend/src` owns product UX and static app behavior.
+- `frontend/src` owns product UX and static app behavior. Every route is a
+  `React.lazy` boundary, and copy follows the route rather than the entry
+  chunk: `i18n/registry.ts` holds one shared table, `shell` registers eagerly
+  (app frame, language switcher, generic `ui.*`), and `brain` / `workspace` /
+  `onboarding` register themselves when the lazy chunk that needs them is
+  imported. That keeps the first-paint closure near 99 KiB gzip instead of
+  carrying ~3,000 lines of copy for routes the user has not opened.
+  `scripts/check_i18n_namespace_coverage.mjs` fails the build when a chunk
+  reads a key whose namespace it never imports — otherwise `t()` silently
+  returns the raw key and the UI renders an identifier instead of text.
 - `latticeai.app_factory` is the FastAPI composition root.
 - `latticeai.runtime` owns typed config, security, Brain, model, platform, and
   router assembly stages (`config_runtime`, `security_runtime`,
@@ -85,12 +114,14 @@ Key boundaries:
 
 ```mermaid
 sequenceDiagram
+  autonumber
   participant U as User
   participant UI as Brain Home
   participant API as FastAPI Sidecar
   participant RT as Runtime Context
   participant MS as Memory / Model Services
   participant AR as AgentRuntime
+  participant CG as Change Governor
   participant TR as ToolRegistry
   participant KG as Knowledge Graph
 
@@ -99,14 +130,27 @@ sequenceDiagram
   API->>RT: Resolve scoped runtime dependencies
   RT->>MS: Load workspace, memory, model state
   MS->>KG: Retrieve grounded context and provenance
+
   alt Direct chat or memory request
-    MS-->>API: Grounded answer or honest no-model state
+    MS-->>API: Grounded answer, or an honest no-model state
   else Explicit tool or workflow request
     RT->>AR: Preview / readiness contract
+    Note over AR: Resolve the permission mode once per run<br/>(user + workspace scope) and stamp it on the run
+    AR->>AR: Plan, then gate the plan against that mode
+    opt Plan still needs a human
+      AR-->>API: Pause as awaiting_approval (durable, resumes on the same mode)
+    end
     AR->>TR: Permissioned dispatch
-    TR-->>AR: Tool result and audit metadata
-    AR-->>API: Governed result
+    Note over TR: Circuit breakers deny first — no mode widens them
+    alt Rewrites existing content under strict
+      AR->>CG: Stage a review proposal
+      CG-->>AR: proposal_id (nothing written yet)
+    else Auto-applies under trusted / bypass
+      TR-->>AR: Tool result + audit metadata
+    end
+    AR-->>API: Governed result, or a NEEDS_REVIEW verdict
   end
+
   API-->>UI: Response, proof, and next actions
 ```
 
@@ -193,7 +237,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.9.8:
+The 8.0 architecture contract remains active in 9.9.9:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -236,7 +280,7 @@ Change governance and agent-eval extend the contract:
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.9.8. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 9.9.9. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -247,13 +291,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.9.8 exact artifact names:
+9.9.9 exact artifact names:
 
-- `dist/ltcai-9.9.8-py3-none-any.whl`
-- `dist/ltcai-9.9.8.tar.gz`
-- `ltcai-9.9.8.tgz`
-- `dist/ltcai-9.9.8.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.8_aarch64.dmg`
+- `dist/ltcai-9.9.9-py3-none-any.whl`
+- `dist/ltcai-9.9.9.tar.gz`
+- `ltcai-9.9.9.tgz`
+- `dist/ltcai-9.9.9.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.9_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

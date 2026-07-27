@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.9.8 — Autonomy Dial**.
+Current release: **9.9.9 — Lean Shell**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

@@ -12,11 +12,16 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.9.8 — Autonomy Dial.** The server gained a `strict` / `trusted` / `bypass`
-permission mode. Editor actions run through the same governed tool path, so the
-mode set in the Lattice AI app (환경설정 → 에이전트 자율성) applies here too; the
-dial itself lives in the app rather than in editor settings, so there is one
-place to raise autonomy and one audit trail for it.
+**9.9.9 — Lean Shell.** This release is frontend-side: the Lattice AI app now
+loads each route's copy with that route instead of shipping all of it up front,
+cutting first-paint JavaScript by a third. The extension talks to the same
+sidecar API and is unchanged by it.
+
+9.9.8 added a `strict` / `trusted` / `bypass` permission mode. Editor actions
+run through the same governed tool path, so the mode set in the Lattice AI app
+(환경설정 → 에이전트 자율성) applies here too; the dial itself lives in the app
+rather than in editor settings, so there is one place to raise autonomy and one
+audit trail for it.
 
 The extension follows the main app positioning: Lattice AI is a local-first
 Digital Brain, not just a model launcher or editor chat panel. The 9.9.6 line closes the editor's
