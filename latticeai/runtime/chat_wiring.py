@@ -35,7 +35,7 @@ def build_chat_agent_runtime_from_context(
         audit=audit,
         hooks=hooks,
         brain_memory=brain_memory,
-        permission_mode=lambda: resolve_active_permission_mode(),
+        permission_mode=resolve_active_permission_mode,
     )
 
 

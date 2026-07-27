@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v9.9.7)
+# Lattice AI Feature Status (v9.9.8)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **9.9.7 — No Gaps Left**.
+Current release: **9.9.8 — Autonomy Dial**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -32,7 +32,11 @@ report the same grounding verdict and the same plain-language run outcome, an
 answer's evidence turns into one-click follow-ups, and work that spans several
 runs keeps its state in a project session. The 9.9.7 line closes the last
 recorded gaps — no `✖` remains in the surface parity matrix, and every
-remaining `—` states why it is a design boundary.
+remaining `—` states why it is a design boundary. The 9.9.8 line makes autonomy
+explicit: a `strict` / `trusted` / `bypass` dial widens what runs without an
+extra approval prompt, scoped per user and per workspace, while hard circuit
+breakers stay mode-invariant. The dial has no UI yet — it is API-only, so the
+default behaviour is unchanged from 9.9.7.
 
 ## Current Feature Status
 
@@ -73,7 +77,8 @@ remaining `—` states why it is a design boundary.
 | Citation Precision | Current | A sentence-aware `prose` chunking strategy keeps Korean claims whole for `.txt/.pdf/.docx/.html`; chunk hits carry a locator (`Guide > Setup · p.4`) and stay silent when they cannot prove it. `plain` chunking is byte-identical to the legacy walk. |
 | Graph Relation Evidence | Current | Relations record whether they came from a verb or from co-occurrence, with matching weights; enumerations no longer manufacture relation chains, and the curator can demote weak/hub adjacency edges without touching verb-backed or legacy ones. |
 | Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
-| Release Assets | Current | 9.9.7 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Permission Modes | Current (API only) | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. **No UI surface ships in 9.9.8** — the dial is set through `POST /api/permission-mode` only; `GET /api/permission-mode/catalog` already returns the localized selector copy a future settings control will consume. |
+| Release Assets | Current | 9.9.8 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -91,6 +96,11 @@ remaining `—` states why it is a design boundary.
   `docs/SURFACE_PARITY.md` is a design boundary that states its reason (e.g.
   approval *decisions* stay off the browser extension because they need a
   signed, single-use, short-TTL token).
+- The permission mode dial has **no UI in 9.9.8**. It is reachable only via
+  `POST /api/permission-mode`, so in practice the product still behaves as
+  `strict` unless a user or integration calls that endpoint. The localized
+  catalog copy exists so a settings control can be added without a second
+  contract change.
 - Voice transcription ships with **no bundled transcriber**. Memos are stored
   and honestly marked not-searchable until a local transcriber is wired in;
   `GET /api/capture/voice/status` reports which case applies.

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from latticeai.core.permission_mode import (
     PermissionMode,
     effective_auto_approve,

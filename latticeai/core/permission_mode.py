@@ -151,19 +151,15 @@ def is_circuit_breaker(
 ) -> Optional[str]:
     """Return a reason string when the call must be denied in every mode."""
     risk = str(policy.get("risk") or "")
-    sandbox = str(policy.get("sandbox") or "")
     destructive = bool(policy.get("destructive"))
 
     if destructive or risk == "destructive":
         return "destructive action is always blocked"
 
-    # System-sandbox *writes* and host-control outside observation stay hard
-    # unless the tool is pure observation (screenshot/status).
-    if sandbox in HARD_BLOCK_SANDBOXES and tool_name not in COMPUTER_OBSERVATION_TOOLS:
-        if risk in {"write", "exec"} or tool_name in COMPUTER_CONTROL_TOOLS:
-            # bypass may allow computer control; caller decides. Hard block only
-            # for path-based system writes (handled by blocked prefixes upstream).
-            pass
+    # NOTE: system-sandbox writes are *mode-sensitive*, not circuit breakers —
+    # ``effective_auto_approve`` keeps them gated under every mode and the
+    # blocked-path-prefix guard upstream denies escapes outright. Deciding them
+    # here would make ``bypass`` unable to drive desktop control at all.
 
     path = str((args or {}).get("path") or (args or {}).get("filename") or "")
     if path:

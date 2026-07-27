@@ -16,22 +16,53 @@ from latticeai.core.permission_mode import (
     is_circuit_breaker,
     normalize_mode,
     plan_requires_approval,
-    should_stage_proposal,
 )
 
 
-def resolve_deps_mode(deps: Any, ctx: Any = None) -> PermissionMode:
-    """Read mode from deps (value or zero-arg callable) or context override."""
+def call_mode_source(
+    raw: Any,
+    *,
+    user_email: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+) -> Any:
+    """Resolve a mode source that may be a value, or a callable that either
+    accepts ``user_email``/``workspace_id`` scope kwargs or takes no arguments.
+
+    Scoped resolution is what makes per-user and per-workspace overrides real:
+    an unscoped call always collapses to the process-wide default.
+    """
+    if not callable(raw):
+        return raw
+    try:
+        return raw(user_email=user_email, workspace_id=workspace_id)
+    except TypeError:
+        # Legacy zero-arg resolver (or a static callable) — fall back.
+        try:
+            return raw()
+        except Exception:
+            return DEFAULT_MODE
+    except Exception:
+        return DEFAULT_MODE
+
+
+def resolve_deps_mode(
+    deps: Any,
+    ctx: Any = None,
+    *,
+    user_email: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+) -> PermissionMode:
+    """Mode for this run: explicit context stamp wins, else the scoped resolver
+    on ``deps``, else strict."""
     if ctx is not None:
         override = getattr(ctx, "permission_mode", None)
         if override is not None:
             return normalize_mode(override)
-    raw = getattr(deps, "permission_mode", None)
-    if callable(raw):
-        try:
-            raw = raw()
-        except Exception:
-            raw = DEFAULT_MODE
+    raw = call_mode_source(
+        getattr(deps, "permission_mode", None),
+        user_email=user_email,
+        workspace_id=workspace_id,
+    )
     return normalize_mode(raw if raw is not None else DEFAULT_MODE)
 
 
@@ -58,8 +89,6 @@ def non_auto_plan_steps(
             "shell": False, "network": False, "sandbox": "workspace", "rollback": "none",
         })
         if effective_auto_approve(mode, str(name), policy):
-            continue
-        if mode == PermissionMode.STRICT and name in governed:
             continue
         non_auto.append(name)
     return non_auto
@@ -122,30 +151,10 @@ def block_reason_for_tool(
     return f"BLOCKED: action '{name}' requires explicit approval (mode={mode.value})."
 
 
-def filter_governor_verdict(
-    mode: PermissionMode | str,
-    verdict: Optional[Mapping[str, Any]],
-) -> Optional[Mapping[str, Any]]:
-    """Drop proposal staging under trusted/bypass so mutations auto-apply."""
-    if verdict is None:
-        return None
-    if verdict.get("decision") != "proposed":
-        return verdict
-    if should_stage_proposal(mode, proposal_required=True):
-        return verdict
-    # Reinterpret as allow so the classic execute path applies the change.
-    return {
-        "decision": "allow_additive",
-        "classification": verdict.get("classification") or {},
-        "mode_override": normalize_mode(mode).value,
-        "note": "permission mode auto-applies mutation with audit",
-    }
-
-
 __all__ = [
+    "call_mode_source",
     "resolve_deps_mode",
     "non_auto_plan_steps",
     "approval_requirements_for",
     "block_reason_for_tool",
-    "filter_governor_verdict",
 ]

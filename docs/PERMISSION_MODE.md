@@ -14,6 +14,11 @@ ToolRegistry + Change Governor without discarding fail-closed defaults.
 Hard circuit breakers always apply: destructive risk, `rm -rf /` / `~`,
 blocked path prefixes, binary overwrite without proposal support.
 
+Under **trusted** / **bypass** the governed mutation path is decided *before*
+`ChangeGovernor.review` runs. That call persists a proposal as a side effect, so
+reviewing first and discarding the verdict afterwards would apply the change
+*and* leave an orphan proposal pending in the Review Center.
+
 ## API
 
 ```http
@@ -29,6 +34,28 @@ Per-workspace overrides per-user; both override the process default.
 
 Env default: `LATTICEAI_PERMISSION_MODE=strict|trusted|bypass`.
 
+## Scope resolution
+
+Scope is not cosmetic — it is what makes a stored override take effect. Every
+enforcement point resolves the dial *with the caller's identity*:
+
+| Enforcement point | Scope passed |
+|-------------------|--------------|
+| `ToolDispatchService.enforce_policy` | `current_user` + `workspace_id` |
+| `SingleAgentRuntime` tool gate | `current_user` + `req.workspace_id` |
+| Agent plan gate | the run's stamped mode (see below) |
+
+`chat_agent_http` resolves the mode **once per run** and stamps it on
+`AgentRunContext.permission_mode`, so the plan the user approved and every tool
+step in that run are judged by the same dial even if the stored preference
+changes mid-run. A paused approval run persists that stamp, so it resumes under
+the mode it was approved with.
+
+A resolver bound into `ToolDispatchService.permission_mode` may accept
+`user_email`/`workspace_id` kwargs (preferred) or take no arguments; see
+`call_mode_source`. An unscoped resolver always returns the process default —
+which would make per-user and per-workspace overrides silently inert.
+
 ## Wiring (automatic)
 
 No manual `app_factory` edits required. On startup:
@@ -36,7 +63,11 @@ No manual `app_factory` edits required. On startup:
 1. `build_chat_agent_runtime_from_context` binds dispatch + agent to the
    shared mode resolver.
 2. `register_review_and_brain_tail_routers` mounts `/api/permission-mode`
-   and initializes `PermissionModeService` with the real `data_dir` + audit.
+   and rebinds `PermissionModeService` onto the real `data_dir` + audit sink.
+
+Step 2 *rebinds* rather than "first caller wins": a tool dispatch that happens
+before routers are mounted would otherwise pin the store to the fallback
+`~/.ltcai` path with no audit sink.
 
 ## Code map
 

@@ -1,3 +1,17 @@
+# [v9.9.8 - Autonomy Dial] (2026-07-27)
+
+Adds a strict / trusted / bypass permission mode dial over the existing
+ToolRegistry and Change Governor, and fixes the defects that made an earlier
+draft of it either inert or unsafe: scope-aware resolution so a stored per-user
+or per-workspace override actually reaches enforcement, a run-scoped mode stamp
+that survives a paused approval, no orphan proposals under trusted/bypass, and
+a deadlock in the preference store that hung every mode change.
+
+See [RELEASE_NOTES_v9.9.8.md](RELEASE_NOTES_v9.9.8.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v9.9.7 - No Gaps Left] (2026-07-27)
 
 Closes every `✖` the 9.9.6 parity matrix recorded, plus the documented design
@@ -40,7 +54,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.7**.
+This repository keeps public release history from **8.0.0 through 9.9.8**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

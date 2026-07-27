@@ -4,6 +4,50 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.8] - 2026-07-27
+
+### Added
+- Permission modes (`latticeai/core/permission_mode.py`): a `strict` /
+  `trusted` / `bypass` autonomy dial layered over ToolRegistry + Change
+  Governor. `strict` is the default and matches 9.9.7 behavior exactly.
+- `GET/POST /api/permission-mode` and `GET /api/permission-mode/catalog`,
+  backed by `PermissionModeService` (per-workspace > per-user > process
+  default, `LATTICEAI_PERMISSION_MODE` for the default). Switching to
+  `bypass` requires `acknowledge_risk=true` and is audited.
+- Mode-invariant circuit breakers: destructive risk, root/home paths,
+  `rm -rf /` style commands, and binary overwrites are denied in every mode.
+- `AgentRunContext.permission_mode`: the mode is resolved once per run and
+  persisted with a paused approval, so a plan and its execution are judged by
+  one dial even if the stored preference changes mid-run.
+
+### Fixed
+- Stored per-user and per-workspace modes never reached enforcement: the
+  bound resolver was called without a scope, so every caller collapsed onto
+  the process default and the dial had no effect. `enforce_policy` and the
+  agent tool gate now resolve with `user_email` / `workspace_id`.
+- Orphan change proposals under `trusted` / `bypass`: the gate called
+  `ChangeGovernor.review()` — which persists a proposal as a side effect —
+  and then discarded the verdict, applying the change *and* leaving a pending
+  proposal in the Review Center. The mode is now decided before the governor
+  is consulted.
+- `AgentRunContext` used `__slots__` with no `permission_mode` slot, making
+  the documented per-run override unreachable dead code.
+- `PermissionModeService.set_mode()` deadlocked: it held a non-reentrant
+  `threading.Lock` while calling `resolve()`, which takes the same lock, so
+  every mode change hung its worker thread forever.
+
+### Changed
+- `enforce_policy`: the two `fail_closed` branches that both raised 409 are
+  one branch again — a binary overwrite has no safe apply path in any mode.
+- `PermissionModeService.rebind_data_dir()` / `rebind_audit()`: explicit
+  wiring now rebinds an already-created singleton instead of being dropped,
+  so an early lazy caller cannot pin the store to `~/.ltcai` with no audit
+  sink.
+
+### Removed
+- Dead no-op `if ... pass` block in `is_circuit_breaker`.
+- `filter_governor_verdict`, unused after the governor fix.
+
 ## [9.9.7] - 2026-07-27
 
 ### Added

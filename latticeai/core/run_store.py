@@ -60,6 +60,9 @@ def serialize_run_context(ctx: AgentRunContext) -> Dict[str, Any]:
         "executing_model": ctx.executing_model,
         "reviewing_model": ctx.reviewing_model,
         "approved_by_human": ctx.approved_by_human,
+        # A paused run resumes under the dial it was planned and approved with,
+        # not whatever the preference happens to be at resume time.
+        "permission_mode": ctx.permission_mode,
         "trace": {"events": ctx.trace.events, "truncated": ctx.trace.truncated},
     }
 
@@ -81,6 +84,8 @@ def restore_run_context(payload: Dict[str, Any]) -> AgentRunContext:
     ctx.executing_model = payload.get("executing_model")
     ctx.reviewing_model = payload.get("reviewing_model")
     ctx.approved_by_human = bool(payload.get("approved_by_human"))
+    stored_mode = payload.get("permission_mode")
+    ctx.permission_mode = str(stored_mode) if stored_mode else None
     trace_payload = payload.get("trace") or {}
     trace = LoopTrace()
     trace.events = list(trace_payload.get("events") or [])

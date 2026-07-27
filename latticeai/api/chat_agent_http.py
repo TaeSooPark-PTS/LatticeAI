@@ -268,6 +268,17 @@ class AgentHTTPController:
         ctx.executing_model = req.executing_model
         ctx.reviewing_model = req.reviewing_model
         ctx.project_context = self._project_summary(req, current_user)
+        # Autonomy dial (v9.9.8): resolve the user/workspace-scoped mode once so
+        # the plan gate and every per-tool gate in this run agree, even if the
+        # stored preference changes mid-run.
+        mode_probe = getattr(self.runtime, "resolve_permission_mode", None)
+        if callable(mode_probe):
+            try:
+                ctx.permission_mode = mode_probe(
+                    user_email=current_user, workspace_id=req.workspace_id,
+                ).value
+            except Exception:  # noqa: BLE001 — never fail a run over the dial
+                ctx.permission_mode = None
         ctx.state = AgentState.PLANNING
         ctx.state_history.append(ctx.state.value)
         await self.runtime.plan(

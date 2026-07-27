@@ -2224,6 +2224,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/permission-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Permission Mode */
+        get: operations["get_permission_mode_api_permission_mode_get"];
+        put?: never;
+        /** Set Permission Mode */
+        post: operations["set_permission_mode_api_permission_mode_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/permission-mode/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Permission Mode Catalog */
+        get: operations["permission_mode_catalog_api_permission_mode_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects": {
         parameters: {
             query?: never;
@@ -7973,6 +8008,21 @@ export interface components {
             /** User Email */
             user_email?: string | null;
         };
+        /** SetPermissionModeRequest */
+        SetPermissionModeRequest: {
+            /**
+             * Acknowledge Risk
+             * @default false
+             */
+            acknowledge_risk: boolean;
+            /**
+             * Mode
+             * @description strict | trusted | bypass
+             */
+            mode: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
         /** SetupInstallRequest */
         SetupInstallRequest: {
             /** Confirmation Token */
@@ -12577,6 +12627,90 @@ export interface operations {
         };
     };
     memory_tiers_api_memory_tiers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_permission_mode_api_permission_mode_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_permission_mode_api_permission_mode_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPermissionModeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    permission_mode_catalog_api_permission_mode_catalog_get: {
         parameters: {
             query?: never;
             header?: never;

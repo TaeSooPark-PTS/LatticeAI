@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **9.9.7 — No Gaps Left**.
+Current release: **9.9.8 — Autonomy Dial**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

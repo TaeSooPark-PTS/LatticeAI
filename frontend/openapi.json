@@ -2689,6 +2689,36 @@
         "title": "SetApiKeyRequest",
         "type": "object"
       },
+      "SetPermissionModeRequest": {
+        "properties": {
+          "acknowledge_risk": {
+            "default": false,
+            "title": "Acknowledge Risk",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "strict | trusted | bypass",
+            "title": "Mode",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "SetPermissionModeRequest",
+        "type": "object"
+      },
       "SetupInstallRequest": {
         "properties": {
           "confirmation_token": {
@@ -4286,7 +4316,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.9.7"
+    "version": "9.9.8"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8625,6 +8655,109 @@
           }
         },
         "summary": "Memory Tiers"
+      }
+    },
+    "/api/permission-mode": {
+      "get": {
+        "operationId": "get_permission_mode_api_permission_mode_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Permission Mode",
+        "tags": [
+          "permission-mode"
+        ]
+      },
+      "post": {
+        "operationId": "set_permission_mode_api_permission_mode_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPermissionModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Permission Mode",
+        "tags": [
+          "permission-mode"
+        ]
+      }
+    },
+    "/api/permission-mode/catalog": {
+      "get": {
+        "operationId": "permission_mode_catalog_api_permission_mode_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Permission Mode Catalog",
+        "tags": [
+          "permission-mode"
+        ]
       }
     },
     "/api/projects": {

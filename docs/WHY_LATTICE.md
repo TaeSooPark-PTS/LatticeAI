@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.9.7 — No Gaps Left**.
+Current release: **9.9.8 — Autonomy Dial**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.9.7 — No Gaps Left**.
+Current release: **9.9.8 — Autonomy Dial**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -48,7 +48,7 @@ from .contracts import multi_agent_contract
 from ..utils import now_iso as _now
 
 
-MULTI_AGENT_VERSION = "9.9.7"
+MULTI_AGENT_VERSION = "9.9.8"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")

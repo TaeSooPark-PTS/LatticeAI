@@ -44,6 +44,21 @@ class PermissionModeService:
         self._audit = audit or (lambda *a, **kw: None)
         self._lock = threading.Lock()
 
+    def rebind_data_dir(self, data_dir: Path) -> None:
+        """Point the store at the app's real data dir.
+
+        The wiring may instantiate this service lazily before routers know the
+        configured data dir; rebinding keeps one file of record instead of
+        stranding writes under the fallback path.
+        """
+        with self._lock:
+            self._path = Path(data_dir) / "permission_mode.json"
+
+    def rebind_audit(self, audit: Callable[..., None]) -> None:
+        """Attach the real audit sink once app wiring provides one."""
+        with self._lock:
+            self._audit = audit
+
     def _read(self) -> Dict[str, Any]:
         if not self._path.exists():
             return {"default": self._default.value, "users": {}, "workspaces": {}}
@@ -62,14 +77,18 @@ class PermissionModeService:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_json(self._path, data)
 
-    def resolve(
+    def _resolve_from(
         self,
+        data: Dict[str, Any],
         *,
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
+        user_email: Optional[str],
+        workspace_id: Optional[str],
     ) -> PermissionMode:
-        with self._lock:
-            data = self._read()
+        """Scope precedence: workspace → user → process default.
+
+        Pure over ``data`` and lock-free, so holders of ``_lock`` can reuse it
+        without re-entering a non-reentrant lock.
+        """
         if workspace_id:
             ws = (data.get("workspaces") or {}).get(str(workspace_id))
             if ws:
@@ -79,6 +98,18 @@ class PermissionModeService:
             if user:
                 return normalize_mode(user)
         return normalize_mode(data.get("default") or self._default)
+
+    def resolve(
+        self,
+        *,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> PermissionMode:
+        with self._lock:
+            data = self._read()
+        return self._resolve_from(
+            data, user_email=user_email, workspace_id=workspace_id,
+        )
 
     def get(
         self,
@@ -112,7 +143,11 @@ class PermissionModeService:
             )
         with self._lock:
             data = self._read()
-            previous = self.resolve(user_email=user_email, workspace_id=workspace_id)
+            # Lock-free helper on purpose: calling ``resolve`` here would
+            # re-enter ``_lock`` and deadlock every mode change.
+            previous = self._resolve_from(
+                data, user_email=user_email, workspace_id=workspace_id,
+            )
             if workspace_id:
                 data.setdefault("workspaces", {})[str(workspace_id)] = mode.value
             elif user_email:

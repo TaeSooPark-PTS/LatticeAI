@@ -69,7 +69,7 @@ class AgentRunContext:
     __slots__ = ("state", "plan", "transcript", "retry_count",
                  "state_history", "corrections", "final_message", "rollback_log",
                  "executing_model", "reviewing_model", "approved_by_human", "trace",
-                 "on_step", "project_context")
+                 "on_step", "project_context", "permission_mode")
 
     def __init__(self) -> None:
         self.state:           AgentState   = AgentState.IDLE
@@ -93,6 +93,11 @@ class AgentRunContext:
         # verification. Empty for a standalone run, which behaves exactly as
         # before. Set by the HTTP layer, read by plan/execute/verify.
         self.project_context: str = ""
+        # Autonomy dial resolved once per run (v9.9.8). The HTTP layer stamps
+        # the user/workspace-scoped mode here so the plan gate and every
+        # per-tool gate in the same run agree; ``None`` falls back to the
+        # process-wide resolver on ``deps``.
+        self.permission_mode: Optional[str] = None
 
 
 _THINK_BLOCK_RE = re.compile(

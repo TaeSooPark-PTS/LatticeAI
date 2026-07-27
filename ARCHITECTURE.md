@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **9.9.7 — No Gaps Left**.
+Current release: **9.9.8 — Autonomy Dial**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -193,7 +193,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.9.7:
+The 8.0 architecture contract remains active in 9.9.8:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -223,12 +223,20 @@ Change governance and agent-eval extend the contract:
 - `core/agent_eval.py` runs a fail-closed verifier: unverifiable or failing
   outcomes resolve to `NEEDS_REVIEW` and enter the review queue rather than
   being reported as success.
+- `core/permission_mode.py` adds an autonomy dial (`strict` / `trusted` /
+  `bypass`) *on top of* those gates rather than replacing them: a mode only
+  widens what may run without an extra approval prompt. Circuit breakers —
+  destructive risk, root/home paths, `rm -rf /` style commands, binary
+  overwrites — are mode-invariant. The mode is resolved per user and per
+  workspace, and stamped once per agent run so a plan and its execution are
+  judged by one dial (`services/permission_mode_service.py`,
+  `runtime/permission_mode_wiring.py`, `/api/permission-mode`).
 
 ## Storage And Portability
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.9.7. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 9.9.8. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -239,13 +247,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.9.7 exact artifact names:
+9.9.8 exact artifact names:
 
-- `dist/ltcai-9.9.7-py3-none-any.whl`
-- `dist/ltcai-9.9.7.tar.gz`
-- `ltcai-9.9.7.tgz`
-- `dist/ltcai-9.9.7.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.7_aarch64.dmg`
+- `dist/ltcai-9.9.8-py3-none-any.whl`
+- `dist/ltcai-9.9.8.tar.gz`
+- `ltcai-9.9.8.tgz`
+- `dist/ltcai-9.9.8.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.8_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 
