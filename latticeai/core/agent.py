@@ -31,8 +31,19 @@ from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Mapping, Opt
 
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
+from latticeai.core.agent_permission import (
+    block_reason_for_tool,
+    non_auto_plan_steps,
+    resolve_deps_mode,
+)
 from latticeai.core.agent_profiles import AgentProfile, profile_for_model
 from latticeai.core.agent_trace import LoopTrace
+from latticeai.core.permission_mode import (
+    PermissionMode,
+    is_circuit_breaker,
+    plan_requires_approval,
+    should_stage_proposal,
+)
 from latticeai.core.file_generation import (
     generate_file_content,
     infer_file_target,
@@ -652,6 +663,13 @@ class AgentDeps:
     # inject a fixed profile.
     agent_profile: Optional["AgentProfile"] = None
 
+    # ── permission mode port (optional, v9.9.8) ──────────────────────
+    # The autonomy dial. Either a static mode, or a resolver callable that
+    # accepts ``user_email``/``workspace_id`` scope kwargs (preferred) or no
+    # arguments at all — see ``call_mode_source``. ``None`` means strict,
+    # which is exactly the pre-9.9.8 behaviour.
+    permission_mode: Any = None
+
 
 class SingleAgentRuntime:
     """Drives the agent state machine over injected :class:`AgentDeps`."""
@@ -680,6 +698,32 @@ class SingleAgentRuntime:
         if getattr(self, "_env_transcript_budget", None) is None:
             self._env_transcript_budget = TranscriptBudget.from_env()
         return self._env_transcript_budget
+
+    # ── permission mode (v9.9.8) ─────────────────────────────────────
+    def resolve_permission_mode(
+        self,
+        ctx: Optional[AgentRunContext] = None,
+        *,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> PermissionMode:
+        """Autonomy dial for this run.
+
+        A mode stamped on ``ctx`` wins, so the plan a user approved and every
+        tool step in the same run are judged by one dial even if the stored
+        preference changes mid-run. Otherwise the resolver on ``deps`` is
+        consulted with the caller's scope — resolving unscoped would collapse
+        every caller onto the process-wide default.
+        """
+        return resolve_deps_mode(
+            self.deps, ctx, user_email=user_email, workspace_id=workspace_id,
+        )
+
+    def _governed_tools(self) -> FrozenSet[str]:
+        governor = getattr(self.deps, "change_governor", None)
+        if governor is None:
+            return frozenset()
+        return frozenset(getattr(governor, "governed_tools", frozenset()))
 
     def profile_for(self, model_id: Optional[str]) -> AgentProfile:
         """Loop profile for the model actually executing this run (v9.9.7).
@@ -806,21 +850,20 @@ class SingleAgentRuntime:
         weakening the gate itself.
         """
         d = self.deps
-        auto_approve_tools = {name for name, p in d.tool_governance.items() if p["auto_approve"]}
+        mode = self.resolve_permission_mode(ctx)
         # Governor-managed tools never hard-block the plan: each call is
         # classified at execution time — additive creates run, mutations and
         # deletions of existing content become review proposals.
-        governed_tools = (
-            frozenset(getattr(d.change_governor, "governed_tools", frozenset()))
-            if d.change_governor is not None else frozenset()
-        )
+        governed_tools = self._governed_tools()
         steps = ctx.plan.get("steps", [])
-        non_auto = [
-            s.get("action") for s in steps
-            if s.get("action") not in auto_approve_tools
-            and s.get("action") not in governed_tools
-        ]
-        requires = bool(ctx.plan.get("requires_approval", False)) or bool(non_auto)
+        non_auto = non_auto_plan_steps(
+            mode, steps, d.tool_governance or {}, governed_tools=governed_tools,
+        )
+        requires = plan_requires_approval(
+            mode,
+            non_auto_steps=non_auto,
+            plan_flag=bool(ctx.plan.get("requires_approval", False)),
+        )
         lines = [
             f"{index}. {step.get('description') or step.get('action') or '?'}"
             for index, step in enumerate(steps, start=1)
@@ -831,6 +874,7 @@ class SingleAgentRuntime:
         return {
             "requires_approval": requires,
             "non_auto_steps": non_auto,
+            "permission_mode": mode.value,
             "plan_summary": summary,
         }
 
@@ -1153,10 +1197,37 @@ class SingleAgentRuntime:
         Returns ``(proposed, governor_allows_additive)``: ``proposed`` means the
         step was staged as a proposal (skip execution); ``allows_additive`` lets
         an additive create pass the classic approval gate.
+
+        Under a mode that does not stage proposals (``trusted`` / ``bypass``)
+        the decision is made *before* the governor is consulted, because
+        ``review`` persists a proposal as a side effect — reviewing first and
+        discarding the verdict afterwards would apply the change *and* leave an
+        orphan proposal pending in the Review Center.
         """
         d = self.deps
         if d.change_governor is None:
             return False, False
+
+        mode = self.resolve_permission_mode(
+            ctx, user_email=current_user, workspace_id=request_workspace,
+        )
+        if not should_stage_proposal(mode, proposal_required=True):
+            if name not in self._governed_tools():
+                return False, False
+            if policy.get("destructive") or policy.get("risk") == "destructive":
+                # Let the destructive gate downstream own the block + transcript.
+                return False, False
+            d.audit(
+                "agent_change_auto_applied",
+                user_email=current_user,
+                workspace_id=request_workspace,
+                action=name,
+                path=str(args.get("path") or "") or None,
+                permission_mode=mode.value,
+                note="permission mode auto-applies mutation with audit",
+            )
+            return False, True
+
         verdict = d.change_governor.review(
             name, args, policy=dict(policy),
             user_email=current_user, workspace_id=request_workspace,
@@ -1188,16 +1259,42 @@ class SingleAgentRuntime:
         self, ctx: AgentRunContext, req: Any, name: str, thoughts: str, args: dict,
         policy: dict, risk: str, current_user: str, governor_allows_additive: bool,
     ) -> bool:
-        """Classic destructive / explicit-approval gates; True when the step was blocked."""
+        """Destructive / circuit-breaker / explicit-approval gates.
+
+        Returns True when the step was blocked. The active permission mode can
+        widen what runs without an extra approval prompt, but never widens a
+        circuit breaker or the destructive gate.
+        """
         d = self.deps
-        if policy["risk"] == "destructive":
+        mode = self.resolve_permission_mode(
+            ctx,
+            user_email=current_user,
+            workspace_id=getattr(req, "workspace_id", None),
+        )
+        # Hard denials first — mode-invariant. A circuit breaker (root/home
+        # paths, `rm -rf /` style commands) and a destructive policy are both
+        # audited as ``blocked`` with the reason that actually fired, rather
+        # than being flattened into the approval path.
+        breaker = is_circuit_breaker(name, policy, args)
+        hard_deny = breaker or (
+            "destructive policy"
+            if policy["risk"] == "destructive" or policy.get("destructive")
+            else None
+        )
+        if hard_deny:
+            error = (
+                f"BLOCKED: destructive action '{name}' not permitted in agent mode."
+                if hard_deny == "destructive policy"
+                else f"BLOCKED: {hard_deny}"
+            )
             ctx.trace.tool("execute", name=name, outcome="blocked_destructive", risk=risk)
             self._emit_step(ctx, "execute", "blocked", action=name, reason="destructive")
             ctx.transcript.append({
                 "state": AgentState.EXECUTING.value, "action": name,
                 "thoughts": thoughts, "args": args, "risk": risk,
                 "governance": dict(policy),
-                "error": f"BLOCKED: destructive action '{name}' not permitted in agent mode.",
+                "permission_mode": mode.value,
+                "error": error,
             })
             d.audit(
                 "agent_blocked", user_email=current_user, source=getattr(req, "source", None) or "agent",
@@ -1205,25 +1302,33 @@ class SingleAgentRuntime:
             )
             return True
 
-        if not policy["auto_approve"] and not ctx.approved_by_human and not governor_allows_additive:
-            d.audit(
-                "agent_exec", user_email=current_user, source=getattr(req, "source", None) or "agent",
-                state=AgentState.EXECUTING.value, action=name, risk=risk,
-                shell=policy["shell"], network=policy["network"],
-                destructive=policy["destructive"], sandbox=policy["sandbox"],
-                rollback=policy["rollback"],
-                args={k: v for k, v in args.items() if k != "content"},
-            )
-            ctx.trace.tool("execute", name=name, outcome="blocked_approval", risk=risk)
-            self._emit_step(ctx, "execute", "blocked", action=name, reason="approval")
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": name,
-                "thoughts": thoughts, "args": args, "risk": risk,
-                "governance": dict(policy),
-                "error": f"BLOCKED: action '{name}' requires explicit approval.",
-            })
-            return True
-        return False
+        reason = block_reason_for_tool(
+            mode, name, policy, args,
+            approved_by_human=bool(ctx.approved_by_human),
+            governor_allows_additive=governor_allows_additive,
+        )
+        if reason is None:
+            return False
+
+        d.audit(
+            "agent_exec", user_email=current_user, source=getattr(req, "source", None) or "agent",
+            state=AgentState.EXECUTING.value, action=name, risk=risk,
+            shell=policy["shell"], network=policy["network"],
+            destructive=policy["destructive"], sandbox=policy["sandbox"],
+            rollback=policy["rollback"],
+            permission_mode=mode.value,
+            args={k: v for k, v in args.items() if k != "content"},
+        )
+        ctx.trace.tool("execute", name=name, outcome="blocked_approval", risk=risk)
+        self._emit_step(ctx, "execute", "blocked", action=name, reason="approval")
+        ctx.transcript.append({
+            "state": AgentState.EXECUTING.value, "action": name,
+            "thoughts": thoughts, "args": args, "risk": risk,
+            "governance": dict(policy),
+            "permission_mode": mode.value,
+            "error": reason,
+        })
+        return True
 
     def _dispatch_step(
         self, ctx: AgentRunContext, name: str, thoughts: str, args: dict,

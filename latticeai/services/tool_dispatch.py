@@ -14,7 +14,6 @@ from typing import Any, Callable, Dict, Mapping, Optional
 from fastapi import HTTPException
 
 from latticeai.core.agent import AgentDeps, SingleAgentRuntime
-from latticeai.core.agent_mode_patch import apply_permission_mode_to_runtime
 from latticeai.core.agent_permission import call_mode_source
 from latticeai.core.agent_prompts import (
     CRITIC_PROMPT,
@@ -502,12 +501,9 @@ def build_agent_runtime(
         restore_snapshot=dispatch_service.restore_snapshot,
         hooks=hooks,
         brain_memory=brain_memory,
+        permission_mode=mode,
     )
-    # AgentDeps is a plain dataclass without permission_mode field in older
-    # trees — attach as a dynamic attribute so the mode patch can resolve it.
-    deps.permission_mode = mode  # type: ignore[attr-defined]
-    runtime = SingleAgentRuntime(deps)
-    return apply_permission_mode_to_runtime(runtime)
+    return SingleAgentRuntime(deps)
 
 
 def tool_response(fn, *args):

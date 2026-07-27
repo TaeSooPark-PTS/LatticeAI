@@ -279,6 +279,27 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith("/invitations/") && pathname.endsWith("/accept") && req.method === "POST") return json(res, { invitation: { id: "invite-demo", status: "accepted" } });
   if (pathname === "/realtime/feed") return json(res, { events: [{ id: "evt-1", area: "workflow", event_type: "workflow_started", timestamp: "2026-06-01T12:00:00", payload: { run_id: "wf-run-approval" } }], stats: { events: 1 } });
   if (pathname === "/realtime/presence") return json(res, { presence: [{ client_id: "visual-client", user: "admin@example.com", workspace_id: "personal", last_seen: "2026-06-01T12:00:00" }], stats: { subscribers: 1 } });
+  // Autonomy dial (v9.9.8). The settings screenshot renders this panel, so the
+  // mock must serve the same catalog shape the real API does — otherwise the
+  // release evidence would show an "unavailable" state for a working feature.
+  if (pathname === "/api/permission-mode" || pathname === "/api/permission-mode/catalog") {
+    const catalog = [
+      { id: "strict", label: "Strict", label_ko: "엄격", summary: "Reads auto; writes and exec need approval or review proposals.", summary_ko: "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.", risk: "low", requires_ack: false },
+      { id: "trusted", label: "Trusted", label_ko: "신뢰", summary: "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.", summary_ko: "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.", risk: "medium", requires_ack: false },
+      { id: "bypass", label: "Bypass", label_ko: "바이패스", summary: "YOLO inside the agent workspace. Hard circuit breakers still apply.", summary_ko: "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.", risk: "high", requires_ack: true, warning: "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.", warning_ko: "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다." },
+    ];
+    if (pathname.endsWith("/catalog")) return json(res, { modes: catalog });
+    const mode = req.method === "POST" ? "trusted" : "strict";
+    const entry = catalog.find((item) => item.id === mode);
+    return json(res, {
+      mode, label: entry.label, label_ko: entry.label_ko, risk: entry.risk,
+      requires_ack: entry.requires_ack, proposal_first: mode === "strict",
+      workspace_writes_auto: mode !== "strict", knowledge_reads_auto: mode !== "strict",
+      exec_auto: mode === "bypass", computer_observation_auto: mode !== "strict",
+      computer_control_auto: mode === "bypass", circuit_breakers: true,
+      catalog, scope: { user_email: "admin@example.com", workspace_id: null },
+    });
+  }
   if (pathname === "/permissions/pending") return json(res, { pending: { "perm-token": { path: "/tmp/report.md", action: "read", action_label: "read file", user_email: "admin@example.com", approved: false, expires_in: 300 } }, count: 1 });
   if (pathname.startsWith("/permissions/approve/") && req.method === "POST") return json(res, { ok: true, token: pathname.split("/").pop() });
   if (pathname.startsWith("/permissions/deny/") && req.method === "POST") return json(res, { ok: true, denied: true, token: pathname.split("/").pop() });

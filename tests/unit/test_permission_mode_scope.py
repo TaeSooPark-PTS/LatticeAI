@@ -16,7 +16,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from latticeai.core.agent import AgentRunContext
+from latticeai.core.agent import AgentDeps, AgentRunContext, SingleAgentRuntime
 from latticeai.core.agent_permission import call_mode_source, resolve_deps_mode
 from latticeai.core.permission_mode import PermissionMode
 from latticeai.core.run_store import restore_run_context, serialize_run_context
@@ -181,37 +181,38 @@ class _RecordingGovernor:
         }
 
 
-def _runtime_with(mode, governor):
-    """A minimal object shaped like SingleAgentRuntime for the mode patch."""
-    from latticeai.core.agent_mode_patch import apply_permission_mode_to_runtime
+def _runtime_with(mode, governor, tmp_path: Path):
+    """A real SingleAgentRuntime — the gates live in agent.py, not a patch."""
 
-    class _Deps:
-        change_governor = governor
-        tool_governance: dict = {}
-        permission_mode = mode
+    async def _generate_as(*_a, **_kw):
+        return '{"action": "noop"}'
 
-        def audit(self, *_a, **_kw):
-            pass
+    async def _generate(**_kw):
+        return '{"action": "noop"}'
 
-    class _Runtime:
-        deps = _Deps()
-
-        def approval_requirements(self, ctx):
-            return {}
-
-        def _blocked_by_gates(self, *_a, **_kw):
-            return False
-
-        def _governor_review(self, ctx, name, thoughts, args, policy, risk,
-                             current_user, request_workspace, conversation_id=None):
-            self.deps.change_governor.review(name, args)
-            ctx.transcript.append({"action": name, "result": {"proposed": True}})
-            return True, False
-
-        def _emit_step(self, *_a, **_kw):
-            pass
-
-    return apply_permission_mode_to_runtime(_Runtime())
+    write_policy = {
+        "auto_approve": False, "risk": "write", "shell": False, "network": False,
+        "destructive": False, "sandbox": "workspace", "rollback": "git",
+    }
+    deps = AgentDeps(
+        generate_as=_generate_as,
+        generate=_generate,
+        execute_tool=lambda name, args: {"ok": True},
+        policy_for=lambda name, args: dict(write_policy),
+        risk_level=lambda p: p["risk"],
+        check_role=lambda name, user: None,
+        tool_governance={"write_file": dict(write_policy)},
+        file_create_actions=frozenset({"write_file"}),
+        recent_chat_context=lambda **kw: "",
+        clear_history=lambda keep: {"ok": True},
+        knowledge_save=lambda *a, **kw: None,
+        audit=lambda *a, **kw: None,
+        planner_prompt="p", executor_prompt="e", critic_prompt="c",
+        memory_updater_prompt="m", agent_root=tmp_path,
+        change_governor=governor,
+        permission_mode=mode,
+    )
+    return SingleAgentRuntime(deps)
 
 
 def _review(runtime, ctx):
@@ -221,9 +222,9 @@ def _review(runtime, ctx):
     )
 
 
-def test_strict_still_stages_a_proposal():
+def test_strict_still_stages_a_proposal(tmp_path: Path):
     governor = _RecordingGovernor()
-    runtime = _runtime_with("strict", governor)
+    runtime = _runtime_with("strict", governor, tmp_path)
     ctx = AgentRunContext()
 
     proposed, allows = _review(runtime, ctx)
@@ -233,12 +234,12 @@ def test_strict_still_stages_a_proposal():
     assert len(ctx.transcript) == 1
 
 
-def test_trusted_never_creates_a_proposal_it_then_discards():
+def test_trusted_never_creates_a_proposal_it_then_discards(tmp_path: Path):
     """The regression: the old wrapper called review() (persisting a proposal)
     and then popped the transcript entry, so the change applied *and* an orphan
     proposal stayed pending in the Review Center."""
     governor = _RecordingGovernor()
-    runtime = _runtime_with("trusted", governor)
+    runtime = _runtime_with("trusted", governor, tmp_path)
     ctx = AgentRunContext()
 
     proposed, allows = _review(runtime, ctx)
@@ -249,9 +250,9 @@ def test_trusted_never_creates_a_proposal_it_then_discards():
     assert ctx.transcript == []
 
 
-def test_bypass_never_creates_a_proposal_it_then_discards():
+def test_bypass_never_creates_a_proposal_it_then_discards(tmp_path: Path):
     governor = _RecordingGovernor()
-    runtime = _runtime_with("bypass", governor)
+    runtime = _runtime_with("bypass", governor, tmp_path)
 
     proposed, allows = _review(runtime, AgentRunContext())
 
@@ -259,9 +260,9 @@ def test_bypass_never_creates_a_proposal_it_then_discards():
     assert governor.reviews == 0
 
 
-def test_trusted_defers_destructive_calls_to_the_downstream_gate():
+def test_trusted_defers_destructive_calls_to_the_downstream_gate(tmp_path: Path):
     governor = _RecordingGovernor()
-    runtime = _runtime_with("trusted", governor)
+    runtime = _runtime_with("trusted", governor, tmp_path)
 
     proposed, allows = runtime._governor_review(
         AgentRunContext(), "write_file", "t", {"path": "notes.md"},
@@ -272,9 +273,9 @@ def test_trusted_defers_destructive_calls_to_the_downstream_gate():
     assert governor.reviews == 0
 
 
-def test_ungoverned_tool_is_untouched_under_trusted():
+def test_ungoverned_tool_is_untouched_under_trusted(tmp_path: Path):
     governor = _RecordingGovernor()
-    runtime = _runtime_with("trusted", governor)
+    runtime = _runtime_with("trusted", governor, tmp_path)
 
     proposed, allows = runtime._governor_review(
         AgentRunContext(), "run_command", "t", {"command": "ls"},

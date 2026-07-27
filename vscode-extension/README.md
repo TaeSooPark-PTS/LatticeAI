@@ -13,11 +13,13 @@ chat, run model workflows, and trigger coding actions from the editor.
 ## Current Release
 
 **9.9.8 — Autonomy Dial.** The server gained a `strict` / `trusted` / `bypass`
-permission mode; the extension's actions run through the same governed tool
-path, so a mode set on the server applies here too. There is no mode control in
-the editor yet — 9.9.8 ships the dial as an API only. The extension follows
-the main app positioning: Lattice AI is a local-first Digital Brain, not just a
-model launcher or editor chat panel. The 9.9.6 line closes the editor's
+permission mode. Editor actions run through the same governed tool path, so the
+mode set in the Lattice AI app (환경설정 → 에이전트 자율성) applies here too; the
+dial itself lives in the app rather than in editor settings, so there is one
+place to raise autonomy and one audit trail for it.
+
+The extension follows the main app positioning: Lattice AI is a local-first
+Digital Brain, not just a model launcher or editor chat panel. The 9.9.6 line closes the editor's
 surface-parity gaps: recall answers carry the same grounding verdict the web
 app badges (`Lattice AI: Ask Your Brain`, `Ask About Current File`), staged
 change proposals can be reviewed and applied in place

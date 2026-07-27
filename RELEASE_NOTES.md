@@ -1,11 +1,13 @@
 # [v9.9.8 - Autonomy Dial] (2026-07-27)
 
 Adds a strict / trusted / bypass permission mode dial over the existing
-ToolRegistry and Change Governor, and fixes the defects that made an earlier
-draft of it either inert or unsafe: scope-aware resolution so a stored per-user
-or per-workspace override actually reaches enforcement, a run-scoped mode stamp
-that survives a paused approval, no orphan proposals under trusted/bypass, and
-a deadlock in the preference store that hung every mode change.
+ToolRegistry and Change Governor, settable from 환경설정 → 에이전트 자율성, and
+fixes the defects that made an earlier draft of it either inert or unsafe:
+scope-aware resolution so a stored per-user or per-workspace override actually
+reaches enforcement, a run-scoped mode stamp that survives a paused approval,
+no orphan proposals under trusted/bypass, and a deadlock in the preference
+store that hung every mode change. The gates live in `SingleAgentRuntime`
+itself — the monkey-patch layer is gone.
 
 See [RELEASE_NOTES_v9.9.8.md](RELEASE_NOTES_v9.9.8.md) and
 [docs/CHANGELOG.md](docs/CHANGELOG.md).

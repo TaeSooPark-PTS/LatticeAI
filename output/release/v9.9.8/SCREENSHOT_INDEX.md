@@ -1,6 +1,6 @@
 # v9.9.8 Release Evidence
 
-Captured from the built React/Vite app served by the release visual API on 2026-07-27T11:02:05.895Z.
+Captured from the built React/Vite app served by the release visual API on 2026-07-27T12:22:43.825Z.
 
 ## Screenshots
 

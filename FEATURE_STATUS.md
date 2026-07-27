@@ -35,8 +35,9 @@ recorded gaps — no `✖` remains in the surface parity matrix, and every
 remaining `—` states why it is a design boundary. The 9.9.8 line makes autonomy
 explicit: a `strict` / `trusted` / `bypass` dial widens what runs without an
 extra approval prompt, scoped per user and per workspace, while hard circuit
-breakers stay mode-invariant. The dial has no UI yet — it is API-only, so the
-default behaviour is unchanged from 9.9.7.
+breakers stay mode-invariant. The dial is set in 환경설정 → 에이전트 자율성;
+the default stays `strict`, so behaviour is unchanged from 9.9.7 until a user
+deliberately raises it.
 
 ## Current Feature Status
 
@@ -77,7 +78,7 @@ default behaviour is unchanged from 9.9.7.
 | Citation Precision | Current | A sentence-aware `prose` chunking strategy keeps Korean claims whole for `.txt/.pdf/.docx/.html`; chunk hits carry a locator (`Guide > Setup · p.4`) and stay silent when they cannot prove it. `plain` chunking is byte-identical to the legacy walk. |
 | Graph Relation Evidence | Current | Relations record whether they came from a verb or from co-occurrence, with matching weights; enumerations no longer manufacture relation chains, and the curator can demote weak/hub adjacency edges without touching verb-backed or legacy ones. |
 | Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
-| Permission Modes | Current (API only) | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. **No UI surface ships in 9.9.8** — the dial is set through `POST /api/permission-mode` only; `GET /api/permission-mode/catalog` already returns the localized selector copy a future settings control will consume. |
+| Permission Modes | Current | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. Set it in **환경설정 → 에이전트 자율성** (`SystemPage` settings tab) or through `POST /api/permission-mode`. The selector renders the server's own catalog rather than a hardcoded mode list, and refuses to send a `bypass` switch until the risk acknowledgement the server requires is ticked. |
 | Release Assets | Current | 9.9.8 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
@@ -96,11 +97,6 @@ default behaviour is unchanged from 9.9.7.
   `docs/SURFACE_PARITY.md` is a design boundary that states its reason (e.g.
   approval *decisions* stay off the browser extension because they need a
   signed, single-use, short-TTL token).
-- The permission mode dial has **no UI in 9.9.8**. It is reachable only via
-  `POST /api/permission-mode`, so in practice the product still behaves as
-  `strict` unless a user or integration calls that endpoint. The localized
-  catalog copy exists so a settings control can be added without a second
-  contract change.
 - Voice transcription ships with **no bundled transcriber**. Memos are stored
   and honestly marked not-searchable until a local transcriber is wired in;
   `GET /api/capture/voice/status` reports which case applies.

@@ -19,6 +19,10 @@ existed at that release.
 - `AgentRunContext.permission_mode`: the mode is resolved once per run and
   persisted with a paused approval, so a plan and its execution are judged by
   one dial even if the stored preference changes mid-run.
+- `PermissionModePanel` in 환경설정 → 에이전트 자율성: the dial is set from the
+  product, not only from the API. The selector renders the server's own
+  catalog instead of a hardcoded mode list and will not send a `bypass`
+  switch until the acknowledgement the server requires is ticked.
 
 ### Fixed
 - Stored per-user and per-workspace modes never reached enforcement: the
@@ -43,8 +47,21 @@ existed at that release.
   wiring now rebinds an already-created singleton instead of being dropped,
   so an early lazy caller cannot pin the store to `~/.ltcai` with no audit
   sink.
+- Initial-JS bundle budget raised 150 KiB → 152 KiB gzip. The 9.9.7 tree sat
+  at 149.3 KiB and the new settings panel needed ~1.0 KiB, nearly all of it
+  bilingual copy: page components are lazy, but `frontend/src/i18n/*` is one
+  synchronous table, so every surface's copy is on the first-paint path by
+  construction. Splitting i18n per lazy route is the durable fix and is not in
+  this release.
+- The permission gates live in `SingleAgentRuntime` itself. `permission_mode`
+  is a real `AgentDeps` field, and `approval_requirements` /
+  `_blocked_by_gates` / `_governor_review` are mode-aware in place instead of
+  being replaced at construction time by a monkey-patch that would break
+  silently if those signatures changed.
 
 ### Removed
+- `latticeai/core/agent_mode_patch.py` — the monkey-patch layer, folded into
+  `agent.py`.
 - Dead no-op `if ... pass` block in `is_circuit_breaker`.
 - `filter_governor_verdict`, unused after the governor fix.
 

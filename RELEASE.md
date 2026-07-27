@@ -17,12 +17,14 @@
 
 9.9.8 gives the agent an explicit autonomy dial — `strict` (default),
 `trusted`, `bypass` — layered over the existing ToolRegistry and Change
-Governor rather than replacing them. Circuit breakers stay mode-invariant.
-The release also fixes four defects found reviewing the feature branch: an
-unscoped resolver that made stored per-user overrides inert, orphan proposals
-left in the Review Center under trusted/bypass, a `permission_mode` override
-that `__slots__` made unsettable, and a lock re-entry deadlock that hung every
-`POST /api/permission-mode`.
+Governor rather than replacing them, and set from 환경설정 → 에이전트 자율성.
+Circuit breakers stay mode-invariant. The release also fixes four defects found
+reviewing the feature branch: an unscoped resolver that made stored per-user
+overrides inert, orphan proposals left in the Review Center under
+trusted/bypass, a `permission_mode` override that `__slots__` made unsettable,
+and a lock re-entry deadlock that hung every `POST /api/permission-mode`. The
+gates are implemented in `SingleAgentRuntime` directly rather than patched onto
+it at construction time.
 
 - 상세: [RELEASE_NOTES_v9.9.8.md](RELEASE_NOTES_v9.9.8.md)
 

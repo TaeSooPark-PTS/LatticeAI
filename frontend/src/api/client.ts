@@ -36,6 +36,36 @@ type ReviewItemOperation =
   | operations["snooze_item_automation_reviews__item_id__snooze_post"]
   | operations["unsnooze_item_automation_reviews__item_id__unsnooze_post"];
 
+/** One selectable autonomy mode, as described by `/api/permission-mode/catalog`. */
+export type PermissionModeOption = {
+  id: string;
+  label: string;
+  label_ko: string;
+  summary: string;
+  summary_ko: string;
+  risk: "low" | "medium" | "high" | string;
+  requires_ack: boolean;
+  warning?: string;
+  warning_ko?: string;
+};
+
+/** Active dial plus the catalog the selector renders. */
+export type PermissionModeState = {
+  mode: string;
+  label: string;
+  label_ko: string;
+  risk: string;
+  requires_ack: boolean;
+  proposal_first: boolean;
+  workspace_writes_auto: boolean;
+  knowledge_reads_auto: boolean;
+  exec_auto: boolean;
+  computer_observation_auto: boolean;
+  computer_control_auto: boolean;
+  circuit_breakers: boolean;
+  catalog: PermissionModeOption[];
+};
+
 export type ReviewItem = components["schemas"]["ReviewItem"];
 export type ReviewItemList = components["schemas"]["ReviewItemList"];
 export type ReviewStatusFilter = "pending" | "snoozed" | "approved" | "dismissed" | "all";
@@ -594,6 +624,20 @@ export const latticeApi = {
   runAutomationNow: (workflowId: string, dryRun = true) =>
     post("/api/automation/run-now", { workflow_id: workflowId, dry_run: dryRun }, {}),
   commandBriefing: () => get("/api/command/briefing", { sections: {}, quick_actions: [] }),
+  // Permission mode dial (v9.9.8). ``catalog`` carries the localized selector
+  // copy so the UI never hardcodes mode labels; ``requires_ack`` marks the mode
+  // the server refuses to set without an explicit risk acknowledgement.
+  permissionMode: () => get<PermissionModeState>("/api/permission-mode", {
+    mode: "strict", label: "Strict", label_ko: "엄격", risk: "low",
+    requires_ack: false, proposal_first: true, workspace_writes_auto: false,
+    knowledge_reads_auto: false, exec_auto: false,
+    computer_observation_auto: false, computer_control_auto: false,
+    circuit_breakers: true, catalog: [],
+  }),
+  setPermissionMode: (mode: string, acknowledgeRisk = false) =>
+    post<PermissionModeState>("/api/permission-mode", {
+      mode, acknowledge_risk: acknowledgeRisk,
+    }, {} as PermissionModeState),
   proposals: () => get("/api/proposals", { items: [], count: 0, contract: {} }),
   proposalCounts: () => get("/api/proposals/counts", { pending: 0 }),
   proposalDetail: (itemId: string) => get(`/api/proposals/${encodeURIComponent(itemId)}`, { payload: {}, provenance: {} }),

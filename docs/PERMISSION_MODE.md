@@ -34,6 +34,21 @@ Per-workspace overrides per-user; both override the process default.
 
 Env default: `LATTICEAI_PERMISSION_MODE=strict|trusted|bypass`.
 
+## UI
+
+`PermissionModePanel` renders in **환경설정 → 에이전트 자율성** (`SystemPage`
+settings tab). It renders the catalog `/api/permission-mode` returns rather
+than a hardcoded mode list, so adding or renaming a mode server-side needs no
+frontend change, and it keeps the apply button disabled until
+
+* a *different* mode is selected, and
+* for a mode whose catalog entry sets `requires_ack`, the risk acknowledgement
+  is ticked — the same condition the server enforces, so the UI never sends a
+  request it knows will be refused.
+
+A failed change is surfaced with the server's own message; the panel never
+reports success it did not get.
+
 ## Scope resolution
 
 Scope is not cosmetic — it is what makes a stored override take effect. Every
@@ -75,7 +90,8 @@ before routers are mounted would otherwise pin the store to the fallback
 |--------|------|
 | `latticeai/core/permission_mode.py` | Pure decision table |
 | `latticeai/core/agent_permission.py` | Agent plan/tool gate helpers |
-| `latticeai/core/agent_mode_patch.py` | Patches `SingleAgentRuntime` gates |
+| `latticeai/core/agent.py` | `SingleAgentRuntime` gates (mode-aware in-line) |
+| `frontend/src/components/PermissionModePanel.tsx` | Settings selector |
 | `latticeai/services/permission_mode_service.py` | Persistence |
 | `latticeai/runtime/permission_mode_wiring.py` | Process-wide service + router mount |
 | `latticeai/runtime/chat_wiring.py` | Agent runtime injection |

@@ -12,6 +12,7 @@ import { useAppStore } from "@/store/appStore";
 import { asArray, isRecord, shortId } from "@/lib/utils";
 import { clearScopedClientState } from "@/queryClient";
 import { navigateHash } from "@/features/brain/navigation";
+import { PermissionModePanel } from "@/components/PermissionModePanel";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
 
@@ -377,6 +378,7 @@ function SettingsPanel() {
           ))}
         </CardContent>
       </Card>
+      <PermissionModePanel />
       <DataPanel title={mode === "basic" ? t(language, "system.panel.brainStatus") : t(language, "system.panel.serverHealth")} result={health.data}>
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>

@@ -4,9 +4,11 @@
 
 ## 한 줄 요약
 
-에이전트 자율성 다이얼(`strict` / `trusted` / `bypass`)을 추가하고, 기능
-브랜치 리뷰에서 발견한 네 가지 결함 — 스코프 없는 모드 해석, 고아 변경 제안,
-설정 불가능한 실행 단위 오버라이드, 모드 변경 데드락 — 을 함께 수정했습니다.
+에이전트 자율성 다이얼(`strict` / `trusted` / `bypass`)을 추가했습니다.
+**환경설정 → 에이전트 자율성**에서 직접 바꿀 수 있습니다. 기능 브랜치 리뷰에서
+발견한 네 가지 결함 — 스코프 없는 모드 해석, 고아 변경 제안, 설정 불가능한 실행
+단위 오버라이드, 모드 변경 데드락 — 을 함께 수정했고, 게이트를 런타임에
+몽키패치하던 계층을 제거했습니다.
 
 ## 왜 필요한가
 
@@ -37,6 +39,20 @@ Change Governor는 그대로 두고, "이 호출이 추가 승인 없이 실행�
 - `/`, `~`, `/home`, `/Users` 같은 루트/홈 경로 대상 작업
 - 차단된 경로 접두사
 - 검토 가능한 제안으로 만들 수 없는 바이너리 덮어쓰기
+
+## 설정 방법
+
+**환경설정 → 에이전트 자율성** 패널에서 모드를 고르고 "이 설정으로 변경"을
+누릅니다. 패널은 하드코딩된 모드 목록이 아니라 **서버가 내려주는 카탈로그를
+그대로 렌더링**하므로, 서버에서 모드를 추가하거나 이름을 바꿔도 프론트엔드를
+고칠 필요가 없습니다.
+
+- 지금과 **다른** 모드를 골라야 적용 버튼이 활성화됩니다.
+- 카탈로그에 `requires_ack`가 표시된 모드(바이패스)는 위험 확인란을 체크해야
+  적용됩니다 — 서버가 강제하는 조건과 동일하므로, 거부될 요청을 UI가 먼저
+  보내지 않습니다.
+- 변경이 거부되면 서버가 준 메시지를 그대로 보여줍니다. 받지 못한 성공을
+  성공이라고 표시하지 않습니다.
 
 ## API
 
@@ -98,6 +114,19 @@ POST /api/permission-mode   {"mode": "bypass", "acknowledge_risk": true}
 `tests/unit/test_permission_mode_scope.py`에 타임아웃 기반 회귀 테스트를
 추가했습니다.
 
+## 구조 정리: 몽키패치 제거
+
+이전 구현은 `agent_mode_patch.py`가 런타임 인스턴스에 `approval_requirements`
+/ `_blocked_by_gates` / `_governor_review`를 **런타임에 덮어쓰는** 방식이었습니다.
+`agent.py`를 건드리지 않는다는 장점이 있었지만, 패치 대상 메서드의 시그니처가
+바뀌면 조용히 어긋날 수 있는 구조였습니다.
+
+9.9.8에서는 세 게이트를 `SingleAgentRuntime`에 직접 구현하고
+`agent_mode_patch.py`를 삭제했습니다. `permission_mode`는 동적 속성이 아니라
+`AgentDeps`의 정식 필드입니다. 부수 효과로 차단 사유가 더 정확해졌습니다 —
+하드 차단(파괴적 정책 / 서킷 브레이커)은 실제로 발동한 사유를 그대로
+트랜스크립트에 남기고, 승인 경로로 뭉뚱그리지 않습니다.
+
 ## 정리 작업
 
 - `is_circuit_breaker`의 아무 동작도 하지 않는 `if ... pass` 블록 제거
@@ -113,10 +142,17 @@ POST /api/permission-mode   {"mode": "bypass", "acknowledge_risk": true}
 
 - `tests/unit/test_permission_mode.py` — 모드 결정 테이블
 - `tests/unit/test_permission_mode_service.py` — 영속화 및 bypass 확인 절차
-- `tests/unit/test_permission_mode_scope.py` (신규) — 위 결함 1~4의 회귀 테스트
-- 단위 테스트 전체 1,744개 통과
+- `tests/unit/test_permission_mode_scope.py` (신규) — 위 결함 1~4의 회귀 테스트.
+  실제 `SingleAgentRuntime`을 구성해 검증하므로 게이트를 우회하지 않습니다
+- `frontend/src/components/PermissionModePanel.test.tsx` (신규) — 카탈로그
+  렌더링, 승인 확인 강제, 거부 처리
+- 단위 테스트 1,744개 + 프론트엔드 테스트 150개 통과
 
 ## 호환성
 
 기본값은 `strict`이며, 이는 9.9.7의 동작과 동일합니다. 모드를 바꾸지 않으면
 관측 가능한 변화가 없습니다.
+
+`latticeai.core.agent_mode_patch`는 삭제됐습니다. 이 모듈은 9.9.8에서만
+존재했고 공개 API로 문서화된 적이 없습니다. `AgentDeps(permission_mode=...)`가
+대체 경로입니다.
