@@ -196,7 +196,7 @@ def build_auth_admin_security_router_bundle(
                 logger.warning("security audit events load failed: %s", exc)
                 return []
         except Exception as exc:  # pragma: no cover - defensive legacy behavior
-            logger.warning("security audit events load failed: %s", exc)
+            logger.warning("security audit events load failed: %s", exp:=exc)
             return []
 
     def security_list_uploaded_files() -> list[dict[str, Any]]:
@@ -661,5 +661,15 @@ def register_review_and_brain_tail_routers(
         require_user=require_user,
         data_dir=data_dir,
         append_audit_event=append_audit_event,
+    )
+    # Network boundary dial (hybrid Phase 2): same tail, same data_dir + audit.
+    from latticeai.runtime.network_boundary_wiring import register_network_boundary_router
+
+    register_network_boundary_router(
+        app,
+        require_user=require_user,
+        data_dir=data_dir,
+        append_audit_event=append_audit_event,
+        knowledge_graph=knowledge_graph,
     )
     return brain_network

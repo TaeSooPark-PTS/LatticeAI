@@ -1,7 +1,7 @@
 # Hybrid Cloud + Local Knowledge Graph Streaming
 
-> Status: **Phase 1 scaffolding live** on branch `feature/hybrid-cloud-kg-streaming-phase1`  
-> Base design branch: `feature/hybrid-cloud-kg-streaming`  
+> Status: **Phase 2 live** on branch `feature/hybrid-cloud-kg-streaming-phase2`  
+> Previous: Phase 1 on `feature/hybrid-cloud-kg-streaming-phase1`  
 > Principle: **Local Brain is the asset. Cloud is an opt-in worker.**
 
 ## Goal
@@ -12,120 +12,87 @@ Core loop:
 
 1. User speaks / types.
 2. System detects whether the session is in **Cloud-allowed** mode.
-3. From the local Knowledge Graph, extract **only the minimal related nodes** that match the user’s keywords / entities / intent.
+3. From the local Knowledge Graph, extract **only the minimal related nodes**.
 4. Send that minimal context to the cloud LLM (token minimization + privacy).
 5. Receive the answer as a **real-time stream**.
-6. Use the streamed answer (plus the nodes that were sent) to **expand the local Knowledge Graph** with clear provenance.
-
-Local-only users never leave the machine. Cloud users still grow their local Brain.
-
-## User-facing Modes
-
-| Mode | Default | Network | What is sent | KG expansion |
-|------|---------|---------|--------------|--------------|
-| `local_only` | **Yes** | None | Nothing | Local model answers only |
-| `cloud_allowed` | No (explicit opt-in) | Opt-in cloud LLM | Minimal related nodes + compact summary | Cloud response is staged into local KG with provenance |
-
-Switching to `cloud_allowed` requires an explicit acknowledgement (same pattern as PermissionMode.bypass).
-
-## Architecture Overview
-
-```
-User message
-    │
-    ▼
-NetworkBoundaryMode  ─────── local_only → normal local chat path
-    │ cloud_allowed
-    ▼
-MinimalContextExtractor
-    • keyword / entity / intent extraction
-    • hybrid_search on local KG (top-k, type filters, sensitivity filter)
-    • compact context assembly (title + short summary + node ids)
-    ▼
-CloudStreamingBridge + OpenAICompatibleAdapter
-    • send minimal context + user message
-    • receive token / chunk stream (SSE)
-    • emit intermediate events to UI
-    ▼
-CloudResponseIngestor
-    • turn streamed answer into candidate nodes / edges
-    • attach provenance: "derived_from_cloud" + source_node_ids that were sent
-    • quality gate / proposal (auto_commit=False by default)
-    • stage into local Knowledge Graph
-```
+6. Expand the local Knowledge Graph with provenance (conversation + heuristic Concept/Decision/Task candidates).
 
 ## Phase status
 
-### Phase 0 (design branch)
-- Architecture document
-- `NetworkBoundaryMode` enum + contract
-- `MinimalContext` + extractor skeleton
-- `CloudStreamingBridge` + `CloudResponseIngestor` interfaces
+### Phase 0
+- Architecture + core contracts (`NetworkBoundaryMode`, `MinimalContext`, bridge/ingestor)
 
-### Phase 1 (this branch) — implemented
-- **NetworkBoundaryService** — persisted dial (user / workspace / default), ack required for cloud
-- **HTTP API** — `GET/POST /api/network-boundary`, catalog endpoint
-- **Wiring** — `latticeai/runtime/network_boundary_wiring.py` (mirror of permission_mode_wiring)
-- **ChatRequest.network_mode** — optional per-request override
-- **OpenAICompatibleAdapter** — real streaming via `openai` SDK; env-configured (`LATTICEAI_CLOUD_API_KEY`, `LATTICEAI_CLOUD_BASE_URL`, `LATTICEAI_CLOUD_MODEL`)
-- **hybrid_chat** — `run_hybrid_cloud_turn` + `stream_hybrid_cloud_turn` (SSE: hybrid_context → token* → hybrid_done)
-- **KG expansion** — conversation node + `grounded_on` edges; staged (`auto_commit=False`)
-- **Unit tests** — `tests/unit/test_network_boundary.py`
+### Phase 1
+- Persisted dial + HTTP API
+- OpenAI-compatible streaming adapter
+- hybrid_chat helpers + basic KG expansion staging
+- Unit tests for mode / context / provenance
 
-### Phase 2 (next)
-- Wire hybrid path as a first-class branch inside `/chat` when mode is cloud_allowed
-- UI mode switch + transparency panel (nodes about to be sent)
-- Token accounting / cost guardrails
-- Richer concept/decision extraction from cloud answers
+### Phase 2 (this branch) — implemented
+- **Router wiring**: `/api/network-boundary` mounted next to permission-mode in `register_review_and_brain_tail_routers`
+- **Chat path branch**: `latticeai/api/chat_hybrid.py` — when mode is `cloud_allowed`, `/chat` can return hybrid SSE instead of local stream
+- **Token / cost guardrails**: `cloud_token_guard.py` (per-turn + per-session budgets via env)
+- **Richer extraction**: `cloud_extraction.py` — Decision / Task / Concept candidates from answer text (always staged)
+- **Transparency preview API**: `POST /api/network-boundary/preview` — nodes/keywords/token estimate that *would* leave the machine
+- **SSE dual shape**: hybrid events (`hybrid_context`, `token`, `hybrid_done`) plus classic `chunk` for existing clients
+- **Unit tests**: `tests/unit/test_hybrid_phase2.py`
 
-### Phase 3
+### Phase 3 (future)
+- Full React UI toggle + live transparency panel
 - Optional video / multimodal streaming (same boundary)
 - User-configurable sensitivity filters and auto-commit policy
+- Stronger write path into Change Governor / Review Queue
 
-## Configuration (Phase 1)
+## How `/chat` chooses the path (Phase 2)
 
-```bash
-# Required only when using cloud path
-export LATTICEAI_CLOUD_API_KEY=sk-...
-# Optional
-export LATTICEAI_CLOUD_BASE_URL=https://api.openai.com/v1
-export LATTICEAI_CLOUD_MODEL=gpt-4o-mini
-# Process default network mode (still requires per-user ack to switch to cloud)
-export LATTICEAI_NETWORK_MODE=local_only
+```
+resolve network mode (request.network_mode override → persisted dial)
+    │
+    ├── local_only  → existing local stream_chat / generate path
+    └── cloud_allowed
+            └── maybe_hybrid_stream_response(...)
+                    → stream_hybrid_cloud_turn (minimal KG → cloud SSE → stage KG)
 ```
 
-## API (Phase 1)
+Integration helper: `latticeai.api.chat_hybrid.maybe_hybrid_stream_response`.
+Call sites should invoke it **before** the local `stream_chat` path when the user message is a normal chat turn (not file-intent / clear / network-status shortcuts).
+
+## Configuration
+
+```bash
+export LATTICEAI_CLOUD_API_KEY=sk-...
+export LATTICEAI_CLOUD_BASE_URL=https://api.openai.com/v1   # optional
+export LATTICEAI_CLOUD_MODEL=gpt-4o-mini                    # optional
+export LATTICEAI_NETWORK_MODE=local_only                    # process default
+export LATTICEAI_CLOUD_MAX_TOKENS_PER_TURN=2500
+export LATTICEAI_CLOUD_MAX_TOKENS_PER_SESSION=50000
+```
+
+## API
 
 ```
 GET  /api/network-boundary
 GET  /api/network-boundary/catalog
 POST /api/network-boundary
-     { "mode": "cloud_allowed", "acknowledge_risk": true, "workspace_id": null }
+     { "mode": "cloud_allowed", "acknowledge_risk": true }
+
+POST /api/network-boundary/preview
+     { "message": "...", "workspace_id": null, "top_k": 6 }
+     → node_ids, titles, token_estimate, would_block, compact_preview
 ```
 
-## Privacy & Safety Rules
+## Privacy & Safety
 
-1. Default is always `local_only`.
-2. `cloud_allowed` requires explicit user acknowledgement.
-3. Only the compact text assembled by MinimalContextExtractor leaves the machine.
-4. Sensitive node types / tags are blocked by a hard filter (mode-invariant).
-5. Every cloud turn records which node_ids were sent and stages expansion with provenance.
-6. User can later purge all “derived_from_cloud” subgraphs.
+1. Default remains `local_only`.
+2. `cloud_allowed` requires explicit acknowledgement.
+3. Only compact minimal context leaves the machine.
+4. Sensitive metadata flags still hard-block nodes.
+5. Cloud-derived nodes are **staged** (`auto_commit=False`) with full provenance.
+6. Token budgets refuse oversized turns before any network call.
 
-## Non-Goals (for now)
+## Success criteria (Phase 2)
 
-- Making cloud the default path
-- Sending the entire graph or long conversation history
-- Automatic background cloud calls without user intent
-- Replacing the local model runtime
-
-## Success Criteria
-
-- A user in `local_only` never generates an outbound network call for chat.
-- A user in `cloud_allowed` can see exactly which nodes left the machine.
-- Cloud answers produce durable, provenance-linked growth in the local Knowledge Graph.
-- Token usage stays low because only minimal related nodes are sent.
-
----
-
-This document is the source of truth for the hybrid design.
+- Cloud path is a first-class option behind the dial, not a side script.
+- Preview API lets UI show exactly what would be sent.
+- Oversized context is refused before the provider is called.
+- Cloud answers grow the local Brain as reviewable proposals, not silent writes.

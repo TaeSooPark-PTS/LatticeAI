@@ -1,8 +1,7 @@
-"""Wire NetworkBoundaryMode into the running app (hybrid Phase 1).
+"""Wire NetworkBoundaryMode into the running app (hybrid Phase 1–2).
 
 Creates one process-wide :class:`NetworkBoundaryService` and registers the
-HTTP dial. Called from the same tail router registration path as permission
-mode so both dials share data_dir + audit.
+HTTP dial (including the Phase 2 transparency preview endpoint).
 """
 
 from __future__ import annotations
@@ -72,8 +71,9 @@ def register_network_boundary_router(
     require_user: Callable[..., str],
     data_dir: Optional[Path] = None,
     append_audit_event: Optional[Callable[..., None]] = None,
+    knowledge_graph: Any = None,
 ) -> Any:
-    """Install GET/POST /api/network-boundary on ``app``. Idempotent by route path."""
+    """Install network-boundary routes on ``app``. Idempotent by route path."""
     from latticeai.api.network_boundary import create_network_boundary_router
 
     svc = get_network_boundary_service(data_dir=data_dir, audit=append_audit_event)
@@ -84,7 +84,11 @@ def register_network_boundary_router(
     if "/api/network-boundary" in existing:
         return svc
     app.include_router(
-        create_network_boundary_router(service=svc, require_user=require_user)
+        create_network_boundary_router(
+            service=svc,
+            require_user=require_user,
+            knowledge_graph=knowledge_graph,
+        )
     )
     return svc
 
