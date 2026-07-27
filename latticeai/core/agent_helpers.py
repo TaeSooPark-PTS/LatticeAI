@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Tuple
 
+from latticeai.core.agent_state import AgentState
 from latticeai.core.file_generation import infer_file_target, infer_project_manifest
 
 
@@ -293,7 +294,7 @@ def files_written(
     """
     seen: List[str] = []
     for step in transcript:
-        if step.get("state") != "EXECUTING":
+        if step.get("state") != AgentState.EXECUTING.value:
             continue
         if step.get("action") not in file_create_actions:
             continue
@@ -317,7 +318,7 @@ def artifact_checklist(
     """
     checklist: List[Dict[str, Any]] = []
     for step in transcript:
-        if step.get("state") != "EXECUTING":
+        if step.get("state") != AgentState.EXECUTING.value:
             continue
         if step.get("action") not in file_create_actions:
             continue
