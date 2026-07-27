@@ -14,11 +14,19 @@ from typing import Any, Callable, Dict, Mapping, Optional
 from fastapi import HTTPException
 
 from latticeai.core.agent import AgentDeps, SingleAgentRuntime
+from latticeai.core.agent_mode_patch import apply_permission_mode_to_runtime
 from latticeai.core.agent_prompts import (
     CRITIC_PROMPT,
     EXECUTOR_PROMPT,
     MEMORY_UPDATER_PROMPT,
     PLANNER_PROMPT,
+)
+from latticeai.core.permission_mode import (
+    DEFAULT_MODE,
+    effective_auto_approve,
+    is_circuit_breaker,
+    normalize_mode,
+    should_stage_proposal,
 )
 from latticeai.core.policy import role_has_capability
 from latticeai.core.tool_governor import classify_tool_call
@@ -32,6 +40,10 @@ def _default_load_users() -> Dict[str, Any]:
 
 def _default_get_user_role(_email, _users=None) -> str:
     return "user"
+
+
+def _default_permission_mode() -> Any:
+    return DEFAULT_MODE
 
 
 FILE_CREATE_ACTIONS = set(DEFAULT_TOOL_REGISTRY.file_create_actions)
@@ -62,6 +74,8 @@ class ToolDispatchService:
     registry: Any = field(default_factory=lambda: DEFAULT_TOOL_REGISTRY)
     load_users: Callable[[], Dict[str, Any]] = field(default=_default_load_users)
     get_user_role: Callable[..., str] = field(default=_default_get_user_role)
+    # Zero-arg callable or static mode; resolved per enforce_policy call.
+    permission_mode: Any = field(default_factory=lambda: _default_permission_mode)
 
     @property
     def file_create_actions(self) -> frozenset[str]:
@@ -80,9 +94,21 @@ class ToolDispatchService:
         *,
         load_users: Callable[[], Dict[str, Any]],
         get_user_role: Callable[..., str],
+        permission_mode: Any = None,
     ) -> None:
         self.load_users = load_users
         self.get_user_role = get_user_role
+        if permission_mode is not None:
+            self.permission_mode = permission_mode
+
+    def resolve_permission_mode(self) -> Any:
+        raw = self.permission_mode
+        if callable(raw):
+            try:
+                raw = raw()
+            except Exception:
+                raw = DEFAULT_MODE
+        return normalize_mode(raw)
 
     def policy_for(self, action_name: str, args: dict) -> ToolPolicy:
         return self.registry.policy_for(action_name, args)
@@ -124,13 +150,6 @@ class ToolDispatchService:
             )
 
     def _governed_path_exists(self, path: str) -> bool:
-        """Best-effort existence check for governance classification.
-
-        Resolves workspace-relative paths under ``AGENT_ROOT`` and honors
-        absolute paths (home-sandbox writes). Never raises — an unresolvable
-        path is treated as non-existent (additive), which the fail-closed
-        guard only escalates when the target actually exists.
-        """
         try:
             candidate = Path(path)
             if not candidate.is_absolute():
@@ -155,15 +174,13 @@ class ToolDispatchService:
         source: str,
         require_auto_approval: bool = True,
         trusted_admin: bool = False,
+        permission_mode: Any = None,
     ) -> ToolPolicy:
-        """Authorize a tool call before any hook or handler can execute.
-
-        This is the shared policy gate for direct HTTP/MCP/tool surfaces. Agent
-        runtime uses the same policy data and blocks non-auto-approved steps in
-        its state machine so Computer Use direct endpoints can remain unchanged
-        when explicitly excluded from a hardening pass.
-        """
+        """Authorize a tool call before any hook or handler can execute."""
         policy = self.policy_for(tool_name, args or {})
+        mode = normalize_mode(
+            permission_mode if permission_mode is not None else self.resolve_permission_mode()
+        )
         if source in {"mcp", "plugin"} and tool_name in EXPLICIT_CONSENT_TOOLS:
             raise HTTPException(
                 status_code=403,
@@ -174,19 +191,26 @@ class ToolDispatchService:
             )
         if not trusted_admin:
             self.check_role(tool_name, current_user)
+
+        breaker = is_circuit_breaker(tool_name, policy, args or {})
+        if breaker:
+            raise HTTPException(status_code=403, detail=f"'{tool_name}' 차단: {breaker}")
+
         if policy["destructive"] or policy["risk"] == "destructive":
             raise HTTPException(
                 status_code=403,
                 detail=f"'{tool_name}' 툴은 파괴적 작업으로 차단되었습니다.",
             )
-        # Fail-closed governance: a call that would rewrite existing content but
-        # cannot be staged as a reviewable proposal is blocked, never applied
-        # silently. New-file (additive) calls are unaffected.
+
         verdict = classify_tool_call(
             tool_name, args or {},
             policy=dict(policy), path_exists=self._governed_path_exists,
         )
-        if verdict.get("fail_closed"):
+        # Under trusted/bypass, fail_closed binary overwrites still block — we
+        # cannot stage a binary diff — but text mutation proposals are skipped.
+        if verdict.get("fail_closed") and should_stage_proposal(
+            mode, proposal_required=True
+        ):
             raise HTTPException(
                 status_code=409,
                 detail=(
@@ -195,17 +219,34 @@ class ToolDispatchService:
                     "지원되는 편집 도구(write_file/edit_file)를 사용하세요."
                 ),
             )
+        if verdict.get("fail_closed") and not should_stage_proposal(
+            mode, proposal_required=True
+        ):
+            # Mode would auto-apply, but we still cannot safely apply binary
+            # overwrites without staging support.
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"'{tool_name}' 은(는) 기존 바이너리 문서를 덮어쓸 수 없습니다. "
+                    "새 파일 이름으로 생성하세요."
+                ),
+            )
+
+        auto = policy["auto_approve"] or effective_auto_approve(
+            mode, tool_name, policy, change_class=verdict.get("change_class"), args=args or {},
+        )
         if (
             require_auto_approval
             and not trusted_admin
-            and not policy["auto_approve"]
+            and not auto
             and self.user_role(current_user) not in {"admin", "owner"}
         ):
             raise HTTPException(
                 status_code=403,
                 detail=(
-                    f"'{tool_name}' 툴은 명시 승인이 필요합니다. "
-                    "현재 릴리스에서는 승인 UI가 없는 직접 실행 경로에서 기본 차단됩니다."
+                    f"'{tool_name}' 툴은 명시 승인이 필요합니다 "
+                    f"(permission_mode={mode.value}). "
+                    "승인 UI가 없는 직접 실행 경로에서 차단되었습니다."
                 ),
             )
         return policy
@@ -219,10 +260,6 @@ class ToolDispatchService:
             timeout=10,
         )
         return {"path": path, "ok": r.returncode == 0, "stderr": r.stderr[:200]}
-
-    # ── snapshot rollback ports (review L7) ──────────────────────────────
-    # Pre-write capture + restore for workspaces where git rollback does not
-    # apply (untracked new files, no git). Strictly confined to AGENT_ROOT.
 
     _SNAPSHOT_MAX_BYTES = 512 * 1024
 
@@ -239,7 +276,6 @@ class ToolDispatchService:
         return resolved
 
     def snapshot_file(self, path: str) -> Dict[str, Any]:
-        """Pre-write state of a workspace file: existence + bounded content."""
         target = self._workspace_path(path)
         if target is None:
             return {"existed": False, "content": None, "too_large": False,
@@ -259,8 +295,6 @@ class ToolDispatchService:
                     "error": str(exc)}
 
     def restore_snapshot(self, path: str, content: Optional[str]) -> Dict[str, Any]:
-        """Restore a pre-write snapshot: rewrite prior content, or delete a
-        file the run created (``content=None``)."""
         target = self._workspace_path(path)
         if target is None:
             return {"path": path, "ok": False, "error": "path escapes the agent workspace"}
@@ -282,10 +316,12 @@ def configure_tool_dispatch(
     *,
     load_users: Callable[[], Dict[str, Any]],
     get_user_role: Callable[..., str],
+    permission_mode: Any = None,
 ) -> None:
     DEFAULT_TOOL_DISPATCH_SERVICE.configure(
         load_users=load_users,
         get_user_role=get_user_role,
+        permission_mode=permission_mode,
     )
 
 
@@ -325,6 +361,7 @@ def enforce_tool_policy(
     source: str,
     require_auto_approval: bool = True,
     trusted_admin: bool = False,
+    permission_mode: Any = None,
 ) -> ToolPolicy:
     return DEFAULT_TOOL_DISPATCH_SERVICE.enforce_policy(
         tool_name,
@@ -333,6 +370,7 @@ def enforce_tool_policy(
         source=source,
         require_auto_approval=require_auto_approval,
         trusted_admin=trusted_admin,
+        permission_mode=permission_mode,
     )
 
 
@@ -362,12 +400,6 @@ def collect_created_files(transcript: list) -> list:
 
 
 def collect_artifacts(transcript: list) -> list:
-    """Artifact-first view of a run: every produced file with honesty flags.
-
-    ``repaired`` surfaces the ArtifactWritePipeline verdict recorded on the
-    transcript step (``content_sanitize``) so the UI can badge deterministic
-    scaffolds instead of presenting them as high-quality model output.
-    """
     from latticeai.core.file_generation import PREVIEWABLE_EXTENSIONS
 
     artifacts = []
@@ -408,8 +440,10 @@ def build_agent_runtime(
     hooks: Any = None,
     brain_memory: Any = None,
     dispatch_service: ToolDispatchService = DEFAULT_TOOL_DISPATCH_SERVICE,
+    permission_mode: Any = None,
 ) -> SingleAgentRuntime:
     ensure_agent_root()
+    mode = permission_mode if permission_mode is not None else dispatch_service.permission_mode
     deps = AgentDeps(
         generate_as=model_router.generate_as,
         generate=model_router.generate,
@@ -434,7 +468,11 @@ def build_agent_runtime(
         hooks=hooks,
         brain_memory=brain_memory,
     )
-    return SingleAgentRuntime(deps)
+    # AgentDeps is a plain dataclass without permission_mode field in older
+    # trees — attach as a dynamic attribute so the mode patch can resolve it.
+    deps.permission_mode = mode  # type: ignore[attr-defined]
+    runtime = SingleAgentRuntime(deps)
+    return apply_permission_mode_to_runtime(runtime)
 
 
 def tool_response(fn, *args):
