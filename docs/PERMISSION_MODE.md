@@ -29,6 +29,15 @@ Per-workspace overrides per-user; both override the process default.
 
 Env default: `LATTICEAI_PERMISSION_MODE=strict|trusted|bypass`.
 
+## Wiring (automatic)
+
+No manual `app_factory` edits required. On startup:
+
+1. `build_chat_agent_runtime_from_context` binds dispatch + agent to the
+   shared mode resolver.
+2. `register_review_and_brain_tail_routers` mounts `/api/permission-mode`
+   and initializes `PermissionModeService` with the real `data_dir` + audit.
+
 ## Code map
 
 | Module | Role |
@@ -37,42 +46,11 @@ Env default: `LATTICEAI_PERMISSION_MODE=strict|trusted|bypass`.
 | `latticeai/core/agent_permission.py` | Agent plan/tool gate helpers |
 | `latticeai/core/agent_mode_patch.py` | Patches `SingleAgentRuntime` gates |
 | `latticeai/services/permission_mode_service.py` | Persistence |
+| `latticeai/runtime/permission_mode_wiring.py` | Process-wide service + router mount |
+| `latticeai/runtime/chat_wiring.py` | Agent runtime injection |
+| `latticeai/runtime/router_registration.py` | HTTP mount |
 | `latticeai/services/tool_dispatch.py` | `enforce_policy` + `build_agent_runtime` |
 | `latticeai/api/permission_mode.py` | HTTP routes |
-
-## App factory wiring (required once)
-
-Near `CHANGE_PROPOSALS` construction in `app_factory`:
-
-```python
-from latticeai.services.permission_mode_service import PermissionModeService
-from latticeai.api.permission_mode import create_permission_mode_router
-from latticeai.core.permission_mode import normalize_mode
-import os
-
-PERMISSION_MODES = PermissionModeService(
-    data_dir=DATA_DIR,
-    default_mode=normalize_mode(os.environ.get("LATTICEAI_PERMISSION_MODE", "strict")),
-    audit=append_audit_event,
-)
-configure_tool_dispatch(
-    load_users=load_users,
-    get_user_role=get_user_role,
-    permission_mode=lambda: PERMISSION_MODES.resolve(),
-)
-app.include_router(
-    create_permission_mode_router(
-        service=PERMISSION_MODES,
-        require_user=require_user,
-    )
-)
-# Rebuild chat agent runtime so the mode callable is attached:
-CHAT_AGENT_RUNTIME = build_agent_runtime(
-    ...,
-    permission_mode=lambda: PERMISSION_MODES.resolve(),
-)
-CHAT_AGENT_RUNTIME.deps.change_governor = CHANGE_PROPOSALS
-```
 
 ## AGENTS.md note
 
