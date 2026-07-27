@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from latticeai.runtime.permission_mode_wiring import (
+    bind_dispatch_permission_mode,
+    resolve_active_permission_mode,
+)
 from latticeai.services.router_context import InteractionRouterContext, ToolRouterContext
 
 
@@ -19,6 +23,9 @@ def build_chat_agent_runtime_from_context(
     hooks: Any,
     brain_memory: Any,
 ) -> Any:
+    # Ensure dispatch + agent share the same autonomy dial before the runtime
+    # is constructed (process-wide service; data_dir refined later at router mount).
+    bind_dispatch_permission_mode()
     return build_agent_runtime(
         model_router=model_router,
         execute_tool=execute_tool,
@@ -28,6 +35,7 @@ def build_chat_agent_runtime_from_context(
         audit=audit,
         hooks=hooks,
         brain_memory=brain_memory,
+        permission_mode=lambda: resolve_active_permission_mode(),
     )
 
 
