@@ -21,6 +21,10 @@ class ChatRequest(BaseModel):
     user_nickname: Optional[str] = None
     image_data: Optional[str] = None
     allow_file_context: bool = False
+    # Hybrid Phase 1: optional per-request override of NetworkBoundaryMode.
+    # When omitted, the persisted dial (user/workspace/default) is used.
+    # Values: "local_only" | "cloud_allowed"
+    network_mode: Optional[str] = None
 
 
 class AgentRequest(BaseModel):

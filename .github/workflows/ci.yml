@@ -38,6 +38,21 @@ jobs:
           npm ci
           (cd vscode-extension && npm ci)
 
+      - name: Generate OpenAPI (for drift fix artifact)
+        run: |
+          npm run frontend:openapi
+          mkdir -p openapi-artifacts
+          cp frontend/openapi.json frontend/src/api/openapi.ts openapi-artifacts/
+        continue-on-error: true
+
+      - name: Upload OpenAPI artifacts
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openapi-generated
+          path: openapi-artifacts/
+          retention-days: 1
+
       - name: Syntax check (discover-based, auto-includes new modules)
         run: python scripts/check_python.py
 

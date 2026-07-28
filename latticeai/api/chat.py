@@ -46,6 +46,10 @@ from latticeai.api.chat_helpers import (
     workspace_scope_from_request,
 )
 from latticeai.api.chat_history import HistoryRouteDependencies, register_history_routes
+from latticeai.api.chat_hybrid import (
+    maybe_hybrid_stream_response,
+    resolve_request_network_mode,
+)
 from latticeai.core.run_store import AgentRunStore
 from latticeai.api.chat_intents import ChatIntentController
 from latticeai.api.chat_stream import stream_chat
@@ -163,8 +167,6 @@ def create_chat_router(context: AppContext) -> APIRouter:
 
     agent_runtime = context.chat_agent_runtime
     if agent_runtime is None:
-        # Keep construction here so the historical monkeypatch/import seam on
-        # latticeai.api.chat.build_agent_runtime remains valid.
         agent_runtime = build_agent_runtime(
             model_router=model_router,
             execute_tool=execute_tool,
@@ -198,8 +200,6 @@ def create_chat_router(context: AppContext) -> APIRouter:
             if context.data_dir
             else None
         ),
-        # Multi-turn project loop (v9.9.6): optional — without a data dir the
-        # agent runs exactly as before, one run at a time with no project state.
         project_sessions=(
             ProjectSessionStore(Path(context.data_dir) / "project_sessions")
             if context.data_dir
@@ -293,8 +293,6 @@ def create_chat_router(context: AppContext) -> APIRouter:
         selected_model_id = request_model(req.model)
         file_intent = is_file_action_request(req.message)
         if file_intent and context.funnel_metrics is not None:
-            # UX funnel (backlog #16): one file-intent request counted once,
-            # regardless of which delivery path handles it below.
             context.funnel_metrics.increment("file_requests")
         if file_intent:
             direct_response = await intent_controller.direct_file_action(
@@ -386,9 +384,6 @@ def create_chat_router(context: AppContext) -> APIRouter:
         if context_trace is not None and isinstance(trace_seed, dict):
             trace_seed["context_assembly"] = context_trace
 
-        # v9.8.0 honest RAG signal: how well the graph grounded this answer.
-        # Rides the same channel as sources/evidence (the answer trace) and is
-        # additionally exposed top-level on both response shapes below.
         context_quality = build_context_quality(
             req.message,
             knowledge_graph=context.knowledge_graph
@@ -401,8 +396,6 @@ def create_chat_router(context: AppContext) -> APIRouter:
         if context.funnel_metrics is not None and int(
             context_quality.get("nodes") or 0
         ) > 0:
-            # UX funnel (backlog #16): a grounded answer is "first value" —
-            # the TTFV clock ends on the first successful recall.
             context.funnel_metrics.record_recall_success()
 
         history_message = (
@@ -427,6 +420,28 @@ def create_chat_router(context: AppContext) -> APIRouter:
         )
         if document_response is not None:
             return document_response
+
+        # Hybrid Phase 2: cloud_allowed → minimal KG context → cloud stream.
+        network_mode = resolve_request_network_mode(
+            request_mode=getattr(req, "network_mode", None),
+            user_email=effective_email,
+            workspace_id=workspace_id,
+        )
+        hybrid_response = maybe_hybrid_stream_response(
+            req=req,
+            mode=network_mode,
+            knowledge_graph=context.knowledge_graph,
+            enable_graph=context.enable_graph,
+            effective_email=effective_email,
+            workspace_id=workspace_id,
+            history_meta=history_meta,
+            history_user=history_user,
+            chat_service=chat_service,
+            notify=notify_chat_message,
+            model_id=selected_model_id,
+        )
+        if hybrid_response is not None:
+            return hybrid_response
 
         if req.stream:
             recent_context = recent_chat_context(
@@ -493,9 +508,6 @@ def create_chat_router(context: AppContext) -> APIRouter:
             req.image_data,
         )
         response_text = str(result)
-        # Answer-citation binding (backlog #11): annotate — never block — how
-        # the answer relates to the retrieved sources. Recorded on the trace
-        # so the Review/proof surfaces see the same verdict as the client.
         grounding = assess_answer_grounding(
             response_text,
             trace=trace_seed if isinstance(trace_seed, dict) else None,
