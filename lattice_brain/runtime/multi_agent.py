@@ -44,11 +44,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from .contracts import multi_agent_contract
 from ..utils import now_iso as _now
+from .contracts import multi_agent_contract
 
-
-MULTI_AGENT_VERSION = "10.1.1"
+MULTI_AGENT_VERSION = "10.2.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")

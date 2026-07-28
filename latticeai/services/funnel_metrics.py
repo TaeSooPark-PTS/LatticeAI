@@ -37,6 +37,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from latticeai.core.quiet import quiet
+
 LOGGER = logging.getLogger(__name__)
 
 COUNTER_NAMES = (
@@ -124,7 +126,7 @@ class FunnelMetricsService:
                     try:
                         os.unlink(tmp_name)
                     except OSError:
-                        pass
+                        quiet()
         except Exception as exc:  # noqa: BLE001 — metrics persistence is best-effort
             LOGGER.warning("funnel metrics save failed: %s", exc)
 

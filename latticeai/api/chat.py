@@ -16,7 +16,6 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from latticeai.api.chat_agent_http import AgentHTTPController
-from latticeai.core.project_sessions import ProjectSessionStore
 from latticeai.api.chat_contracts import (
     AgentEvalRequest,
     AgentRequest,
@@ -50,9 +49,10 @@ from latticeai.api.chat_hybrid import (
     maybe_hybrid_stream_response,
     resolve_request_network_mode,
 )
-from latticeai.core.run_store import AgentRunStore
 from latticeai.api.chat_intents import ChatIntentController
 from latticeai.api.chat_stream import stream_chat
+from latticeai.core.project_sessions import ProjectSessionStore
+from latticeai.core.run_store import AgentRunStore
 from latticeai.services.app_context import AppContext
 from latticeai.services.chat_service import ChatService
 from latticeai.services.tool_dispatch import build_agent_runtime, enforce_tool_policy
@@ -64,7 +64,6 @@ from latticeai.tools import (
     knowledge_save,
     network_status,
 )
-
 
 __all__ = [
     "AgentEvalRequest",

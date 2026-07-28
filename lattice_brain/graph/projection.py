@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-# ruff: noqa: F403,F405
+from ..quiet import quiet
 
+# ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
 
 # ── promotion review mode (review 2026-07-25 Wave 4) ─────────────────────────
@@ -364,7 +365,7 @@ class KnowledgeGraphProjectionMixin:
                 if EdgeType.from_legacy(leg_type).value == leg_type:
                     leg_type = ""
             except ValueError:
-                pass
+                quiet()
         norm_type = (
             EdgeType.from_legacy(edge_type).value if EdgeType is not None else edge_type
         )

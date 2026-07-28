@@ -26,8 +26,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from latticeai.core.workspace_os_utils import _file_size
 from latticeai.core.timeutil import now_iso as _now
+from latticeai.core.workspace_os_utils import _file_size
 
 # Personal workspace memory kinds (from WorkspaceOS.MEMORY_KINDS).
 WORKSPACE_KINDS = (

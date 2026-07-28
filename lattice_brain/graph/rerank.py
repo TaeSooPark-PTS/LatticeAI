@@ -111,7 +111,10 @@ def cross_encoder_rerank(
         return result
 
     ranked = list(candidates)
-    for item, score in zip(ranked, scores):
+    # strict=False on purpose: a cross-encoder that returns fewer scores than
+    # candidates leaves the tail un-reranked at its fused score, which is a
+    # better outcome than dropping the whole rerank.
+    for item, score in zip(ranked, scores, strict=False):
         item["rerank_score"] = float(score)
         # Surface the rerank score as the primary ranking key while keeping
         # the pre-rerank fused score under scores.fused for audit.

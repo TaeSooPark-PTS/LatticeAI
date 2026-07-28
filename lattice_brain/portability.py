@@ -20,10 +20,12 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
+from contextlib import closing
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Optional
 
 from .archive import BrainArchivePaths, EncryptedBrainArchive
+from .quiet import quiet
 from .storage import (
     DockerPostgresWizard,
     PostgresEngine,
@@ -66,7 +68,7 @@ def _checkpoint_sqlite(db_path: Path) -> None:
     if not db_path.exists():
         return
     try:
-        with sqlite3.connect(str(db_path)) as conn:
+        with closing(sqlite3.connect(str(db_path))) as conn, conn:
             conn.execute("PRAGMA wal_checkpoint(FULL)")
     except sqlite3.Error:
         # Best-effort only. Existing sibling backup/restore still preserves
@@ -99,6 +101,7 @@ def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
             try:
                 shutil.copy2(sibling, backup)
             except FileNotFoundError:
+                quiet()
                 continue
             backups[sibling] = backup
         for sibling in _sqlite_siblings(dest)[1:]:
@@ -247,7 +250,7 @@ class KGPortabilityService:
                               "counts": (artifact.get("header") or {}).get("counts")},
                 )
             except Exception:
-                pass
+                quiet()
         return result
 
     def import_from_file(self, path, *, mode: str = "merge", dry_run: bool = False) -> Dict[str, Any]:

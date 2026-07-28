@@ -20,7 +20,6 @@ from lattice_brain.storage import (
 )
 from lattice_brain.storage.postgres import _quote_ident
 
-
 pytestmark = pytest.mark.skipif(
     os.getenv("LTCAI_LIVE_POSTGRES_DOCKER_CONSENT") != "1",
     reason="live Docker/Postgres validation requires explicit consent",

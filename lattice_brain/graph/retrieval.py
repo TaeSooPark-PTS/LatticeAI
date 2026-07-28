@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # ruff: noqa: F403,F405
-
 from ._kg_common import *  # noqa: F403,F401
 
 # --- Compat seam (v9.9.5 decomposition) -------------------------------------

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from latticeai.core.quiet import quiet
+
 from .timeutil import now_iso as _now
 from .workspace_os_utils import _json_hash, _listify
 
@@ -97,6 +99,7 @@ class WorkspaceGraphTrace:
                     if len(edges) >= 24:
                         break
             except Exception:
+                quiet()
                 continue
 
         if matches:

@@ -32,7 +32,7 @@ def test_community_admin_policies_not_enforced():
 def test_community_local_audit_export_always_available():
     desc = enterprise_admin.audit_export_descriptor()
     assert desc["local_export"]["available"] is True
-    assert "/admin/security/export" == desc["local_export"]["endpoint"]
+    assert desc["local_export"]["endpoint"] == "/admin/security/export"
     # SIEM streaming is an Enterprise capability — off in Community.
     assert desc["siem_streaming"]["enabled"] is False
 

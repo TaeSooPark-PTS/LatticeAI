@@ -25,6 +25,8 @@ import json
 import time
 from typing import Any, Dict, List, Optional
 
+from latticeai.core.quiet import quiet
+
 
 class OIDCValidationError(Exception):
     """Raised when an OIDC ID token fails any validation step (fail-closed)."""
@@ -116,6 +118,7 @@ def _verify_signature(token: str, jwks: Any) -> Dict[str, Any]:
             public_key = _public_key_from_jwk(jwk)
             public_key.verify(signature, signing_input, padding.PKCS1v15(), hash_obj)
         except (InvalidSignature, OIDCValidationError):
+            quiet()
             continue
         # Signature verified — now it is safe to parse the claims.
         try:

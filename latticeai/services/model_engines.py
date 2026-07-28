@@ -22,8 +22,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from latticeai.services.model_errors import ModelRuntimeError
+from latticeai.core.quiet import quiet
 from latticeai.services.model_catalog import ENGINE_INSTALLERS
+from latticeai.services.model_errors import ModelRuntimeError
 from latticeai.services.process_audit import (
     CommandConfirmationError,
     append_process_audit_event,
@@ -127,7 +128,9 @@ def _json_request(
 def lmstudio_api_base() -> str:
     # late to avoid issues
     try:
-        from latticeai.services.model_runtime import OPENAI_COMPATIBLE_PROVIDERS  # type: ignore
+        from latticeai.services.model_runtime import (
+            OPENAI_COMPATIBLE_PROVIDERS,  # type: ignore
+        )
         prov = OPENAI_COMPATIBLE_PROVIDERS
     except Exception:
         prov = {}
@@ -145,7 +148,7 @@ def ensure_lmstudio_server() -> None:
         _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
         return
     except Exception:
-        pass
+        quiet()
 
     cli = find_lmstudio_cli()
     if not cli:
@@ -180,7 +183,7 @@ def ensure_ollama_server() -> None:
         if probe.returncode == 0:
             return
     except Exception:
-        pass
+        quiet()
     subprocess.Popen(
         [ollama, "serve"],
         stdout=subprocess.DEVNULL,
@@ -194,13 +197,16 @@ def ensure_ollama_server() -> None:
             if probe.returncode == 0:
                 return
         except Exception:
-            pass
+            quiet()
         time.sleep(0.5)
     raise ModelRuntimeError(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
 
 
 def get_openai_compatible_server_models(provider: str) -> List[str]:
-    from latticeai.services.model_runtime import OPENAI_COMPATIBLE_PROVIDERS, get_lmstudio_models
+    from latticeai.services.model_runtime import (
+        OPENAI_COMPATIBLE_PROVIDERS,
+        get_lmstudio_models,
+    )
 
     if provider == "lmstudio":
         models = []
@@ -255,7 +261,11 @@ def wait_for_openai_compatible_server(provider: str, model_name: Optional[str] =
 
 
 def ensure_vllm_server(model_name: str) -> None:
-    from latticeai.services.model_runtime import download_hf_model, hf_model_dir, hf_model_ready
+    from latticeai.services.model_runtime import (
+        download_hf_model,
+        hf_model_dir,
+        hf_model_ready,
+    )
 
     served_models = get_openai_compatible_server_models("vllm")
     if model_name in served_models:
@@ -301,7 +311,11 @@ def ensure_vllm_server(model_name: str) -> None:
 
 
 def ensure_llamacpp_server(model_name: str) -> None:
-    from latticeai.services.model_runtime import download_hf_model, hf_model_dir, hf_model_ready
+    from latticeai.services.model_runtime import (
+        download_hf_model,
+        hf_model_dir,
+        hf_model_ready,
+    )
 
     served_models = get_openai_compatible_server_models("llamacpp")
     if model_name in served_models:
@@ -368,7 +382,7 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
     last_percent: Optional[float] = None
     lines: List[str] = []
     try:
-        assert process.stdout is not None
+        assert process.stdout is not None  # noqa: S101 — invariant guard on a code path with no caller-facing error
         for raw_line in process.stdout:
             for part in re.split(r"[\r\n]+", raw_line):
                 line = part.strip()
@@ -597,17 +611,24 @@ async def _smoke_test_loaded_model(
     """
     # late imports to avoid circular and keep lattice_brain/latticeai clean
     try:
+        import asyncio
+
+        from latticeai.core.model_compat import (
+            classify_smoke_response as _classify_smoke_response,
+        )
+        from latticeai.core.model_compat import (
+            ensure_profile as _ensure_compat_profile,
+        )
+        from latticeai.core.model_compat import (
+            fast_postprocess as _compat_fast_postprocess,
+        )
+        from latticeai.core.model_compat import (
+            record_smoke_result as _record_smoke_result,
+        )
         from latticeai.services.model_runtime import (
             _LOCAL_SMOKE_ENGINES,
             _SMOKE_PROMPT,
         )
-        from latticeai.core.model_compat import (
-            ensure_profile as _ensure_compat_profile,
-            fast_postprocess as _compat_fast_postprocess,
-            classify_smoke_response as _classify_smoke_response,
-            record_smoke_result as _record_smoke_result,
-        )
-        import asyncio
     except Exception as e:
         return {"ok": False, "reason": f"smoke import failed: {e}", "skipped": True}
 

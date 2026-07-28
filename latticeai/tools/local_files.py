@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from latticeai.core.tool_registry import LOCAL_WRITE_BLOCKED_PREFIXES
-from latticeai.tools import ToolError, LOCAL_MAX_FILE_BYTES
+from latticeai.tools import LOCAL_MAX_FILE_BYTES, ToolError
 
 
 def local_list(path: str) -> Dict[str, Any]:

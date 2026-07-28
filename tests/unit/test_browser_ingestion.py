@@ -18,13 +18,13 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from lattice_brain.graph.store import KnowledgeGraphStore
+from lattice_brain.ingestion import IngestionPipeline
 from latticeai.api.browser import (
     BrowserFetchError,
     _default_fetch_url,
     create_browser_router,
     extract_readable_text,
 )
-from lattice_brain.ingestion import IngestionPipeline
 
 
 def _client(

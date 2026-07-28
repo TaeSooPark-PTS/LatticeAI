@@ -6,10 +6,10 @@ import asyncio
 import time
 from pathlib import Path
 
+from lattice_brain.runtime.agent_runtime import AgentRuntime
 from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator
 from latticeai.core.realtime import RealtimeBus
 from latticeai.core.workspace_os import WorkspaceOSStore
-from lattice_brain.runtime.agent_runtime import AgentRuntime
 from latticeai.services.run_executor import RunExecutor
 
 

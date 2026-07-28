@@ -10,7 +10,6 @@ import time
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
-
 _SECRET_RE = re.compile(
     r"(api[_-]?key|access[_-]?token|auth[_-]?token|bearer|client[_-]?secret|password|secret|token)",
     re.IGNORECASE,

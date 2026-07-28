@@ -2,10 +2,13 @@
 
 from pathlib import Path
 
-from latticeai.core.marketplace import TemplateCatalog
-from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator, OrchestrationContext
-from latticeai.core.workspace_os import WorkspaceOSStore
+from lattice_brain.runtime.multi_agent import (
+    MultiAgentOrchestrator,
+    OrchestrationContext,
+)
 from lattice_brain.workflow import WorkflowEngine
+from latticeai.core.marketplace import TemplateCatalog
+from latticeai.core.workspace_os import WorkspaceOSStore
 
 
 def test_agent_handoff_context_packet_and_replay_are_persisted(tmp_path: Path):

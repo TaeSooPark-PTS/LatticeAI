@@ -26,7 +26,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from latticeai.core.timeutil import local_now, now_iso as _now, parse_iso
+from latticeai.core.timeutil import local_now, parse_iso
+from latticeai.core.timeutil import now_iso as _now
 
 LOGGER = logging.getLogger(__name__)
 

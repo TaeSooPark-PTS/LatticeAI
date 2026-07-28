@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 
+from latticeai.runtime.automation_runtime import build_automation_runtime
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.hooks_runtime import (
     bind_builtin_hook_runners,
@@ -10,7 +11,6 @@ from latticeai.runtime.hooks_runtime import (
 )
 from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
-from latticeai.runtime.automation_runtime import build_automation_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 from latticeai.services.triggers import TRIGGER_HOOK_NAME
 

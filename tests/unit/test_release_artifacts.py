@@ -6,7 +6,6 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-
 _MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "validate_release_artifacts.py"
 _spec = importlib.util.spec_from_file_location("validate_release_artifacts", _MODULE_PATH)
 validator = importlib.util.module_from_spec(_spec)

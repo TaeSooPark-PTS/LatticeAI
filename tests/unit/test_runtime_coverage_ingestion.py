@@ -17,9 +17,9 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from lattice_brain.graph.store import KnowledgeGraphStore
-from latticeai.api.browser import create_browser_router
-from lattice_brain.runtime.hooks import HooksRegistry
 from lattice_brain.ingestion import IngestionPipeline
+from lattice_brain.runtime.hooks import HooksRegistry
+from latticeai.api.browser import create_browser_router
 
 
 @pytest.fixture()

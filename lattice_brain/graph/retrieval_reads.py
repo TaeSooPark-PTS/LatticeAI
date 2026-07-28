@@ -12,7 +12,6 @@ calls (e.g. ``search`` → ``filter_scoped_nodes``) behave exactly as before.
 from __future__ import annotations
 
 # ruff: noqa: F403,F405
-
 from ._kg_common import *  # noqa: F403,F401
 
 

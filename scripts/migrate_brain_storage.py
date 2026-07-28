@@ -13,7 +13,11 @@ import argparse
 import json
 from pathlib import Path
 
-from lattice_brain.storage import DockerPostgresWizard, PostgresEngine, SQLiteToPostgresMigrator
+from lattice_brain.storage import (
+    DockerPostgresWizard,
+    PostgresEngine,
+    SQLiteToPostgresMigrator,
+)
 
 
 def _print_json(value: object) -> None:

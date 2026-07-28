@@ -247,3 +247,54 @@ describe("NetworkBoundaryPanel", () => {
     expect(screen.queryByTestId("network-boundary-applied")).toBeNull();
   });
 });
+
+describe("NetworkBoundaryPanel — holding a memory back", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAppStore.setState({ language: "ko" });
+  });
+
+  it("marks a previewed memory as never-leaving", async () => {
+    mockGet("cloud_allowed");
+    mockPreview({ allows_cloud: true });
+    const mark = vi.spyOn(latticeApi, "setNodeSensitivity").mockResolvedValue({
+      ok: true, status: 200, source: "live",
+      data: { ok: true, node_id: "n1", local_only: true },
+    } as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    await userEvent.type(screen.getByTestId("network-boundary-probe"), "릴리스");
+    await userEvent.click(screen.getByTestId("network-boundary-preview"));
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-hold-0")).toBeTruthy());
+    await userEvent.click(screen.getByTestId("network-boundary-hold-0"));
+
+    await waitFor(() =>
+      expect(mark).toHaveBeenCalledWith("n1", true));
+    // Held rows read as excluded, so the list stays an honest picture of what
+    // would actually be sent.
+    await waitFor(() =>
+      expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("다시 허용"));
+  });
+
+  it("does not mark anything when the server rejects the change", async () => {
+    mockGet("cloud_allowed");
+    mockPreview({ allows_cloud: true });
+    vi.spyOn(latticeApi, "setNodeSensitivity").mockResolvedValue({
+      ok: false, status: 404, source: "live",
+      data: { ok: false, node_id: "n1", local_only: true }, error: "node not found",
+    } as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    await userEvent.type(screen.getByTestId("network-boundary-probe"), "릴리스");
+    await userEvent.click(screen.getByTestId("network-boundary-preview"));
+    await waitFor(() => expect(screen.getByTestId("network-boundary-hold-0")).toBeTruthy());
+    await userEvent.click(screen.getByTestId("network-boundary-hold-0"));
+
+    // Still offering to hold it: the UI must not claim a change the server refused.
+    await waitFor(() =>
+      expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("내보내지 않기"));
+  });
+});

@@ -12,8 +12,8 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from latticeai.api.ui_redirects import app_redirect
 from lattice_brain.ingestion import IngestionItem
+from latticeai.api.ui_redirects import app_redirect
 
 
 class KnowledgeGraphIngestRequest(BaseModel):

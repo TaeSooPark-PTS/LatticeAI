@@ -12,7 +12,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from lattice_brain.graph.store import KnowledgeGraphStore
-from latticeai.services.local_knowledge import LocalKnowledgeWatcher, create_local_knowledge_router
+from latticeai.services.local_knowledge import (
+    LocalKnowledgeWatcher,
+    create_local_knowledge_router,
+)
 
 
 def _store(tmp_path: Path) -> KnowledgeGraphStore:

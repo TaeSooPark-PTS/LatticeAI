@@ -19,7 +19,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionPipeline
 from latticeai.api.setup import create_setup_router
-from latticeai.setup.demo_corpus import DEMO_DOCUMENTS, DEMO_URI_PREFIX, SUGGESTED_QUESTIONS
+from latticeai.setup.demo_corpus import (
+    DEMO_DOCUMENTS,
+    DEMO_URI_PREFIX,
+    SUGGESTED_QUESTIONS,
+)
 
 
 def _client(tmp_path, *, enable_graph=True):

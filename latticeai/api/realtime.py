@@ -16,8 +16,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from latticeai.api.ui_redirects import app_redirect
 from lattice_brain.runtime.contracts import contract_views
+from latticeai.api.ui_redirects import app_redirect
 
 
 class PresenceRequest(BaseModel):

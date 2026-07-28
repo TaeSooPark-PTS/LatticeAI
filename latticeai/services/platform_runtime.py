@@ -18,8 +18,13 @@ from typing import Any, Callable, Dict, Optional, Set
 from fastapi import HTTPException, Request
 
 from lattice_brain.runtime.hooks import dispatch_tool
-from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator, default_role_runner, llm_role_runner
+from lattice_brain.runtime.multi_agent import (
+    MultiAgentOrchestrator,
+    default_role_runner,
+    llm_role_runner,
+)
 from lattice_brain.workflow import ApprovalRequired, WorkflowEngine
+from latticeai.core.quiet import quiet
 from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
 from latticeai.services.tool_dispatch import enforce_tool_policy
 from latticeai.tools import execute_tool
@@ -178,7 +183,7 @@ class PlatformRuntime:
                 except Exception:
                     # Recall is an enrichment seam; the legacy store fallback
                     # keeps agent execution available if it degrades.
-                    pass
+                    quiet()
             try:
                 mems = self.store.search_memories(goal, user_email=user, workspace_id=scope).get("memories", [])
                 ctx = [str(m.get("content") or "")[:180] for m in mems[:6]]
@@ -188,7 +193,7 @@ class PlatformRuntime:
                     synth = [str(m.get("content") or "")[:160] for m in allm if "agent-synthesis" in (m.get("tags") or [])][:3]
                     ctx = synth + ctx
                 except Exception:
-                    pass
+                    quiet()
                 if not ctx:
                     try:
                         recent = self.store.list_memories(user_email=user, workspace_id=scope).get("memories", [])
@@ -196,7 +201,7 @@ class PlatformRuntime:
                         # itself in the knowledge that just entered the Brain.
                         ctx = [str(m.get("content") or "")[:180] for m in recent[:8]]
                     except Exception:
-                        pass
+                        quiet()
                 return ctx[:8]
             except Exception:
                 return []

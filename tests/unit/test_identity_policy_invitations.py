@@ -9,7 +9,11 @@ from fastapi.testclient import TestClient
 from latticeai.api.admin import create_admin_router
 from latticeai.api.invitations import create_invitations_router
 from latticeai.core.invitations import InvitationStore
-from latticeai.core.policy import capabilities_for_role, policy_matrix, require_capability
+from latticeai.core.policy import (
+    capabilities_for_role,
+    policy_matrix,
+    require_capability,
+)
 from latticeai.core.sessions import SessionStore
 from latticeai.core.users import (
     load_users_file,

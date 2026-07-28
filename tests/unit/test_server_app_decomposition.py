@@ -1,11 +1,10 @@
 """v1.4.0 final server_app decomposition guards."""
 
-from pathlib import Path
 import importlib
 import json
+from pathlib import Path
 
 import pytest
-
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -42,7 +41,7 @@ def test_version_metadata_matches_release():
     from latticeai.core.workspace_os import WORKSPACE_OS_VERSION
 
     assert __version__ == release
-    assert WORKSPACE_OS_VERSION == release
+    assert release == WORKSPACE_OS_VERSION
 
 
 def test_markdown_current_release_references_match_release():
@@ -64,6 +63,7 @@ def test_markdown_current_release_references_match_release():
 def test_create_mcp_install_state_focused_interface(tmp_path):
     """MCP install state focused test: verify extraction contract and basic behavior."""
     from pathlib import Path as _Path
+
     from latticeai.core.mcp_registry import create_mcp_install_state
 
     state = create_mcp_install_state(_Path(tmp_path))

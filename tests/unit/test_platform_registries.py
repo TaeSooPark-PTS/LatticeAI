@@ -12,11 +12,11 @@ from pathlib import Path
 
 import pytest
 
-from lattice_brain.runtime.hooks import HooksRegistry, HOOK_KINDS, BUILTIN_HOOKS
-from latticeai.core.agent_registry import AgentRegistry, AGENT_TYPES
-from latticeai.core.marketplace import TemplateCatalog, MARKETPLACE_VERSION
+from lattice_brain.runtime.hooks import BUILTIN_HOOKS, HOOK_KINDS, HooksRegistry
 from latticeai.api.memory import create_memory_router
-from latticeai.services.memory_service import MemoryService, TIERS
+from latticeai.core.agent_registry import AGENT_TYPES, AgentRegistry
+from latticeai.core.marketplace import MARKETPLACE_VERSION, TemplateCatalog
+from latticeai.services.memory_service import TIERS, MemoryService
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -494,7 +494,7 @@ def test_marketplace_has_five_named_agent_templates():
         "Documentation Writer",
         "Workflow Builder",
     } <= names
-    assert MARKETPLACE_VERSION == release
+    assert release == MARKETPLACE_VERSION
 
 
 def test_marketplace_clone_and_roundtrip():

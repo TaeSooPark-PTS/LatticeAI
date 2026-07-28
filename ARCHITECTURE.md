@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **10.1.1 — Reachable Boundary**.
+Current release: **10.2.0 — Load-Bearing Fixes**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -322,7 +322,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 10.1.1:
+The 8.0 architecture contract remains active in 10.2.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -405,7 +405,7 @@ advances or inspects run state belongs in `agent.py`.
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 10.1.1. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 10.2.0. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -469,13 +469,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-10.1.1 exact artifact names:
+10.2.0 exact artifact names:
 
-- `dist/ltcai-10.1.1-py3-none-any.whl`
-- `dist/ltcai-10.1.1.tar.gz`
-- `ltcai-10.1.1.tgz`
-- `dist/ltcai-10.1.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.1_aarch64.dmg`
+- `dist/ltcai-10.2.0-py3-none-any.whl`
+- `dist/ltcai-10.2.0.tar.gz`
+- `ltcai-10.2.0.tgz`
+- `dist/ltcai-10.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.2.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

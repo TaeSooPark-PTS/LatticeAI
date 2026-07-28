@@ -4,6 +4,73 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.2.0] - 2026-07-29
+
+Response to a full code review of 10.1.1 (71/100). All twelve findings.
+
+### Fixed
+- **SQLite connections were committed but never closed** at 70+ sites.
+  `sqlite3.Connection.__exit__` commits or rolls back and leaves the connection
+  open; `KnowledgeGraphStore._connect`, `ConversationStore._connect`,
+  `WorkspaceOSStore._connect_state_db`, both storage engines, `portability`,
+  `archive`, `migration` and `users` all relied on it. Refcounting hid the leak
+  until something held a frame alive (profiler, logged traceback, coverage
+  tracer), at which point the process hit `EMFILE`. Added
+  `StorageEngine.session()` and made the store helpers closing context
+  managers; `tests/unit/test_connection_lifecycle.py` asserts it.
+- **The cloud sensitivity guard could not fire.** `HARD_BLOCK_NODE_TYPES` was
+  an empty set and nothing in the product could set the metadata flags
+  `is_node_blocked_for_cloud` matches on, so "sensitive memories are never
+  sent" was unfalsifiable. Populated the type list, added
+  `lattice_brain/sensitivity.py` (path rules, stamped at ingestion), added
+  `KnowledgeGraphStore.set_node_sensitivity` and
+  `POST /api/network-boundary/node-sensitivity`, and a per-memory hold-back
+  control in the boundary panel.
+- **Outbound cloud text was not redacted.** `redact_secret_text` ran on logs,
+  audit records and API previews but not on the payload that actually leaves.
+- **Vector similarity truncated silently on a dimension mismatch**, producing a
+  plausible but meaningless score. Now raises with both dimensions named.
+- **`tempfile.mktemp()` (TOCTOU race) in the Telegram bridge** replaced with
+  `mkstemp` at two sites.
+- **Three closures captured loop variables by reference** (`chat_agent_http`,
+  `computer_use`, `model_runtime`). Safe today because each is invoked within
+  its iteration; bound explicitly so deferring the call cannot break them.
+- **The cloud turn ran retrieval twice**, discarding the first result except
+  for its quality dict.
+
+### Added
+- `latticeai/services/cloud_egress_audit.py` — every cloud send and every
+  refusal writes an audit entry *before* the provider call, naming node ids,
+  count, token estimate, provider and mode. Shape, never content.
+- `latticeai/core/quiet.py` + `lattice_brain/quiet.py` — `quiet()` keeps the
+  behaviour of `except: pass` and records the exception with its file,
+  function and line at DEBUG. 112 handlers converted; `except: pass` is now a
+  lint error (S110/S112).
+- Coverage measurement: `pytest-cov` in the `dev` extra, `[tool.coverage]`
+  config, a **70% floor** in CI. Measured **71%** — the first known figure.
+- `tests/unit/test_cloud_egress_guard.py` — end-to-end proof that a flagged
+  memory never reaches the payload, that retrieval still carries `metadata`
+  (whose loss would silently disable the filter), and that egress is audited.
+- mypy over 13 trust-critical modules (`npm run typecheck:python`), wired into
+  `npm run lint:python`.
+- CI matrix: macOS runner (the platform the `.dmg` ships for, previously
+  untested) and Python 3.14 (the version this is developed on).
+
+### Changed
+- ruff widened from pyflakes-only to `E4,E7,E9,F,B,S,I,SIM,RET,C901`. Every
+  remaining finding is either fixed or carries a written reason; complexity
+  ceiling set to 30 with named exemptions.
+- `latticeai/core/workspace_os.py` 1354 → 1130 lines; vocabulary moved to
+  `workspace_os_constants.py` and state/migration to `workspace_os_state.py`,
+  with delegating methods so the public surface is unchanged.
+- Package classifiers now advertise Python 3.13 and 3.14, matching what CI tests.
+
+### Known
+- `app_factory._build` remains one 1,343-line function. Its sections share ~34
+  local bindings, so decomposition requires a runtime-context object rather
+  than a mechanical extraction; deferred rather than rushed, and named in the
+  C901 exemptions so the choice is visible.
+
 ## [10.1.1] - 2026-07-28
 
 ### Added

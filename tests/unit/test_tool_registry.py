@@ -8,11 +8,11 @@ These tests keep the three lists that used to drift in lock-step:
 
 import re
 
-from fastapi import HTTPException
 import pytest
+from fastapi import HTTPException
+
 import latticeai.tools as tools
 import latticeai.tools.knowledge as knowledge_tools
-
 from latticeai.services.tool_dispatch import ToolDispatchService
 
 

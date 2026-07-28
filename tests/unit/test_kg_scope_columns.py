@@ -7,8 +7,8 @@ Scoped re-upserts may enrich a row; unscoped re-upserts must not strip scope.
 
 import sqlite3
 
-from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.graph.schema import KGStoreV2
+from lattice_brain.graph.store import KnowledgeGraphStore
 
 
 def _store(tmp_path):

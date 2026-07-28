@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
 
 
 class StorageUnavailable(RuntimeError):
@@ -58,7 +59,34 @@ class StorageEngine(ABC):
 
     @abstractmethod
     def connect(self) -> Any:
-        """Return a DB-API-like connection for this engine."""
+        """Return a DB-API-like connection for this engine.
+
+        The caller owns the connection and must close it. Prefer
+        :meth:`session`, which does that for you — a bare ``connect()`` is only
+        correct when the statement cannot run inside a transaction (``VACUUM``)
+        or when the connection must outlive one block.
+        """
+
+    @contextmanager
+    def session(self) -> Iterator[Any]:
+        """Transactional connection that is always closed.
+
+        ``with sqlite3.connect(...) as conn`` commits or rolls back — it does
+        **not** close. Every site that relied on that leaked a file descriptor
+        until the connection was garbage collected, which CPython usually did
+        promptly enough to hide it. Anything holding a frame alive (a coverage
+        tracer, a profiler, a logged traceback) delays that collection and the
+        descriptors accumulate until the process hits ``EMFILE``.
+
+        This yields inside ``with conn`` so commit/rollback semantics are
+        unchanged, then closes in ``finally``.
+        """
+        conn = self.connect()
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     @abstractmethod
     def backup(self, destination: Path) -> Dict[str, Any]:

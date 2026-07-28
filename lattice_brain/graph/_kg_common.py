@@ -21,12 +21,13 @@ import sqlite3
 import time
 import zipfile
 from collections import Counter
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 try:
-    from .schema import KGStoreV2, NodeType, EdgeType, _exec_script
+    from .schema import EdgeType, KGStoreV2, NodeType, _exec_script
 except Exception:  # pragma: no cover - v2 schema is optional at import time
     KGStoreV2 = None  # type: ignore[assignment]
     NodeType = None  # type: ignore[assignment]
@@ -44,6 +45,7 @@ _READ_FROM_V2_DEFAULT = os.getenv("LATTICEAI_KG_READ_V2", "1") != "0"
 # Static constants (projection/format versions, local-ingestion classification
 # tables, OS exclusion lists) live in ._kg_constants; re-exported here so every
 # existing ``from ._kg_common import <CONST>`` site is unaffected.
+from ..quiet import quiet
 from ._kg_constants import (  # noqa: E402
     _KG_DB_FORMAT_KEY,
     _KG_DB_FORMAT_VERSION,
@@ -66,7 +68,6 @@ from ._kg_constants import (  # noqa: E402
     SENSITIVE_PATH_KEYWORDS,
     WINDOWS_EXCLUDED_NAMES,
 )
-
 
 # Pure fs/path/hash/classification helpers → ._kg_fsutil (re-exported so the
 # computed __all__ below still forwards them to the graph mixins).
@@ -152,7 +153,7 @@ def chunk_strategy_for(filename: Any, *, content_type: str = "") -> str:
         if mime.startswith("text/html") or mime.startswith("text/plain"):
             return "prose"
     except Exception:
-        pass
+        quiet()
     return "plain"
 
 
@@ -736,7 +737,6 @@ _CONCEPT_STOP: set = {
     "yes",
     "not",
     "but",
-    "are",
     "all",
     "any",
     "out",

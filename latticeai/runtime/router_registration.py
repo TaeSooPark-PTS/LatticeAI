@@ -661,7 +661,9 @@ def register_review_and_brain_tail_routers(
         data_dir=data_dir,
         append_audit_event=append_audit_event,
     )
-    from latticeai.runtime.network_boundary_wiring import register_network_boundary_router
+    from latticeai.runtime.network_boundary_wiring import (
+        register_network_boundary_router,
+    )
 
     register_network_boundary_router(
         app,

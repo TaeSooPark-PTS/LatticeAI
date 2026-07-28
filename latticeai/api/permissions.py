@@ -17,7 +17,6 @@ from fastapi import APIRouter, HTTPException, Request
 
 from latticeai.core.io_utils import atomic_write_json
 
-
 _PERMISSION_ACTION_LABELS = {
     "list": "폴더 목록 보기",
     "read": "파일 읽기",

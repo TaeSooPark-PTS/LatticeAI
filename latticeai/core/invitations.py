@@ -9,7 +9,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from latticeai.core.quiet import quiet
+
 from .timeutil import local_now as _now
+
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat(timespec="seconds")
@@ -39,7 +42,7 @@ class InvitationStore:
                 data.setdefault("invitations", [])
                 return data
         except Exception:
-            pass
+            quiet()
         return {"version": 1, "invitations": []}
 
     def _save(self, data: Dict[str, Any]) -> None:

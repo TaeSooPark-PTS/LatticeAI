@@ -16,7 +16,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from latticeai.core.agent import AgentDeps, AgentRunContext, AgentState, SingleAgentRuntime
+from latticeai.core.agent import (
+    AgentDeps,
+    AgentRunContext,
+    AgentState,
+    SingleAgentRuntime,
+)
 from latticeai.core.agent_profiles import (
     COMPACT,
     COMPACT_MAX_PARAMS_B,
@@ -24,7 +29,6 @@ from latticeai.core.agent_profiles import (
     model_size_b,
     profile_for_model,
 )
-
 
 # ── selection ────────────────────────────────────────────────────────────────
 

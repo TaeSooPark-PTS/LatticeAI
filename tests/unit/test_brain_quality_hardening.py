@@ -4,14 +4,19 @@ tests/unit/test_brain_quality_hardening.py
 Verifies all quality layer features with real execution (no mocks of the layer itself)
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from lattice_brain.quality import (
-    LatticeBrainQuality, EmbeddingFallbackLabeller, HybridFusion
-)
 import unittest
+
+from lattice_brain.quality import (
+    EmbeddingFallbackLabeller,
+    HybridFusion,
+    LatticeBrainQuality,
+)
+
 
 class TestBrainQualityHardening(unittest.TestCase):
 

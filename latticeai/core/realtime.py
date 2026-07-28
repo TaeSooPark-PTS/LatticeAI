@@ -32,8 +32,9 @@ import threading
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set
 
 from lattice_brain.runtime.contracts import realtime_event_contract
-from .timeutil import now_iso as _now
+from latticeai.core.quiet import quiet
 
+from .timeutil import now_iso as _now
 
 REALTIME_VERSION = "2.2.0"
 _FEED_LIMIT = 200
@@ -120,7 +121,7 @@ class RealtimeBus:
                 sub.queue.get_nowait()  # drop oldest
                 sub.queue.put_nowait(event)
             except Exception:
-                pass
+                quiet()
 
     # The store calls ``event_sink(event)`` positionally; expose a stable alias.
     def __call__(self, event: Dict[str, Any]) -> Dict[str, Any]:

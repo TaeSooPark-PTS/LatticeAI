@@ -17,16 +17,18 @@ from typing import Any, AsyncIterator, Dict, Optional
 
 from .model_errors import ModelRuntimeError
 
+
 # Late imports to avoid circulars during extraction. The state argument is
 # mandatory so this module cannot fall back to ambient process configuration.
 def _get_model_runtime_deps(runtime_state: Any):
     from .model_runtime import (
+        MODEL_ENGINE_ALIASES,
         _download_allowed,
         _download_block,
         _engine_install_block,
         _friendly_model_runtime_error,
-        _ModelResolution,
         _model_runtime_compatibility,
+        _ModelResolution,
         _smoke_test_loaded_model,
         download_hf_model,
         engine_installed,
@@ -40,7 +42,6 @@ def _get_model_runtime_deps(runtime_state: Any):
         hf_model_dir,
         hf_model_ready,
         local_binary,
-        MODEL_ENGINE_ALIASES,
         model_download_progress_payload,
         normalize_local_model_request,
         parse_model_ref,

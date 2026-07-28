@@ -38,16 +38,16 @@ def _canonical() -> str:
 
 
 def test_python_constants_agree():
-    from latticeai import __version__
     from lattice_brain import __version__ as brain_version
-    from latticeai.core.marketplace import MARKETPLACE_VERSION
     from lattice_brain.runtime.multi_agent import MULTI_AGENT_VERSION
+    from latticeai import __version__
+    from latticeai.core.marketplace import MARKETPLACE_VERSION
 
     v = _canonical()
     assert __version__ == v
     assert brain_version == v
-    assert MARKETPLACE_VERSION == v
-    assert MULTI_AGENT_VERSION == v
+    assert v == MARKETPLACE_VERSION
+    assert v == MULTI_AGENT_VERSION
 
 
 def test_pyproject_version_agrees():

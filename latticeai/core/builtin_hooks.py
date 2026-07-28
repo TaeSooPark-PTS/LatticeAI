@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from latticeai.core.security import SECRET_KEY_HINTS, redact_secrets as redact_secret_values
+from latticeai.core.security import SECRET_KEY_HINTS
+from latticeai.core.security import redact_secrets as redact_secret_values
 
 
 def register_builtin_hook_runners(

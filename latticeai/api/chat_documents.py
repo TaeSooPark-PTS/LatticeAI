@@ -20,7 +20,11 @@ from latticeai.core.context_builder import (
     format_sources_footnote,
     retrieve_context_for_generation,
 )
-from latticeai.core.document_generator import DocumentGenerationSession, detect_document_intent
+from latticeai.core.document_generator import (
+    DocumentGenerationSession,
+    detect_document_intent,
+)
+from latticeai.core.quiet import quiet
 
 
 def extract_screenshot_context(image_data: Optional[str]) -> str:
@@ -77,7 +81,7 @@ def extract_screenshot_context(image_data: Optional[str]) -> str:
             try:
                 Path(temp_path).unlink()
             except OSError:
-                pass
+                quiet()
     return "\n".join(lines)
 
 

@@ -360,6 +360,9 @@ from .ingestion_jobs import (  # noqa: E402,F401 — re-export for existing impo
     BackgroundIngestionJob,
     BackgroundIngestionQueue,
 )
+from .quiet import (  # noqa: E402 — imported after the module constants it depends on
+    quiet,  # noqa: E402 — imported after the module constants it depends on
+)
 
 
 @dataclass
@@ -577,7 +580,7 @@ class IngestionPipeline:
                     user_email,
                 )
             except Exception:  # noqa: BLE001 — audit must never break ingestion
-                pass
+                quiet()
 
         extraction_quality = self._assess_item_quality(
             item, source_type=source_type, text=quality_text, chunk_ids=chunk_ids,

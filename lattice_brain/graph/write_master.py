@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # ruff: noqa: F403,F405
-
 from ._kg_common import *  # noqa: F403,F401
 
 
@@ -250,3 +249,49 @@ class KnowledgeGraphWriteMixin:
             text=text,
             metadata={**metadata, "parent_source_node": source_node},
         )
+
+    def set_node_sensitivity(
+        self,
+        node_id: str,
+        *,
+        local_only: bool,
+        reason: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Mark (or unmark) one node as never-leaving.
+
+        The cloud filter has always looked for this flag; until 10.2.0 nothing
+        could set it, so the guard was unreachable. This is the user-driven
+        half — ingestion stamps secret-bearing paths automatically, and this
+        covers everything a path cannot tell you, like a note whose *content*
+        is private.
+
+        Unmarking is allowed and audited by the caller: a user who flagged
+        something by mistake must be able to undo it, but the reason is cleared
+        with the flag so a stale justification cannot linger.
+        """
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT metadata_json FROM nodes WHERE id=?", (node_id,)
+            ).fetchone()
+            if row is None:
+                return {"ok": False, "node_id": node_id, "reason": "node not found"}
+            try:
+                metadata = json.loads(row[0] or "{}")
+            except Exception:
+                metadata = {}
+            if local_only:
+                metadata["local_only"] = True
+                metadata["local_only_reason"] = reason or "marked by the user"
+            else:
+                metadata.pop("local_only", None)
+                metadata.pop("local_only_reason", None)
+            conn.execute(
+                "UPDATE nodes SET metadata_json=?, updated_at=? WHERE id=?",
+                (json.dumps(metadata, ensure_ascii=False), _now(), node_id),
+            )
+        return {
+            "ok": True,
+            "node_id": node_id,
+            "local_only": bool(local_only),
+            "reason": metadata.get("local_only_reason"),
+        }

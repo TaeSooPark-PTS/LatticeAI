@@ -12,8 +12,28 @@ import json
 import shutil
 import sqlite3
 from collections import deque
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional
+
+from latticeai.core.quiet import quiet
+
+from .timeutil import now_iso as _now
+from .workspace_graph_trace import WorkspaceGraphTrace
+from .workspace_memory import WorkspaceMemory
+from .workspace_os_constants import (
+    DEFAULT_WORKSPACE_ID,
+    EXECUTION_EVENT_TYPES,
+    MEMORY_KINDS,
+    ONBOARDING_STEPS,
+    ROLE_PERMISSIONS,
+    WORKSPACE_AREAS,
+    WORKSPACE_OS_VERSION,
+    WORKSPACE_PERMISSIONS,
+    WORKSPACE_ROLES,
+    WORKSPACE_TYPES,
+)
+from .workspace_os_state import default_state, migrate_workspaces, new_workspace_record
 
 # Extracted pure helpers (keeps this module smaller and focused on the store).
 from .workspace_os_utils import (
@@ -24,16 +44,16 @@ from .workspace_os_utils import (
     _safe_slug,
     remove_skill_directory,
 )
-from .timeutil import now_iso as _now
-from .workspace_permissions import WorkspacePermissionManager, _member_role  # type: ignore
-from .workspace_timeline import WorkspaceTimeline
+from .workspace_permissions import (  # type: ignore
+    WorkspacePermissionManager,
+    _member_role,
+)
 from .workspace_plugins import WorkspacePluginManager
-from .workspace_memory import WorkspaceMemory
-from .workspace_snapshots import WorkspaceSnapshots
-from .workspace_graph_trace import WorkspaceGraphTrace
 from .workspace_review_items import WorkspaceReviewItems
 from .workspace_runs import WorkspaceRuns
 from .workspace_skills import WorkspaceSkills
+from .workspace_snapshots import WorkspaceSnapshots
+from .workspace_timeline import WorkspaceTimeline
 
 __all__ = [
     "WORKSPACE_OS_VERSION",
@@ -50,120 +70,16 @@ __all__ = [
     "remove_skill_directory",
 ]
 
-WORKSPACE_OS_VERSION = "10.1.1"
 
-# Workspace types separate single-user Personal workspaces from shared
-# Organization workspaces. Both keep the same local-first JSON store; the type
-# only changes how membership and permissions are evaluated.
-WORKSPACE_TYPES = ("personal", "organization")
 
-DEFAULT_WORKSPACE_ID = "personal"
 
-# Role hierarchy for Organization workspaces. Personal workspaces always grant
-# their single local user the owner role.
-WORKSPACE_ROLES = ("owner", "admin", "member", "viewer")
 
-# Capability-style permissions. Kept intentionally small so Enterprise editions
-# can layer advanced RBAC/ABAC on top via the enterprise seam without changing
-# these community defaults.
-WORKSPACE_PERMISSIONS = ("read", "write", "manage_members", "manage_workspace")
 
-ROLE_PERMISSIONS: Dict[str, set] = {
-    "owner": {"read", "write", "manage_members", "manage_workspace"},
-    "admin": {"read", "write", "manage_members", "manage_workspace"},
-    "member": {"read", "write"},
-    "viewer": {"read"},
-}
 
-WORKSPACE_AREAS = [
-    "graph",
-    "snapshot",
-    "memory",
-    "agent",
-    "workflow",
-    "plugins",
-    "skills",
-    "marketplace",
-    "timeline",
-]
 
-ONBOARDING_STEPS = [
-    "account",
-    "admin",
-    "hardware",
-    "model_recommendation",
-    "model_install",
-    "model_connection",
-    "folder_connection",
-    "first_question",
-    "complete",
-]
 
-MEMORY_KINDS = {
-    "short_term",
-    "workspace",
-    "preferences",
-    "decisions",
-    "working_style",
-    "frequently_used_tools",
-    "long_term",
-}
 
-EXECUTION_EVENT_TYPES = {
-    "agent_started",
-    "handoff_created",
-    "handoff_accepted",
-    "handoff_completed",
-    "review_requested",
-    "review_approved",
-    "review_rejected",
-    "retry_requested",
-    "workflow_started",
-    "workflow_completed",
-    "plugin_started",
-    "plugin_completed",
-    "execution_failed",
-    "execution_cancelled",
-    "execution_interrupted",
-}
 
-DEFAULT_AGENTS = [
-    {
-        "id": "agent:planner",
-        "name": "Planner",
-        "role": "Breaks workspace goals into executable plans.",
-        "status": "available",
-        "relationships": ["agent:executor", "agent:reviewer"],
-    },
-    {
-        "id": "agent:executor",
-        "name": "Executor",
-        "role": "Runs approved tool and code workflows.",
-        "status": "available",
-        "relationships": ["agent:planner", "agent:reviewer"],
-    },
-    {
-        "id": "agent:reviewer",
-        "name": "Reviewer",
-        "role": "Checks outputs, tests, and regressions.",
-        "status": "available",
-        "relationships": ["agent:executor", "agent:release"],
-    },
-    {
-        "id": "agent:researcher",
-        "name": "Researcher",
-        "role": "Finds and curates relevant workspace knowledge.",
-        "status": "available",
-        "relationships": ["agent:planner"],
-    },
-    {
-        "id": "agent:release",
-        "name": "Release Agent",
-        "role": "Coordinates versioning, packaging, and release checks.",
-        "status": "available",
-        "relationships": ["agent:reviewer"],
-    },
-]
 
 
 class WorkspaceOSStore:
@@ -193,7 +109,13 @@ class WorkspaceOSStore:
         self.review_items = WorkspaceReviewItems(self)
         self.skills = WorkspaceSkills(self)
 
-    def _connect_state_db(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect_state_db(self) -> Iterator[sqlite3.Connection]:
+        """Transactional connection that is closed when the block exits.
+
+        ``with sqlite3.connect(...)`` commits but never closes; see
+        :meth:`lattice_brain.storage.base.StorageEngine.session`.
+        """
         conn = sqlite3.connect(self.sqlite_path)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute(
@@ -204,7 +126,26 @@ class WorkspaceOSStore:
             "CREATE TABLE IF NOT EXISTS workspace_os_meta ("
             "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
         )
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
+    # ── moved to workspace_os_state.py (10.2.0) ───────────────────────────────
+    # Kept as delegators: `_default_state` and `_migrate_workspaces` are called
+    # by name in tests and by subclasses, and `_new_workspace_record` is used
+    # across the manager classes. The behaviour lives in one place now; these
+    # keep every existing call site working.
+    @staticmethod
+    def _new_workspace_record(**kwargs) -> Dict[str, Any]:
+        return new_workspace_record(**kwargs)
+
+    def _migrate_workspaces(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        return migrate_workspaces(state)
+
+    def _default_state(self) -> Dict[str, Any]:
+        return default_state()
 
     def _load_sqlite_state(self) -> Optional[Dict[str, Any]]:
         try:
@@ -243,82 +184,10 @@ class WorkspaceOSStore:
             if not any(self.state_path.parent.glob(f"{self.state_path.name}.pre-sqlite.*.json")):
                 shutil.copy2(self.state_path, backup)
         except Exception:
-            pass
+            quiet()
         return _deep_merge(default, loaded)
 
-    @staticmethod
-    def _new_workspace_record(
-        *,
-        workspace_id: str,
-        name: str,
-        workspace_type: str,
-        owner_user_id: Optional[str],
-        settings: Optional[Dict[str, Any]] = None,
-        members: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
-        if workspace_type not in WORKSPACE_TYPES:
-            raise ValueError(f"unknown workspace type: {workspace_type}")
-        now = _now()
-        member_list = list(members or [])
-        if owner_user_id and not any(m.get("user_id") == owner_user_id for m in member_list):
-            member_list.insert(0, {"user_id": owner_user_id, "role": "owner", "added_at": now})
-        return {
-            "workspace_id": workspace_id,
-            "id": workspace_id,
-            "name": name,
-            "type": workspace_type,
-            "owner_user_id": owner_user_id,
-            "members": member_list,
-            "roles": {role: sorted(perms) for role, perms in ROLE_PERMISSIONS.items()},
-            "status": "active",
-            "areas": list(WORKSPACE_AREAS),
-            "settings": settings or {},
-            "created_at": now,
-            "updated_at": now,
-        }
 
-    def _migrate_workspaces(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Non-destructive upgrade of legacy workspace entries to the v1.1 model.
-
-        Existing 1.0.x state files stored minimal ``{id,name,type,areas}`` dicts.
-        This backfills membership/role/timestamp fields without dropping data and
-        guarantees the default Personal workspace always exists.
-        """
-        workspaces = state.get("workspaces")
-        if not isinstance(workspaces, dict):
-            workspaces = {}
-        migrated: Dict[str, Any] = {}
-        for ws_id, ws in workspaces.items():
-            if not isinstance(ws, dict):
-                continue
-            ws_type = ws.get("type") if ws.get("type") in WORKSPACE_TYPES else "organization"
-            if ws_id == DEFAULT_WORKSPACE_ID:
-                ws_type = "personal"
-            base = self._new_workspace_record(
-                workspace_id=ws_id,
-                name=ws.get("name") or ws_id,
-                workspace_type=ws_type,
-                owner_user_id=ws.get("owner_user_id"),
-                settings=ws.get("settings") or {},
-                members=ws.get("members") if isinstance(ws.get("members"), list) else None,
-            )
-            # Preserve any pre-existing timestamps / status from the loaded record.
-            base["created_at"] = ws.get("created_at") or base["created_at"]
-            base["updated_at"] = ws.get("updated_at") or base["updated_at"]
-            base["status"] = ws.get("status") or base["status"]
-            migrated[ws_id] = base
-        if DEFAULT_WORKSPACE_ID not in migrated:
-            migrated[DEFAULT_WORKSPACE_ID] = self._new_workspace_record(
-                workspace_id=DEFAULT_WORKSPACE_ID,
-                name="Personal Workspace",
-                workspace_type="personal",
-                owner_user_id=None,
-            )
-        state["workspaces"] = migrated
-        active = state.get("active_workspace")
-        if active not in migrated:
-            state["active_workspace"] = DEFAULT_WORKSPACE_ID
-        return state
 
     def migrate_workspace_identities(self, email_to_id: Dict[str, str]) -> int:
         """Rewrite workspace membership identities from legacy emails to UUIDs.
@@ -361,83 +230,6 @@ class WorkspaceOSStore:
             self.record_timeline_event("workspace", "identity_uuid_migrated", {"records": changed})
         return changed
 
-    def _default_state(self) -> Dict[str, Any]:
-        return {
-            "version": WORKSPACE_OS_VERSION,
-            "identity": "AI Workspace OS",
-            "created_at": _now(),
-            "updated_at": _now(),
-            "active_workspace": DEFAULT_WORKSPACE_ID,
-            "workspaces": {
-                DEFAULT_WORKSPACE_ID: self._new_workspace_record(
-                    workspace_id=DEFAULT_WORKSPACE_ID,
-                    name="Personal Workspace",
-                    workspace_type="personal",
-                    owner_user_id=None,
-                ),
-            },
-            "feature_flags": {
-                "workspace_os": True,
-                "graph_trace": True,
-                "snapshots": True,
-                "personal_memory": True,
-                "multi_agent_graph": True,
-                "workflow_graph": True,
-                "skill_marketplace": True,
-                "local_computer_memory": False,
-                "organization_workspaces": True,
-                "enterprise_seam": True,
-                "plugin_sdk": True,
-                "workflow_designer": True,
-                "multi_agent_runtime": True,
-                "realtime_collaboration": True,
-                "agent_handoff": True,
-                "agent_context_packets": True,
-                "review_retry_loops": True,
-                "timeline_replay": True,
-                "agent_memory": True,
-                "agent_planning": True,
-                "marketplace_foundation": True,
-                "realtime_execution_observability": True,
-            },
-            "onboarding": {
-                "completed": False,
-                "current_step": "account",
-                "steps": {
-                    step: {
-                        "id": step,
-                        "status": "pending",
-                        "data": {},
-                        "error": "",
-                        "updated_at": None,
-                    }
-                    for step in ONBOARDING_STEPS
-                },
-            },
-            "snapshots": [],
-            "traces": [],
-            "memories": [],
-            "memory_snapshots": [],
-            "agents": list(DEFAULT_AGENTS),
-            "agent_runs": [],
-            "handoffs": [],
-            "workflows": [],
-            "workflow_runs": [],
-            "review_items": [],
-            "skill_registry": {},
-            "plugin_registry": {},
-            "template_registry": {},
-            "computer_memory": {
-                "enabled": False,
-                "approved": False,
-                "approved_at": None,
-                "approved_by": None,
-                "scopes": ["Downloads", "Documents", "Repositories"],
-                "activities": [],
-                "notice": "Local Computer Memory is OFF by default and requires explicit approval.",
-            },
-            "timeline": [],
-        }
 
     def load_state(self) -> Dict[str, Any]:
         default = self._default_state()
@@ -476,7 +268,7 @@ class WorkspaceOSStore:
         try:
             self.record_timeline_event(area, event_type, payload, workspace_id=workspace_id)
         except Exception:
-            pass
+            quiet()
 
     def _emit_replayable_timeline_events(
         self,
@@ -1164,7 +956,7 @@ class WorkspaceOSStore:
                 inbound = [edge for edge in edges if edge.get("to") == node_id]
                 outbound = [edge for edge in edges if edge.get("from") == node_id]
             except Exception:
-                pass
+                quiet()
 
         related_ids = []
         for edge in inbound + outbound:

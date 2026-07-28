@@ -30,7 +30,6 @@ from tests.fixtures.retrieval_benchmark_fixtures import (
     TOP_K,
 )
 
-
 # ── query-class detection ────────────────────────────────────────────────────
 
 def test_classify_query_detects_code_signals():

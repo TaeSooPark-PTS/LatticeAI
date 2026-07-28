@@ -14,12 +14,12 @@ from fastapi.testclient import TestClient
 from lattice_brain.graph.store import KnowledgeGraphStore
 from latticeai.api.search import create_search_router
 from latticeai.core.embedding_providers import (
-    HashEmbeddingProvider,
     PROVIDER_TYPES,
+    HashEmbeddingProvider,
     build_embedding_provider,
     embedding_provider_profiles,
-    resolve_embedding_profile,
     resolve_embedder,
+    resolve_embedding_profile,
 )
 from latticeai.services.search_service import SearchService
 
@@ -176,7 +176,7 @@ def test_search_router_embeddings_endpoints(tmp_path):
 
 # --- Large candidate #2: multimodal vision stub test ---
 def test_vision_stub_describe_and_embed_offline():
-    from lattice_brain.embeddings import get_vision_embedder, VisionStub
+    from lattice_brain.embeddings import VisionStub, get_vision_embedder
     v = get_vision_embedder(dim=64)
     assert isinstance(v, VisionStub)
     cap = v.describe("/tmp/photo.png", {"width": 640, "height": 480, "format": "PNG"})

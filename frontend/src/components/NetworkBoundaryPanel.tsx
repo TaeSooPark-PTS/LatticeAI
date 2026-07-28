@@ -74,6 +74,21 @@ export function NetworkBoundaryPanel() {
   const preview = useMutation({
     mutationFn: (message: string) => latticeApi.previewCloudContext(message),
   });
+  // Held-back ids are tracked locally so the struck-through row is immediate.
+  // The server is the source of truth — a re-preview reflects what it stored.
+  const [excluded, setExcluded] = React.useState<string[]>([]);
+  const markNode = useMutation({
+    mutationFn: (input: { nodeId: string; localOnly: boolean }) =>
+      latticeApi.setNodeSensitivity(input.nodeId, input.localOnly),
+    onSuccess: (result, input) => {
+      if (!result.ok) return;
+      setExcluded((prev) =>
+        input.localOnly
+          ? [...prev, input.nodeId]
+          : prev.filter((id) => id !== input.nodeId),
+      );
+    },
+  });
 
   const data: NetworkBoundaryState | undefined = state.data?.ok ? state.data.data : undefined;
   const catalog = data?.catalog ?? [];
@@ -261,12 +276,43 @@ export function NetworkBoundaryPanel() {
                       tokens: previewData.token_estimate,
                     })}
                   </p>
+                  {/* The toggle belongs here, on the exact items the user is
+                      looking at, rather than buried in a memory browser. This
+                      is the moment they can judge whether a specific memory
+                      should ever leave. */}
                   <ul className="space-y-0.5">
-                    {previewData.titles.map((title, index) => (
-                      <li key={`${title}-${index}`} className="text-xs">
-                        · {title}
-                      </li>
-                    ))}
+                    {previewData.titles.map((title, index) => {
+                      const nodeId = previewData.node_ids[index];
+                      const held = nodeId ? excluded.includes(nodeId) : false;
+                      return (
+                        <li
+                          key={`${nodeId || title}-${index}`}
+                          className="flex items-start justify-between gap-2 text-xs"
+                        >
+                          <span className={held ? "line-through opacity-60" : undefined}>
+                            · {title}
+                          </span>
+                          {nodeId ? (
+                            <button
+                              type="button"
+                              data-testid={`network-boundary-hold-${index}`}
+                              className="shrink-0 underline underline-offset-2 opacity-80 hover:opacity-100"
+                              disabled={markNode.isPending}
+                              onClick={() =>
+                                markNode.mutate({ nodeId, localOnly: !held })
+                              }
+                            >
+                              {t(
+                                language,
+                                held
+                                  ? "system.network.preview.release"
+                                  : "system.network.preview.hold",
+                              )}
+                            </button>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </>
               )}
@@ -319,6 +365,9 @@ export function NetworkBoundaryPanel() {
           <p className="text-xs font-medium">{t(language, "system.network.guards")}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {t(language, "system.network.guards.detail")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t(language, "system.network.preview.autoHeld")}
           </p>
         </div>
       </CardContent>

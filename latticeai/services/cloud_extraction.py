@@ -10,7 +10,11 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List
 
-from latticeai.services.cloud_streaming import CloudTurnResult, KGExpansionPlan, plan_kg_expansion
+from latticeai.services.cloud_streaming import (
+    CloudTurnResult,
+    KGExpansionPlan,
+    plan_kg_expansion,
+)
 
 _DECISION_PATTERNS = (
     re.compile(r"(?im)^(?:decision|결정)\s*[:：-]\s*(.+)$"),

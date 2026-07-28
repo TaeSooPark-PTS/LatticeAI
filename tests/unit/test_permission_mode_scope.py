@@ -23,7 +23,6 @@ from latticeai.core.run_store import restore_run_context, serialize_run_context
 from latticeai.services.permission_mode_service import PermissionModeService
 from latticeai.services.tool_dispatch import ToolDispatchService
 
-
 # ── 1. scoped resolution ────────────────────────────────────────────────
 
 

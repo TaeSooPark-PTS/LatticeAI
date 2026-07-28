@@ -21,7 +21,6 @@ from latticeai.core.workspace_os import WorkspaceOSStore
 from latticeai.services.app_context import AppContext
 from latticeai.services.workspace_service import WorkspaceService
 
-
 ALICE = "alice@example.com"
 BOB = "bob@example.com"
 CONVERSATION_ID = "shared-conversation"

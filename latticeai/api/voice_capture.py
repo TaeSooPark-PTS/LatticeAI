@@ -19,6 +19,8 @@ from typing import Any, Callable, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
+from latticeai.core.quiet import quiet
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -70,7 +72,7 @@ def create_voice_capture_router(
                 try:
                     tmp_path.unlink(missing_ok=True)
                 except OSError:
-                    pass
+                    quiet()
         if append_audit_event is not None:
             try:
                 append_audit_event(

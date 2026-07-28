@@ -4,9 +4,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from lattice_brain.graph.store import KnowledgeGraphStore, _extract_concepts, _extract_concepts_rules, _extract_triples_rules
-from latticeai.core.document_generator import detect_document_intent, DocumentGenerationSession, build_document_system_prompt
-from latticeai.core.context_builder import retrieve_context_for_generation, format_sources_footnote
+from lattice_brain.graph.store import (
+    KnowledgeGraphStore,
+    _extract_concepts,
+    _extract_concepts_rules,
+    _extract_triples_rules,
+)
+from latticeai.core.context_builder import (
+    format_sources_footnote,
+    retrieve_context_for_generation,
+)
+from latticeai.core.document_generator import (
+    DocumentGenerationSession,
+    build_document_system_prompt,
+    detect_document_intent,
+)
 
 
 def _store(tmp_path: Path) -> KnowledgeGraphStore:
@@ -223,6 +235,7 @@ class TestKGSchemaV2Enhancements:
         importance_score). Asserted at the schema level — KGStoreV2 is a
         schema/init helper, not a data API."""
         import sqlite3
+
         from lattice_brain.graph.schema import KGStoreV2
         KGStoreV2(str(tmp_path / "v2.db")).init_schema()
         with sqlite3.connect(str(tmp_path / "v2.db")) as conn:

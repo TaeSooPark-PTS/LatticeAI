@@ -7,13 +7,15 @@ Pure Python Quality Layer for Lattice Brain (v6.4+ hardening)
 """
 
 from __future__ import annotations
-import math
-import time
+
 import hashlib
+import math
+import re
+import time
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
-from collections import defaultdict
-import re
+
 
 # -----------------------------
 # 1. Embedding Fallback Labelling + Drift/Reindex Plan
@@ -41,7 +43,12 @@ class EmbeddingFallbackLabeller:
             conf = 0.3
         else:
             # Simple hash-based pseudo-label for determinism
-            h = hashlib.md5(str(embedding[:4]).encode()).hexdigest()[:8]
+            # Not a security hash: a short, stable label for grouping
+            # vectors in reports. usedforsecurity=False states that and
+            # keeps it working on FIPS builds where md5 is restricted.
+            h = hashlib.md5(
+                str(embedding[:4]).encode(), usedforsecurity=False
+            ).hexdigest()[:8]
             label = f"emb_cluster_{h}"
             conf = 0.85
 
@@ -63,7 +70,7 @@ class EmbeddingFallbackLabeller:
     def _cosine_distance(self, a: List[float], b: List[float]) -> float:
         if not a or not b or len(a) != len(b):
             return 1.0
-        dot = sum(x*y for x,y in zip(a,b))
+        dot = sum(x * y for x, y in zip(a, b, strict=True))
         na = math.sqrt(sum(x*x for x in a))
         nb = math.sqrt(sum(x*x for x in b))
         return 1.0 - (dot / (na*nb + 1e-9))

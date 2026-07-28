@@ -1,6 +1,6 @@
-from types import SimpleNamespace
 import json
 import time
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request

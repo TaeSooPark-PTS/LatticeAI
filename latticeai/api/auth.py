@@ -13,12 +13,16 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from latticeai.core.users import normalize_email
 from latticeai.core.oidc import (
     OIDCValidationError,
+)
+from latticeai.core.oidc import (
     fetch_jwks as _default_fetch_jwks,
+)
+from latticeai.core.oidc import (
     verify_id_token as _default_verify_id_token,
 )
+from latticeai.core.users import normalize_email
 
 
 class UserRegister(BaseModel):

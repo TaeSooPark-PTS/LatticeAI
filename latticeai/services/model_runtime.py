@@ -20,42 +20,78 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
-from .model_errors import ModelRuntimeError
-
+from latticeai.core.model_compat import (
+    SMOKE_PROMPT as _SMOKE_PROMPT,
+)
+from latticeai.core.model_compat import (
+    friendly_model_runtime_error as _friendly_model_runtime_error,
+)
+from latticeai.core.model_compat import (
+    model_runtime_compatibility as _model_runtime_compatibility,
+)
+from latticeai.core.model_resolution import ModelResolution as _ModelResolution
 from latticeai.models.router import (
-    AsyncOpenAI,
     HF_MODELS_ROOT,
     OPENAI_COMPATIBLE_PROVIDERS,
+    AsyncOpenAI,
     ensure_mlx_runtime,
     hf_cache_model_dir,
     hf_model_dir,
     parse_model_ref,
 )
-from latticeai.core.model_resolution import ModelResolution as _ModelResolution
-from latticeai.core.model_compat import (
-    friendly_model_runtime_error as _friendly_model_runtime_error,
-    model_runtime_compatibility as _model_runtime_compatibility,
-    SMOKE_PROMPT as _SMOKE_PROMPT,
+
+from .model_engines import (
+    LOCAL_SERVER_PROCESSES as _LOCAL_SERVER_PROCESSES,
+)
+from .model_engines import (
+    engine_install_plan as _engine_install_plan,
+)
+from .model_engines import (
+    engine_support_status as _engine_support_status,
+)
+from .model_engines import (
+    ensure_llamacpp_server as _ensure_llamacpp_server,
 )
 from .model_engines import (
     ensure_lmstudio_server as _ensure_lmstudio_server,
-    ensure_ollama_server as _ensure_ollama_server,
-    ensure_vllm_server as _ensure_vllm_server,
-    ensure_llamacpp_server as _ensure_llamacpp_server,
-    find_lmstudio_cli as _find_lmstudio_cli,
-    get_openai_compatible_server_models as _get_openai_compatible_server_models,
-    pull_ollama_model_with_progress as _pull_ollama_model_with_progress,
-    get_ollama_pulled_models as _get_ollama_pulled_models,
-    engine_support_status as _engine_support_status,
-    engine_install_plan as _engine_install_plan,
-    install_engine as _install_engine,
-    local_binary as _local_binary,
-    vllm_executable as _vllm_executable,
-    vllm_metal_python as _vllm_metal_python,
-    wait_for_openai_compatible_server as _wait_for_openai_compatible_server,
-    windows_binary_candidates as _windows_binary_candidates,
-    LOCAL_SERVER_PROCESSES as _LOCAL_SERVER_PROCESSES,
 )
+from .model_engines import (
+    ensure_ollama_server as _ensure_ollama_server,
+)
+from .model_engines import (
+    ensure_vllm_server as _ensure_vllm_server,
+)
+from .model_engines import (
+    find_lmstudio_cli as _find_lmstudio_cli,
+)
+from .model_engines import (
+    get_ollama_pulled_models as _get_ollama_pulled_models,
+)
+from .model_engines import (
+    get_openai_compatible_server_models as _get_openai_compatible_server_models,
+)
+from .model_engines import (
+    install_engine as _install_engine,
+)
+from .model_engines import (
+    local_binary as _local_binary,
+)
+from .model_engines import (
+    pull_ollama_model_with_progress as _pull_ollama_model_with_progress,
+)
+from .model_engines import (
+    vllm_executable as _vllm_executable,
+)
+from .model_engines import (
+    vllm_metal_python as _vllm_metal_python,
+)
+from .model_engines import (
+    wait_for_openai_compatible_server as _wait_for_openai_compatible_server,
+)
+from .model_engines import (
+    windows_binary_candidates as _windows_binary_candidates,
+)
+from .model_errors import ModelRuntimeError
 
 # ``model_loading._get_model_runtime_deps`` imports these private names from
 # this module to preserve the historical model_runtime wiring surface.
@@ -174,15 +210,19 @@ def configure_model_runtime(**deps: Any) -> "ModelRuntimeService":
 # Catalog data + version-dedup helpers live in ``model_catalog``; re-exported
 # here so existing ``from ...model_runtime import ENGINE_MODEL_CATALOG`` imports
 # keep working.
+from latticeai.core.quiet import (  # noqa: E402 — re-export placed after the globals it documents
+    quiet,  # noqa: E402 — re-export placed after the globals it documents
+)
 from latticeai.services.model_catalog import (  # noqa: E402, F401 (re-export after the module globals it documents)
+    _VERSIONED_MODEL_PATTERNS,
     ENGINE_INSTALLERS,
     ENGINE_MODEL_CATALOG,
     MODEL_ENGINE_ALIASES,
-    _VERSIONED_MODEL_PATTERNS,
     _model_family_version,
     _version_tuple,
     filter_lower_family_versions,
 )
+
 
 def _update_env_file(env_file: Path, key: str, value: str) -> None:
     lines = []
@@ -471,7 +511,7 @@ def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, object]]:
         if files:
             return files
     except TypeError:
-        pass
+        quiet()
     except Exception as e:
         logging.warning("huggingface model_info failed for %s: %s", repo_id, e)
 
@@ -562,7 +602,18 @@ def download_hf_model(
                     downloaded_before = downloaded_bytes
                     last_emit = {"at": 0.0, "percent": -1.0}
 
-                    def emit_byte_progress(done_bytes: float) -> None:
+                    def emit_byte_progress(
+                        done_bytes: float,
+                        # Bound per iteration: this callback outlives the loop
+                        # body when a download runs long, and late binding
+                        # would report every file's progress against the last
+                        # file's offsets.
+                        downloaded_before: int = downloaded_before,
+                        size: Any = size,
+                        index: int = index,
+                        last_emit: dict = last_emit,
+                        filename: str = filename,
+                    ) -> None:
                         done = max(0, int(done_bytes or 0))
                         if total_bytes:
                             aggregate = min(total_bytes, downloaded_before + done)

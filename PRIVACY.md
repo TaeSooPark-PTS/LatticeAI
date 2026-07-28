@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **10.1.1 — Reachable Boundary**.
+Current release: **10.2.0 — Load-Bearing Fixes**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
+from latticeai.core.quiet import quiet
+
 
 def build_access_runtime(
     *,
@@ -129,7 +131,7 @@ def build_access_runtime(
                     require_capability(role, "admin:users")
                     return email, users
                 except PermissionError:
-                    pass
+                    quiet()
         raise http_exception(status_code=403, detail="관리자 권한이 필요합니다.")
 
     def public_user(email: str, user: Dict, users: Dict) -> Dict:

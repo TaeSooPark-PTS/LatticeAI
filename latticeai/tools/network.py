@@ -7,6 +7,7 @@ import socket
 import subprocess
 from typing import Any, Dict, List
 
+from latticeai.core.quiet import quiet
 
 
 def _run_network_command(parts: List[str], timeout: int = 5) -> str:
@@ -44,7 +45,7 @@ def network_status() -> Dict[str, Any]:
             sock.connect(("8.8.8.8", 80))
             guessed_ip = sock.getsockname()[0]
     except Exception:
-        pass
+        quiet()
     if guessed_ip and guessed_ip not in local_ips.values():
         local_ips["default_route"] = guessed_ip
 

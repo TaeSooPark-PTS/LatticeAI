@@ -26,9 +26,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from lattice_brain.runtime.contracts import runtime_boundary_contract, workflow_run_contract
+from lattice_brain.runtime.contracts import (
+    runtime_boundary_contract,
+    workflow_run_contract,
+)
 from lattice_brain.utils import now_iso as _now
-
 
 WORKFLOW_ENGINE_VERSION = "2.2.0"
 

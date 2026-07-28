@@ -16,17 +16,18 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Iterable, List, Optional
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from .utils import sha256_file as _sha256_file, utc_now_iso as _now
-
+from .utils import sha256_file as _sha256_file
+from .utils import utc_now_iso as _now
 
 ARCHIVE_FORMAT = "latticebrain.encrypted"
 ARCHIVE_VERSION = 2
@@ -106,7 +107,7 @@ def _checkpoint_sqlite(db_path: Path) -> None:
     if not db_path.exists():
         return
     try:
-        with sqlite3.connect(str(db_path)) as conn:
+        with closing(sqlite3.connect(str(db_path))) as conn, conn:
             conn.execute("PRAGMA wal_checkpoint(FULL)")
     except sqlite3.Error:
         return

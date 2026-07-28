@@ -20,7 +20,6 @@ from latticeai.core.agent import (
 )
 from latticeai.core.agent_trace import LoopTrace
 
-
 # ── LoopTrace ───────────────────────────────────────────────────────────
 
 def test_trace_summary_counts_by_kind():

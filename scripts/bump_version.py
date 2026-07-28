@@ -24,7 +24,8 @@ REPO = Path(__file__).resolve().parents[1]
 TARGETS = [
     ("latticeai/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
     ("lattice_brain/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
-    ("latticeai/core/workspace_os.py", "regex", r'(WORKSPACE_OS_VERSION = ")([^"]+)(")'),
+    # Moved out of workspace_os.py in 10.2.0 when the vocabulary was split off.
+    ("latticeai/core/workspace_os_constants.py", "regex", r'(WORKSPACE_OS_VERSION = ")([^"]+)(")'),
     ("latticeai/core/marketplace.py", "regex", r'(MARKETPLACE_VERSION = ")([^"]+)(")'),
     ("lattice_brain/runtime/multi_agent.py", "regex", r'(MULTI_AGENT_VERSION = ")([^"]+)(")'),
     ("latticeai/services/architecture_readiness.py", "regex", r'(ARCHITECTURE_VERSION_TARGET = ")([^"]+)(")'),

@@ -26,8 +26,9 @@ from urllib.parse import SplitResult, urljoin, urlsplit, urlunsplit
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from latticeai import __version__
 from lattice_brain.ingestion import IngestionItem, capture_quality_verdict
+from latticeai import __version__
+from latticeai.core.quiet import quiet
 
 MAX_TAB_BYTES = 4 * 1024 * 1024          # 4 MB per captured tab payload
 MAX_URL_FETCH_BYTES = 4 * 1024 * 1024    # 4 MB cap on a fetched page
@@ -95,7 +96,7 @@ def extract_readable_text(html: str) -> Tuple[str, str]:
     try:
         parser.feed(html or "")
     except Exception:  # noqa: BLE001 — malformed HTML must still yield best-effort text
-        pass
+        quiet()
     return parser.title.strip(), parser.text()
 
 

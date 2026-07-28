@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.1.1 — Reachable Boundary.** This release adds a local-first hybrid path: the
+**10.2.0 — Load-Bearing Fixes.** This release adds a local-first hybrid path: the
 Knowledge Graph stays on-device while cloud LLMs become an opt-in worker. The
 default network boundary is `local_only` — cloud use requires an explicit
 acknowledgement, only minimal related nodes leave the machine, and streamed

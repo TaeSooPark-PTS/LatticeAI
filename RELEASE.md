@@ -13,6 +13,62 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.2.0 — Load-Bearing Fixes (2026-07-29)
+
+A full review of 10.1.1 scored the codebase 71/100. This release answers all
+twelve findings. The theme is that the most expensive problems here were not
+missing features — they were correct-looking code that could not do its job.
+
+**The connection leak.** `with sqlite3.connect(...) as conn` commits or rolls
+back and leaves the connection **open**; 70+ sites across the graph store, the
+conversation store, the workspace state DB, the storage engines, portability
+and migration relied on that idiom. CPython's refcounting freed them promptly
+enough to hide it. Anything that keeps a frame alive — a profiler, a logged
+traceback, a coverage tracer — delays collection until the process hits
+`EMFILE`. `StorageEngine.session()` and the store helpers now close in
+`finally`, and seven tests assert it stays that way.
+
+**Coverage, for the first time.** Running `pytest --cov` used to fail ~400
+tests, because the tracer holding frames *was* what exhausted descriptors. The
+number was therefore unknown. It is **71%**, with a 70% floor wired into CI.
+
+**A privacy guard that could not fire.** `is_node_blocked_for_cloud` was
+correct and correctly wired, `HARD_BLOCK_NODE_TYPES` was an empty set, and
+nothing in the entire product could set the metadata flags it looks for. The
+promise "sensitive memories are never sent" was unfalsifiable. Now: the type
+list names credential-shaped nodes; ingestion stamps never-leaves onto files
+under `.ssh` / `.aws` / `.gnupg` / `.env` and friends (narrow by design — a
+path can prove what a content heuristic only guesses); and the boundary panel
+lets a user hold back any memory it lists, which is the one moment they are
+looking at exactly what would go.
+
+**Egress was neither redacted nor recorded.** `redact_secret_text` was applied
+to logs, audit records and API previews — everywhere except the single path
+where bytes actually leave. It now runs on the outbound payload. And every send
+writes a `cloud_egress` audit entry *before* the provider is called, naming the
+node ids, count, token estimate, provider and mode — shape, never content.
+Refusals are recorded too.
+
+**Silence became observability.** 112 handlers discarded their exception with
+no trace. `quiet()` keeps the behaviour and logs the exception with its file,
+function and line at DEBUG. `except: pass` is now a lint error.
+
+**Also:** the cloud turn ran retrieval twice and discarded the first result;
+vector similarity silently truncated to the shorter operand on a dimension
+mismatch (now raises, because a plausible-but-meaningless score is worse than
+an error); `tempfile.mktemp` — a TOCTOU race — replaced with `mkstemp` in the
+Telegram bridge; three closures captured loop variables by reference; ruff
+gained B/S/I/SIM/RET/C901 with every remaining finding either fixed or given a
+written reason; mypy runs strict-ish over 13 trust-critical modules; CI gained
+a macOS runner and Python 3.14; `workspace_os.py` shed 224 lines into two
+cohesive modules.
+
+**Not done, and why.** `app_factory._build` is still one 1,343-line function.
+Its sections share roughly 34 local bindings, so splitting it means threading
+those through or introducing a runtime-context object — an architectural change
+that deserves its own release rather than riding along with twelve others. The
+C901 exemption names it so the decision is visible rather than implied.
+
 ## v10.1.1 — Reachable Boundary (2026-07-28)
 
 10.1.0 shipped the hybrid path's contracts, API, `/chat` branch, policy store,

@@ -10,6 +10,11 @@ from pathlib import Path
 
 import pytest
 
+from lattice_brain.runtime.contracts import (
+    RuntimeBoundaryProtocol,
+    contract_view,
+    extract_contract,
+)
 from latticeai.core.agent import (
     AgentDeps,
     AgentRunContext,
@@ -17,7 +22,6 @@ from latticeai.core.agent import (
     SingleAgentRuntime,
     extract_action,
 )
-from lattice_brain.runtime.contracts import RuntimeBoundaryProtocol, contract_view, extract_contract
 
 
 class FakeReq:

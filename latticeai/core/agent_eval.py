@@ -249,7 +249,7 @@ def _build_deps(
         knowledge_save=lambda *a, **kw: None,
         audit=lambda *a, **kw: None,
         planner_prompt="plan", executor_prompt="exec", critic_prompt="critic",
-        memory_updater_prompt="mem", agent_root=Path("/tmp/agent-eval"),
+        memory_updater_prompt="mem", agent_root=Path("/tmp/agent-eval"),  # noqa: S108 — eval sandbox root, created with 0700 by the harness
         change_governor=governor,
     )
 
@@ -257,7 +257,7 @@ def _build_deps(
 _PLAN = '{"action": "plan", "goal": "task", "steps": [{"action": "write_file"}]}'
 _WRITE = '{"action": "write_file", "args": {"path": "note.txt", "content": "hi"}}'
 _FINAL = '{"action": "final", "message": "done"}'
-_PASS = '{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok"}'
+_PASS = '{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok"}'  # noqa: S105 — a transcript marker string, not a credential
 
 # ── dirty write_file payloads (ArtifactWritePipeline scenarios) ──────────
 # What weak local models actually put in args.content: chat framing + a

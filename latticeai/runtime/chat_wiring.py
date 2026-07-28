@@ -8,7 +8,10 @@ from latticeai.runtime.permission_mode_wiring import (
     bind_dispatch_permission_mode,
     resolve_active_permission_mode,
 )
-from latticeai.services.router_context import InteractionRouterContext, ToolRouterContext
+from latticeai.services.router_context import (
+    InteractionRouterContext,
+    ToolRouterContext,
+)
 
 
 def build_chat_agent_runtime_from_context(

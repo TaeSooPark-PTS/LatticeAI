@@ -4,8 +4,9 @@ Run against a live server:  pytest tests/integration/ --base-url http://localhos
 Default base URL falls back to http://localhost:8899 if flag not provided.
 """
 import os
-import pytest
+
 import httpx
+import pytest
 
 BASE_URL = os.environ.get("LTCAI_TEST_BASE_URL", "http://localhost:8899")
 

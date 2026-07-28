@@ -73,7 +73,6 @@ from latticeai.core.agent_prompts import (  # noqa: E402
 )
 from latticeai.tools import ToolError  # noqa: E402
 
-
 # ── canonical smoke tasks ────────────────────────────────────────────────
 # Small, file-flavored tasks users actually ask for. The tool port is canned,
 # so the measurement is "can this model steer the real loop to completion",

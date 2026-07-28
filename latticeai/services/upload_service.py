@@ -11,6 +11,7 @@ from typing import Optional
 from fastapi import HTTPException, Request, UploadFile
 
 from lattice_brain.ingestion import IngestionItem
+from latticeai.core.quiet import quiet
 from latticeai.tools import ToolError, read_document
 
 
@@ -161,7 +162,7 @@ async def process_uploaded_document(
         try:
             Path(tmp_path).unlink()
         except OSError:
-            pass
+            quiet()
 
     # ── post_upload hook ── the whole upload → parse → index pipeline finished.
     if hooks is not None:

@@ -10,6 +10,8 @@ from typing import Any, Dict, List
 
 from fastapi import HTTPException
 
+from latticeai.core.quiet import quiet
+
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
@@ -65,6 +67,7 @@ def configure_trusted_proxies(values) -> int:
         try:
             networks.append(ipaddress.ip_network(item, strict=False))
         except ValueError:
+            quiet()
             continue
     _trusted_proxies = networks
     return len(networks)
@@ -93,6 +96,7 @@ def client_ip(request) -> str:
                     ipaddress.ip_address(candidate)
                     return candidate
                 except ValueError:
+                    quiet()
                     continue
     return peer or "unknown"
 

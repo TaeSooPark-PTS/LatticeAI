@@ -15,14 +15,23 @@ import re
 import sys
 from typing import Dict, List, Optional
 
+from latticeai.services.model_capability_registry import (
+    LOCAL_MLX_MODELS as _LOCAL_MLX_MODELS,
+)
+
 # 5.2.0: Delegate catalog data to the structured capability registry (rich + verified).
 # This keeps backward compat for every `from ...model_catalog import ENGINE_MODEL_CATALOG`.
 from latticeai.services.model_capability_registry import (
     build_engine_model_catalog as _build_engine_model_catalog,
+)
+from latticeai.services.model_capability_registry import (
     get_all_capabilities as _get_all_capabilities,
+)
+from latticeai.services.model_capability_registry import (
     get_capability as _get_capability,
+)
+from latticeai.services.model_capability_registry import (
     get_verified_models as _get_verified_models,
-    LOCAL_MLX_MODELS as _LOCAL_MLX_MODELS,
 )
 
 ENGINE_INSTALLERS = {

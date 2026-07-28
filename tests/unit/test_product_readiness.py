@@ -2,7 +2,6 @@ from pathlib import Path
 
 from latticeai.services.product_readiness import PRODUCT_GATES, product_readiness
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 

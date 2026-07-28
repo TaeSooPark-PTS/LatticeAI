@@ -50,7 +50,7 @@ def test_repo_root_contains_no_new_python_modules():
         f"new root-level Python modules appeared: {sorted(unexpected)} — "
         "put code in latticeai/ or lattice_brain/ instead of the repo root"
     )
-    assert ALLOWED_ROOT_MODULES <= root_modules
+    assert root_modules >= ALLOWED_ROOT_MODULES
 
 
 def test_canonical_replacements_still_import():

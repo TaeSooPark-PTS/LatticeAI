@@ -13,7 +13,12 @@ import sys
 
 import pytest
 
-from lattice_brain.runtime.hooks import HookContext, HookResult, HooksRegistry, hook_context
+from lattice_brain.runtime.hooks import (
+    HookContext,
+    HookResult,
+    HooksRegistry,
+    hook_context,
+)
 
 # Quoted interpreter path — this checkout lives under a directory with a space,
 # so command strings must quote the executable (a real user command would too).

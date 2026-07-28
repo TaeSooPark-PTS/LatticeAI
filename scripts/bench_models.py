@@ -82,7 +82,6 @@ from latticeai.core.file_generation import (  # noqa: E402
     validate_file_content,
 )
 
-
 # ── Scripted corpora ─────────────────────────────────────────────────────
 # Each entry is one model output for a canonical agent turn. The tiers encode
 # how the SAME intent degrades as model quality drops. All "should_parse=True"

@@ -3,7 +3,10 @@
 from pathlib import Path
 
 from latticeai.core.config import Config
-from latticeai.core.product_hardening import default_startup_local_only, external_integration_status
+from latticeai.core.product_hardening import (
+    default_startup_local_only,
+    external_integration_status,
+)
 
 
 def test_defaults_local_mode():

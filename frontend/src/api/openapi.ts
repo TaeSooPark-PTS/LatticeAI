@@ -2259,6 +2259,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/network-boundary/node-sensitivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Node Sensitivity
+         * @description Mark one memory as never-leaving (or clear the mark).
+         *
+         *     The cloud filter has always looked for this flag. Until 10.2.0 nothing
+         *     in the product could set it, so the guard could not fire. Ingestion
+         *     stamps secret-bearing paths automatically; this covers what a path
+         *     cannot tell you — a note whose *content* is private.
+         */
+        post: operations["set_node_sensitivity_api_network_boundary_node_sensitivity_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/network-boundary/policy": {
         parameters: {
             query?: never;
@@ -8142,6 +8167,20 @@ export interface components {
             /** Workspace Id */
             workspace_id?: string | null;
         };
+        /** SetNodeSensitivityRequest */
+        SetNodeSensitivityRequest: {
+            /**
+             * Local Only
+             * @default true
+             */
+            local_only: boolean;
+            /** Node Id */
+            node_id: string;
+            /** Reason */
+            reason?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
         /** SetPermissionModeRequest */
         SetPermissionModeRequest: {
             /**
@@ -12860,6 +12899,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    set_node_sensitivity_api_network_boundary_node_sensitivity_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetNodeSensitivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

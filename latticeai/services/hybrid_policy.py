@@ -18,7 +18,10 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from latticeai.core.io_utils import atomic_write_json
-from latticeai.core.network_boundary import HARD_BLOCK_METADATA_FLAGS, HARD_BLOCK_NODE_TYPES
+from latticeai.core.network_boundary import (
+    HARD_BLOCK_METADATA_FLAGS,
+    HARD_BLOCK_NODE_TYPES,
+)
 
 DEFAULT_BLOCKED_TYPES: List[str] = []
 DEFAULT_BLOCKED_FLAGS: List[str] = sorted(HARD_BLOCK_METADATA_FLAGS)

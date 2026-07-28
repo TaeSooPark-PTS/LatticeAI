@@ -10,8 +10,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from latticeai.core.agent import extract_action as _extract_agent_action
 from lattice_brain.runtime.hooks import dispatch_tool
+from latticeai.core.agent import extract_action as _extract_agent_action
 from latticeai.services.tool_dispatch import enforce_tool_policy
 from latticeai.tools import (
     AGENT_ROOT,
@@ -29,7 +29,6 @@ from latticeai.tools import (
     desktop_bridge_status,
     execute_tool,
 )
-
 
 CU_SYSTEM_PROMPT = """You are Lattice AI desktop-control agent. You control the Mac desktop using tools.
 Prefer non-visual direct actions when possible. Use screenshots only when you must inspect visible UI state or choose screen coordinates.
@@ -438,7 +437,13 @@ def create_computer_use_router(
 
                 yield _send("action", {"step": step + 1, "action": name, "args": args})
                 try:
-                    result = _dispatch(name, args, lambda: execute_tool(name, args), current_user=current_user)
+                    result = _dispatch(
+                        name,
+                        args,
+                        # Bound as defaults; see chat_agent_http for why.
+                        lambda name=name, args=args: execute_tool(name, args),
+                        current_user=current_user,
+                    )
                     if name == "computer_screenshot" and "screenshot_b64" in result:
                         last_screenshot_b64 = result["screenshot_b64"]
                         result_summary = {k: v for k, v in result.items() if k != "screenshot_b64"}

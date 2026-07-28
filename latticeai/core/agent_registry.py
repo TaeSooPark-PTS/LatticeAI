@@ -27,6 +27,8 @@ from lattice_brain.runtime.multi_agent import (
     MULTI_AGENT_VERSION,
     ROLE_AGENT_IDS,
 )
+from latticeai.core.quiet import quiet
+
 from .timeutil import now_iso as _now
 
 AGENT_TYPES = ("planner", "researcher", "executor", "reviewer", "release", "custom")
@@ -76,7 +78,7 @@ class AgentRegistry:
                     data.setdefault("config_overrides", {})
                     return data
             except Exception:
-                pass
+                quiet()
         return {"custom": [], "config_overrides": {}}
 
     def _save(self) -> None:

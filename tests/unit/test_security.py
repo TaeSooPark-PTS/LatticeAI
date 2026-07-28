@@ -1,27 +1,29 @@
 """Unit tests for security-sensitive helpers in server.py."""
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from types import SimpleNamespace
 
+from fastapi import HTTPException
+
+from latticeai.api.permissions import PermissionGateway
+from latticeai.core.security import _rate_buckets
 from server import (
+    _LOCAL_WRITE_BLOCKED_PREFIXES,
     ENGINE_MODEL_CATALOG,
+    _agent_risk,
     _bytes_match_extension,
+    _host_is_loopback,
     enforce_rate_limit,
     filter_lower_family_versions,
     hash_password,
     normalize_local_model_request,
     verify_password,
-    _agent_risk,
-    _host_is_loopback,
-    _LOCAL_WRITE_BLOCKED_PREFIXES,
 )
-from latticeai.api.permissions import PermissionGateway
-from latticeai.core.security import _rate_buckets
-from fastapi import HTTPException
 
 
 def _make_permission_gateway(tmp_path) -> PermissionGateway:

@@ -21,7 +21,6 @@ from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Tuple
 from latticeai.core.agent_state import AgentState
 from latticeai.core.file_generation import infer_file_target, infer_project_manifest
 
-
 # ── action parsing ─────────────────────────────────────────────────────
 
 _THINK_BLOCK_RE = re.compile(

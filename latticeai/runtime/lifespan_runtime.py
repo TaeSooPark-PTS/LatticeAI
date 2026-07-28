@@ -5,6 +5,8 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
+from latticeai.core.quiet import quiet
+
 
 def build_lifespan_runtime(
     *,
@@ -128,7 +130,7 @@ def build_lifespan_runtime(
                         proc.terminate()
                         proc.wait(timeout=5)
                 except Exception:
-                    pass
+                    quiet()
 
     return {
         "autoload_default_model": autoload_default_model,

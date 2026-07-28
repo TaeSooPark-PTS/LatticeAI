@@ -30,6 +30,8 @@ import os
 import re
 from typing import Any, Dict, Mapping, Optional
 
+from ..quiet import quiet
+
 QUERY_CLASSES = ("fact", "code", "person", "recency")
 
 FUSION_WEIGHTS_ENV = "LATTICEAI_FUSION_WEIGHTS"
@@ -118,6 +120,7 @@ def _env_overrides() -> Dict[str, Dict[str, float]]:
             try:
                 cleaned[key] = max(0.0, min(1.0, float(value)))
             except (TypeError, ValueError):
+                quiet()
                 continue
         if cleaned:
             overrides[str(cls)] = cleaned
@@ -137,6 +140,7 @@ def fusion_weight_table(
                         try:
                             table[cls][key] = max(0.0, min(1.0, float(value)))
                         except (TypeError, ValueError):
+                            quiet()
                             continue
     return table
 

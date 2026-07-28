@@ -19,8 +19,9 @@ import json
 import logging
 import sqlite3
 import threading
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 
 def _message_hash(item: Dict[str, Any]) -> str:
@@ -40,11 +41,21 @@ class ConversationStore:
         self._lock = threading.RLock()
         self._init_db()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Transactional connection that is closed when the block exits.
+
+        ``with sqlite3.connect(...)`` commits but never closes; see
+        :meth:`lattice_brain.storage.base.StorageEngine.session`.
+        """
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _init_db(self) -> None:
         with self._lock, self._connect() as conn:

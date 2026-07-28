@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
@@ -52,7 +53,7 @@ class SQLiteToPostgresMigrator:
     def plan(self) -> Dict[str, Any]:
         if not self.sqlite_path.exists():
             raise FileNotFoundError(f"SQLite brain database not found: {self.sqlite_path}")
-        with sqlite3.connect(str(self.sqlite_path)) as conn:
+        with closing(sqlite3.connect(str(self.sqlite_path))) as conn, conn:
             conn.row_factory = sqlite3.Row
             table_names = [
                 row["name"]
@@ -119,7 +120,7 @@ class SQLiteToPostgresMigrator:
         schema = _quote_ident(self.target.config.schema)
         copied: Dict[str, int] = {}
         self.target.initialize()
-        with sqlite3.connect(str(self.sqlite_path)) as src, self.target.connect() as dst:
+        with closing(sqlite3.connect(str(self.sqlite_path))) as src, self.target.session() as dst:
             src.row_factory = sqlite3.Row
             with dst.cursor() as cur:
                 for table in plan["tables"]:

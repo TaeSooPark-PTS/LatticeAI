@@ -43,13 +43,14 @@ print(store.stats())       # {"nodes": ..., "by_node_type": {...}, ...}
 from __future__ import annotations
 
 import json
-import os
 import logging
+import os
 import sqlite3
 from contextlib import contextmanager
 from enum import Enum
 from typing import Any, Dict, Optional
 
+from ..quiet import quiet
 
 # ── Schema version ──────────────────────────────────────────────────────────
 KG_SCHEMA_V2_VERSION = 2
@@ -129,7 +130,7 @@ class NodeType(str, Enum):
         try:
             return cls(m.upper())
         except ValueError:
-            pass
+            quiet()
         return _LEGACY_NODE_MAP.get(m.lower(), cls.CONCEPT)
 
 
@@ -189,7 +190,7 @@ class EdgeType(str, Enum):
         try:
             return cls(m.upper())
         except ValueError:
-            pass
+            quiet()
         return _LEGACY_EDGE_MAP.get(m.lower(), cls.MENTIONS)
 
 

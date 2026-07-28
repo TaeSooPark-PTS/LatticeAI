@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.1.1 — Reachable Boundary**.
+Current release: **10.2.0 — Load-Bearing Fixes**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

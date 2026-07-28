@@ -1,17 +1,17 @@
 """Unit tests for lattice_brain.graph.curator (피드백 #4)."""
 
 from lattice_brain.graph.curator import (
-    contains_secret,
-    mask_secrets,
-    extract_topic_candidates,
-    cluster_candidates,
-    should_promote,
-    curate_nodes,
-    auto_build_graph_overlay,
     DEFAULT_ALIAS_GROUPS,
-    build_alias_index,
-    _tokenize,
     _strip_josa,
+    _tokenize,
+    auto_build_graph_overlay,
+    build_alias_index,
+    cluster_candidates,
+    contains_secret,
+    curate_nodes,
+    extract_topic_candidates,
+    mask_secrets,
+    should_promote,
 )
 
 
