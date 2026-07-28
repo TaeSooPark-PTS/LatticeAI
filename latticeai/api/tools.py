@@ -14,23 +14,27 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
+from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.computer_use import create_computer_use_router
 from latticeai.api.local_files import create_local_files_router
-from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.mcp import create_mcp_router
 from latticeai.api.permissions import create_permissions_router
-from latticeai.services.upload_service import process_uploaded_document
+from latticeai.services.router_context import ToolRouterContext
 from latticeai.services.tool_dispatch import (
     TOOL_GOVERNANCE,
-    TOOL_GOVERNANCE_DEFAULT as _TOOL_GOVERNANCE_DEFAULT,
-    check_tool_role as _check_tool_role,
-    get_tool_permission,
     enforce_tool_policy,
+    get_tool_permission,
     list_tool_permissions,
     tool_registry_diagnostics,
     tool_registry_manifest,
 )
-from latticeai.services.router_context import ToolRouterContext
+from latticeai.services.tool_dispatch import (
+    TOOL_GOVERNANCE_DEFAULT as _TOOL_GOVERNANCE_DEFAULT,
+)
+from latticeai.services.tool_dispatch import (
+    check_tool_role as _check_tool_role,
+)
+from latticeai.services.upload_service import process_uploaded_document
 from latticeai.tools import (
     AGENT_ROOT,
     ToolError,
@@ -39,7 +43,6 @@ from latticeai.tools import (
     create_pdf,
     create_pptx,
     create_xlsx,
-    read_document,
     deploy_project,
     edit_file,
     git_diff,
@@ -49,8 +52,8 @@ from latticeai.tools import (
     grep,
     inspect_html,
     knowledge_save,
-    knowledge_search,
     knowledge_scope_root,
+    knowledge_search,
     knowledge_tree,
     list_dir,
     network_status,
@@ -58,6 +61,7 @@ from latticeai.tools import (
     obsidian_search,
     obsidian_tree,
     preview_url,
+    read_document,
     read_file,
     run_command,
     search_files,

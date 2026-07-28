@@ -18,9 +18,14 @@ if str(REPO_ROOT) not in sys.path:
 
 from lattice_brain.graph.store import KnowledgeGraphStore  # noqa: E402
 from lattice_brain.quality import RetrievalBenchmarkRunner  # noqa: E402
-from latticeai.services.search_service import SearchService  # noqa: E402
+from lattice_brain.retrieval_benchmark_fixtures import (  # noqa: E402
+    DOCUMENTS,
+    FIXTURE_NAME,
+    QUERIES,
+    TOP_K,
+)
 from latticeai.services.memory_service import MemoryService  # noqa: E402
-from lattice_brain.retrieval_benchmark_fixtures import DOCUMENTS, FIXTURE_NAME, QUERIES, TOP_K  # noqa: E402
+from latticeai.services.search_service import SearchService  # noqa: E402
 
 
 class _EvalStore:

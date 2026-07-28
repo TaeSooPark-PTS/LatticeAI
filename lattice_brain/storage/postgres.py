@@ -45,7 +45,7 @@ class PostgresEngine(StorageEngine):
 
     def initialize(self) -> Dict[str, Any]:
         schema = _quote_ident(self.config.schema)
-        with self.connect() as conn:
+        with self.session() as conn:
             with conn.cursor() as cur:
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
                 cur.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
@@ -85,7 +85,7 @@ class PostgresEngine(StorageEngine):
 
     def capabilities(self) -> StorageCapabilities:
         try:
-            with self.connect() as conn:
+            with self.session() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT extname FROM pg_extension WHERE extname='vector'")
                     pgvector = cur.fetchone() is not None

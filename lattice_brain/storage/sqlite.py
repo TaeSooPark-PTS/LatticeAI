@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import shutil
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ..quiet import quiet
 from .base import StorageCapabilities, StorageEngine
 
 
@@ -23,7 +25,7 @@ def _load_sqlite_vec(conn: sqlite3.Connection) -> tuple[bool, Optional[str]]:
     try:
         conn.enable_load_extension(True)
     except Exception:
-        pass
+        quiet()
     try:
         sqlite_vec.load(conn)
     except Exception as exc:
@@ -53,7 +55,7 @@ class SQLiteEngine(StorageEngine):
         return conn
 
     def initialize(self) -> Dict[str, Any]:
-        with self.connect() as conn:
+        with self.session() as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS storage_meta (
@@ -86,7 +88,7 @@ class SQLiteEngine(StorageEngine):
             )
         # Probe on demand so status is accurate even before the graph opens.
         try:
-            with self.connect():
+            with self.session():
                 pass
         except Exception as exc:
             return StorageCapabilities(
@@ -122,7 +124,7 @@ class SQLiteEngine(StorageEngine):
     def backup(self, destination: Path) -> Dict[str, Any]:
         dest = Path(destination)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        with self.connect() as src, sqlite3.connect(str(dest)) as dst:
+        with self.session() as src, closing(sqlite3.connect(str(dest))) as dst:
             src.backup(dst)
         return {"engine": self.name, "path": str(dest), "bytes": dest.stat().st_size}
 

@@ -22,7 +22,10 @@ fakes only (no LLM, no network, no filesystem):
 import copy
 import json
 
-from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator, OrchestrationContext
+from lattice_brain.runtime.multi_agent import (
+    MultiAgentOrchestrator,
+    OrchestrationContext,
+)
 from lattice_brain.workflow import ApprovalRequired, WorkflowEngine
 
 

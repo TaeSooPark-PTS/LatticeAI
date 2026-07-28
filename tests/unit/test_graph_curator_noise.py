@@ -24,7 +24,6 @@ from lattice_brain.graph.curator import (
 from lattice_brain.graph.store import KnowledgeGraphStore
 from latticeai.api.knowledge_graph import create_knowledge_graph_router
 
-
 # ── pure helpers ─────────────────────────────────────────────────────────────
 
 def test_normalize_relation_verb_ko_en_mapping():

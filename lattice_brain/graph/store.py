@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 # ruff: noqa: F403,F405
-
 from ._kg_common import *  # noqa: F403,F401
-from .documents import KnowledgeGraphDocumentsMixin
 from .discovery import KnowledgeGraphDiscoveryMixin
 from .discovery_index import KnowledgeGraphLocalIndexMixin
+from .documents import KnowledgeGraphDocumentsMixin
 from .ingest import KnowledgeGraphIngestMixin
 from .projection import KnowledgeGraphProjectionMixin
 from .provenance import KnowledgeGraphProvenanceMixin
@@ -81,8 +80,23 @@ class KnowledgeGraphStore(
             return ("kgv2_nodes", "kgv2_edges")
         return ("nodes", "edges")
 
-    def _connect(self) -> sqlite3.Connection:
-        return self.storage_engine.connect()
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Transactional connection that is closed when the block exits.
+
+        This used to return the raw connection, so ``with self._connect() as
+        conn`` inherited sqlite3's context-manager semantics: commit on success,
+        rollback on error, **never close**. Each of the ~58 call sites therefore
+        held a descriptor open until garbage collection reclaimed it. That is
+        invisible while CPython refcounting frees the local immediately, and
+        fatal as soon as anything keeps the frame alive — a coverage tracer, a
+        profiler, or a traceback captured by ``logger.exception``.
+
+        Use ``storage_engine.connect()`` directly only for statements that
+        cannot run inside a transaction, and close it yourself.
+        """
+        with self.storage_engine.session() as conn:
+            yield conn
 
     def _init_db(self) -> None:
         with self._connect() as conn:

@@ -1,17 +1,19 @@
 import asyncio
-import httpx
-import logging
 import base64
+import json
+import logging
 import os
 import socket
 import tempfile
 import zipfile
-import json
 from pathlib import Path
 
+import httpx
+
+from latticeai.cli.runtime import _load_env_file
 from latticeai.core.io_utils import atomic_write_json
 from latticeai.core.logging_safety import install_sensitive_log_filter, safe_log_text
-from latticeai.cli.runtime import _load_env_file
+from latticeai.core.quiet import quiet
 
 install_sensitive_log_filter()
 
@@ -182,14 +184,14 @@ async def send_chat_action(client, chat_id, action="typing"):
     try:
         await client.post(f"{API_URL}/sendChatAction", json={"chat_id": chat_id, "action": action})
     except Exception:
-        pass
+        quiet()
 
 async def answer_callback(client, callback_query_id, text=""):
     try:
         await client.post(f"{API_URL}/answerCallbackQuery",
                           json={"callback_query_id": callback_query_id, "text": text})
     except Exception:
-        pass
+        quiet()
 
 async def edit_message(client, chat_id, message_id, text, reply_markup=None):
     try:
@@ -198,7 +200,7 @@ async def edit_message(client, chat_id, message_id, text, reply_markup=None):
             payload["reply_markup"] = reply_markup
         await client.post(f"{API_URL}/editMessageText", json=payload)
     except Exception:
-        pass
+        quiet()
 
 # ── Network helpers ───────────────────────────────────────────────────────────
 
@@ -210,14 +212,14 @@ def get_lan_ip():
             if not ip.startswith("127."):
                 return ip
     except OSError:
-        pass
+        quiet()
     try:
         hostname = socket.gethostname()
         for ip in socket.gethostbyname_ex(hostname)[2]:
             if not ip.startswith("127."):
                 return ip
     except OSError:
-        pass
+        quiet()
     return "127.0.0.1"
 
 def get_web_url():
@@ -332,7 +334,7 @@ async def _mac_ram_used_gb() -> str:
                 try:
                     stats[k.strip()] = int(v.strip().rstrip(".")) * page_size
                 except ValueError:
-                    pass
+                    quiet()
 
         used = stats.get("Pages active", 0) + stats.get("Pages wired down", 0)
 
@@ -452,7 +454,12 @@ async def show_graph_stats(client, chat_id):
 
 async def take_screenshot(client, chat_id):
     await send_chat_action(client, chat_id, "upload_photo")
-    tmp = Path(tempfile.mktemp(suffix=".jpg"))
+    # mkstemp, not mktemp: mktemp only predicts an unused name, leaving a
+    # window in which anything can create that path first. mkstemp creates
+    # the file atomically with 0600.
+    _fd, _name = tempfile.mkstemp(suffix=".jpg")
+    os.close(_fd)
+    tmp = Path(_name)
     try:
         proc = await asyncio.create_subprocess_exec(
             "screencapture", "-x", str(tmp),
@@ -474,7 +481,7 @@ async def take_screenshot(client, chat_id):
         try:
             tmp.unlink(missing_ok=True)
         except Exception:
-            pass
+            quiet()
 
 # ── History ───────────────────────────────────────────────────────────────────
 
@@ -570,7 +577,9 @@ async def process_document_file(client, chat_id, file_id: str, filename: str, ca
                            f"지원 형식: {', '.join(sorted(allowed))}")
         return
 
-    tmp = Path(tempfile.mktemp(suffix=suffix))
+    _fd, _name = tempfile.mkstemp(suffix=suffix)  # see take_screenshot
+    os.close(_fd)
+    tmp = Path(_name)
     try:
         tmp.write_bytes(raw)
         async with _server_client() as lc:
@@ -632,7 +641,7 @@ async def ask_ai(client, message, image_data=None, agent_mode=False,
                             chunk = json.loads(line[5:].strip()).get("chunk", "")
                             text += chunk
                         except Exception:
-                            pass
+                            quiet()
                 return {"response": text.strip() or "⚠️ 빈 응답"}
             return res.json()
         try:
@@ -1050,7 +1059,7 @@ async def process_ai_request(client, chat_id, user_text, image_data=None):
         try:
             await send_message(client, chat_id, "⚠️ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
         except Exception:
-            pass
+            quiet()
 
 # ── Command dispatch ──────────────────────────────────────────────────────────
 
@@ -1309,4 +1318,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(run_bot())
     except KeyboardInterrupt:
-        pass
+        quiet()

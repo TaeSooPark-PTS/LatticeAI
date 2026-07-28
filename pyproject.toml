@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "10.1.1"
+version = "10.2.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -24,6 +24,8 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
@@ -55,6 +57,10 @@ postgres = ["psycopg[binary]>=3.2,<4"]
 local = ["mlx-vlm>=0.6.3", "mlx-lm"]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
 all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub", "sqlite-vec>=0.1,<1", "psycopg[binary]>=3.2,<4"]
+# Development-only checkers. Coverage became measurable in 10.2.0: before the
+# connection-leak fix, running under a tracer exhausted file descriptors and
+# ~400 tests failed, so the real number was unknown.
+dev = ["pytest-cov>=7,<8", "mypy>=1.14,<2"]
 
 [project.scripts]
 LTCAI = "latticeai.cli.entrypoint:main"
@@ -114,12 +120,165 @@ include-package-data = true
 extend-exclude = ["ltcai-0.3.1", "dist-smoke", "agent_workspace", "venv", "output", "outputs"]
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
+# 10.2.0 widened this from pyflakes-only. The net that existed through 10.1.x
+# could not have caught the connection leak that made coverage unmeasurable,
+# so the additions are chosen for the bug classes that actually bit:
+#   B    bugbear      — loop-variable capture, un-chained raises, bare zip
+#   S   flake8-bandit — subprocess, SQL string building, silent except
+#   I    isort        — deterministic import order
+#   SIM  simplify     — redundant branches that hide intent
+#   RET  return       — inconsistent returns
+#   C901 complexity   — a ceiling, ratcheted down over time
+#
+# UP (pyupgrade) is deliberately absent: 5,046 violations, almost all
+# `Optional[X]` → `X | None`, and rewriting annotation syntax across the tree
+# is a change to every file for no behavioural gain while 3.11 is the floor.
+select = ["E4", "E7", "E9", "F", "B", "S", "I", "SIM", "RET", "C901"]
+ignore = [
+  # B904 (raise ... from err): 47 sites, all in handlers that deliberately
+  # translate a low-level failure into a product-level message. Chaining would
+  # leak internals into user-facing detail strings. Revisit if those messages
+  # ever stop being user-facing.
+  "B904",
+  # S310: every urlopen in this tree is a user-initiated fetch of a URL the
+  # user typed, already scheme-checked at the call site.
+  "S310",
+  # S104: binding 0.0.0.0 is refused at runtime unless the user explicitly
+  # opts in (see latticeai/core/security.py); the literal itself is not the gate.
+  "S104",
+  # SIM105 (contextlib.suppress): would re-hide the exceptions 10.2.0 just
+  # made visible via quiet(). The explicit handler is the point.
+  "SIM105",
+  # Style-only, no bug class behind them. The point of widening the rule set
+  # was the failure modes that actually bit this codebase (loop capture, silent
+  # handlers, truncating zips); reformatting nested ifs is not that, and doing
+  # it in the same release would bury those diffs in noise.
+  "SIM102", "SIM112", "SIM117", "RET504",
+]
+
+[tool.ruff.lint.mccabe]
+# 30 is a real ceiling for ordinary code: only three functions in the tree
+# exceed it, and each is named in per-file-ignores with a reason. Router
+# factories are exempt below — their "complexity" is N sibling route handlers
+# defined in one closure, an idiom of this codebase rather than tangled logic.
+# Lower this as the exempted functions come down.
+max-complexity = 30
 
 [tool.ruff.lint.per-file-ignores]
 # Deliberate re-export hub: the tool registry's public surface.
 "latticeai/tools/__init__.py" = ["F401", "F403", "F405"]
+
 # The one remaining legacy single-file monolith predating the lint baseline.
-"latticeai/setup/auto_setup.py" = ["E702"]
-# Tests may use lambdas for tiny local fakes.
-"tests/**/*.py" = ["E731"]
+"latticeai/setup/auto_setup.py" = ["E702", "S110", "S603", "S604", "S607", "SIM"]
+
+# Tests: `assert` is the point, fixtures hold fake credentials and temp paths,
+# and lambdas stand in for tiny fakes. None of these are findings here.
+"tests/**/*.py" = [
+  "E402", "E731", "B007", "B011", "B017", "B023", "B905",
+  "S101", "S105", "S106", "S108", "S110", "S306", "S311", "S324", "S603",
+  "S604", "S607", "S608", "SIM",
+]
+
+# Developer tools, not product paths: a failed probe *is* the measurement.
+"scripts/**/*.py" = [
+  "E402", "S101", "S110", "S603", "S604", "S607", "S608", "SIM", "B007",
+]
+
+# Router factories: one closure holding N sibling route handlers. mccabe counts
+# every handler's branches as a single function's complexity, which measures the
+# wrong thing. The surfaces here are operator/admin tools behind the admin gate.
+"latticeai/api/*.py" = ["C901", "E402", "SIM", "B008", "S105", "S108", "S603", "S604", "S607"]
+
+# Named exceptions above the complexity ceiling, each with a standing reason:
+#   app_factory._build — the composition root, being decomposed incrementally
+#   hybrid_search      — one ranking algorithm; splitting it across files would
+#                        scatter the pipeline without making it clearer
+"latticeai/app_factory.py" = ["C901", "E402", "SIM"]
+"lattice_brain/graph/retrieval.py" = ["C901", "SIM", "B007", "B905"]
+"latticeai/services/local_knowledge.py" = ["C901", "SIM"]
+
+# Process launchers. Every command is a fixed program plus validated arguments,
+# recorded through latticeai/services/process_audit.py.
+"latticeai/setup/*.py" = ["S404", "S603", "S604", "S607", "SIM", "B007"]
+"latticeai/cli/*.py" = ["E402", "S603", "S604", "S607", "SIM"]
+"latticeai/tools/*.py" = ["S404", "S603", "S607", "SIM", "B007"]
+"latticeai/core/tool_registry.py" = ["S603", "S604", "S606", "S607", "SIM", "B007"]
+"latticeai/core/mcp_registry.py" = ["S603", "S607", "SIM"]
+"latticeai/services/model_engines.py" = ["S603", "S604", "S607", "SIM"]
+"latticeai/services/model_loading.py" = ["S603", "S607", "SIM"]
+"latticeai/services/model_runtime.py" = ["S603", "S607", "SIM", "B007"]
+"latticeai/services/tool_dispatch.py" = ["S603", "S604", "S607", "SIM"]
+"lattice_brain/runtime/hooks.py" = ["S603", "S607", "SIM"]
+
+# SQL built with interpolated *table* names chosen from a fixed internal set
+# (legacy tables vs the v2 reconstruction views). Values are always bound.
+"lattice_brain/graph/*.py" = ["S608", "SIM", "B007", "B905", "E402"]
+"lattice_brain/conversations.py" = ["S608", "SIM"]
+"lattice_brain/storage/*.py" = ["S608", "SIM"]
+"latticeai/core/workspace_os.py" = ["S608", "SIM"]
+
+# Literal classification tables; flagged for the words they contain.
+"lattice_brain/graph/_kg_constants.py" = ["S105", "S108"]
+
+# Remaining reviewed surfaces.
+"latticeai/core/*.py" = ["SIM", "B008", "S311", "S324"]
+"latticeai/services/*.py" = ["SIM", "B008", "S306"]
+"latticeai/models/*.py" = ["E402", "SIM"]
+"latticeai/runtime/*.py" = ["E402", "SIM"]
+"latticeai/integrations/*.py" = ["SIM", "B007"]
+"lattice_brain/*.py" = ["SIM", "B007", "B905"]
+"lattice_brain/runtime/*.py" = ["SIM", "B007"]
+
+[tool.mypy]
+# Gradual adoption. The tree has ~76k lines with `from x import *` in the
+# knowledge-graph mixins, which defeats inference wholesale — checking
+# everything today would produce ~1,000 errors and get switched off within a
+# week. Instead this list is the *checked* set, and it only grows.
+#
+# `follow_imports = silent` keeps analysis inside that set: imported modules
+# are still resolved for types but their own errors are not reported, so
+# adding a module here is a decision to fix that module, not its dependencies.
+python_version = "3.11"
+follow_imports = "silent"
+ignore_missing_imports = true
+warn_unused_ignores = false
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_optional = true
+strict_equality = true
+check_untyped_defs = true
+files = [
+  "latticeai/core/network_boundary.py",
+  "latticeai/core/quiet.py",
+  "latticeai/core/agent_state.py",
+  "latticeai/core/agent_helpers.py",
+  "latticeai/core/permission_mode.py",
+  "latticeai/services/cloud_egress_audit.py",
+  "latticeai/services/hybrid_context.py",
+  "latticeai/services/hybrid_policy.py",
+  "latticeai/services/cloud_token_guard.py",
+  "latticeai/services/network_boundary_service.py",
+  "lattice_brain/sensitivity.py",
+  "lattice_brain/storage/base.py",
+  "lattice_brain/quiet.py",
+]
+
+[tool.coverage.run]
+# Product code only. A first attempt used `*/tests/*`, which does not match the
+# repo-relative `tests/...` paths coverage records — so the suite counted
+# itself, and since test files are ~100% executed by construction that inflated
+# the figure by nine points. Measure what ships.
+source = ["latticeai", "lattice_brain"]
+omit = ["tests/*", "scripts/*", "*/__main__.py", "*/conftest.py"]
+
+[tool.coverage.report]
+# A floor, not a target. Set just under the measured figure so a regression
+# fails CI while ordinary work does not. Raise it when a release earns it.
+fail_under = 70
+skip_covered = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "@abstractmethod",
+]

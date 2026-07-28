@@ -92,9 +92,13 @@ def register_network_boundary_router(
     knowledge_graph: Any = None,
 ) -> Any:
     from latticeai.api.network_boundary import create_network_boundary_router
+    from latticeai.services.cloud_egress_audit import bind_egress_audit
 
     svc = get_network_boundary_service(data_dir=data_dir, audit=append_audit_event)
     policy = get_hybrid_policy_service(data_dir=data_dir, audit=append_audit_event)
+    # The dial's own changes were audited from 10.1.0; the sends were not.
+    # Bind the same sink so egress lands in the same log.
+    bind_egress_audit(append_audit_event)
     existing = {
         getattr(route, "path", None)
         for route in getattr(app, "routes", ())

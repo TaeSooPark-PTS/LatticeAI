@@ -6,12 +6,14 @@ import json
 import shutil
 import sqlite3
 import uuid
+from contextlib import closing
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from latticeai.core.quiet import quiet
+
 from .io_utils import atomic_write_json
 from .timeutil import now_iso as _now
-
 
 USER_NAMESPACE = uuid.UUID("5d6d4480-cf79-49c3-a6d0-4c6eec3224d6")
 
@@ -76,7 +78,7 @@ def load_users_file(path: Path) -> Dict[str, Any]:
         try:
             shutil.copy2(path, backup)
         except Exception:
-            pass
+            quiet()
         atomic_write_json(path, migrated)
     return migrated
 
@@ -112,7 +114,7 @@ def migrate_knowledge_graph_identity(db_path: Path, email_to_id: Dict[str, str])
     if not db_path.exists() or not email_to_id:
         return 0
     changed = 0
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn, conn:
         tables = {
             row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }

@@ -15,13 +15,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import latticeai.tools as tools
+from latticeai.core.quiet import quiet
 from latticeai.tools import (
-    ToolError,
-    ensure_agent_root,
-    _resolve_path,
-    _relative,
     MAX_FILE_BYTES,
     TEXT_EXTENSIONS,
+    ToolError,
+    _relative,
+    _resolve_path,
+    ensure_agent_root,
 )
 
 
@@ -219,6 +220,7 @@ def grep(
         try:
             lines = file_path.read_text(encoding="utf-8").splitlines()
         except (UnicodeDecodeError, OSError):
+            quiet()
             continue
 
         files_scanned += 1
@@ -340,6 +342,7 @@ def search_files(query: str, path: str = ".", max_results: int = 20) -> Dict[str
         try:
             lines = file_path.read_text(encoding="utf-8").splitlines()
         except UnicodeDecodeError:
+            quiet()
             continue
         for index, line in enumerate(lines, start=1):
             if query_lower in line.lower():

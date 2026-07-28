@@ -7,10 +7,10 @@ produces budgeted, provenance-carrying sections with honest absence.
 
 import pytest
 
-from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.context import ContextAssembler, approx_tokens
-from lattice_brain.memory import BrainMemory
+from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionPipeline
+from lattice_brain.memory import BrainMemory
 
 
 def _brain(tmp_path):
@@ -178,6 +178,7 @@ def test_agent_learnings_become_experience_records(tmp_path):
     """The agent memory-update path records Experiences through the brain
     port instead of dumping vault markdown with swallowed errors."""
     import asyncio
+
     from latticeai.core.agent import AgentRunContext
 
     kg, pipe = _brain(tmp_path)

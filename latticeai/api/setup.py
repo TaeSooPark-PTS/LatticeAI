@@ -8,15 +8,24 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from lattice_brain.ingestion import IngestionItem
+from latticeai.models.router import parse_model_ref
 from latticeai.services.process_audit import command_plan
 from latticeai.setup.auto_setup import (
     plan as auto_setup_plan,
+)
+from latticeai.setup.auto_setup import (
     preset as auto_setup_preset,
+)
+from latticeai.setup.auto_setup import (
     probe as auto_setup_probe,
+)
+from latticeai.setup.auto_setup import (
     recommend as auto_setup_recommend,
+)
+from latticeai.setup.auto_setup import (
     verify as auto_setup_verify,
 )
-from latticeai.models.router import parse_model_ref
 from latticeai.setup.demo_corpus import (
     DEMO_DOCUMENTS,
     DEMO_METADATA_FLAG,
@@ -24,8 +33,12 @@ from latticeai.setup.demo_corpus import (
     demo_source_uri,
     suggested_questions,
 )
-from latticeai.setup.wizard import get_recommendations, install_stream, open_url, scan_environment
-from lattice_brain.ingestion import IngestionItem
+from latticeai.setup.wizard import (
+    get_recommendations,
+    install_stream,
+    open_url,
+    scan_environment,
+)
 
 
 class SetupInstallRequest(BaseModel):

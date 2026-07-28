@@ -10,10 +10,10 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from latticeai.api.agents import _memory_grounded_roles, create_agents_router
+from lattice_brain.runtime.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
 from lattice_brain.runtime.contracts import RuntimeBoundaryProtocol, run_record_contract
 from lattice_brain.runtime.multi_agent import CORE_PIPELINE, MultiAgentOrchestrator
-from lattice_brain.runtime.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
+from latticeai.api.agents import _memory_grounded_roles, create_agents_router
 
 
 class FakeStore:
@@ -68,7 +68,9 @@ def _runtime(*, allow_simulation_runs=True):
 
 
 def test_config_and_roles():
-    from lattice_brain.runtime import RuntimeBoundaryProtocol as PublicRuntimeBoundaryProtocol
+    from lattice_brain.runtime import (
+        RuntimeBoundaryProtocol as PublicRuntimeBoundaryProtocol,
+    )
 
     assert PublicRuntimeBoundaryProtocol is RuntimeBoundaryProtocol
     rt = _runtime()

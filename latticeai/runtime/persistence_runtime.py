@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
+from latticeai.core.quiet import quiet
+
 
 def build_persistence_runtime(
     *,
@@ -84,7 +86,7 @@ def build_persistence_runtime(
                     duplicate=bool((detail or {}).get("duplicate"))
                 )
         except Exception:  # noqa: BLE001 — metrics must never break ingestion
-            pass
+            quiet()
         audit(action, detail, user)
 
     ingestion_pipeline = IngestionPipeline(

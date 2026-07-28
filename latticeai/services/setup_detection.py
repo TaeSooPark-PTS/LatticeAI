@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
+from latticeai.core.quiet import quiet
 
 WhichFn = Callable[[str], Optional[str]]
 RunFn = Callable[[List[str]], str]
@@ -32,7 +33,7 @@ def parse_windows_video_controllers(raw: str) -> List[Dict[str, Any]]:
         if controllers:
             return controllers
     except Exception:
-        pass
+        quiet()
     current: Dict[str, Any] = {}
     for line in raw.splitlines():
         if line.startswith("Name="):

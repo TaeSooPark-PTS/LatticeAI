@@ -22,7 +22,7 @@ Circuit breakers are mode-invariant: a mode never overrides a hard deny.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, Mapping, Optional, Set
+from typing import Any, Dict, FrozenSet, Mapping, Optional
 
 
 class PermissionMode(str, Enum):
@@ -34,7 +34,7 @@ class PermissionMode(str, Enum):
 DEFAULT_MODE = PermissionMode.STRICT
 
 # Computer-use split: observation is low-friction in trusted; control stays gated.
-COMPUTER_OBSERVATION_TOOLS: Set[str] = frozenset({
+COMPUTER_OBSERVATION_TOOLS: FrozenSet[str] = frozenset({
     "computer_screenshot",
     "computer_status",
     "computer_use_status",
@@ -42,7 +42,7 @@ COMPUTER_OBSERVATION_TOOLS: Set[str] = frozenset({
     "vision_analyze",
 })
 
-COMPUTER_CONTROL_TOOLS: Set[str] = frozenset({
+COMPUTER_CONTROL_TOOLS: FrozenSet[str] = frozenset({
     "computer_click",
     "computer_type",
     "computer_key",
@@ -53,7 +53,7 @@ COMPUTER_CONTROL_TOOLS: Set[str] = frozenset({
     "computer_open_url",
 })
 
-KNOWLEDGE_READ_TOOLS: Set[str] = frozenset({
+KNOWLEDGE_READ_TOOLS: FrozenSet[str] = frozenset({
     "knowledge_search",
     "knowledge_tree",
     "obsidian_search",
@@ -63,7 +63,7 @@ KNOWLEDGE_READ_TOOLS: Set[str] = frozenset({
     "knowledge_graph_context",
 })
 
-WORKSPACE_WRITE_TOOLS: Set[str] = frozenset({
+WORKSPACE_WRITE_TOOLS: FrozenSet[str] = frozenset({
     "write_file",
     "edit_file",
     "create_docx",
@@ -78,7 +78,7 @@ WORKSPACE_WRITE_TOOLS: Set[str] = frozenset({
 })
 
 # Always blocked regardless of mode (Claude-style circuit breakers).
-HARD_BLOCK_SANDBOXES: Set[str] = frozenset({"system"})
+HARD_BLOCK_SANDBOXES: FrozenSet[str] = frozenset({"system"})
 
 
 def normalize_mode(value: Any) -> PermissionMode:

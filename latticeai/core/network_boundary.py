@@ -18,7 +18,7 @@ The mode is orthogonal to PermissionMode (agent autonomy). A session can be
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, Mapping, Optional, Set
+from typing import Any, Dict, FrozenSet, Mapping, Optional
 
 
 class NetworkBoundaryMode(str, Enum):
@@ -30,17 +30,36 @@ DEFAULT_NETWORK_MODE = NetworkBoundaryMode.LOCAL_ONLY
 
 # Node types that must never be included in a cloud payload, regardless of mode.
 # Extend carefully; this is a hard circuit breaker.
-HARD_BLOCK_NODE_TYPES: Set[str] = frozenset({
-    # Keep empty for v1 scaffolding; product can add "Credential", "Secret", etc.
+#
+# This was empty through 10.1.x ("keep empty for v1 scaffolding"), which meant
+# the type arm of the filter could never fire. Combined with nothing being able
+# to *set* the metadata flags below, the whole guard was unreachable — correct
+# code protecting nothing.
+HARD_BLOCK_NODE_TYPES: FrozenSet[str] = frozenset({
+    "Credential",
+    "Secret",
+    "ApiKey",
+    "Token",
+    "Password",
+    "PrivateKey",
 })
 
 # Metadata keys that, when present and truthy, block a node from leaving.
-HARD_BLOCK_METADATA_FLAGS: Set[str] = frozenset({
+HARD_BLOCK_METADATA_FLAGS: FrozenSet[str] = frozenset({
     "sensitive",
     "private",
     "do_not_share",
     "local_only",
 })
+
+# Path-based never-leaves rules live in Brain Core: they describe the data, not
+# the transport, and Brain Core cannot import from this package. Re-exported
+# here so the boundary module stays the single place the app layer reads.
+from lattice_brain.sensitivity import (  # noqa: E402
+    SENSITIVE_FILENAMES,
+    SENSITIVE_PATH_FRAGMENTS,
+    sensitive_reason_for_path,
+)
 
 
 def normalize_network_mode(value: Any) -> NetworkBoundaryMode:
@@ -142,5 +161,8 @@ __all__ = [
     "normalize_network_mode",
     "network_mode_catalog",
     "is_node_blocked_for_cloud",
+    "sensitive_reason_for_path",
+    "SENSITIVE_PATH_FRAGMENTS",
+    "SENSITIVE_FILENAMES",
     "network_mode_contract",
 ]

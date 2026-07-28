@@ -23,7 +23,6 @@ from pydantic import BaseModel
 from latticeai.api.ui_redirects import app_redirect
 from latticeai.services.app_context import AppContext
 
-
 # ── Request models (workspace-only; moved verbatim from server_app) ──────────
 
 class WorkspaceOnboardingStepRequest(BaseModel):
@@ -290,8 +289,8 @@ def create_workspace_router(context: AppContext) -> APIRouter:
         # not_recommended) for this machine, used by the onboarding model step.
         catalog = None
         try:
-            from latticeai.setup.auto_setup import probe as auto_setup_probe
             from latticeai.services.model_recommendation import recommend_catalog
+            from latticeai.setup.auto_setup import probe as auto_setup_probe
             profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())
             catalog = recommend_catalog(profile, engine="local_mlx")
         except Exception as exc:  # pragma: no cover - recommendation is best-effort

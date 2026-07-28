@@ -57,7 +57,7 @@ ASSEMBLY_TRACE_KEYS = {"budget_approx_tokens", "used_approx_tokens", "sections"}
 def test_document_context_reports_the_same_quality_shape_as_chat():
     result = retrieve_context_for_generation(FakeGraph([_doc(1), _doc(2)]), "예산 보고서")
     quality = result["context_quality"]
-    assert CHAT_QUALITY_KEYS <= set(quality)
+    assert set(quality) >= CHAT_QUALITY_KEYS
     assert quality["mode"] == "hybrid"
     assert quality["nodes"] == 2
     assert quality["limited"] is False
@@ -89,7 +89,7 @@ def test_no_graph_or_empty_query_degrades_to_an_honest_none():
         assert result["context_quality"]["mode"] == "none"
         assert result["context_quality"]["nodes"] == 0
         assert result["context_markdown"] == ""
-        assert ASSEMBLY_TRACE_KEYS <= set(result["trace"])
+        assert set(result["trace"]) >= ASSEMBLY_TRACE_KEYS
 
 
 def test_document_trace_matches_the_assembler_trace_shape():
@@ -97,7 +97,7 @@ def test_document_trace_matches_the_assembler_trace_shape():
     chat_trace = assembler.assemble("질문", budget=2000).trace()
     doc_trace = retrieve_context_for_generation(FakeGraph([_doc(1)]), "질문")["trace"]
     assert set(chat_trace) == ASSEMBLY_TRACE_KEYS
-    assert ASSEMBLY_TRACE_KEYS <= set(doc_trace)
+    assert set(doc_trace) >= ASSEMBLY_TRACE_KEYS
     for section in doc_trace["sections"]:
         assert {"name", "source", "approx_tokens", "provenance"} <= set(section)
 

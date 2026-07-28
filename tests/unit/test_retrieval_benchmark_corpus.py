@@ -2,8 +2,13 @@ from pathlib import Path
 
 from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.quality import RetrievalBenchmarkRunner
+from lattice_brain.retrieval_benchmark_fixtures import (
+    DOCUMENTS,
+    FIXTURE_NAME,
+    QUERIES,
+    TOP_K,
+)
 from latticeai.services.search_service import SearchService
-from lattice_brain.retrieval_benchmark_fixtures import DOCUMENTS, FIXTURE_NAME, QUERIES, TOP_K
 
 
 def test_corpus_scale_fixture_exercises_real_hybrid_search(tmp_path: Path):

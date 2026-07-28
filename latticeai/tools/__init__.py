@@ -152,13 +152,13 @@ DOCUMENT_MAX_READ_BYTES = 10_000_000  # 10 MB
 
 
 # ── focused tool submodules (re-exported flat for import compatibility) ───────
-from latticeai.tools.computer import *  # noqa: E402,F401,F403
-from latticeai.tools.filesystem import *  # noqa: E402,F401,F403
-from latticeai.tools.documents import *  # noqa: E402,F401,F403
-from latticeai.tools.local_files import *  # noqa: E402,F401,F403
-from latticeai.tools.knowledge import *  # noqa: E402,F401,F403
-from latticeai.tools.network import *  # noqa: E402,F401,F403
 from latticeai.tools.commands import *  # noqa: E402,F401,F403
+from latticeai.tools.computer import *  # noqa: E402,F401,F403
+from latticeai.tools.documents import *  # noqa: E402,F401,F403
+from latticeai.tools.filesystem import *  # noqa: E402,F401,F403
+from latticeai.tools.knowledge import *  # noqa: E402,F401,F403
+from latticeai.tools.local_files import *  # noqa: E402,F401,F403
+from latticeai.tools.network import *  # noqa: E402,F401,F403
 
 
 # ── tool registry: the single name → invocation source of truth ───────────────

@@ -39,6 +39,7 @@ from lattice_brain.ingestion import (
     _load_latticeignore,
     _matches_ignore,
 )
+from latticeai.core.quiet import quiet
 from latticeai.core.timeutil import now_iso as _now_iso
 
 WATCH_INTERVAL_ENV = "LATTICEAI_FOLDER_WATCH_INTERVAL"
@@ -339,6 +340,7 @@ class FolderWatchService:
                 try:
                     stat = path.stat()
                 except OSError:
+                    quiet()
                     continue
                 if stat.st_size > DEFAULT_MAX_FILE_BYTES:
                     continue
@@ -390,6 +392,7 @@ class FolderWatchService:
                 try:
                     self.scan_once(watch_id)
                 except Exception:  # noqa: BLE001 — one bad watch must not kill the poller
+                    quiet()
                     continue
 
 

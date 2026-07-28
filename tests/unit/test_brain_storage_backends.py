@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import sqlite3
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -9,6 +9,7 @@ import pytest
 import lattice_brain.archive as archive_module
 from lattice_brain import BrainCore, KnowledgeGraphStore
 from lattice_brain.archive import BrainArchivePaths, EncryptedBrainArchive
+from lattice_brain.portability import KGPortabilityService
 from lattice_brain.storage import (
     DockerPostgresWizard,
     PostgresEngine,
@@ -17,7 +18,6 @@ from lattice_brain.storage import (
     StorageUnavailable,
     storage_from_env,
 )
-from lattice_brain.portability import KGPortabilityService
 
 
 def test_lattice_brain_package_exports_working_store(tmp_path: Path):

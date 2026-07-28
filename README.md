@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.1.1 Living Brain walkthrough](output/release/v10.1.1/gifs/v10.1.1-living-brain-walkthrough.gif)
+![v10.2.0 Living Brain walkthrough](output/release/v10.2.0/gifs/v10.2.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.1.1/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.1.1/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.1.1/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.1.1/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.1.1/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.1.1/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.2.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.2.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.2.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.2.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.2.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.2.0/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,42 +57,53 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.1.1/screenshots/01-login.png) | ![Model install](output/release/v10.1.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.1.1/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.2.0/screenshots/01-login.png) | ![Model install](output/release/v10.2.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.2.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.1.1/SCREENSHOT_INDEX.md](output/release/v10.1.1/SCREENSHOT_INDEX.md)
+[output/release/v10.2.0/SCREENSHOT_INDEX.md](output/release/v10.2.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.1.1 — Reachable Boundary**:
+The current release is **10.2.0 — Load-Bearing Fixes**:
 
-10.1.0 built the local-first hybrid path — your Brain stays on the machine
-while a cloud model can be hired as an opt-in worker — but shipped it with no
-way to reach it from the app. This release is the control.
+A full code review of 10.1.1 scored the codebase 71/100 and found two things
+that were true but invisible. This release is that review's response.
 
-- **환경설정 → 내 지식이 나가는 범위.** The boundary dial now sits beside the
-  autonomy dial, where the other "what is this allowed to do" decision already
-  lives. It renders the server's own catalog, and it will not send a switch to
-  cloud until you tick the acknowledgement the server requires.
-- **See what would leave, before anything leaves.** Type a question and the
-  panel names the actual memories it would send, the token estimate, and
-  whether the usage guard would refuse the turn. It works while you are still
-  on local-only, and says so — you can look before you decide.
-- **Switches that cannot do anything are not shown.** The write-back options
-  appear only once cloud is permitted, rather than sitting there inert.
-- **The defaults did not move.** Local-only is still the default, sensitive
-  memories are still filtered in both modes, and cloud-derived memory still
-  arrives in the Review Center as a proposal rather than being written.
+- **A database connection leak that hid behind garbage collection.**
+  `with sqlite3.connect(...)` commits but never closes, and 70+ call sites
+  relied on it. Nothing showed until something held a stack frame alive — a
+  profiler, a logged traceback, a coverage tracer — and then descriptors ran
+  out. Every one of those sites now closes.
+- **Coverage is measurable for the first time: 71%.** It could not be run
+  before, because running it *was* the thing that exhausted descriptors. There
+  is now a floor in CI so it cannot silently fall.
+- **"Sensitive memories are never sent" is finally true.** The filter was real,
+  correct, and wired — but nothing in the product could mark a memory, and the
+  blocked-type list was empty, so it could never fire. You can now mark any
+  memory from the boundary panel, files under `.ssh`/`.aws`/`.env` and friends
+  are flagged automatically at ingestion, and credential-shaped node types are
+  blocked outright.
+- **Knowledge that leaves is now redacted and recorded.** Secret-shaped text is
+  stripped from the outbound payload, and every send — and every refusal —
+  writes an audit entry naming what went, how much, and where to.
+- **112 silent `except: pass` handlers now say something.** Behaviour is
+  unchanged; each records the failure at debug level, so a genuine bug in an
+  optional path is no longer indistinguishable from the optional thing being
+  absent.
+- **The lint net was widened to the bug classes that actually bit** — loop
+  variable capture, truncating `zip`, silent handlers — and mypy now runs on
+  the trust-critical modules. CI gained macOS and Python 3.14, so the machine
+  this is developed on and the platform it ships a `.dmg` for are both tested.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.1.1 release must use exact filenames:
+Expected artifacts for 10.2.0 release must use exact filenames:
 
-- `dist/ltcai-10.1.1-py3-none-any.whl`
-- `dist/ltcai-10.1.1.tar.gz`
-- `ltcai-10.1.1.tgz`
-- `dist/ltcai-10.1.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.1_aarch64.dmg`
+- `dist/ltcai-10.2.0-py3-none-any.whl`
+- `dist/ltcai-10.2.0.tar.gz`
+- `ltcai-10.2.0.tgz`
+- `dist/ltcai-10.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.2.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -112,7 +123,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 10.1.1.
+  live local Brain store in 10.2.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and
   update checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded. Agent and
@@ -121,12 +132,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
   model success.
 - Some backend-generated messages (for example the Postgres DSN notice) are
   produced server-side in English and are shown as-is; server-side i18n is not
-  part of 10.1.1.
+  part of 10.2.0.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 10.2.0 | Load-Bearing Fixes |
 | 10.1.1 | Reachable Boundary |
 | 10.1.0 | Hybrid Brain |
 | 10.0.1 | One Source of Truth |

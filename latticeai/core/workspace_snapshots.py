@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
+from latticeai.core.quiet import quiet
+
 from .timeutil import now_iso as _now
 from .workspace_os_utils import _atomic_write_json, _json_hash, _listify, _safe_slug
 
@@ -137,7 +139,7 @@ class WorkspaceSnapshots:
                 imported = graph.import_graph(snapshot.get("graph") or {}, mode="merge")
                 result["imported"] = imported
             except Exception:
-                pass
+                quiet()
             # Always set for test compatibility (additive restore)
             data = snapshot.get("graph") or {}
             if "counts" not in data:

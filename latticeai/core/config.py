@@ -25,7 +25,6 @@ from typing import List, Mapping, Optional
 
 from latticeai.core.security import host_is_loopback
 
-
 __all__ = ["Config", "_value", "_str", "_bool", "_int"]
 
 def _value(env: Mapping[str, str], key: str, default: str = "") -> str:

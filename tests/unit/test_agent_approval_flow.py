@@ -19,7 +19,6 @@ from latticeai.api.chat_agent_http import AgentHTTPController
 from latticeai.api.chat_contracts import AgentRequest, AgentResumeRequest
 from latticeai.core.agent import AgentDeps, PhaseBudgets, SingleAgentRuntime
 
-
 PLAN_JSON = json.dumps({
     "action": "plan",
     "state": "PLAN",

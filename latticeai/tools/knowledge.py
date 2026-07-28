@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from latticeai.core.quiet import quiet
 from latticeai.services.p_reinforce import BRAIN_DIR, STRUCTURE
 from latticeai.tools import MAX_FILE_BYTES, ToolError
 
@@ -97,6 +98,7 @@ def knowledge_search(
         try:
             content = file_path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
+            quiet()
             continue
         if query_lower in content.lower() or query_lower in file_path.name.lower():
             results.append(

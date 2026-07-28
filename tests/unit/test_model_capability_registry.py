@@ -10,14 +10,16 @@ import pytest
 from latticeai.services.model_capability_registry import (
     ModelCapability,
     VerificationStatus,
-    get_all_capabilities,
     build_engine_model_catalog,
-    get_verified_models,
+    get_all_capabilities,
     get_capability,
+    get_verified_models,
 )
 from latticeai.services.model_catalog import (
     ENGINE_MODEL_CATALOG,
     filter_lower_family_versions,
+)
+from latticeai.services.model_catalog import (
     get_verified_models as catalog_get_verified,
 )
 

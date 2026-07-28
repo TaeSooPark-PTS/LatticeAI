@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "10.1.1",
+  "version": "10.2.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -26,7 +26,7 @@
     "check:python": "node scripts/run_python.mjs scripts/check_python.py",
     "lint": "npm run lint:python && node --check tests/visual/mock_server.cjs && node --check tests/visual/v3.spec.js && npm run lint:frontend && npm run frontend:openapi:check && node scripts/check_i18n_literals.mjs && npm run check:i18n-namespaces && npm run check:bundle && npm run check:legacy-debt && npm run test:browser-extension && npm run test:vscode-extension",
     "check:legacy-debt": "node scripts/check_legacy_debt.mjs",
-    "lint:python": "node scripts/run_python.mjs -m ruff check .",
+    "lint:python": "node scripts/run_python.mjs -m ruff check . && npm run typecheck:python",
     "lint:frontend": "node scripts/lint_frontend.mjs",
     "check:bundle": "node scripts/check_bundle_budget.mjs",
     "docs:check-links": "node scripts/check_markdown_links.mjs && node scripts/check_doc_status.mjs",
@@ -59,7 +59,9 @@
     "publish:openvsx": "cd vscode-extension && npm run package:vsix && npm run publish:openvsx",
     "publish:all": "npm run release:artifacts && npm run release:validate && npm publish ltcai-$npm_package_version.tgz --access public && node scripts/run_python.mjs -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl && cd vscode-extension && npm run publish:vscode && npm run publish:openvsx",
     "test:vscode-extension": "cd vscode-extension && npm run build && cd .. && node --test tests/vscode-extension.test.cjs",
-    "check:i18n-namespaces": "node scripts/check_i18n_namespace_coverage.mjs"
+    "check:i18n-namespaces": "node scripts/check_i18n_namespace_coverage.mjs",
+    "typecheck:python": "node scripts/run_python.mjs -m mypy",
+    "test:coverage": "node scripts/run_python.mjs -m pytest tests/ -q --cov --cov-report=term:skip-covered"
   },
   "keywords": [
     "ltcai",

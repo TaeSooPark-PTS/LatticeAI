@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-# ruff: noqa: F403,F405
+from ..quiet import quiet
 
+# ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
 
 
@@ -59,7 +60,7 @@ class KnowledgeGraphDiscoveryMixin:
                     ):
                         add(volume.name, volume, "volume", recommended=False)
                 except OSError:
-                    pass
+                    quiet()
         elif os_type == "windows":
             for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
                 drive = Path(f"{letter}:\\")
@@ -87,7 +88,7 @@ class KnowledgeGraphDiscoveryMixin:
                         ):
                             add(mounted.name, mounted, "volume", recommended=False)
                 except OSError:
-                    pass
+                    quiet()
 
         return {
             "os_type": os_type,

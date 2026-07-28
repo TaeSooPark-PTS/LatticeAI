@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from typing import Any, Dict
 
+from latticeai.core.quiet import quiet
 from latticeai.tools import ToolError
 
 _PLATFORM = platform.system()
@@ -27,7 +28,7 @@ def _init_computer_use():
         _pyautogui = _pag
         _CU_AVAILABLE = True
     except Exception:
-        pass
+        quiet()
 
 _init_computer_use()
 
@@ -66,7 +67,7 @@ def computer_screenshot() -> Dict[str, Any]:
             if os.path.exists(tmp):
                 os.unlink(tmp)
         except OSError:
-            pass
+            quiet()
 
 
 def computer_open_app(app: str = "Google Chrome") -> Dict[str, Any]:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # ruff: noqa: F403,F405
-
 from ._kg_common import *  # noqa: F403,F401
 
 
@@ -188,7 +187,8 @@ class KnowledgeGraphProvenanceMixin:
     def schema_versions(self) -> Dict[str, Any]:
         """Versions an exporter stamps and an importer validates against."""
         try:
-            from .schema import EMBED_DIM as _EMBED_DIM, KG_SCHEMA_V2_VERSION as _V2
+            from .schema import EMBED_DIM as _EMBED_DIM
+            from .schema import KG_SCHEMA_V2_VERSION as _V2
         except Exception:  # pragma: no cover - kg_schema always importable in practice
             _EMBED_DIM, _V2 = 1024, 2
         return {
@@ -421,7 +421,9 @@ class KnowledgeGraphProvenanceMixin:
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.exists():
             dest.unlink()  # VACUUM INTO requires the target to not exist
-        conn = self._connect()
+        # Raw connection, not ``_connect()``: VACUUM cannot run inside a
+        # transaction, and ``_connect()`` wraps its block in one.
+        conn = self.storage_engine.connect()
         try:
             conn.execute("PRAGMA wal_checkpoint(FULL)")
             conn.execute("VACUUM INTO ?", (str(dest),))

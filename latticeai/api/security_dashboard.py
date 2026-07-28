@@ -195,7 +195,7 @@ def _pdf_report(title: str, rows: List[Dict[str, Any]], overview: Dict[str, Any]
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table
     except Exception:  # pragma: no cover
         return ("PDF library not available\n" + json.dumps(overview, ensure_ascii=False, indent=2)).encode("utf-8")
 

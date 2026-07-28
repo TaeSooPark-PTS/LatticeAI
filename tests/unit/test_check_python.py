@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-
 MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "check_python.py"
 spec = importlib.util.spec_from_file_location("check_python", MODULE_PATH)
 check_python = importlib.util.module_from_spec(spec)

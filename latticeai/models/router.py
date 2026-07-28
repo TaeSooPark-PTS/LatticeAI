@@ -19,8 +19,11 @@ from pathlib import Path
 os.environ.setdefault("MLX_VLM_DRAFT_KIND", "mtp")
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncIterator, Dict, Optional, Tuple, List
+from typing import AsyncIterator, Dict, List, Optional, Tuple
+
 from PIL import Image
+
+from latticeai.core.quiet import quiet
 
 # Cloud provider catalog data lives in .model_providers; re-exported here so
 # ``from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS`` (and the
@@ -265,7 +268,7 @@ def _mlx_sampler(temperature: float):
     package into the runtime contract.
     """
     _ = temperature
-    return None
+    return
 
 class LLMRouter:
     def __init__(self):
@@ -525,7 +528,7 @@ class LLMRouter:
                 msgs = [{"role": "system", "content": system}, {"role": "user", "content": message}]
                 return tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
             except Exception:
-                pass
+                quiet()
         return f"<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
 
     def _build_vlm_prompt(self, model, processor, message: str, context: Optional[str], num_images: int) -> str:

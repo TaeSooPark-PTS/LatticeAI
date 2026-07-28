@@ -16,7 +16,6 @@ import latticeai.core.sessions as sessions_mod
 from latticeai.api.auth import create_auth_router
 from latticeai.core.sessions import SessionStore, _hash_token
 
-
 # ── sessions hashed at rest ────────────────────────────────────────────────
 
 def test_session_file_contains_no_raw_tokens(tmp_path):
@@ -110,6 +109,7 @@ def test_change_password_enforces_same_policy():
 
 def test_sso_source_carries_pkce():
     import inspect
+
     import latticeai.api.auth as auth_mod
     src = inspect.getsource(auth_mod)
     assert 'code_challenge_method": "S256"' in src or "code_challenge_method\": \"S256\"" in src

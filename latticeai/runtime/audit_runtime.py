@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from latticeai.core import timezones
+from latticeai.core.quiet import quiet
 
 
 def build_audit_runtime(
@@ -40,7 +41,7 @@ def build_audit_runtime(
                     if isinstance(item, dict):
                         events.append(item)
             except Exception:
-                pass
+                quiet()
         return events[-5000:]
 
     def _append(event_type: str, **payload: Any) -> None:
@@ -53,7 +54,7 @@ def build_audit_runtime(
                     if k in entry and isinstance(entry[k], str):
                         entry[k] = redact_fn(entry[k])
             except Exception:
-                pass
+                quiet()
         with _audit_lock:
             audit_file.parent.mkdir(parents=True, exist_ok=True)
             with audit_jsonl.open("a", encoding="utf-8") as fh:

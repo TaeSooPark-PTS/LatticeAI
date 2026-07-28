@@ -7,6 +7,7 @@ trusted proxy; otherwise the peer address wins.
 """
 
 import pytest
+from fastapi import HTTPException
 
 from latticeai.core import security
 from latticeai.core.security import (
@@ -14,7 +15,6 @@ from latticeai.core.security import (
     client_ip,
     configure_trusted_proxies,
 )
-from fastapi import HTTPException
 
 
 class _FakeClient:

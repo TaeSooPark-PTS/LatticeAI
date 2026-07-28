@@ -17,10 +17,19 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from lattice_brain.runtime.hooks import dispatch_tool
-from latticeai.api.chat_contracts import AgentEvalRequest, AgentRequest, AgentResumeRequest
-from latticeai.api.chat_helpers import _LANG_HINT, detect_language, workspace_scope_from_request
+from latticeai.api.chat_contracts import (
+    AgentEvalRequest,
+    AgentRequest,
+    AgentResumeRequest,
+)
+from latticeai.api.chat_helpers import (
+    _LANG_HINT,
+    detect_language,
+    workspace_scope_from_request,
+)
 from latticeai.api.chat_stream import agent_live_stream
 from latticeai.core.agent import AgentRunContext, AgentState, normalize_plan
+from latticeai.core.quiet import quiet
 from latticeai.core.run_explain import explain_run
 from latticeai.core.run_store import (
     AgentRunStore,
@@ -139,7 +148,7 @@ class AgentHTTPController:
             try:
                 done.result()
             except asyncio.CancelledError:
-                pass
+                quiet()
             except Exception as exc:
                 logging.warning("background chat task failed: %s", exc)
 
@@ -188,7 +197,12 @@ class AgentHTTPController:
                     self.hooks,
                     action_name,
                     case_input,
-                    lambda: self.execute_tool(action_name, case_input),
+                    # Bound as defaults: the lambda is invoked inside this
+                    # iteration today, so late binding is harmless — until
+                    # someone defers it and every case runs the last input.
+                    lambda action_name=action_name, case_input=case_input: self.execute_tool(
+                        action_name, case_input
+                    ),
                     source="eval",
                 )
                 criteria = case.get("pass_criteria", "")
@@ -470,7 +484,7 @@ class AgentHTTPController:
                 try:
                     self.run_store.delete(run_id)
                 except Exception:  # noqa: BLE001 — hygiene only
-                    pass
+                    quiet()
 
     def pending_approvals(self, request: Request) -> Dict[str, Any]:
         """Unexpired paused runs for the current user (memory ∪ disk).
@@ -525,7 +539,7 @@ class AgentHTTPController:
             try:
                 self.run_store.delete(run_id)
             except Exception:  # noqa: BLE001
-                pass
+                quiet()
             raise HTTPException(
                 status_code=410,
                 detail={
@@ -724,7 +738,7 @@ class AgentHTTPController:
                 try:
                     self.run_store.delete(req.context_id)
                 except Exception:  # noqa: BLE001
-                    pass
+                    quiet()
                 raise HTTPException(
                     status_code=404,
                     detail="Agent context not found or expired. Start a new request.",
@@ -791,7 +805,7 @@ class AgentHTTPController:
                 try:
                     self.run_store.delete(req.run_id or "")
                 except Exception:  # noqa: BLE001
-                    pass
+                    quiet()
                 raise HTTPException(
                     status_code=410,
                     detail={

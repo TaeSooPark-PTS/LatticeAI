@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Tuple
 
+from latticeai.core.quiet import quiet
 from latticeai.services.process_audit import (
     CommandConfirmationError,
     append_process_audit_event,
@@ -32,6 +33,8 @@ from latticeai.services.setup_detection import (
     detect_cuda,
     detect_tools,
     detect_wsl_from_text,
+)
+from latticeai.services.setup_detection import (
     parse_windows_video_controllers as _parse_windows_video_controllers,
 )
 
@@ -304,7 +307,7 @@ def _detect_chip() -> Dict[str, Any]:
                         brand = line.split(":", 1)[-1].strip()
                         break
             except Exception:
-                pass
+                quiet()
         name = brand or platform.processor() or "Unknown CPU"
 
     return {"name": name, "arch": arch, "is_apple_silicon": is_apple, "gen": gen}
@@ -321,7 +324,7 @@ def _detect_cpu() -> Dict[str, Any]:
             physical_cores = int(_cmd(["sysctl", "-n", "hw.physicalcpu"], timeout=5) or physical_cores)
             logical_cores = int(_cmd(["sysctl", "-n", "hw.logicalcpu"], timeout=5) or logical_cores)
         except ValueError:
-            pass
+            quiet()
     elif platform.system() == "Linux":
         try:
             text = Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace")
@@ -330,7 +333,7 @@ def _detect_cpu() -> Dict[str, Any]:
                     flags = line.split(":", 1)[-1].strip().lower().split()
                     break
         except Exception:
-            pass
+            quiet()
     elif platform.system() == "Windows":
         raw = _cmd(["wmic", "cpu", "get", "Name,NumberOfCores,NumberOfLogicalProcessors", "/format:list"], timeout=5)
         for line in raw.splitlines():
@@ -341,12 +344,12 @@ def _detect_cpu() -> Dict[str, Any]:
                 try:
                     physical_cores = int(value.strip())
                 except ValueError:
-                    pass
+                    quiet()
             elif key == "NumberOfLogicalProcessors" and value.strip():
                 try:
                     logical_cores = int(value.strip())
                 except ValueError:
-                    pass
+                    quiet()
         try:
             import ctypes
             kernel32 = ctypes.windll.kernel32
@@ -359,7 +362,7 @@ def _detect_cpu() -> Dict[str, Any]:
             }
             flags.extend(name for code, name in feature_map.items() if kernel32.IsProcessorFeaturePresent(code))
         except Exception:
-            pass
+            quiet()
     interesting = {"avx", "avx2", "avx512f", "fma", "neon", "sse4_2"}
     if platform.system() == "Windows":
         interesting.update({"sse", "sse2", "sse3", "rdrand"})
@@ -384,7 +387,7 @@ def _detect_ram_gb() -> float:
         try:
             return round(int(raw) / 1_073_741_824, 1)
         except ValueError:
-            pass
+            quiet()
     if platform.system() == "Darwin":
         profiler = _cmd(["system_profiler", "SPHardwareDataType"], timeout=8)
         m = re.search(r"Memory:\s+([\d.]+)\s*(TB|GB|MB)", profiler, re.IGNORECASE)
@@ -406,7 +409,7 @@ def _detect_ram_gb() -> float:
                 if line.startswith("MemTotal:"):
                     return round(int(line.split()[1]) / 1_048_576, 1)
     except Exception:
-        pass
+        quiet()
     return 0.0
 
 def _detect_disk_free_gb() -> float:
@@ -427,6 +430,7 @@ def _detect_gpu() -> Dict[str, Any]:
                 name, mem = [part.strip() for part in line.split(",", 1)]
                 devices.append({"vendor": "nvidia", "name": name, "vram_mb": int(float(mem)), "backend": "cuda"})
             except Exception:
+                quiet()
                 continue
 
     if platform.system() == "Windows":
@@ -492,7 +496,7 @@ def _detect_wsl() -> Dict[str, Any]:
     try:
         raw = Path("/proc/version").read_text(encoding="utf-8", errors="replace")
     except Exception:
-        pass
+        quiet()
     is_wsl, version = detect_wsl_from_text(platform.system().lower(), raw)
     return {"is_wsl": is_wsl, "version": version}
 
@@ -1243,7 +1247,7 @@ def open_url(url: str) -> None:
             command = ["os.startfile", url]
             plan = command_plan(command, name="open_url", purpose="setup_wizard_open_url")
             append_process_audit_event("setup_wizard_open_url", plan=plan, status="started")
-            os.startfile(url)  # type: ignore[attr-defined]
+            os.startfile(url)  # type: ignore[attr-defined]  # noqa: S606 — fixed program, arguments validated by the caller
             append_process_audit_event("setup_wizard_open_url", plan=plan, status="spawned")
         else:
             command = ["xdg-open", url]
@@ -1260,5 +1264,5 @@ def open_url(url: str) -> None:
                 error=str(exc),
             )
         except Exception:
-            pass
+            quiet()
         pass

@@ -4,11 +4,10 @@ import pytest
 
 from latticeai.core.model_resolution import (
     ModelResolution,
-    PrepareState,
     PrepareReport,
+    PrepareState,
 )
 from latticeai.services.model_catalog import MODEL_ENGINE_ALIASES
-
 
 ALIASES = {
     "gemma-4-12b-it-4bit": {

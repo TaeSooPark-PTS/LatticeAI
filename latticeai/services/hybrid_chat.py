@@ -14,6 +14,7 @@ from latticeai.core.network_boundary import (
     NetworkBoundaryMode,
     normalize_network_mode,
 )
+from latticeai.services.cloud_egress_audit import record_cloud_egress
 from latticeai.services.cloud_extraction import plan_kg_expansion_rich
 from latticeai.services.cloud_streaming import (
     CloudResponseIngestor,
@@ -63,9 +64,21 @@ async def run_hybrid_cloud_turn(
     budget = budget_for(_scope_key(user_email, workspace_id))
     refusal = budget.check_turn(minimal.token_estimate)
     if refusal:
+        record_cloud_egress(
+            node_ids=minimal.node_ids, token_estimate=minimal.token_estimate,
+            mode=mode.value, provider="(refused)", model=model,
+            user_email=user_email, workspace_id=workspace_id,
+            outcome="refused_token_guard", detail=refusal,
+        )
         raise PermissionError(f"cloud token guard: {refusal}")
 
-    bridge = CloudStreamingBridge(adapter=adapter or OpenAICompatibleAdapter())
+    chosen_adapter = adapter or OpenAICompatibleAdapter()
+    record_cloud_egress(
+        node_ids=minimal.node_ids, token_estimate=minimal.token_estimate,
+        mode=mode.value, provider=getattr(chosen_adapter, "name", type(chosen_adapter).__name__),
+        model=model, user_email=user_email, workspace_id=workspace_id,
+    )
+    bridge = CloudStreamingBridge(adapter=chosen_adapter)
     result = await bridge.run_turn(
         user_message=user_message,
         minimal=minimal,
@@ -133,6 +146,13 @@ async def stream_hybrid_cloud_turn(
     budget = budget_for(_scope_key(user_email, workspace_id))
     refusal = budget.check_turn(minimal.token_estimate)
     if refusal:
+        # A refusal is auditable too: "nothing left the machine, and here is why".
+        record_cloud_egress(
+            node_ids=minimal.node_ids, token_estimate=minimal.token_estimate,
+            mode=mode.value, provider="(refused)", model=model,
+            user_email=user_email, workspace_id=workspace_id,
+            outcome="refused_token_guard", detail=refusal,
+        )
         yield _sse({"type": "error", "detail": f"cloud token guard: {refusal}"})
         yield "data: [DONE]\n\n"
         return
@@ -151,6 +171,14 @@ async def stream_hybrid_cloud_turn(
 
     chosen_adapter = adapter or OpenAICompatibleAdapter()
     bridge = CloudStreamingBridge(adapter=chosen_adapter)
+
+    # Recorded before the call, not after: if the provider hangs or the process
+    # dies mid-stream, the record of what was about to leave must already exist.
+    record_cloud_egress(
+        node_ids=minimal.node_ids, token_estimate=minimal.token_estimate,
+        mode=mode.value, provider=getattr(chosen_adapter, "name", type(chosen_adapter).__name__),
+        model=model, user_email=user_email, workspace_id=workspace_id,
+    )
 
     try:
         chunks: list[str] = []

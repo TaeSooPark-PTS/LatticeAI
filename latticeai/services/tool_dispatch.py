@@ -6,9 +6,9 @@ tool-response shaping are owned outside ``server_app``.
 
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-import subprocess
 from typing import Any, Callable, Dict, Mapping, Optional
 
 from fastapi import HTTPException
@@ -30,7 +30,12 @@ from latticeai.core.permission_mode import (
 from latticeai.core.policy import role_has_capability
 from latticeai.core.tool_governor import classify_tool_call
 from latticeai.core.tool_registry import ToolPermission, ToolPolicy
-from latticeai.tools import AGENT_ROOT, DEFAULT_TOOL_REGISTRY, ToolError, ensure_agent_root
+from latticeai.tools import (
+    AGENT_ROOT,
+    DEFAULT_TOOL_REGISTRY,
+    ToolError,
+    ensure_agent_root,
+)
 
 
 def _default_load_users() -> Dict[str, Any]:

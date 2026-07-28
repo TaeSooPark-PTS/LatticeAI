@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional
 
 from latticeai.core.agent import AgentRunContext, AgentState
 from latticeai.core.agent_trace import LoopTrace
+from latticeai.core.quiet import quiet
 
 LOGGER = logging.getLogger(__name__)
 
@@ -148,7 +149,7 @@ class AgentRunStore:
                     try:
                         os.unlink(tmp_name)
                     except OSError:
-                        pass
+                        quiet()
             return True
         except Exception as exc:  # noqa: BLE001 — pause must still answer without disk
             LOGGER.warning("agent run store save failed for %s: %s", run_id, exc)
@@ -193,6 +194,7 @@ class AgentRunStore:
             try:
                 record = json.loads(path.read_text(encoding="utf-8"))
             except Exception:  # noqa: BLE001
+                quiet()
                 continue
             if not isinstance(record, dict):
                 continue
@@ -238,7 +240,7 @@ class AgentRunStore:
                     path.unlink(missing_ok=True)
                     removed += 1
                 except OSError:
-                    pass
+                    quiet()
         return removed
 
 

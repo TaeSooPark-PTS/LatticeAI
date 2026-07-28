@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-# ruff: noqa: F403,F405
+from ..quiet import quiet
+from ..sensitivity import stamp_sensitivity
 
+# ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
 
 
@@ -36,7 +38,7 @@ def _triple_edge_metadata(triple: Dict[str, Any]) -> Dict[str, Any]:
         try:
             metadata["confidence"] = round(float(confidence), 4)
         except (TypeError, ValueError):
-            pass
+            quiet()
     return metadata
 
 
@@ -270,6 +272,14 @@ class KnowledgeGraphIngestMixin:
             "extracted": {k: v for k, v in (extracted or {}).items() if k != "content"},
             "structure": doc_meta,
         }
+
+        # Stamp never-leaves at ingestion. Before 10.2.0 the cloud filter looked
+        # for these flags and nothing in the product could set them, so the
+        # guard was unreachable. Deriving it from the path means a user who
+        # indexes a project folder does not have to remember that it contains a
+        # .env — the flag is on the node before any cloud turn can select it.
+        stamp_sensitivity(metadata, source_uri or str(path))
+
         full_text = f"{filename}\n{text}"
         concepts = _extract_concepts(full_text, limit=15)
         triples = _extract_triples(full_text, concepts)

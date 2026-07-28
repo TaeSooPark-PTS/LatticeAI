@@ -1,3 +1,22 @@
+# [v10.2.0 - Load-Bearing Fixes] (2026-07-29)
+
+Answers all twelve findings of a full 10.1.1 code review (71/100). A SQLite
+connection leak across 70+ sites — `with sqlite3.connect(...)` commits but never
+closes — is fixed, which also made test coverage measurable for the first time
+(**71%**, now floored in CI). The cloud privacy guard was correct code that
+could never fire: nothing could mark a memory sensitive and the blocked-type
+list was empty; memories are now markable from the boundary panel, secret-bearing
+paths are flagged at ingestion, and credential-shaped types are blocked. Outbound
+knowledge is redacted and every send (and refusal) is audited. 112 silent
+`except: pass` handlers now log. Plus: one duplicate retrieval removed, a
+`mktemp` TOCTOU race fixed, truncating `zip` made loud, ruff widened to
+B/S/I/SIM/RET/C901 with mypy on 13 modules, and CI gained macOS + Python 3.14.
+
+See [RELEASE_NOTES_v10.2.0.md](RELEASE_NOTES_v10.2.0.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.1.1 - Reachable Boundary] (2026-07-28)
 
 10.1.0 built the hybrid path and shipped it with no way to reach it: the
@@ -143,7 +162,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.1.1**.
+This repository keeps public release history from **8.0.0 through 10.2.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

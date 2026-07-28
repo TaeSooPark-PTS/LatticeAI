@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from latticeai.core.quiet import quiet
 
 PLUGIN_SDK_VERSION = "2.2.0"
 
@@ -309,7 +310,7 @@ class PluginRegistry:
                     register_skill(skill_name, plugin_id)
                     registered_skills.append(skill_name)
                 except Exception:  # pragma: no cover - skill registration is best-effort
-                    pass
+                    quiet()
         entry = {}
         if self.store is not None:
             entry = self.store.mark_plugin_installed(
@@ -366,7 +367,7 @@ class PluginRegistry:
                 try:
                     self.store.record_timeline_event("plugins", event_type, payload, workspace_id=workspace_id)
                 except Exception:
-                    pass
+                    quiet()
 
         emit("plugin_started", {"plugin_id": plugin_id, "action": action})
 

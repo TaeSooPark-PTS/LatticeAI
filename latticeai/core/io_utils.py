@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from latticeai.core.quiet import quiet
+
 
 def atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -22,7 +24,7 @@ def atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
     except OSError:
         # Windows and unusual filesystems may not expose POSIX mode bits; the
         # atomic write is still the safest supported fallback there.
-        pass
+        quiet()
 
 
 def parse_iso(value: Optional[str]) -> Optional[datetime]:

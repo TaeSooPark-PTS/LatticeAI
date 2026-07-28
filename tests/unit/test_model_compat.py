@@ -1,16 +1,16 @@
 """Unit tests for latticeai.core.model_compat (피드백 #3)."""
 
 from latticeai.core.model_compat import (
+    classify_smoke_response,
     detect_model_family,
     ensure_profile,
     fast_postprocess,
     friendly_model_runtime_error,
-    model_runtime_compatibility,
-    validate_smoke_response,
-    classify_smoke_response,
-    record_smoke_result,
     list_cached_profiles,
+    model_runtime_compatibility,
+    record_smoke_result,
     strip_role_tokens,
+    validate_smoke_response,
 )
 
 

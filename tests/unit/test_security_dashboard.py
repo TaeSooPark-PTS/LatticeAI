@@ -1,10 +1,10 @@
 """Unit tests for latticeai.api.security_dashboard (피드백 #5)."""
 
 from latticeai.api.security_dashboard import (
+    _csv_dump,
     create_security_router,
     redact_hard_secrets,
     soft_mask,
-    _csv_dump,
 )
 
 
@@ -108,6 +108,7 @@ def test_overview_events_today_uses_configured_timezone(monkeypatch):
     """item 7 회귀 방지: events_today 가 audit timestamp 와 같은 시간대로 계산된다."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+
     from latticeai.core import timezones
 
     monkeypatch.setenv("LATTICE_TZ", "Asia/Seoul")

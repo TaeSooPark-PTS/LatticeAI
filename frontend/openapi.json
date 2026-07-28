@@ -2837,6 +2837,46 @@
         "title": "SetNetworkBoundaryRequest",
         "type": "object"
       },
+      "SetNodeSensitivityRequest": {
+        "properties": {
+          "local_only": {
+            "default": true,
+            "title": "Local Only",
+            "type": "boolean"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "SetNodeSensitivityRequest",
+        "type": "object"
+      },
       "SetPermissionModeRequest": {
         "properties": {
           "acknowledge_risk": {
@@ -4464,7 +4504,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "10.1.1"
+    "version": "10.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8903,6 +8943,46 @@
           }
         },
         "summary": "Network Boundary Catalog",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/node-sensitivity": {
+      "post": {
+        "description": "Mark one memory as never-leaving (or clear the mark).\n\nThe cloud filter has always looked for this flag. Until 10.2.0 nothing\nin the product could set it, so the guard could not fire. Ingestion\nstamps secret-bearing paths automatically; this covers what a path\ncannot tell you \u2014 a note whose *content* is private.",
+        "operationId": "set_node_sensitivity_api_network_boundary_node_sensitivity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNodeSensitivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Node Sensitivity",
         "tags": [
           "network-boundary"
         ]

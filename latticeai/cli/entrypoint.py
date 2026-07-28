@@ -21,6 +21,8 @@ from latticeai.cli.runtime import (
     _has_module,
     _load_env_file,
 )
+from latticeai.core.quiet import quiet
+
 
 def _local_ips() -> list[str]:
     ips: list[str] = []
@@ -32,7 +34,7 @@ def _local_ips() -> list[str]:
                 if addr not in ips:
                     ips.append(addr)
     except Exception:
-        pass
+        quiet()
     if not ips:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -40,7 +42,7 @@ def _local_ips() -> list[str]:
             ips.append(s.getsockname()[0])
             s.close()
         except Exception:
-            pass
+            quiet()
     return ips
 
 
@@ -145,7 +147,7 @@ def _send_telegram(token: str, chat_id: str, text: str) -> None:
         )
         urllib.request.urlopen(req, timeout=10)
     except Exception:
-        pass
+        quiet()
 
 
 def _start_tunnel(port: int) -> str | None:
@@ -178,7 +180,7 @@ def _start_tunnel(port: int) -> str | None:
                 url = m.group(0)
                 break
         except Exception:
-            pass
+            quiet()
 
     if not url:
         return None

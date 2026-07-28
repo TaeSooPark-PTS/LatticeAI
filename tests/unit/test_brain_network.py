@@ -11,12 +11,12 @@ import time
 
 import pytest
 
-from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.graph.identity import DeviceIdentity
 from lattice_brain.graph.network import (
     HEADER_TIMESTAMP,
     BrainNetwork,
 )
+from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.portability import KGPortabilityService
 
 

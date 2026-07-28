@@ -68,7 +68,7 @@ def build_history_query_runtime(
         grouped: Dict[str, Dict] = {}
         order: List[str] = []
 
-        for index, item in enumerate(history):
+        for index, item in enumerate(history):  # noqa: B007 — index documents the enumerate contract for readers
             conv_id = item.get("conversation_id")
             if not conv_id:
                 conv_id = "legacy-previous-history"

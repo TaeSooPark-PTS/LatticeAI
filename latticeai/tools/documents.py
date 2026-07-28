@@ -5,17 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
+from latticeai.core.quiet import quiet
 from latticeai.tools import (
-    ToolError,
-    _resolve_path,
-    _relative,
-    DOCUMENT_OUTPUT_DIR,
-    PRESENTATION_OUTPUT_DIR,
-    SPREADSHEET_OUTPUT_DIR,
-    PDF_OUTPUT_DIR,
-    DOCUMENT_MAX_READ_BYTES,
     _CJK_FONT_CANDIDATES,
     _SUPPORTED_READ_EXTENSIONS,
+    DOCUMENT_MAX_READ_BYTES,
+    DOCUMENT_OUTPUT_DIR,
+    PDF_OUTPUT_DIR,
+    PRESENTATION_OUTPUT_DIR,
+    SPREADSHEET_OUTPUT_DIR,
+    ToolError,
+    _relative,
+    _resolve_path,
 )
 
 
@@ -117,9 +118,9 @@ def create_pdf(title: str, body, filename: str = "document.pdf") -> Dict[str, An
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
     except Exception as exc:
         raise ToolError("reportlab is not installed. Run `pip install reportlab`.") from exc
 
@@ -135,7 +136,7 @@ def create_pdf(title: str, body, filename: str = "document.pdf") -> Dict[str, An
                 pdfmetrics.registerFont(TTFont("KoreanFont", font_path))
                 font_name = "KoreanFont"
             except Exception:
-                pass
+                quiet()
             break
 
     title_style = ParagraphStyle("Title", fontName=font_name, fontSize=18, spaceAfter=8, leading=24)

@@ -8,6 +8,7 @@ the machine when NetworkBoundaryMode is CLOUD_ALLOWED.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, Sequence
 
@@ -16,6 +17,9 @@ from latticeai.core.network_boundary import (
     is_node_blocked_for_cloud,
     normalize_network_mode,
 )
+from latticeai.core.security import redact_secret_text
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -142,22 +146,14 @@ def build_minimal_context(
         )
     )
 
-    # Prefer the richer hybrid path when available.
+    # One retrieval, not two. This used to call
+    # ``context_for_query_with_meta`` first — a full retrieval — and throw away
+    # everything but its ``quality`` dict, then run ``hybrid_search`` for the
+    # matches it actually needed. Every cloud turn paid for retrieval twice.
+    # ``context_quality_signal`` derives the same signal from the match list we
+    # already have.
     matches: List[Dict[str, Any]] = []
     quality: Dict[str, Any] = {}
-    try:
-        meta = store.context_for_query_with_meta(
-            query,
-            limit=max(top_k * 2, top_k),
-            allowed_workspaces=allowed_workspaces,
-            include_legacy_global=include_legacy_global,
-            use_hybrid=True,
-        )
-        # context_for_query_with_meta returns context string + quality;
-        # we still need the actual match list, so fall back to hybrid_search.
-        quality = dict(meta.get("quality") or {})
-    except Exception:  # noqa: BLE001
-        quality = {}
 
     try:
         hybrid = store.hybrid_search(
@@ -167,14 +163,16 @@ def build_minimal_context(
             include_legacy_global=include_legacy_global,
         )
         matches = list(hybrid.get("matches") or [])
-        if not quality:
-            from lattice_brain.graph.retrieval import context_quality_signal
+        from lattice_brain.graph.retrieval import context_quality_signal
 
-            quality = context_quality_signal(
-                str(hybrid.get("mode") or "hybrid"),
-                len(matches),
-            )
+        quality = context_quality_signal(
+            str(hybrid.get("mode") or "hybrid"),
+            len(matches),
+        )
     except Exception:  # noqa: BLE001
+        # Fail closed: an unusable retrieval sends nothing rather than
+        # falling back to a broader, unfiltered context.
+        logger.warning("hybrid context retrieval failed; sending no context", exc_info=True)
         matches = []
 
     # Filter blocked + prefer useful types, then cut to top_k.
@@ -206,7 +204,12 @@ def build_minimal_context(
         ntype = str(match.get("type") or "Node")
         lines.append(f"- [{ntype}] {title}: {summary}".rstrip(": "))
 
-    compact = "\n".join(lines)
+    # Last gate before the text can leave the machine. `redact_secret_text` was
+    # already applied to logs, audit records, and API previews — everywhere
+    # except the one path where bytes actually go to a third party. A token
+    # pasted into a note is not marked sensitive by anyone, so pattern
+    # redaction is the only thing standing between it and the provider.
+    compact = redact_secret_text("\n".join(lines))
     return MinimalContext(
         query=query,
         keywords=keywords,

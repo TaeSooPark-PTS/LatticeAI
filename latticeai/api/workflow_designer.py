@@ -75,10 +75,10 @@ def create_workflow_designer_router(
     from lattice_brain.workflow import (
         WorkflowEngine,
         WorkflowError,
-        validate_definition,
         export_workflow,
         import_workflow,
         legacy_steps_from_nodes,
+        validate_definition,
     )
 
     router = APIRouter()

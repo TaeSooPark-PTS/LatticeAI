@@ -712,6 +712,16 @@ export const latticeApi = {
     post<{ mode: string }>("/api/network-boundary", {
       mode, acknowledge_risk: acknowledgeRisk,
     }, { mode: "local_only" }),
+  // Marking one memory as never-leaving. The cloud filter has always looked
+  // for this flag; before 10.2.0 nothing could set it, so the guard could not
+  // fire. Ingestion stamps secret-bearing paths; this covers content a path
+  // cannot reveal.
+  setNodeSensitivity: (nodeId: string, localOnly: boolean, reason?: string) =>
+    post<{ ok: boolean; node_id: string; local_only: boolean }>(
+      "/api/network-boundary/node-sensitivity",
+      { node_id: nodeId, local_only: localOnly, reason },
+      { ok: false, node_id: nodeId, local_only: localOnly },
+    ),
   setHybridPolicy: (patch: Partial<HybridPolicy>) =>
     post<HybridPolicy>("/api/network-boundary/policy", patch, {} as HybridPolicy),
   previewCloudContext: (message: string, topK = 6) =>

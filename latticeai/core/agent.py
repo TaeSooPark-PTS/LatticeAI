@@ -26,34 +26,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional, Tuple
 
+from lattice_brain.runtime.contracts import (
+    runtime_boundary_contract,
+    single_agent_contract,
+)
 from lattice_brain.runtime.hooks import dispatch_tool
-from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
-from latticeai.core.agent_permission import (
-    block_reason_for_tool,
-    non_auto_plan_steps,
-    resolve_deps_mode,
-)
-from latticeai.core.agent_profiles import AgentProfile, profile_for_model
-from latticeai.core.agent_trace import LoopTrace
-from latticeai.core.permission_mode import (
-    PermissionMode,
-    is_circuit_breaker,
-    plan_requires_approval,
-    should_stage_proposal,
-)
-from latticeai.core.file_generation import (
-    generate_file_content,
-    infer_file_target,
-    sanitize_write_content,
-)
-from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
-from latticeai.tools import ToolError
-
-# The state vocabulary and the pure helpers live in sibling modules so this one
-# holds only the loop. They are re-exported (see ``__all__``) because callers —
-# the HTTP layer, run_store, the eval harness, and the tests — have always
-# imported them from here, and that contract does not change.
-from latticeai.core.agent_state import AGENT_TERMINAL_STATES, AgentState
 from latticeai.core.agent_helpers import (
     PhaseBudgets,
     TranscriptBudget,
@@ -69,6 +46,32 @@ from latticeai.core.agent_helpers import (
     normalize_plan,
     requirement_coverage,
 )
+from latticeai.core.agent_permission import (
+    block_reason_for_tool,
+    non_auto_plan_steps,
+    resolve_deps_mode,
+)
+from latticeai.core.agent_profiles import AgentProfile, profile_for_model
+
+# The state vocabulary and the pure helpers live in sibling modules so this one
+# holds only the loop. They are re-exported (see ``__all__``) because callers —
+# the HTTP layer, run_store, the eval harness, and the tests — have always
+# imported them from here, and that contract does not change.
+from latticeai.core.agent_state import AGENT_TERMINAL_STATES, AgentState
+from latticeai.core.agent_trace import LoopTrace
+from latticeai.core.file_generation import (
+    generate_file_content,
+    infer_file_target,
+    sanitize_write_content,
+)
+from latticeai.core.permission_mode import (
+    PermissionMode,
+    is_circuit_breaker,
+    plan_requires_approval,
+    should_stage_proposal,
+)
+from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
+from latticeai.tools import ToolError
 
 __all__ = [
     # this module

@@ -47,6 +47,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from latticeai.core.quiet import quiet
 from latticeai.services.process_audit import (
     CommandConfirmationError,
     append_process_audit_event,
@@ -58,6 +59,8 @@ from latticeai.services.setup_detection import (
     detect_cuda,
     detect_tools,
     detect_wsl_from_text,
+)
+from latticeai.services.setup_detection import (
     parse_windows_video_controllers as _parse_windows_video_controllers,
 )
 
@@ -177,7 +180,7 @@ def _detect_gpu(prof_os: str, arch: str) -> GPUInfo:
                 gpu.vram_mb = int(float(mem))
                 gpu.sdk.append("cuda")
             except ValueError:
-                pass
+                quiet()
 
     # Apple Silicon / Metal
     if prof_os == "darwin":
@@ -268,7 +271,7 @@ def _detect_cpu_details(prof_os: str) -> Tuple[str, int, int, List[str]]:
             physical = int((_run(["sysctl", "-n", "hw.physicalcpu"]).strip() or physical))
             logical = int((_run(["sysctl", "-n", "hw.logicalcpu"]).strip() or logical))
         except ValueError:
-            pass
+            quiet()
         flags = [item.lower() for item in _run(["sysctl", "-n", "machdep.cpu.features"]).split()]
     elif prof_os == "linux":
         text = _read_text("/proc/cpuinfo")
@@ -287,19 +290,19 @@ def _detect_cpu_details(prof_os: str) -> Tuple[str, int, int, List[str]]:
                 try:
                     physical = int(value.strip())
                 except ValueError:
-                    pass
+                    quiet()
             elif key == "NumberOfLogicalProcessors" and value.strip():
                 try:
                     logical = int(value.strip())
                 except ValueError:
-                    pass
+                    quiet()
         try:
             import ctypes
             kernel32 = ctypes.windll.kernel32
             feature_map = {6: "sse", 10: "sse2", 13: "sse3", 19: "neon", 28: "rdrand"}
             flags.extend(name for code, name in feature_map.items() if kernel32.IsProcessorFeaturePresent(code))
         except Exception:
-            pass
+            quiet()
     interesting = {"avx", "avx2", "avx512f", "fma", "neon", "sse4_2", "sse", "sse2", "sse3", "rdrand"}
     return model, physical, logical, sorted({flag for flag in flags if flag in interesting})
 
@@ -368,14 +371,14 @@ def probe() -> SystemProfile:
                     prof.ram_mb = int(line.split("=", 1)[-1].strip()) // (1024 * 1024)
                     break
     except Exception:
-        pass
+        quiet()
 
     # Disk
     try:
         usage = shutil.disk_usage(Path.home())
         prof.disk_free_mb = usage.free // (1024 * 1024)
     except Exception:
-        pass
+        quiet()
 
     prof.gpu = _detect_gpu(prof.os, prof.arch)
     prof.package_manager = _detect_package_manager(prof.os)

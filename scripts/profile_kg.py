@@ -51,7 +51,6 @@ if str(ROOT) not in sys.path:
 
 from lattice_brain.graph.store import KnowledgeGraphStore  # noqa: E402
 
-
 # ── Synthetic corpus ─────────────────────────────────────────────────────────
 # Recurring entities so concept nodes are shared across documents and edges
 # actually form; a Korean slice exercises the FTS5 trigram path.
@@ -60,11 +59,7 @@ ENTITIES = [
     "Telegram", "MLX", "Embedding", "Pipeline", "Workspace", "Provenance",
     "Scheduler", "Retrieval", "Ingestion", "Router", "Registry", "Backup",
 ]
-FILLER = (
-    "the service processes requests and stores results in the database "
-    "while the worker retries failed jobs and reports metrics to the "
-    "dashboard for the on-call engineer to review during the incident "
-).split()
+FILLER = ["the", "service", "processes", "requests", "and", "stores", "results", "in", "the", "database", "while", "the", "worker", "retries", "failed", "jobs", "and", "reports", "metrics", "to", "the", "dashboard", "for", "the", "on-call", "engineer", "to", "review", "during", "the", "incident"]
 KOREAN = ["프로젝트", "일정", "회의", "결정", "지식그래프", "검색", "성능", "메모리"]
 
 
@@ -134,7 +129,7 @@ def run_profile(
     db_path: Optional[Path],
     seed: int = 42,
 ) -> Dict[str, Any]:
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311 — synthetic profiling data, not a secret
     tmp_ctx = None
     if db_path is None:
         tmp_ctx = tempfile.TemporaryDirectory(prefix="ltcai-profile-kg-")

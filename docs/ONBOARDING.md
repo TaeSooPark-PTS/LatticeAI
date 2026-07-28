@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.1.1 — Reachable Boundary**.
+Current release: **10.2.0 — Load-Bearing Fixes**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

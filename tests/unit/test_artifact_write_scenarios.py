@@ -29,7 +29,6 @@ from latticeai.core.file_generation import (
 from latticeai.services.tool_dispatch import collect_artifacts
 from latticeai.tools import filesystem
 
-
 # ── FG-01: explicit filename wins ───────────────────────────────────────
 
 def test_fg01_explicit_html_filename_is_the_target():

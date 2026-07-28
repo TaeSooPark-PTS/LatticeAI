@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from latticeai.core.tool_registry import TOOL_CATALOG_BRIEF
 
-
 PLANNER_PROMPT = """You are the PLANNER role in Lattice AI's multi-role agent harness.
 Your ONLY job: analyze the request and produce a structured execution plan.
 You do NOT call tools or write code.

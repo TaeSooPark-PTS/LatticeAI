@@ -31,6 +31,8 @@ import json
 import re
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
+from latticeai.core.quiet import quiet
+
 # ── extraction ──────────────────────────────────────────────────────────
 
 _THINK_BLOCK_RE = re.compile(
@@ -171,6 +173,7 @@ def _slice_json_document(content: str) -> Optional[str]:
         try:
             json.loads(candidate)
         except (ValueError, TypeError):
+            quiet()
             continue
         if best is None or len(candidate) > len(best):
             best = candidate

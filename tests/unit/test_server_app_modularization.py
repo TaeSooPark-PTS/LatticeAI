@@ -41,8 +41,8 @@ def test_no_import_cycle_for_routers_and_services():
 
 
 def test_router_factories_present():
-    from latticeai.api.workspace import create_workspace_router
     from latticeai.api.health import create_health_router
+    from latticeai.api.workspace import create_workspace_router
 
     assert callable(create_workspace_router)
     assert callable(create_health_router)

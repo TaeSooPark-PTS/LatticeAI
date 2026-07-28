@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from latticeai.core.network_boundary import network_mode_catalog, normalize_network_mode
+from latticeai.services.cloud_egress_audit import record_cloud_egress
 from latticeai.services.cloud_token_guard import budget_for
 from latticeai.services.hybrid_context import build_minimal_context
 from latticeai.services.hybrid_policy import HybridPolicyService
@@ -24,6 +25,13 @@ class PreviewRequest(BaseModel):
     message: str
     workspace_id: Optional[str] = None
     top_k: int = 6
+
+
+class SetNodeSensitivityRequest(BaseModel):
+    node_id: str
+    local_only: bool = True
+    reason: Optional[str] = None
+    workspace_id: Optional[str] = None
 
 
 class SetHybridPolicyRequest(BaseModel):
@@ -145,6 +153,31 @@ def create_network_boundary_router(
             "would_block": refusal,
         }
 
+    @router.post("/api/network-boundary/node-sensitivity")
+    async def set_node_sensitivity(body: SetNodeSensitivityRequest, request: Request):
+        """Mark one memory as never-leaving (or clear the mark).
+
+        The cloud filter has always looked for this flag. Until 10.2.0 nothing
+        in the product could set it, so the guard could not fire. Ingestion
+        stamps secret-bearing paths automatically; this covers what a path
+        cannot tell you — a note whose *content* is private.
+        """
+        user, scope = _scope(request, body.workspace_id)
+        if knowledge_graph is None or not hasattr(knowledge_graph, "set_node_sensitivity"):
+            raise HTTPException(status_code=501, detail="knowledge graph not available")
+        result = knowledge_graph.set_node_sensitivity(
+            body.node_id, local_only=bool(body.local_only), reason=body.reason
+        )
+        if not result.get("ok"):
+            raise HTTPException(status_code=404, detail=result.get("reason") or "node not found")
+        record_cloud_egress(
+            node_ids=[body.node_id], token_estimate=0, mode="(policy)",
+            provider="(local)", user_email=user, workspace_id=scope,
+            outcome="marked_local_only" if body.local_only else "cleared_local_only",
+            detail=body.reason,
+        )
+        return result
+
     @router.get("/api/network-boundary/policy")
     async def get_hybrid_policy(
         request: Request,
@@ -183,4 +216,5 @@ __all__ = [
     "SetNetworkBoundaryRequest",
     "PreviewRequest",
     "SetHybridPolicyRequest",
+    "SetNodeSensitivityRequest",
 ]

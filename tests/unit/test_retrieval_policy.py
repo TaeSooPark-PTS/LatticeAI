@@ -24,7 +24,6 @@ from lattice_brain.graph.retrieval_policy import (
     rewrite_query,
 )
 
-
 # ── rewrite_query ────────────────────────────────────────────────────────────
 
 

@@ -18,7 +18,9 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from latticeai.core.quiet import quiet
 from latticeai.runtime.access_runtime import build_access_runtime
+from latticeai.runtime.audit_runtime import build_audit_runtime
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.chat_wiring import (
@@ -28,38 +30,37 @@ from latticeai.runtime.chat_wiring import (
 )
 from latticeai.runtime.config_runtime import build_config_runtime
 from latticeai.runtime.context_runtime import build_context_runtime
+from latticeai.runtime.history_runtime import build_history_query_runtime
 from latticeai.runtime.hooks_runtime import (
     bind_builtin_hook_runners,
     bind_trigger_hook_runner,
     build_hooks_runtime,
 )
-from latticeai.runtime.history_runtime import build_history_query_runtime
 from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
-from latticeai.runtime.network_config_runtime import build_vpc_runtime
 from latticeai.runtime.model_wiring import (
     configure_model_runtime_from_context,
     register_model_runtime_routers,
 )
 from latticeai.runtime.namespace_runtime import RuntimeBundle, build_runtime_namespace
+from latticeai.runtime.network_config_runtime import build_vpc_runtime
+from latticeai.runtime.persistence_runtime import build_persistence_runtime
+from latticeai.runtime.platform_runtime_wiring import build_platform_automation_runtime
 from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
 )
-from latticeai.runtime.platform_runtime_wiring import build_platform_automation_runtime
-from latticeai.runtime.persistence_runtime import build_persistence_runtime
 from latticeai.runtime.review_wiring import build_review_run_now_runner
-from latticeai.runtime.sso_config_runtime import build_sso_config_runtime
-from latticeai.runtime.audit_runtime import build_audit_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
     build_router_bundle,
     build_static_routes_bundle,
-    register_health_and_model_routers,
     register_foundation_routers,
+    register_health_and_model_routers,
     register_interaction_routers,
     register_platform_feature_routers,
     register_review_and_brain_tail_routers,
 )
 from latticeai.runtime.security_runtime import build_security_runtime
+from latticeai.runtime.sso_config_runtime import build_sso_config_runtime
 from latticeai.runtime.user_key_runtime import build_user_key_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 
@@ -92,47 +93,120 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from fastapi import HTTPException, Request
     from pydantic import BaseModel
 
-    from latticeai.models.router import LLMRouter, normalize_branding
     from lattice_brain.graph.runtime import set_llm_router
     from lattice_brain.graph.schema import set_embed_dim
-    from latticeai.core.security import (
-        hash_password,
-        verify_password,
-        host_is_loopback as _host_is_loopback_impl,
-        client_ip as _client_ip_impl,
-        bytes_match_extension as _bytes_match_extension_impl,
-        redact_secret_text as _redact_secret_text,
-        check_ip_rate_limit as _check_ip_rate_limit,
-        enforce_rate_limit as _enforce_rate_limit,
+    from lattice_brain.ingestion import IngestionItem
+    from lattice_brain.storage import storage_from_env
+    from latticeai.api.admin import create_admin_router
+    from latticeai.api.agent_registry import create_agent_registry_router
+    from latticeai.api.agents import create_agents_router
+    from latticeai.api.auth import create_auth_router
+    from latticeai.api.automation_intelligence import (
+        create_automation_intelligence_router,
+    )
+    from latticeai.api.brain_intelligence import create_brain_intelligence_router
+    from latticeai.api.browser import create_browser_router
+    from latticeai.api.change_proposals import create_change_proposals_router
+    from latticeai.api.chat import build_recent_chat_context, create_chat_router
+    from latticeai.api.command_center import create_command_center_router
+    from latticeai.api.garden import create_garden_router
+    from latticeai.api.health import create_health_router
+    from latticeai.api.hooks import create_hooks_router
+    from latticeai.api.invitations import create_invitations_router
+    from latticeai.api.marketplace import create_marketplace_router
+    from latticeai.api.memory import create_memory_router
+    from latticeai.api.models import create_models_router
+    from latticeai.api.network import create_network_router
+
+    # ── v2 Agentic Workspace Platform layers ─────────────────────────────────────
+    from latticeai.api.plugins import create_plugins_router
+    from latticeai.api.portability import create_portability_router
+    from latticeai.api.realtime import create_realtime_router
+    from latticeai.api.search import create_search_router
+    from latticeai.api.security_dashboard import (
+        create_security_router as _create_security_router,
+    )
+    from latticeai.api.setup import create_setup_router
+    from latticeai.api.static_routes import create_static_routes_router
+    from latticeai.api.tools import create_tools_router
+    from latticeai.api.workflow_designer import create_workflow_designer_router
+    from latticeai.api.workspace import (
+        _workspace_scope_from_request,
+        create_workspace_router,
+    )
+    from latticeai.core.audit import (
+        build_admin_audit_report as _build_admin_audit_report,
+    )
+    from latticeai.core.audit import (
+        build_sensitivity_report as _build_sensitivity_report,
+    )
+    from latticeai.core.audit import (
+        classify_sensitive_message as _classify_sensitive_message,
     )
     from latticeai.core.audit import (
         get_audit_log as _get_audit_log,  # noqa: F401 - explicit legacy server_app export
-        classify_sensitive_message as _classify_sensitive_message,
-        build_sensitivity_report as _build_sensitivity_report,
-        build_admin_audit_report as _build_admin_audit_report,
     )
-    from latticeai.api.auth import create_auth_router
-    from latticeai.api.admin import create_admin_router
-    from latticeai.api.security_dashboard import create_security_router as _create_security_router
-    from latticeai.core.model_compat import list_cached_profiles as _list_compat_profiles
-    from latticeai.core.workspace_os import (
-        WORKSPACE_OS_VERSION,
-        remove_skill_directory,
+    from latticeai.core.embedding_providers import (
+        resolve_embedder,
+        resolve_embedding_profile,
     )
     from latticeai.core.enterprise import (
         capability_registry,
     )
+    from latticeai.core.mcp_registry import (
+        SKILLS_DIR,
+        _fetch_skills_marketplace,
+        create_mcp_install_state,
+        install_skill,
+    )
+    from latticeai.core.model_compat import (
+        list_cached_profiles as _list_compat_profiles,
+    )
     from latticeai.core.policy import policy_matrix
+    from latticeai.core.product_hardening import build_product_hardening_status
+    from latticeai.core.security import (
+        bytes_match_extension as _bytes_match_extension_impl,
+    )
+    from latticeai.core.security import (
+        check_ip_rate_limit as _check_ip_rate_limit,
+    )
+    from latticeai.core.security import (
+        client_ip as _client_ip_impl,
+    )
+    from latticeai.core.security import (
+        enforce_rate_limit as _enforce_rate_limit,
+    )
+    from latticeai.core.security import (
+        hash_password,
+        verify_password,
+    )
+    from latticeai.core.security import (
+        host_is_loopback as _host_is_loopback_impl,
+    )
+    from latticeai.core.security import (
+        redact_secret_text as _redact_secret_text,
+    )
+    from latticeai.core.tool_registry import (
+        TOOL_CATALOG_BRIEF as _TOOL_CATALOG_BRIEF,  # noqa: F401
+    )
     from latticeai.core.users import (
         ensure_user_identity,
         load_users_file,
         migrate_knowledge_graph_identity,
         save_users_file,
+    )
+    from latticeai.core.users import (
         user_id_for_email as _user_id_for_email,
     )
-    from latticeai.services.chat_service import ChatService
+    from latticeai.core.workspace_os import (
+        WORKSPACE_OS_VERSION,
+        remove_skill_directory,
+    )
+    from latticeai.models.router import LLMRouter, normalize_branding
     from latticeai.services.app_context import AppContext
-    from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
+    from latticeai.services.change_proposals import ChangeProposalService
+    from latticeai.services.chat_service import ChatService
+    from latticeai.services.command_center import CommandCenterService
     from latticeai.services.model_runtime import (
         CLOUD_VERIFY_TTL_SECONDS,
         ENGINE_MODEL_CATALOG,
@@ -140,68 +214,44 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         MODEL_ENGINE_ALIASES,
         build_model_runtime,
         download_hf_model,
+        ensure_ollama_server,
         filter_lower_family_versions,
         local_binary,
         normalize_local_model_request,
         sse_event,
-        ensure_ollama_server,
     )
-    from latticeai.api.workspace import create_workspace_router, _workspace_scope_from_request
-    from latticeai.api.health import create_health_router
-    # ── v2 Agentic Workspace Platform layers ─────────────────────────────────────
-    from latticeai.api.plugins import create_plugins_router
-    from latticeai.api.workflow_designer import create_workflow_designer_router
-    from latticeai.api.agents import create_agents_router
-    from latticeai.api.realtime import create_realtime_router
-    from latticeai.api.invitations import create_invitations_router
-    from latticeai.api.marketplace import create_marketplace_router
-    from latticeai.api.models import create_models_router
-    from latticeai.api.chat import build_recent_chat_context, create_chat_router
-    from latticeai.api.search import create_search_router
-    from latticeai.api.tools import create_tools_router
-    from latticeai.api.static_routes import create_static_routes_router
-    from latticeai.api.garden import create_garden_router
-    from latticeai.api.setup import create_setup_router
-    from latticeai.api.hooks import create_hooks_router
-    from latticeai.core.product_hardening import build_product_hardening_status
-    from latticeai.api.agent_registry import create_agent_registry_router
-    from latticeai.api.automation_intelligence import create_automation_intelligence_router
-    from latticeai.api.brain_intelligence import create_brain_intelligence_router
-    from latticeai.api.command_center import create_command_center_router
-    from latticeai.services.command_center import CommandCenterService
-    from latticeai.api.change_proposals import create_change_proposals_router
-    from latticeai.services.change_proposals import ChangeProposalService
-    from latticeai.tools import resolve_workspace_path
-    from latticeai.api.memory import create_memory_router
-    from latticeai.api.browser import create_browser_router
-    from latticeai.api.portability import create_portability_router
-    from lattice_brain.ingestion import IngestionItem
-    from lattice_brain.storage import storage_from_env
-    from latticeai.api.network import create_network_router
+    from latticeai.services.p_reinforce import PReinforceGardener
+
     # The aliased names below form the explicit, allowlisted compatibility
     # surface consumed by historical ``server_app`` callers.
     from latticeai.services.tool_dispatch import (  # noqa: F401
         LOCAL_WRITE_BLOCKED_PREFIXES as _LOCAL_WRITE_BLOCKED_PREFIXES,
+    )
+    from latticeai.services.tool_dispatch import (
         TOOL_GOVERNANCE,
-        TOOL_GOVERNANCE_DEFAULT as _TOOL_GOVERNANCE_DEFAULT,
-        agent_risk as _agent_risk,
-        check_tool_role as _check_tool_role,
+        build_agent_runtime,
         configure_tool_dispatch,
         get_tool_permission,
-        list_tool_permissions,
-        build_agent_runtime,
+    )
+    from latticeai.services.tool_dispatch import (
+        TOOL_GOVERNANCE_DEFAULT as _TOOL_GOVERNANCE_DEFAULT,
+    )
+    from latticeai.services.tool_dispatch import (
+        agent_risk as _agent_risk,
+    )
+    from latticeai.services.tool_dispatch import (
+        check_tool_role as _check_tool_role,
+    )
+    from latticeai.services.tool_dispatch import (
         tool_response as _tool_response,
     )
-    from latticeai.core.tool_registry import TOOL_CATALOG_BRIEF as _TOOL_CATALOG_BRIEF  # noqa: F401
-    from latticeai.core.mcp_registry import (
-        _fetch_skills_marketplace,
-        install_skill,
-        SKILLS_DIR,
-        create_mcp_install_state,
-    )
-    from latticeai.services.p_reinforce import PReinforceGardener
     from latticeai.setup.wizard import get_recommendations, scan_environment
-    from latticeai.tools import ensure_agent_root, execute_tool, knowledge_save
+    from latticeai.tools import (
+        ensure_agent_root,
+        execute_tool,
+        knowledge_save,
+        resolve_workspace_path,
+    )
 
     try:
         import keyring
@@ -302,7 +352,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     try:
         DATA_DIR.chmod(0o700)
     except OSError:
-        pass
+        quiet()
     STATIC_DIR = CONFIG.static_dir
 
     USERS_FILE = DATA_DIR / "users.json"
@@ -649,7 +699,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
                 graph_stats = KNOWLEDGE_GRAPH.stats()
         except Exception:
-            pass
+            quiet()
         return _build_admin_audit_report(
             AUDIT_FILE, users,
             get_user_role=get_user_role,
@@ -1135,7 +1185,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── Chat / Completion ──────────────────────────────────────────────────────────
 
     def _embedding_info() -> dict:
-        from latticeai.core.embedding_providers import PROVIDER_TYPES, embedding_provider_profiles
+        from latticeai.core.embedding_providers import (
+            PROVIDER_TYPES,
+            embedding_provider_profiles,
+        )
         info = EMBEDDER.as_dict()
         info["available_providers"] = list(PROVIDER_TYPES)
         info["profile"] = CONFIG.embedding_profile or ""

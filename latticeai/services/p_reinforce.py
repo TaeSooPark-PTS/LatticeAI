@@ -17,6 +17,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from latticeai.core.quiet import quiet
+
 BRAIN_DIR = Path(
     os.getenv("LATTICEAI_OBSIDIAN_VAULT_DIR")
     or os.getenv("LATTICEAI_BRAIN_DIR")
@@ -213,6 +215,7 @@ class PReinforceGardener:
                             "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
                         })
                     except OSError:
+                        quiet()
                         continue
             folders.append({"name": folder, "description": desc, "files": files, "count": len(files)})
         return {"root": str(BRAIN_DIR), "folders": folders}
@@ -273,5 +276,6 @@ class PReinforceGardener:
                     if len(results) >= limit:
                         break
             except Exception:
+                quiet()
                 continue
         return "\n\n".join(results)

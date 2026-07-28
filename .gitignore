@@ -74,3 +74,8 @@ USER.md
 memory/
 bin/pts-grok
 scripts/launch-pts-grok.sh
+
+# Coverage data (measurable from 10.2.0; the report is a CI gate, not an artifact)
+.coverage
+.coverage.*
+htmlcov/

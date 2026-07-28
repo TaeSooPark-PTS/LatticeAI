@@ -20,7 +20,6 @@ from latticeai.core.agent import (
     files_written,
 )
 
-
 FILE_CREATE = frozenset({"write_file"})
 
 

@@ -16,6 +16,7 @@ from lattice_brain.runtime.statuses import (
     RUN_ACTIVE_STATUSES as ACTIVE_STATUSES,
 )
 from lattice_brain.workflow import WorkflowEngine
+from latticeai.core.quiet import quiet
 from latticeai.core.timeutil import now_iso as _now
 
 
@@ -144,7 +145,7 @@ class RunExecutor:
             try:
                 self.append_audit_event("agent_run_failed", user_email=user_email, run_id=run_id, error=str(exc))
             except Exception:
-                pass
+                quiet()
         finally:
             self._handles.pop(run_id, None)
 
@@ -299,7 +300,7 @@ class RunExecutor:
                 workspace_id=workspace_id,
             )
         except Exception:
-            pass
+            quiet()
 
     def _execute_workflow_sync(
         self,

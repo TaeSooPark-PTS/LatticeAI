@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from latticeai.api.chat import pair_user_history
 from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator
+from latticeai.api.chat import pair_user_history
 from latticeai.core.workspace_os import WorkspaceOSStore
 from latticeai.services.memory_service import MemoryService
 from latticeai.services.workspace_service import WorkspaceService

@@ -17,17 +17,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from lattice_brain.ingestion import IngestionItem
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 import latticeai.core.mcp_registry as mcp_registry
+from lattice_brain.ingestion import IngestionItem
 from latticeai.core.mcp_registry import (
-    _get_combined_registry,
-    _fetch_skills_marketplace,
-    _fetch_plugin_directory,
-    install_skill,
     SKILLS_DIR,
+    _fetch_plugin_directory,
+    _fetch_skills_marketplace,
+    _get_combined_registry,
+    install_skill,
 )
 from latticeai.core.tool_registry import (
     KNOWLEDGE_WRITE_TOOLS,

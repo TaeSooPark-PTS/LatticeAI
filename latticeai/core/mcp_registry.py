@@ -17,7 +17,6 @@ import httpx
 from fastapi import HTTPException
 
 # ── MCP Registry (built-in tool definitions) ─────────────────────────────────
-
 # Built-in MCP server catalog data → .mcp_catalog (re-exported).
 from .mcp_catalog import MCP_REGISTRY  # noqa: F401
 

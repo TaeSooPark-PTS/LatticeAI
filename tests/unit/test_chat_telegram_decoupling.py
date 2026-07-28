@@ -18,8 +18,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import latticeai.tools as tools_module
 import latticeai.api.chat as chat_module
+import latticeai.tools as tools_module
 from latticeai.api.chat import create_chat_router
 from latticeai.core.agent import AgentState
 from latticeai.services.app_context import AppContext

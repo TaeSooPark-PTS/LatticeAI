@@ -8,7 +8,12 @@ mutations of existing files become review proposals instead of writes.
 
 import asyncio
 
-from latticeai.core.agent import AgentDeps, AgentRunContext, AgentState, SingleAgentRuntime
+from latticeai.core.agent import (
+    AgentDeps,
+    AgentRunContext,
+    AgentState,
+    SingleAgentRuntime,
+)
 from latticeai.core.tool_governor import classify_tool_call
 from latticeai.services.change_proposals import ChangeProposalService
 

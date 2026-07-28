@@ -15,7 +15,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from lattice_brain.graph.schema import EdgeType, NodeType
 
-
 NEW_NODE_TYPES = ["SOURCE", "REPOSITORY", "MEETING", "ORGANIZATION", "WORKFLOW", "AGENT"]
 NEW_EDGE_TYPES = [
     "INDEXED_FROM", "MODIFIED_BY", "BELONGS_TO_PROJECT", "PART_OF",

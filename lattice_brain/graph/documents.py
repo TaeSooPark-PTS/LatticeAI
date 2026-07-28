@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-# ruff: noqa: F403,F405
+from ..quiet import quiet
 
+# ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
 
 
@@ -287,7 +288,7 @@ class KnowledgeGraphDocumentsMixin:
                                 }
                             )
                     except Exception:
-                        pass
+                        quiet()
                     result["images"].append(image_info)
         except Exception as exc:
             result["error"] = str(exc)

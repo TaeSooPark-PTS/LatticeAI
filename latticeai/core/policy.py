@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, List, Set
 
-
 ROLE_CAPABILITIES: Dict[str, Set[str]] = {
     "owner": {"all"},
     "admin": {

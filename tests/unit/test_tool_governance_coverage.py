@@ -21,7 +21,6 @@ from latticeai.core.tool_governor import (
 )
 from latticeai.core.tool_registry import TOOL_GOVERNANCE
 
-
 # Read-only tools are exempt from the mutating inventory.
 _READ_RISKS = {"read"}
 

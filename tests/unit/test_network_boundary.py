@@ -13,8 +13,8 @@ from latticeai.core.network_boundary import (
     network_mode_contract,
     normalize_network_mode,
 )
+from latticeai.services.cloud_streaming import CloudTurnResult, plan_kg_expansion
 from latticeai.services.hybrid_context import MinimalContext, build_minimal_context
-from latticeai.services.cloud_streaming import plan_kg_expansion, CloudTurnResult
 from latticeai.services.network_boundary_service import NetworkBoundaryService
 
 

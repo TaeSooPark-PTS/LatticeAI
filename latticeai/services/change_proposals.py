@@ -29,6 +29,7 @@ import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from latticeai.core.quiet import quiet
 from latticeai.core.tool_governor import classify_tool_call
 
 LOGGER = logging.getLogger(__name__)
@@ -435,7 +436,7 @@ class ChangeProposalService:
             try:
                 os.unlink(tmp_name)
             except OSError:
-                pass
+                quiet()
             raise
 
     def reject(

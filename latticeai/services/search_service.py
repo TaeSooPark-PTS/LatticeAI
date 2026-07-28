@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Mapping, Optional
 from lattice_brain.graph._kg_fsutil import _parse_iso, _recency_score
 from lattice_brain.graph.retrieval_policy import resolve_policy
 
-
 DEFAULT_HYBRID_WEIGHTS = {
     "keyword": 0.35,
     "vector": 0.40,
@@ -70,9 +69,7 @@ class SearchService:
                 if not node_id or node_id not in scopes:
                     continue
                 scope = scopes[node_id]
-                if scope is None and include_legacy_global:
-                    visible.append(item)
-                elif scope is not None and str(scope) in allowed:
+                if scope is None and include_legacy_global or scope is not None and str(scope) in allowed:
                     visible.append(item)
             return visible
 

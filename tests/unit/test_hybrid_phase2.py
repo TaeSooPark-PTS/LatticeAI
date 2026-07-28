@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from latticeai.core.network_boundary import NetworkBoundaryMode, normalize_network_mode
-from latticeai.services.cloud_extraction import extract_candidates, plan_kg_expansion_rich
+from latticeai.services.cloud_extraction import (
+    extract_candidates,
+    plan_kg_expansion_rich,
+)
 from latticeai.services.cloud_streaming import CloudTurnResult
 from latticeai.services.cloud_token_guard import TokenBudget, budget_for, reset_budget
 

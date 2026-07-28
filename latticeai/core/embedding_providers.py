@@ -238,7 +238,18 @@ class EmbeddingProvider:
         return list(struct.unpack(f"<{count}f", payload[: count * 4]))
 
     def similarity(self, left: Iterable[float], right: Iterable[float]) -> float:
-        return float(sum(a * b for a, b in zip(left, right)))
+        # strict=True: a dimension mismatch means the two vectors came from
+        # different embedding models. Truncating to the shorter one produces a
+        # plausible-looking similarity that is meaningless — exactly the silent
+        # wrongness this codebase keeps finding. Callers that can hit a model
+        # swap already handle failure and fall back to lexical search.
+        left_v, right_v = list(left), list(right)
+        if len(left_v) != len(right_v):
+            raise ValueError(
+                f"embedding dimension mismatch: {len(left_v)} vs {len(right_v)}; "
+                "the vector index was built with a different model"
+            )
+        return float(sum(a * b for a, b in zip(left_v, right_v, strict=True)))
 
     # ── observability ─────────────────────────────────────────────────────
     def health(self) -> Dict[str, Any]:

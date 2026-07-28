@@ -36,8 +36,8 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from ..quiet import quiet
 from ..utils import now_iso as _now
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -454,6 +454,7 @@ class HooksRegistry:
             try:
                 self.set_order(hook_id, (idx + 1) * 10)
             except KeyError:
+                quiet()
                 continue
         return self.list(kind=kind)
 

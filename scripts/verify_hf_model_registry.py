@@ -40,8 +40,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 try:
     from latticeai.services.model_capability_registry import (
-        get_all_capabilities,
         ModelCapability,
+        get_all_capabilities,
     )
 except Exception as e:
     print("ERROR: Could not import model_capability_registry:", e)
@@ -210,7 +210,7 @@ def main() -> int:
     print("-" * 88)
 
     results: List[Dict[str, Any]] = []
-    tmp = Path("/tmp/lattice_verify_hf")
+    tmp = Path("/tmp/lattice_verify_hf")  # noqa: S108 — developer verification scratch dir
     tmp.mkdir(exist_ok=True)
 
     missing_critical = 0

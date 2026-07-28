@@ -494,7 +494,10 @@ def create_models_router(
     async def load_model(req: LoadModelRequest, request: Request):
         current_user = _authorize_model_admin(request, req.user_email)
         try:
-            from latticeai.core.model_compat import friendly_model_runtime_error, model_runtime_compatibility
+            from latticeai.core.model_compat import (
+                friendly_model_runtime_error,
+                model_runtime_compatibility,
+            )
 
             model_id = req.model_id
             requested_engine = req.engine or (model_id.split(":", 1)[0] if ":" in model_id else "local_mlx")
@@ -552,8 +555,8 @@ def create_models_router(
         hardware, load_strategy, license, safety_notes) from the structured registry.
         """
         require_user(request)
-        from latticeai.setup.auto_setup import probe as auto_setup_probe
         from latticeai.services.model_recommendation import recommend_catalog
+        from latticeai.setup.auto_setup import probe as auto_setup_probe
 
         profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())
         catalog = recommend_catalog(profile, engine=engine)

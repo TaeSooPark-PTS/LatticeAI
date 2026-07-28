@@ -15,6 +15,7 @@ from fastapi import APIRouter, Cookie, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 
 from latticeai.api.ui_redirects import app_redirect
+from latticeai.core.quiet import quiet
 
 PRODUCTION_CSP = (
     "default-src 'self'; "
@@ -282,7 +283,7 @@ def create_static_routes_router(
                 result["gpu_mem_gb"]  = round(gpu_bytes / (1024 ** 3), 2)
                 result["gpu_mem_pct"] = round(gpu_bytes / total_bytes * 100, 1) if total_bytes else 0.0
             except Exception:
-                pass
+                quiet()
         except Exception as e:
             result["error"] = str(e)
         return result

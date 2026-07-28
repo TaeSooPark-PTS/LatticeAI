@@ -223,7 +223,7 @@ def create_admin_router(
     async def admin_roles(request: Request):
         _, users = require_admin(request)
         counts: Dict[str, int] = defaultdict(int)
-        for email, user in users.items():
+        for email, user in users.items():  # noqa: B007 — the key is the payload; the loop var documents the shape
             role = (get_user_role(email, users) or "user").lower()
             counts[role] += 1
         matrix = policy_matrix() if policy_matrix else [

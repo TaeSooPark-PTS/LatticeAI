@@ -20,6 +20,7 @@ from typing import Any, Callable, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.core.quiet import quiet
 from latticeai.services.automation_execution import (
     build_last_execution,
     dry_run_report,
@@ -162,7 +163,7 @@ def create_automation_intelligence_router(
                 workspace_id=scope,
             )
         except Exception:  # noqa: BLE001 — surfacing must never undo the run
-            pass
+            quiet()
 
     @router.post("/api/automation/run-now")
     async def automation_run_now(req: AutomationRunNowRequest, request: Request):

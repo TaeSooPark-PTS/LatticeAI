@@ -25,7 +25,6 @@ from latticeai.core.file_generation import (
 from latticeai.tools import ToolError
 from latticeai.tools.filesystem import zip_workspace_dir
 
-
 BUNDLE_HTML = (
     "<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\"><title>Todo</title>"
     "<link rel=\"stylesheet\" href=\"style.css\"></head>\n"

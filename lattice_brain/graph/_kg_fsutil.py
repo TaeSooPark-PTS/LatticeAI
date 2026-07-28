@@ -11,7 +11,6 @@ them to the graph mixins), so existing call sites are unaffected.
 from __future__ import annotations
 
 # ruff: noqa: F403,F405
-
 import hashlib
 import math
 import os
@@ -21,8 +20,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..quiet import quiet
+from ..utils import now_iso as _now
+from ..utils import parse_iso as _parse_iso
 from ._kg_constants import *  # noqa: F401,F403
-from ..utils import now_iso as _now, parse_iso as _parse_iso
 
 
 def _recency_score(
@@ -202,7 +203,7 @@ def _excluded_directory_reason(
             ):
                 return "user_library"
         except OSError:
-            pass
+            quiet()
         if _prefix_blocks(MACOS_EXCLUDED_PREFIXES):
             return "system_folder"
     if os_type == "linux":

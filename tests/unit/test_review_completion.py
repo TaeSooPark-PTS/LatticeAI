@@ -1,9 +1,9 @@
 from pathlib import Path
 
+from lattice_brain.runtime.agent_runtime import AgentRuntime
 from latticeai.core.config import Config
 from latticeai.core.tool_registry import ToolRegistry
 from latticeai.services.architecture_readiness import architecture_readiness
-from lattice_brain.runtime.agent_runtime import AgentRuntime
 
 
 def test_v76_architecture_review_items_are_machine_checkable():

@@ -9,8 +9,7 @@ that used to live inside ``model_runtime``. These tests pin two things:
 * basic catalog invariants relied on by the model APIs and recommendation flow.
 """
 
-from latticeai.services import model_catalog
-from latticeai.services import model_runtime
+from latticeai.services import model_catalog, model_runtime
 
 
 def test_catalog_reexport_identity():

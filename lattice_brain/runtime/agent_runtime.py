@@ -30,12 +30,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
 
-from .multi_agent import (
-    AGENT_ROLES,
-    CORE_PIPELINE,
-    MULTI_AGENT_VERSION,
-    ROLE_AGENT_IDS,
-)
+from ..quiet import quiet
+from ..utils import now_iso as _now
 from .contracts import (
     contract_view,
     contract_views,
@@ -44,11 +40,18 @@ from .contracts import (
     run_record_contract,
     runtime_boundary_contract,
 )
+from .multi_agent import (
+    AGENT_ROLES,
+    CORE_PIPELINE,
+    MULTI_AGENT_VERSION,
+    ROLE_AGENT_IDS,
+)
 from .statuses import (
     RUN_ACTIVE_STATUSES as _ACTIVE_STATUSES,
+)
+from .statuses import (
     RUN_TERMINAL_STATUSES as _TERMINAL_STATUSES,
 )
-from ..utils import now_iso as _now
 
 ROLE_DESCRIPTIONS = {
     "researcher": "Gathers workspace context and memory for the goal.",
@@ -494,7 +497,7 @@ class AgentRuntime:
                 )
         except Exception:
             # Synthesis must never break the run record.
-            pass
+            quiet()
 
     @staticmethod
     def _format_synthesis_section(title: str, items: List[str]) -> str:
@@ -569,6 +572,7 @@ class AgentRuntime:
                     workspace_id=scope,
                 )
             except Exception:
+                quiet()
                 continue
 
     def _post_run_hooks(
