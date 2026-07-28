@@ -9,7 +9,7 @@ the machine when NetworkBoundaryMode is CLOUD_ALLOWED.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence
+from typing import Any, Dict, List, Optional, Protocol, Sequence
 
 from latticeai.core.network_boundary import (
     NetworkBoundaryMode,
@@ -182,7 +182,6 @@ def build_minimal_context(
     for match in matches:
         if is_node_blocked_for_cloud(match):
             continue
-        node_type = str(match.get("type") or "")
         # Soft preference: keep preferred types first by stable partition later.
         selected.append(match)
 

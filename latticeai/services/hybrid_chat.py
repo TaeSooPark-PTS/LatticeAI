@@ -208,7 +208,7 @@ async def stream_hybrid_cloud_turn(
                 if notify is not None:
                     notify("assistant", result.answer_text, source)
             except Exception as exc:  # noqa: BLE001
-                logger.warning("hybrid chat persistence failed: %s", exp:=exc)
+                logger.warning("hybrid chat persistence failed: %s", exp)
 
         yield _sse(
             {
@@ -225,7 +225,7 @@ async def stream_hybrid_cloud_turn(
         )
         yield "data: [DONE]\n\n"
     except Exception as exc:  # noqa: BLE001 — surface honest error to client
-        logger.warning("hybrid cloud turn failed: %s", exp:=exc)
+        logger.warning("hybrid cloud turn failed: %s", exp)
         yield _sse({"type": "error", "detail": str(exc), "error": str(exc)})
         yield "data: [DONE]\n\n"
 
