@@ -517,3 +517,56 @@ test("past conversations resume with markdown rendering and delete inline", asyn
   await expect(page.locator("body")).toContainText("대화를 삭제했습니다.");
   expect(errors).toEqual([]);
 });
+
+// The network boundary contracts shipped in 10.1.0 with no way to reach them
+// from the app — the dial existed only for whoever called the API by hand.
+// This asserts the control is actually on the settings screen and that it
+// refuses to send a cloud switch the server would reject.
+test("the network boundary dial is reachable and gates cloud behind an acknowledgement", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+  await page.goto("/app#/system");
+  // System opens on the account tab; the dials live under 환경설정.
+  await page.getByRole("tab", { name: "환경설정" }).click();
+
+  const panel = page.getByTestId("network-boundary-panel");
+  await expect(panel).toBeVisible();
+  await expect(page.getByTestId("network-boundary-active")).toHaveText("로컬만");
+
+  // Both server-served modes render; nothing is hardcoded in the client.
+  await expect(page.getByTestId("network-boundary-option-local_only")).toBeVisible();
+  await expect(page.getByTestId("network-boundary-option-cloud_allowed")).toBeVisible();
+
+  // While local_only is in force there is nothing to configure about cloud
+  // write-back, so the policy switches stay out of the way.
+  await expect(page.getByTestId("network-boundary-policy")).toHaveCount(0);
+
+  // Choosing cloud must not be one click: the server refuses without an ack,
+  // so the button stays disabled until the box is ticked.
+  await page.getByTestId("network-boundary-option-cloud_allowed").click();
+  await expect(page.getByTestId("network-boundary-apply")).toBeDisabled();
+  await page.getByTestId("network-boundary-ack").check();
+  await expect(page.getByTestId("network-boundary-apply")).toBeEnabled();
+
+  expect(errors).toEqual([]);
+});
+
+test("the boundary panel shows which memories a question would send", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+  await page.goto("/app#/system");
+  await page.getByRole("tab", { name: "환경설정" }).click();
+
+  await expect(page.getByTestId("network-boundary-panel")).toBeVisible();
+  await page.getByTestId("network-boundary-probe").fill("릴리스 어떻게 하지");
+  await page.getByTestId("network-boundary-preview").click();
+
+  // Named memories, not a count or a reassurance.
+  const result = page.getByTestId("network-boundary-preview-result");
+  await expect(result).toContainText("릴리스 절차 정리");
+  await expect(result).toContainText("배포 전 확인 목록");
+  // Previewing under local_only must not read as "this was just sent".
+  await expect(result).toContainText("아무것도 나가지 않습니다");
+
+  expect(errors).toEqual([]);
+});

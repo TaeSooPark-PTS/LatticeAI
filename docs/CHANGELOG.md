@@ -4,6 +4,40 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.1.1] - 2026-07-28
+
+### Added
+- `NetworkBoundaryPanel` (`frontend/src/components/NetworkBoundaryPanel.tsx`),
+  mounted in the System settings tab beside `PermissionModePanel`. Renders the
+  server's mode catalog, gates `cloud_allowed` behind the acknowledgement the
+  server requires, and exposes the hybrid write-back policy switches only while
+  the boundary permits cloud.
+- Context preview in that panel: a question is sent to
+  `POST /api/network-boundary/preview` and the panel lists the actual node
+  titles that would leave, the token estimate, and the token guard's verdict.
+  Available in `local_only` too, labelled as hypothetical.
+- API client bindings and types: `networkBoundary`, `setNetworkBoundary`,
+  `setHybridPolicy`, `previewCloudContext`; `NetworkBoundaryOption`,
+  `NetworkBoundaryState`, `HybridPolicy`, `CloudContextPreview`,
+  `CloudTokenBudget`. The `networkBoundary` fallback is `local_only`, so a
+  failed read never renders as if cloud were already permitted.
+- 22 `system.network.*` copy keys in the `workspace` i18n namespace (ko + en).
+- `/api/network-boundary*` routes in `tests/visual/mock_server.cjs` so release
+  evidence shows the panel working rather than an unavailable state.
+- `NetworkBoundaryPanel.test.tsx` (12 tests) and two Playwright specs covering
+  the settings-tab route, the acknowledgement gate, and the preview.
+
+### Removed
+- `static/app/network-boundary-panel.js` — the unmounted standalone module
+  10.1.0 shipped as this feature's UI. Nothing referenced it, it was absent
+  from the asset manifest, and it lived in Vite's output directory, which
+  `npm run build:assets` wipes; it had in fact already been deleted by the
+  previous release's asset rebuild. The React panel replaces it.
+
+### Changed
+- ARCHITECTURE, FEATURE_STATUS, README, and the hybrid design doc no longer
+  carry the "API-only surface" caveat, and describe the in-app control instead.
+
 ## [10.1.0] - 2026-07-28
 
 ### Added

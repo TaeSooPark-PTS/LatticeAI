@@ -13,6 +13,46 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.1.1 — Reachable Boundary (2026-07-28)
+
+10.1.0 shipped the hybrid path's contracts, API, `/chat` branch, policy store,
+and token guards — everything except a way for a user to reach any of it. The
+dial existed only for whoever called `/api/network-boundary` by hand, so in
+practice every user stayed on the `local_only` default without ever being
+offered the choice. This release is the missing control.
+
+`NetworkBoundaryPanel` sits in **환경설정 → 내 지식이 나가는 범위**, beside the
+autonomy dial, and follows the same rules: it renders the server's own catalog
+rather than a hardcoded mode list, and it refuses to send a `cloud_allowed`
+switch until the acknowledgement the server requires is ticked — the client
+declines the request the server would decline.
+
+It adds one thing the autonomy dial has no equivalent for. Type a question and
+`/api/network-boundary/preview` returns the **actual node titles** that question
+would send, the token estimate, and whether the token guard would refuse the
+turn. The preview works in `local_only` as well, labelled as hypothetical, so a
+user can look before deciding rather than after. "Only minimal related nodes
+leave" is a promise; a list of which ones is evidence.
+
+The write-back switches (`auto_commit`, `allow_multimodal`) render only once
+the boundary permits cloud. A switch that cannot take effect reads as one that
+did.
+
+Also removed: `static/app/network-boundary-panel.js`, the unmounted standalone
+module 10.1.0 shipped as this feature's "UI". It lived under `static/app/`,
+which is Vite's build output directory — `npm run build:assets` wipes that
+directory, so a hand-written file there could not survive a build. It was in
+fact already deleted by the previous release's asset rebuild.
+
+Behaviour is otherwise unchanged: `local_only` is still the default, the
+sensitivity filter is still mode-invariant, and cloud-derived memory still
+enters the Review Center as a proposal.
+
+Verification: 12 component tests, 2 Playwright specs driving the real panel in
+Chromium (the boundary tab, the acknowledgement gate, and the preview naming
+real memories), and mock-server routes so the release screenshots show the
+panel working rather than an unavailable state.
+
 ## v10.1.0 — Hybrid Brain (2026-07-28)
 
 A feature release that adds a local-first hybrid path: the Knowledge Graph stays

@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **10.1.0 — Hybrid Brain**.
+Current release: **10.1.1 — Reachable Boundary**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`

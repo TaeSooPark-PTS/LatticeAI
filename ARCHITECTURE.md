@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **10.1.0 — Hybrid Brain**.
+Current release: **10.1.1 — Reachable Boundary**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -322,7 +322,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 10.1.0:
+The 8.0 architecture contract remains active in 10.1.1:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -405,7 +405,7 @@ advances or inspects run state belongs in `agent.py`.
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 10.1.0. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 10.1.1. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -447,23 +447,35 @@ Four properties hold regardless of the mode:
 Token budgets (`cloud_token_guard.py`) cap per-turn and per-session spend, so
 an opted-in session has a ceiling rather than an open tap.
 
-**Surface status (10.1.0):** the dial is reachable through
-`/api/network-boundary` (`mode`, `catalog`, `policy`, `preview`, `ui-state`)
-and `LATTICEAI_NETWORK_MODE`. `static/app/network-boundary-panel.js` ships as a
-standalone progressive-enhancement module, but no page mounts
-`#lattice-network-boundary-root` and the React app has no equivalent control —
-so in practice a user who does not call the API remains on `local_only`. The
-in-app surface is the outstanding work for this feature.
+**Surface (10.1.1):** `NetworkBoundaryPanel` in **환경설정 → 내 지식이 나가는
+범위**, beside the autonomy dial. Like that dial it renders the server's own
+catalog rather than a hardcoded mode list, and it will not send a switch to
+`cloud_allowed` until the acknowledgement the server requires is ticked — the
+client refuses the request the server would refuse.
+
+It carries one thing the autonomy dial does not: a **preview**. Type a question
+and `/api/network-boundary/preview` answers with the actual node titles that
+question would send, its token estimate, and whether the token guard would
+refuse the turn. The preview works in `local_only` too, and says so — you can
+look before deciding, not only after. A promise that "only minimal related
+nodes leave" is worth less than a list of which ones.
+
+The write-back switches (`auto_commit`, `allow_multimodal`) render only while
+the boundary permits cloud, because a switch that cannot do anything invites
+the belief that it did.
+
+10.1.0 shipped this feature's contracts, API, and `/chat` branch with no way to
+reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-10.1.0 exact artifact names:
+10.1.1 exact artifact names:
 
-- `dist/ltcai-10.1.0-py3-none-any.whl`
-- `dist/ltcai-10.1.0.tar.gz`
-- `ltcai-10.1.0.tgz`
-- `dist/ltcai-10.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.0_aarch64.dmg`
+- `dist/ltcai-10.1.1-py3-none-any.whl`
+- `dist/ltcai-10.1.1.tar.gz`
+- `ltcai-10.1.1.tgz`
+- `dist/ltcai-10.1.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.1_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v10.1.0)
+# Lattice AI Feature Status (v10.1.1)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **10.1.0 — Hybrid Brain**.
+Current release: **10.1.1 — Reachable Boundary**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -93,10 +93,10 @@ by a third.
 | Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
 | Frontend Payload | Current | Every route is a `React.lazy` boundary and copy follows the route: `shell` copy registers eagerly, `brain` / `workspace` / `onboarding` register inside the lazy chunk that needs them. Initial static JS is ~99 KiB gzip against a 150 KiB budget. `npm run check:i18n-namespaces` walks the real module graph and fails the build when a chunk reads a key it never imported — the failure mode is otherwise silent, because `t()` returns the raw key and the UI renders an identifier instead of text. |
 | Permission Modes | Current | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. Set it in **환경설정 → 에이전트 자율성** (`SystemPage` settings tab) or through `POST /api/permission-mode`. The selector renders the server's own catalog rather than a hardcoded mode list, and refuses to send a `bypass` switch until the risk acknowledgement the server requires is ticked. |
-| Network Boundary | Current (API-only surface) | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. `cloud_allowed` requires an explicit acknowledgement, and only the minimal extracted node slice is sent — never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). Served by `/api/network-boundary` (mode, catalog, policy, `preview`, `ui-state`) and `LATTICEAI_NETWORK_MODE`. **The React app has no control for this yet** — `static/app/network-boundary-panel.js` ships as a standalone progressive-enhancement module but is not mounted by any page, so anyone who does not call the API stays on the `local_only` default. |
+| Network Boundary | Current | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. Set it in **환경설정 → 내 지식이 나가는 범위** (`NetworkBoundaryPanel`) or through `POST /api/network-boundary`. The selector renders the server's own catalog and refuses to send a `cloud_allowed` switch until the risk acknowledgement the server requires is ticked. A built-in **preview** names the actual memories a given question would send, with its token estimate and whether the token guard would refuse the turn — and works in `local_only` too, labelled as hypothetical. Only the minimal extracted node slice is ever sent, never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). |
 | Hybrid Cloud Chat | Current (requires cloud key) | When the boundary is `cloud_allowed`, `/chat` branches through `api/chat_hybrid.py` → `services/hybrid_chat.py`: minimal KG context is assembled (`hybrid_context.py`), checked against per-turn and per-session token budgets (`cloud_token_guard.py`), and streamed from an OpenAI-compatible provider (`openai_compatible_adapter.py`, `cloud_streaming.py`). Inert without `LATTICEAI_CLOUD_API_KEY`; the local path is untouched. |
 | Cloud Memory Write-Back | Current (proposal-first) | Knowledge extracted from a cloud answer (`cloud_extraction.py`) is enqueued as a Review Center `change_proposal` with provenance. It is written to the graph only when `auto_commit` is explicitly enabled in the hybrid policy (default **false**) and a store write API exists. Multimodal streaming needs both `cloud_allowed` and a separate `allow_multimodal` flag (default **false**). |
-| Release Assets | Current | 10.1.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 10.1.1 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 

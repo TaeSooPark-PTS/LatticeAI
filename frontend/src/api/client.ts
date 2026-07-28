@@ -66,6 +66,67 @@ export type PermissionModeState = {
   catalog: PermissionModeOption[];
 };
 
+/** One selectable network boundary, as described by `/api/network-boundary`. */
+export type NetworkBoundaryOption = {
+  id: string;
+  label: string;
+  label_ko: string;
+  summary: string;
+  summary_ko: string;
+  risk: "low" | "medium" | "high" | string;
+  requires_ack: boolean;
+  warning?: string;
+  warning_ko?: string;
+};
+
+/** What the hybrid path is allowed to do once the boundary permits cloud. */
+export type HybridPolicy = {
+  blocked_node_types: string[];
+  blocked_metadata_flags: string[];
+  auto_commit: boolean;
+  allow_multimodal: boolean;
+  min_extraction_confidence: number;
+};
+
+export type CloudTokenBudget = {
+  turn_limit?: number | null;
+  session_limit?: number | null;
+  session_used?: number | null;
+  [key: string]: unknown;
+};
+
+/** Active boundary plus the catalog the selector renders (`/ui-state`). */
+export type NetworkBoundaryState = {
+  mode: string;
+  label: string;
+  label_ko: string;
+  allows_cloud: boolean;
+  requires_ack: boolean;
+  warning_ko?: string | null;
+  policy: Partial<HybridPolicy>;
+  token_budget: CloudTokenBudget;
+  catalog: NetworkBoundaryOption[];
+};
+
+/**
+ * Exactly what would leave the machine for one message — shown *before*
+ * anything is sent. `would_block` is the token guard's verdict, so the panel
+ * can say "this turn would be refused" rather than discovering it mid-stream.
+ */
+export type CloudContextPreview = {
+  mode: string;
+  allows_cloud: boolean;
+  node_ids: string[];
+  keywords: string[];
+  titles: string[];
+  types: string[];
+  token_estimate: number;
+  quality: string;
+  compact_preview: string;
+  token_budget: CloudTokenBudget;
+  would_block: string | null;
+};
+
 export type ReviewItem = components["schemas"]["ReviewItem"];
 export type ReviewItemList = components["schemas"]["ReviewItemList"];
 export type ReviewStatusFilter = "pending" | "snoozed" | "approved" | "dismissed" | "all";
@@ -638,6 +699,27 @@ export const latticeApi = {
     post<PermissionModeState>("/api/permission-mode", {
       mode, acknowledge_risk: acknowledgeRisk,
     }, {} as PermissionModeState),
+  // Network boundary dial (v10.1.0). Separate from the autonomy dial above:
+  // this one answers "may knowledge leave this machine", not "may this tool
+  // run". The fallback is the safe mode, so a failed read never renders the
+  // panel as if cloud were already permitted.
+  networkBoundary: () => get<NetworkBoundaryState>("/api/network-boundary/ui-state", {
+    mode: "local_only", label: "Local only", label_ko: "로컬만",
+    allows_cloud: false, requires_ack: false, warning_ko: null,
+    policy: {}, token_budget: {}, catalog: [],
+  }),
+  setNetworkBoundary: (mode: string, acknowledgeRisk = false) =>
+    post<{ mode: string }>("/api/network-boundary", {
+      mode, acknowledge_risk: acknowledgeRisk,
+    }, { mode: "local_only" }),
+  setHybridPolicy: (patch: Partial<HybridPolicy>) =>
+    post<HybridPolicy>("/api/network-boundary/policy", patch, {} as HybridPolicy),
+  previewCloudContext: (message: string, topK = 6) =>
+    post<CloudContextPreview>("/api/network-boundary/preview", { message, top_k: topK }, {
+      mode: "local_only", allows_cloud: false, node_ids: [], keywords: [],
+      titles: [], types: [], token_estimate: 0, quality: "", compact_preview: "",
+      token_budget: {}, would_block: null,
+    }),
   proposals: () => get("/api/proposals", { items: [], count: 0, contract: {} }),
   proposalCounts: () => get("/api/proposals/counts", { pending: 0 }),
   proposalDetail: (itemId: string) => get(`/api/proposals/${encodeURIComponent(itemId)}`, { payload: {}, provenance: {} }),

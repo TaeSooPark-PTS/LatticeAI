@@ -1,3 +1,22 @@
+# [v10.1.1 - Reachable Boundary] (2026-07-28)
+
+10.1.0 built the hybrid path and shipped it with no way to reach it: the
+network boundary dial existed only for whoever called `/api/network-boundary`
+by hand, so every user stayed on the `local_only` default without being offered
+the choice. This release adds the control — `환경설정 → 내 지식이 나가는 범위`,
+beside the autonomy dial. It renders the server's own catalog, refuses to send
+a cloud switch until the required acknowledgement is ticked, and previews the
+**actual memories** a question would send (with token estimate and the guard's
+verdict) before anything is sent — including while still on local-only, where
+it says so. Write-back switches appear only once cloud is permitted. The
+unmounted `static/app/network-boundary-panel.js` is removed. Defaults and
+behaviour are otherwise unchanged.
+
+See [RELEASE_NOTES_v10.1.1.md](RELEASE_NOTES_v10.1.1.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.1.0 - Hybrid Brain] (2026-07-28)
 
 A feature release adding a local-first hybrid path: the Knowledge Graph stays
@@ -124,7 +143,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.1.0**.
+This repository keeps public release history from **8.0.0 through 10.1.1**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

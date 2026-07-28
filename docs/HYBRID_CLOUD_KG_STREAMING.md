@@ -1,11 +1,10 @@
 # Hybrid Cloud + Local Knowledge Graph Streaming
 
-> Status: **shipped in 10.1.0** (phases 0–3 merged to `main`)  
+> Status: **shipped in 10.1.0**; in-app control added in **10.1.1**  
 > Principle: **Local Brain is the asset. Cloud is an opt-in worker.**  
-> Surface caveat: the dial is reachable through `/api/network-boundary` and
-> environment configuration only. The panel module below is not mounted by any
-> page and the React app has no equivalent control, so a user who does not call
-> the API remains on the `local_only` default.
+> Surface: `환경설정 → 내 지식이 나가는 범위`
+> (`frontend/src/components/NetworkBoundaryPanel.tsx`), plus
+> `/api/network-boundary` and `LATTICEAI_NETWORK_MODE`.
 
 ## Goal
 
@@ -49,21 +48,17 @@ Users approve cloud-derived memory growth in the existing Review Center.
 - Additional `allow_multimodal` policy flag
 - Adapter protocol for future Runway/Luma/Veo-compatible providers
 
-### UI progressive enhancement
-`static/app/network-boundary-panel.js` + `GET /api/network-boundary/ui-state`:
+### UI
+`NetworkBoundaryPanel` (React) + `GET /api/network-boundary/ui-state`:
 - Toggle local ↔ cloud (with ack)
 - Transparency preview of nodes about to be sent
 - Shows current policy flags
 
-Mount point — **not currently placed by any page**; this is how a host page
-would opt in:
-```html
-<div id="lattice-network-boundary-root"></div>
-<script src="/static/app/network-boundary-panel.js" defer></script>
-```
-
-Until something mounts it (or the React app grows its own control consuming the
-same `/ui-state` and `/preview` APIs), the dial is API-and-config only.
+Mounted in `frontend/src/pages/System.tsx` beside `PermissionModePanel`, so it
+appears on the settings tab of every install. The standalone
+`static/app/network-boundary-panel.js` module 10.1.0 shipped was removed in
+10.1.1: nothing mounted it, and it lived in Vite's build output directory,
+which `npm run build:assets` wipes.
 
 ## End-to-end flow (Phase 3)
 

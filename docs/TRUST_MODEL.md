@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.1.0 — Hybrid Brain**.
+Current release: **10.1.1 — Reachable Boundary**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

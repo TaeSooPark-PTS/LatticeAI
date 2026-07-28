@@ -300,6 +300,43 @@ const server = http.createServer((req, res) => {
       catalog, scope: { user_email: "admin@example.com", workspace_id: null },
     });
   }
+  // Network boundary dial (v10.1.1). Same reason as the autonomy dial above:
+  // the settings screenshot renders this panel, so the mock has to serve the
+  // real catalog shape or the evidence would show a working feature as broken.
+  if (pathname.startsWith("/api/network-boundary")) {
+    const catalog = [
+      { id: "local_only", label: "Local only", label_ko: "로컬만", summary: "Nothing leaves this machine. Answers use local models and the local Brain only.", summary_ko: "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.", risk: "low", requires_ack: false },
+      { id: "cloud_allowed", label: "Cloud streaming allowed", label_ko: "클라우드 스트리밍 허용", summary: "Minimal related Knowledge Graph nodes may be sent to a cloud LLM. The streamed answer is written back into the local Brain with provenance.", summary_ko: "관련된 최소 Knowledge Graph 노드만 클라우드 LLM으로 전송될 수 있습니다. 스트리밍 답변은 provenance와 함께 로컬 Brain에 다시 기록됩니다.", risk: "medium", requires_ack: true, warning: "Cloud mode sends a compact summary of selected local nodes to an external provider. Sensitive nodes remain blocked.", warning_ko: "클라우드 모드는 선택된 로컬 노드의 압축 요약을 외부 제공자에게 전송합니다. 민감 노드는 계속 차단됩니다." },
+    ];
+    const policy = {
+      blocked_node_types: [], blocked_metadata_flags: ["do_not_share", "local_only", "private", "sensitive"],
+      auto_commit: false, allow_multimodal: false, min_extraction_confidence: 0.55,
+    };
+    if (pathname.endsWith("/catalog")) return json(res, { modes: catalog });
+    if (pathname.endsWith("/policy")) return json(res, policy);
+    if (pathname.endsWith("/preview")) {
+      return json(res, {
+        mode: "local_only", allows_cloud: false,
+        node_ids: ["node-release", "node-checklist"], keywords: ["release", "checklist"],
+        titles: ["릴리스 절차 정리", "배포 전 확인 목록"], types: ["Document", "Note"],
+        token_estimate: 412, quality: "ok",
+        compact_preview: "릴리스 절차 정리 · 배포 전 확인 목록",
+        token_budget: { turn_limit: 2500, session_limit: 50000, session_used: 0 },
+        would_block: null,
+      });
+    }
+    // POST /api/network-boundary is the mode switch; the panel re-reads state
+    // afterwards, so returning the acknowledged mode is enough.
+    const mode = req.method === "POST" ? "cloud_allowed" : "local_only";
+    const entry = catalog.find((item) => item.id === mode);
+    return json(res, {
+      mode, label: entry.label, label_ko: entry.label_ko, risk: entry.risk,
+      requires_ack: entry.requires_ack, allows_cloud: mode === "cloud_allowed",
+      warning_ko: entry.warning_ko || null,
+      policy, token_budget: { turn_limit: 2500, session_limit: 50000, session_used: 0 },
+      catalog, scope: { user_email: "admin@example.com", workspace_id: null },
+    });
+  }
   if (pathname === "/permissions/pending") return json(res, { pending: { "perm-token": { path: "/tmp/report.md", action: "read", action_label: "read file", user_email: "admin@example.com", approved: false, expires_in: 300 } }, count: 1 });
   if (pathname.startsWith("/permissions/approve/") && req.method === "POST") return json(res, { ok: true, token: pathname.split("/").pop() });
   if (pathname.startsWith("/permissions/deny/") && req.method === "POST") return json(res, { ok: true, denied: true, token: pathname.split("/").pop() });

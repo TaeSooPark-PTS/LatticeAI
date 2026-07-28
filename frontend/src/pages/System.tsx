@@ -15,6 +15,7 @@ import { useAppStore } from "@/store/appStore";
 import { asArray, isRecord, shortId } from "@/lib/utils";
 import { clearScopedClientState } from "@/queryClient";
 import { navigateHash } from "@/features/brain/navigation";
+import { NetworkBoundaryPanel } from "@/components/NetworkBoundaryPanel";
 import { PermissionModePanel } from "@/components/PermissionModePanel";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
@@ -393,6 +394,10 @@ function SettingsPanel() {
         </CardContent>
       </Card>
       <PermissionModePanel />
+      {/* The two dials sit together because users read them as one question —
+          "what is this thing allowed to do on its own, and what may leave the
+          machine" — even though the server keeps them independent. */}
+      <NetworkBoundaryPanel />
       <DataPanel title={mode === "basic" ? t(language, "system.panel.brainStatus") : t(language, "system.panel.serverHealth")} result={health.data}>
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>

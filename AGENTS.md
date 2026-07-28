@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **10.1.0 — Hybrid Brain**.
+Current release: **10.1.1 — Reachable Boundary**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

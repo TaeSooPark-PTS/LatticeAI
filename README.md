@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.1.0 Living Brain walkthrough](output/release/v10.1.0/gifs/v10.1.0-living-brain-walkthrough.gif)
+![v10.1.1 Living Brain walkthrough](output/release/v10.1.1/gifs/v10.1.1-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.1.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.1.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.1.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.1.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.1.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.1.0/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.1.1/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.1.1/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.1.1/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.1.1/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.1.1/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.1.1/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,48 +57,42 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.1.0/screenshots/01-login.png) | ![Model install](output/release/v10.1.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.1.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.1.1/screenshots/01-login.png) | ![Model install](output/release/v10.1.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.1.1/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.1.0/SCREENSHOT_INDEX.md](output/release/v10.1.0/SCREENSHOT_INDEX.md)
+[output/release/v10.1.1/SCREENSHOT_INDEX.md](output/release/v10.1.1/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.1.0 — Hybrid Brain**:
+The current release is **10.1.1 — Reachable Boundary**:
 
-- **Your Brain stays on the machine; a cloud model can be hired to work on
-  it.** The Knowledge Graph and all durable memory remain on-device. A cloud
-  LLM becomes an opt-in worker that reads a minimal slice and streams an
-  answer back.
-- **The default is `local_only`, and cloud is not one click away.** Switching
-  to `cloud_allowed` requires an explicit acknowledgement. Only the minimal
-  related nodes the extractor selected leave the host — never the graph.
-- **Some things never leave, in either mode.** Nodes flagged `sensitive`,
-  `private`, `do_not_share`, or `local_only` are filtered before the payload
-  is built. That filter is mode-invariant, like the agent circuit breakers.
-- **Cloud-derived memory is proposed, not written.** What a cloud answer
-  suggests adding to your Brain arrives in the Review Center as a change
-  proposal with provenance. Auto-commit is off by default; per-turn and
-  per-session token budgets cap spend. Multimodal stays off unless you enable
-  it explicitly.
-- **Orthogonal to the autonomy dial.** Network boundary answers "may knowledge
-  leave this machine"; PermissionMode answers "may this tool run without
-  asking". A session can be `cloud_allowed` and `strict` at once.
+10.1.0 built the local-first hybrid path — your Brain stays on the machine
+while a cloud model can be hired as an opt-in worker — but shipped it with no
+way to reach it from the app. This release is the control.
 
-The boundary dial is served by `/api/network-boundary` (mode, catalog, policy,
-and a preview of exactly which nodes would be sent). In 10.1.0 it is
-API-and-config only — the app has no in-app control for it yet, so the
-effective default for anyone who does not call the API is `local_only`.
+- **환경설정 → 내 지식이 나가는 범위.** The boundary dial now sits beside the
+  autonomy dial, where the other "what is this allowed to do" decision already
+  lives. It renders the server's own catalog, and it will not send a switch to
+  cloud until you tick the acknowledgement the server requires.
+- **See what would leave, before anything leaves.** Type a question and the
+  panel names the actual memories it would send, the token estimate, and
+  whether the usage guard would refuse the turn. It works while you are still
+  on local-only, and says so — you can look before you decide.
+- **Switches that cannot do anything are not shown.** The write-back options
+  appear only once cloud is permitted, rather than sitting there inert.
+- **The defaults did not move.** Local-only is still the default, sensitive
+  memories are still filtered in both modes, and cloud-derived memory still
+  arrives in the Review Center as a proposal rather than being written.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.1.0 release must use exact filenames:
+Expected artifacts for 10.1.1 release must use exact filenames:
 
-- `dist/ltcai-10.1.0-py3-none-any.whl`
-- `dist/ltcai-10.1.0.tar.gz`
-- `ltcai-10.1.0.tgz`
-- `dist/ltcai-10.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.0_aarch64.dmg`
+- `dist/ltcai-10.1.1-py3-none-any.whl`
+- `dist/ltcai-10.1.1.tar.gz`
+- `ltcai-10.1.1.tgz`
+- `dist/ltcai-10.1.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.1_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -118,7 +112,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 10.1.0.
+  live local Brain store in 10.1.1.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and
   update checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded. Agent and
@@ -127,12 +121,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
   model success.
 - Some backend-generated messages (for example the Postgres DSN notice) are
   produced server-side in English and are shown as-is; server-side i18n is not
-  part of 10.1.0.
+  part of 10.1.1.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 10.1.1 | Reachable Boundary |
 | 10.1.0 | Hybrid Brain |
 | 10.0.1 | One Source of Truth |
 | 10.0.0 | Plain Language |
