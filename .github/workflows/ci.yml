@@ -47,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e "." pytest pytest-asyncio httpx ruff
+          pip install -e "." pytest pytest-asyncio httpx ruff "mypy>=1.14,<2" "pytest-cov>=7,<8"
           npm ci
           (cd vscode-extension && npm ci)
 
@@ -91,9 +91,7 @@ jobs:
         # Measurable for the first time in 10.2.0: the connection leak fixed in
         # this release exhausted file descriptors under a tracer, so any
         # coverage run failed ~400 tests and the real number was unknown.
-        run: |
-          pip install "pytest-cov>=7,<8"
-          python -m pytest tests/ -q --cov --cov-report=term:skip-covered
+        run: python -m pytest tests/ -q --cov --cov-report=term:skip-covered
 
       - name: Brain recall/KG quality eval
         run: python scripts/brain_quality_eval.py
