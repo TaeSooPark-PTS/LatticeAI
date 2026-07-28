@@ -66,31 +66,33 @@ Screenshot index and capture notes:
 
 The current release is **10.1.0 — Hybrid Brain**:
 
-- **The agent loop module holds only the loop.** `latticeai/core/agent.py`
-  drops from 1769 to 1326 lines. Its pure functions — plan normalization,
-  action parsing, transcript compaction, requirement coverage, the phase
-  budgets — move to `agent_helpers.py`, and the `AgentState` vocabulary to
-  `agent_state.py`. Every name callers already imported from
-  `latticeai.core.agent` still resolves there, as the same object.
-- **One definition of a state name.** The helpers previously compared
-  transcript steps against the literal string `"EXECUTING"`, because the enum
-  lived in the module that imports them. Renaming an enum value would have
-  silently stopped matching, and the artifact checklist would have reported
-  nothing with every test still passing. The enum now has its own module and
-  both sides reference it.
-- **Quieter home spacing.** The first screen's secondary row is visually
-  demoted so a single primary action reads first, and its controls get
-  thumb-sized spacing on small screens. CSS only — no layout or selector
-  changes.
+- **Your Brain stays on the machine; a cloud model can be hired to work on
+  it.** The Knowledge Graph and all durable memory remain on-device. A cloud
+  LLM becomes an opt-in worker that reads a minimal slice and streams an
+  answer back.
+- **The default is `local_only`, and cloud is not one click away.** Switching
+  to `cloud_allowed` requires an explicit acknowledgement. Only the minimal
+  related nodes the extractor selected leave the host — never the graph.
+- **Some things never leave, in either mode.** Nodes flagged `sensitive`,
+  `private`, `do_not_share`, or `local_only` are filtered before the payload
+  is built. That filter is mode-invariant, like the agent circuit breakers.
+- **Cloud-derived memory is proposed, not written.** What a cloud answer
+  suggests adding to your Brain arrives in the Review Center as a change
+  proposal with provenance. Auto-commit is off by default; per-turn and
+  per-session token budgets cap spend. Multimodal stays off unless you enable
+  it explicitly.
+- **Orthogonal to the autonomy dial.** Network boundary answers "may knowledge
+  leave this machine"; PermissionMode answers "may this tool run without
+  asking". A session can be `cloud_allowed` and `strict` at once.
 
-This is a patch release: no behaviour changes, no API changes, nothing to
-migrate. 10.0.0's user-facing work — the four-zone first screen, complete
-Korean/English, and numbers that say what they counted — is unchanged and
-described in [RELEASE_NOTES_v10.0.0.md](RELEASE_NOTES_v10.0.0.md).
+The boundary dial is served by `/api/network-boundary` (mode, catalog, policy,
+and a preview of exactly which nodes would be sent). In 10.1.0 it is
+API-and-config only — the app has no in-app control for it yet, so the
+effective default for anyone who does not call the API is `local_only`.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.0.1 release must use exact filenames:
+Expected artifacts for 10.1.0 release must use exact filenames:
 
 - `dist/ltcai-10.1.0-py3-none-any.whl`
 - `dist/ltcai-10.1.0.tar.gz`
@@ -116,7 +118,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 10.0.1.
+  live local Brain store in 10.1.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and
   update checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded. Agent and
@@ -125,12 +127,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
   model success.
 - Some backend-generated messages (for example the Postgres DSN notice) are
   produced server-side in English and are shown as-is; server-side i18n is not
-  part of 10.0.1.
+  part of 10.1.0.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 10.1.0 | Hybrid Brain |
 | 10.0.1 | One Source of Truth |
 | 10.0.0 | Plain Language |
 | 9.9.9 | Lean Shell |

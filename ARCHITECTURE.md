@@ -31,9 +31,10 @@ flowchart TB
   subgraph gates["Trust boundary — every request crosses this"]
     direction LR
     trust["auth · consent<br/>audit · redaction"]
-    mode["PermissionMode dial<br/>strict · trusted · bypass"]
+    mode["PermissionMode dial<br/>strict · trusted · bypass<br/><i>may this tool run?</i>"]
+    net["NetworkBoundary dial<br/>local_only · cloud_allowed<br/><i>may knowledge leave?</i>"]
     breakers["Circuit breakers<br/>mode-invariant"]
-    trust ~~~ mode ~~~ breakers
+    trust ~~~ mode ~~~ net ~~~ breakers
   end
 
   runtime["Runtime composition root — latticeai.runtime"]
@@ -56,7 +57,8 @@ flowchart TB
   end
 
   services["Product services<br/>chat · memory · model · ingestion · search · review"]
-  models["Model runtimes<br/>local first · cloud opt-in"]
+  models["Local model runtimes<br/>MLX · on-device"]
+  cloud["Cloud LLM worker<br/>OpenAI-compatible stream<br/><b>opt-in, off by default</b>"]
 
   user --> surfaces
   surfaces --> api
@@ -70,7 +72,20 @@ flowchart TB
 
   mode -. "widens approval only" .-> tools
   breakers -. "no mode ever widens these" .-> tools
+
+  services -- "minimal extracted slice only<br/>never the graph" --> cloud
+  cloud -- "streamed answer +<br/>proposed memory" --> services
+  net -. "local_only blocks this edge entirely" .-> cloud
+  breakers -. "sensitive · private · do_not_share<br/>filtered in BOTH modes" .-> cloud
+
+  style cloud stroke-dasharray: 5 5
 ```
+
+The dashed node is the only thing in this diagram that can live off the
+machine, and two independent gates stand in front of it: the boundary dial
+must be `cloud_allowed`, and the sensitivity filter runs regardless of the
+dial. The Knowledge Graph itself never crosses that edge — only the minimal
+node slice the extractor selected for one turn.
 
 Key boundaries:
 
@@ -92,15 +107,21 @@ Key boundaries:
 - `latticeai.api` owns route-level behavior through router-factory modules
   (chat, memory, search, local_files/ingestion, brain_intelligence,
   automation_intelligence, command_center, change_proposals, review_queue,
-  workspace, admin, ...). Chat contracts, history, documents, and streaming
-  are focused modules over service-owned logic.
+  network_boundary, workspace, admin, ...). Chat contracts, history, documents,
+  and streaming are focused modules over service-owned logic; `chat_hybrid`
+  is the branch `chat` delegates to when the boundary allows cloud.
 - `latticeai.services` owns product and execution services (`chat_service`,
   `memory_service`, `model_service`, `ingestion`, `search_service`,
   `review_queue`, `command_center`, `automation_intelligence`,
-  `brain_intelligence`, `change_proposals`, ...).
+  `brain_intelligence`, `change_proposals`, ...). The hybrid path is a
+  self-contained group inside it (`hybrid_chat`, `hybrid_context`,
+  `hybrid_policy`, `cloud_streaming`, `cloud_extraction`, `cloud_token_guard`,
+  `openai_compatible_adapter`, `multimodal_streaming`,
+  `network_boundary_service`) so the local path carries none of it.
 - `latticeai.core` owns lower-level registries and helpers (`agent`,
-  `agent_eval`, `tool_governor`, `context_builder`, `workspace_os`,
-  `mcp_registry`, `marketplace`, `tool_registry`, `config`, ...).
+  `agent_state`, `agent_helpers`, `agent_eval`, `tool_governor`,
+  `network_boundary`, `context_builder`, `workspace_os`, `mcp_registry`,
+  `marketplace`, `tool_registry`, `config`, ...).
 - `lattice_brain` owns Brain Core, graph, memory, ingestion, and storage.
   `lattice_brain/graph/store.py` composes `KnowledgeGraphStore` from focused
   mixins (retrieval, retrieval_vector, ingest, discovery, provenance,
@@ -168,6 +189,7 @@ sequenceDiagram
   participant CG as Change Governor
   participant TR as ToolRegistry
   participant KG as Knowledge Graph
+  participant CL as Cloud LLM (opt-in)
 
   U->>UI: Ask, capture, review, or automate
   UI->>API: Authenticated localhost request
@@ -175,8 +197,17 @@ sequenceDiagram
   RT->>MS: Load workspace, memory, model state
   MS->>KG: Retrieve grounded context and provenance
 
-  alt Direct chat or memory request
-    MS-->>API: Grounded answer, or an honest no-model state
+  alt Direct chat — boundary is local_only (default)
+    MS-->>API: Grounded answer from a local model,<br/>or an honest no-model state
+  else Direct chat — boundary is cloud_allowed (explicit ack)
+    MS->>MS: Extract the minimal related node slice
+    Note over MS: Drop sensitive / private / do_not_share nodes<br/>— this filter runs in both modes
+    MS->>MS: Check per-turn and per-session token budgets
+    MS->>CL: Minimal context only — never the graph
+    CL-->>MS: Streamed answer (SSE)
+    MS->>CG: Enqueue extracted knowledge as a change proposal
+    Note over CG: Written to the graph only if auto_commit is on<br/>(default false) — otherwise it waits in Review Center
+    MS-->>API: Streamed answer + provenance
   else Explicit tool or workflow request
     RT->>AR: Preview / readiness contract
     Note over AR: Resolve the permission mode once per run<br/>(user + workspace scope) and stamp it on the run
@@ -291,7 +322,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 10.0.1:
+The 8.0 architecture contract remains active in 10.1.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -374,7 +405,7 @@ advances or inspects run state belongs in `agent.py`.
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 10.0.1. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 10.1.0. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -382,6 +413,47 @@ archives are user-controlled portability paths.
 The default runtime does not send prompts, files, graph content, or archives to
 Lattice-owned servers. Cloud models, downloads, Telegram, Brain Network,
 Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
+
+### The network boundary dial
+
+`core/network_boundary.py` makes "may knowledge leave this machine" a single
+explicit decision rather than a property of whichever model happens to be
+selected. It is deliberately **orthogonal to `PermissionMode`**: that dial
+answers "may this tool run without asking", this one answers "may anything
+leave". A session can be `cloud_allowed` and `strict` at the same time.
+
+| Mode | Meaning |
+| --- | --- |
+| `local_only` | Default. No chat context reaches a cloud provider. |
+| `cloud_allowed` | Explicitly acknowledged. Only the minimal extracted node slice may be sent. |
+
+Four properties hold regardless of the mode:
+
+1. **Unknown input fails safe.** `normalize_network_mode` maps anything it does
+   not recognize — a typo, a stale env var, `None` — to `local_only`.
+2. **Sensitivity filters are mode-invariant.** Nodes carrying `sensitive`,
+   `private`, `do_not_share`, or `local_only` metadata are dropped before the
+   payload is assembled, exactly like the agent circuit breakers that no
+   permission mode can widen.
+3. **The graph never travels.** What leaves is a `MinimalContext` — the node
+   slice the extractor chose for one turn — not the store, not a subgraph
+   export, not an archive.
+4. **Cloud-derived memory is proposed, not written.** `cloud_extraction.py`
+   output is enqueued as a Review Center change proposal with provenance;
+   it reaches the graph only when `auto_commit` is explicitly enabled
+   (default `false`) *and* a store write API is bound. Multimodal requires a
+   second, separate `allow_multimodal` flag (also default `false`).
+
+Token budgets (`cloud_token_guard.py`) cap per-turn and per-session spend, so
+an opted-in session has a ceiling rather than an open tap.
+
+**Surface status (10.1.0):** the dial is reachable through
+`/api/network-boundary` (`mode`, `catalog`, `policy`, `preview`, `ui-state`)
+and `LATTICEAI_NETWORK_MODE`. `static/app/network-boundary-panel.js` ships as a
+standalone progressive-enhancement module, but no page mounts
+`#lattice-network-boundary-root` and the React app has no equivalent control —
+so in practice a user who does not call the API remains on `local_only`. The
+in-app surface is the outstanding work for this feature.
 
 ## Release Artifact Map
 

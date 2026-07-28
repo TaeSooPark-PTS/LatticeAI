@@ -1,4 +1,4 @@
-# Lattice AI Feature Status (v10.0.1)
+# Lattice AI Feature Status (v10.1.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
@@ -41,7 +41,14 @@ deliberately raises it. The 10.0 line makes the product legible to someone who d
 the first screen is four zones, capture lives in the composer, and both
 languages are complete. 10.0.1 carries that inward — the agent loop module
 holds the loop and nothing else, with its state vocabulary and pure helpers
-in single-source sibling modules. The 9.9.9 line made the shell lean: copy
+in single-source sibling modules. The 10.1.0 line adds a local-first hybrid
+path: the Knowledge Graph never leaves the machine, while a cloud LLM can be
+hired as an opt-in worker that reads a minimal extracted slice. The default
+boundary is `local_only`, cloud requires an explicit acknowledgement,
+sensitivity filters are mode-invariant, and cloud-derived memory enters the
+Review Center as a proposal rather than being written. In 10.1.0 that dial is
+reachable through `/api/network-boundary` and environment configuration only —
+there is no in-app control yet. The 9.9.9 line made the shell lean: copy
 follows its route instead of the entry chunk, cutting first-paint JavaScript
 by a third.
 
@@ -86,7 +93,10 @@ by a third.
 | Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
 | Frontend Payload | Current | Every route is a `React.lazy` boundary and copy follows the route: `shell` copy registers eagerly, `brain` / `workspace` / `onboarding` register inside the lazy chunk that needs them. Initial static JS is ~99 KiB gzip against a 150 KiB budget. `npm run check:i18n-namespaces` walks the real module graph and fails the build when a chunk reads a key it never imported — the failure mode is otherwise silent, because `t()` returns the raw key and the UI renders an identifier instead of text. |
 | Permission Modes | Current | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. Set it in **환경설정 → 에이전트 자율성** (`SystemPage` settings tab) or through `POST /api/permission-mode`. The selector renders the server's own catalog rather than a hardcoded mode list, and refuses to send a `bypass` switch until the risk acknowledgement the server requires is ticked. |
-| Release Assets | Current | 10.0.1 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Network Boundary | Current (API-only surface) | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. `cloud_allowed` requires an explicit acknowledgement, and only the minimal extracted node slice is sent — never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). Served by `/api/network-boundary` (mode, catalog, policy, `preview`, `ui-state`) and `LATTICEAI_NETWORK_MODE`. **The React app has no control for this yet** — `static/app/network-boundary-panel.js` ships as a standalone progressive-enhancement module but is not mounted by any page, so anyone who does not call the API stays on the `local_only` default. |
+| Hybrid Cloud Chat | Current (requires cloud key) | When the boundary is `cloud_allowed`, `/chat` branches through `api/chat_hybrid.py` → `services/hybrid_chat.py`: minimal KG context is assembled (`hybrid_context.py`), checked against per-turn and per-session token budgets (`cloud_token_guard.py`), and streamed from an OpenAI-compatible provider (`openai_compatible_adapter.py`, `cloud_streaming.py`). Inert without `LATTICEAI_CLOUD_API_KEY`; the local path is untouched. |
+| Cloud Memory Write-Back | Current (proposal-first) | Knowledge extracted from a cloud answer (`cloud_extraction.py`) is enqueued as a Review Center `change_proposal` with provenance. It is written to the graph only when `auto_commit` is explicitly enabled in the hybrid policy (default **false**) and a store write API exists. Multimodal streaming needs both `cloud_allowed` and a separate `allow_multimodal` flag (default **false**). |
+| Release Assets | Current | 10.1.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 

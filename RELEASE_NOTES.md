@@ -7,9 +7,12 @@ related nodes leave the machine, and streamed answers expand the local Brain
 with provenance under token guardrails and Review Queue gates. Adds the
 `NetworkBoundaryMode` / `MinimalContext` contracts, a persisted dial, an
 OpenAI-compatible streaming worker, the hybrid `/chat` branch, multimodal
-streaming contracts, and a network-boundary UI panel — all additive and covered
-by new `test_network_boundary` / `test_hybrid_phase2` / `test_hybrid_phase3`
-suites.
+streaming contracts, and a standalone network-boundary panel module — all
+additive and covered by new `test_network_boundary` / `test_hybrid_phase2` /
+`test_hybrid_phase3` suites. The dial is API-and-config only in this release:
+the panel module is not mounted by any page and the React app has no control
+for it, so anyone who does not call `/api/network-boundary` stays on the
+`local_only` default.
 
 See [RELEASE_NOTES_v10.1.0.md](RELEASE_NOTES_v10.1.0.md) and
 [docs/CHANGELOG.md](docs/CHANGELOG.md).

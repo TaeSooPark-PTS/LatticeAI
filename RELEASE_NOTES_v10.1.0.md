@@ -19,8 +19,21 @@ guardrails, and Review Queue gates.
   `cloud_extraction.py`, `cloud_token_guard.py`.
 - **Hybrid chat** — `api/chat_hybrid.py`, `services/hybrid_chat.py`,
   `hybrid_context.py`, `hybrid_policy.py`; the `/chat` route branches through it.
-- **Multimodal + UI** — `services/multimodal_streaming.py` and
-  `static/app/network-boundary-panel.js`.
+- **Multimodal** — `services/multimodal_streaming.py`, gated by both
+  `cloud_allowed` and a separate `allow_multimodal` policy flag (default off).
+
+## How you reach the dial in this release
+
+`/api/network-boundary` — `mode`, `catalog`, `policy`, `preview` (see exactly
+which nodes would be sent before sending them), `ui-state` — plus
+`LATTICEAI_NETWORK_MODE` and the `LATTICEAI_CLOUD_*` environment variables.
+
+`static/app/network-boundary-panel.js` ships as a standalone
+progressive-enhancement module that renders into `#lattice-network-boundary-root`.
+**No page mounts it**, and the React app has no equivalent control, so the dial
+is API-and-config only in 10.1.0. A user who never calls the API stays on the
+`local_only` default — the feature is safe by omission, not complete. The
+in-app surface is the outstanding work.
 
 ## Tests
 
@@ -30,6 +43,6 @@ guardrails, and Review Queue gates.
 ## Compatibility
 
 Additive. Default behaviour is unchanged (`local_only`); no existing caller is
-affected.
+affected. The hybrid path stays inert without `LATTICEAI_CLOUD_API_KEY`.
 
 See [docs/HYBRID_CLOUD_KG_STREAMING.md](docs/HYBRID_CLOUD_KG_STREAMING.md).

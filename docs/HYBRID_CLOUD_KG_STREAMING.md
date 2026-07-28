@@ -1,8 +1,11 @@
 # Hybrid Cloud + Local Knowledge Graph Streaming
 
-> Status: **Phase 3 live** on branch `feature/hybrid-cloud-kg-streaming-phase3`  
-> Chain: phase0 → phase1 → phase2 → **phase3**  
-> Principle: **Local Brain is the asset. Cloud is an opt-in worker.**
+> Status: **shipped in 10.1.0** (phases 0–3 merged to `main`)  
+> Principle: **Local Brain is the asset. Cloud is an opt-in worker.**  
+> Surface caveat: the dial is reachable through `/api/network-boundary` and
+> environment configuration only. The panel module below is not mounted by any
+> page and the React app has no equivalent control, so a user who does not call
+> the API remains on the `local_only` default.
 
 ## Goal
 
@@ -52,13 +55,15 @@ Users approve cloud-derived memory growth in the existing Review Center.
 - Transparency preview of nodes about to be sent
 - Shows current policy flags
 
-Mount point:
+Mount point — **not currently placed by any page**; this is how a host page
+would opt in:
 ```html
 <div id="lattice-network-boundary-root"></div>
 <script src="/static/app/network-boundary-panel.js" defer></script>
 ```
 
-(Full React integration can consume the same `/ui-state` and `/preview` APIs.)
+Until something mounts it (or the React app grows its own control consuming the
+same `/ui-state` and `/preview` APIs), the dial is API-and-config only.
 
 ## End-to-end flow (Phase 3)
 
