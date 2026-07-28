@@ -96,7 +96,7 @@ Expected artifacts for 10.0.1 release must use exact filenames:
 - `dist/ltcai-10.1.0.tar.gz`
 - `ltcai-10.1.0.tgz`
 - `dist/ltcai-10.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.0.1_aarch64.dmg`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
