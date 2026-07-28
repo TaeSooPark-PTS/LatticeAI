@@ -196,7 +196,7 @@ def build_auth_admin_security_router_bundle(
                 logger.warning("security audit events load failed: %s", exc)
                 return []
         except Exception as exc:  # pragma: no cover - defensive legacy behavior
-            logger.warning("security audit events load failed: %s", exp:=exc)
+            logger.warning("security audit events load failed: %s", exc)
             return []
 
     def security_list_uploaded_files() -> list[dict[str, Any]]:
@@ -653,7 +653,6 @@ def register_review_and_brain_tail_routers(
             workspace_service=workspace_service,
         ),
     )
-    # Permission mode dial (v9.9.8): mount last so data_dir + audit are known.
     from latticeai.runtime.permission_mode_wiring import register_permission_mode_router
 
     register_permission_mode_router(
@@ -662,7 +661,6 @@ def register_review_and_brain_tail_routers(
         data_dir=data_dir,
         append_audit_event=append_audit_event,
     )
-    # Network boundary dial (hybrid Phase 2): same tail, same data_dir + audit.
     from latticeai.runtime.network_boundary_wiring import register_network_boundary_router
 
     register_network_boundary_router(

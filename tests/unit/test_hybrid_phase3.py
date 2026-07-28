@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -12,9 +13,9 @@ from latticeai.services.cloud_streaming import (
     CloudTurnResult,
     plan_kg_expansion,
 )
+from latticeai.services.hybrid_context import MinimalContext
 from latticeai.services.hybrid_policy import HybridPolicyService
 from latticeai.services.multimodal_streaming import MultimodalStreamingBridge
-from latticeai.services.hybrid_context import MinimalContext
 
 
 def test_policy_defaults_and_override(tmp_path: Path):
@@ -36,33 +37,32 @@ def test_policy_defaults_and_override(tmp_path: Path):
 def test_multimodal_refuses_without_policy_flag():
     bridge = MultimodalStreamingBridge(adapter=None)
     minimal = MinimalContext(query="make a video", node_ids=["n1"], compact_text="ctx")
-    with pytest.raises(PermissionError):
-        # run_turn is async — use asyncio
-        import asyncio
 
-        asyncio.get_event_loop().run_until_complete(
-            bridge.run_turn(
+    async def _run():
+        with pytest.raises(PermissionError):
+            await bridge.run_turn(
                 user_message="make a video",
                 minimal=minimal,
                 mode=NetworkBoundaryMode.CLOUD_ALLOWED,
                 allow_multimodal=False,
             )
-        )
+
+    asyncio.run(_run())
 
 
 def test_multimodal_scaffold_when_allowed():
-    import asyncio
-
     bridge = MultimodalStreamingBridge(adapter=None)
     minimal = MinimalContext(query="make a video", node_ids=["n1"], compact_text="ctx")
-    result = asyncio.get_event_loop().run_until_complete(
-        bridge.run_turn(
+
+    async def _run():
+        return await bridge.run_turn(
             user_message="make a video",
             minimal=minimal,
             mode=NetworkBoundaryMode.CLOUD_ALLOWED,
             allow_multimodal=True,
         )
-    )
+
+    result = asyncio.run(_run())
     assert result.sent_node_ids == ["n1"]
     assert "adapter not configured" in result.answer_text
 
