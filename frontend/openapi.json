@@ -550,6 +550,17 @@
             ],
             "title": "Model"
           },
+          "network_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Mode"
+          },
           "source": {
             "anyOf": [
               {
@@ -2294,6 +2305,35 @@
         "title": "PresenceRequest",
         "type": "object"
       },
+      "PreviewRequest": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 6,
+            "title": "Top K",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "PreviewRequest",
+        "type": "object"
+      },
       "PromotionActionRequest": {
         "properties": {
           "ids": {
@@ -2687,6 +2727,114 @@
           "key"
         ],
         "title": "SetApiKeyRequest",
+        "type": "object"
+      },
+      "SetHybridPolicyRequest": {
+        "properties": {
+          "allow_multimodal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Multimodal"
+          },
+          "auto_commit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Commit"
+          },
+          "blocked_metadata_flags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Metadata Flags"
+          },
+          "blocked_node_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Node Types"
+          },
+          "min_extraction_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Extraction Confidence"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "SetHybridPolicyRequest",
+        "type": "object"
+      },
+      "SetNetworkBoundaryRequest": {
+        "properties": {
+          "acknowledge_risk": {
+            "default": false,
+            "title": "Acknowledge Risk",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "local_only | cloud_allowed",
+            "title": "Mode",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "SetNetworkBoundaryRequest",
         "type": "object"
       },
       "SetPermissionModeRequest": {
@@ -4316,7 +4464,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "10.0.1"
+    "version": "10.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8655,6 +8803,280 @@
           }
         },
         "summary": "Memory Tiers"
+      }
+    },
+    "/api/network-boundary": {
+      "get": {
+        "operationId": "get_network_boundary_api_network_boundary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Network Boundary",
+        "tags": [
+          "network-boundary"
+        ]
+      },
+      "post": {
+        "operationId": "set_network_boundary_api_network_boundary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNetworkBoundaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Network Boundary",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/catalog": {
+      "get": {
+        "operationId": "network_boundary_catalog_api_network_boundary_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Network Boundary Catalog",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/policy": {
+      "get": {
+        "operationId": "get_hybrid_policy_api_network_boundary_policy_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Hybrid Policy",
+        "tags": [
+          "network-boundary"
+        ]
+      },
+      "post": {
+        "operationId": "set_hybrid_policy_api_network_boundary_policy_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHybridPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Hybrid Policy",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/preview": {
+      "post": {
+        "operationId": "preview_cloud_context_api_network_boundary_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Cloud Context",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/ui-state": {
+      "get": {
+        "description": "Compact payload for the progressive-enhancement toggle panel.",
+        "operationId": "network_boundary_ui_state_api_network_boundary_ui_state_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Network Boundary Ui State",
+        "tags": [
+          "network-boundary"
+        ]
       }
     },
     "/api/permission-mode": {

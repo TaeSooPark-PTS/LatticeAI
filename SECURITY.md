@@ -3,7 +3,7 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **10.0.1 — One Source of Truth**.
+Current release: **10.1.0 — Hybrid Brain**.
 
 ## Supported Versions
 
@@ -12,7 +12,8 @@ support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 10.0.x (latest) | Supported |
+| 10.1.x (latest) | Supported |
+| 10.0.x | Supported |
 | 9.9.x | Supported |
 | 9.8.x | Supported |
 | 9.7.x | Supported |

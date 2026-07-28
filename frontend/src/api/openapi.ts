@@ -2224,6 +2224,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/network-boundary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Network Boundary */
+        get: operations["get_network_boundary_api_network_boundary_get"];
+        put?: never;
+        /** Set Network Boundary */
+        post: operations["set_network_boundary_api_network_boundary_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/network-boundary/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Network Boundary Catalog */
+        get: operations["network_boundary_catalog_api_network_boundary_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/network-boundary/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Hybrid Policy */
+        get: operations["get_hybrid_policy_api_network_boundary_policy_get"];
+        put?: never;
+        /** Set Hybrid Policy */
+        post: operations["set_hybrid_policy_api_network_boundary_policy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/network-boundary/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Cloud Context */
+        post: operations["preview_cloud_context_api_network_boundary_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/network-boundary/ui-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Network Boundary Ui State
+         * @description Compact payload for the progressive-enhancement toggle panel.
+         */
+        get: operations["network_boundary_ui_state_api_network_boundary_ui_state_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/permission-mode": {
         parameters: {
             query?: never;
@@ -6954,6 +7044,8 @@ export interface components {
             message: string;
             /** Model */
             model?: string | null;
+            /** Network Mode */
+            network_mode?: string | null;
             /** Source */
             source?: string | null;
             /**
@@ -7801,6 +7893,18 @@ export interface components {
             /** Workspace Id */
             workspace_id?: string | null;
         };
+        /** PreviewRequest */
+        PreviewRequest: {
+            /** Message */
+            message: string;
+            /**
+             * Top K
+             * @default 6
+             */
+            top_k: number;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
         /** PromotionActionRequest */
         PromotionActionRequest: {
             /** Ids */
@@ -8007,6 +8111,36 @@ export interface components {
             provider: string;
             /** User Email */
             user_email?: string | null;
+        };
+        /** SetHybridPolicyRequest */
+        SetHybridPolicyRequest: {
+            /** Allow Multimodal */
+            allow_multimodal?: boolean | null;
+            /** Auto Commit */
+            auto_commit?: boolean | null;
+            /** Blocked Metadata Flags */
+            blocked_metadata_flags?: string[] | null;
+            /** Blocked Node Types */
+            blocked_node_types?: string[] | null;
+            /** Min Extraction Confidence */
+            min_extraction_confidence?: number | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /** SetNetworkBoundaryRequest */
+        SetNetworkBoundaryRequest: {
+            /**
+             * Acknowledge Risk
+             * @default false
+             */
+            acknowledge_risk: boolean;
+            /**
+             * Mode
+             * @description local_only | cloud_allowed
+             */
+            mode: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /** SetPermissionModeRequest */
         SetPermissionModeRequest: {
@@ -12642,6 +12776,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_network_boundary_api_network_boundary_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_network_boundary_api_network_boundary_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetNetworkBoundaryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    network_boundary_catalog_api_network_boundary_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_hybrid_policy_api_network_boundary_policy_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_hybrid_policy_api_network_boundary_policy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetHybridPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_cloud_context_api_network_boundary_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    network_boundary_ui_state_api_network_boundary_ui_state_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

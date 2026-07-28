@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.0.1 Living Brain walkthrough](output/release/v10.0.1/gifs/v10.0.1-living-brain-walkthrough.gif)
+![v10.1.0 Living Brain walkthrough](output/release/v10.1.0/gifs/v10.1.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.0.1/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.0.1/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.0.1/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.0.1/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.0.1/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.0.1/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.1.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.1.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.1.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.1.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.1.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.1.0/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,14 +57,14 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.0.1/screenshots/01-login.png) | ![Model install](output/release/v10.0.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.0.1/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.1.0/screenshots/01-login.png) | ![Model install](output/release/v10.1.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.1.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.0.1/SCREENSHOT_INDEX.md](output/release/v10.0.1/SCREENSHOT_INDEX.md)
+[output/release/v10.1.0/SCREENSHOT_INDEX.md](output/release/v10.1.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.0.1 — One Source of Truth**:
+The current release is **10.1.0 — Hybrid Brain**:
 
 - **The agent loop module holds only the loop.** `latticeai/core/agent.py`
   drops from 1769 to 1326 lines. Its pure functions — plan normalization,
@@ -92,10 +92,10 @@ Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](doc
 
 Expected artifacts for 10.0.1 release must use exact filenames:
 
-- `dist/ltcai-10.0.1-py3-none-any.whl`
-- `dist/ltcai-10.0.1.tar.gz`
-- `ltcai-10.0.1.tgz`
-- `dist/ltcai-10.0.1.vsix`
+- `dist/ltcai-10.1.0-py3-none-any.whl`
+- `dist/ltcai-10.1.0.tar.gz`
+- `ltcai-10.1.0.tgz`
+- `dist/ltcai-10.1.0.vsix`
 - `src-tauri/target/release/bundle/dmg/Lattice AI_10.0.1_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.

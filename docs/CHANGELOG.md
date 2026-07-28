@@ -4,6 +4,29 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.1.0] - 2026-07-28
+
+### Added
+- Local-first hybrid path: the Knowledge Graph stays on-device and cloud LLMs
+  are an opt-in worker. `NetworkBoundaryMode` and `MinimalContext` contracts
+  (`latticeai/core/network_boundary.py`, `latticeai/api/network_boundary.py`)
+  with a persisted dial wired via `latticeai/runtime/network_boundary_wiring.py`.
+- Cloud streaming worker: `latticeai/services/cloud_streaming.py`,
+  `cloud_extraction.py`, `cloud_token_guard.py`, and an OpenAI-compatible stream
+  adapter (`openai_compatible_adapter.py`) with token budgets and guardrails.
+- Hybrid chat pipeline: `latticeai/api/chat_hybrid.py` plus
+  `services/hybrid_chat.py`, `hybrid_context.py`, and `hybrid_policy.py`; the
+  `/chat` route branches through it and writes back through the Review Queue.
+- Multimodal streaming contracts (`services/multimodal_streaming.py`) and a
+  network-boundary control panel (`static/app/network-boundary-panel.js`).
+- Tests: `test_network_boundary.py`, `test_hybrid_phase2.py`,
+  `test_hybrid_phase3.py`.
+
+### Notes
+- Default network boundary is `local_only`; cloud requires explicit
+  acknowledgement. Minimal related nodes only leave the machine; streamed
+  answers expand the local Brain with provenance.
+
 ## [10.0.1] - 2026-07-28
 
 ### Changed

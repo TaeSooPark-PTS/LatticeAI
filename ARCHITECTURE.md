@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **10.0.1 — One Source of Truth**.
+Current release: **10.1.0 — Hybrid Brain**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -385,13 +385,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-10.0.1 exact artifact names:
+10.1.0 exact artifact names:
 
-- `dist/ltcai-10.0.1-py3-none-any.whl`
-- `dist/ltcai-10.0.1.tar.gz`
-- `ltcai-10.0.1.tgz`
-- `dist/ltcai-10.0.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.0.1_aarch64.dmg`
+- `dist/ltcai-10.1.0-py3-none-any.whl`
+- `dist/ltcai-10.1.0.tar.gz`
+- `ltcai-10.1.0.tgz`
+- `dist/ltcai-10.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.1.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

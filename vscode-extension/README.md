@@ -12,9 +12,11 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.0.1 — One Source of Truth.** This release is frontend-side: the Lattice AI app's
-first screen is four zones, capture moved into the composer, and the interface
-is fully bilingual (한국어 / English) with a switch in the top bar. The
+**10.1.0 — Hybrid Brain.** This release adds a local-first hybrid path: the
+Knowledge Graph stays on-device while cloud LLMs become an opt-in worker. The
+default network boundary is `local_only` — cloud use requires an explicit
+acknowledgement, only minimal related nodes leave the machine, and streamed
+answers expand the local Brain with provenance under Review Queue gates. The
 extension talks to the same sidecar API and is unchanged by it.
 
 9.9.8 added a `strict` / `trusted` / `bypass` permission mode. Editor actions

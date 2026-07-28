@@ -13,6 +13,26 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.1.0 — Hybrid Brain (2026-07-28)
+
+A feature release that adds a local-first hybrid path: the Knowledge Graph stays
+on-device while cloud LLMs become an opt-in worker. The default network boundary
+remains `local_only` — cloud use requires an explicit acknowledgement.
+
+- **Network boundary** — `NetworkBoundaryMode` + `MinimalContext` contracts, a
+  persisted dial, and runtime wiring so only minimal related nodes ever leave the
+  machine.
+- **Cloud streaming worker** — an OpenAI-compatible stream adapter with token
+  budgets and a token guard; streamed answers expand the local Brain with
+  provenance.
+- **Hybrid chat path** — `/chat` branches through hybrid policy, context
+  assembly, and cloud extraction, writing results back through the Review Queue.
+- **Multimodal + UI** — multimodal streaming contracts and a network-boundary
+  control panel in `/app`.
+
+Additive and covered by `tests/unit/test_network_boundary.py`,
+`test_hybrid_phase2.py`, and `test_hybrid_phase3.py`.
+
 ## v10.0.1 — One Source of Truth (2026-07-28)
 
 A patch release with no behaviour change. The single-agent runtime module was

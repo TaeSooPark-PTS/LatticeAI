@@ -1,3 +1,21 @@
+# [v10.1.0 - Hybrid Brain] (2026-07-28)
+
+A feature release adding a local-first hybrid path: the Knowledge Graph stays
+on-device while cloud LLMs become an opt-in worker. The default network boundary
+is `local_only` — cloud use requires an explicit acknowledgement, only minimal
+related nodes leave the machine, and streamed answers expand the local Brain
+with provenance under token guardrails and Review Queue gates. Adds the
+`NetworkBoundaryMode` / `MinimalContext` contracts, a persisted dial, an
+OpenAI-compatible streaming worker, the hybrid `/chat` branch, multimodal
+streaming contracts, and a network-boundary UI panel — all additive and covered
+by new `test_network_boundary` / `test_hybrid_phase2` / `test_hybrid_phase3`
+suites.
+
+See [RELEASE_NOTES_v10.1.0.md](RELEASE_NOTES_v10.1.0.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.0.1 - One Source of Truth] (2026-07-28)
 
 A patch release with no behaviour change. `latticeai/core/agent.py` now holds
@@ -103,7 +121,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.0.1**.
+This repository keeps public release history from **8.0.0 through 10.1.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
