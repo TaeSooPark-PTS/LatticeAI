@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.2.0 Living Brain walkthrough](output/release/v10.2.0/gifs/v10.2.0-living-brain-walkthrough.gif)
+![v10.3.0 Living Brain walkthrough](output/release/v10.3.0/gifs/v10.3.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.2.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.2.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.2.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.2.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.2.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.2.0/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.3.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.3.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.3.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.3.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.3.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.3.0/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,53 +57,47 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.2.0/screenshots/01-login.png) | ![Model install](output/release/v10.2.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.2.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.3.0/screenshots/01-login.png) | ![Model install](output/release/v10.3.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.3.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.2.0/SCREENSHOT_INDEX.md](output/release/v10.2.0/SCREENSHOT_INDEX.md)
+[output/release/v10.3.0/SCREENSHOT_INDEX.md](output/release/v10.3.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.2.0 — Load-Bearing Fixes**:
+The current release is **10.3.0 — Measured Ground**:
 
-A full code review of 10.1.1 scored the codebase 71/100 and found two things
-that were true but invisible. This release is that review's response.
+10.2.0 answered a code review. 10.3.0 is about knowing where things actually
+stand: several numbers this project reported about itself turned out to be
+wrong, and those corrections matter more than the features around them.
 
-- **A database connection leak that hid behind garbage collection.**
-  `with sqlite3.connect(...)` commits but never closes, and 70+ call sites
-  relied on it. Nothing showed until something held a stack frame alive — a
-  profiler, a logged traceback, a coverage tracer — and then descriptors ran
-  out. Every one of those sites now closes.
-- **Coverage is measurable for the first time: 71%.** It could not be run
-  before, because running it *was* the thing that exhausted descriptors. There
-  is now a floor in CI so it cannot silently fall.
-- **"Sensitive memories are never sent" is finally true.** The filter was real,
-  correct, and wired — but nothing in the product could mark a memory, and the
-  blocked-type list was empty, so it could never fire. You can now mark any
-  memory from the boundary panel, files under `.ssh`/`.aws`/`.env` and friends
-  are flagged automatically at ingestion, and credential-shaped node types are
-  blocked outright.
-- **Knowledge that leaves is now redacted and recorded.** Secret-shaped text is
-  stripped from the outbound payload, and every send — and every refusal —
-  writes an audit entry naming what went, how much, and where to.
-- **112 silent `except: pass` handlers now say something.** Behaviour is
-  unchanged; each records the failure at debug level, so a genuine bug in an
-  optional path is no longer indistinguishable from the optional thing being
-  absent.
-- **The lint net was widened to the bug classes that actually bit** — loop
-  variable capture, truncating `zip`, silent handlers — and mypy now runs on
-  the trust-critical modules. CI gained macOS and Python 3.14, so the machine
-  this is developed on and the platform it ships a `.dmg` for are both tested.
+- **Frontend coverage was never really measured.** Vitest only reports files a
+  test already imports, so every untested module quietly left the denominator
+  and the tool read 54%. With `all: true` the honest figure is **28.5%** — and
+  208 tests now cover pages that had none, including every settings and memory
+  screen.
+- **Python coverage was reported as 80%. It is 71.6%.** The `omit` pattern did
+  not match the paths coverage records, so the suite was counting itself — and
+  test files run start to finish by construction.
+- **mypy went from 13 modules to 193 of 270**, finding three real defects on
+  the way: a log line inside an error handler referenced an attribute that does
+  not exist (turning a recoverable failure into a crash), an annotation used a
+  name that was never imported, and one call could dereference `None`.
+- **The chat-turn writer left the composition root.** 66 lines that decide what
+  a message looks like after redaction, and what the audit log records about
+  it, are now a module with 14 tests instead of a closure nothing could reach.
+- **What is not measured is written down.** `docs/MYPY_BACKLOG.md` lists the 77
+  modules still outside type checking with their error counts, so the boundary
+  is a fact rather than an intention.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.2.0 release must use exact filenames:
+Expected artifacts for 10.3.0 release must use exact filenames:
 
-- `dist/ltcai-10.2.0-py3-none-any.whl`
-- `dist/ltcai-10.2.0.tar.gz`
-- `ltcai-10.2.0.tgz`
-- `dist/ltcai-10.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.2.0_aarch64.dmg`
+- `dist/ltcai-10.3.0-py3-none-any.whl`
+- `dist/ltcai-10.3.0.tar.gz`
+- `ltcai-10.3.0.tgz`
+- `dist/ltcai-10.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.3.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -123,7 +117,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 10.2.0.
+  live local Brain store in 10.3.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and
   update checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded. Agent and
@@ -132,12 +126,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
   model success.
 - Some backend-generated messages (for example the Postgres DSN notice) are
   produced server-side in English and are shown as-is; server-side i18n is not
-  part of 10.2.0.
+  part of 10.3.0.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 10.3.0 | Measured Ground |
 | 10.2.0 | Load-Bearing Fixes |
 | 10.1.1 | Reachable Boundary |
 | 10.1.0 | Hybrid Brain |

@@ -518,8 +518,13 @@ class AgentRuntime:
             if sentence.strip(" -•\t")
         ]
         facts = [_compact_text(sentence, limit=180) for sentence in sentences[:4]]
-        review = getattr(result, "review", None) if isinstance(getattr(result, "review", None), dict) else {}
-        plan_review = getattr(result, "plan_review", None) if isinstance(getattr(result, "plan_review", None), dict) else {}
+        # `or {}` rather than the isinstance ternary: the ternary could still
+        # yield None when the attribute was a dict-typed None, and the next
+        # line calls .get on both.
+        review = getattr(result, "review", None)
+        review = review if isinstance(review, dict) else {}
+        plan_review = getattr(result, "plan_review", None)
+        plan_review = plan_review if isinstance(plan_review, dict) else {}
         decision_seed = review.get("decision") or review.get("status") or plan_review.get("decision") or getattr(result, "status", "")
         decisions = [
             _compact_text(f"Run finished with {decision_seed}", limit=160),

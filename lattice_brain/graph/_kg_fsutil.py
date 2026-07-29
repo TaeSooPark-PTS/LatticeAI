@@ -18,7 +18,7 @@ import platform
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from ..quiet import quiet
 from ..utils import now_iso as _now

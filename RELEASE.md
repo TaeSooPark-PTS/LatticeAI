@@ -13,6 +13,64 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.3.0 — Measured Ground (2026-07-29)
+
+A release about knowing where things stand. Three numbers this project reported
+about itself were wrong, and correcting them was more valuable than any feature
+shipped alongside.
+
+**Frontend coverage was never measured.** Vitest reports only files a test
+already imports, so a module with no test at all left the denominator rather
+than counting against it. The tool said 54%; with `all: true` the honest figure
+is **28.5%**. 208 frontend tests now exist (up from 154), including the first
+unit tests for every page — settings, memory, library, capture, automation —
+via a `renderPage` harness that stubs the whole API surface so error states,
+empty states and both languages are reachable without a browser.
+
+**Python coverage was reported as 80%. It is 71.6%.** The `omit` pattern
+`*/tests/*` does not match the repo-relative `tests/...` paths coverage
+records, so the suite counted itself — and test files execute start to finish
+by construction, which inflated the figure by nine points.
+
+**mypy went from 13 modules to 193 of 270**, and found three real defects:
+
+* `lattice_brain/runtime/hooks.py` logged `self._path`, which does not exist,
+  *inside the handler for an unreadable registry* — so a recoverable read
+  failure raised `AttributeError` instead of falling back to the default.
+* `lattice_brain/graph/_kg_fsutil.py` annotated with `Iterable` without
+  importing it; latent only because `from __future__ import annotations` defers
+  evaluation.
+* `lattice_brain/runtime/agent_runtime.py` could call `.get` on `None`.
+
+**`save_to_history` left the composition root.** 66 lines deciding what a
+message looks like after redaction, and what the audit log records about it,
+were unreachable inside `app_factory._build`. They are now
+`runtime/history_writer.py` with 14 tests asserting the order that is the
+actual contract: redact before anything else sees the text, audit before the
+store write, ingest through the pipeline rather than the store, and never let a
+graph failure lose a message that was already saved.
+
+Extracting it also surfaced a real hazard: a nested `def` resolves late-bound
+names at call time, and a builder call does not. Two of the dependencies are
+bound further down `_build`, so a naive extraction raised `UnboundLocalError`
+at import. The closure stays a closure and delegates; the comment says why.
+
+**New tests for boundaries that had none:** the Telegram allowlist (the only
+surface reachable from the internet — empty, absent and malformed
+configurations must all deny), `run_command`'s containment rules (allowlist,
+shell operators, absolute paths, symlink escape, scrubbed environment,
+timeout), the audit log and sensitivity report, and the model-load consent
+gates. 1,896 Python tests, up from 1,786.
+
+**What is not measured is written down.** `docs/MYPY_BACKLOG.md` lists the 77
+modules still outside type checking with per-module error counts, smallest
+first. ARCHITECTURE.md gains a Verification Surface diagram showing which
+figures gate CI and which are only reported.
+
+**Not done.** `app_factory._build` is still ~1,300 lines. Frontend coverage at
+28.5% and Python at 71.6% are both below where they should be. See the release
+notes for the honest self-assessment and what each remaining point costs.
+
 ## v10.2.0 — Load-Bearing Fixes (2026-07-29)
 
 A full review of 10.1.1 scored the codebase 71/100. This release answers all

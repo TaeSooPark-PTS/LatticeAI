@@ -344,7 +344,7 @@ class HooksRegistry:
                     data.setdefault("overrides", {})
                     return data
             except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
-                LOGGER.warning("hook registry state is unreadable at %s: %s", self._path, exc)
+                LOGGER.warning("hook registry state is unreadable at %s: %s", self.path, exc)
         return {"custom": [], "overrides": {}}
 
     def _save(self) -> None:

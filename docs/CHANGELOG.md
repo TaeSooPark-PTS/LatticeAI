@@ -4,6 +4,54 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.3.0] - 2026-07-29
+
+### Fixed
+- **Frontend coverage was not being measured.** Vitest reports only files a
+  test imports unless `all: true`; untested modules left the denominator
+  instead of counting against it. Reported 54%, actual **28.5%**.
+- **Python coverage was over-reported.** `omit = ["*/tests/*"]` does not match
+  the repo-relative `tests/...` paths coverage records, so the suite counted
+  itself. Reported 80%, actual **71.6%**.
+- `lattice_brain/runtime/hooks.py` referenced `self._path` (does not exist)
+  inside the handler for an unreadable registry, turning a recoverable failure
+  into `AttributeError`.
+- `lattice_brain/graph/_kg_fsutil.py` used `Iterable` in an annotation without
+  importing it.
+- `lattice_brain/runtime/agent_runtime.py` could call `.get` on `None`.
+- `pages/Library.tsx` printed the raw registry coordinate
+  (`mlx-community/gemma-4-…`) when a catalog entry had no display name; it now
+  falls through `humanizeModelId` like every other model surface.
+
+### Added
+- `latticeai/runtime/history_writer.py` — `save_to_history` extracted from the
+  `app_factory._build` closure with its ordering contract documented, plus 14
+  tests (`tests/unit/test_history_writer.py`).
+- `frontend/src/test/renderPage.tsx` — a page-level harness that stubs the
+  whole `latticeApi` surface, making error states, empty states and both
+  languages reachable in unit tests.
+- First unit tests for every page: `System` (11), `Library` (7), `Capture` (6),
+  `Act` (8), `Brain` (8). Frontend suite 154 → 208 tests.
+- Python tests for boundaries that had none: Telegram allowlist (26),
+  `run_command` containment (34), audit log and sensitivity report (22),
+  model-load consent gates (14), connection lifecycle guards. 1,786 → 1,896.
+- `docs/MYPY_BACKLOG.md` — the 77 modules still outside type checking with
+  per-module error counts, smallest first.
+- ARCHITECTURE.md "Verification Surface" diagram: which figures gate CI and
+  which are only reported.
+
+### Changed
+- mypy adopted set: 13 → **193 of 270** modules.
+- `vitest.config.ts` gains a coverage block with `all: true`.
+- `npm run test:frontend:coverage` added.
+
+### Known
+- `app_factory._build` remains ~1,300 lines; only the history writer was
+  extracted this release.
+- Frontend coverage (28.5%) is reported but not gated — flooring it at today's
+  figure would freeze it there.
+- 77 modules remain outside mypy; see the backlog.
+
 ## [10.2.0] - 2026-07-29
 
 Response to a full code review of 10.1.1 (71/100). All twelve findings.

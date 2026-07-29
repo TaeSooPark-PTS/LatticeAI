@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **10.2.0 — Load-Bearing Fixes**.
+Current release: **10.3.0 — Measured Ground**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**
