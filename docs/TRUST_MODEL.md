@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.2.0 — Load-Bearing Fixes**.
+Current release: **10.3.0 — Measured Ground**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

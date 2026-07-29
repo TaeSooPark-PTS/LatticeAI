@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **10.2.0 — Load-Bearing Fixes**.
+Current release: **10.3.0 — Measured Ground**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -103,7 +103,11 @@ Key boundaries:
 - `latticeai.runtime` owns typed config, security, Brain, model, platform, and
   router assembly stages (`config_runtime`, `security_runtime`,
   `brain_runtime`, `persistence_runtime`, `history_runtime`,
-  `router_registration`, ...); no stage exports ambient `locals()` state.
+  `history_writer`, `router_registration`, ...); no stage exports ambient
+  `locals()` state. `history_writer` holds the redact → audit → store → ingest
+  order for one chat turn; it was 66 lines inside the `_build` closure until
+  10.3.0, which is why the function deciding what the audit log records about a
+  message had never been tested.
 - `latticeai.api` owns route-level behavior through router-factory modules
   (chat, memory, search, local_files/ingestion, brain_intelligence,
   automation_intelligence, command_center, change_proposals, review_queue,
@@ -322,7 +326,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 10.2.0:
+The 8.0 architecture contract remains active in 10.3.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -360,6 +364,69 @@ Change governance and agent-eval extend the contract:
   workspace, and stamped once per agent run so a plan and its execution are
   judged by one dial (`services/permission_mode_service.py`,
   `runtime/permission_mode_wiring.py`, `/api/permission-mode`).
+
+## Verification Surface
+
+What is measured, and what is not. Every number here is produced by a command
+in CI rather than asserted in prose — the point of 10.3.0 was to replace
+estimates with figures.
+
+```mermaid
+flowchart LR
+  subgraph py["Python — 33,263 statements"]
+    direction TB
+    pyt["pytest<br/>1,896 tests"]
+    pycov["coverage<br/><b>71.6%</b> · floor 70%"]
+    pymypy["mypy<br/><b>193 / 270</b> modules"]
+    pyruff["ruff<br/>10 rule groups"]
+    pyt --> pycov
+  end
+
+  subgraph fe["Frontend — 5,879 statements"]
+    direction TB
+    fet["vitest<br/>208 tests"]
+    fecov["coverage<br/><b>28.5%</b> · measured, not gated"]
+    fets["tsc --noEmit<br/>strict"]
+    fet --> fecov
+  end
+
+  subgraph e2e["Whole-product"]
+    direction TB
+    play["Playwright<br/>20 specs"]
+    eval["agent_eval<br/>23 / 23"]
+    smoke["release smoke<br/>5 artifacts"]
+  end
+
+  gate{"CI gate"}
+  pycov --> gate
+  pymypy --> gate
+  pyruff --> gate
+  fets --> gate
+  play --> gate
+  eval --> gate
+  smoke --> gate
+
+  gate -- "blocks merge" --> main[("main")]
+
+  style fecov stroke-dasharray: 5 5
+```
+
+The dashed box is the one figure that is reported but not enforced. Frontend
+coverage became measurable in 10.3.0 (`all: true`, so untested files count
+against the denominator instead of vanishing from it) and the honest number is
+28.5% — too low to floor without freezing it there. `docs/MYPY_BACKLOG.md`
+does the same job for the 77 modules mypy does not yet check: the boundary is
+written down rather than implied.
+
+Two figures moved for reasons worth recording:
+
+- Python coverage was first reported as 80%, which was wrong. The `omit`
+  pattern `*/tests/*` does not match the repo-relative `tests/...` paths
+  coverage records, so the suite was counting itself — and test files run
+  ~100% by construction. Corrected to `tests/*`, the real figure is 71.6%.
+- Frontend coverage was first reported as 54%, also wrong: without `all: true`
+  vitest only reports files a test already imports, so a module with no test
+  simply left the denominator.
 
 ## Single-Agent Runtime Composition
 
@@ -405,7 +472,7 @@ advances or inspects run state belongs in `agent.py`.
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 10.2.0. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 10.3.0. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -469,13 +536,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-10.2.0 exact artifact names:
+10.3.0 exact artifact names:
 
-- `dist/ltcai-10.2.0-py3-none-any.whl`
-- `dist/ltcai-10.2.0.tar.gz`
-- `ltcai-10.2.0.tgz`
-- `dist/ltcai-10.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.2.0_aarch64.dmg`
+- `dist/ltcai-10.3.0-py3-none-any.whl`
+- `dist/ltcai-10.3.0.tar.gz`
+- `ltcai-10.3.0.tgz`
+- `dist/ltcai-10.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.3.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

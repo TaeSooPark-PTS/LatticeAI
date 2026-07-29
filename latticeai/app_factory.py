@@ -31,6 +31,7 @@ from latticeai.runtime.chat_wiring import (
 from latticeai.runtime.config_runtime import build_config_runtime
 from latticeai.runtime.context_runtime import build_context_runtime
 from latticeai.runtime.history_runtime import build_history_query_runtime
+from latticeai.runtime.history_writer import HistoryWriterDeps, write_chat_turn
 from latticeai.runtime.hooks_runtime import (
     bind_builtin_hook_runners,
     bind_trigger_hook_runner,
@@ -258,7 +259,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     except Exception:
         keyring = None
 
-    from datetime import datetime
 
     # ── App-level config — parsed once, in one place (latticeai.core.config) ──────
     # The module-level names below are kept as a compatibility surface for the rest
@@ -409,6 +409,46 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # free). Legacy chat_history.json is imported once, idempotently, and the
     # file is left untouched on disk as the import source.
     CONVERSATIONS = _brain_runtime["CONVERSATIONS"]
+
+    def save_to_history(
+        role: str,
+        message: str,
+        user_email: Optional[str] = None,
+        user_nickname: Optional[str] = None,
+        source: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> None:
+        """Persist one chat turn. Logic lives in runtime/history_writer.py.
+
+        This stays a closure on purpose: `append_audit_event`,
+        `classify_sensitive_message` and `redact_secret_text` are bound further
+        down this composition root, and a closure resolves them at call time.
+        Hoisting the construction instead would reorder the whole function.
+        """
+        write_chat_turn(
+            role,
+            message,
+            user_email=user_email,
+            user_nickname=user_nickname,
+            source=source,
+            conversation_id=conversation_id,
+            workspace_id=workspace_id,
+            deps=HistoryWriterDeps(
+                conversations=CONVERSATIONS,
+                append_audit_event=append_audit_event,
+                classify_sensitive_message=classify_sensitive_message,
+                redact_secret_text=redact_secret_text,
+                normalize_branding=normalize_branding,
+                ingestion_pipeline=INGESTION_PIPELINE,
+                ingestion_item_factory=IngestionItem,
+                enable_graph=ENABLE_GRAPH,
+                knowledge_graph=KNOWLEDGE_GRAPH,
+            ),
+        )
+
+
+
     # Hooks registry is constructed here (ahead of the watcher) so folder-watch
     # reindexes can fire the pre_index/post_index lifecycle hooks. The registry
     # + watcher pair is assembled behind the hooks_runtime seam.
@@ -534,72 +574,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     # audit build moved after redact_secret_text is defined (see below)
 
-    def save_to_history(
-        role: str,
-        message: str,
-        user_email: Optional[str] = None,
-        user_nickname: Optional[str] = None,
-        source: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-    ):
-        try:
-            message = redact_secret_text(message)
-            if role == "assistant":
-                message = normalize_branding(message)
-            item = {"role": role, "content": message, "timestamp": datetime.now().isoformat()}
-            if user_email:
-                item["user_email"] = user_email
-            if user_nickname:
-                item["user_nickname"] = user_nickname
-            if source:
-                item["source"] = source
-            if conversation_id:
-                item["conversation_id"] = conversation_id
-            if workspace_id:
-                item["workspace_id"] = workspace_id
-            sensitive = classify_sensitive_message(item, -1)
-            append_audit_event(
-                "chat_message",
-                role=role,
-                user_email=user_email,
-                user_nickname=user_nickname,
-                source=source,
-                conversation_id=conversation_id,
-                workspace_id=workspace_id,
-                content_preview=sensitive.get("preview"),
-                content_chars=len(message or ""),
-                sensitivity=sensitive.get("sensitivity"),
-                sensitive_labels=sensitive.get("labels") or [],
-            )
-            # v4: conversations are durable episodic memory — unbounded SQLite
-            # store (the 50-message chat_history.json cap is dead).
-            CONVERSATIONS.append(item)
-            try:
-                if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
-                    # v4: chat messages enter the brain through the unified
-                    # ingestion pipeline (provenance + hook lifecycle), not by
-                    # bypassing it with a direct store call.
-                    INGESTION_PIPELINE.ingest(
-                        IngestionItem(
-                            source_type="chat_message",
-                            text=message,
-                            owner=user_email,
-                            workspace_id=workspace_id,
-                            conversation_id=conversation_id,
-                            metadata={
-                                "role": role,
-                                "user_nickname": user_nickname,
-                                "source": source,
-                                "raw": item,
-                            },
-                        ),
-                        user_email=user_email,
-                    )
-            except Exception as graph_error:
-                logging.warning("knowledge graph message ingest failed: %s", graph_error)
-        except Exception as e:
-            logging.warning("save_to_history failed: %s", e)
+
 
     def redact_secret_text(text: str) -> str:
         return _redact_secret_text(text)
@@ -691,6 +666,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     def build_sensitivity_report(history: List[Dict]) -> Dict:
         return _build_sensitivity_report(history)
+
 
     # ── Admin audit report — delegated to latticeai.core.audit ───────────────────
     def build_admin_audit_report(users: Dict, audit_events: Optional[List[Dict]] = None) -> Dict:

@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
-import { asArray } from "@/lib/utils";
+import { asArray, humanizeModelId } from "@/lib/utils";
 import { navigateHash } from "@/features/brain/navigation";
 
 /** Say what the search engine can do, not which provider is wired in. */
@@ -439,7 +439,12 @@ function ModelRuntimeSummary({
   onReload: () => void;
   onUnload: () => void;
 }) {
-  const loadedName = String(current?.name || current?.id || currentId || "");
+  // Fall back through the catalog name, then a humanised id — never the raw
+  // registry coordinate. 10.0.0 replaced `mlx-community/gemma-4-26b-a4b-it-4bit`
+  // with "Gemma 4 26B A4B Instruct" everywhere the Brain surface shows a model;
+  // this panel kept printing the coordinate because it fell straight to `id`.
+  const loadedRaw = String(current?.id || currentId || "");
+  const loadedName = String(current?.name || "") || (loadedRaw ? humanizeModelId(loadedRaw) : "");
   const engine = String(current?.engine || current?.recommended_engine || latestProgress?.engine || "local_mlx");
   const cachePath = String(current?.local_path || current?.storage_location || recommendation.cache_path || recommendation.storage_location || "~/.cache/huggingface / ~/.latticeai/models");
   const progressStage = String(latestProgress?.stage || lastResult?.stage || (loadedName ? t(language, "library.value.ready") : t(language, "library.value.idle")));

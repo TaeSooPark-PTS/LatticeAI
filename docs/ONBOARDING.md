@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.2.0 — Load-Bearing Fixes**.
+Current release: **10.3.0 — Measured Ground**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

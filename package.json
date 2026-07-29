@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "10.2.0",
+  "version": "10.3.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -61,7 +61,8 @@
     "test:vscode-extension": "cd vscode-extension && npm run build && cd .. && node --test tests/vscode-extension.test.cjs",
     "check:i18n-namespaces": "node scripts/check_i18n_namespace_coverage.mjs",
     "typecheck:python": "node scripts/run_python.mjs -m mypy",
-    "test:coverage": "node scripts/run_python.mjs -m pytest tests/ -q --cov --cov-report=term:skip-covered"
+    "test:coverage": "node scripts/run_python.mjs -m pytest tests/ -q --cov --cov-report=term:skip-covered",
+    "test:frontend:coverage": "vitest run --coverage"
   },
   "keywords": [
     "ltcai",
@@ -137,6 +138,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.10",
     "autoprefixer": "^10.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

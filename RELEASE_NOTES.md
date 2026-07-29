@@ -1,3 +1,23 @@
+# [v10.3.0 - Measured Ground] (2026-07-29)
+
+Three numbers this project reported about itself were wrong. Frontend coverage
+read 54% because vitest only counts files a test already imports; with
+`all: true` it is **28.5%**. Python coverage read 80% because the `omit`
+pattern did not match the paths coverage records, so the suite counted itself;
+it is **71.6%**. mypy covered 13 modules; it now covers **193 of 270** and
+found three real defects doing so — a log line referencing a non-existent
+attribute inside an error handler, an un-imported annotation, and a possible
+`None` dereference. 208 frontend tests (up from 154) give every page its first
+unit tests; 1,896 Python tests (up from 1,786) cover the Telegram allowlist,
+`run_command` containment, the audit log, and model-load consent. The chat-turn
+writer left `app_factory._build` and has 14 tests. What is still unmeasured is
+listed in `docs/MYPY_BACKLOG.md`.
+
+See [RELEASE_NOTES_v10.3.0.md](RELEASE_NOTES_v10.3.0.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.2.0 - Load-Bearing Fixes] (2026-07-29)
 
 Answers all twelve findings of a full 10.1.1 code review (71/100). A SQLite
@@ -162,7 +182,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.2.0**.
+This repository keeps public release history from **8.0.0 through 10.3.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
