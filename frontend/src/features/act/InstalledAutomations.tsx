@@ -73,7 +73,7 @@ export function InstalledAutomations({ language }: { language: Language }) {
         {installed.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t(language, "act.installed.empty")}</p>
         ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             {installed.map((automation) => {
               const id = String(automation.id || "");
               const isBusy = runNow.isPending && runNow.variables?.id === id;
@@ -84,58 +84,74 @@ export function InstalledAutomations({ language }: { language: Language }) {
                 ? t(language, "act.installed.mode.dry")
                 : t(language, "act.installed.mode.live");
               return (
-                <div key={id} className="rounded-lg border border-border bg-background/70 p-4" data-testid="installed-automation-card">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 truncate font-medium" title={automation.name}>{automation.name}</p>
-                    <Badge variant={automation.enabled ? "success" : "muted"}>
-                      {automation.enabled
-                        ? t(language, "act.installed.onBadge")
-                        : t(language, "act.installed.draftBadge")}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground" data-testid="automation-last-execution">
-                    <History className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    {last ? (
-                      <span>
-                        {t(language, "act.installed.lastRun")} · {modeLabel} · {String(last.status || "")}
-                        {last.finished_at ? ` · ${shortWhen(last.finished_at)}` : ""}
-                        {last.summary ? ` — ${last.summary}` : ""}
-                      </span>
-                    ) : (
-                      <span>{t(language, "act.installed.noRuns")}</span>
-                    )}
-                  </p>
-                  {result?.review_item_id ? (
-                    <p className="mt-1 text-xs text-red-600" role="status">{t(language, "act.installed.failedReview")}</p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Badge variant="success">
-                      <ShieldCheck className="h-3 w-3" /> {t(language, "act.automation.local")}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={runNow.isPending}
-                      onClick={() => runNow.mutate({ id, dryRun: true })}
-                    >
-                      <PlayCircle className="h-3.5 w-3.5" />
-                      {isBusy && runNow.variables?.dryRun
-                        ? t(language, "act.installed.dryRunning")
-                        : t(language, "act.installed.runNow")}
-                    </Button>
-                    {unlockedLive ? (
-                      <Button
-                        size="sm"
-                        disabled={runNow.isPending}
-                        onClick={() => runNow.mutate({ id, dryRun: false })}
-                      >
-                        {isBusy && !runNow.variables?.dryRun
-                          ? t(language, "act.installed.liveRunning")
-                          : t(language, "act.installed.runLive")}
-                      </Button>
+                <div key={id} className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3 flex flex-col justify-between" data-testid="installed-automation-card">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 font-bold text-sm text-foreground truncate" title={automation.name}>{automation.name}</p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge variant="success" className="text-[10px]">
+                          <ShieldCheck className="h-3 w-3 mr-0.5" /> {t(language, "act.automation.local")}
+                        </Badge>
+                        <Badge variant={automation.enabled ? "success" : "muted"} className="text-[10px]">
+                          {automation.enabled
+                            ? t(language, "act.installed.onBadge")
+                            : t(language, "act.installed.draftBadge")}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-border/50 bg-muted/30 p-2.5 text-xs space-y-1" data-testid="automation-last-execution">
+                      <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                        <History className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden="true" />
+                        <span>{t(language, "act.installed.lastRun")}</span>
+                      </div>
+                      {last ? (
+                        <p className="text-[11px] text-foreground/90 pl-5">
+                          <span className="font-semibold text-primary">{modeLabel}</span> · {String(last.status || "")}
+                          {last.finished_at ? ` · ${shortWhen(last.finished_at)}` : ""}
+                          {last.summary ? ` — ${last.summary}` : ""}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground pl-5">{t(language, "act.installed.noRuns")}</p>
+                      )}
+                    </div>
+
+                    {result?.review_item_id ? (
+                      <p className="text-xs text-destructive font-medium" role="status">{t(language, "act.installed.failedReview")}</p>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-[10px] text-muted-foreground">{t(language, "act.installed.dryRunHint")}</p>
+
+                  {/* Two-step Action Controls */}
+                  <div className="pt-2 border-t border-border/40 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={runNow.isPending}
+                        onClick={() => runNow.mutate({ id, dryRun: true })}
+                        className="flex-1 text-xs h-8"
+                      >
+                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                        {isBusy && runNow.variables?.dryRun
+                          ? t(language, "act.installed.dryRunning")
+                          : t(language, "act.installed.runNow")}
+                      </Button>
+
+                      {unlockedLive ? (
+                        <Button
+                          size="sm"
+                          disabled={runNow.isPending}
+                          onClick={() => runNow.mutate({ id, dryRun: false })}
+                          className="flex-1 text-xs h-8 shadow-sm"
+                        >
+                          {isBusy && !runNow.variables?.dryRun
+                            ? t(language, "act.installed.liveRunning")
+                            : t(language, "act.installed.runLive")}
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground text-center">{t(language, "act.installed.dryRunHint")}</p>
+                  </div>
                 </div>
               );
             })}

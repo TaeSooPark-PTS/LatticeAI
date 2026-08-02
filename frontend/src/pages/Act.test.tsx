@@ -142,4 +142,52 @@ describe("ActPage", () => {
     const checkboxes = screen.queryAllByRole("checkbox") as HTMLInputElement[];
     expect(checkboxes.every((c) => !c.checked || c.disabled)).toBe(true);
   });
+
+  it("stacks the runs tab by urgency: approvals, then automations, then history", async () => {
+    // This tab's rebuild *is* the order. An approval waits on a person, the
+    // installed list says what is armed, and the two run lists are only what
+    // already happened. Moving a block in the JSX reverses that silently —
+    // the screenshot would change but nothing would say the hierarchy broke.
+    render({
+      permissionsPending: ok({ pending: { "tok-1": { tool: "write_file", path: "README.md" } } }),
+      automationOverview: ok({
+        suggestions: [],
+        installed: [{ id: "wf-1", name: "매일 기억 요약", enabled: true, requires_user_enable: false, creates: [] }],
+        questions_scanned: 0,
+      }),
+      workflowRuns: ok({ runs: [] }),
+    });
+
+    await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
+    const [, sub] = screen.getAllByRole("tablist");
+    await userEvent.click(within(sub).getByRole("tab", { name: "실행" }));
+
+    await waitFor(() => expect(screen.getByText("설치된 자동화")).toBeTruthy());
+    // getAllByRole returns document order, which is the reading order here.
+    const order = screen.getAllByRole("heading").map((node) => node.textContent || "");
+    const approvals = order.findIndex((text) => text.includes("승인함"));
+    const installed = order.findIndex((text) => text.includes("설치된 자동화"));
+    const history = order.findIndex((text) => text.includes("Agent 실행"));
+
+    expect(approvals).toBeGreaterThanOrEqual(0);
+    expect(installed).toBeGreaterThan(approvals);
+    expect(history).toBeGreaterThan(installed);
+  });
+
+  it("keeps the installed automations reachable from the runs tab, not only from workflows", async () => {
+    // It is rendered in both tabs. A future cleanup that dedupes it by deleting
+    // the runs-tab copy would take the middle tier of the hierarchy with it.
+    render({
+      automationOverview: ok({
+        suggestions: [],
+        installed: [{ id: "wf-1", name: "매일 기억 요약", enabled: true, requires_user_enable: false, creates: [] }],
+        questions_scanned: 0,
+      }),
+    });
+    await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
+    const [, sub] = screen.getAllByRole("tablist");
+    await userEvent.click(within(sub).getByRole("tab", { name: "실행" }));
+    await waitFor(() => expect(screen.getByTestId("installed-automations")).toBeTruthy());
+    expect(screen.getByText("매일 기억 요약")).toBeTruthy();
+  });
 });

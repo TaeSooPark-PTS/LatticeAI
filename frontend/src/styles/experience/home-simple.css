@@ -128,12 +128,33 @@
   width: min(100%, 48rem);
 }
 
-.brain-home-station > .brain-composer {
+/* The composer now sits inside a focus ring wrapper, so it is a grandchild of
+   the station rather than a direct child. Matching on descendant keeps it flush
+   — a direct-child selector here silently stopped applying and the composer
+   grew a second border inside the wrapper's. */
+.brain-home-station .brain-composer {
   width: 100%;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+/* The box you type into is the one thing a newcomer must find. It gets the only
+   raised surface in the station and lifts further when focused. */
+.brain-home-station > .brain-composer-wrapper {
+  width: auto;
+  margin: 0.25rem 0.9rem 0.35rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md, 0.7rem);
+  background: hsl(var(--background));
+  box-shadow: var(--elev-1, 0 2px 8px hsl(var(--foreground) / 0.05));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.brain-home-station > .brain-composer-wrapper:focus-within {
+  border-color: hsl(var(--primary) / 0.6);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.14);
 }
 
 .brain-home-station .brain-composer textarea {
@@ -197,50 +218,101 @@
   transition: background 150ms ease, color 150ms ease;
 }
 
-/* Suggestion chips read as "you could also ask…", not as a toolbar. They close
-   the station rather than floating loose beneath it. */
+/* Three things to try, directly under the box you type into. This used to be a
+   centred row of one-line chips whose detail text was hidden in a tooltip — a
+   newcomer had to hover to learn what any of them did. It is a labelled block
+   of cards now: a quiet caption, then the suggestions side by side, each
+   showing what it asks and why. The strip sits mid-station (the toolbar is the
+   floor), so it carries a hairline on both edges and no corner rounding. */
 .brain-home-station > .brain-home-prompt-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
+  display: block;
   width: 100%;
-  padding: 0.5rem 0.9rem 0.65rem;
+  padding: 0.7rem 0.9rem 0.75rem;
   border: 0;
   border-top: 1px solid hsl(var(--border) / 0.45);
-  border-radius: 0 0 var(--radius-lg, 0.9rem) var(--radius-lg, 0.9rem);
-  background: hsl(var(--muted) / 0.28);
+  border-radius: 0;
+  background: hsl(var(--muted) / 0.2);
+  overflow: visible;
 }
 
-.brain-home-station > .brain-home-prompt-strip > button {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35rem;
+.brain-home-station > .brain-home-prompt-strip > div:first-child {
+  margin-bottom: 0.45rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* The suggestion grid. Cards, not chips — each one may wrap to two lines.
+   auto-fit rather than a fixed 3 columns: Brain often has only two suggestions
+   to offer, and a hard `repeat(3, …)` left a visible hole in the row. */
+.brain-home-station > .brain-home-prompt-strip > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.45rem;
+}
+
+.brain-home-station > .brain-home-prompt-strip button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  min-width: 0;
   max-width: 100%;
-  padding: 0.34rem 0.7rem;
+  padding: 0.5rem 0.6rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-md, 0.7rem);
   background: hsl(var(--card));
-  font-size: 0.82rem;
-  white-space: nowrap;
+  font-size: 0.78rem;
+  text-align: left;
+  white-space: normal;
   cursor: pointer;
   transition: background 150ms ease, border-color 150ms ease;
 }
 
-.brain-home-station > .brain-home-prompt-strip > button:hover:not(:disabled) {
+.brain-home-station > .brain-home-prompt-strip button:hover:not(:disabled) {
   border-color: hsl(var(--primary) / 0.5);
   background: hsl(var(--primary) / 0.07);
 }
 
-/* A chip carries its label; the full sentence stays in the tooltip so three
-   suggestions always fit one line instead of wrapping into a second block. */
-.brain-home-station > .brain-home-prompt-strip > button > span {
-  display: none;
+.brain-home-station > .brain-home-prompt-strip button:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
-.brain-home-station > .brain-home-prompt-strip > button > strong {
+.brain-home-station > .brain-home-prompt-strip button > strong {
+  display: block;
   font-weight: 600;
+  line-height: 1.35;
+}
+
+/* The detail line is visible now rather than tooltip-only, clamped to two lines
+   so three cards keep an even height. */
+.brain-home-station > .brain-home-prompt-strip button > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+/* The starter-prompt fallback (no suggestions yet) stays a simple pill row. */
+.brain-home-station > .brain-home-prompt-strip > div:last-child:has(> .brain-prompt-pill) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.brain-home-station > .brain-home-prompt-strip button.brain-prompt-pill {
+  flex-direction: row;
+  align-items: center;
+  min-height: 0;
+  padding: 0.34rem 0.7rem;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* ── 4. capture pill sizing ───────────────────────────────────────────────
@@ -423,6 +495,7 @@
 .brain-home-quiet .brain-home-shelves {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.45rem;
 }
 
@@ -435,6 +508,54 @@
   width: 100%;
   max-width: 100%;
   margin: 0;
+}
+
+/* Short or narrow screens. The suggestion cards fold back to one-line chips and
+   the detail sentence returns to the tooltip it came from. Full cards are worth
+   the ~55px they cost on a roomy screen; on a 650px-tall laptop they pushed the
+   station's toolbar — add material, autonomy — off the first screen, and on a
+   phone they slid the shelves under the fixed bottom nav, where a tap lands on
+   the nav instead. Controls outrank suggestions when height is scarce. */
+@media (max-height: 800px), (max-width: 900px) {
+  .brain-home-station > .brain-home-prompt-strip {
+    padding: 0.5rem 0.9rem 0.55rem;
+  }
+
+  .brain-home-station > .brain-home-prompt-strip > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .brain-home-station > .brain-home-prompt-strip button {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.32rem 0.66rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .brain-home-station > .brain-home-prompt-strip button > span {
+    display: none;
+  }
+}
+
+/* A short window also tightens the greeting, which is the other block standing
+   between the composer and the toolbar. */
+@media (max-height: 800px) {
+  .brain-home-station > .brain-hero {
+    padding-top: 0.55rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .brain-hero-organism .brain-organism {
+    width: 3.6rem;
+    height: 3.6rem;
+  }
+
+  .brain-home-station > .brain-hero h1 {
+    font-size: 1.18rem;
+  }
 }
 
 @media (max-width: 640px) {

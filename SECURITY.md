@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **10.6.0 — Promoted Panels**.
+Current release: **10.6.1 — First Things**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 10.6.0. Security
+The public Git tree keeps release history from 8.0.0 through 10.6.1. Security
 support follows that same product era.
 
 | Version | Support |

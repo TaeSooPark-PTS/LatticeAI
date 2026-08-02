@@ -122,17 +122,29 @@ export function ReviewInbox() {
             ) : null}
           </div>
         </div>
-        <div className="grid gap-2">
-          <Tabs
-            tabs={reviewStatusFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
-            value={statusFilter}
-            onChange={(id) => setStatusFilter(id as ReviewStatusFilter)}
-          />
-          <Tabs
-            tabs={reviewSourceFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
-            value={sourceFilter}
-            onChange={(id) => setSourceFilter(id as ReviewSourceFilter)}
-          />
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/40 pt-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span id="review-status-filter-label" className="text-xs font-semibold tracking-wide text-muted-foreground">
+              {t(language, "review.status.title")}
+            </span>
+            <Tabs
+              tabs={reviewStatusFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
+              value={statusFilter}
+              onChange={(id) => setStatusFilter(id as ReviewStatusFilter)}
+              ariaLabelledBy="review-status-filter-label"
+            />
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span id="review-source-filter-label" className="text-xs font-semibold tracking-wide text-muted-foreground">
+              {t(language, "review.source.title")}
+            </span>
+            <Tabs
+              tabs={reviewSourceFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
+              value={sourceFilter}
+              onChange={(id) => setSourceFilter(id as ReviewSourceFilter)}
+              ariaLabelledBy="review-source-filter-label"
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>

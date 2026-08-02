@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.6.0 — Promoted Panels**.
+Current release: **10.6.1 — First Things**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

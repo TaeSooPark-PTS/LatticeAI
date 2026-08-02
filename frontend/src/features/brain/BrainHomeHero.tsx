@@ -31,21 +31,29 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
   const conceptCount = Math.max(readiness.signals.conceptCount, graph.nodes.length);
   const empty = memoryCount === 0 && conceptCount === 0;
 
+  // Column, centring, gap and padding all come from
+  // `.brain-home-station > .brain-hero` in home-simple.css, which is unlayered
+  // and outranks Tailwind utilities either way: it wins where it sets the
+  // property, and stacks where it does not.
   return (
     <section className="brain-hero" data-testid="brain-knowledge-flow" aria-labelledby="brain-home-title">
-      {/* LivingBrain already renders its own button, so this is a plain wrapper
-          that only sizes it — nesting a button inside a button is invalid. */}
+      {/* LivingBrain renders its own button, so this is a sizing wrapper only —
+          a button nested in a button would be invalid. */}
       <div className="brain-hero-organism">
         <LivingBrain
           state={brainState}
           intensity={intensity}
-          size="large"
+          size="normal"
           depth={readiness.depth}
           showLabel={false}
           onInteract={onExploreBrain}
         />
       </div>
 
+      {/* No wrapper div and no utilities. The stylesheet sets the h1's size and
+          the line's colour, so `text-xl`, `text-xs`, `text-muted-foreground`
+          and `mx-auto` all lost to it; the one that would have applied,
+          `opacity-75`, dimmed a hint whose colour is already 0.75 alpha. */}
       <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
       <p className="brain-hero-line">
         {empty

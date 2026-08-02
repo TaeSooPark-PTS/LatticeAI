@@ -12,16 +12,24 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.6.0 — Promoted Panels.** This release rebuilds the layout of the Lattice AI
-app, not this extension; the extension ships unchanged apart from its version.
-Two things change for anyone following instructions between the editor and the
-app. The review inbox is now what the app's **작업** link opens — it used to open
-the goal composer — so a proposal raised from the editor is on screen as soon as
-you switch over. And **작업 · AI 모델 · 설정** moved out of the app's 더보기 menu
-into the top bar on a wide window; on a narrow one they are still in the menu,
-now under **관리**. No endpoint, token, or approval path changed: `strict` /
-`trusted` / `bypass` still travel over the wire, and governed tool behaviour, the
-approval prompts, and the audit trail are exactly as they were.
+**10.6.1 — First Things.** This release rebuilds the layout of five app screens,
+not this extension; the extension ships unchanged apart from its version. One of
+those five matters to anyone working between the editor and the app: a review
+item is now **evidence on the left, decision on the right**. A proposal raised
+from the editor used to render as one long column that ended in a button row, so
+a large diff pushed 승인 / 거절 off the bottom of the screen. 승인하고 적용 and
+거절 now sit in a panel that stays beside the diff. The app's 작업 → 실행 tab also
+leads with **승인함** instead of finishing with it, so an approval waiting on you
+is the first thing on that screen. No endpoint, token, or approval path changed:
+`strict` / `trusted` / `bypass` still travel over the wire, and governed tool
+behaviour, the approval prompts, and the audit trail are exactly as they were.
+
+**10.6.0 — Promoted Panels** rebuilt the layout of the app's main screens. The
+review inbox became what the app's **작업** link opens — it used to open the goal
+composer — so a proposal raised from the editor is on screen as soon as you
+switch over. And **작업 · AI 모델 · 설정** moved out of the app's 더보기 menu into
+the top bar on a wide window; on a narrow one they are still in the menu, now
+under **관리**.
 
 **10.5.0 — Everyday Words** changed what the app calls things. The autonomy dial
 the editor obeys is called **혼자 해도 되는 일** (설정 → 혼자 해도 되는 일), and its
