@@ -75,55 +75,88 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <div>
-      <div className="ritual-title">{t(language, "flow.login.title")}</div>
-      <div className="ritual-subtitle">{t(language, "flow.login.body")}</div>
+    // Layout for every `.ritual-*` element below lives in styles.css. That
+    // sheet is unlayered and Tailwind's utilities are in `@layer utilities`, so
+    // an unlayered rule wins no matter the specificity or order — sizing,
+    // spacing and colour utilities dropped on these classes are dead code that
+    // reads like it works. The screen's own structure gets `.ritual-login-*`
+    // classes instead, which nothing else claims.
+    <div className="ritual-login">
+      <header>
+        <h1 id="login-title" className="ritual-title">
+          {t(language, "flow.login.title")}
+        </h1>
+        <p className="ritual-subtitle">{t(language, "flow.login.body")}</p>
+      </header>
+
+      {/* The form is the whole job of this screen, so it is the only raised
+          surface on it. The promise bar below and the greeting above are
+          deliberately flat. */}
+      <div className="ritual-login-card">
+        <form onSubmit={submit} className="ritual-form" aria-labelledby="login-title">
+          <div className="ritual-field-stack">
+            <div>
+              <label htmlFor="login-name" className="ritual-field-label">
+                {t(language, "flow.name")}
+              </label>
+              <Input
+                id="login-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t(language, "flow.name.placeholder")}
+                autoComplete="name"
+              />
+            </div>
+            <div>
+              <label htmlFor="login-email" className="ritual-field-label">
+                {t(language, "flow.email")}
+              </label>
+              <Input
+                id="login-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                placeholder={t(language, "flow.email.placeholder")}
+                autoComplete="email"
+                required
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? "login-error" : undefined}
+              />
+            </div>
+            <div>
+              <label htmlFor="login-password" className="ritual-field-label">
+                {t(language, "flow.password")}
+              </label>
+              <Input
+                id="login-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                placeholder={t(language, "flow.password.placeholder")}
+                autoComplete="current-password"
+                required
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? "login-error" : undefined}
+              />
+            </div>
+          </div>
+
+          {error && <div id="login-error" className="ritual-error" role="alert">{error}</div>}
+
+          <Button type="submit" disabled={busy || !email.trim() || !password.trim()} className="ritual-full-button">
+            {busy ? t(language, "flow.login.busy") : t(language, "flow.login.submit")}
+          </Button>
+
+          {/* Both reassurances read after the button, not between the fields
+              and it, where they used to break the run from typing to pressing. */}
+          <div className="ritual-login-footnotes">
+            <div className="ritual-muted-hint">{t(language, "flow.login.passwordLocal")}</div>
+            <div className="ritual-note">{t(language, "flow.login.note")}</div>
+          </div>
+        </form>
+      </div>
 
       <ProductPromise />
-
-      <form onSubmit={submit} className="ritual-card ritual-form">
-        <div className="ritual-field-stack">
-          <div>
-            <div className="ritual-field-label">{t(language, "flow.name")}</div>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t(language, "flow.name.placeholder")}
-              autoComplete="name"
-            />
-          </div>
-          <div>
-            <div className="ritual-field-label">{t(language, "flow.email")}</div>
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder={t(language, "flow.email.placeholder")}
-              autoComplete="email"
-            />
-          </div>
-          <div>
-            <div className="ritual-field-label">{t(language, "flow.password")}</div>
-            <Input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder={t(language, "flow.password.placeholder")}
-              autoComplete="current-password"
-            />
-          </div>
-        </div>
-
-        {error && <div className="ritual-error" role="alert">{error}</div>}
-        <div className="ritual-muted-hint">{t(language, "flow.login.passwordLocal")}</div>
-
-        <Button type="submit" disabled={busy || !email.trim() || !password.trim()} className="ritual-full-button">
-          {busy ? t(language, "flow.login.busy") : t(language, "flow.login.submit")}
-        </Button>
-        <div className="ritual-note">
-          {t(language, "flow.login.note")}
-        </div>
-      </form>
     </div>
   );
 }
@@ -131,7 +164,12 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
 function ProductPromise() {
   const language = useAppStore((state) => state.language);
   return (
-    <div className="ritual-promise" aria-label={t(language, "flow.promise.aria")}>
+    // Three bordered cards competing with the form became one quiet bar with
+    // hairline separators — same three facts, no second set of boxes under the
+    // one box that matters. The `.is-quiet` modifier carries that in styles.css;
+    // border/background utilities here would have lost to `.ritual-promise div`
+    // and only added an outer box around the inner ones.
+    <aside className="ritual-promise is-quiet" aria-label={t(language, "flow.promise.aria")}>
       <div>
         <span>{t(language, "flow.promise.memory.k")}</span>
         <strong>{t(language, "flow.promise.memory.v")}</strong>
@@ -144,6 +182,6 @@ function ProductPromise() {
         <span>{t(language, "flow.promise.ownership.k")}</span>
         <strong>{t(language, "flow.promise.ownership.v")}</strong>
       </div>
-    </div>
+    </aside>
   );
 }

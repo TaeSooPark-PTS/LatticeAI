@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v10.6.0)
+# Lattice AI Feature Status (v10.6.1)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **10.6.0 — Promoted Panels**.
+Current release: **10.6.1 — First Things**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -66,7 +66,15 @@ single bordered station instead of five stacked blocks. Everyday destinations
 (대화 · 자료 · 기억) and management destinations (작업 · AI 모델 · 설정) are now
 separate lists, the second rendered from one array into either the topbar or the
 menu by a single breakpoint. Nothing was deleted; every panel is still on its
-page, below the one that leads it.
+page, below the one that leads it. The 10.6.1 line finishes that pass on the
+five screens it did not reach: sign-in is one card with the promise bar demoted
+to a hairline strip beneath it, the recommended model is one hero card instead
+of a CTA duplicating the first row of its own list, the Brain home leads with
+the composer and drops add-material and autonomy to the station floor, the runs
+tab stacks by urgency (승인함 → 설치된 자동화 → 실행 기록), and a review item is
+evidence on the left with the approve/reject decision beside it rather than
+below a diff. Each of those orders is now asserted by a unit test rather than
+described.
 
 ## Current Feature Status
 
@@ -112,14 +120,16 @@ page, below the one that leads it.
 | Network Boundary | Current | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. Set it in **설정 → 내 지식이 나가는 범위** (`NetworkBoundaryPanel`) or through `POST /api/network-boundary`. The selector renders the server's own catalog and refuses to send a `cloud_allowed` switch until the risk acknowledgement the server requires is ticked. A built-in **preview** names the actual memories a given question would send, with its token estimate and whether the token guard would refuse the turn — and works in `local_only` too, labelled as hypothetical. Only the minimal extracted node slice is ever sent, never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). |
 | Hybrid Cloud Chat | Current (requires cloud key) | When the boundary is `cloud_allowed`, `/chat` branches through `api/chat_hybrid.py` → `services/hybrid_chat.py`: minimal KG context is assembled (`hybrid_context.py`), checked against per-turn and per-session token budgets (`cloud_token_guard.py`), and streamed from an OpenAI-compatible provider (`openai_compatible_adapter.py`, `cloud_streaming.py`). Inert without `LATTICEAI_CLOUD_API_KEY`; the local path is untouched. |
 | Cloud Memory Write-Back | Current (proposal-first) | Knowledge extracted from a cloud answer (`cloud_extraction.py`) is enqueued as a Review Center `change_proposal` with provenance. It is written to the graph only when `auto_commit` is explicitly enabled in the hybrid policy (default **false**) and a store write API exists. Multimodal streaming needs both `cloud_allowed` and a separate `allow_multimodal` flag (default **false**). |
-| Release Assets | Current | 10.6.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 10.6.1 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
 - **The approval card under 작업 → 실행 still labels raw payload fields**
   (`Action`, `Action Label`, `User Email`) in plain mode. It is visible in
-  `output/release/v10.6.0/screenshots/09-automation-runs.png`, published rather
-  than cropped, and is the first item for the next plain-language pass.
+  `output/release/v10.6.1/screenshots/09-automation-runs.png`, published rather
+  than cropped, and is the first item for the next plain-language pass. 10.6.1
+  moved that card to the top of the screen, which makes the raw labels the most
+  visible text on it — the placement is fixed, the wording is not.
 - The plain-mode vocabulary sweep in `tests/visual/v3.spec.js` checks a word
   list over ten routes. It catches the engine's vocabulary reaching a reader;
   it cannot catch a sentence that is jargon-free and still unclear.

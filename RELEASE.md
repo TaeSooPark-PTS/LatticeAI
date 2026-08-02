@@ -13,6 +13,67 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.6.1 — First Things (2026-08-03)
+
+10.6.0 gave each main screen one leading panel and stopped short of five screens:
+sign-in, the recommended model, the Brain home, the automation runs list, and the
+review center. 10.6.1 rebuilds those five on the same rule — what you came for is
+the first thing on the screen, everything else sits under it. Nothing was
+deleted; the pieces moved.
+
+**Onboarding leads with the one thing to do.** The login screen put a
+three-card promise bar between the greeting and the form, so a first-time reader
+met two sets of boxes before the one they type in. The form is now the only
+raised surface, the promise bar is a quiet hairline strip at the foot of the
+screen (`.ritual-promise.is-quiet`), and the two reassurances that used to sit
+between the last field and the button read after it. Every input is bound to a
+real `<label for>`, the form is named by the page heading, and a failure sets
+`aria-invalid` + `aria-describedby` on the fields it applies to instead of
+floating above them. The recommendation screen rendered its top pick twice — a
+bare CTA above the list, then the same model as the first of three cards — with
+nothing saying which one to press. It is one `.ritual-primary-hero-card` now,
+holding rank, size, name, reason, time estimate and the button; the remaining
+two models sit under a labelled `다른 선택지` grid as compact cards, and 뒤로 /
+모델 없이 Brain 열기 split to opposite ends of a footer row instead of queuing up
+with the hint that explains them.
+
+**The Brain home leads with the box you type into.** The composer sits in its
+own bordered wrapper with a focus ring; the three things to try moved directly
+under it, from a centred row of one-line chips into a grid of cards whose second
+line is visible instead of living in a `title` tooltip; and add-material plus the
+autonomy dial dropped to the station floor as one toolbar. The runs tab stacks by
+urgency instead of by data source: `승인함` — previously the last block, under two
+tables of finished runs — is first and carries an attention treatment, installed
+automations follow with their last run (mode, result, time, summary) inside the
+card rather than as a line of prose, and the agent/workflow tables read as
+history at the end. The review card was one column ending in a button row, so a
+long diff pushed 승인 / 거절 below the fold; it is now a 7/5 split with evidence
+on the left and an always-visible decision panel on the right, collapsing back to
+one column when an item carries no evidence at all.
+
+**Accessibility came with the structure, not after it.** Each review item is an
+`<article>` named by its own `<h3>`, its decision block is an `<h4>` under that,
+and the approve/reject cluster is a named `role="group"`; the status and source
+filters have visible captions wired through `aria-labelledby` instead of being
+two unlabelled tab strips. The Brain home's greeting is the page `<h1>`, and its
+header/footer are scoped so they do not register as page landmarks.
+
+**One layout bug the rebuild surfaced.** The project's own stylesheets are
+unlayered and Tailwind's utilities live in `@layer utilities`, so a utility class
+on a `.ritual-*` / `.brain-*` element loses to the sheet for every property the
+sheet sets — and wins for every property it does not. Most of those utilities
+were harmless dead code. `p-6` on the Brain home stage was not: the sheet sets no
+padding there, so it stacked on children that already pad themselves and pushed
+the quiet shelves under the fixed mobile nav, where the tap landed on the nav.
+`frontend/src/styles/cssLayering.test.ts` now asserts the project ships no
+`@layer`, which is the reason the sheet wins.
+
+**Evidence.** `tests/visual/mock_server.cjs` serves `/api/proposals/counts` and
+two installed automations with last-run detail, plus a `change_proposal` review
+item carrying a real diff — without them the promoted approval block and the new
+evidence column would have been captured empty. `output/release/v10.6.1/` was
+re-captured on the rebuilt screens.
+
 ## v10.6.0 — Promoted Panels (2026-08-03)
 
 10.5.0 changed the words on each screen. 10.6.0 changes where things sit. Every

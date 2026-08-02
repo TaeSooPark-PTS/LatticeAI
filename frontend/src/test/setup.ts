@@ -26,6 +26,28 @@ if (!("ResizeObserver" in globalThis)) {
   };
 }
 
+// jsdom ships no matchMedia either, and `LivingBrain` calls it on mount to read
+// `prefers-reduced-motion`. The orb is on the Brain home, the onboarding flow
+// and the shell header, so every screen that renders one threw before its
+// assertions ran — which is why the Brain home had no unit test at all. Same
+// rationale as ResizeObserver above: report the default (motion allowed) and
+// never fire a change, so the component takes its ordinary branch.
+// Guarded on `typeof`, not `"matchMedia" in globalThis`: jsdom declares the
+// property but leaves it undefined, so the `in` check used for ResizeObserver
+// above would pass and skip the shim.
+if (typeof globalThis.matchMedia !== "function") {
+  globalThis.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    dispatchEvent: () => false,
+  })) as typeof globalThis.matchMedia;
+}
+
 afterEach(() => {
   cleanup();
   localStorage.clear();

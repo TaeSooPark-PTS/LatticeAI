@@ -122,6 +122,15 @@
   border-color: hsl(var(--border) / 0.86);
 }
 
+/* The one panel on a screen that is waiting on the person. `.data-panel` sets
+   border-color here, in plain CSS, which outranks any Tailwind border utility
+   passed through `className` — so the emphasis has to live at this layer too. */
+.data-panel.is-attention {
+  border-color: hsl(var(--warning) / 0.75);
+  background: linear-gradient(135deg, hsl(var(--warning) / 0.1), hsl(var(--warning) / 0.03));
+  box-shadow: 0 4px 16px hsl(var(--warning) / 0.12);
+}
+
 .data-panel > :first-child {
   border-bottom: 1px solid hsl(var(--border) / 0.72);
 }

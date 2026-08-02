@@ -4,6 +4,74 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.6.1] - 2026-08-03
+
+The second half of the layout rebuild. 10.6.0 promoted one panel per main screen
+and left five screens untouched: sign-in, the recommended model, the Brain home,
+the automation runs list, and the review center. Each of those now opens on the
+one thing it exists for, with everything else grouped beneath it. No feature was
+removed. Backend behaviour is unchanged; `frontend/openapi.json` differs from
+10.6.0 only in `info.version`.
+
+### Changed
+- **Login is one card.** The three-card promise bar moved from between the
+  greeting and the form to a quiet hairline strip below it
+  (`.ritual-promise.is-quiet`), leaving the form as the only raised surface. The
+  password-stays-local note and the existing-Brain note now read after the
+  submit button instead of between the last field and it.
+- **The recommendation screen names its top pick once.** The duplicate CTA above
+  the list is gone; rank, size, name, reason, time estimate and the action live
+  in one `.ritual-primary-hero-card`, with the other two models under a labelled
+  `다른 선택지` grid as `.ritual-model-card.is-compact`. The footer splits 뒤로 to
+  one end and the hint + 모델 없이 Brain 열기 to the other.
+- **The Brain home leads with the composer.** It gained its own bordered wrapper
+  and focus ring; the suggestion strip moved directly under it and became a card
+  grid that shows each suggestion's detail line (previously `title`-only); the
+  add-material dock and the autonomy dial dropped to the station floor as one
+  toolbar; the past-conversation count reads as a badge.
+- **The runs tab stacks by urgency.** `승인함` moved from the bottom to the top
+  with an attention treatment (`.data-panel.is-attention`), installed automations
+  became visible from this tab with their last run — mode, result, timestamp,
+  summary — inside the card, and the agent and workflow run tables moved to the
+  end as history.
+- **A review item is evidence beside a decision.** `ReviewCard` splits into a
+  7/5 grid: proposal diff, snooze state, risk/class/tool provenance and the
+  technical `<details>` on the left; an always-visible decision panel with
+  approve / reject / snooze / run-now and the reject reason on the right. Items
+  with no evidence render as a single column instead of an empty left half.
+
+### Accessibility
+- Login: `<label for>` on every field, form named by the page heading,
+  `aria-invalid` + `aria-describedby` wired to the error only once it exists.
+- Recommendation: hero card labelled by the model name it recommends.
+- Brain home: greeting is the page `<h1>`; station header and footer scoped so
+  they do not register as page landmarks; suggestion strip and station toolbar
+  carry accessible names.
+- Review: each item is an `<article>` named by its `<h3>`, the decision block is
+  an `<h4>`, the approve/reject cluster is a named `role="group"`, and the status
+  and source filters have visible captions referenced by `aria-labelledby`.
+
+### Fixed
+- `p-6` on the Brain home stage added padding on top of children that already
+  pad themselves and pushed the quiet shelves under the fixed mobile nav, where
+  the tap hit the nav. The project's stylesheets are unlayered and therefore beat
+  Tailwind's `@layer utilities` for properties they set — but not for properties
+  they leave unset, which is why this one applied.
+  `frontend/src/styles/cssLayering.test.ts` asserts the project ships no
+  `@layer`, which is what makes that rule hold.
+- The installed-automations empty state pointed at "the suggestions above" from
+  a tab that has none above it; `act.installed.empty` now names the 레시피 tab in
+  both languages.
+
+### Tests
+- New: `LoginScreen.test.tsx`, `RecommendationScreen.test.tsx`,
+  `BrainHome.test.tsx`, `ReviewCard.test.tsx`, `ReviewInbox.test.tsx`,
+  `cssLayering.test.ts`; `Act.test.tsx` gained runs-tab ordering coverage.
+- `tests/visual/mock_server.cjs` serves `/api/proposals/counts`, two installed
+  automations with last-run detail, and a `change_proposal` review item with a
+  real diff — without them the promoted approval block and the new evidence
+  column are captured empty.
+
 ## [10.6.0] - 2026-08-03
 
 A layout rebuild, not a copy pass. Every main screen used to open as a row of

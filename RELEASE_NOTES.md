@@ -1,3 +1,31 @@
+# [v10.6.1 - First Things] (2026-08-03)
+
+10.6.0은 주요 화면마다 1순위 패널 하나를 정했지만, 다섯 화면은 손대지 못한 채
+남았습니다: 로그인, 추천 모델, Brain 대화 홈, 자동화 실행 목록, 리뷰 센터.
+10.6.1은 그 다섯 개를 같은 규칙으로 다시 짭니다 — **여기 온 이유가 화면의 첫
+번째 것이 되고, 나머지는 그 아래로 내려간다.** 로그인은 입력 폼 하나만 카드로
+띄우고, 세 칸짜리 약속 바는 화면 맨 아래 얇은 띠로 내려갔으며, "비밀번호는 이
+컴퓨터에 남습니다" 같은 안심 문구는 마지막 입력칸과 버튼 사이가 아니라 버튼
+**뒤**로 옮겼습니다. 추천 모델 화면은 같은 모델을 CTA 버튼과 목록 첫 카드로 **두
+번** 보여주고 있었습니다 — 이제 이름·이유·용량·소요 시간·버튼을 담은 히어로 카드
+하나이고, 나머지 둘은 `다른 선택지` 아래 작은 카드입니다. Brain 홈은 입력창이
+자기 테두리와 포커스 링을 갖고 맨 앞에 서고, 추천 질문은 툴팁에 숨어 있던 설명
+줄이 보이는 카드 격자가 되었으며, 자료 추가와 자율성은 스테이션 바닥의 한 줄로
+내려갔습니다. 실행 목록은 데이터 출처가 아니라 **급한 순서**로 쌓입니다: 승인함 →
+설치된 자동화(마지막 실행 결과 포함) → 실행 기록. 리뷰 카드는 긴 diff가 승인·거절
+버튼을 화면 밖으로 밀어내던 한 줄 구성에서 **왼쪽 근거 · 오른쪽 결정**의 두 칸이
+되었습니다(근거가 없으면 한 칸으로 되돌아갑니다). 리뷰 항목은 제목이 heading인
+`<article>`이 되었고, 상태·출처 필터에는 이름이 붙었습니다. 재배치 도중 원래 깨져
+있던 것도 하나 드러났습니다: 프로젝트 CSS는 unlayered라 Tailwind 유틸리티를
+이기는데, 시트가 값을 정하지 않은 속성(`p-6`)만은 유틸리티가 살아남아 Brain 홈에
+없는 여백을 얹고 하단 선반을 모바일 내비 아래로 밀어 넣고 있었습니다. 기능은
+하나도 지우지 않았습니다.
+
+See [RELEASE_NOTES_v10.6.1.md](RELEASE_NOTES_v10.6.1.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.6.0 - Promoted Panels] (2026-08-03)
 
 10.5.0이 각 화면의 **말**을 바꿨다면, 10.6.0은 각 화면의 **자리**를 바꿉니다. 주요
@@ -243,7 +271,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.6.0**.
+This repository keeps public release history from **8.0.0 through 10.6.1**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

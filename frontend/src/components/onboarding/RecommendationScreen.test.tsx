@@ -27,6 +27,33 @@ const supportedModel: RecommendedModel = {
   parameterBillions: 12,
 };
 
+const faster: RecommendedModel = {
+  ...supportedModel,
+  id: "mlx-community/Qwen3-4B-4bit",
+  loadId: "mlx-community/Qwen3-4B-4bit",
+  name: "Qwen 3 4B",
+  shortName: "Qwen 3",
+  family: "Qwen 3",
+  size: "2.4GB",
+  role: "faster",
+  reason: "quicker replies on a smaller machine",
+  parameterBillions: 4,
+};
+
+const unsupported: RecommendedModel = {
+  ...supportedModel,
+  id: "mlx-community/Llama-3-70B-4bit",
+  loadId: "mlx-community/Llama-3-70B-4bit",
+  name: "Llama 3 70B",
+  shortName: "Llama 70B",
+  family: "Llama 3",
+  size: "40GB",
+  role: "advanced",
+  reason: "needs more memory than this machine has",
+  supported: false,
+  parameterBillions: 70,
+};
+
 function renderScreen(overrides: Partial<React.ComponentProps<typeof RecommendationScreen>> = {}) {
   const props = {
     status: "unavailable" as const,
@@ -85,5 +112,62 @@ describe("RecommendationScreen", () => {
     expect(document.querySelector(".ritual-primary-model-button")).not.toBeNull();
     expect(screen.getByText("Gemma 3")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("names the top recommendation once instead of as a CTA above its own card", () => {
+    // The screen used to render items[0] twice: a bare CTA button at the top,
+    // then the same model again as the first card of the list below it, with
+    // nothing saying which to press. One hero card now owns both.
+    renderScreen({ status: "ready", reason: null, recommendations: [supportedModel, faster, unsupported] });
+    expect(screen.getAllByText("Gemma 3")).toHaveLength(1);
+    expect(document.querySelectorAll(".ritual-primary-model-button")).toHaveLength(1);
+    // The hero is not one of the compact alternative cards.
+    expect(document.querySelectorAll(".ritual-model-card.is-compact")).toHaveLength(2);
+    expect(document.querySelector(".ritual-model-card.is-compact")?.textContent).not.toContain("Gemma 3");
+  });
+
+  it("labels the hero card by the model it recommends", () => {
+    renderScreen({ status: "ready", reason: null, recommendations: [supportedModel, faster] });
+    expect(screen.getByRole("heading", { level: 2, name: "Gemma 3" })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 2, name: t("en", "flow.recommend.alternatives") }),
+    ).toBeTruthy();
+  });
+
+  it("picks the alternative that was clicked, not the headline model", async () => {
+    const props = renderScreen({
+      status: "ready",
+      reason: null,
+      recommendations: [supportedModel, faster],
+    });
+    await userEvent.click(screen.getByText("Qwen 3").closest("button")!);
+    expect(props.onSelect).toHaveBeenCalledTimes(1);
+    expect(props.onSelect).toHaveBeenCalledWith(faster);
+  });
+
+  it("disables an alternative this machine cannot run", async () => {
+    const props = renderScreen({
+      status: "ready",
+      reason: null,
+      recommendations: [supportedModel, unsupported],
+    });
+    const card = screen.getByText("Llama 70B").closest("button") as HTMLButtonElement;
+    expect(card.disabled).toBe(true);
+    await userEvent.click(card);
+    expect(props.onSelect).not.toHaveBeenCalled();
+  });
+
+  it("keeps back and skip reachable once a recommendation is showing", async () => {
+    const props = renderScreen({ status: "ready", reason: null, recommendations: [supportedModel] });
+    await userEvent.click(screen.getByRole("button", { name: t("en", "flow.recommend.back") }));
+    await userEvent.click(screen.getByRole("button", { name: t("en", "flow.recommend.skip") }));
+    expect(props.onBack).toHaveBeenCalledTimes(1);
+    expect(props.onSkipModel).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders no alternatives block when there is only one recommendation", () => {
+    renderScreen({ status: "ready", reason: null, recommendations: [supportedModel] });
+    expect(document.querySelector(".ritual-alternatives")).toBeNull();
+    expect(screen.queryByText(t("en", "flow.recommend.alternatives"))).toBeNull();
   });
 });

@@ -922,6 +922,46 @@ const server = http.createServer((req, res) => {
     severity_counts: { high: 0, medium: 1, low: 2 }, field_counts: { email: 4, api_key: 1 },
   });
   if (pathname.startsWith("/admin/security/")) return json(res, { cards: {}, users: [], events: [], files: [], field_counts: {} });
+  // Keeps the Review Center's pending-proposal badge consistent with the one
+  // change_proposal in the reviews fixture below.
+  if (pathname === "/api/proposals/counts") return json(res, { pending: 1 });
+  // The runs tab promoted "설치된 자동화" to its second tier, between the
+  // approval inbox and the run history. This route did not exist, so the client
+  // fell back to its `installed: []` default and the promoted panel was
+  // captured as an empty state — the screenshot showed the new hierarchy with
+  // its middle tier blank. Two entries so the lg:grid-cols-2 layout is exercised,
+  // one already dry-run and one never run, which is what the card's two-step
+  // control is there to distinguish.
+  if (pathname === "/api/automation/overview") {
+    return json(res, {
+      suggestions: [],
+      questions_scanned: 12,
+      installed: [
+        {
+          id: "wf-daily-digest",
+          name: "매일 기억 요약",
+          enabled: true,
+          requires_user_enable: false,
+          creates: ["note"],
+          last_execution: {
+            mode: "dry_run",
+            status: "ok",
+            summary: "3개 항목을 요약할 예정입니다",
+            run_id: "run-digest-1",
+            finished_at: "2026-06-22T09:00:00",
+          },
+        },
+        {
+          id: "wf-weekly-review",
+          name: "주간 되돌아보기",
+          enabled: false,
+          requires_user_enable: true,
+          creates: ["document"],
+          last_execution: null,
+        },
+      ],
+    });
+  }
   if (pathname === "/automation/reviews") {
     const items = [
       {
@@ -936,6 +976,43 @@ const server = http.createServer((req, res) => {
         provenance: { workflow_id: "wf-release", run_id: releaseRunId, source_detail: `${appVersion} release workflow` },
         created_at: "2026-06-22T12:00:00Z",
         updated_at: "2026-06-22T12:05:00Z",
+      },
+      {
+        // A change proposal with a real diff. The Review Center card puts the
+        // evidence on the left and the approve/reject decision on the right,
+        // and without a proposal in the fixture the left column is empty — the
+        // release screenshot would show the layout with nothing in it.
+        id: "rev-proposal-readme",
+        status: "pending",
+        effective_status: "pending",
+        title: "README 릴리스 표를 최신 버전으로 고칩니다",
+        summary: "릴리스 기록 표에 이번 버전 줄을 추가합니다. 승인하면 파일에 그대로 적용됩니다.",
+        source: "change_proposal",
+        kind: "file_write",
+        payload: {
+          path: "README.md",
+          tier: "small",
+          diff: [
+            "--- a/README.md",
+            "+++ b/README.md",
+            "@@ -18,6 +18,7 @@",
+            " ## Release History",
+            " ",
+            " | Version | Theme |",
+            " | --- | --- |",
+            `+| ${appVersion} | First Things |`,
+            " | 10.6.0 | Promoted Panels |",
+          ],
+        },
+        provenance: {
+          risk: "low",
+          change_class: "docs",
+          tool: "write_file",
+          proposed_by: "Brain",
+          source_detail: "문서 정리 자동화",
+        },
+        created_at: "2026-06-22T12:01:00Z",
+        updated_at: "2026-06-22T12:01:00Z",
       },
       {
         id: "rev-kg-digest",

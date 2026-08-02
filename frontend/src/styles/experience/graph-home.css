@@ -875,6 +875,17 @@
   font-size: 0.6rem;
 }
 
+/* The saved-conversation count reads as a badge rather than a loose number, so
+   "지난 대화 3" parses at a glance as a shelf holding three things. */
+.brain-home-shelves > details > summary small.brain-shelf-count {
+  min-width: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.16);
+  font-weight: 700;
+  text-align: center;
+}
+
 .brain-home-shelf-popover {
   position: absolute;
   right: 0;

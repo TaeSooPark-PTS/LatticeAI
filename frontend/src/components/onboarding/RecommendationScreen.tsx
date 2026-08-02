@@ -125,62 +125,107 @@ export function RecommendationScreen({
   }
 
   return (
-    <div>
-      <div className="ritual-title">{t(language, "flow.recommend.title")}</div>
-      <div className="ritual-subtitle">{t(language, "flow.recommend.body")}</div>
+    // As on the login screen, `.ritual-*` layout is owned by styles.css, which
+    // is unlayered and beats Tailwind's `@layer utilities`. The structure below
+    // is real — one hero card instead of a CTA duplicated above the list it
+    // repeats — but the sizing and spacing that expresses it lives in CSS.
+    <div className="ritual-recommend">
+      <header>
+        <h1 className="ritual-title">{t(language, "flow.recommend.title")}</h1>
+        <p className="ritual-subtitle">{t(language, "flow.recommend.body")}</p>
+      </header>
+
       {renderEnvironmentCheck(analysis, language)}
 
-      <div className="ritual-model-list">
-        {items[0]?.supported ? (
-          <div className="ritual-primary-cta">
-            <Button onClick={() => onSelect(items[0])} className="ritual-primary-model-button">
-              {t(language, "flow.recommend.primary")} <ArrowRight size={16} />
-            </Button>
-            <div className="ritual-time-estimate ritual-primary-note">{primaryNote(items[0], language)}</div>
-            <div className="ritual-muted-hint ritual-next-hint">
-              {t(language, items[0].downloadRequired ? "flow.recommend.nextHint" : "flow.recommend.nextHint.ready")}
-            </div>
+      {/* The first recommendation used to appear twice: once as a bare CTA
+          button at the top, then again as the first card of the list under it,
+          with no way to tell which one to press. It is one card now, and the
+          button lives inside it. */}
+      {items[0] ? (
+        <section className="ritual-primary-hero-card" aria-labelledby="recommend-primary-name">
+          <div className="ritual-hero-topline">
+            <span className="ritual-hero-rank">
+              <Star size={16} aria-hidden="true" />
+              {rankLabel(items[0].role, 0, language)}
+            </span>
+            <span className="ritual-hero-size">{items[0].size || t(language, "flow.recommend.sizeReady")}</span>
           </div>
-        ) : null}
-        {items.slice(0, 3).map((model, index) => {
-          const Icon = model.role === "best" ? Star : model.role === "faster" ? Zap : Gauge;
-          return (
-            <button
-              key={`${model.role}-${model.id}`}
-              className="ritual-model-card"
-              onClick={() => model.supported && onSelect(model)}
-              disabled={!model.supported}
-            >
-              <div className="ritual-model-heading">
-                <Icon size={16} />
-                <div className="role">{rankLabel(model.role, index, language)}</div>
-              </div>
-              <div className="name">{model.shortName}</div>
-              <div className="reason">
-                {model.reason} · {model.size || t(language, "flow.recommend.sizeReady")}
-                {comparisonLabel(model.role, language) ? (
-                  <span className="ritual-model-comparison"> {comparisonLabel(model.role, language)}</span>
-                ) : null}
-              </div>
-              <div className="ritual-model-stats">
-                <span className="ritual-time-estimate">{timeEstimate(model, language)}</span>
-              </div>
-              {model.supported ? (
-                <span className="ritual-model-choose">{t(language, "flow.recommend.choose")} <ArrowRight size={14} /></span>
-              ) : (
-                <div className="ritual-model-warning">{t(language, "flow.recommend.unsupported")}</div>
-              )}
-            </button>
-          );
-        })}
-        <div className="ritual-time-note">{t(language, "flow.recommend.timeNote")}</div>
-      </div>
 
-      <div className="ritual-action-row">
+          <h2 id="recommend-primary-name" className="ritual-hero-name">{items[0].shortName}</h2>
+          <p className="ritual-hero-reason">
+            {items[0].reason}
+            {comparisonLabel(items[0].role, language) ? (
+              <span className="ritual-model-comparison"> {comparisonLabel(items[0].role, language)}</span>
+            ) : null}
+          </p>
+
+          <p className="ritual-hero-time">
+            <span className="ritual-time-estimate">{timeEstimate(items[0], language)}</span>
+            <span className="ritual-time-note">{t(language, "flow.recommend.timeNote")}</span>
+          </p>
+
+          {items[0].supported ? (
+            <>
+              <Button onClick={() => onSelect(items[0])} className="ritual-primary-model-button">
+                {t(language, "flow.recommend.primary")} <ArrowRight size={18} aria-hidden="true" />
+              </Button>
+              <p className="ritual-hero-next">
+                {primaryNote(items[0], language)} · {t(language, items[0].downloadRequired ? "flow.recommend.nextHint" : "flow.recommend.nextHint.ready")}
+              </p>
+            </>
+          ) : (
+            <p className="ritual-model-warning">{t(language, "flow.recommend.unsupported")}</p>
+          )}
+        </section>
+      ) : null}
+
+      {items.length > 1 ? (
+        <section className="ritual-alternatives" aria-labelledby="recommend-alternatives">
+          <h2 id="recommend-alternatives" className="ritual-alternatives-title">
+            {t(language, "flow.recommend.alternatives")}
+          </h2>
+          <div className="ritual-alt-grid">
+            {items.slice(1, 3).map((model, index) => {
+              const Icon = model.role === "faster" ? Zap : Gauge;
+              return (
+                <button
+                  key={`${model.role}-${model.id}`}
+                  type="button"
+                  className="ritual-model-card is-compact"
+                  onClick={() => model.supported && onSelect(model)}
+                  disabled={!model.supported}
+                >
+                  <span className="ritual-model-heading">
+                    <Icon size={15} aria-hidden="true" />
+                    <span className="role">{rankLabel(model.role, index + 1, language)}</span>
+                    <span className="ritual-alt-size">{model.size || t(language, "flow.recommend.sizeReady")}</span>
+                  </span>
+                  <span className="name">{model.shortName}</span>
+                  <span className="reason">{model.reason}</span>
+                  <span className="ritual-alt-footer">
+                    <span className="ritual-time-estimate">{timeEstimate(model, language)}</span>
+                    {model.supported ? (
+                      <span className="ritual-model-choose">
+                        {t(language, "flow.recommend.choose")} <ArrowRight size={14} aria-hidden="true" />
+                      </span>
+                    ) : (
+                      <span className="ritual-model-warning">{t(language, "flow.recommend.unsupported")}</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      <footer className="ritual-action-row is-split">
         <Button variant="ghost" onClick={onBack}>{t(language, "flow.recommend.back")}</Button>
-        <Button variant="outline" onClick={onSkipModel}>{t(language, "flow.recommend.skip")}</Button>
-        <div className="ritual-muted-hint">{t(language, "flow.recommend.hint")}</div>
-      </div>
+        <span className="ritual-action-tail">
+          <span className="ritual-muted-hint">{t(language, "flow.recommend.hint")}</span>
+          <Button variant="outline" onClick={onSkipModel}>{t(language, "flow.recommend.skip")}</Button>
+        </span>
+      </footer>
     </div>
   );
 }

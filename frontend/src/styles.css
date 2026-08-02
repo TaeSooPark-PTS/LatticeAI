@@ -5933,6 +5933,336 @@ body {
   font-size: 0.68rem;
 }
 
+/* ── Onboarding: reorganised login and recommendation ────────────────────
+   These rules are the layout for LoginScreen and RecommendationScreen. They
+   live here, not as Tailwind utilities in the components, because this sheet
+   is unlayered: Tailwind puts utilities in `@layer utilities`, and an
+   unlayered rule beats a layered one regardless of specificity or order. A
+   `p-4` or `justify-between` dropped on a `.ritual-*` element that this file
+   already styles is dead code, and one dropped on a property this file does
+   not set is worse — it stacks silently on top. */
+
+.ritual-login,
+.ritual-recommend {
+  display: grid;
+  gap: 1.05rem;
+  width: min(100%, 30rem);
+  margin: 0 auto;
+  text-align: left;
+}
+
+.ritual-recommend {
+  width: min(100%, 34rem);
+}
+
+/* The greeting stays centred with the rest of the shell; the surfaces under
+   it are left-aligned so the eye has one column to read down. */
+.ritual-login > header,
+.ritual-recommend > header {
+  text-align: center;
+}
+
+.ritual-login > header .ritual-title,
+.ritual-recommend > header .ritual-title {
+  font-size: clamp(1.5rem, 3.6vw, 2rem);
+  margin-bottom: 0.3rem;
+}
+
+.ritual-login > header .ritual-subtitle,
+.ritual-recommend > header .ritual-subtitle {
+  margin-bottom: 0;
+  font-size: 0.95rem;
+}
+
+/* The one raised surface on the login screen. Everything else is flat, so the
+   form is what the eye lands on without being told. */
+.ritual-login-card {
+  padding: 1.35rem 1.4rem 1.2rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 16px;
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-2, 0 10px 28px hsl(var(--fg) / 0.07));
+  text-align: left;
+}
+
+.ritual-login-card .ritual-form {
+  max-width: none;
+}
+
+.ritual-login-card .ritual-field-stack {
+  gap: 0.7rem;
+}
+
+/* `.ritual-field-label` was a div; it is a real <label> now, and inline
+   labels would sit beside their input. */
+.ritual-login-card .ritual-field-label {
+  display: block;
+  text-align: left;
+}
+
+/* Both reassurances moved below the button and became one footnote block, so
+   nothing sits between the last field and the thing you press. */
+.ritual-login-footnotes {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+}
+
+.ritual-login-footnotes .ritual-note,
+.ritual-login-footnotes .ritual-muted-hint {
+  margin-top: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+/* The promise bar reads as one quiet strip instead of three cards stacked
+   under the card that matters. */
+.ritual-promise.is-quiet {
+  gap: 0;
+  margin: 0;
+  max-width: none;
+}
+
+.ritual-promise.is-quiet div {
+  padding: 0.1rem 0.7rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+}
+
+/* Three columns inside a 30rem card leaves ~9rem each, which is narrow enough
+   that the default break rule split Korean mid-word — "됩니 / 다." keep-all
+   wraps at 어절 boundaries instead, and `anywhere` still lets a long Latin
+   token like "Brain입니다" break rather than overflow. */
+.ritual-promise.is-quiet span,
+.ritual-promise.is-quiet strong {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-promise.is-quiet strong {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.ritual-promise.is-quiet div + div {
+  border-left: 1px solid hsl(var(--border) / 0.5);
+}
+
+@media (max-width: 720px) {
+  .ritual-promise.is-quiet div {
+    padding: 0.4rem 0;
+  }
+
+  .ritual-promise.is-quiet div + div {
+    border-left: 0;
+    border-top: 1px solid hsl(var(--border) / 0.5);
+  }
+}
+
+/* ── Recommendation: one hero card, then the alternatives ──────────────── */
+.ritual-primary-hero-card {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.1rem 1.25rem 1.2rem;
+  border: 1px solid hsl(var(--primary) / 0.42);
+  border-radius: 16px;
+  background: hsl(var(--surface));
+  box-shadow: 0 10px 30px hsl(var(--primary) / 0.1);
+  text-align: left;
+}
+
+.ritual-hero-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.45);
+}
+
+.ritual-hero-rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: hsl(var(--primary));
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ritual-hero-size {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.ritual-hero-name {
+  margin: 0.25rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.ritual-hero-reason {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.88rem;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-hero-time {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  margin: 0.1rem 0 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+}
+
+.ritual-hero-time .ritual-time-note {
+  opacity: 0.75;
+}
+
+/* The CTA is inside the card it belongs to, so it carries no stray margin of
+   its own — `.ritual-primary-model-button` used to sit above the list. */
+.ritual-primary-hero-card .ritual-primary-model-button {
+  min-height: 3rem;
+  margin-top: 0.55rem;
+  margin-bottom: 0;
+  font-size: 1rem;
+}
+
+.ritual-hero-next {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.ritual-alternatives {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ritual-alternatives-title {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* auto-fit rather than a fixed pair: only one alternative may be supported,
+   and a hard two-column rule left a hole beside it. */
+.ritual-alt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+  gap: 0.6rem;
+}
+
+.ritual-model-card.is-compact {
+  gap: 0.3rem;
+  height: 100%;
+  justify-content: flex-start;
+  margin-bottom: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+}
+
+.ritual-model-card.is-compact .ritual-model-heading {
+  justify-content: flex-start;
+  gap: 0.3rem;
+}
+
+.ritual-model-card.is-compact .ritual-alt-size {
+  margin-left: auto;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.ritual-model-card.is-compact .name {
+  font-size: 0.98rem;
+}
+
+.ritual-model-card.is-compact .reason {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-alt-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+  font-size: 0.72rem;
+}
+
+/* The call to action keeps its arrow on the same line as its label; the time
+   estimate beside it is the part that may wrap.
+
+   `display` has to be restated here. A second `.ritual-model-choose` block
+   further down this file re-declares it as `inline-block`, and at equal
+   specificity the later one wins — so the arrow, which Tailwind's preflight
+   makes a block-level <svg>, took a line of its own. `white-space: nowrap`
+   cannot pull it back up: it governs line breaking between inline boxes, and
+   a block-level child is not one. Making this an actual flex container is
+   what puts the label and the arrow on one line. */
+.ritual-model-card.is-compact .ritual-model-choose,
+.ritual-model-card.is-compact .ritual-model-warning {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.ritual-model-card.is-compact:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Back on one side, skip on the other — `.ritual-action-row` centres its
+   children, so the split needs its own modifier rather than a utility. */
+.ritual-action-row.is-split {
+  justify-content: space-between;
+}
+
+.ritual-action-tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 520px) {
+  .ritual-action-tail .ritual-muted-hint {
+    display: none;
+  }
+}
+
 .ritual-install-brain {
   margin: 0.6rem auto 1rem;
 }

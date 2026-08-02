@@ -203,24 +203,29 @@ function RunsListPanel() {
   const agentRuns = asArray<Record<string, unknown>>((runtime.data?.data as Record<string, unknown>)?.runs);
   const workflowRuns = asArray<Record<string, unknown>>((workflows.data?.data as Record<string, unknown>)?.runs);
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title={t(language, "act.panel.agentRuns")} result={runtime.data}>
-        {() => <RunList runs={agentRuns} kind="agent" />}
-      </DataPanel>
-      <DataPanel title={t(language, "act.panel.workflowRuns")} result={workflows.data}>
-        {() => <RunList runs={workflowRuns} kind="workflow" />}
-      </DataPanel>
-      <DataPanel title={t(language, "act.panel.approvalInbox")} result={pending.data} className="xl:col-span-2">
+    <div className="space-y-6">
+      {/* First tier: what is waiting on the person. This used to sit below both
+          run lists; nothing else on this screen needs a decision. `is-attention`
+          rather than a Tailwind border utility — `.data-panel` sets border-color
+          in plain CSS and would win. */}
+      <DataPanel title={t(language, "act.panel.approvalInbox")} result={pending.data} className="is-attention">
         {(data) => {
           const pendingMap = ((data as Record<string, unknown>).pending || {}) as Record<string, unknown>;
           const rows = Object.entries(pendingMap);
           return rows.length ? (
-            <div className="grid gap-2">
+            <div className="grid gap-3">
               {rows.map(([token, value], index) => (
-                <div key={token} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
-                  <div>
-                    <div className="font-medium">{mode === "basic" ? t(language, "act.approval.request", { index: index + 1 }) : shortId(token, 16)}</div>
-                    <div className="mt-2">
+                <div key={token} className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-amber-500/30 bg-card p-4 shadow-sm">
+                  <div className="space-y-1">
+                    {/* A steady dot, not `animate-pulse`. This row is captured
+                        for the release screenshots and an animated opacity
+                        lands on a different frame every run, so the evidence
+                        gate would see a diff with no change behind it. */}
+                    <div className="font-semibold text-sm flex items-center gap-2">
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+                      {mode === "basic" ? t(language, "act.approval.request", { index: index + 1 }) : shortId(token, 16)}
+                    </div>
+                    <div className="mt-1">
                       <KeyValueList data={(value || {}) as Record<string, unknown>} limit={5} />
                     </div>
                   </div>
@@ -234,6 +239,19 @@ function RunsListPanel() {
           ) : <EntityList items={[]} />;
         }}
       </DataPanel>
+
+      {/* Second tier: active / installed automations */}
+      <InstalledAutomations language={language} />
+
+      {/* Third tier: Agent Runs and Workflow Runs execution history */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DataPanel title={t(language, "act.panel.agentRuns")} result={runtime.data}>
+          {() => <RunList runs={agentRuns} kind="agent" />}
+        </DataPanel>
+        <DataPanel title={t(language, "act.panel.workflowRuns")} result={workflows.data}>
+          {() => <RunList runs={workflowRuns} kind="workflow" />}
+        </DataPanel>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Community And Plugins
 
-Current release: **10.6.0 — Promoted Panels**.
+Current release: **10.6.1 — First Things**.
 
 LatticeAI defines the path from a strong local-first framework (8.4.0
 action-aware baseline, 8.5.0 registry+DI hardening, 8.6.0 capture/navigation

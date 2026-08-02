@@ -74,8 +74,12 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   }, []);
 
   return (
-    <div className="ritual-shell" aria-label={t(language, "flow.shell")}>
-      <div className="ritual-container">
+    <div className="ritual-shell">
+      {/* The landmark belongs here, once, around the step that is showing —
+          not inside each step. Two steps each emitting their own <main> would
+          have been two competing landmarks across the flow, and the greeting
+          each step leads with would have sat outside its own main. */}
+      <main className="ritual-container" aria-label={t(language, "flow.shell")}>
         <LanguageChooser />
         <div className="ritual-brain">
           <LivingBrain state={brainStateForStep(step)} intensity={step === "install" ? 0.92 : 0.7} size="large" showLabel={false} />
@@ -112,7 +116,7 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
             onLater={() => completeFlow(onComplete)}
           />
         )}
-      </div>
+      </main>
     </div>
   );
 }

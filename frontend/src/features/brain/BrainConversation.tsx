@@ -321,21 +321,14 @@ export function BrainConversation({
               />
             </>
           ) : (
+            // Spacing for the stage and the station lives in
+            // experience/home-simple.css, which is unlayered and therefore
+            // outranks Tailwind utilities. Width/gap utilities here were dead;
+            // padding ones were worse — the stylesheet sets no padding on the
+            // station, so `p-6` stacked on top of children that already pad
+            // themselves. Together they added ~150px and pushed the shelves
+            // under the fixed mobile nav, where a tap lands on the nav.
             <div className="brain-centered-home" data-testid="brain-home-stage">
-              {/* ── The station ─────────────────────────────────────────────
-                  One bordered surface holding the whole first move: who you
-                  are talking to, the box you type into, everything you can add
-                  to it, how much it may do on its own, and three things to try.
-
-                  These were five stacked blocks with four separate borders. A
-                  newcomer read down a column — greeting, then a text box, then
-                  a row of pills, then a second row of controls, then chips —
-                  with nothing saying which of them was the thing to do. The
-                  greeting is the station's header now, and the two control
-                  clusters that used to sit in different places (capture inside
-                  the composer's attachment slot, autonomy on a strip below it)
-                  are one toolbar on its floor. Nothing was dropped; the screen
-                  just stopped presenting a list of equals. */}
               <section className="brain-home-station" ref={homeDeckRef} data-testid="brain-home-station">
                 <BrainHomeHero
                   language={language}
@@ -349,22 +342,82 @@ export function BrainConversation({
 
                 {modelReady ? null : <ModelMissingNotice language={language} />}
 
-                <BrainComposer
-                  language={language}
-                  draft={draft}
-                  streaming={streaming}
-                  imageData={imageData}
-                  uploadingDocument={uploadingDocument}
-                  onDraftChange={onDraftChange}
-                  onImageDataChange={onImageDataChange}
-                  onUploadDocument={onUploadDocument}
-                  onSend={onSend}
-                  onStop={onStop}
-                />
+                {/* The box you type into — the one thing a newcomer must find.
+                    Its frame and focus ring are in home-simple.css. */}
+                <div className="brain-composer-wrapper">
+                  <BrainComposer
+                    language={language}
+                    draft={draft}
+                    streaming={streaming}
+                    imageData={imageData}
+                    uploadingDocument={uploadingDocument}
+                    onDraftChange={onDraftChange}
+                    onImageDataChange={onImageDataChange}
+                    onUploadDocument={onUploadDocument}
+                    onSend={onSend}
+                    onStop={onStop}
+                  />
+                </div>
 
-                {/* Add-material and autonomy answer the same question — "what
-                    may Brain work with, and how far may it go?" — so they read
-                    as one row instead of two competing strips. */}
+                {/* Three things to try, directly under the box you type into
+                    rather than below the toolbar. The label and the card grid
+                    are the strip's two children; home-simple.css lays both out
+                    by position, so they carry no classes of their own. */}
+                {suggestedQuestions.length ? (
+                  <section className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
+                    <div className="brain-home-prompt-strip-label">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t(language, "brain.suggestions.title")}</span>
+                    </div>
+                    <div>
+                      {suggestedQuestions.map((question) => {
+                        const prompt = t(language, question.promptKey, question.params);
+                        return (
+                          <button
+                            key={question.id}
+                            type="button"
+                            disabled={streaming}
+                            title={t(language, question.detailKey)}
+                            onClick={() => {
+                              onDraftChange("");
+                              onSendText(prompt);
+                            }}
+                          >
+                            <strong>{t(language, question.labelKey)}</strong>
+                            {/* No `truncate`: it sets white-space:nowrap, which
+                                would undo the two-line clamp the sheet gives
+                                this line. */}
+                            <span>{t(language, question.detailKey)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ) : (
+                  <div className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
+                    <div className="brain-home-prompt-strip-label">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t(language, "brain.suggestions.title")}</span>
+                    </div>
+                    <div>
+                      {starterPrompts.slice(0, 3).map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => onDraftChange(prompt)}
+                          className="brain-prompt-pill"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add-material and autonomy answer the same question — what
+                    may Brain work with, and how far may it go — so they read as
+                    one row on the station's floor. The sheet already makes this
+                    a space-between flex row with its own padding and rule. */}
                 <div className="brain-station-toolbar" role="group" aria-label={t(language, "brain.station.toolbar.aria")}>
                   <BrainIngestionDock
                     language={language}
@@ -379,164 +432,134 @@ export function BrainConversation({
                   />
                   <BrainQuickControls language={language} />
                 </div>
-
-                {suggestedQuestions.length ? (
-                  <section className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
-                    <span className="brain-home-prompt-strip-label">
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      {t(language, "brain.suggestions.title")}
-                    </span>
-                    {suggestedQuestions.map((question) => {
-                      const prompt = t(language, question.promptKey, question.params);
-                      return (
-                        <button
-                          key={question.id}
-                          type="button"
-                          disabled={streaming}
-                          title={t(language, question.detailKey)}
-                          onClick={() => {
-                            onDraftChange("");
-                            onSendText(prompt);
-                          }}
-                        >
-                          <strong>{t(language, question.labelKey)}</strong>
-                          <span>{t(language, question.detailKey)}</span>
-                        </button>
-                      );
-                    })}
-                  </section>
-                ) : (
-                  <div className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
-                    <span className="brain-home-prompt-strip-label">
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      {t(language, "brain.suggestions.title")}
-                    </span>
-                    {starterPrompts.slice(0, 3).map((prompt) => (
-                      <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </section>
 
-              {/* Everything that is not "greet, ask, add material, set autonomy"
-                  lives in this quiet row: still one click away, never competing
-                  with the composer for the first screen. */}
+              {/* Past conversations and the insight panels stay one click away
+                  in this quiet row, never competing with the composer for the
+                  first screen. Their pill, popover and close-button styling is
+                  all in graph-home.css — utilities added on top of those
+                  classes were dead, except for the one that anchored the
+                  popover to the wrong edge. */}
               <footer className="brain-home-quiet">
-                  <div className="brain-home-shelves">
-                    <details
-                      className="brain-home-history-shelf"
-                      data-testid="brain-history-shelf"
-                      onKeyDown={(event) => {
-                        if (event.key !== "Escape") return;
-                        event.preventDefault();
-                        closeHomeShelf(event.currentTarget);
-                      }}
-                    >
-                      <summary>
-                        <History className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{t(language, "brain.history.title")}</span>
-                        <small>{pastConversations.length}</small>
-                      </summary>
-                      <div className="brain-home-shelf-popover">
-                        <button
-                          type="button"
-                          className="brain-home-shelf-close"
-                          aria-label={t(language, "brain.home.shelf.close")}
-                          onClick={(event) => closeHomeShelf(event.currentTarget)}
-                        >
-                          <X className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                        <PastConversationsPanel
-                          language={language}
-                          items={pastConversations}
-                          busyId={historyBusyId}
-                          onResume={onResumeConversation}
-                          onDelete={onDeleteConversation}
-                        />
-                      </div>
-                    </details>
+                <div className="brain-home-shelves">
+                  <details
+                    className="brain-home-history-shelf"
+                    data-testid="brain-history-shelf"
+                    onKeyDown={(event) => {
+                      if (event.key !== "Escape") return;
+                      event.preventDefault();
+                      closeHomeShelf(event.currentTarget);
+                    }}
+                  >
+                    <summary>
+                      <History className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t(language, "brain.history.title")}</span>
+                      <small className="brain-shelf-count">{pastConversations.length}</small>
+                    </summary>
+                    {/* `left-0` here was the one utility that took: the sheet
+                        sets `right: 0` and no left, so adding left over-
+                        constrained the box and flipped a 31rem popover to open
+                        rightward off a pill that sits left of centre. */}
+                    <div className="brain-home-shelf-popover">
+                      <button
+                        type="button"
+                        className="brain-home-shelf-close"
+                        aria-label={t(language, "brain.home.shelf.close")}
+                        onClick={(event) => closeHomeShelf(event.currentTarget)}
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <PastConversationsPanel
+                        language={language}
+                        items={pastConversations}
+                        busyId={historyBusyId}
+                        onResume={onResumeConversation}
+                        onDelete={onDeleteConversation}
+                      />
+                    </div>
+                  </details>
 
-                    <details
-                      ref={insightsShelfRef}
-                      className="brain-home-insights"
-                      data-testid="brain-insights-shelf"
-                      onToggle={(event) => event.currentTarget.open && onRequestDetails()}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Escape") return;
-                        if (event.currentTarget.querySelector("#brain-ring-peek")) return;
-                        event.preventDefault();
-                        closeHomeShelf(event.currentTarget);
-                      }}
-                    >
-                      <summary>
-                        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{t(language, "brain.home.insights")}</span>
-                      </summary>
-                      <div className="brain-home-shelf-popover brain-home-insights-content">
-                        <button
-                          type="button"
-                          className="brain-home-shelf-close"
-                          aria-label={t(language, "brain.home.shelf.close")}
-                          onClick={(event) => closeHomeShelf(event.currentTarget)}
-                        >
-                          <X className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                        <BrainMemoryAutomation
-                          language={language}
-                          brief={brief}
-                          activities={proactiveActivities}
-                          streaming={streaming}
-                          onAction={onProactiveAction}
-                        />
-                        <MemoryRings
-                          language={language}
-                          brainState={brainState}
-                          intensity={intensity}
-                          readiness={readiness}
-                          memories={memories}
-                          concepts={concepts}
-                          relationshipCount={relationshipCount}
-                          onExploreBrain={onExploreBrain}
-                          onOpenDepth={onOpenDepth}
-                        />
+                  <details
+                    ref={insightsShelfRef}
+                    className="brain-home-insights"
+                    data-testid="brain-insights-shelf"
+                    onToggle={(event) => event.currentTarget.open && onRequestDetails()}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Escape") return;
+                      if (event.currentTarget.querySelector("#brain-ring-peek")) return;
+                      event.preventDefault();
+                      closeHomeShelf(event.currentTarget);
+                    }}
+                  >
+                    <summary>
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t(language, "brain.home.insights")}</span>
+                    </summary>
+                    {/* `space-y-4` here stacked 1rem margins on top of the
+                        0.75rem grid gap this popover already has. */}
+                    <div className="brain-home-shelf-popover brain-home-insights-content">
+                      <button
+                        type="button"
+                        className="brain-home-shelf-close"
+                        aria-label={t(language, "brain.home.shelf.close")}
+                        onClick={(event) => closeHomeShelf(event.currentTarget)}
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <BrainMemoryAutomation
+                        language={language}
+                        brief={brief}
+                        activities={proactiveActivities}
+                        streaming={streaming}
+                        onAction={onProactiveAction}
+                      />
+                      <MemoryRings
+                        language={language}
+                        brainState={brainState}
+                        intensity={intensity}
+                        readiness={readiness}
+                        memories={memories}
+                        concepts={concepts}
+                        relationshipCount={relationshipCount}
+                        onExploreBrain={onExploreBrain}
+                        onOpenDepth={onOpenDepth}
+                      />
 
-                        <BrainBriefPanel
-                          language={language}
-                          brief={brief}
-                          showEvidence={!isBasic}
-                          onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
-                        />
+                      <BrainBriefPanel
+                        language={language}
+                        brief={brief}
+                        showEvidence={!isBasic}
+                        onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
+                      />
 
-                        {isBasic ? null : (
-                          <>
-                            <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
-                            <ModelContinuityDemo
-                              language={language}
-                              proof={proof}
-                              modelName={modelName}
-                              onVerify={onVerifyModelContinuity}
-                            />
-                            <BrainOverviewPanel
-                              memories={memories}
-                              concepts={concepts}
-                              readiness={readiness}
-                              proof={proof}
-                              onOpenDepth={onOpenDepth}
-                            />
-                          </>
-                        )}
-                        <DailyBriefingPanel language={language} variant="home" />
-                        <WatchHealthCard language={language} />
-                        <IngestionJobsPanel language={language} />
-                        <PendingProposalsPanel language={language} />
-                        <BrainIntelligencePanel language={language} />
-                        <KnowledgeGardenPanel language={language} />
-                        <BrainCarePanel language={language} />
-                      </div>
-                    </details>
-                  </div>
+                      {isBasic ? null : (
+                        <>
+                          <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
+                          <ModelContinuityDemo
+                            language={language}
+                            proof={proof}
+                            modelName={modelName}
+                            onVerify={onVerifyModelContinuity}
+                          />
+                          <BrainOverviewPanel
+                            memories={memories}
+                            concepts={concepts}
+                            readiness={readiness}
+                            proof={proof}
+                            onOpenDepth={onOpenDepth}
+                          />
+                        </>
+                      )}
+                      <DailyBriefingPanel language={language} variant="home" />
+                      <WatchHealthCard language={language} />
+                      <IngestionJobsPanel language={language} />
+                      <PendingProposalsPanel language={language} />
+                      <BrainIntelligencePanel language={language} />
+                      <KnowledgeGardenPanel language={language} />
+                      <BrainCarePanel language={language} />
+                    </div>
+                  </details>
+                </div>
               </footer>
             </div>
           )}
