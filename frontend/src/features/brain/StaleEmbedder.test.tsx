@@ -57,7 +57,7 @@ describe("StaleEmbedderNotice", () => {
     await waitFor(() => expect(screen.getByTestId("stale-embedder-notice")).toBeTruthy());
     await userEvent.click(screen.getByTestId("stale-embedder-reindex"));
     await waitFor(() =>
-      expect(screen.getByText("다시 인덱싱에 실패했어요. 잠시 후 다시 시도해 주세요.")).toBeTruthy(),
+      expect(screen.getByText("다시 정리하지 못했어요. 잠시 후 다시 시도해 주세요.")).toBeTruthy(),
     );
   });
 });

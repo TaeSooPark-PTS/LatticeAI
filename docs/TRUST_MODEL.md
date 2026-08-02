@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.4.0 — Named Ground**.
+Current release: **10.5.0 — Everyday Words**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

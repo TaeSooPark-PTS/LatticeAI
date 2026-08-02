@@ -61,7 +61,7 @@ export const shellCopy: NamespaceCopy = {
     "shell.sync.aria": "VS Code 확장 연동 상태",
     "shell.sync.label": "VS Code",
     "shell.sync.connected": "연결됨",
-    "shell.sync.indexing": "인덱싱 중",
+    "shell.sync.indexing": "정리 중",
     "shell.sync.synced": "동기화됨",
     "shell.sync.offline": "연결 안 됨",
     "shell.sync.checking": "확인 중",
@@ -134,7 +134,13 @@ export const shellCopy: NamespaceCopy = {
     "ui.field.gpu_mem_pct": "GPU 메모리 사용률",
     "ui.field.gpu_mem_gb": "GPU 메모리",
     "ui.field.features": "기능 설정",
+    // `lattice_brain/graph/retrieval_reads.py` reports exactly two document
+    // states: "indexed" once the text has been broken up and is searchable,
+    // "ingested" while the file is stored but not yet searchable. Only the
+    // first had a translation, so an uploaded file sat in a Korean list
+    // wearing an English "Ingested" badge.
     "ui.entity.Indexed": "정리 완료",
+    "ui.entity.Ingested": "정리 중",
     "ui.entity.Ready": "준비됨",
     "ui.entity.Pending": "대기 중",
     "ui.entity.Queued": "대기 중",
@@ -307,7 +313,7 @@ export const shellCopy: NamespaceCopy = {
     "shell.sync.aria": "VS Code extension link status",
     "shell.sync.label": "VS Code",
     "shell.sync.connected": "Connected",
-    "shell.sync.indexing": "Indexing",
+    "shell.sync.indexing": "Updating",
     "shell.sync.synced": "Synced",
     "shell.sync.offline": "Not connected",
     "shell.sync.checking": "Checking",
@@ -380,7 +386,8 @@ export const shellCopy: NamespaceCopy = {
     "ui.field.gpu_mem_pct": "GPU memory use",
     "ui.field.gpu_mem_gb": "GPU memory",
     "ui.field.features": "Feature settings",
-    "ui.entity.Indexed": "Indexed",
+    "ui.entity.Indexed": "Ready to search",
+    "ui.entity.Ingested": "Being sorted",
     "ui.entity.Ready": "Ready",
     "ui.entity.Pending": "Pending",
     "ui.entity.Queued": "Queued",

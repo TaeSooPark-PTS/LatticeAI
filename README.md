@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.4.0 Living Brain walkthrough](output/release/v10.4.0/gifs/v10.4.0-living-brain-walkthrough.gif)
+![v10.5.0 Living Brain walkthrough](output/release/v10.5.0/gifs/v10.5.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.4.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.4.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.4.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.4.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.4.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.4.0/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.5.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.5.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.5.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.5.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.5.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.5.0/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.5.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.5.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -57,47 +58,55 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.4.0/screenshots/01-login.png) | ![Model install](output/release/v10.4.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.4.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.5.0/screenshots/01-login.png) | ![Model install](output/release/v10.5.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.5.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.4.0/SCREENSHOT_INDEX.md](output/release/v10.4.0/SCREENSHOT_INDEX.md)
+[output/release/v10.5.0/SCREENSHOT_INDEX.md](output/release/v10.5.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.4.0 — Named Ground**:
+The current release is **10.5.0 — Everyday Words**:
 
-10.3.0 wrote down what was not measured. 10.4.0 emptied that list — and the
-things that made the list long turned out not to be typing problems.
+10.4.0 named the ground the code stands on. 10.5.0 renames the ground the
+*reader* stands on: every screen a first-time user lands on now says what
+Lattice is doing in the words that user would use. No feature was removed —
+the engine's own vocabulary moved behind the advanced mode switch, where it
+belongs to the people who asked for it.
 
-- **The type backlog went from 1,407 errors across 77 modules to zero across
-  274.** Two root causes accounted for 954 of them, and both were readability
-  problems: a computed `__all__` that made every star-imported name invisible
-  to a checker, and an eleven-mixin contract that existed but was written down
-  nowhere. Both are now explicit, and both are guarded by tests.
-- **The composition root is no longer one function.** `app_factory._build` went
-  from 1,318 lines to 26, split into ten ordered phases sharing a typed
-  `RuntimeContext`. The phase order is a contract with a test, not a comment —
-  and reading a value before its phase has run fails by name.
-- **Four real defects surfaced on the way**, including one that meant
-  `python -m latticeai.server_app` had never worked: `main` was a local inside
-  the old closure and was never on the export list.
-- **The surface-parity matrix has no ◐ left.** VS Code gained folder capture,
-  artifact cards with their repair/validation flags, and a hardware-derived
-  model recommendation; Telegram gained the same artifact card. All four were
-  rendering gaps — the sidecar was already reporting the data.
-- **Coverage moved honestly, not to target.** Frontend 28.5% → 32.3% (208 → 337
-  tests), Python 71.6% → 71.8% (1,896 → 1,956). Frontend 70% is still roughly
-  2,200 statements away, and this release does not claim otherwise.
+- **The autonomy dial is a sentence, not a mode name.** 엄격 / 신뢰 / 바이패스
+  became 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서, each with one line
+  about what it will and will not do on its own. The home dial and Settings
+  now draw that copy from one module, so the same setting is never named two
+  ways — and a mode the server adds later still renders, from the server's own
+  label.
+- **The path from a file to a memory is three named steps.** 진행 상황 was
+  hidden from plain mode and held two raw API payloads. It now shows
+  내용 읽기 → 뜻 파악하기 → 기억에 연결하기 as a labelled ordered list, with
+  each step saying what it does to your file. 파싱 · 임베딩 · 인덱싱 are gone
+  from that screen.
+- **Automations are named the way you named them.** A run shows its workflow's
+  name rather than a database id, and its state is spoken — `awaiting_approval`
+  reads as "내 승인 기다리는 중". Unknown states say so instead of printing the
+  token. Advanced mode still shows the id.
+- **A model your machine cannot run says so in one sentence** instead of a
+  registry line half-translated word by word.
+- **The published screenshots were wrong before this release.** Capture ran in
+  `advanced`, so every README frame showed payload panels, storage engines and
+  hook logs that no first-run user is ever shown. Captures now run in the app's
+  real default, `basic` — this page's images are what you will actually see.
+- **Guarded, not asserted.** A visual sweep walks ten plain-mode routes and
+  fails if any of them renders empty or puts engine vocabulary in front of a
+  reader who never asked for it.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.4.0 release must use exact filenames:
+Expected artifacts for 10.5.0 release must use exact filenames:
 
-- `dist/ltcai-10.4.0-py3-none-any.whl`
-- `dist/ltcai-10.4.0.tar.gz`
-- `ltcai-10.4.0.tgz`
-- `dist/ltcai-10.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.4.0_aarch64.dmg`
+- `dist/ltcai-10.5.0-py3-none-any.whl`
+- `dist/ltcai-10.5.0.tar.gz`
+- `ltcai-10.5.0.tgz`
+- `dist/ltcai-10.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.5.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -132,6 +141,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.5.0 | Everyday Words |
 | 10.4.0 | Named Ground |
 | 10.3.0 | Measured Ground |
 | 10.2.0 | Load-Bearing Fixes |

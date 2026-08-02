@@ -4,6 +4,73 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.5.0] - 2026-08-03
+
+A UI/UX pass for the person who did not build this. No feature was removed;
+vocabulary, ordering, and the default mode a first-run user lands in changed.
+Backend behaviour is unchanged — `frontend/openapi.json` differs from 10.4.0
+only in `info.version`.
+
+### Changed
+- **Permission modes are named by what they do to you, not by their enum.**
+  엄격 / 신뢰 / 바이패스 → 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서
+  (`Strict` / `Trusted` / `Bypass` → `Ask me first` / `Mostly on its own` /
+  `Almost everything on its own`), each with a one-line summary of what it does
+  without asking. The bypass warning now says which kind of action stays
+  blocked rather than naming the mode.
+- **`#/pipeline` is reachable in basic mode and named 진행 상황.** Its two raw
+  API payload panels are replaced (in basic mode) by an `aria-label`ed ordered
+  list of three steps — 내용 읽기 / 뜻 파악하기 / 기억에 연결하기 — with a
+  per-step waiting/working/done state. Advanced mode keeps both payload panels.
+- **Ingestion stage names describe the reader's file, not the machine's job**:
+  준비 → 파일 여는 중, 파싱 → 내용 읽는 중, 임베딩 → 뜻 파악하는 중, 인덱싱 →
+  기억에 연결하는 중, 메모리화 완료 → 기억 완료. The stale-embedding prompt
+  became "찾는 방식이 바뀌었어요 / 기억 다시 정리하기".
+- **Run rows are titled by workflow name** (then goal, then title/query, then
+  "n번째 작업" in basic mode) instead of a database id; the id moves to a
+  secondary line in advanced mode only.
+- **Run and trigger states are translated per token.**
+  `act.runStatus.<token>` covers ok/succeeded/completed/retried_ok/
+  awaiting_approval/waiting_approval/running/queued/pending/failed/error/
+  cancelled/stopped/interrupted/rejected/partial; an unmapped token renders
+  "알 수 없음" rather than itself.
+- **Brain stats answer a person's question** — 저장 위치 / 내 컴퓨터 and
+  가져가기 / 언제든 내보낼 수 있어요 in place of `schema_version` and the
+  storage engine name (both still shown in advanced).
+- **`scripts/capture_release_evidence.mjs` captures in `basic`**, the app's real
+  default, instead of `advanced`. Every README screenshot before this release
+  showed panels a first-run user never sees. `09-model-setup-status.png` (a
+  duplicate of the Brain home once captured in basic) is replaced by
+  `09-automation-runs.png`, and `11-knowledge-journey.png` is added.
+- **The walkthrough GIF is encoded against a palette generated from the clip**
+  (`palettegen=stats_mode=diff` + `paletteuse=dither=sierra2_4a`) instead of
+  ffmpeg's default 256-colour cube, which had been rendering the ivory
+  background as dithered yellow and the greens as olive. 1.5 MB → 2.8 MB.
+
+### Added
+- `frontend/src/lib/permissionCopy.ts` — one source for permission-mode copy,
+  shared by `BrainQuickControls` (home dial) and `PermissionModePanel`
+  (Settings), which had each been translating the server catalog separately.
+  Lookup is by mode id, falling back to the server's own localized label, so a
+  mode added server-side still renders; `PermissionModePanel.test.tsx` asserts
+  that fallback so the table cannot become an accidental allowlist.
+- A basic-mode "자동으로 실행되는 작업" summary on the workflows surface:
+  workflow name plus 새 자료가 들어오면 / 정해진 시간에 / 내가 눌렀을 때만 /
+  조건이 맞으면, and 켜져 있어요 / 지금은 멈춰 있어요. The node canvas and the
+  paste-JSON box are author tools and stay in advanced mode.
+- `tests/visual/v3.spec.js`: a sweep over ten plain-mode routes asserting each
+  renders, shows no service-unavailable banner, and contains none of a list of
+  engine terms; plus a test that the three journey steps render under their
+  accessible name. `#/runs` failed the vocabulary assertion before this pass.
+- `Library.test.tsx` covers registry prose that is English-only: a sentence with
+  no Hangul and six or more words is now replaced by a written Korean
+  explanation instead of being substituted term by term into word salad.
+
+### Known gaps
+- The approval card under 작업 → 실행 still labels raw payload fields `Action`,
+  `Action Label`, `User Email`. It is visible in `09-automation-runs.png` and is
+  published rather than cropped.
+
 ## [10.4.0] - 2026-08-02
 
 ### Changed

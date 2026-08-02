@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactFlow, { Background, Controls, Edge, Node } from "reactflow";
 import { Bot, CalendarClock, GitBranch, PauseCircle, Play, ShieldCheck, Workflow } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, KeyValueList, ModeGate, OperationResult, StructuredView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, ModeGate, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -221,23 +221,68 @@ function RunsListPanel() {
   );
 }
 
+/**
+ * Run states arrive as server enums. Translate by token and fall back to a
+ * neutral phrase — printing an unrecognised token is how `retried_ok` ended up
+ * on a badge in the first place.
+ */
+function runStatusLabel(status: string, language: Language) {
+  const key = `act.runStatus.${status}`;
+  const label = t(language, key);
+  return label === key ? t(language, "act.status.unknown") : label;
+}
+
+/** Prefer a human string field; never stringify an object into the title. */
+function firstString(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+/**
+ * A run's title is what it was asked to do — not its database id, and not
+ * `String(input)` when the payload is a nested object (which produced
+ * "[object Object]" on the list).
+ */
+function humanRunTitle(run: Record<string, unknown>): string {
+  const direct = firstString(run.workflow_name, run.name, run.goal, run.title, run.query);
+  if (direct) return direct;
+  const input = run.input;
+  if (typeof input === "string" && input.trim()) return input.trim();
+  if (input && typeof input === "object" && !Array.isArray(input)) {
+    const nested = input as Record<string, unknown>;
+    return firstString(nested.goal, nested.name, nested.title, nested.query, nested.text, nested.prompt);
+  }
+  return "";
+}
+
 function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "agent" | "workflow" }) {
+  const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   if (!runs.length) return <EntityList items={[]} />;
   return (
     <div className="grid gap-2">
-      {runs.slice(0, 10).map((run) => {
+      {runs.slice(0, 10).map((run, index) => {
         const id = String(run.run_id || run.id);
-        const status = String(run.status || t(language, "act.status.unknown"));
+        const status = String(run.status || "");
+        const label = runStatusLabel(status, language);
+        // A run id is a database key, not a name. Lead with whatever the run
+        // was actually about; the id stays visible in advanced mode.
+        const title = humanRunTitle(run)
+          || (mode === "basic" ? t(language, "act.run.fallbackName", { index: index + 1 }) : shortId(id, 18));
+        const isSuccess = /^(ok|retried_ok|succeed(?:ed)?|complet(?:e|ed)?)$/i.test(status);
+        const needsApproval = status === "awaiting_approval" || status === "waiting_approval";
         return (
           <div key={id} className="rounded-md border border-border bg-background p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-medium">{shortId(id, 18)}</div>
-              <Badge variant={status === "succeeded" ? "success" : status === "awaiting_approval" ? "warning" : "muted"}>{status}</Badge>
+              <div className="font-medium">{title}</div>
+              <Badge variant={isSuccess ? "success" : needsApproval ? "warning" : "muted"}>{label}</Badge>
             </div>
+            {mode === "basic" ? null : <div className="mt-1 text-xs text-muted-foreground">{shortId(id, 18)}</div>}
             <div className="mt-2 flex flex-wrap gap-2">
               <ActionButton label={t(language, "act.action.stop")} action={() => kind === "agent" ? latticeApi.stopAgentRun(id) : latticeApi.stopWorkflowRun(id)} />
-              {status === "awaiting_approval" && kind === "workflow" ? (
+              {needsApproval && kind === "workflow" ? (
                 <>
                   <ActionButton label={t(language, "act.action.resumeApproved")} action={() => latticeApi.resumeWorkflowRun(id, true)} />
                   <ActionButton label={t(language, "act.action.resumeDenied")} action={() => latticeApi.resumeWorkflowRun(id, false)} variant="destructive" />
@@ -251,8 +296,52 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
   );
 }
 
+/**
+ * "What runs on its own?" in a sentence per task.
+ *
+ * The armed-trigger payload carries a workflow id, a `kind` token, a cron
+ * config and a firing history. Basic mode needs one line of it: what runs, and
+ * when. The full payload stays on the advanced panel below.
+ */
+function TriggerSummary({ data }: { data: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
+  const armed = asArray<Record<string, unknown>>(data.armed);
+  const running = data.running !== false;
+  if (!armed.length) {
+    return <EmptyState title={t(language, "act.trigger.empty")} />;
+  }
+  return (
+    <div className="grid gap-2">
+      {armed.map((trigger, index) => {
+        const kindKey = `act.trigger.when.${String(trigger.kind || "")}`;
+        const when = t(language, kindKey);
+        // A workflow_id is a storage key. Prefer a name; otherwise number the row.
+        const title = firstString(trigger.name, trigger.label)
+          || t(language, "act.workflow.fallbackName", { index: index + 1 });
+        return (
+          <div
+            key={String(trigger.workflow_id || trigger.id || index)}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background p-3"
+          >
+            <div>
+              <div className="font-medium">{title}</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {when === kindKey ? t(language, "act.trigger.when.unknown") : when}
+              </div>
+            </div>
+            <Badge variant={running ? "success" : "muted"}>
+              {t(language, running ? "act.trigger.running" : "act.trigger.paused")}
+            </Badge>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function WorkflowsPanel() {
   const qc = useQueryClient();
+  const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const defs = useQuery({ queryKey: ["workflowDefinitions"], queryFn: latticeApi.workflowDefinitions });
   const triggers = useQuery({ queryKey: ["workflowTriggers"], queryFn: latticeApi.workflowTriggers });
@@ -395,6 +484,20 @@ function WorkflowsPanel() {
           );
         }}
       </DataPanel>
+      {/* A node-and-edge canvas and a paste-your-JSON box are author tools.
+          They stay exactly as they were for anyone in advanced mode; basic
+          mode gets the plain "what runs on its own" summary instead. */}
+      {mode === "basic" ? (
+        <DataPanel
+          title={t(language, "act.trigger.title")}
+          description={t(language, "act.trigger.detail")}
+          result={triggers.data}
+          className="xl:col-span-2"
+        >
+          {(data) => <TriggerSummary data={data as Record<string, unknown>} />}
+        </DataPanel>
+      ) : (
+        <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><GitBranch className="h-4 w-4" /> {t(language, "act.workflow.graph")}</CardTitle>
@@ -440,6 +543,8 @@ function WorkflowsPanel() {
       <DataPanel title={t(language, "act.panel.triggers")} result={triggers.data} className="xl:col-span-2">
         {(data) => <StructuredView value={data} />}
       </DataPanel>
+        </>
+      )}
     </div>
   );
 }

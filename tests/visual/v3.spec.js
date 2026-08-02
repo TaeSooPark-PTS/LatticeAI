@@ -551,6 +551,68 @@ test("the network boundary dial is reachable and gates cloud behind an acknowled
   expect(errors).toEqual([]);
 });
 
+// `scripts/capture_release_evidence.mjs` publishes the first six of these as
+// README screenshots and a GIF, and it captures them in the app's real default
+// mode (`basic`) rather than in `advanced`. The rest are one click away from a
+// captured frame. Two things have to hold: every screen must actually render,
+// and none of them may put the engine's own vocabulary in front of a reader
+// who never asked for it.
+const PLAIN_MODE_ROUTES = [
+  { hash: "#/capture", ready: "h1.page-title" },
+  { hash: "#/models", ready: "h1.page-title" },
+  { hash: "#/settings", ready: "h1.page-title" },
+  { hash: "#/hybrid-search", ready: "h1" },
+  { hash: "#/knowledge-graph", ready: "[data-testid='brain-cytoscape']" },
+  { hash: "#/review", ready: "h1.page-title" },
+  { hash: "#/agents", ready: "h1.page-title" },
+  { hash: "#/pipeline", ready: "h1.page-title" },
+  { hash: "#/runs", ready: "h1.page-title" },
+  { hash: "#/memory", ready: "h1" },
+];
+
+// Words that name the machine's job rather than the reader's. `#/runs` showed
+// `awaiting_approval` and `retried_ok` on its status badges in this very mode
+// before this pass, which is what makes the list load-bearing rather than
+// decorative — the advanced surfaces still show every one of them on purpose.
+const ENGINE_VOCABULARY = [
+  "파싱", "임베딩", "인덱싱", "벡터", "스키마",
+  "awaiting_approval", "retried_ok", "schema_version",
+  "graph_schema_version", "tick_seconds", "DSN", "Postgres", "sqlite",
+];
+
+test("screens the README publishes render, and speak plainly", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page, { mode: "basic" });
+
+  for (const { hash, ready } of PLAIN_MODE_ROUTES) {
+    await page.goto(`/app${hash}`);
+    // Renders at all — a blank or errored frame is what a screenshot hides.
+    await expect(page.locator(ready).first()).toBeVisible();
+    await expect(page.getByTestId("service-unavailable-banner")).toHaveCount(0);
+
+    const text = await page.locator("main, .brain-shell-content").first().innerText();
+    for (const word of ENGINE_VOCABULARY) {
+      expect(text, `${hash} still shows "${word}" to a plain-mode reader`).not.toContain(word);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test("the material-to-memory steps are readable without a glossary", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page, { mode: "basic" });
+  await page.goto("/app#/pipeline");
+
+  // Three named steps, each saying what it does to your file — this tab used
+  // to be two raw API payloads and was hidden from plain mode entirely.
+  const journey = page.getByRole("list", { name: "자료가 기억이 되는 3단계" });
+  await expect(journey).toBeVisible();
+  await expect(journey).toContainText("내용 읽기");
+  await expect(journey).toContainText("뜻 파악하기");
+  await expect(journey).toContainText("기억에 연결하기");
+  expect(errors).toEqual([]);
+});
+
 test("the boundary panel shows which memories a question would send", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);

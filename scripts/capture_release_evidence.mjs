@@ -53,12 +53,18 @@ async function main() {
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
 
+  // These frames are the ones the README publishes, so they have to show the
+  // product a new person actually lands in. The app's own default is `basic`
+  // (frontend/src/store/appStore.ts) — capturing in `advanced` meant every
+  // published screenshot showed raw payload panels, storage engines and hook
+  // logs that no first-run user is ever shown. The admin console is captured
+  // by route below and does not depend on this setting.
   await page.addInitScript(() => {
     if (!sessionStorage.getItem("lattice.releaseEvidence.cleared")) {
       localStorage.removeItem("lattice.productFlow.complete");
       localStorage.removeItem("lattice.productFlow.user");
       localStorage.setItem("lattice.language", "ko");
-      localStorage.setItem("lattice.mode", "advanced");
+      localStorage.setItem("lattice.mode", "basic");
       sessionStorage.setItem("lattice.releaseEvidence.cleared", "true");
     }
   });
@@ -109,15 +115,25 @@ async function main() {
   await page.locator("h1.page-title", { hasText: "Lattice를 내 방식에 맞게 설정하세요." }).waitFor();
   await shot(page, "08-system.png");
 
-  await page.goto(`${baseURL}/app#/brain`, { waitUntil: "networkidle" });
-  await page.locator("main[aria-label='Lattice Brain']").waitFor();
-  await page.getByTestId("brain-knowledge-flow").waitFor();
-  await page.waitForTimeout(250);
-  await shot(page, "09-model-setup-status.png");
+  // Captured in `basic`, the Brain page's knowledge-flow strip stays collapsed,
+  // so this slot published a second copy of 04. The runs list carries what
+  // actually changed instead: runs named the way their author named them, and
+  // statuses spoken aloud rather than shown as `awaiting_approval`.
+  await page.goto(`${baseURL}/app#/runs`, { waitUntil: "networkidle" });
+  await page.locator("h1.page-title").waitFor();
+  await page.getByText("내 승인 기다리는 중").first().waitFor();
+  await shot(page, "09-automation-runs.png");
 
   await page.goto(`${baseURL}/app#/admin/users`, { waitUntil: "networkidle" });
   await page.waitForTimeout(250);
   await shot(page, "10-admin-console.png");
+
+  // The three named steps a file walks on its way into memory. This tab was
+  // hidden from plain mode and held two raw API payloads before this release,
+  // which is why it is worth publishing now.
+  await page.goto(`${baseURL}/app#/pipeline`, { waitUntil: "networkidle" });
+  await page.getByRole("list", { name: "자료가 기억이 되는 3단계" }).waitFor();
+  await shot(page, "11-knowledge-journey.png");
 
   await page.goto(`${baseURL}/app#/review`, { waitUntil: "networkidle" });
   await page.getByText(/Review Center|리뷰 센터|검토함/).first().waitFor();
@@ -137,10 +153,17 @@ async function main() {
   if (fs.existsSync(webmTarget)) fs.unlinkSync(webmTarget);
   if (fs.existsSync(gifTarget)) fs.unlinkSync(gifTarget);
   fs.renameSync(recorded, webmTarget);
+  // ffmpeg's default GIF palette is a fixed 256-colour cube, which turned the
+  // app's ivory background into a dithered yellow and its greens into olive —
+  // this GIF is the first thing on the README, so it was publishing a product
+  // that does not exist. Generating the palette from the clip itself keeps the
+  // real colours.
   execFileSync("ffmpeg", [
     "-y",
     "-i", webmTarget,
-    "-vf", "fps=8,scale=960:-1:flags=lanczos",
+    "-filter_complex",
+    "fps=8,scale=960:-1:flags=lanczos,split[s0][s1];" +
+      "[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a",
     "-loop", "0",
     gifTarget,
   ], { stdio: "ignore" });
@@ -161,8 +184,9 @@ Captured from the built React/Vite app served by the release visual API on ${new
 | [06-capture.png](screenshots/06-capture.png) | Add Sources |
 | [07-model-library.png](screenshots/07-model-library.png) | Model Library |
 | [08-system.png](screenshots/08-system.png) | System |
-| [09-model-setup-status.png](screenshots/09-model-setup-status.png) | Model setup status |
+| [09-automation-runs.png](screenshots/09-automation-runs.png) | Automation runs, named and status-spoken |
 | [10-admin-console.png](screenshots/10-admin-console.png) | Separate Admin Console |
+| [11-knowledge-journey.png](screenshots/11-knowledge-journey.png) | Material-to-memory steps |
 | [12-review-center.png](screenshots/12-review-center.png) | Automation Review Center |
 
 ## Motion Evidence

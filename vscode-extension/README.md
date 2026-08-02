@@ -12,10 +12,18 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.4.0 — Named Ground.** This release closes the extension's last three
-surface-parity gaps, and all three were rendering gaps rather than contract
-gaps — the sidecar was already reporting the data and the extension was
-discarding it:
+**10.5.0 — Everyday Words.** This release changes what the Lattice AI app calls
+things, not what this extension does; the extension ships unchanged apart from
+its version. One reference here changed with it: the autonomy dial the editor
+obeys is now called **혼자 해도 되는 일** (설정 → 혼자 해도 되는 일), and its three
+settings read 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서. The API tokens are
+untouched — `strict` / `trusted` / `bypass` still travel over the wire — so
+governed tool behaviour, the approval prompts, and the audit trail are exactly
+as they were.
+
+**10.4.0 — Named Ground** closed the extension's last three surface-parity gaps,
+and all three were rendering gaps rather than contract gaps — the sidecar was
+already reporting the data and the extension was discarding it:
 
 - **`Lattice AI: Capture Folder Into Brain`** sends a whole folder through the
   same `/api/ingestion/folder` endpoint the web Capture view uses, including
@@ -40,7 +48,7 @@ with provenance under Review Queue gates.
 
 9.9.8 added a `strict` / `trusted` / `bypass` permission mode. Editor actions
 run through the same governed tool path, so the mode set in the Lattice AI app
-(환경설정 → 에이전트 자율성) applies here too; the dial itself lives in the app
+(설정 → 혼자 해도 되는 일) applies here too; the dial itself lives in the app
 rather than in editor settings, so there is one place to raise autonomy and one
 audit trail for it.
 

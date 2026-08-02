@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-LEGACY_COMPATIBILITY_VERSION = "10.4.0"
+LEGACY_COMPATIBILITY_VERSION = "10.5.0"
 
 
 @dataclass(frozen=True)

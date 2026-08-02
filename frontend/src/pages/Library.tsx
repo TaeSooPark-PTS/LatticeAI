@@ -37,6 +37,16 @@ function describeComputer(profile: Record<string, unknown> | undefined, language
   return t(language, "library.runtime.thisComputer");
 }
 
+/**
+ * English sentences the server never localized. A model *name* is short and
+ * may legitimately be Latin script; a multi-word English sentence with no
+ * Hangul in it is copy that was never translated.
+ */
+function isUntranslatedProse(text: string) {
+  if (/[ㄱ-힝]/u.test(text)) return false;
+  return text.trim().split(/\s+/).length >= 6;
+}
+
 // Statuses the server is known to emit; anything else is shown neutrally.
 const MODEL_STATUS_KEYS = new Set([
   "loaded", "ready", "download_required", "unavailable", "unsupported",
@@ -121,8 +131,16 @@ function ModelsPanel() {
   const topPick = (((recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined)?.top_pick || null) as Record<string, unknown> | null;
   const latestProgress = progress[progress.length - 1] || null;
 
-  const modelMessage = React.useCallback((message: unknown) => {
-    const text = String(message || t(language, "library.model.notReady"));
+  const modelMessage = React.useCallback((message: unknown, fallbackKey = "library.model.notReady") => {
+    const text = String(message || t(language, fallbackKey));
+    // The registry ships compatibility prose in English. Substituting terms
+    // inside it produced word salad — a released screenshot read "uses the 이
+    // 로컬 모델 형식 로컬 모델 지원 format. The installed 로컬 모델 지원 모델
+    // 지원 does not include that loader…". A sentence cannot be translated a
+    // token at a time, so a Korean reader gets the localized sentence for this
+    // situation instead. Short values (a family name like "Gemma 4") are not
+    // prose and pass through untouched.
+    if (language === "ko" && isUntranslatedProse(text)) return t(language, fallbackKey);
     if (mode !== "basic") return text;
     const localized = text
       .replace(/gemma4_unified/gi, t(language, "library.model.localFormat"))
@@ -310,12 +328,12 @@ function ModelsPanel() {
                     {unsupported ? (
                       <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                         <div className="font-medium">{mode === "basic" ? t(language, "library.model.attentionBeforeLoad") : actionLabel}</div>
-                        <div className="text-muted-foreground">{modelMessage(compatibility.user_message || unavailableReason)}</div>
+                        <div className="text-muted-foreground">{modelMessage(compatibility.user_message || unavailableReason, "library.model.unsupportedHere")}</div>
                       </div>
                     ) : fallbackAvailable ? (
                       <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                         <div className="font-medium">{mode === "basic" ? t(language, "library.model.compatiblePath") : t(language, "library.model.runtimeFallback")}</div>
-                        <div className="text-muted-foreground">{modelMessage(compatibility.user_message || t(language, "library.model.compatibilityFallback"))}</div>
+                        <div className="text-muted-foreground">{modelMessage(compatibility.user_message || t(language, "library.model.compatibilityFallback"), "library.model.compatibilityFallback")}</div>
                       </div>
                     ) : !loaded && !loadAvailable ? <div className="mt-1 text-xs text-muted-foreground">{unavailableReason}</div> : null}
                     {mode !== "basic" ? (

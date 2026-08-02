@@ -89,18 +89,44 @@ describe("PermissionModePanel", () => {
     for (const option of CATALOG) {
       expect(screen.getByTestId(`permission-mode-option-${option.id}`)).toBeTruthy();
     }
-    expect(screen.getByTestId("permission-mode-active").textContent).toBe("엄격");
+    // The server ships "엄격"/"Strict" — the engineering name for the mode.
+    // This dial is on the first screen, so the mode is named by what it does.
+    expect(screen.getByTestId("permission-mode-active").textContent).toBe("먼저 물어보기");
   });
 
-  it("uses the localized catalog copy for the active language", async () => {
+  it("names the modes in the reader's language, not the server's", async () => {
     mockGet("strict");
     useAppStore.setState({ language: "en" });
     renderPanel();
 
     await waitFor(() => expect(screen.getByTestId("permission-mode-panel")).toBeTruthy());
-    expect(screen.getByTestId("permission-mode-active").textContent).toBe("Strict");
+    expect(screen.getByTestId("permission-mode-active").textContent).toBe("Ask me first");
     expect(screen.getByTestId("permission-mode-option-trusted").textContent)
-      .toContain("Workspace writes auto-run.");
+      .toContain("Still asks before running programs");
+    // "Bypass" is the word this pass exists to remove from the first screen.
+    expect(document.body.textContent).not.toMatch(/Bypass|YOLO/);
+  });
+
+  it("falls back to the server's own copy for a mode it does not know", async () => {
+    // The catalog is the server's to define. A mode added server-side must
+    // still render — translating by id must not become a hidden allowlist.
+    const extended = [...CATALOG, {
+      id: "supervised",
+      label: "Supervised", label_ko: "감독",
+      summary: "A mode this client has never heard of.",
+      summary_ko: "이 클라이언트가 모르는 모드.",
+      risk: "low", requires_ack: false,
+    }];
+    vi.spyOn(latticeApi, "permissionMode").mockResolvedValue({
+      ok: true, status: 200, source: "live",
+      data: { ...state("strict"), catalog: extended },
+    } as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("permission-mode-panel")).toBeTruthy());
+    const row = screen.getByTestId("permission-mode-option-supervised");
+    expect(row.textContent).toContain("감독");
+    expect(row.textContent).toContain("이 클라이언트가 모르는 모드.");
   });
 
   it("keeps apply disabled until a different mode is chosen", async () => {
@@ -138,7 +164,7 @@ describe("PermissionModePanel", () => {
     // The server refuses bypass without acknowledge_risk, so the UI must not
     // even offer to send the request until the box is ticked.
     expect((screen.getByTestId("permission-mode-apply") as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("바이패스는 일상 승인 프롬프트를 건너뜁니다.")).toBeTruthy();
+    expect(screen.getByText(/평소의 확인 창이 뜨지 않습니다/)).toBeTruthy();
     expect(setMode).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByTestId("permission-mode-ack"));

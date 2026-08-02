@@ -79,6 +79,36 @@ describe("LibraryPage", () => {
     expect(document.body.textContent).not.toMatch(/모델 고르기|불러온 모델/);
   });
 
+  it("does not translate a server sentence one word at a time", async () => {
+    // The registry ships compatibility prose in English. Swapping terms inside
+    // it put "uses the 이 로컬 모델 형식 로컬 모델 지원 format. The installed
+    // 로컬 모델 지원 모델 지원 does not include that loader…" into a released
+    // README screenshot — readable in neither language.
+    render({
+      models: ok({
+        catalog: [{
+          id: "mlx-community/gemma-4-12b-it",
+          name: "Gemma 4 12B",
+          load_status: "unsupported",
+          runtime_compatibility: {
+            supported: false,
+            user_message: "Gemma 4 12B uses the gemma4_unified MLX format. The installed MLX-VLM runtime does not include that loader, so this local model cannot load until MLX-VLM is updated.",
+          },
+        }],
+        loaded: [],
+        current: null,
+      }),
+    });
+    // Wait for the card itself: an unresolved panel would pass the negative
+    // assertions below without ever rendering the message under test.
+    await waitFor(() => expect(document.body.textContent).toMatch(/Gemma 4 12B/));
+    const text = document.body.textContent || "";
+    // Neither the raw English sentence nor a half-substituted hybrid survives.
+    expect(text).not.toMatch(/does not include that loader/);
+    expect(text).not.toMatch(/The installed/);
+    expect(text).toMatch(/이 컴퓨터에서 실행할 수 없어요/);
+  });
+
   it("survives a model entry missing half its fields", async () => {
     // Real registries return partial rows; a missing name must not blank the row.
     render({ models: ok({ models: [{ id: "x/y" }], current: null }) });

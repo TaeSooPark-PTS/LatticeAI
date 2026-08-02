@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **10.4.0 — Named Ground**.
+Current release: **10.5.0 — Everyday Words**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -274,7 +274,21 @@ Current UX rules:
   server keeps one vocabulary and the reader sees their own language.
 - Identifiers are never shown where a name belongs: `humanizeModelId` and
   `plainText` (`frontend/src/lib/utils.ts`) turn package coordinates and
-  model-written Markdown into readable text.
+  model-written Markdown into readable text. The same rule covers records: a
+  run is titled by its workflow name, and its database id renders only in
+  advanced mode.
+- Enum-shaped payload values are translated per token with a named fallback
+  (`act.runStatus.<token>` → "알 수 없음"), never printed raw. A token the table
+  does not know must degrade to a written phrase, not to itself.
+- Where two surfaces show the same setting, the copy has one home. Permission
+  modes live in `frontend/src/lib/permissionCopy.ts`, read by both the home
+  dial and the Settings panel; lookup is by mode id with the server's own
+  localized label as fallback, so a server-added mode still renders and the
+  translation table cannot become an accidental allowlist.
+- Basic mode is a plain-language surface, not a reduced one: engineering panels
+  (raw payloads, node canvases, storage engines, ids) move behind the advanced
+  switch rather than disappearing. `tests/visual/v3.spec.js` sweeps ten
+  plain-mode routes and fails on engine vocabulary reaching that reader.
 - Mobile layouts preserve the Brain and composer in the first viewport.
 - Static release assets are generated under `static/app` and must match
   `asset-manifest.json`.
@@ -536,13 +550,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-10.4.0 exact artifact names:
+10.5.0 exact artifact names:
 
-- `dist/ltcai-10.4.0-py3-none-any.whl`
-- `dist/ltcai-10.4.0.tar.gz`
-- `ltcai-10.4.0.tgz`
-- `dist/ltcai-10.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.4.0_aarch64.dmg`
+- `dist/ltcai-10.5.0-py3-none-any.whl`
+- `dist/ltcai-10.5.0.tar.gz`
+- `ltcai-10.5.0.tgz`
+- `dist/ltcai-10.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.5.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 
