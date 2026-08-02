@@ -34,7 +34,10 @@
     left: 0;
     z-index: 45;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    /* Sized from the item count rather than a hard-coded 5, so trimming the
+       primary nav does not leave a dead column at the end of the bar. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 0;
     min-height: calc(4.3rem + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid hsl(var(--border));

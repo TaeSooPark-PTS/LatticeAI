@@ -24,6 +24,11 @@ function setHash(value: string) {
   window.location.hash = value;
 }
 
+function parseHashOf(value: string) {
+  setHash(value);
+  return parseHash();
+}
+
 beforeEach(() => {
   setHash("");
 });
@@ -56,6 +61,15 @@ describe("parseHash", () => {
   ])("keeps the compatibility alias %s working", (hash, primary, tab) => {
     setHash(hash);
     expect(parseHash()).toMatchObject({ primary, tab });
+  });
+
+  it("lands the Work entry point on the review inbox, not the goal composer", () => {
+    // The Work screen leads with what is waiting on a decision. The nav href
+    // has to agree: pointing it at `agents` would reorder the tab strip while
+    // still opening the screen on the panel that got demoted.
+    const work = productShellRoutes.find((route) => route.id === "act");
+    setHash(`#/${work?.path}`);
+    expect(parseHash()).toMatchObject({ primary: "act", tab: "review" });
   });
 
   it("resolves a primary route id with no tab of its own", () => {
@@ -132,10 +146,51 @@ describe("route tables", () => {
   });
 
   it("keeps command palette entries resolvable by parseHash", () => {
+    // "Resolvable" was too weak to catch anything: parseHash never returns a
+    // falsy primary, it falls back to `brain`. Every entry named a real screen
+    // and three of them silently landed on the Brain home instead. Assert the
+    // destination is the one the entry names.
+    const expected: Record<string, string> = {
+      "page-brain": "brain",
+      "page-capture": "capture",
+      "page-memory": "brain",
+      "page-library": "library",
+      "page-act": "act",
+      "page-review": "act",
+      "page-system": "system",
+    };
     for (const entry of commandRoutes) {
-      setHash(`#/${entry.key}`);
-      expect(parseHash().primary, entry.key).toBeTruthy();
+      setHash(`#${entry.target}`);
+      expect(parseHash().primary, entry.target).toBe(expected[entry.id]);
     }
+  });
+
+  it("sends both palette entries for Work to the review inbox the shell opens", () => {
+    // The shell's "작업" link and the palette's carry the same label, so they
+    // have to reach the same panel. They were re-pointed in two different
+    // lists, only one of which the palette read.
+    for (const id of ["page-act", "page-review"]) {
+      setHash(`#${commandRoutes.find((entry) => entry.id === id)?.target}`);
+      expect(parseHash(), id).toMatchObject({ primary: "act", tab: "review" });
+    }
+  });
+
+  it("resolves a <primary>/<tab> path instead of dropping it on the home screen", () => {
+    // The palette and the daily briefing emit this shape. Nothing parsed it, so
+    // `#/act/review` — the one destination this layout promotes — rendered the
+    // Brain home.
+    expect(parseHashOf("#/act/review")).toMatchObject({ primary: "act", tab: "review" });
+    expect(parseHashOf("#/act/workflows")).toMatchObject({ primary: "act", tab: "workflows" });
+    expect(parseHashOf("#/brain/graph")).toMatchObject({ primary: "brain", tab: "graph" });
+  });
+
+  it("lets a named alias win over the generic <primary>/<tab> form", () => {
+    // `admin/audit` is an alias onto the system screen. Reading it as
+    // primary=admin/tab=audit would break every old admin bookmark, so the
+    // generic branch has to run last.
+    expect(parseHashOf("#/admin/audit")).toMatchObject({ primary: "system", tab: "admin" });
+    // A head that is not a primary route still falls back rather than throwing.
+    expect(parseHashOf("#/nonsense/deeper")).toMatchObject({ primary: "brain", tab: undefined });
   });
 
   it("has no alias that shadows a direct route with a different target", () => {

@@ -4,7 +4,7 @@ import * as React from "react";
 import "@/i18n/brain";
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BrainCircuit, DatabaseBackup, Filter, Focus, Layers3, LocateFixed, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, BrainCircuit, DatabaseBackup, Filter, Focus, Layers3, LocateFixed, Search, Share2, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { type BrainState } from "@/components/LivingBrain";
 import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, LoadingPanel, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
@@ -22,61 +22,98 @@ import { CytoscapeGraph } from "./brain/CytoscapeGraph";
 import { buildExplorerModel, isRecord, parseGraph, type LabelMode } from "./brain/graphExplorer";
 import { navigateHash } from "@/features/brain/navigation";
 
-type BrainTab = "graph" | "knowledge" | "memory";
+type BrainTab = "knowledge" | "memory";
+
+/**
+ * The map is a place you go *into* from the memory screens, not a third thing
+ * you choose between. As a peer tab it was the first choice a newcomer saw on
+ * this screen — a force-directed node cloud offered with the same weight as
+ * "search your memory", which is the one thing most people came here to do. It
+ * is now a subview: reached from a named secondary link, and left with a back
+ * control. The URL (`#/knowledge-graph`) and everything it can do are unchanged.
+ */
+type BrainView = BrainTab | "graph";
 
 const tabs: Array<{ id: BrainTab; labelKey: string }> = [
   { id: "knowledge", labelKey: "brain.tab.knowledge" },
   { id: "memory", labelKey: "brain.tab.memory" },
-  { id: "graph", labelKey: "brain.tab.graph" },
 ];
+
+const viewPaths: Record<BrainView, string> = {
+  knowledge: "hybrid-search",
+  memory: "memory",
+  graph: "knowledge-graph",
+};
 
 export function BrainPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
-  const normalizedInitialTab = normalizeBrainTab(initialTab);
-  const [tab, setTab] = React.useState<BrainTab>(normalizedInitialTab);
+  const [view, setView] = React.useState<BrainView>(() => normalizeBrainView(initialTab));
   React.useEffect(() => {
-    setTab(normalizeBrainTab(initialTab));
+    setView(normalizeBrainView(initialTab));
   }, [initialTab]);
-  const selectTab = (next: BrainTab) => {
-    setTab(next);
-    navigateHash("/" + ({ knowledge: "hybrid-search", memory: "memory", graph: "knowledge-graph" } as const)[next]);
+  const selectView = (next: BrainView) => {
+    setView(next);
+    navigateHash("/" + viewPaths[next]);
   };
   const graph = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
   const coverage = useQuery({ queryKey: ["coverage"], queryFn: latticeApi.graphCoverage });
+  const isGraph = view === "graph";
 
   return (
     <div className="product-page memory-page space-y-5">
       <header className="brain-layer-header">
         <div>
-          <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(language, tab)}</div>
-          <h1>{tabHeadline(language, tab)}</h1>
+          <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {viewLabel(language, view)}</div>
+          <h1>{t(language, `brain.headline.${view}`)}</h1>
         </div>
-        {/* A bare "12%" told nobody whether that was good, or of what. Say what
-            was counted: 291 memories, 35 of them with a recorded source. */}
+        {/* Coverage meter */}
         <CoverageMeter language={language} data={coverage.data?.data as Record<string, unknown> | undefined} />
       </header>
-      <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => selectTab(id as BrainTab)} />
+      {isGraph ? (
+        <nav className="memory-subview-bar" aria-label={t(language, "brain.graph.subviewAria")}>
+          <button type="button" className="memory-subview-back" onClick={() => selectView("knowledge")}>
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {t(language, "brain.graph.back")}
+          </button>
+          <span className="memory-subview-title">{t(language, "brain.tab.graph")}</span>
+        </nav>
+      ) : (
+        <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={view} onChange={(id) => selectView(id as BrainTab)} />
+      )}
       <StaleEmbedderNotice language={language} />
       <VectorFreshnessNotice language={language} />
 
-      {tab === "graph" ? (
+      {view === "knowledge" ? <HybridSearch /> : null}
+      {view === "memory" ? <UnifiedMemoryPanel /> : null}
+      {isGraph ? (
         graph.isLoading ? <LoadingPanel title={t(language, "graph.deep.title")} /> : (
           <DataPanel title={t(language, "graph.advanced.title")} description={mode === "basic" ? t(language, "graph.advanced.desc.basic") : t(language, "graph.advanced.desc.other")} result={graph.data}>
             {(data) => <DigitalBrainExplorer data={data} />}
           </DataPanel>
         )
-      ) : null}
-      {tab === "knowledge" ? <HybridSearch /> : null}
-      {tab === "memory" ? <UnifiedMemoryPanel /> : null}
+      ) : (
+        <button
+          type="button"
+          className="memory-map-entry"
+          data-testid="open-connections-map"
+          onClick={() => selectView("graph")}
+        >
+          <Share2 className="h-4 w-4" aria-hidden="true" />
+          <span className="memory-map-entry-copy">
+            <strong>{t(language, "brain.graph.open")}</strong>
+            <small>{t(language, "brain.graph.openHint")}</small>
+          </span>
+        </button>
+      )}
     </div>
   );
 }
 
-function normalizeBrainTab(tab?: string): BrainTab {
-  if (tab === "knowledge" || tab === "search") return "knowledge";
+function normalizeBrainView(tab?: string): BrainView {
+  if (tab === "graph" || tab === "knowledge-graph") return "graph";
   if (tab === "memory" || tab === "relationships" || tab === "provenance" || tab === "sources" || tab === "portability" || tab === "care") return "memory";
-  return "graph";
+  return "knowledge";
 }
 
 /**
@@ -117,13 +154,10 @@ function CoverageMeter({ language, data }: { language: Language; data: Record<st
   );
 }
 
-function tabLabel(language: Language, tab: BrainTab) {
-  const labelKey = tabs.find((item) => item.id === tab)?.labelKey;
+function viewLabel(language: Language, view: BrainView) {
+  if (view === "graph") return t(language, "brain.tab.graph");
+  const labelKey = tabs.find((item) => item.id === view)?.labelKey;
   return labelKey ? t(language, labelKey) : t(language, "brain.title");
-}
-
-function tabHeadline(language: Language, tab: BrainTab) {
-  return t(language, `brain.headline.${tab}`);
 }
 
 function GraphStatus({ data }: { data: Record<string, unknown> }) {

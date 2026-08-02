@@ -12,14 +12,20 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.5.0 — Everyday Words.** This release changes what the Lattice AI app calls
-things, not what this extension does; the extension ships unchanged apart from
-its version. One reference here changed with it: the autonomy dial the editor
-obeys is now called **혼자 해도 되는 일** (설정 → 혼자 해도 되는 일), and its three
-settings read 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서. The API tokens are
-untouched — `strict` / `trusted` / `bypass` still travel over the wire — so
-governed tool behaviour, the approval prompts, and the audit trail are exactly
-as they were.
+**10.6.0 — Promoted Panels.** This release rebuilds the layout of the Lattice AI
+app, not this extension; the extension ships unchanged apart from its version.
+Two things change for anyone following instructions between the editor and the
+app. The review inbox is now what the app's **작업** link opens — it used to open
+the goal composer — so a proposal raised from the editor is on screen as soon as
+you switch over. And **작업 · AI 모델 · 설정** moved out of the app's 더보기 menu
+into the top bar on a wide window; on a narrow one they are still in the menu,
+now under **관리**. No endpoint, token, or approval path changed: `strict` /
+`trusted` / `bypass` still travel over the wire, and governed tool behaviour, the
+approval prompts, and the audit trail are exactly as they were.
+
+**10.5.0 — Everyday Words** changed what the app calls things. The autonomy dial
+the editor obeys is called **혼자 해도 되는 일** (설정 → 혼자 해도 되는 일), and its
+three settings read 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서.
 
 **10.4.0 — Named Ground** closed the extension's last three surface-parity gaps,
 and all three were rendering gaps rather than contract gaps — the sidecar was

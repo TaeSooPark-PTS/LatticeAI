@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.5.0 — Everyday Words**.
+Current release: **10.6.0 — Promoted Panels**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

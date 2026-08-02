@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **10.5.0 — Everyday Words**.
+Current release: **10.6.0 — Promoted Panels**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

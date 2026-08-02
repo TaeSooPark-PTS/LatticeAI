@@ -20,14 +20,25 @@ import { PermissionModePanel } from "@/components/PermissionModePanel";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
 
-const tabs: Array<{ id: SystemTab; labelKey: string }> = [
-  { id: "account", labelKey: "system.tab.account" },
-  { id: "workspaces", labelKey: "system.tab.workspaces" },
-  { id: "snapshots", labelKey: "system.tab.snapshots" },
-  { id: "activity", labelKey: "system.tab.activity" },
-  { id: "network", labelKey: "system.tab.network" },
-  { id: "settings", labelKey: "system.tab.settings" },
-  { id: "admin", labelKey: "system.tab.admin" },
+type SystemGroup = "identity" | "data" | "system";
+
+// Seven equal-looking tabs made someone read all seven to find one. They are
+// the same seven destinations, sorted into the three questions people actually
+// arrive with: who am I, where is my data, how does this machine behave.
+const groups: Array<{ id: SystemGroup; labelKey: string }> = [
+  { id: "identity", labelKey: "system.group.identity" },
+  { id: "data", labelKey: "system.group.data" },
+  { id: "system", labelKey: "system.group.system" },
+];
+
+const tabs: Array<{ id: SystemTab; labelKey: string; group: SystemGroup }> = [
+  { id: "account", labelKey: "system.tab.account", group: "identity" },
+  { id: "workspaces", labelKey: "system.tab.workspaces", group: "identity" },
+  { id: "snapshots", labelKey: "system.tab.snapshots", group: "data" },
+  { id: "activity", labelKey: "system.tab.activity", group: "data" },
+  { id: "settings", labelKey: "system.tab.settings", group: "system" },
+  { id: "network", labelKey: "system.tab.network", group: "system" },
+  { id: "admin", labelKey: "system.tab.admin", group: "system" },
 ];
 
 export function SystemPage({ initialTab }: { initialTab?: string }) {
@@ -37,6 +48,9 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
   React.useEffect(() => {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as SystemTab);
   }, [initialTab]);
+  const visibleTabs = mode === "basic"
+    ? tabs.filter((item) => item.id === "account" || item.id === "workspaces" || item.id === "snapshots" || item.id === "settings")
+    : tabs;
   const selectTab = (next: SystemTab) => {
     setTab(next);
     navigateHash("/" + ({
@@ -50,26 +64,38 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
     } as const)[next]);
   };
   return (
-    <div className="product-page settings-page space-y-5">
+    <div className="product-page settings-page space-y-5 pb-8">
       <header className="page-hero">
         <div className="page-kicker"><ShieldCheck className="h-4 w-4" /> {t(language, "system.kicker")}</div>
         <h1 className="page-title">{t(language, "system.title")}</h1>
         <p className="page-copy">{t(language, "system.body")}</p>
       </header>
-      <Tabs
-        tabs={(mode === "basic"
-          ? tabs.filter((item) => item.id === "account" || item.id === "workspaces" || item.id === "snapshots" || item.id === "settings")
-          : tabs
-        ).map((item) => ({ id: item.id, label: t(language, item.labelKey) }))}
-        value={tab}
-        onChange={(id) => selectTab(id as SystemTab)}
-      />
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3" data-testid="system-tab-groups">
+        {groups.map((group) => {
+          const items = visibleTabs.filter((item) => item.group === group.id);
+          if (!items.length) return null;
+          const labelId = `system-group-${group.id}`;
+          return (
+            <div key={group.id} className="flex flex-col gap-1.5">
+              <span id={labelId} className="px-1 text-xs font-medium text-muted-foreground">
+                {t(language, group.labelKey)}
+              </span>
+              <Tabs
+                ariaLabelledBy={labelId}
+                tabs={items.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))}
+                value={tab}
+                onChange={(id) => selectTab(id as SystemTab)}
+              />
+            </div>
+          );
+        })}
+      </div>
       {tab === "account" ? <AccountPanel /> : null}
       {tab === "workspaces" ? <WorkspacePanel /> : null}
+      {tab === "settings" ? <SettingsPanel /> : null}
       {tab === "snapshots" ? <SnapshotsPanel /> : null}
       {tab === "activity" ? <ActivityPanel /> : null}
       {tab === "network" ? <NetworkPanel /> : null}
-      {tab === "settings" ? <SettingsPanel /> : null}
       {tab === "admin" ? <AdminPanel /> : null}
     </div>
   );

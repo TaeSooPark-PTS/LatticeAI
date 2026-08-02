@@ -108,6 +108,23 @@ export default function App() {
   );
 }
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Focusable descendants that are actually rendered.
+ *
+ * The menu holds a copy of the management links that CSS hides once the topbar
+ * shows them. Those anchors stay in the DOM, so a plain querySelectorAll would
+ * report focus targets the browser will refuse to focus and Tab will skip —
+ * putting the focus trap's boundaries in the wrong place.
+ */
+function focusablesIn(root: HTMLElement | null): HTMLElement[] {
+  return Array.from(root?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []).filter(
+    (element) => element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0,
+  );
+}
+
 function BrainShell({
   active,
   contentOwnsMain = false,
@@ -147,11 +164,7 @@ function BrainShell({
         return;
       }
       if (event.key === "Tab") {
-        const focusable = Array.from(
-          menuPanelRef.current?.querySelectorAll<HTMLElement>(
-            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-          ) ?? [],
-        );
+        const focusable = focusablesIn(menuPanelRef.current);
         if (!focusable.length) return;
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
@@ -190,18 +203,32 @@ function BrainShell({
   React.useEffect(() => {
     if (!menuOpen) return;
     window.requestAnimationFrame(() => {
-      const firstNavigationItem = menuPanelRef.current?.querySelector<HTMLElement>(".brain-more-nav a[href]");
-      const fallbackButton = menuPanelRef.current?.querySelector<HTMLElement>("button:not([disabled])");
-      (firstNavigationItem || fallbackButton)?.focus();
+      // The navigation section is hidden once the topbar carries those links,
+      // and focus() on a display:none element silently does nothing — which
+      // would leave the open dialog with focus still on the trigger. Take the
+      // first item that is actually rendered.
+      const rendered = focusablesIn(menuPanelRef.current);
+      const firstNavigationItem = rendered.find((element) => element.closest(".brain-more-nav"));
+      (firstNavigationItem || rendered[0])?.focus();
     });
   }, [menuOpen]);
 
+  // Three everyday destinations stay in the primary nav; the three management
+  // destinations are one list rendered twice — as topbar quick links once the
+  // row is wide enough for them, and inside the menu below that. Building both
+  // from a single array is what stops the two copies from drifting apart;
+  // shell.css owns which one shows, from a single breakpoint, so they can never
+  // both appear or both vanish.
   const primaryRoutes = productShellRoutes.filter((item) => (
-    item.id === "brain" || item.id === "capture" || item.id === "memory" || item.id === "act"
+    item.id === "brain" || item.id === "capture" || item.id === "memory"
   ));
-  const secondaryRoutes = productShellRoutes.filter((item) => (
-    item.id === "library" || item.id === "system"
+  // Ordered here rather than inherited from the route table: what needs a
+  // decision comes before what is merely configurable.
+  const secondaryOrder = ["act", "library", "system"];
+  const secondaryRoutes = secondaryOrder.flatMap((id) => (
+    productShellRoutes.filter((item) => item.id === id)
   ));
+  const secondaryIsActive = secondaryRoutes.some((item) => item.id === active);
   const Content = contentOwnsMain ? "div" : "main";
   const skipLabel = t(language, "shell.skip");
 
@@ -244,12 +271,34 @@ function BrainShell({
         </nav>
 
         <div className="brain-shell-actions">
-          {/* Language belongs beside appearance: both are "how this app talks to
-              me" decisions, and an English speaker must be able to find it on
-              the very first screen without reading Korean to get there. */}
+          {/* Management destinations, promoted out of the menu so nothing
+              everyday costs an extra tap. A second landmark needs its own name
+              or screen readers announce two indistinguishable navigations.
+              Visibility is owned by shell.css, which hides this copy and the
+              one in the menu on opposite sides of a single breakpoint — hence
+              no `flex` utility here, which would fight that rule. */}
+          <nav
+            className="brain-utility-quick-nav"
+            aria-label={t(language, "shell.nav.utility")}
+          >
+            {secondaryRoutes.map((item) => {
+              const Icon = item.icon;
+              return (
+                <a
+                  key={item.id}
+                  className={`brain-utility-link text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition text-muted-foreground hover:text-foreground hover:bg-muted/60${item.id === active ? " is-active font-medium text-foreground bg-muted/80" : ""}`}
+                  href={`#/${item.path}`}
+                  aria-current={item.id === active ? "page" : undefined}
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+                  <span>{t(language, item.labelKey)}</span>
+                </a>
+              );
+            })}
+          </nav>
+          {/* Language belongs beside appearance */}
           <LanguageSwitcher compact />
-          {/* Appearance is a one-tap decision people make once, so it lives in
-              the topbar next to the menu rather than inside a screen. */}
+          {/* Appearance toggle */}
           <button
             type="button"
             className="brain-theme-toggle"
@@ -298,11 +347,22 @@ function BrainShell({
               </button>
             </div>
 
-            <section className="brain-more-section" aria-labelledby="brain-more-navigation-label">
+            <section
+              className="brain-more-section brain-more-section-compact-only"
+              aria-labelledby="brain-more-navigation-label"
+            >
               <span id="brain-more-navigation-label" className="brain-more-section-label">
-                {t(language, "shell.menu.nav")}
+                {t(language, "shell.menu.manage")}
               </span>
-              <nav className="brain-more-nav" aria-label={t(language, "shell.menu.nav")}>
+              {/* Named for what it holds, not for what the menu used to hold.
+                  This section carries the three management links only, and it
+                  is open at exactly the widths where the primary nav — desktop
+                  above, bottom bar below — is also on screen. Both were called
+                  "화면 이동", so a landmark list showed two navigations with the
+                  same name and no way to tell them apart. It shares its name
+                  with its topbar twin instead, which is never visible at the
+                  same time. */}
+              <nav className="brain-more-nav" aria-label={t(language, "shell.nav.utility")}>
                 {secondaryRoutes.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -364,7 +424,7 @@ function BrainShell({
           ref={mobileMenuButtonRef}
           type="button"
           className={`brain-mobile-nav-item brain-mobile-menu-button${
-            menuOpen || active === "library" || active === "system" ? " is-active" : ""
+            menuOpen || secondaryIsActive ? " is-active" : ""
           }`}
           aria-expanded={menuOpen}
           aria-controls="brain-more-popover"

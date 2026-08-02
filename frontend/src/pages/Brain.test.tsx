@@ -5,6 +5,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, ok, renderPage } from "@/test/renderPage";
 import { BrainPage } from "./Brain";
 
+// Cytoscape draws into a real 2D canvas context, which jsdom does not provide
+// ("Could not create canvas of type 2d"). That is an environment gap, not the
+// behaviour under test — these tests are about where the map sits in the
+// hierarchy, not how it paints. The canvas itself is asserted for real by the
+// Playwright suite, which loads `#/knowledge-graph` and requires
+// `[data-testid='brain-cytoscape']` to be visible.
+vi.mock("./brain/CytoscapeGraph", () => ({
+  CytoscapeGraph: ({ ariaLabel }: { ariaLabel?: string }) => (
+    <div data-testid="brain-cytoscape" aria-label={ariaLabel} />
+  ),
+}));
+
 /**
  * The memory surface: graph, provenance, recall and portability.
  *
@@ -96,5 +108,48 @@ describe("BrainPage", () => {
     render({ graph: ok({ nodes: [{ id: "bare" }], edges: [] }) });
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
     expect(document.body.textContent).not.toMatch(/undefined/);
+  });
+
+  /**
+   * The connections map is a subview, not a peer of search.
+   *
+   * As a third tab it was one of the first three choices a newcomer met here: a
+   * force-directed node cloud offered with exactly the weight of "search your
+   * memory", which is what nearly everyone opens this screen to do. Reordering
+   * the strip does not fix that — being *in* the strip is the problem, so these
+   * tests hold the demotion rather than the tab order.
+   */
+  it("offers two ways in, and the connections map is not one of them", async () => {
+    render();
+    await waitFor(() => expect(screen.queryAllByRole("tab").length).toBeGreaterThan(0));
+    expect(screen.queryAllByRole("tab")).toHaveLength(2);
+    expect(screen.queryByRole("tab", { name: "연결 지도" })).toBeNull();
+  });
+
+  it("reaches the map from a named secondary target, and offers a way back", async () => {
+    render();
+    await waitFor(() => expect(screen.queryAllByRole("tab")).toHaveLength(2));
+
+    const entry = screen.getByTestId("open-connections-map");
+    expect(entry.textContent).toContain("연결 지도 열기");
+    await userEvent.click(entry);
+
+    // Entering the subview retires the tablist rather than leaving a strip with
+    // nothing selected, and the way out is explicit.
+    await waitFor(() => expect(screen.queryAllByRole("tab")).toHaveLength(0));
+    expect(screen.getByRole("button", { name: "기억 화면으로 돌아가기" })).toBeTruthy();
+    expect(screen.queryByTestId("open-connections-map")).toBeNull();
+  });
+
+  it("a direct link to the map opens the map, not the search tab", async () => {
+    renderPage(<BrainPage initialTab="graph" />, {
+      api: {
+        graph: ok(GRAPH),
+        graphCoverage: ok({ total_nodes: 2, nodes_with_provenance: 1 }),
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "기억 화면으로 돌아가기" })).toBeTruthy());
+    expect(screen.queryAllByRole("tab")).toHaveLength(0);
   });
 });

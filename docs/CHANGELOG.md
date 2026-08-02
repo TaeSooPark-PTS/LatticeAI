@@ -4,6 +4,92 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.6.0] - 2026-08-03
+
+A layout rebuild, not a copy pass. Every main screen used to open as a row of
+equal tabs; each now opens on the panel that answers the question that brought
+the reader there, with everything else moved below it. No feature was removed —
+every panel is still on its page. Backend behaviour is unchanged;
+`frontend/openapi.json` differs from 10.5.0 only in `info.version`.
+
+### Changed
+- **Capture leads with one card instead of four page-level tabs.** 파일 올리기 /
+  폴더 연결하기 / 웹페이지 저장하기 became a `role="group"` method picker inside
+  a single `자료 추가하기` station, with the chosen method's form opening in the
+  same card. Progress, folder health, connected sources and recent documents
+  moved to a two-column `.capture-secondary` row that is always visible instead
+  of hidden behind a tab. `#/my-computer`, `#/capture-browser` and `#/pipeline`
+  still resolve.
+- **Work opens on 검토함 instead of the empty goal composer.** The shell's 작업
+  entry point moved from `#/agents` to `#/review`, the Runs tab leads the tab
+  strip, and 검토함 leads 실행 within it. The page heading and description now
+  follow the selected tab instead of repeating one sentence on all five.
+- **The model library answers the active model above the tab strip.** A new
+  `지금 작동 중인 모델` card names the loaded model in human terms and offers
+  one-click switching, listing only models already downloaded, supported and
+  loadable — never one that is still awaiting consent. With none loaded it says
+  so ("아직 사용할 모델이 없어요").
+- **The Brain home is one bordered station instead of five stacked blocks.**
+  Greeting, composer, the ingestion dock and the autonomy dial now live in one
+  card that lifts on `:focus-within`; the dock and the dial were two competing
+  strips and became one `.brain-station-toolbar` row. The Brain organism shrank
+  from 7rem to 5.4rem.
+- **The knowledge graph is a subview, not a third peer tab.** Memory keeps two
+  tabs and reaches the graph through a `연결 지도 열기` button, which swaps the
+  tab strip for a labelled `기억 화면으로 돌아가기` bar. `#/knowledge-graph`
+  still resolves.
+- **Settings' seven flat tabs became three named groups**: 나와 작업공간
+  (계정, 작업공간), 내 데이터 보관 (스냅샷, 활동), 동작 방식과 연결 (설정,
+  네트워크, 관리). All tab routes are unchanged.
+- **Everyday and management destinations split.** 대화 · 자료 · 기억 stay in the
+  primary nav; 작업 · AI 모델 · 설정 render as topbar quick links at ≥960px and
+  inside the menu below that. Both copies are built from one array and shown by
+  one breakpoint in `shell.css`, so they cannot drift apart and cannot both
+  appear or both vanish.
+
+### Fixed
+- **`#/act/review` never opened the review inbox.** The command palette and the
+  daily briefing had always emitted `<screen>/<tab>` hashes, and `parseHash`
+  had no case for that shape, so `#/act/review`, `#/act/workflows` and
+  `#/brain/graph` all fell through to the Brain home. The generic form is now
+  parsed as the last step, after named aliases, so an alias always wins.
+- **The command palette read a private second copy of the destination list.**
+  `commandRoutes` in `routes.ts` was not the list the palette rendered, so
+  repointing 작업 there changed nothing while the palette kept the old target —
+  one label meaning two different screens depending on how it was reached. The
+  palette now reads that single list, and its entries are i18n keys rather than
+  hardcoded English labels.
+- **The menu's focus trap counted links the browser will not focus.** The menu
+  holds a copy of the management links that CSS hides once the topbar shows
+  them; those anchors stay in the DOM, so `querySelectorAll` put the trap's
+  first/last boundaries on hidden elements, and opening the menu could call
+  `focus()` on a `display:none` anchor — which silently does nothing, leaving
+  focus on the trigger. Both now filter to elements that are actually rendered.
+- **Both the primary nav and the menu's list were named "화면 이동".** A landmark
+  list showed two navigations with the same name and no way to tell them apart.
+  The management list is now 관리 and shares the accessible name 관리 화면 이동
+  with its topbar twin, which is never visible at the same time.
+- **Release frame 11 shipped a byte-identical copy of frame 06.** With the
+  pipeline moved out of its own tab, `#/pipeline` renders the same page as
+  `#/capture`, so the full-page capture produced the same file twice while the
+  README printed them as different tiles. `scripts/capture_release_evidence.mjs`
+  now frames the three-step card itself.
+
+### Testing
+- `tests/visual/v3.spec.js` asserts the new hierarchy: Brain home is one card
+  containing composer, dock and dial; the graph is reached by button and not by
+  tab; Capture has no page-level tabs and keeps its three deep links; the active
+  model card precedes the tab strip; the shell link and the command palette open
+  the same screen for 작업.
+- A ten-width sweep (390px–1440px) fails if a management link is visible in both
+  places or in neither, if the topbar overflows, or if the menu button is
+  clipped. A separate check requires every visible `<nav>` to carry a unique
+  accessible name.
+- `tests/visual/mock_server.cjs` now serves `POST /models/load` and
+  `GET /knowledge-graph/local/health`, so the one-click model switch and the
+  folder-health card render during capture instead of being photographed as
+  placeholders.
+
 ## [10.5.0] - 2026-08-03
 
 A UI/UX pass for the person who did not build this. No feature was removed;

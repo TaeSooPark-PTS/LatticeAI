@@ -243,6 +243,32 @@ summary {
   margin-left: auto;
 }
 
+/* The three management destinations are one list rendered twice: as topbar
+   quick links, and inside the "더보기" menu. Exactly one copy may be visible at
+   any width, so both are governed by this single breakpoint. Splitting them
+   across two different thresholds left a band showing both — and, because the
+   quick links add ~110px to a row that only just fit, a band where the topbar
+   overflowed its own box and clipped the menu button off the right edge.
+   960px is where the full row fits with room to spare; below it the links go
+   back to the menu, which stays reachable at every width. */
+.brain-utility-quick-nav {
+  display: none;
+  align-items: center;
+  gap: 0.15rem;
+  margin-right: 0.35rem;
+}
+
+@media (min-width: 960px) {
+  .brain-utility-quick-nav {
+    display: flex;
+  }
+
+  /* Its counterpart inside the menu, hidden once the topbar carries them. */
+  .brain-more-section-compact-only {
+    display: none;
+  }
+}
+
 .brain-more-button.brain-menu-button {
   display: inline-flex;
   width: auto;

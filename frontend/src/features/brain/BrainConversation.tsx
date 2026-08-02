@@ -151,7 +151,7 @@ export function BrainConversation({
 
   // First-five guided card wiring: each step drives a real, already-existing
   // surface on this screen (composer, ingestion dock, insights shelf).
-  const homeDeckRef = React.useRef<HTMLDivElement>(null);
+  const homeDeckRef = React.useRef<HTMLElement>(null);
   useDismissHomeShelves();
   const insightsShelfRef = React.useRef<HTMLDetailsElement>(null);
 
@@ -322,22 +322,33 @@ export function BrainConversation({
             </>
           ) : (
             <div className="brain-centered-home" data-testid="brain-home-stage">
-              <BrainHomeHero
-                language={language}
-                brainState={brainState}
-                intensity={intensity}
-                readiness={readiness}
-                memories={memories}
-                graph={graph}
-                onExploreBrain={onExploreBrain}
-              />
+              {/* ── The station ─────────────────────────────────────────────
+                  One bordered surface holding the whole first move: who you
+                  are talking to, the box you type into, everything you can add
+                  to it, how much it may do on its own, and three things to try.
 
-              {modelReady ? null : <ModelMissingNotice language={language} />}
+                  These were five stacked blocks with four separate borders. A
+                  newcomer read down a column — greeting, then a text box, then
+                  a row of pills, then a second row of controls, then chips —
+                  with nothing saying which of them was the thing to do. The
+                  greeting is the station's header now, and the two control
+                  clusters that used to sit in different places (capture inside
+                  the composer's attachment slot, autonomy on a strip below it)
+                  are one toolbar on its floor. Nothing was dropped; the screen
+                  just stopped presenting a list of equals. */}
+              <section className="brain-home-station" ref={homeDeckRef} data-testid="brain-home-station">
+                <BrainHomeHero
+                  language={language}
+                  brainState={brainState}
+                  intensity={intensity}
+                  readiness={readiness}
+                  memories={memories}
+                  graph={graph}
+                  onExploreBrain={onExploreBrain}
+                />
 
-              {/* Autonomy belongs with the box you type into: it is the answer
-                  to "how much may Brain do with what I just asked?", so it sits
-                  on the composer's own footer instead of a separate row. */}
-              <div className="brain-home-do" ref={homeDeckRef}>
+                {modelReady ? null : <ModelMissingNotice language={language} />}
+
                 <BrainComposer
                   language={language}
                   draft={draft}
@@ -349,61 +360,65 @@ export function BrainConversation({
                   onUploadDocument={onUploadDocument}
                   onSend={onSend}
                   onStop={onStop}
-                  attachments={
-                    <BrainIngestionDock
-                      language={language}
-                      variant="inline"
-                      uploadingDocument={uploadingDocument}
-                      ingestionStates={ingestionStates}
-                      onUploadDocument={onUploadDocument}
-                      onPickFolder={onPickFolder}
-                      onConnectFolder={onConnectFolder}
-                      onIngestNote={onIngestNote}
-                      onIngestWeb={onIngestWeb}
-                    />
-                  }
                 />
-                <BrainQuickControls language={language} />
-              </div>
 
-              {suggestedQuestions.length ? (
-                <section className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
-                  <span className="brain-home-prompt-strip-label">
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t(language, "brain.suggestions.title")}
-                  </span>
-                  {suggestedQuestions.map((question) => {
-                    const prompt = t(language, question.promptKey, question.params);
-                    return (
-                      <button
-                        key={question.id}
-                        type="button"
-                        disabled={streaming}
-                        title={t(language, question.detailKey)}
-                        onClick={() => {
-                          onDraftChange("");
-                          onSendText(prompt);
-                        }}
-                      >
-                        <strong>{t(language, question.labelKey)}</strong>
-                        <span>{t(language, question.detailKey)}</span>
-                      </button>
-                    );
-                  })}
-                </section>
-              ) : (
-                <div className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
-                  <span className="brain-home-prompt-strip-label">
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t(language, "brain.suggestions.title")}
-                  </span>
-                  {starterPrompts.slice(0, 3).map((prompt) => (
-                    <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
-                      {prompt}
-                    </button>
-                  ))}
+                {/* Add-material and autonomy answer the same question — "what
+                    may Brain work with, and how far may it go?" — so they read
+                    as one row instead of two competing strips. */}
+                <div className="brain-station-toolbar" role="group" aria-label={t(language, "brain.station.toolbar.aria")}>
+                  <BrainIngestionDock
+                    language={language}
+                    variant="inline"
+                    uploadingDocument={uploadingDocument}
+                    ingestionStates={ingestionStates}
+                    onUploadDocument={onUploadDocument}
+                    onPickFolder={onPickFolder}
+                    onConnectFolder={onConnectFolder}
+                    onIngestNote={onIngestNote}
+                    onIngestWeb={onIngestWeb}
+                  />
+                  <BrainQuickControls language={language} />
                 </div>
-              )}
+
+                {suggestedQuestions.length ? (
+                  <section className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
+                    <span className="brain-home-prompt-strip-label">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t(language, "brain.suggestions.title")}
+                    </span>
+                    {suggestedQuestions.map((question) => {
+                      const prompt = t(language, question.promptKey, question.params);
+                      return (
+                        <button
+                          key={question.id}
+                          type="button"
+                          disabled={streaming}
+                          title={t(language, question.detailKey)}
+                          onClick={() => {
+                            onDraftChange("");
+                            onSendText(prompt);
+                          }}
+                        >
+                          <strong>{t(language, question.labelKey)}</strong>
+                          <span>{t(language, question.detailKey)}</span>
+                        </button>
+                      );
+                    })}
+                  </section>
+                ) : (
+                  <div className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
+                    <span className="brain-home-prompt-strip-label">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t(language, "brain.suggestions.title")}
+                    </span>
+                    {starterPrompts.slice(0, 3).map((prompt) => (
+                      <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
 
               {/* Everything that is not "greet, ask, add material, set autonomy"
                   lives in this quiet row: still one click away, never competing

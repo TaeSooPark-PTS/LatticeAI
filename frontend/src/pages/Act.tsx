@@ -20,17 +20,29 @@ import { asArray, shortId } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
 import { navigateHash } from "@/features/brain/navigation";
 
-type ActTab = "agents" | "runs" | "workflows" | "hooks" | "tools";
-type RunsSubTab = "runs" | "review";
+type ActTab = "runs" | "agents" | "workflows" | "hooks" | "tools";
+type RunsSubTab = "review" | "runs";
 
 const runsSubTabs: Array<{ id: RunsSubTab; labelKey: string }> = [
-  { id: "runs", labelKey: "act.tab.runs" },
   { id: "review", labelKey: "act.tab.review" },
+  { id: "runs", labelKey: "act.tab.runs" },
 ];
 
+// The hero now names whichever panel is open, so every tab needs its own pair.
+// A Record rather than a chain of ternaries: the chain's final `else` quietly
+// captioned the permissions panel "가드레일 및 안전 규칙", and adding a tab would
+// have kept inheriting that. This way the type checker asks for the copy.
+const heroCopy: Record<ActTab, { titleKey: string; copyKey: string }> = {
+  runs: { titleKey: "act.title.runs", copyKey: "act.copy.runs" },
+  agents: { titleKey: "act.title.goals", copyKey: "act.copy.goals" },
+  workflows: { titleKey: "act.title.workflows", copyKey: "act.copy.workflows" },
+  hooks: { titleKey: "act.title.safeguards", copyKey: "act.copy.safeguards" },
+  tools: { titleKey: "act.title.permissions", copyKey: "act.copy.permissions" },
+};
+
 const tabs: Array<{ id: ActTab; labelKey: string; advancedLabelKey?: string }> = [
-  { id: "agents", labelKey: "act.tab.goals" },
   { id: "runs", labelKey: "act.tab.runs" },
+  { id: "agents", labelKey: "act.tab.goals" },
   { id: "workflows", labelKey: "act.tab.recipes" },
   { id: "hooks", labelKey: "act.tab.safeguards", advancedLabelKey: "act.tab.hooks" },
   { id: "tools", labelKey: "act.tab.permissions", advancedLabelKey: "act.tab.tools" },
@@ -40,17 +52,21 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const [tab, setTab] = React.useState<ActTab>(() => {
-    if (initialTab === "review") return "runs";
-    return (initialTab as ActTab) || "agents";
+    if (initialTab === "agents" || initialTab === "workflows" || initialTab === "hooks" || initialTab === "tools") return initialTab;
+    return "runs";
   });
-  const [runsSubTab, setRunsSubTab] = React.useState<RunsSubTab>(initialTab === "review" ? "review" : "runs");
+  const [runsSubTab, setRunsSubTab] = React.useState<RunsSubTab>(initialTab === "runs" ? "runs" : "review");
   React.useEffect(() => {
     if (initialTab === "review") {
       setTab("runs");
       setRunsSubTab("review");
       return;
     }
-    if (initialTab === "runs") setRunsSubTab("runs");
+    if (initialTab === "runs") {
+      setTab("runs");
+      setRunsSubTab("runs");
+      return;
+    }
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as ActTab);
   }, [initialTab]);
   const selectTab = (next: ActTab) => {
@@ -61,23 +77,24 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
     setRunsSubTab(next);
     navigateHash(next === "review" ? "/review" : "/runs");
   };
+  const { titleKey, copyKey } = heroCopy[tab];
   return (
     <div className="product-page act-page space-y-5">
       <header className="page-hero">
         <div className="page-kicker"><Workflow className="h-4 w-4" /> {t(language, "act.kicker")}</div>
-        <h1 className="page-title">{t(language, "act.title")}</h1>
-        <p className="page-copy">{t(language, "act.copy")}</p>
+        <h1 className="page-title">{t(language, titleKey)}</h1>
+        <p className="page-copy">{t(language, copyKey)}</p>
       </header>
       <Tabs
-        tabs={(mode === "basic" ? tabs.filter((item) => item.id === "agents" || item.id === "runs" || item.id === "workflows") : tabs).map((item) => ({
+        tabs={(mode === "basic" ? tabs.filter((item) => item.id === "runs" || item.id === "agents" || item.id === "workflows") : tabs).map((item) => ({
           id: item.id,
           label: t(language, mode === "basic" || !item.advancedLabelKey ? item.labelKey : item.advancedLabelKey),
         }))}
         value={tab}
         onChange={(id) => selectTab(id as ActTab)}
       />
-      {tab === "agents" ? <AgentsPanel /> : null}
       {tab === "runs" ? <RunsPanel subTab={runsSubTab} onSubTabChange={selectRunsSubTab} /> : null}
+      {tab === "agents" ? <AgentsPanel /> : null}
       {tab === "workflows" ? <WorkflowsPanel /> : null}
       {tab === "hooks" ? <HooksPanel /> : null}
       {tab === "tools" ? <ToolsPanel /> : null}

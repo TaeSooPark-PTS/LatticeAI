@@ -128,12 +128,20 @@ async function main() {
   await page.waitForTimeout(250);
   await shot(page, "10-admin-console.png");
 
-  // The three named steps a file walks on its way into memory. This tab was
-  // hidden from plain mode and held two raw API payloads before this release,
-  // which is why it is worth publishing now.
+  // The three named steps a file walks on its way into memory. 10.6.0 moved
+  // this out of a tab of its own and into Capture's second row, where it is now
+  // always on screen — so `#/pipeline` renders the same page as `#/capture`,
+  // and a full-page shot here came out byte-identical to 06. The README prints
+  // the two as different tiles, so frame the card this tile is actually about.
   await page.goto(`${baseURL}/app#/pipeline`, { waitUntil: "networkidle" });
-  await page.getByRole("list", { name: "자료가 기억이 되는 3단계" }).waitFor();
-  await shot(page, "11-knowledge-journey.png");
+  const journeyList = page.getByRole("list", { name: "자료가 기억이 되는 3단계" });
+  await journeyList.waitFor();
+  const journeyCard = page
+    .locator(".capture-secondary-column > *")
+    .filter({ has: journeyList })
+    .first();
+  await page.waitForTimeout(120);
+  await journeyCard.screenshot({ path: path.join(screenshots, "11-knowledge-journey.png") });
 
   await page.goto(`${baseURL}/app#/review`, { waitUntil: "networkidle" });
   await page.getByText(/Review Center|리뷰 센터|검토함/).first().waitFor();
