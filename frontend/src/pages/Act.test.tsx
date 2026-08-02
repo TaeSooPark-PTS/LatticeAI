@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,8 +27,8 @@ const REGISTRY = {
   ],
 };
 
-function render(overrides = {}, options = {}) {
-  return renderPage(<ActPage />, {
+function render(overrides = {}, options = {}, props: { initialTab?: string } = {}) {
+  return renderPage(<ActPage {...props} />, {
     api: {
       automationRecipes: ok(RECIPES),
       agentRegistry: ok(REGISTRY),
@@ -48,6 +48,53 @@ describe("ActPage", () => {
   it("renders the automation surface", async () => {
     render();
     await waitFor(() => expect((document.body.textContent || "").length).toBeGreaterThan(20));
+  });
+
+  it("opens on the review inbox, because that is what waits on the person", async () => {
+    // Reordering the tab array is not the same as changing where the screen
+    // opens. Both levels have to agree, at whichever tab the shell hands over.
+    // "실행" names both a top tab and a sub tab, so each is scoped to its strip.
+    for (const initialTab of [undefined, "review"]) {
+      const view = render({}, {}, { initialTab });
+      await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
+      const [top, sub] = screen.getAllByRole("tablist");
+      expect(within(top).getByRole("tab", { name: "실행" }).getAttribute("aria-selected")).toBe("true");
+      expect(within(sub).getByRole("tab", { name: "검토함" }).getAttribute("aria-selected")).toBe("true");
+      view.unmount();
+    }
+  });
+
+  it("still honours a deep link to a demoted tab", async () => {
+    // Promoting the review inbox must not strip the older entry points.
+    render({}, {}, { initialTab: "agents" });
+    await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
+    expect(screen.getByRole("tab", { name: "목표" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("captions every tab with its own panel, including the last one", async () => {
+    // The hero follows the open tab. It was built as a chain of ternaries whose
+    // final `else` captured whatever was left over, so the permissions panel
+    // sat under the safeguards heading — the one tab nobody checks, because it
+    // is the one the chain never names. Assert each pairing, not just the
+    // promoted tab, so a sixth tab cannot inherit a caption by accident.
+    // Advanced mode is the only one that shows all five; it also renames the
+    // last two ("보호 장치"/"권한" become "훅"/"도구"), so the tab is addressed by
+    // the label this mode actually renders.
+    const captions: Array<[string, string]> = [
+      ["실행", "지금 하는 일과 검토할 일"],
+      ["목표", "새로 맡길 일 적기"],
+      ["레시피", "자주 쓰는 작업 모음"],
+      ["훅", "보호 장치"],
+      ["도구", "도구 사용 권한"],
+    ];
+    render({}, { mode: "advanced" });
+    await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
+
+    for (const [tabName, heading] of captions) {
+      const [top] = screen.getAllByRole("tablist");
+      await userEvent.click(within(top).getByRole("tab", { name: tabName }));
+      await waitFor(() => expect(document.querySelector("h1.page-title")?.textContent).toBe(heading));
+    }
   });
 
   it("localises agent roles by id rather than printing the id", async () => {

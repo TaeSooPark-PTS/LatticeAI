@@ -3,7 +3,7 @@ import * as React from "react";
 // table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, CheckCircle2, Cpu, Download, PackagePlus, PlayCircle, Plug, ShieldAlert } from "lucide-react";
+import { Boxes, CheckCircle2, Cpu, Download, Loader2, PackagePlus, PlayCircle, Plug, ShieldAlert } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EmptyState, EntityList, OperationResult, StatGrid, StructuredView, Tabs, ValuePreview } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -81,12 +81,138 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
         <h1 className="page-title">{t(language, "library.title")}</h1>
         <p className="page-copy">{t(language, "library.body")}</p>
       </header>
+      {/* The one question this screen exists to answer, answered before the
+          tabs rather than six cards down the catalogue: which model is running
+          right now, and how do I change it. */}
+      <ActiveModelCard />
       <Tabs tabs={visibleTabs} value={tab} onChange={(id) => selectTab(id as LibraryTab)} />
       {tab === "models" ? <ModelsPanel /> : null}
       {tab === "skills" ? <SkillsPanel /> : null}
       {tab === "mcp" ? <McpPanel /> : null}
       {tab === "marketplace" ? <MarketplacePanel /> : null}
     </div>
+  );
+}
+
+/**
+ * Which model is running, and how to change it — first, and on every tab.
+ *
+ * This screen used to open on a hero, then a tab strip, then a six-step setup
+ * track, and only somewhere below that did it say which model was actually
+ * loaded. The question that brings people here ("is my AI working, and can I
+ * use a different one?") was answered by a stat cell in the middle of a
+ * catalogue. It is the first block on the page now, and the alternatives it
+ * offers are only ones a single click can really switch to: already
+ * downloaded, no consent prompt, not the one already running.
+ */
+function ActiveModelCard() {
+  const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
+  const models = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
+  const [switching, setSwitching] = React.useState<string | null>(null);
+  const [switchError, setSwitchError] = React.useState<string | null>(null);
+
+  const payload = (models.data?.data || {}) as Record<string, unknown>;
+  const loadedIds = asArray<string>(payload.loaded);
+  const currentId = String(payload.current || loadedIds[0] || "");
+  const catalog = [
+    ...asArray<Record<string, unknown>>(payload.catalog),
+    ...asArray<Record<string, unknown>>(payload.recommended),
+    ...asArray<Record<string, unknown>>(payload.models),
+  ];
+  const modelId = (model: Record<string, unknown>) => String(model.id || model.model_id || "");
+  const activeEntry = currentId ? catalog.find((model) => modelId(model) === currentId) : undefined;
+  // Never the raw registry coordinate: the catalogue name first, a humanised id
+  // second. `mlx-community/gemma-4-26b-a4b-it-4bit` is not a model name.
+  const activeName = String(activeEntry?.name || "") || (currentId ? humanizeModelId(currentId) : "");
+  // Only models a single click can really switch to. "Downloaded" is not the
+  // same as "loadable": the registry ships entries that are present on disk but
+  // whose runtime cannot load them (`runtime_compatibility.supported === false`),
+  // and offering one of those as a one-click switch would be a button that
+  // always fails. Consent-gated downloads stay in the catalogue below, where
+  // the size and the checkbox are.
+  const alternatives = catalog
+    .filter((model) => {
+      const id = modelId(model);
+      if (!id || id === currentId || loadedIds.includes(id)) return false;
+      if (model.download_required) return false;
+      if (asRecord(model.runtime_compatibility).supported === false) return false;
+      if (model.load_status === "unsupported") return false;
+      return Boolean(model.load_available) || model.load_status === "ready";
+    })
+    .slice(0, 3);
+
+  async function switchTo(model: Record<string, unknown>) {
+    const id = modelId(model);
+    setSwitching(id);
+    setSwitchError(null);
+    const engine = String(model.recommended_engine || model.engine || "") || undefined;
+    const result = await latticeApi.loadModel(String(model.recommended_load_id || id), engine, false);
+    setSwitching(null);
+    if (!result.ok) setSwitchError(result.error || t(language, "library.active.switchFailed"));
+    await qc.invalidateQueries({ queryKey: ["models"] });
+  }
+
+  // A failed request must not read as "no model is loaded" — that is a claim
+  // about the machine this response cannot support.
+  const unavailable = Boolean(models.data && !models.data.ok);
+
+  return (
+    <section className="library-active" aria-label={t(language, "library.active.title")} data-testid="library-active-model">
+      <div className="library-active-main">
+        <span className="library-active-mark" aria-hidden="true">
+          {activeName && !unavailable ? <PlayCircle className="h-5 w-5" /> : <Cpu className="h-5 w-5" />}
+        </span>
+        <div className="library-active-copy">
+          <span className="library-active-kicker">{t(language, "library.active.title")}</span>
+          {unavailable ? (
+            <strong>{t(language, "library.active.unknown")}</strong>
+          ) : activeName ? (
+            <>
+              <strong>{activeName}</strong>
+              <small>{t(language, "library.active.ready")}</small>
+            </>
+          ) : (
+            <>
+              <strong>{t(language, "library.active.none")}</strong>
+              <small>{t(language, "library.active.noneHint")}</small>
+            </>
+          )}
+        </div>
+        {activeName && !unavailable ? (
+          <Badge variant="success">{t(language, "library.model.loaded")}</Badge>
+        ) : null}
+      </div>
+
+      {alternatives.length && !unavailable ? (
+        <div className="library-active-switch">
+          <span className="library-active-switch-label">
+            {t(language, "library.active.switchTitle")}
+            <small>{t(language, "library.active.switchHint")}</small>
+          </span>
+          <div className="library-active-switch-options">
+            {alternatives.map((model) => {
+              const id = modelId(model);
+              const name = String(model.name || "") || humanizeModelId(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={Boolean(switching)}
+                  data-testid={`library-switch-${id}`}
+                  onClick={() => void switchTo(model)}
+                >
+                  {switching === id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {switching === id ? t(language, "library.active.switching") : name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {switchError ? <p className="library-active-error" role="status">{switchError}</p> : null}
+    </section>
   );
 }
 

@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.5.0 — Everyday Words**.
+Current release: **10.6.0 — Promoted Panels**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

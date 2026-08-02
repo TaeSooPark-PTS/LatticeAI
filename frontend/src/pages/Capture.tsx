@@ -5,7 +5,7 @@ import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, ClipboardPaste, FolderOpen, FolderPlus, Globe2, HardDrive, Loader2, RotateCcw, ScanLine, Share2, Sparkles, Upload } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,23 +16,42 @@ import { FolderMemoryHealthCard } from "@/features/capture/FolderMemoryHealth";
 import { useAppStore } from "@/store/appStore";
 import { navigateHash } from "@/features/brain/navigation";
 
-type CaptureTab = "files" | "local" | "browser" | "pipeline";
+type CaptureMethod = "files" | "local" | "browser";
+
+/**
+ * One way in, three shapes of material.
+ *
+ * These used to be three of four page-level tabs, sitting beside "처리 과정" as
+ * if choosing a *file* and inspecting the *indexer* were the same kind of
+ * decision. A newcomer arriving to add something had to first work out which of
+ * four equal-looking tabs held the thing they wanted, and connecting a folder —
+ * the highest-value action on the screen — was hidden two tabs deep.
+ *
+ * Now the page has one primary station at the top that owns every way of adding
+ * material, and everything that reports on material already added drops to a
+ * quieter row beneath it. The deep links (`#/capture`, `#/my-computer`,
+ * `#/capture-browser`) still land on their own method, and `#/pipeline` still
+ * works — the status it named is simply always on screen now.
+ */
+const captureMethods: Array<{ id: CaptureMethod; labelKey: string; icon: typeof Upload; path: string }> = [
+  { id: "files", labelKey: "capture.method.files", icon: Upload, path: "capture" },
+  { id: "local", labelKey: "capture.method.local", icon: FolderPlus, path: "my-computer" },
+  { id: "browser", labelKey: "capture.method.browser", icon: Globe2, path: "capture-browser" },
+];
+
+function normalizeCaptureMethod(tab?: string): CaptureMethod {
+  return captureMethods.some((item) => item.id === tab) ? (tab as CaptureMethod) : "files";
+}
 
 export function CapturePage({ initialTab }: { initialTab?: string }) {
   const language = useAppStore((state) => state.language);
-  const [tab, setTab] = React.useState<CaptureTab>((initialTab as CaptureTab) || "files");
-  const tabs: Array<{ id: CaptureTab; label: string }> = [
-    { id: "files", label: t(language, "capture.tab.files") },
-    { id: "local", label: t(language, "capture.tab.local") },
-    { id: "browser", label: t(language, "capture.tab.browser") },
-    { id: "pipeline", label: t(language, "capture.tab.pipeline") },
-  ];
+  const [method, setMethod] = React.useState<CaptureMethod>(() => normalizeCaptureMethod(initialTab));
   React.useEffect(() => {
-    if (initialTab === "pipeline" || initialTab === "local" || initialTab === "browser" || initialTab === "files") setTab(initialTab);
+    setMethod(normalizeCaptureMethod(initialTab));
   }, [initialTab]);
-  const selectTab = (next: CaptureTab) => {
-    setTab(next);
-    navigateHash("/" + ({ files: "capture", local: "my-computer", browser: "capture-browser", pipeline: "pipeline" } as const)[next]);
+  const selectMethod = (next: CaptureMethod) => {
+    setMethod(next);
+    navigateHash("/" + (captureMethods.find((item) => item.id === next)?.path || "capture"));
   };
   return (
     <div className="product-page capture-page space-y-5">
@@ -41,22 +60,51 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
         <h1 className="page-title">{t(language, "capture.title")}</h1>
         <p className="page-copy">{t(language, "capture.body")}</p>
       </header>
-      {/* "Where did my file get to?" is a beginner's question, not an expert
-          one. The tab used to be hidden in basic mode because it showed raw
-          payloads; now that it answers in plain steps, everyone gets it. */}
-      <Tabs tabs={tabs} value={tab} onChange={(id) => selectTab(id as CaptureTab)} />
-      {tab === "files" ? <FilesPanel /> : null}
-      {tab === "local" ? <LocalPanel /> : null}
-      {tab === "browser" ? <BrowserPanel /> : null}
-      {tab === "pipeline" ? <PipelinePanel /> : null}
+
+      {/* 1순위 — the single station every way in now belongs to. */}
+      <section className="capture-station" aria-label={t(language, "capture.station.aria")}>
+        <div className="capture-station-head">
+          <h2>{t(language, "capture.station.title")}</h2>
+          <p>{t(language, "capture.station.detail")}</p>
+        </div>
+        {/* Toggle buttons, not tabs: these pick the shape of the thing you are
+            adding inside one action, rather than switching to another screen. */}
+        <div className="capture-method-switch" role="group" aria-label={t(language, "capture.method.aria")}>
+          {captureMethods.map(({ id, labelKey, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={method === id}
+              className={method === id ? "is-active" : ""}
+              data-testid={`capture-method-${id}`}
+              onClick={() => selectMethod(id)}
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {t(language, labelKey)}
+            </button>
+          ))}
+        </div>
+        <div className="capture-station-body">
+          {method === "files" ? <FileIntake /> : null}
+          {method === "local" ? <FolderIntake /> : null}
+          {method === "browser" ? <WebIntake /> : null}
+        </div>
+      </section>
+
+      {/* 2순위 — what happened to everything already added. Two columns, both
+          quieter than the station: progress on the left, the material itself on
+          the right. */}
+      <div className="capture-secondary">
+        <PipelinePanel />
+        <RecentCapturePanel />
+      </div>
     </div>
   );
 }
 
-function FilesPanel() {
+function FileIntake() {
   const language = useAppStore((state) => state.language);
   const qc = useQueryClient();
-  const docs = useQuery({ queryKey: ["documents"], queryFn: () => latticeApi.documents(200) });
   const [queue, setQueue] = React.useState<UploadQueueItem[]>([]);
   const upload = useMutation({
     mutationFn: (files: File[]) => uploadFiles(files, setQueue),
@@ -72,29 +120,42 @@ function FilesPanel() {
     upload.mutate(nextFiles);
   }, [upload]);
   return (
-    <div className="capture-files-flow grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Upload className="h-4 w-4" /> {t(language, "capture.files.title")}</CardTitle>
-          <CardDescription>{t(language, "capture.files.description")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <label
-            className="flex min-h-56 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center transition hover:bg-muted/50"
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              beginUpload(event.dataTransfer.files);
-            }}
-          >
-            <Upload className="h-7 w-7 text-primary" />
-            <span className="text-lg font-semibold">{t(language, "capture.files.drop")}</span>
-            <span className="max-w-sm text-sm leading-6 text-muted-foreground">{t(language, "capture.files.dropDetail")}</span>
-            <input type="file" multiple className="sr-only" onChange={(e) => e.target.files && beginUpload(e.target.files)} />
-          </label>
-          <DocumentUploadQueue queue={queue} onRetry={(file) => beginUpload([file])} />
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <label
+        className="flex min-h-48 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-primary/30 bg-muted/20 p-6 text-center transition hover:border-primary/60 hover:bg-muted/40"
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          beginUpload(event.dataTransfer.files);
+        }}
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Upload className="h-6 w-6" />
+        </div>
+        <div className="space-y-1">
+          <span className="text-lg font-semibold block">{t(language, "capture.files.drop")}</span>
+          <span className="max-w-md text-sm text-muted-foreground block">{t(language, "capture.files.dropDetail")}</span>
+        </div>
+        <input type="file" multiple className="sr-only" onChange={(e) => e.target.files && beginUpload(e.target.files)} />
+      </label>
+      <DocumentUploadQueue queue={queue} onRetry={(file) => beginUpload([file])} />
+    </div>
+  );
+}
+
+/**
+ * What came in, and how the connected folders are doing — the second read, in
+ * its own column. The folder health card renders nothing until a folder is
+ * connected, so on a first run this column is just the document list.
+ */
+function RecentCapturePanel() {
+  const language = useAppStore((state) => state.language);
+  const mode = useAppStore((state) => state.mode);
+  const docs = useQuery({ queryKey: ["documents"], queryFn: () => latticeApi.documents(200) });
+  const local = useQuery({ queryKey: ["localSources"], queryFn: latticeApi.localSources });
+  const agent = useQuery({ queryKey: ["localAgent"], queryFn: latticeApi.localAgent });
+  return (
+    <div className="capture-secondary-column space-y-4">
       <DataPanel title={t(language, "capture.files.uploaded")} result={docs.data}>
         {(data) => (
           <div className="space-y-3">
@@ -105,6 +166,29 @@ function FilesPanel() {
           </div>
         )}
       </DataPanel>
+      <FolderMemoryHealthCard language={language} />
+      <DataPanel title={t(language, "capture.local.sources")} result={local.data}>
+        {(data) => (
+          <div className="space-y-3">
+            <EntityList items={(data as Record<string, unknown>).sources} titleKey="path" metaKey="status" />
+            {asArray<Record<string, unknown>>((data as Record<string, unknown>).sources).map((source) => (
+              <ActionButton
+                key={String(source.id || source.source_id || source.path)}
+                label={t(language, "capture.local.stop", { source: String(source.path || source.id || t(language, "capture.local.source")) })}
+                action={() => latticeApi.localWatchStop(String(source.id || source.source_id))}
+                invalidate={["localSources"]}
+              />
+            ))}
+          </div>
+        )}
+      </DataPanel>
+      {/* Raw folder-permission payload: still here, still one scroll away, but
+          no longer sharing a row with the thing you came to do. */}
+      {mode === "basic" ? null : (
+        <DataPanel title={t(language, "capture.local.access")} result={agent.data}>
+          {(data) => <StructuredView value={data} />}
+        </DataPanel>
+      )}
     </div>
   );
 }
@@ -258,7 +342,7 @@ async function filesFromBrowserDirectory(handle: BrowserDirectoryHandle): Promis
   return files;
 }
 
-function LocalPanel() {
+function FolderIntake() {
   const language = useAppStore((state) => state.language);
   const qc = useQueryClient();
   const folderInputRef = React.useRef<HTMLInputElement>(null);
@@ -267,8 +351,6 @@ function LocalPanel() {
   const [browserFolderName, setBrowserFolderName] = React.useState("");
   const [choosingFolder, setChoosingFolder] = React.useState(false);
   const [folderQueue, setFolderQueue] = React.useState<UploadQueueItem[]>([]);
-  const local = useQuery({ queryKey: ["localSources"], queryFn: latticeApi.localSources });
-  const agent = useQuery({ queryKey: ["localAgent"], queryFn: latticeApi.localAgent });
   const connect = useMutation({
     mutationFn: (targetPath?: string) => latticeApi.connectFolder((targetPath || path).trim()),
     onSuccess: () => {
@@ -342,13 +424,14 @@ function LocalPanel() {
   const browserFolderResultError = browserFolderResults.find((result) => !result.ok)?.error;
   const browserFolderFailed = Boolean(browserFolderUpload.error || browserFolderResultError);
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><FolderPlus className="h-4 w-4" /> {t(language, "capture.local.title")}</CardTitle>
-          <CardDescription>{t(language, "capture.local.description")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+    <div className="space-y-3">
+      <div className="capture-intake-lead">
+        <FolderPlus className="h-4 w-4" aria-hidden="true" />
+        <div>
+          <strong>{t(language, "capture.local.title")}</strong>
+          <p>{t(language, "capture.local.description")}</p>
+        </div>
+      </div>
           <form
             className="space-y-3"
             onSubmit={(event) => {
@@ -401,32 +484,11 @@ function LocalPanel() {
             />
           ) : null}
           <DocumentUploadQueue queue={folderQueue} onRetry={(file) => beginBrowserFolderUpload([file], browserFolderName)} />
-        </CardContent>
-      </Card>
-      <FolderMemoryHealthCard language={language} />
-      <DataPanel title={t(language, "capture.local.sources")} result={local.data}>
-        {(data) => (
-          <div className="space-y-3">
-            <EntityList items={(data as Record<string, unknown>).sources} titleKey="path" metaKey="status" />
-            {asArray<Record<string, unknown>>((data as Record<string, unknown>).sources).map((source) => (
-              <ActionButton
-                key={String(source.id || source.source_id || source.path)}
-                label={t(language, "capture.local.stop", { source: String(source.path || source.id || t(language, "capture.local.source")) })}
-                action={() => latticeApi.localWatchStop(String(source.id || source.source_id))}
-                invalidate={["localSources"]}
-              />
-            ))}
-          </div>
-        )}
-      </DataPanel>
-      <DataPanel title={t(language, "capture.local.access")} result={agent.data} className="xl:col-span-2">
-        {(data) => <StructuredView value={data} />}
-      </DataPanel>
     </div>
   );
 }
 
-function BrowserPanel() {
+function WebIntake() {
   const language = useAppStore((state) => state.language);
   const qc = useQueryClient();
   const [url, setUrl] = React.useState("");
@@ -451,12 +513,14 @@ function BrowserPanel() {
     read.mutate(target);
   }, [read]);
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> {t(language, "capture.browser.title")}</CardTitle>
-        <CardDescription>{t(language, "capture.browser.description")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="space-y-3">
+      <div className="capture-intake-lead">
+        <Globe2 className="h-4 w-4" aria-hidden="true" />
+        <div>
+          <strong>{t(language, "capture.browser.title")}</strong>
+          <p>{t(language, "capture.browser.description")}</p>
+        </div>
+      </div>
         <form
           className="flex flex-col gap-2 sm:flex-row"
           onSubmit={(event) => {
@@ -474,8 +538,7 @@ function BrowserPanel() {
           </Button>
         </form>
         {read.data ? <OperationResult result={read.data} successLabel={t(language, "capture.browser.success")} /> : null}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -543,8 +606,8 @@ function PipelinePanel() {
   const journey = readJourney(index.data?.data, stats.data?.data);
   const stepIcon = { read: ScanLine, understand: Sparkles, connect: Share2 } as const;
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <Card className="xl:col-span-2">
+    <div className="capture-secondary-column space-y-4">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><ScanLine className="h-4 w-4" /> {t(language, "capture.pipeline.journey.title")}</CardTitle>
           <CardDescription>{t(language, "capture.pipeline.journey.detail")}</CardDescription>
@@ -580,7 +643,7 @@ function PipelinePanel() {
           )}
         </CardContent>
       </Card>
-      <Card className="xl:col-span-2">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><HardDrive className="h-4 w-4" /> {t(language, "capture.pipeline.refresh")}</CardTitle>
           <CardDescription>{t(language, "capture.pipeline.description")}</CardDescription>

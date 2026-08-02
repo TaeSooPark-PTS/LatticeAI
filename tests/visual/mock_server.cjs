@@ -410,6 +410,11 @@ const server = http.createServer((req, res) => {
     pre_run_hooks: { ran: 1, blocked: false },
     post_run_hooks: { ran: 1, blocked: false },
   });
+  // The one-click switcher on the model library calls this. Without it the
+  // primary action of the screen's first card 404s in every captured frame.
+  if (pathname === "/models/load" && req.method === "POST") return json(res, {
+    status: "ok", loaded: true, model_id: "mlx-community/gemma-4-26b-a4b-it-4bit", engine: "local_mlx",
+  });
   if (pathname === "/models") return json(res, {
     recommended: [
       {
@@ -542,6 +547,28 @@ const server = http.createServer((req, res) => {
     if (pathname === "/knowledge-graph/local/sources") return json(res, localSources);
     if (pathname === "/knowledge-graph/local/roots") return json(res, { roots: [{ path: "/Users/you/Documents", label: "Documents" }, { path: "/Users/you/Desktop", label: "Desktop" }, { path: "/Users/you/code", label: "code" }] });
     if (pathname === "/knowledge-graph/local/watch/status") return json(res, localSources.watch);
+    // Per-folder memory state. The Sources screen now shows this card beside the
+    // recent-documents panel, so it has to answer here or the second row of the
+    // redesigned layout captures as a single half-empty column.
+    if (pathname === "/knowledge-graph/local/health") return json(res, {
+      count: 2,
+      vector_freshness_global: { status: "fresh", pending_items: 0 },
+      folders: [
+        {
+          id: "src-docs", label: "Documents", root_path: "/Users/you/Documents",
+          status: "indexed", watch_active: true, coverage: 1,
+          files: { total: 312, indexed: 312, failed: 0 }, recent_errors: [],
+        },
+        {
+          id: "src-proj", label: "lattice (project)", root_path: "/Users/you/code/lattice",
+          status: "indexed", watch_active: false, coverage: 0.9989,
+          files: { total: 1842, indexed: 1840, failed: 2 },
+          recent_errors: [
+            { path: "/Users/you/code/lattice/assets/logo.psd", detail: "지원하지 않는 파일 형식이라 건너뛰었어요." },
+          ],
+        },
+      ],
+    });
     if (pathname === "/api/local-agent/status") return json(res, {
       agent: { id: "lattice-local-runtime", name: "Lattice Local Agent", kind: "on-device-runtime", online: true, platform: "macOS-15.5-arm64-arm-64bit", machine: "arm64", python: "3.12.4" },
       online: true, mode: "online", version: "3.4.1", pid: 31166,

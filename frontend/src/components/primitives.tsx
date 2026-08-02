@@ -504,10 +504,14 @@ export function Tabs({
   tabs,
   value,
   onChange,
+  ariaLabel,
+  ariaLabelledBy,
 }: {
   tabs: Array<{ id: string; label: string }>;
   value: string;
   onChange: (id: string) => void;
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
 }) {
   const tabRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -517,8 +521,20 @@ export function Tabs({
     onChange(tabs[nextIndex].id);
   };
 
+  // A roving tabindex hands focus to the selected tab, but a tablist that holds
+  // no selected tab — one group of a grouped switcher, say — would then have
+  // every button at -1 and drop out of the Tab order entirely. Fall back to the
+  // first tab so every tablist stays reachable from the keyboard.
+  const selectedIndex = tabs.findIndex((tab) => tab.id === value);
+  const focusableIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
   return (
-    <div className="product-tabs inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/28 p-1" role="tablist">
+    <div
+      className="product-tabs inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/28 p-1"
+      role="tablist"
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+    >
       {tabs.map((tab, index) => (
         <button
           key={tab.id}
@@ -526,7 +542,7 @@ export function Tabs({
           type="button"
           role="tab"
           aria-selected={value === tab.id}
-          tabIndex={value === tab.id ? 0 : -1}
+          tabIndex={index === focusableIndex ? 0 : -1}
           onClick={() => onChange(tab.id)}
           onKeyDown={(event) => {
             if (event.key === "ArrowRight" || event.key === "ArrowDown") {

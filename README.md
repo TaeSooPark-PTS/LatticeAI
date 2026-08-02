@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.5.0 Living Brain walkthrough](output/release/v10.5.0/gifs/v10.5.0-living-brain-walkthrough.gif)
+![v10.6.0 Living Brain walkthrough](output/release/v10.6.0/gifs/v10.6.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.5.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.5.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.5.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.5.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.5.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.5.0/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.5.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.5.0/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.6.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.6.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.6.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.6.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.6.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.6.0/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.6.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.6.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,55 +58,62 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.5.0/screenshots/01-login.png) | ![Model install](output/release/v10.5.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.5.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.6.0/screenshots/01-login.png) | ![Model install](output/release/v10.6.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.6.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.5.0/SCREENSHOT_INDEX.md](output/release/v10.5.0/SCREENSHOT_INDEX.md)
+[output/release/v10.6.0/SCREENSHOT_INDEX.md](output/release/v10.6.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.5.0 — Everyday Words**:
+The current release is **10.6.0 — Promoted Panels**:
 
-10.4.0 named the ground the code stands on. 10.5.0 renames the ground the
-*reader* stands on: every screen a first-time user lands on now says what
-Lattice is doing in the words that user would use. No feature was removed —
-the engine's own vocabulary moved behind the advanced mode switch, where it
-belongs to the people who asked for it.
+10.5.0 changed the words on each screen. 10.6.0 changes where things sit. Every
+main screen used to open as a row of equal tabs, which asks a first-time user to
+choose before they know what the choices are. Each screen now opens on the panel
+that answers the question that brought you there, and everything else moves
+below it. No feature was removed — every panel is still on the page, it just no
+longer competes for the top of it.
 
-- **The autonomy dial is a sentence, not a mode name.** 엄격 / 신뢰 / 바이패스
-  became 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서, each with one line
-  about what it will and will not do on its own. The home dial and Settings
-  now draw that copy from one module, so the same setting is never named two
-  ways — and a mode the server adds later still renders, from the server's own
-  label.
-- **The path from a file to a memory is three named steps.** 진행 상황 was
-  hidden from plain mode and held two raw API payloads. It now shows
-  내용 읽기 → 뜻 파악하기 → 기억에 연결하기 as a labelled ordered list, with
-  each step saying what it does to your file. 파싱 · 임베딩 · 인덱싱 are gone
-  from that screen.
-- **Automations are named the way you named them.** A run shows its workflow's
-  name rather than a database id, and its state is spoken — `awaiting_approval`
-  reads as "내 승인 기다리는 중". Unknown states say so instead of printing the
-  token. Advanced mode still shows the id.
-- **A model your machine cannot run says so in one sentence** instead of a
-  registry line half-translated word by word.
-- **The published screenshots were wrong before this release.** Capture ran in
-  `advanced`, so every README frame showed payload panels, storage engines and
-  hook logs that no first-run user is ever shown. Captures now run in the app's
-  real default, `basic` — this page's images are what you will actually see.
-- **Guarded, not asserted.** A visual sweep walks ten plain-mode routes and
-  fails if any of them renders empty or puts engine vocabulary in front of a
-  reader who never asked for it.
+- **Each screen leads with one panel instead of a row of equals.** Capture opens
+  on a single 자료 추가하기 card holding all three ways to add material —
+  파일 올리기 / 폴더 연결하기 / 웹페이지 저장하기 — as a choice inside one card
+  rather than three tabs, with progress and connected folders moved to a quieter
+  second row. Work opens on 검토함, what is waiting on you, instead of on the
+  empty goal composer. The model library answers "which model is running, and
+  can I switch it" in a card above the tabs.
+- **The Brain home is one card, not five stacked blocks.** Greeting, composer,
+  the add-material row and the autonomy dial now sit inside a single bordered
+  station that lifts when you type anywhere in it. The Brain artwork shrank so
+  that it introduces the composer rather than headlining the screen.
+- **Everyday and management destinations stopped being one list.** 대화 · 자료 ·
+  기억 stay in the primary nav; 작업 · AI 모델 · 설정 became topbar links at
+  desktop widths and fold into the menu below that — built from one array so the
+  two copies cannot drift, and shown by one breakpoint so they can never both
+  appear or both vanish.
+- **The knowledge graph became a subview rather than a third tab.** Memory opens
+  on search, with 연결 지도 열기 one button away and a labelled way back.
+- **Seven settings tabs became three named groups** — 나와 작업공간 · 내 데이터
+  보관 · 동작 방식과 연결 — so the row reads as a short list of decisions.
+- **Links that named a screen now open that screen.** `#/act/review` and its
+  siblings landed on the Brain home for every caller that emitted them — the
+  command palette, the daily briefing — because nothing parsed the
+  `<screen>/<tab>` form they had always used. The palette also read a private
+  second copy of the destination list, so 작업 opened a different screen
+  depending on whether you clicked it or searched for it. One list, one parser.
+- **Guarded, not asserted.** The visual sweep walks ten viewport widths and
+  fails if a management link is visible in both places at once or in neither, if
+  a navigation landmark is unnamed or shares its name with another, or if the
+  topbar overflows.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.5.0 release must use exact filenames:
+Expected artifacts for 10.6.0 release must use exact filenames:
 
-- `dist/ltcai-10.5.0-py3-none-any.whl`
-- `dist/ltcai-10.5.0.tar.gz`
-- `ltcai-10.5.0.tgz`
-- `dist/ltcai-10.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.5.0_aarch64.dmg`
+- `dist/ltcai-10.6.0-py3-none-any.whl`
+- `dist/ltcai-10.6.0.tar.gz`
+- `ltcai-10.6.0.tgz`
+- `dist/ltcai-10.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.6.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -141,6 +148,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.6.0 | Promoted Panels |
 | 10.5.0 | Everyday Words |
 | 10.4.0 | Named Ground |
 | 10.3.0 | Measured Ground |

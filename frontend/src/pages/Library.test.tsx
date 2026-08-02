@@ -115,4 +115,55 @@ describe("LibraryPage", () => {
     await waitFor(() => expect(document.body.textContent).toBeTruthy());
     expect(document.body.textContent).not.toMatch(/undefined/);
   });
+
+  /**
+   * "Which model is running, and can I change it?" is the question that brings
+   * people to this screen. It used to be answered by a stat cell partway down a
+   * catalogue, below a hero, a tab strip and a six-step setup track. It is the
+   * first block on the page now — and the alternatives it offers have to be
+   * ones a single click can really switch to, or the card's primary action is a
+   * button that always fails.
+   */
+  it("names the running model first, without printing its registry coordinate", async () => {
+    render();
+    const card = () => screen.getByTestId("library-active-model");
+    await waitFor(() => expect(card().textContent).toContain("Gemma 4 26B"));
+    expect(card().textContent).toContain("지금 작동 중인 모델");
+    expect(card().textContent).not.toMatch(/mlx-community\//);
+  });
+
+  it("says plainly that nothing is loaded rather than leaving the card blank", async () => {
+    render({ models: ok({ catalog: [], loaded: [], current: null }) });
+    await waitFor(() =>
+      expect(screen.getByTestId("library-active-model").textContent).toContain("아직 사용할 모델이 없어요"));
+  });
+
+  it("a failed request does not become a claim that no model is running", async () => {
+    // The response cannot support that claim. "Could not check" is what is true.
+    render({ models: fail("server unavailable", {}) });
+    const card = () => screen.getByTestId("library-active-model");
+    await waitFor(() => expect(card().textContent).toContain("확인하지 못했어요"));
+    expect(card().textContent).not.toContain("아직 사용할 모델이 없어요");
+  });
+
+  it("only offers a one-click switch to models that can actually load", async () => {
+    render({
+      models: ok({
+        catalog: [
+          { id: "local/running", name: "Running One", load_available: true },
+          { id: "local/ready", name: "Ready One", load_available: true },
+          // On disk, but the installed runtime has no loader for it.
+          { id: "local/broken", name: "Broken One", pulled: true, load_available: false, runtime_compatibility: { supported: false } },
+          // Would need a download, which is consent-gated in the catalogue below.
+          { id: "local/remote", name: "Remote One", download_required: true, load_available: true },
+        ],
+        loaded: ["local/running"],
+        current: "local/running",
+      }),
+    });
+    const card = () => screen.getByTestId("library-active-model");
+    await waitFor(() => expect(card().textContent).toContain("Ready One"));
+    expect(card().textContent).not.toContain("Broken One");
+    expect(card().textContent).not.toContain("Remote One");
+  });
 });

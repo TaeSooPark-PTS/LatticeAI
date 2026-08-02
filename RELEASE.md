@@ -13,6 +13,66 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.6.0 — Promoted Panels (2026-08-03)
+
+10.5.0 changed the words on each screen. 10.6.0 changes where things sit. Every
+main screen opened as a row of equal tabs, which asks a first-time user to choose
+before they know what the choices are. Each screen now opens on the panel that
+answers the question that brought the reader there, and everything else moves
+below it. Nothing was deleted — every panel is still on its page.
+
+**Each screen leads with one panel.** Capture's four page-level tabs became a
+single `자료 추가하기` card that holds all three ways to add material — 파일
+올리기 / 폴더 연결하기 / 웹페이지 저장하기 — as a choice inside one card rather
+than as peers of the progress view; progress, connected folders and recent
+documents drop to a quieter second row that is now always visible instead of
+hidden behind a tab. Work opens on 검토함, the proposals waiting on the reader,
+instead of an empty goal composer, and its heading follows the tab rather than
+repeating one sentence everywhere. The model library answers "which model is
+running, and can I switch it" in a card above the tab strip, offering only models
+already downloaded and runnable on this machine. The Brain home's five stacked
+blocks became one bordered station: greeting, composer, the add-material row and
+the autonomy dial in a single card that lifts on `:focus-within`, with the Brain
+artwork cut from 7rem to 5.4rem so it introduces the composer instead of
+headlining the screen. The knowledge graph stopped being a third peer tab and
+became a subview behind `연결 지도 열기`, with a labelled way back. Settings'
+seven flat tabs became three named groups — 나와 작업공간 · 내 데이터 보관 ·
+동작 방식과 연결.
+
+**Everyday and management destinations are no longer one list.** 대화 · 자료 ·
+기억 stay in the primary nav; 작업 · AI 모델 · 설정 render as topbar links at
+desktop widths and fold into the menu below that. Both copies are built from one
+array, so they cannot drift, and `shell.css` decides which one shows from a
+single 960px breakpoint, so they can never both appear or both vanish. The menu's
+copy is now named 관리 and shares its accessible name with its topbar twin —
+before this, the primary nav and the menu list were both called "화면 이동", so a
+landmark list offered two indistinguishable navigations.
+
+**Reorganizing the shell surfaced three things that were already broken.**
+`#/act/review` had never opened the review inbox: the command palette and the
+daily briefing had always emitted the `<screen>/<tab>` form, and nothing parsed
+it, so those links fell silently to the Brain home. `parseHash` now resolves that
+shape as its last step, after named aliases, so an alias always wins. The command
+palette also read a second, private copy of the destination list, which meant
+repointing 작업 in the shell left the palette's 작업 on the old target — one label
+with two landing places depending on how you reached it. And the menu's focus
+trap counted the hidden copy of the management links, putting its boundaries on
+elements the browser refuses to focus and sometimes sending initial focus to a
+`display:none` anchor, where `focus()` silently does nothing.
+
+**Guarded, not asserted.** The visual sweep walks ten viewport widths from 390px
+to 1440px and fails if a management link is visible in both places at once or in
+neither, if the topbar overflows, if a navigation landmark is unnamed or shares
+its name with another, or if the shell link and the command palette open
+different screens for the same label. `tests/visual/mock_server.cjs` gained
+`POST /models/load` and `GET /knowledge-graph/local/health` so the one-click
+model switch and the folder-health card in Capture's second column actually
+render during capture — a route the mock server does not serve is captured as a
+placeholder and ships as a broken screenshot.
+
+Backend behaviour is unchanged; `frontend/openapi.json` differs from 10.5.0 only
+in `info.version`.
+
 ## v10.5.0 — Everyday Words (2026-08-03)
 
 10.4.0 named the ground the code stands on. 10.5.0 renames the ground the

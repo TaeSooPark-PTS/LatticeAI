@@ -10004,18 +10004,22 @@ body {
 
 /* ── 폴더별 기억 상태 (v9.9.7) ────────────────────────────────────────── */
 .folder-memory-health {
-  display: grid;
-  gap: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-self: start;
+  gap: 0.5rem;
   border: 1px solid hsl(var(--border) / 0.55);
   border-radius: 10px;
-  padding: 0.65rem 0.75rem;
+  padding: 0.75rem 0.85rem;
   background: hsl(var(--surface) / 0.4);
 }
 
 .folder-memory-health h3 {
-  margin: 0;
+  margin: 0 0 0.15rem 0;
   font-size: 0.86rem;
   font-weight: 700;
+  line-height: 1.25;
 }
 
 .folder-memory-health > ul {

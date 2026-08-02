@@ -13,6 +13,19 @@ import "@/i18n/onboarding";
 import "@/i18n/shell";
 import "@/i18n/workspace";
 
+// jsdom ships no ResizeObserver, and react-flow constructs one on mount. Any
+// panel that draws a canvas therefore threw before its assertions ran, which is
+// why those panels had unit coverage only up to the point they rendered. This
+// is a gap in the environment, not behaviour under test: observe nothing and
+// report nothing, so layout-dependent code takes its zero-size branch.
+if (!("ResizeObserver" in globalThis)) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 afterEach(() => {
   cleanup();
   localStorage.clear();

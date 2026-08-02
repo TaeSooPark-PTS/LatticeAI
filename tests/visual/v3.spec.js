@@ -87,6 +87,25 @@ test("the Brain home is one screen: Brain, composer, add material, quiet setting
   // Autonomy and appearance are decided here, not buried in settings.
   await expect(page.getByTestId("quick-mode-strict")).toBeVisible();
   await expect(page.getByTestId("topbar-theme-toggle")).toBeVisible();
+
+  // One station, not five stacked blocks. The greeting, the composer, capture
+  // and the autonomy dial used to be siblings of equal weight down the column;
+  // a first-time reader had no cue which was the thing to do. They are one
+  // bordered surface now, so every one of them must resolve inside it.
+  const station = page.getByTestId("brain-home-station");
+  await expect(station).toBeVisible();
+  await expect(station.getByTestId("brain-knowledge-flow")).toBeVisible();
+  await expect(station.locator(".brain-composer")).toBeVisible();
+  await expect(station.getByTestId("brain-ingestion-dock")).toBeVisible();
+  await expect(station.getByTestId("brain-quick-controls")).toBeVisible();
+  // Capture and autonomy answer the same question, so they share one toolbar
+  // rather than sitting in two separate strips.
+  const toolbar = station.locator(".brain-station-toolbar");
+  await expect(toolbar.getByTestId("brain-ingestion-dock")).toBeVisible();
+  await expect(toolbar.getByTestId("brain-quick-controls")).toBeVisible();
+  // Exactly one bordered card on the stage — the quiet shelf row below it is
+  // not a competing surface.
+  await expect(stage.locator("> .brain-home-station")).toHaveCount(1);
   // The onboarding tracks that used to compete with the composer are gone.
   await expect(page.getByTestId("first-value-loop")).toHaveCount(0);
   await expect(page.getByTestId("brain-first-five")).toHaveCount(0);
@@ -269,9 +288,17 @@ test("memory opens with search and can reveal the connections map", async ({ pag
   await page.getByRole("link", { name: "기억", exact: true }).click();
   await expect(page).toHaveURL(/#\/hybrid-search$/);
   await expect(page.getByRole("heading", { name: "기억에서 찾아보세요." })).toBeVisible();
-  await page.getByRole("tab", { name: "연결 지도" }).click();
+  // The map is a subview, not a peer of search: it is absent from the tablist,
+  // reached from a named secondary target, and it comes with a way back. Two
+  // tabs, not three, is the load-bearing part — a reordered three-tab strip
+  // still offers a Cytoscape canvas as a first-class choice to a newcomer.
+  await expect(page.getByRole("tab")).toHaveCount(2);
+  await expect(page.getByRole("tab", { name: "연결 지도" })).toHaveCount(0);
+  await page.getByTestId("open-connections-map").click();
   await expect(page).toHaveURL(/#\/knowledge-graph$/);
   await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "기억 화면으로 돌아가기" })).toBeVisible();
 
   await page.getByPlaceholder(GRAPH_SEARCH_PLACEHOLDER).fill("workspace");
   await expect(page.locator("body")).toContainText("Workspace Health");
@@ -289,10 +316,20 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeVisible();
   await expect(page.getByRole("link", { name: "자료", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "기억", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "작업", exact: true })).toBeVisible();
+
+  // The three management destinations were lifted out of the menu into the
+  // topbar, so they must be reachable without opening anything. Both landmarks
+  // carry the same three links, which is why each side is scoped by name.
+  const utilityNav = page.getByRole("navigation", { name: "관리 화면 이동" });
+  await expect(utilityNav.getByRole("link", { name: "작업", exact: true })).toBeVisible();
+  await expect(utilityNav.getByRole("link", { name: "AI 모델" })).toBeVisible();
+  await expect(utilityNav.getByRole("link", { name: "설정" })).toBeVisible();
+
+  // On desktop viewports, management links are directly visible in topbar utility nav.
+  // The popover menu deduplicates these links on desktop viewports.
   await openShellMenu(page);
-  await expect(page.getByRole("link", { name: "AI 모델" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "설정" })).toBeVisible();
+  const shellMenu = page.getByRole("dialog", { name: "더보기" });
+  await expect(shellMenu).toBeVisible();
   await page.getByRole("button", { name: "메뉴 닫기" }).last().click();
   await expect(page.locator("section[aria-label='Brain Chat Home']")).toBeVisible();
   await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
@@ -429,6 +466,67 @@ test("folder picker imports browser-selected folder files", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
+test("capture leads with one place to add material, not four equal tabs", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page, { mode: "basic" });
+  await page.goto("/app#/capture");
+
+  // Adding something is one action with three shapes, inside one station. It
+  // used to be three page-level tabs ranked equal with the indexer's status
+  // page, so "connect a folder" — the most valuable thing here — was two tabs
+  // deep and looked like a different screen.
+  const station = page.locator(".capture-station");
+  await expect(station).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  for (const name of ["파일 올리기", "폴더 연결하기", "웹페이지 저장하기"]) {
+    await expect(station.getByRole("button", { name })).toBeVisible();
+  }
+  await expect(station.getByTestId("capture-method-files")).toHaveAttribute("aria-pressed", "true");
+
+  // Progress and the material already added drop below it, side by side, and
+  // are on screen without choosing a tab first.
+  await expect(page.getByRole("list", { name: "자료가 기억이 되는 3단계" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("업로드된 문서");
+
+  // Each way in still has its own deep link and its own controls.
+  await station.getByTestId("capture-method-local").click();
+  await expect(page).toHaveURL(/#\/my-computer$/);
+  await expect(station.getByRole("button", { name: "폴더 선택" })).toBeVisible();
+  await station.getByTestId("capture-method-browser").click();
+  await expect(page).toHaveURL(/#\/capture-browser$/);
+  await expect(station.getByRole("button", { name: "스캔하고 저장" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("the model library answers which model is running before anything else", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page, { mode: "basic" });
+  await page.goto("/app#/models");
+
+  // The question that brings people here was answered by a stat cell partway
+  // down a catalogue. It is the first block on the page now — above the tabs,
+  // so it holds whichever tab is open.
+  const active = page.getByTestId("library-active-model");
+  await expect(active).toBeVisible();
+  await expect(active).toContainText("지금 작동 중인 모델");
+
+  const order = await page.evaluate(() => {
+    const card = document.querySelector("[data-testid='library-active-model']");
+    const tablist = document.querySelector("[role='tablist']");
+    if (!card) return null;
+    // No tablist in plain mode (only one tab survives); the card must still be
+    // the first thing under the page heading.
+    if (!tablist) return { cardBeforeTabs: true };
+    return { cardBeforeTabs: card.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING ? true : false };
+  });
+  expect(order).not.toBeNull();
+  expect(order.cardBeforeTabs).toBe(true);
+
+  // A model name, never the registry coordinate it is stored under.
+  await expect(active).not.toContainText("mlx-community/");
+  expect(errors).toEqual([]);
+});
+
 test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.setViewportSize({ width: 390, height: 780 });
@@ -440,6 +538,20 @@ test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
   }));
   expect(overflow.horizontal).toBeLessThanOrEqual(1);
   expect(overflow.vertical).toBeLessThanOrEqual(1);
+
+  // The bottom bar is sized from its item count. Trimming the primary nav used
+  // to leave a hard-coded fifth column empty, bunching the tabs to one side.
+  const bottomBar = await page.evaluate(() => {
+    const nav = document.querySelector(".brain-mobile-nav");
+    if (!nav) return null;
+    const items = Array.from(nav.children).map((child) => child.getBoundingClientRect());
+    return { navWidth: nav.getBoundingClientRect().width, right: items[items.length - 1].right, count: items.length };
+  });
+  // A leftover column would strand the last tab a full column short of the
+  // edge; the real gap here is just the bar's own padding.
+  expect(bottomBar.count).toBe(4);
+  expect(bottomBar.navWidth - bottomBar.right).toBeLessThan(bottomBar.navWidth / bottomBar.count / 2);
+
   await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
   await expect(page.getByTestId("brain-knowledge-flow").getByTestId("living-brain")).toBeVisible();
   await expect(page.getByTestId("brain-ingestion-dock")).toBeVisible();
@@ -579,6 +691,155 @@ const ENGINE_VOCABULARY = [
   "awaiting_approval", "retried_ok", "schema_version",
   "graph_schema_version", "tick_seconds", "DSN", "Postgres", "sqlite",
 ];
+
+// Reordering a tab array changes the strip, not where the screen opens. These
+// two surfaces were re-prioritised, so each is checked at the point a person
+// actually arrives: by following the link, not by loading the tab directly.
+test("the reorganised shell opens each screen on its promoted panel", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page, { mode: "basic" });
+  await page.goto("/app#/brain");
+
+  await page.getByRole("navigation", { name: "관리 화면 이동" })
+    .getByRole("link", { name: "작업", exact: true }).click();
+  await expect(page).toHaveURL(/#\/review$/);
+  // What is waiting on a decision, not the goal composer that used to open here.
+  await expect(page.getByRole("tab", { name: "검토함" })).toHaveAttribute("aria-selected", "true");
+
+  await page.goto("/app#/settings");
+  await expect(page.locator("h1.page-title")).toBeVisible();
+  const groups = page.getByTestId("system-tab-groups");
+  await expect(groups.getByRole("tablist")).toHaveCount(3);
+  for (const heading of ["나와 작업공간", "내 데이터 보관", "동작 방식과 연결"]) {
+    await expect(groups.getByText(heading, { exact: true })).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
+// The shell link and the palette entry carry the same word, "작업". They were
+// pointed at the review inbox in two separate lists — and the palette read
+// neither of them, so Cmd+K still opened the goal composer. Worse, "검토함"
+// emitted `#/act/review`, a shape parseHash had no branch for, so the one
+// destination this layout promotes rendered the Brain home instead.
+test("the command palette reaches the same Work screen the shell link opens", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page, { mode: "basic" });
+
+  for (const [entry, expectedHash] of [["작업", "#/review"], ["검토함", "#/act/review"]]) {
+    await page.goto("/app#/brain");
+    // ControlOrMeta, not Meta: the handler takes either, but CI runs Linux and
+    // this suite should open the palette the way that machine's users do.
+    await page.keyboard.press("ControlOrMeta+k");
+    const palette = page.getByRole("dialog", { name: /명령|Command/ });
+    await expect(palette).toBeVisible();
+    await palette.getByRole("option", { name: entry, exact: true }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${expectedHash.replace("/", "\\/")}$`));
+    // Landing on the Brain home instead is the failure this guards: it renders
+    // without error, so only naming the panel catches it.
+    await expect(page.getByRole("tab", { name: "검토함" })).toHaveAttribute("aria-selected", "true");
+  }
+  expect(errors).toEqual([]);
+});
+
+// Landmarks are how a screen-reader user skips straight to navigation. Three
+// <nav>s answered to "화면 이동" — primary, bottom bar, and the one inside the
+// menu — so that list read as three indistinguishable entries. The menu's copy
+// holds the management links, so it shares its name with its topbar twin, which
+// CSS guarantees is never on screen at the same time.
+test("every navigation landmark on screen has a name of its own", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page);
+
+  for (const width of [390, 900, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/app#/brain");
+    await expect(page.locator(".brain-topbar")).toBeVisible();
+    await page.getByRole("button", { name: "메뉴 열기" }).first().click();
+    await expect(page.locator("#brain-more-popover")).toBeVisible();
+
+    const names = await page.evaluate(() => Array.from(document.querySelectorAll("nav"))
+      .filter((nav) => getComputedStyle(nav).display !== "none" && nav.getClientRects().length > 0)
+      .map((nav) => nav.getAttribute("aria-label")));
+
+    expect(names.every(Boolean), `an unnamed nav at ${width}px`).toBe(true);
+    expect(new Set(names).size, `duplicate nav names ${JSON.stringify(names)} at ${width}px`)
+      .toBe(names.length);
+
+    await page.keyboard.press("Escape");
+  }
+  expect(errors).toEqual([]);
+});
+
+// The management links are one list rendered twice: in the topbar, and in the
+// menu. Whoever owns "visible" for one copy has to own it for the other, or the
+// widths between the two thresholds show both — and the topbar, ~110px wider
+// with the quick links in it, overruns its own box and clips the menu button
+// off the right edge. Sweeping the seam is the only way to see that band; the
+// suite's fixed 390/800/1280/1440 viewports all sit clear of it.
+test("management links appear in exactly one place at every width", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page);
+
+  for (const width of [390, 760, 761, 768, 800, 900, 959, 960, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/app#/brain");
+    await expect(page.locator(".brain-topbar")).toBeVisible();
+
+    const shell = await page.evaluate(() => {
+      const topbar = document.querySelector(".brain-topbar");
+      const menuButton = document.querySelector(".brain-more-button");
+      const quickNav = document.querySelector(".brain-utility-quick-nav");
+      const viewportWidth = document.documentElement.clientWidth;
+      return {
+        topbarOverflow: topbar.scrollWidth - topbar.clientWidth,
+        // A clipped control is still in the DOM and still passes a visibility
+        // check; what makes it unreachable is hanging past the viewport with
+        // nowhere to scroll to.
+        menuButtonOverhang: menuButton
+          ? Math.round(menuButton.getBoundingClientRect().right - viewportWidth)
+          : 0,
+        documentOverflow: document.documentElement.scrollWidth - viewportWidth,
+        topbarCopyVisible: Boolean(quickNav) && getComputedStyle(quickNav).display !== "none",
+      };
+    });
+
+    expect(shell.topbarOverflow, `topbar overflows at ${width}px`).toBeLessThanOrEqual(1);
+    expect(shell.menuButtonOverhang, `menu button clipped at ${width}px`).toBeLessThanOrEqual(1);
+    expect(shell.documentOverflow, `page scrolls sideways at ${width}px`).toBeLessThanOrEqual(1);
+
+    await page.getByRole("button", { name: "메뉴 열기" }).first().click();
+    await expect(page.locator("#brain-more-popover")).toBeVisible();
+    // Opening a dialog has to move focus into it. The hidden copy of the links
+    // stays in the DOM, and focus() on a display:none element is a silent
+    // no-op — which would leave focus on the trigger. The shell moves focus in
+    // a requestAnimationFrame, so poll rather than read once.
+    await expect
+      .poll(
+        () => page.evaluate(() => {
+          const panel = document.querySelector("#brain-more-popover");
+          return Boolean(panel && panel.contains(document.activeElement));
+        }),
+        { message: `menu opened without taking focus at ${width}px` },
+      )
+      .toBe(true);
+
+    const menuCopyVisible = await page.evaluate(() => {
+      const section = document.querySelector("#brain-more-popover .brain-more-section");
+      return Boolean(section) && getComputedStyle(section).display !== "none";
+    });
+
+    const copies = [shell.topbarCopyVisible, menuCopyVisible].filter(Boolean);
+    expect(copies, `management links appear ${copies.length}× at ${width}px`).toHaveLength(1);
+
+    // Same hash next iteration means no remount, so the menu would still be
+    // open and the button would read "메뉴 닫기". Closing it here keeps the loop
+    // honest and checks Escape works at this width while we are in it.
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#brain-more-popover")).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
+});
 
 test("screens the README publishes render, and speak plainly", async ({ page }) => {
   const errors = trackPageErrors(page);

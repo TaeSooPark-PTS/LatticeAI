@@ -1,12 +1,19 @@
 /* ── The first screen ────────────────────────────────────────────────────
-   Four things, top to bottom, in the order a person uses them:
+   Two things now, not five:
 
-     1. the Brain          — who you are talking to (click it for the map)
-     2. the composer       — the one thing you do here
-     3. add material       — file · folder · note · web
-     4. a quiet row        — autonomy, appearance, and everything else
+     1. the station  — one bordered surface holding the entire first move:
+                       the Brain, the composer, everything you can add to it,
+                       how far it may go on its own, and three things to try
+     2. a quiet row  — history, insights, and everything else
 
-   Anything graph-shaped moved behind the Brain itself: the knowledge graph
+   Before this pass those were five sibling blocks stacked down the column,
+   each with its own border and none of them louder than the others: greeting,
+   composer, capture pills, autonomy dial, suggestion chips. A person opening
+   the app for the first time had to guess which one was the thing to do. They
+   are one card now, in the order the move is actually made, and the eye has a
+   single target.
+
+   Anything graph-shaped stays behind the Brain itself: the knowledge graph
    opens when you click the organism, so the home never shows a diagram.
    This file loads after graph-home.css and is the authority on home layout. */
 
@@ -14,7 +21,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.85rem;
   width: min(100%, 44rem);
   margin-inline: auto;
   padding: 0.55rem 0 0.55rem;
@@ -28,20 +35,41 @@
   flex: none;
 }
 
-/* ── 1. the Brain ─────────────────────────────────────────────────────── */
+/* ── 1. the station ───────────────────────────────────────────────────── */
 
-.brain-centered-home > .brain-hero {
+.brain-home-station {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg, 0.9rem);
+  background: hsl(var(--card));
+  box-shadow: var(--elev-2, 0 6px 20px hsl(var(--foreground) / 0.06));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+/* Typing anywhere in the station lifts the whole surface, not just the box —
+   the card is the unit of attention now. */
+.brain-home-station:focus-within {
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: var(--elev-3, 0 10px 30px hsl(var(--primary) / 0.14));
+}
+
+/* The greeting is the station's header rather than a block above it. */
+.brain-home-station > .brain-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.22rem;
   width: 100%;
+  padding: 1.1rem 1rem 0.35rem;
   text-align: center;
 }
 
 .brain-hero-organism {
   display: grid;
-  margin-top: 1.15rem;
+  margin-top: 0;
   place-items: center;
 }
 
@@ -51,10 +79,12 @@
   padding: 0;
 }
 
-/* The organism has no intrinsic size — every host sets it. */
+/* The organism has no intrinsic size — every host sets it. Smaller inside the
+   station than it was standing alone: it introduces the composer now, it does
+   not headline the screen. */
 .brain-hero-organism .brain-organism {
-  width: 7rem;
-  height: 7rem;
+  width: 5.4rem;
+  height: 5.4rem;
   cursor: pointer;
   transition: transform 180ms ease;
 }
@@ -64,7 +94,7 @@
   transform: scale(1.04);
 }
 
-.brain-centered-home > .brain-hero h1 {
+.brain-home-station > .brain-hero h1 {
   margin: 0.15rem 0 0;
   font-size: 1.35rem;
   font-weight: 650;
@@ -87,35 +117,18 @@
 }
 
 /* A model notice is a one-line prompt, not a banner. */
-.brain-centered-home > .brain-model-missing {
-  padding-block: 0.45rem;
+.brain-home-station > .brain-model-missing {
+  padding: 0.45rem 1rem;
   font-size: 0.86rem;
 }
 
-/* ── 2. the composer ──────────────────────────────────────────────────── */
+/* ── 2. the composer, inside the station ──────────────────────────────── */
 
 .brain-centered-home {
   width: min(100%, 48rem);
 }
 
-.brain-centered-home > .brain-home-do {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg, 0.9rem);
-  background: hsl(var(--card));
-  box-shadow: var(--elev-2, 0 6px 20px hsl(var(--foreground) / 0.06));
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.brain-centered-home > .brain-home-do:focus-within {
-  border-color: hsl(var(--primary) / 0.55);
-  box-shadow: var(--elev-3, 0 10px 30px hsl(var(--primary) / 0.14));
-}
-
-.brain-centered-home > .brain-home-do > .brain-composer {
+.brain-home-station > .brain-composer {
   width: 100%;
   border: 0;
   border-radius: 0;
@@ -123,46 +136,84 @@
   box-shadow: none;
 }
 
-/* The dial sits on the composer's own footer, hairline-separated. */
-.brain-home-do > .brain-quick-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.75rem;
-  margin: 0;
-  padding: 0.5rem 0.9rem 0.6rem;
-  border: 0;
-  border-top: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.brain-home-do > .brain-quick-controls .brain-quick-confirm,
-.brain-home-do > .brain-quick-controls .brain-quick-error {
-  flex-basis: 100%;
-}
-
-.brain-centered-home > .brain-home-do .brain-composer textarea {
+.brain-home-station .brain-composer textarea {
   min-height: 2.9rem;
   font-size: 1rem;
   line-height: 1.55;
 }
 
-/* Suggestion chips read as "you could also ask…", not as a toolbar. */
-.brain-centered-home > .brain-home-prompt-strip {
+/* ── 3. the station's floor: what to add, and how far to go ─────────────
+   Capture used to live inside the composer's attachment row and autonomy on a
+   separate strip beneath the card. Same question, two places. One hairline-
+   separated row answers both: material on the left, the dial on the right. */
+
+.brain-station-toolbar {
+  /* The capture popover anchors here now that the dock left the composer, so
+     it opens beside the control that summoned it instead of over the card. */
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.9rem;
+  padding: 0.5rem 0.9rem 0.6rem;
+  border-top: 1px solid hsl(var(--border) / 0.6);
+}
+
+.brain-station-toolbar > .brain-quick-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brain-station-toolbar > .brain-quick-controls .brain-quick-confirm,
+.brain-station-toolbar > .brain-quick-controls .brain-quick-error {
+  flex-basis: 100%;
+}
+
+/* Outside the composer the dock needs its own pill sizing — it used to borrow
+   the attachment row's. */
+.brain-station-toolbar .brain-ingestion-dock.is-inline .brain-ingestion-dock-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.26rem 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+/* Suggestion chips read as "you could also ask…", not as a toolbar. They close
+   the station rather than floating loose beneath it. */
+.brain-home-station > .brain-home-prompt-strip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
   width: 100%;
-  padding: 0;
+  padding: 0.5rem 0.9rem 0.65rem;
   border: 0;
-  background: transparent;
+  border-top: 1px solid hsl(var(--border) / 0.45);
+  border-radius: 0 0 var(--radius-lg, 0.9rem) var(--radius-lg, 0.9rem);
+  background: hsl(var(--muted) / 0.28);
 }
 
-.brain-centered-home > .brain-home-prompt-strip > button {
+.brain-home-station > .brain-home-prompt-strip > button {
   display: inline-flex;
   align-items: baseline;
   gap: 0.35rem;
@@ -177,25 +228,25 @@
   transition: background 150ms ease, border-color 150ms ease;
 }
 
-.brain-centered-home > .brain-home-prompt-strip > button:hover:not(:disabled) {
+.brain-home-station > .brain-home-prompt-strip > button:hover:not(:disabled) {
   border-color: hsl(var(--primary) / 0.5);
   background: hsl(var(--primary) / 0.07);
 }
 
 /* A chip carries its label; the full sentence stays in the tooltip so three
    suggestions always fit one line instead of wrapping into a second block. */
-.brain-centered-home > .brain-home-prompt-strip > button > span {
+.brain-home-station > .brain-home-prompt-strip > button > span {
   display: none;
 }
 
-.brain-centered-home > .brain-home-prompt-strip > button > strong {
+.brain-home-station > .brain-home-prompt-strip > button > strong {
   font-weight: 600;
 }
 
-/* ── 3. capture, inside the composer ──────────────────────────────────────
-   File · folder · note · web used to be a separate "Brain에게 가르치기" panel
-   below the composer. They are attachments to what you are typing, so they now
-   sit beside 문서/이미지 in the composer's own toolbar. */
+/* ── 4. capture pill sizing ───────────────────────────────────────────────
+   File · folder · note · web share one pill shape with 문서/이미지 wherever
+   they appear: inside the composer's attachment row in a live conversation,
+   and on the station's toolbar on the home. */
 
 .brain-ingestion-dock.is-inline {
   /* The panel anchors to the composer, so the dock must not be a containing
@@ -333,7 +384,7 @@
   width: auto;
 }
 
-.brain-home-do .brain-ingestion-dock.is-inline .brain-ingestion-dock-popover {
+.brain-home-station .brain-ingestion-dock.is-inline .brain-ingestion-dock-popover {
   top: calc(100% + 0.4rem);
   bottom: auto;
 }
@@ -377,7 +428,7 @@
 
 /* The model notice is part of the flow now — it used to be absolutely
    positioned over the graph canvas that no longer exists here. */
-.brain-centered-home > .brain-model-missing {
+.brain-home-station > .brain-model-missing {
   position: static;
   left: auto;
   top: auto;
@@ -397,7 +448,7 @@
     height: 6.5rem;
   }
 
-  .brain-centered-home > .brain-hero h1 {
+  .brain-home-station > .brain-hero h1 {
     font-size: 1.3rem;
   }
 

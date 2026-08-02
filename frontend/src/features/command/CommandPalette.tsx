@@ -2,16 +2,12 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bot,
-  Brain,
   Command,
   CornerDownLeft,
   Database,
   FileSearch,
-  FolderInput,
-  Library,
   MessageCircle,
   Search,
-  Settings,
   Sunrise,
   Workflow,
 } from "lucide-react";
@@ -19,6 +15,7 @@ import { latticeApi } from "@/api/client";
 import { asArray } from "@/lib/utils";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { t, type Language } from "@/i18n";
+import { commandRoutes } from "@/routes";
 import { navigateHash } from "@/features/brain/navigation";
 
 type PaletteItem = {
@@ -35,15 +32,12 @@ type PaletteItem = {
 
 type SearchGroup = { kind: string; items: Record<string, unknown>[] };
 
-const PAGE_ENTRIES: { id: string; labelKey: string; target: string; icon: React.ReactNode }[] = [
-  { id: "page-brain", labelKey: "shell.route.brain", target: "/brain", icon: <Brain className="h-4 w-4" /> },
-  { id: "page-capture", labelKey: "shell.route.capture", target: "/capture", icon: <FolderInput className="h-4 w-4" /> },
-  { id: "page-memory", labelKey: "shell.route.memory", target: "/hybrid-search", icon: <Database className="h-4 w-4" /> },
-  { id: "page-library", labelKey: "shell.route.library", target: "/models", icon: <Library className="h-4 w-4" /> },
-  { id: "page-act", labelKey: "shell.route.act", target: "/agents", icon: <Workflow className="h-4 w-4" /> },
-  { id: "page-review", labelKey: "command.page.review", target: "/act/review", icon: <FileSearch className="h-4 w-4" /> },
-  { id: "page-system", labelKey: "shell.route.system", target: "/settings", icon: <Settings className="h-4 w-4" /> },
-];
+// Destinations come from the route table, not from a copy kept here: the two
+// drifted apart, and the palette's copy was the one nobody was checking.
+const PAGE_ENTRIES = commandRoutes.map((entry) => {
+  const Icon = entry.icon;
+  return { ...entry, icon: <Icon className="h-4 w-4" /> as React.ReactNode };
+});
 
 function useDebounced(value: string, delayMs: number) {
   const [debounced, setDebounced] = React.useState(value);

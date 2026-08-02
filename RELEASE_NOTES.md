@@ -1,3 +1,25 @@
+# [v10.6.0 - Promoted Panels] (2026-08-03)
+
+10.5.0이 각 화면의 **말**을 바꿨다면, 10.6.0은 각 화면의 **자리**를 바꿉니다. 주요
+화면들은 그동안 동등한 탭 한 줄로 열렸습니다 — 처음 온 사람에게 선택지가 무엇인지
+알기도 전에 고르라고 요구하는 배치입니다. 이제 모든 화면이 여기까지 오게 만든
+질문에 답하는 패널 하나로 열립니다. 자료 화면은 파일·폴더·웹페이지를 모두 담은
+**자료 추가하기 카드 하나**로 시작하고 진행 상황은 아래 조용한 2열로 내려갔습니다.
+작업 화면은 빈 목표 작성기가 아니라 **검토함**으로 열리고, AI 모델 화면은 탭보다
+먼저 지금 켜진 모델과 바꾸는 법을 답합니다. Brain 홈은 블록 다섯 개가 아니라
+테두리 카드 하나이고, 연결 지도는 세 번째 탭이 아니라 버튼 하나 뒤의 하위
+화면입니다. 설정의 탭 일곱 개는 이름 붙은 묶음 셋이 되었습니다. 매일 쓰는 곳
+(대화·자료·기억)과 관리하는 곳(작업·AI 모델·설정)이 갈렸고, 관리 링크는 배열
+하나에서 두 자리로 렌더링되며 단일 브레이크포인트가 어느 쪽을 보여줄지 정합니다.
+그 과정에서 원래 깨져 있던 것들이 드러났습니다: `#/act/review`는 한 번도 검토함을
+연 적이 없었고, 명령 팔레트는 목적지 목록의 사본을 따로 들고 있어 '작업'이 어떻게
+도달했느냐에 따라 다른 화면을 뜻했습니다. 기능은 하나도 지우지 않았습니다.
+
+See [RELEASE_NOTES_v10.6.0.md](RELEASE_NOTES_v10.6.0.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.5.0 - Everyday Words] (2026-08-03)
 
 10.4.0이 코드가 딛고 선 땅에 이름을 붙였다면, 10.5.0은 **읽는 사람이 딛고 선 땅**에
@@ -221,7 +243,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.5.0**.
+This repository keeps public release history from **8.0.0 through 10.6.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

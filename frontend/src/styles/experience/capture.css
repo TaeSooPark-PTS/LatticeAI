@@ -305,3 +305,294 @@
 .ritual-title {
   letter-spacing: -0.025em;
 }
+
+/* ── Capture: one station, then the quieter second read ──────────────────
+   The three ways of adding material used to be three of four page-level tabs,
+   ranked equal with the indexer's status page. They are one card now — the
+   only loud thing on the screen — and everything that reports on material
+   already added sits in the two quiet columns beneath it. */
+
+.capture-station {
+  border: 1px solid hsl(var(--primary) / 0.28);
+  border-radius: var(--experience-radius, 0.9rem);
+  background: hsl(var(--card));
+  box-shadow: var(--elev-2, 0 6px 20px hsl(var(--foreground) / 0.06));
+}
+
+.capture-station-head {
+  padding: 1.1rem 1.15rem 0.65rem;
+}
+
+.capture-station-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.capture-station-head p {
+  margin: 0.3rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Toggle buttons, not a tablist: these choose the shape of one action rather
+   than switching between screens. */
+.capture-method-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 1.15rem 0.9rem;
+}
+
+.capture-method-switch > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.capture-method-switch > button:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  color: hsl(var(--primary));
+}
+
+.capture-method-switch > button.is-active {
+  border-color: hsl(var(--primary) / 0.65);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+}
+
+.capture-station-body {
+  padding: 0 1.15rem 1.15rem;
+}
+
+/* Each intake names itself in one line — the station header already said what
+   the card as a whole is for. */
+.capture-intake-lead {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  color: hsl(var(--primary));
+}
+
+.capture-intake-lead strong {
+  display: block;
+  color: hsl(var(--foreground));
+  font-size: 0.98rem;
+}
+
+.capture-intake-lead p {
+  margin: 0.2rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.capture-secondary {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .capture-secondary {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.capture-secondary-column {
+  min-width: 0;
+}
+
+/* ── Memory: the map is a place you go into, not a third tab ─────────────
+   The entry is a full-width secondary target below the primary panel, and the
+   map itself opens with a back control where the tablist used to be. */
+
+.memory-map-entry {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  border: 1px dashed hsl(var(--border));
+  border-radius: var(--experience-radius, 0.9rem);
+  background: hsl(var(--muted) / 0.25);
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.memory-map-entry:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.07);
+}
+
+.memory-map-entry-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.memory-map-entry-copy strong {
+  color: hsl(var(--foreground));
+  font-size: 0.95rem;
+}
+
+.memory-map-entry-copy small {
+  font-size: 0.82rem;
+}
+
+.memory-subview-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.memory-subview-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--background));
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.memory-subview-back:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  color: hsl(var(--primary));
+}
+
+.memory-subview-title {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ── Library: which model is running, before anything else ────────────── */
+
+.library-active {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid hsl(var(--primary) / 0.28);
+  border-radius: var(--experience-radius, 0.9rem);
+  background: hsl(var(--card));
+  box-shadow: var(--elev-2, 0 6px 20px hsl(var(--foreground) / 0.06));
+}
+
+.library-active-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.library-active-mark {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+}
+
+.library-active-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.library-active-kicker {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.library-active-copy strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.library-active-copy small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.library-active-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid hsl(var(--border) / 0.6);
+}
+
+.library-active-switch-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.library-active-switch-label small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.library-active-switch-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.library-active-switch-options > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--background));
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.library-active-switch-options > button:hover:not(:disabled) {
+  border-color: hsl(var(--primary) / 0.5);
+  color: hsl(var(--primary));
+}
+
+.library-active-switch-options > button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.library-active-error {
+  margin: 0;
+  color: hsl(var(--destructive, 0 72% 51%));
+  font-size: 0.85rem;
+}
