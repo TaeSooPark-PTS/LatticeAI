@@ -330,7 +330,7 @@ class SearchService:
                 by_id[node_id] = current
             current["score"] = max(float(current["score"]), score)
             current["source_scores"]["graph"] = max(float(current["source_scores"]["graph"]), score)
-            context = {"reason": reason}
+            context: Dict[str, Any] = {"reason": reason}
             if edge:
                 context["relationship"] = {
                     "id": edge.get("id"),

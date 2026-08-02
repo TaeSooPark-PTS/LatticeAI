@@ -515,8 +515,6 @@ def create_security_router(
         else:
             raise HTTPException(status_code=400, detail="지원하지 않는 scope입니다.")
 
-        if not isinstance(rows, list):
-            rows = []
 
         _log_view(admin_email, "export", f"{scope}:{fmt}", reason="export")
 
@@ -530,7 +528,7 @@ def create_security_router(
                 headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
         if fmt == "csv":
-            body = _csv_dump(rows)
+            body = _csv_dump(rows)  # type: ignore[assignment]
             filename = f"security_{scope}.csv"
             return Response(
                 content=body,
@@ -538,7 +536,7 @@ def create_security_router(
                 headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
         if fmt in {"excel", "xlsx"}:
-            body = _excel_dump(rows)
+            body = _excel_dump(rows)  # type: ignore[assignment]
             filename = f"security_{scope}.xlsx"
             return Response(
                 content=body,
@@ -547,7 +545,7 @@ def create_security_router(
             )
         if fmt == "pdf":
             overview = build_sensitivity_report(get_history() or []).get("summary", {}) or {}
-            body = _pdf_report("Lattice AI Security Report", rows, overview)
+            body = _pdf_report("Lattice AI Security Report", rows, overview)  # type: ignore[assignment]
             filename = f"security_{scope}.pdf"
             return Response(
                 content=body,

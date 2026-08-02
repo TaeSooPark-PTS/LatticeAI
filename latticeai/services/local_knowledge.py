@@ -57,8 +57,9 @@ class LocalKnowledgeWatcher:
         self._hooks = hooks
         self._lock = threading.Lock()
         self._watched: Dict[str, Dict[str, Any]] = {}
-        self._observer_cls = None
-        self._event_handler_base = None
+        # watchdog is optional; these stay None when it is not installed.
+        self._observer_cls: Optional[Any] = None
+        self._event_handler_base: Optional[Any] = None
         self._import_error = ""
         try:
             from watchdog.events import FileSystemEventHandler
@@ -127,12 +128,21 @@ class LocalKnowledgeWatcher:
 
         self.stop_source(source_id)
 
-        class Handler(_LocalWatchHandler, self._event_handler_base):  # type: ignore[misc, valid-type]
+        handler_base = self._event_handler_base
+        observer_cls = self._observer_cls
+        if handler_base is None or observer_cls is None:
+            return {
+                "watching": False,
+                "source_id": source_id,
+                "error": self._import_error or "watchdog is not installed",
+            }
+
+        class Handler(_LocalWatchHandler, handler_base):  # type: ignore[misc, valid-type]
             def __init__(handler_self):
-                self._event_handler_base.__init__(handler_self)
+                handler_base.__init__(handler_self)  # type: ignore[misc]
                 _LocalWatchHandler.__init__(handler_self, lambda: self._schedule(source_id))
 
-        observer = self._observer_cls()
+        observer = observer_cls()
         try:
             observer.schedule(Handler(), str(root), recursive=True)
             observer.start()
@@ -161,6 +171,8 @@ class LocalKnowledgeWatcher:
             timer.cancel()
         observer = item.get("observer")
         try:
+            if observer is None:
+                raise RuntimeError("watch entry has no observer")
             observer.stop()
             observer.join(timeout=3)
         except Exception as exc:
@@ -285,8 +297,10 @@ def create_local_knowledge_router(
     async def knowledge_graph_local_sources(request: Request):
         require_user(request)
         payload = graph().local_sources()
-        watch_status = watcher.status() if watcher else {"available": False, "active": {}}
-        active = watch_status.get("active", {})
+        watch_status: Dict[str, Any] = (
+            watcher.status() if watcher else {"available": False, "active": {}}
+        )
+        active: Dict[str, Any] = dict(watch_status.get("active") or {})
         for source in payload.get("sources", []):
             source["watch_active"] = source.get("id") in active
             source["watch_status"] = active.get(source.get("id"))
@@ -305,8 +319,10 @@ def create_local_knowledge_router(
         require_user(request)
         kg = graph()
         payload = kg.local_source_health(error_samples=error_samples)
-        watch_status = watcher.status() if watcher else {"available": False, "active": {}}
-        active = watch_status.get("active", {})
+        watch_status: Dict[str, Any] = (
+            watcher.status() if watcher else {"available": False, "active": {}}
+        )
+        active = dict(watch_status.get("active") or {})
         for folder in payload.get("folders", []):
             folder["watch_active"] = folder.get("id") in active
         payload["watch"] = watch_status

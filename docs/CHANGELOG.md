@@ -4,6 +4,83 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.4.0] - 2026-08-02
+
+### Changed
+- **`app_factory._build` is decomposed.** 1,318 lines → 26. The assembly now
+  lives in `latticeai/runtime/build_phases.py` as ten ordered phases sharing a
+  typed `latticeai/runtime/runtime_context.py::RuntimeContext`:
+  `platform → config → identity → brain → domain → web → services →
+  foundation_routes → platform_features → interaction`.
+  The single closure worked because closures resolve free variables at call
+  time; several sections depend on names bound far below them. The
+  RuntimeContext preserves that late binding while naming the shared state.
+  `tests/unit/test_runtime_context.py` fixes the phase order, which phase
+  produces which attribute, and that reading one early fails by name.
+- **mypy covers the whole tree: 274 of 274 modules, 0 errors** (was 193 of 270
+  with 1,407 outstanding). `pyproject.toml`'s `[tool.mypy] files` is no longer
+  a curated subset.
+- `lattice_brain/graph/_kg_common.py`'s `__all__` is a literal instead of a
+  comprehension over `globals()`. The computed form was invisible to a type
+  checker, so twelve modules resolved no names behind
+  `from ._kg_common import *` (~750 false `name-defined` errors).
+  `tests/unit/test_kg_common_exports.py` keeps the literal honest.
+- The star import of `._kg_fsutil` inside `_kg_common` is now an explicit list
+  for the same reason.
+- JSON-shaped payloads in `services/model_runtime.py`, `model_engines.py`,
+  `model_catalog.py`, `api/setup.py` and `api/models.py` are typed
+  `Dict[str, Any]` rather than `Dict[str, object]`, which forced a cast at
+  every nested access without catching anything.
+- Optional dependencies (`AsyncOpenAI`, `mx`, `vlm_load`, `lm_load`,
+  `pyautogui`) are aliased on import and re-exported as `Any`, so "installed"
+  and "absent" have one declared type.
+
+### Added
+- `lattice_brain/graph/_kg_contract.py` — the 23-member surface the eleven
+  graph mixins share, written down for the first time. Typing-only: `_Core` is
+  `object` at runtime, so `KnowledgeGraphStore`'s MRO is unchanged.
+  `tests/unit/test_kg_contract.py` asserts both the contract and that it never
+  becomes a real base class.
+- `AppContext.require(field)` — binds a dependency a router cannot run without,
+  so an absent one names itself at router construction instead of surfacing as
+  `'NoneType' object is not callable` inside a request handler.
+- VS Code `ltcai.captureFolder` — folder ingestion through the same
+  `/api/ingestion/folder` endpoint and the same local-read approval dance the
+  web Capture view uses.
+- VS Code `ltcai.showArtifacts` — `artifacts[]` rendered as cards with the
+  server's repair and validation flags, so a deterministically repaired
+  scaffold no longer looks identical to clean model output.
+- VS Code model picker now shows the hardware-derived recommendation from
+  `GET /setup/scan`, with the server's own reasoning. No scan, no banner.
+- Telegram sends the same `artifacts[]` card summary before the files.
+- Frontend tests for four previously untested modules with real logic:
+  `routes.ts`, `store/appStore.ts`, `api/base.ts` error translation, and
+  `pages/brain/graphExplorer.ts`.
+
+### Fixed
+- **`python -m latticeai.server_app` raised `AttributeError`.** `main` was a
+  local inside the old `_build` closure and was never on the export allowlist,
+  so `get_shared_runtime().main()` could never resolve it. `main()` now serves
+  the shared runtime directly and needs no export.
+- `core/workspace_os.py`: four lines duplicated after a `return` in
+  `remove_member` — dead since the merge that introduced them.
+- `models/router.py`: a `str` shadowed a `dict` in the custom cloud-model loop,
+  so those entries built their ids from the wrong variable.
+- `lattice_brain/context.py`: an unconfigured retrieval seam was called
+  unguarded and died as a `TypeError` inside failure isolation instead of
+  naming itself.
+- `runtime/review_wiring.py` declared its injected `HTTPException` as
+  `type[Exception]`, which does not accept `(status_code=, detail=)`.
+- `api/security_dashboard.py`: a defensive `isinstance(rows, list)` re-check
+  that every branch above already guaranteed.
+
+### Documentation
+- `docs/MYPY_BACKLOG.md` is now the record of how the boundary closed, not a
+  list of what is left — including the conventions the sweep settled on.
+- `docs/SURFACE_PARITY.md`: no ◐ remains in the matrix. A stale v9.9.6 note
+  claiming the live step timeline was web-only is corrected (v9.9.7's
+  `runAgentLive` provides it).
+
 ## [10.3.0] - 2026-07-29
 
 ### Fixed

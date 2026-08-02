@@ -51,10 +51,11 @@ class OpenAICompatibleAdapter:
             raise RuntimeError(
                 "openai package is required for the cloud streaming adapter"
             ) from exc
-        kwargs = {"api_key": self.api_key}
+        # base_url is only passed when configured: AsyncOpenAI treats an
+        # explicit None differently from an omitted argument.
         if self.base_url:
-            kwargs["base_url"] = self.base_url
-        return AsyncOpenAI(**kwargs)
+            return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+        return AsyncOpenAI(api_key=self.api_key)
 
     async def stream(
         self,

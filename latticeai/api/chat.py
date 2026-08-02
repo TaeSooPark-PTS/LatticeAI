@@ -94,16 +94,20 @@ def create_chat_router(context: AppContext) -> APIRouter:
     api_router = APIRouter()
     model_router = context.model_router
     config = context.config
-    require_user = context.require_user
+    require_user = context.require("require_user")
     workspace_service = context.workspace_service
     allowed_workspaces_for = context.allowed_workspaces_for
+    # Bound once so every handler below calls a resolved dependency rather
+    # than an Optional field (see AppContext.require).
+    enforce_rate_limit = context.require("enforce_rate_limit")
+    append_audit_event = context.require("append_audit_event")
 
     chat_service = ChatService.coerce(
         context.chat_service,
         store=context.workspace_store,
-        get_history=context.get_history,
-        save_to_history=context.save_to_history,
-        get_history_user=context.get_history_user,
+        get_history=context.require("get_history"),
+        save_to_history=context.require("save_to_history"),
+        get_history_user=context.require("get_history_user"),
     )
 
     def notify_chat_message(role: str, text: str, source: Optional[str]) -> None:
@@ -170,9 +174,9 @@ def create_chat_router(context: AppContext) -> APIRouter:
             model_router=model_router,
             execute_tool=execute_tool,
             recent_chat_context=recent_chat_context,
-            clear_history=context.clear_history,
+            clear_history=context.require("clear_history"),
             knowledge_save=knowledge_save,
-            audit=context.append_audit_event,
+            audit=context.require("append_audit_event"),
             hooks=context.hooks,
             brain_memory=context.brain_memory,
         )
@@ -247,7 +251,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
     @api_router.post("/chat")
     async def chat(req: ChatRequest, request: Request):
         current_user = require_user(request)
-        context.enforce_rate_limit(current_user, "chat")
+        enforce_rate_limit(current_user, "chat")
         logging.debug(
             "/chat request: stream=%s image_data_len=%s message_len=%s",
             req.stream,
@@ -352,7 +356,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 for match in file_path_pattern.finditer(req.message or "")
             ]
             if requested_paths:
-                context.append_audit_event(
+                append_audit_event(
                     "auto_file_context_blocked",
                     user_email=effective_email,
                     path_count=len(requested_paths),
@@ -393,7 +397,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         if isinstance(trace_seed, dict):
             trace_seed["context_quality"] = context_quality
         if context.funnel_metrics is not None and int(
-            context_quality.get("nodes") or 0
+            str(context_quality.get("nodes") or 0)
         ) > 0:
             context.funnel_metrics.record_recall_success()
 
@@ -542,12 +546,12 @@ def create_chat_router(context: AppContext) -> APIRouter:
             chat_service=chat_service,
             require_user=require_user,
             scope_for_user=history_scope_for_user,
-            group_conversations=context.group_history_conversations,
-            get_conversation_messages=context.get_conversation_messages,
-            conversation_title=context.conversation_title,
-            clear_conversation=context.clear_conversation,
-            clear_history=context.clear_history,
-            append_audit_event=context.append_audit_event,
+            group_conversations=context.require("group_history_conversations"),
+            get_conversation_messages=context.require("get_conversation_messages"),
+            conversation_title=context.require("conversation_title"),
+            clear_conversation=context.require("clear_conversation"),
+            clear_history=context.require("clear_history"),
+            append_audit_event=context.require("append_audit_event"),
         ),
     )
     agent_controller.register_routes(api_router)

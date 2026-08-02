@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from fastapi import Request
 
@@ -289,17 +289,18 @@ def assess_answer_grounding(
     them". Annotation only — the answer is never modified or blocked.
     """
     answer_text = str(answer or "").strip()
-    trace = trace if isinstance(trace, dict) else {}
-    sources: List[Dict[str, object]] = []
+    trace_map: Dict[str, Any] = trace if isinstance(trace, dict) else {}
+    sources: List[Dict[str, Any]] = []
     seen_ids = set()
-    for node in list(trace.get("graph_nodes") or []):
+    for node in list(trace_map.get("graph_nodes") or []):
         if not isinstance(node, dict):
             continue
         node_id = str(node.get("id") or node.get("node_id") or "")
         if not node_id or node_id in seen_ids:
             continue
         seen_ids.add(node_id)
-        meta = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+        raw_meta = node.get("metadata")
+        meta: Dict[str, Any] = raw_meta if isinstance(raw_meta, dict) else {}
         sources.append({
             "id": node_id,
             "title": str(node.get("title") or ""),
@@ -308,7 +309,7 @@ def assess_answer_grounding(
                 for part in (node.get("title"), node.get("summary"), meta.get("filename"))
             ),
         })
-    for src in list(trace.get("source_files") or []):
+    for src in list(trace_map.get("source_files") or []):
         if not isinstance(src, dict):
             continue
         node_id = str(src.get("node_id") or src.get("source") or "")
@@ -349,10 +350,10 @@ def assess_answer_grounding(
 
     answer_tokens = _grounding_tokens(answer_text)
     answer_lower = answer_text.lower()
-    cited: List[Dict[str, object]] = []
+    cited: List[Dict[str, Any]] = []
     best_overlap = 0.0
     for source in sources:
-        source_tokens = _grounding_tokens(source["body"])
+        source_tokens = _grounding_tokens(str(source["body"]))
         if not source_tokens:
             continue
         shared = answer_tokens & source_tokens

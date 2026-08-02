@@ -256,3 +256,141 @@ export function runReport(payload: unknown, language: "ko" | "en" = "ko"): strin
   if (summary.files.length) lines.push(`$(file) ${summary.files.join(", ")}`);
   return lines.join("\n");
 }
+
+// ── Artifact cards (v10.4.0) ─────────────────────────────────────────────────
+//
+// The web app renders `artifacts[]` as cards: filename, size, whether the
+// content was deterministically repaired, and whether the Brain has remembered
+// it yet. The editor used to show only a flat list of created paths, so a
+// repaired scaffold looked identical to clean model output — SURFACE_PARITY
+// listed this as ◐. These helpers shape the *same* `/agent` payload; the
+// editor renders them as a QuickPick instead of cards, which is a rendering
+// difference, not a contract difference.
+
+export type ArtifactCard = {
+  /** Workspace-relative path exactly as the server reported it. */
+  path: string;
+  filename: string;
+  bytes: number;
+  previewable: boolean;
+  /** True when ArtifactWritePipeline had to repair the model's content. */
+  repaired: boolean;
+  /** Server-side validity verdict; never upgraded by the extension. */
+  valid: boolean;
+  /** One-line label for a QuickPick row. */
+  label: string;
+  /** Honest sub-label: size plus any caveat the server reported. */
+  detail: string;
+};
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Parse `/agent`'s `artifacts[]` into editor-renderable cards.
+ *
+ * Falls back to `created_files` when a run predates the artifact contract, so
+ * an older sidecar still lists what it wrote rather than showing nothing.
+ */
+export function parseArtifacts(
+  payload: unknown,
+  language: "ko" | "en" = "ko",
+): ArtifactCard[] {
+  const root = asRecord(payload);
+  const raw = asArray(root.artifacts);
+  const copy = {
+    repaired: language === "ko" ? "자동 보정됨" : "auto-repaired",
+    invalid: language === "ko" ? "검증 실패" : "failed validation",
+    preview: language === "ko" ? "미리보기 가능" : "previewable",
+  };
+
+  const fromArtifacts = raw.flatMap((entry): ArtifactCard[] => {
+    const item = asRecord(entry);
+    const path = text(item.path);
+    if (!path) return [];
+    const bytes = typeof item.bytes === "number" ? item.bytes : 0;
+    const repaired = item.repaired === true;
+    const valid = item.valid !== false;
+    const notes = [
+      formatBytes(bytes),
+      repaired ? copy.repaired : "",
+      valid ? "" : copy.invalid,
+      item.previewable === true ? copy.preview : "",
+    ].filter(Boolean);
+    return [{
+      path,
+      filename: text(item.filename) || path.split("/").pop() || path,
+      bytes,
+      previewable: item.previewable === true,
+      repaired,
+      valid,
+      label: `${repaired ? "$(wand)" : valid ? "$(file)" : "$(warning)"} ${
+        text(item.filename) || path
+      }`,
+      detail: notes.join(" · ") || path,
+    }];
+  });
+  if (fromArtifacts.length) return fromArtifacts;
+
+  // Legacy shape: created_files only, with no per-file honesty flags. Say so
+  // rather than implying the file was verified.
+  return asArray(root.created_files).flatMap((entry): ArtifactCard[] => {
+    const path = typeof entry === "string" ? entry : text(asRecord(entry).path);
+    if (!path) return [];
+    return [{
+      path,
+      filename: path.split("/").pop() || path,
+      bytes: 0,
+      previewable: false,
+      repaired: false,
+      valid: true,
+      label: `$(file) ${path}`,
+      detail: language === "ko" ? "세부 정보 없음" : "no artifact detail reported",
+    }];
+  });
+}
+
+/** Compact artifact summary for the output channel. */
+export function artifactReport(
+  payload: unknown,
+  language: "ko" | "en" = "ko",
+): string {
+  const cards = parseArtifacts(payload, language);
+  if (!cards.length) {
+    return language === "ko" ? "생성된 파일 없음" : "no files produced";
+  }
+  return cards.map((card) => `${card.label} — ${card.detail}`).join("\n");
+}
+
+// ── Model recommendation (v10.4.0) ───────────────────────────────────────────
+
+export type ModelRecommendation = {
+  modelId: string;
+  runtime: string;
+  /** Why this machine got this recommendation, verbatim from the server. */
+  rationale: string[];
+};
+
+/**
+ * Read the hardware-derived recommendation out of `GET /setup/scan`.
+ *
+ * The web Library view shows *why* a model is recommended for this machine.
+ * The editor's picker listed models with no reasoning, which SURFACE_PARITY
+ * recorded as ◐. Returns null when the server offers no recommendation — the
+ * picker then shows its plain catalogue rather than inventing a reason.
+ */
+export function parseModelRecommendation(payload: unknown): ModelRecommendation | null {
+  const zeroConfig = asRecord(asRecord(payload).zero_config);
+  const recommend = asRecord(zeroConfig.recommend);
+  const modelId = text(recommend.model_id);
+  if (!modelId) return null;
+  return {
+    modelId,
+    runtime: text(recommend.runtime),
+    rationale: asArray(recommend.rationale).map(text).filter(Boolean),
+  };
+}

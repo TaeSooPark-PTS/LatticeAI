@@ -286,6 +286,40 @@ export class LatticeAIClient {
     return this._post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, { reason });
   }
 
+  // ── Capture: folder ingestion (v10.4.0) ───────────────────────────────────
+
+  /**
+   * Ingest a local folder through the same unified pipeline the web Capture
+   * view uses. The endpoint requires the local-read approval dance: without an
+   * approval token it returns a `permission_required` payload, which the
+   * caller surfaces rather than silently retrying.
+   */
+  async ingestFolder(payload: {
+    path: string;
+    recursive?: boolean;
+    approved?: boolean;
+    approval_token?: string;
+    background?: boolean;
+  }): Promise<any> {
+    return this._post("/api/ingestion/folder", {
+      path: payload.path,
+      recursive: payload.recursive ?? true,
+      approved: payload.approved ?? false,
+      approval_token: payload.approval_token,
+      background: payload.background ?? true,
+    });
+  }
+
+  async ingestionJob(jobId: string): Promise<any> {
+    return this._get(`/api/ingestion/jobs/${encodeURIComponent(jobId)}`);
+  }
+
+  // ── Setup: hardware-derived model recommendation (v10.4.0) ────────────────
+
+  async setupScan(): Promise<any> {
+    return this._get("/setup/scan");
+  }
+
   // ── HTTP Helpers ──────────────────────────────────────────────────────────
 
   private _get(path: string): Promise<any> {

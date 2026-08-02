@@ -1,12 +1,23 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..quiet import quiet
 
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
 
+# The cross-mixin surface (`_connect`, `_upsert_node`, …) is declared in
+# `_kg_contract.KnowledgeGraphCore`. It is a typing-only base: at runtime this
+# is `object`, so the MRO of `KnowledgeGraphStore` is unchanged.
+if TYPE_CHECKING:
+    from ._kg_contract import KnowledgeGraphCore as _Core
+else:
+    _Core = object
 
-class KnowledgeGraphDiscoveryMixin:
+
+
+class KnowledgeGraphDiscoveryMixin(_Core):
     def discover_local_roots(self) -> Dict[str, Any]:
         """Return safe, cross-platform starting points for structure browsing."""
         os_type = _current_os_type()

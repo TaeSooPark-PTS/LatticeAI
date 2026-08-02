@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.3.0 — Measured Ground**.
+Current release: **10.4.0 — Named Ground**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

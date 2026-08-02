@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.3.0 Living Brain walkthrough](output/release/v10.3.0/gifs/v10.3.0-living-brain-walkthrough.gif)
+![v10.4.0 Living Brain walkthrough](output/release/v10.4.0/gifs/v10.4.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.3.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.3.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.3.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.3.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.3.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.3.0/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.4.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.4.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.4.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.4.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.4.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.4.0/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,47 +57,47 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.3.0/screenshots/01-login.png) | ![Model install](output/release/v10.3.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.3.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.4.0/screenshots/01-login.png) | ![Model install](output/release/v10.4.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.4.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.3.0/SCREENSHOT_INDEX.md](output/release/v10.3.0/SCREENSHOT_INDEX.md)
+[output/release/v10.4.0/SCREENSHOT_INDEX.md](output/release/v10.4.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.3.0 — Measured Ground**:
+The current release is **10.4.0 — Named Ground**:
 
-10.2.0 answered a code review. 10.3.0 is about knowing where things actually
-stand: several numbers this project reported about itself turned out to be
-wrong, and those corrections matter more than the features around them.
+10.3.0 wrote down what was not measured. 10.4.0 emptied that list — and the
+things that made the list long turned out not to be typing problems.
 
-- **Frontend coverage was never really measured.** Vitest only reports files a
-  test already imports, so every untested module quietly left the denominator
-  and the tool read 54%. With `all: true` the honest figure is **28.5%** — and
-  208 tests now cover pages that had none, including every settings and memory
-  screen.
-- **Python coverage was reported as 80%. It is 71.6%.** The `omit` pattern did
-  not match the paths coverage records, so the suite was counting itself — and
-  test files run start to finish by construction.
-- **mypy went from 13 modules to 193 of 270**, finding three real defects on
-  the way: a log line inside an error handler referenced an attribute that does
-  not exist (turning a recoverable failure into a crash), an annotation used a
-  name that was never imported, and one call could dereference `None`.
-- **The chat-turn writer left the composition root.** 66 lines that decide what
-  a message looks like after redaction, and what the audit log records about
-  it, are now a module with 14 tests instead of a closure nothing could reach.
-- **What is not measured is written down.** `docs/MYPY_BACKLOG.md` lists the 77
-  modules still outside type checking with their error counts, so the boundary
-  is a fact rather than an intention.
+- **The type backlog went from 1,407 errors across 77 modules to zero across
+  274.** Two root causes accounted for 954 of them, and both were readability
+  problems: a computed `__all__` that made every star-imported name invisible
+  to a checker, and an eleven-mixin contract that existed but was written down
+  nowhere. Both are now explicit, and both are guarded by tests.
+- **The composition root is no longer one function.** `app_factory._build` went
+  from 1,318 lines to 26, split into ten ordered phases sharing a typed
+  `RuntimeContext`. The phase order is a contract with a test, not a comment —
+  and reading a value before its phase has run fails by name.
+- **Four real defects surfaced on the way**, including one that meant
+  `python -m latticeai.server_app` had never worked: `main` was a local inside
+  the old closure and was never on the export list.
+- **The surface-parity matrix has no ◐ left.** VS Code gained folder capture,
+  artifact cards with their repair/validation flags, and a hardware-derived
+  model recommendation; Telegram gained the same artifact card. All four were
+  rendering gaps — the sidecar was already reporting the data.
+- **Coverage moved honestly, not to target.** Frontend 28.5% → 32.3% (208 → 337
+  tests), Python 71.6% → 71.8% (1,896 → 1,956). Frontend 70% is still roughly
+  2,200 statements away, and this release does not claim otherwise.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.3.0 release must use exact filenames:
+Expected artifacts for 10.4.0 release must use exact filenames:
 
-- `dist/ltcai-10.3.0-py3-none-any.whl`
-- `dist/ltcai-10.3.0.tar.gz`
-- `ltcai-10.3.0.tgz`
-- `dist/ltcai-10.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.3.0_aarch64.dmg`
+- `dist/ltcai-10.4.0-py3-none-any.whl`
+- `dist/ltcai-10.4.0.tar.gz`
+- `ltcai-10.4.0.tgz`
+- `dist/ltcai-10.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.4.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -132,6 +132,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.4.0 | Named Ground |
 | 10.3.0 | Measured Ground |
 | 10.2.0 | Load-Bearing Fixes |
 | 10.1.1 | Reachable Boundary |

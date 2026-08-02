@@ -1,3 +1,22 @@
+# [v10.4.0 - Named Ground] (2026-08-02)
+
+10.3.0은 측정되지 않은 것을 적어두고 끝냈습니다. 10.4.0은 그 목록을 비웠습니다.
+mypy 백로그가 77개 모듈 1,407개 오류에서 **274개 모듈 0개**가 되었고, 그중 954개는
+타입 문제가 아니라 읽기 어려움의 문제였습니다 — 계산된 `__all__` 하나와, 존재하지만
+어디에도 적혀 있지 않던 11개 믹스인 계약. `app_factory._build`는 1,318줄에서
+**26줄**이 되었고, 조립은 타입드 `RuntimeContext`를 공유하는 10개 단계로 나뉘었습니다.
+그 과정에서 진짜 결함 네 개가 나왔는데, 그중 하나는 `python -m latticeai.server_app`이
+한 번도 동작한 적이 없었다는 것입니다 — `main`이 옛 클로저의 지역 함수였고 export
+허용목록에 없었습니다. 표면 패리티 표에 ◐ 는 이제 없습니다: VS Code가 폴더 수집,
+보정/검증 플래그가 붙은 산출물 카드, 하드웨어 기반 모델 추천을 얻었고 Telegram도
+같은 산출물 카드를 얻었습니다. 커버리지는 프론트 28.5→32.3%, Python 71.6→71.8%로
+정직하게 일부만 올랐습니다.
+
+See [RELEASE_NOTES_v10.4.0.md](RELEASE_NOTES_v10.4.0.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.3.0 - Measured Ground] (2026-07-29)
 
 Three numbers this project reported about itself were wrong. Frontend coverage
@@ -182,7 +201,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.3.0**.
+This repository keeps public release history from **8.0.0 through 10.4.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

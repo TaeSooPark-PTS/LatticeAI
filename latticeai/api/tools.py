@@ -243,10 +243,15 @@ def create_tools_router(
     api_router = APIRouter()
     HOOKS = hooks
     CONFIG = config
-    DATA_DIR = data_dir
-    STATIC_DIR = static_dir
+    # These three are Optional in the signature only because the legacy
+    # kwarg form predates AppContext; the router cannot be built without
+    # them, so resolve once here rather than at every use.
+    if data_dir is None or static_dir is None:
+        raise RuntimeError("create_tools_router requires data_dir and static_dir")
+    DATA_DIR: Path = data_dir
+    STATIC_DIR: Path = static_dir
     router = model_router
-    ENABLE_GRAPH = enable_graph
+    ENABLE_GRAPH: bool = bool(enable_graph)
     KNOWLEDGE_GRAPH = knowledge_graph
     LOCAL_KG_WATCHER = local_kg_watcher
     _require_graph = require_graph
@@ -327,7 +332,7 @@ def create_tools_router(
             or None
         )
 
-    def _knowledge_scope(request: Request, current_user: str, *, write: bool) -> Dict[str, str]:
+    def _knowledge_scope(request: Request, current_user: str, *, write: bool) -> Dict[str, Any]:
         # Preserve the historical shared vault only for explicit single-user,
         # no-auth local mode. Authenticated deployments always partition by
         # both authorized workspace and account.

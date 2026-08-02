@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from latticeai.services.model_capability_registry import (
     LOCAL_MLX_MODELS as _LOCAL_MLX_MODELS,
@@ -34,7 +34,7 @@ from latticeai.services.model_capability_registry import (
     get_verified_models as _get_verified_models,
 )
 
-ENGINE_INSTALLERS = {
+ENGINE_INSTALLERS: Dict[str, Dict[str, Any]] = {
     "local_mlx": {
         "command": [sys.executable, "-m", "pip", "install", "--upgrade", "mlx-vlm>=0.6.3", "mlx-lm", "huggingface_hub[cli]"],
         "label": "Install MLX runtime",
@@ -89,10 +89,10 @@ ENGINE_INSTALLERS = {
 # user-facing ENGINE_MODEL_CATALOG below is then narrowed to the aggressive 5.2.0
 # policy (latest family generations only, no text-only/legacy weights) and the
 # engine-specific ids/sizes are normalised. See `_finalize_engine_catalog`.
-_RAW_ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, object]]] = _build_engine_model_catalog()
+_RAW_ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = _build_engine_model_catalog()
 # Filled in at module end once the blocklist, alias map and family-version filter
 # are all defined; declared here so the public name exists for static readers.
-ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, object]]] = {}
+ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = {}
 
 # Historical aliases preserved (used by _recommended_with_engine_options and resolution).
 # These can be enriched later from registry if needed; kept verbatim for safety.
@@ -173,7 +173,7 @@ def _version_tuple(raw: str) -> tuple[int, ...]:
     return tuple(int(part) for part in raw.split(".") if part.isdigit())
 
 
-def _model_family_version(model: Dict[str, object]) -> Optional[tuple[str, tuple[int, ...]]]:
+def _model_family_version(model: Dict[str, Any]) -> Optional[tuple[str, tuple[int, ...]]]:
     text = " ".join(str(model.get(key) or "") for key in ("family", "name", "id"))
     for family, pattern in _VERSIONED_MODEL_PATTERNS:
         match = pattern.search(text)
@@ -184,9 +184,9 @@ def _model_family_version(model: Dict[str, object]) -> Optional[tuple[str, tuple
     return None
 
 
-def filter_lower_family_versions(models: List[Dict[str, object]]) -> List[Dict[str, object]]:
+def filter_lower_family_versions(models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     max_versions: Dict[str, tuple[int, ...]] = {}
-    detected: List[tuple[Dict[str, object], Optional[tuple[str, tuple[int, ...]]]]] = []
+    detected: List[tuple[Dict[str, Any], Optional[tuple[str, tuple[int, ...]]]]] = []
     for model in models:
         version_info = _model_family_version(model)
         detected.append((model, version_info))
@@ -214,12 +214,12 @@ _BLOCKED_CATALOG_FRAGMENTS = (
 )
 
 
-def _is_blocked_catalog_id(model: Dict[str, object]) -> bool:
+def _is_blocked_catalog_id(model: Dict[str, Any]) -> bool:
     ident = str(model.get("id") or "").lower()
     return any(fragment in ident for fragment in _BLOCKED_CATALOG_FRAGMENTS)
 
 
-def _normalize_engine_entry(engine: str, model: Dict[str, object]) -> Dict[str, object]:
+def _normalize_engine_entry(engine: str, model: Dict[str, Any]) -> Dict[str, Any]:
     """Apply historical engine-specific id + size conventions to a raw entry.
 
     * Non-MLX engines resolve to their canonical packaged id via
@@ -243,9 +243,9 @@ def _normalize_engine_entry(engine: str, model: Dict[str, object]) -> Dict[str, 
 
 
 def _finalize_engine_catalog(
-    raw: Dict[str, List[Dict[str, object]]],
-) -> Dict[str, List[Dict[str, object]]]:
-    final: Dict[str, List[Dict[str, object]]] = {}
+    raw: Dict[str, List[Dict[str, Any]]],
+) -> Dict[str, List[Dict[str, Any]]]:
+    final: Dict[str, List[Dict[str, Any]]] = {}
     for engine, models in raw.items():
         kept = [
             _normalize_engine_entry(engine, m)

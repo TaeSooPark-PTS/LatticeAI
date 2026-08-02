@@ -46,7 +46,9 @@ class CloudTurnResult:
 
 
 class CloudLLMAdapter(Protocol):
-    async def stream(
+    # `def`, not `async def`: implementations are async generators, so the
+    # call itself returns the iterator rather than a coroutine wrapping it.
+    def stream(
         self,
         *,
         system: str,
@@ -107,7 +109,7 @@ class CloudStreamingBridge:
             answer_text=answer,
             sent_node_ids=list(minimal.node_ids),
             provider=getattr(self._adapter, "provider_name", "cloud"),
-            model=model or getattr(self._adapter, "default_model", ""),
+            model=str(model or getattr(self._adapter, "default_model", "")),
         )
 
 
@@ -157,7 +159,7 @@ def plan_kg_expansion(result: CloudTurnResult) -> KGExpansionPlan:
         )
 
     return KGExpansionPlan(
-        conversation_title=conv_node["title"],
+        conversation_title=str(conv_node["title"]),
         new_nodes=[conv_node],
         new_edges=edges,
         provenance={

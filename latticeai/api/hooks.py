@@ -8,7 +8,7 @@ the API.
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -46,7 +46,9 @@ def create_hooks_router(
     *,
     registry: HooksRegistry,
     require_user: Callable[[Request], str],
-    require_admin: Callable[[Request], tuple],
+    # Production returns ``(email, users)``; small adapters return just the
+    # identity, which ``_require_admin_email`` below handles.
+    require_admin: Callable[[Request], Any],
     append_audit_event: Callable[..., None],
 ) -> APIRouter:
     router = APIRouter()

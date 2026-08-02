@@ -24,7 +24,17 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional, Tuple
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    FrozenSet,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+)
 
 from lattice_brain.runtime.contracts import (
     runtime_boundary_contract,
@@ -149,10 +159,10 @@ class AgentDeps:
 
     # ── tool port ────────────────────────────────────────────────────
     execute_tool: Callable[[str, dict], dict]
-    policy_for: Callable[[str, dict], dict]        # name, args -> governance policy
-    risk_level: Callable[[dict], str]              # policy -> "low"|"medium"|"high"
+    policy_for: Callable[[str, dict], Mapping[str, Any]]   # name, args -> policy
+    risk_level: Callable[[Any], str]               # policy -> "low"|"medium"|"high"
     check_role: Callable[[str, str], None]         # tool_name, user -> raises if not allowed
-    tool_governance: Dict[str, dict]               # name -> policy (for auto_approve set)
+    tool_governance: Mapping[str, Mapping[str, Any]]  # name -> policy (auto_approve set)
     file_create_actions: FrozenSet[str]
 
     # ── context / memory / audit ports ───────────────────────────────
@@ -246,18 +256,22 @@ class SingleAgentRuntime:
         injected = getattr(self.deps, "phase_budgets", None)
         if injected is not None:
             return injected
-        if getattr(self, "_env_phase_budgets", None) is None:
-            self._env_phase_budgets = PhaseBudgets.from_env()
-        return self._env_phase_budgets
+        cached = getattr(self, "_env_phase_budgets", None)
+        if cached is None:
+            cached = PhaseBudgets.from_env()
+            self._env_phase_budgets = cached
+        return cached
 
     @property
     def transcript_budget(self) -> TranscriptBudget:
         injected = getattr(self.deps, "transcript_budget", None)
         if injected is not None:
             return injected
-        if getattr(self, "_env_transcript_budget", None) is None:
-            self._env_transcript_budget = TranscriptBudget.from_env()
-        return self._env_transcript_budget
+        cached = getattr(self, "_env_transcript_budget", None)
+        if cached is None:
+            cached = TranscriptBudget.from_env()
+            self._env_transcript_budget = cached
+        return cached
 
     # ── permission mode (v9.9.8) ─────────────────────────────────────
     def resolve_permission_mode(
@@ -511,7 +525,7 @@ class SingleAgentRuntime:
                     break
                 continue
 
-            name     = action.get("action")
+            name     = str(action.get("action") or "")
             thoughts = str(action.get("thoughts") or "")[:600]
             args     = action.get("args") or {}
 
@@ -748,7 +762,7 @@ class SingleAgentRuntime:
 
     def _governor_review(
         self, ctx: AgentRunContext, name: str, thoughts: str, args: dict,
-        policy: dict, risk: str, current_user: str, request_workspace: Optional[str],
+        policy: Mapping[str, Any], risk: str, current_user: str, request_workspace: Optional[str],
         conversation_id: Optional[str] = None,
     ) -> Tuple[bool, bool]:
         """Central change-class governance: create-new runs with minimal
@@ -817,7 +831,7 @@ class SingleAgentRuntime:
 
     def _blocked_by_gates(
         self, ctx: AgentRunContext, req: Any, name: str, thoughts: str, args: dict,
-        policy: dict, risk: str, current_user: str, governor_allows_additive: bool,
+        policy: Mapping[str, Any], risk: str, current_user: str, governor_allows_additive: bool,
     ) -> bool:
         """Destructive / circuit-breaker / explicit-approval gates.
 
@@ -892,7 +906,7 @@ class SingleAgentRuntime:
 
     def _dispatch_step(
         self, ctx: AgentRunContext, name: str, thoughts: str, args: dict,
-        policy: dict, risk: str, current_user: str,
+        policy: Mapping[str, Any], risk: str, current_user: str,
     ) -> None:
         """Role check + shared tool lifecycle, recorded on the transcript either way."""
         d = self.deps

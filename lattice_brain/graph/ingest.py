@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..quiet import quiet
 from ..sensitivity import stamp_sensitivity
 
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
+
+# The cross-mixin surface (`_connect`, `_upsert_node`, …) is declared in
+# `_kg_contract.KnowledgeGraphCore`. It is a typing-only base: at runtime this
+# is `object`, so the MRO of `KnowledgeGraphStore` is unchanged.
+if TYPE_CHECKING:
+    from ._kg_contract import KnowledgeGraphCore as _Core
+else:
+    _Core = object
+
 
 
 def _scoped_slug_id(prefix: str, value: str, workspace_id: Optional[str]) -> str:
@@ -42,7 +53,7 @@ def _triple_edge_metadata(triple: Dict[str, Any]) -> Dict[str, Any]:
     return metadata
 
 
-class KnowledgeGraphIngestMixin:
+class KnowledgeGraphIngestMixin(_Core):
     def ingest_message(
         self,
         role: str,

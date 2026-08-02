@@ -15,7 +15,9 @@ def build_access_runtime(
     request_type: Any,
     load_users: Callable[[], Dict],
     get_session_email: Callable[[str], Optional[str]],
-    user_id_for_email: Callable[[Dict, str], str],
+    # Optional in and out: an anonymous request has no email, and an email
+    # with no account has no id.
+    user_id_for_email: Callable[[Dict, Optional[str]], Optional[str]],
 ) -> Dict[str, Any]:
     """Build user/admin access helpers without changing legacy call signatures."""
 

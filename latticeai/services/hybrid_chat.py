@@ -202,7 +202,7 @@ async def stream_hybrid_cloud_turn(
                 answer_text=answer,
                 sent_node_ids=list(minimal.node_ids),
                 provider=getattr(chosen_adapter, "provider_name", "cloud"),
-                model=model or getattr(chosen_adapter, "default_model", ""),
+                model=str(model or getattr(chosen_adapter, "default_model", "")),
             )
         else:
             result = await bridge.run_turn(

@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Optional
 
 
-def build_review_run_now_runner(platform: Any, http_exception: type[Exception]) -> Callable[..., Any]:
+def build_review_run_now_runner(
+    platform: Any,
+    # Injected as `fastapi.HTTPException`, which takes (status_code, detail) —
+    # not the bare `Exception` signature the narrower annotation implied.
+    http_exception: Callable[..., Exception],
+) -> Callable[..., Any]:
     """Build the Review Center run-now runner used by the API router.
 
     The runner preserves the public contract: "Run now" previews/regenerates the

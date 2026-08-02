@@ -408,7 +408,7 @@ class IngestionResult:
     quality_gate: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
-        payload = {
+        payload: Dict[str, Any] = {
             "status": self.status,
             "source_type": self.source_type,
             "node_id": self.node_id,

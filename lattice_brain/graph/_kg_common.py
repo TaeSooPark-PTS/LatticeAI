@@ -29,9 +29,9 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 try:
     from .schema import EdgeType, KGStoreV2, NodeType, _exec_script
 except Exception:  # pragma: no cover - v2 schema is optional at import time
-    KGStoreV2 = None  # type: ignore[assignment]
-    NodeType = None  # type: ignore[assignment]
-    EdgeType = None  # type: ignore[assignment]
+    KGStoreV2 = None  # type: ignore[assignment,misc]
+    NodeType = None  # type: ignore[assignment,misc]
+    EdgeType = None  # type: ignore[assignment,misc]
     _exec_script = None  # type: ignore[assignment]
 
 from ..embeddings import LocalEmbeddingModel
@@ -69,9 +69,33 @@ from ._kg_constants import (  # noqa: E402
     WINDOWS_EXCLUDED_NAMES,
 )
 
-# Pure fs/path/hash/classification helpers → ._kg_fsutil (re-exported so the
-# computed __all__ below still forwards them to the graph mixins).
-from ._kg_fsutil import *  # noqa: E402,F401,F403
+# Pure fs/path/hash/classification helpers → ._kg_fsutil, re-exported so the
+# static __all__ below forwards them to the graph mixins. Listed explicitly
+# rather than star-imported: a star import here made every name in this
+# module unverifiable to both ruff and mypy.
+from ._kg_fsutil import (  # noqa: E402,F401
+    _current_os_type,
+    _drive_id_for_path,
+    _excluded_directory_reason,
+    _file_category,
+    _is_hidden_path,
+    _is_relative_to,
+    _node_type_for_category,
+    _now,
+    _parse_iso,
+    _parser_type_for_category,
+    _path_fingerprint,
+    _path_parts_lower,
+    _recency_score,
+    _root_warning,
+    _safe_iso_from_stat_mtime,
+    _sample_file,
+    _sensitive_file_reason,
+    _sha256_bytes,
+    _sha256_text,
+    _size_limit_for_category,
+    _slug,
+)
 
 
 def _clean_text(text: str) -> str:
@@ -613,9 +637,11 @@ def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
     return None
 
 
+# Triples carry a numeric ``weight``/``confidence`` alongside string fields,
+# so the value type is Any rather than str.
 def _llm_extract_triples(
     text: str, concepts: List[str], limit: int = 20
-) -> Optional[List[Dict[str, str]]]:
+) -> Optional[List[Dict[str, Any]]]:
     router = get_llm_router()
     if not ENABLE_LLM_EXTRACTION or not router:
         return None
@@ -647,7 +673,7 @@ def _llm_extract_triples(
             raw = re.sub(r"\s*```$", "", raw)
         parsed = json.loads(raw)
         if isinstance(parsed, list):
-            triples = []
+            triples: List[Dict[str, Any]] = []
             for item in parsed[:limit]:
                 if isinstance(item, dict) and "subject" in item and "object" in item:
                     relation = str(item.get("relation", "관련됨"))
@@ -1173,4 +1199,133 @@ def _topic_candidates(text: str, limit: int = 8) -> List[str]:
     return list(seen.values())[:limit]
 
 
-__all__ = [name for name in globals() if not name.startswith("__")]
+# Static export list. This used to be `[name for name in globals() if not
+# name.startswith("__")]`, which is invisible to a type checker: every
+# `from ._kg_common import *` consumer then had *no* resolvable names, and
+# mypy reported ~750 spurious `name-defined` errors across the graph
+# package. `tests/unit/test_kg_common_exports.py` asserts this list still
+# equals what the computed expression would produce, so it cannot drift.
+__all__ = [
+    "Any",
+    "COMMON_EXCLUDED_DIRS",
+    "COMMON_EXCLUDED_FILE_NAMES",
+    "COMMON_EXCLUDED_FILE_SUFFIXES",
+    "COOCCURRENCE_CONCEPT_LIMIT",
+    "COOCCURRENCE_EDGE_WEIGHT",
+    "Counter",
+    "Dict",
+    "EDGE_VERB",
+    "ENABLE_LLM_EXTRACTION",
+    "EdgeType",
+    "GRAPH_SCHEMA_VERSION",
+    "Iterable",
+    "Iterator",
+    "KGStoreV2",
+    "LINUX_EXCLUDED_PREFIXES",
+    "LOCAL_CODE_EXTENSIONS",
+    "LOCAL_DOCUMENT_EXTENSIONS",
+    "LOCAL_IMAGE_EXTENSIONS",
+    "LOCAL_SIZE_LIMITS",
+    "LOCAL_SLIDE_EXTENSIONS",
+    "LOCAL_SPREADSHEET_EXTENSIONS",
+    "LOCAL_SUPPORTED_EXTENSIONS",
+    "LOCAL_TEXT_EXTENSIONS",
+    "List",
+    "LocalEmbeddingModel",
+    "MACOS_EXCLUDED_PREFIXES",
+    "NodeType",
+    "Optional",
+    "Path",
+    "SENSITIVE_PATH_KEYWORDS",
+    "Tuple",
+    "VERB_EDGE_WEIGHT",
+    "WINDOWS_EXCLUDED_NAMES",
+    "_CHUNK_STRATEGIES",
+    "_CODE_BLANK_RUN_RE",
+    "_CODE_BOUNDARY_LINE_RE",
+    "_CODE_CHUNK_EXTENSIONS",
+    "_CONCEPT_STOP",
+    "_KG_DB_FORMAT_KEY",
+    "_KG_DB_FORMAT_VERSION",
+    "_LLM_EXTRACT_CONCEPT_PROMPT",
+    "_LLM_EXTRACT_TRIPLE_PROMPT",
+    "_MARKDOWN_CHUNK_EXTENSIONS",
+    "_MARKDOWN_HEADING_RE",
+    "_MARKDOWN_MIN_SECTION_CHARS",
+    "_NOT_PERSON_WORDS",
+    "_PROJECTION_VERSION",
+    "_PROSE_CHUNK_EXTENSIONS",
+    "_PROSE_MIN_SPAN_RATIO",
+    "_PROSE_STRONG_BOUNDARY_RE",
+    "_PROSE_WEAK_BOUNDARY_RE",
+    "_READ_FROM_V2_DEFAULT",
+    "_V2_WRITE_MASTER_KEY",
+    "_chunks",
+    "_classify_node_type",
+    "_clean_text",
+    "_code_chunks",
+    "_code_segment_spans",
+    "_current_os_type",
+    "_drive_id_for_path",
+    "_excluded_directory_reason",
+    "_exec_script",
+    "_extract_concepts",
+    "_extract_concepts_rules",
+    "_extract_triples",
+    "_extract_triples_rules",
+    "_file_category",
+    "_infer_edge",
+    "_is_hidden_path",
+    "_is_relative_to",
+    "_json",
+    "_last_boundary",
+    "_llm_extract_concepts",
+    "_llm_extract_triples",
+    "_markdown_chunks",
+    "_markdown_section_spans",
+    "_merge_small_sections",
+    "_node_type_for_category",
+    "_now",
+    "_parse_iso",
+    "_parser_type_for_category",
+    "_path_fingerprint",
+    "_path_parts_lower",
+    "_plain_windows",
+    "_prose_chunks",
+    "_recency_score",
+    "_root_warning",
+    "_safe_iso_from_stat_mtime",
+    "_safe_loads",
+    "_sample_file",
+    "_semantic_items",
+    "_sensitive_file_reason",
+    "_sha256_bytes",
+    "_sha256_text",
+    "_size_limit_for_category",
+    "_slug",
+    "_topic_candidates",
+    "asyncio",
+    "chunk_strategy_for",
+    "citation_locator",
+    "contextmanager",
+    "datetime",
+    "get_llm_router",
+    "hashlib",
+    "infer_edge_relation",
+    "json",
+    "logging",
+    "math",
+    "os",
+    "page_for_offset",
+    "pdf_page_offsets",
+    "platform",
+    "quiet",
+    "re",
+    "set_llm_router",
+    "shutil",
+    "sqlite3",
+    "time",
+    "typed_chunk_meta_fields",
+    "typed_chunks",
+    "zipfile",
+]

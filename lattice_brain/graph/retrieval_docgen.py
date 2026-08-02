@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
 
+# The cross-mixin surface (`_connect`, `_upsert_node`, …) is declared in
+# `_kg_contract.KnowledgeGraphCore`. It is a typing-only base: at runtime this
+# is `object`, so the MRO of `KnowledgeGraphStore` is unchanged.
+if TYPE_CHECKING:
+    from ._kg_contract import KnowledgeGraphCore as _Core
+else:
+    _Core = object
 
-class KnowledgeGraphDocGenMixin:
+
+
+class KnowledgeGraphDocGenMixin(_Core):
     """Multi-hop retrieval specialised for document generation, split out
     of retrieval. Composed into KnowledgeGraphStore alongside the other
     retrieval mixins; shared instance means sibling helpers resolve via MRO.

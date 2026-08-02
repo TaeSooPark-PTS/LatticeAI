@@ -217,3 +217,70 @@ def test_telegram_proposal_rows_drop_unactionable_entries():
     assert format_proposals([{"id": "c", "title": "C"}])[0][0] == "c"
     for bad in (None, 3, "x", {}):
         assert format_proposals(bad) == []
+
+
+# ── v10.4.0 surface parity: artifact cards ───────────────────────────────────
+
+
+def test_artifact_card_reports_the_servers_flags_verbatim():
+    """A repaired scaffold must not arrive looking like clean model output.
+
+    SURFACE_PARITY had Telegram artifacts at ◐ because the bot sent the files
+    and nothing else. The card renders the same ``artifacts[]`` honesty flags
+    the web cards show.
+    """
+    from latticeai.integrations.telegram_bot import format_artifact_card
+
+    text = format_artifact_card({
+        "artifacts": [
+            {"path": "src/app.py", "bytes": 2048, "valid": True},
+            {"path": "index.html", "bytes": 900, "repaired": True, "valid": True},
+            {"path": "broken.json", "bytes": 12, "valid": False},
+        ]
+    })
+
+    assert "src/app.py" in text
+    assert "2,048 B" in text
+    assert "자동 보정됨" in text
+    assert "검증 실패" in text
+
+
+def test_artifact_card_is_empty_when_the_run_produced_nothing():
+    """No files means no card — not an empty header."""
+    from latticeai.integrations.telegram_bot import format_artifact_card
+
+    assert format_artifact_card({}) == ""
+    assert format_artifact_card({"artifacts": []}) == ""
+    assert format_artifact_card(None) == ""
+    # Entries with no path carry no information; the card stays empty rather
+    # than rendering a bare bullet.
+    assert format_artifact_card({"artifacts": [{"bytes": 10}]}) == ""
+
+
+def test_artifact_card_never_claims_validity_the_server_did_not_report():
+    from latticeai.integrations.telegram_bot import format_artifact_card
+
+    text = format_artifact_card({"artifacts": [{"path": "notes.md"}]})
+    assert "notes.md" in text
+    assert "검증 실패" not in text
+    assert "자동 보정됨" not in text
+
+
+def test_artifact_card_caps_long_lists_and_says_how_many_it_hid():
+    from latticeai.integrations.telegram_bot import format_artifact_card
+
+    text = format_artifact_card({
+        "artifacts": [{"path": f"file{i}.txt"} for i in range(12)]
+    })
+    assert text.count("• ") == 8
+    assert "… +4" in text
+
+
+def test_artifact_card_speaks_english_when_asked():
+    from latticeai.integrations.telegram_bot import format_artifact_card
+
+    text = format_artifact_card(
+        {"artifacts": [{"path": "a.py", "repaired": True}]}, language="en"
+    )
+    assert "Files produced" in text
+    assert "auto-repaired" in text

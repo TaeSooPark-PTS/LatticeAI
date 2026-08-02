@@ -8,7 +8,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -132,11 +132,15 @@ def create_local_files_router(
                 errors.append(f"graph: {exc}")
 
         # ── watcher + connected sources (real) ────────────────────────────────
-        watch = local_kg_watcher.status() if local_kg_watcher else {"available": False, "active": {}}
-        sources = []
+        watch: Dict[str, Any] = (
+            local_kg_watcher.status()
+            if local_kg_watcher
+            else {"available": False, "active": {}}
+        )
+        sources: List[Any] = []
         try:
             if knowledge_graph is not None:
-                sources = (knowledge_graph.local_sources() or {}).get("sources", [])
+                sources = list((knowledge_graph.local_sources() or {}).get("sources") or [])
         except Exception as exc:
             errors.append(f"sources: {exc}")
         watched = len(watch.get("active", {}) or {})

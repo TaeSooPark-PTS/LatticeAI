@@ -51,7 +51,7 @@ def create_docx(title: str, body, filename: str = "document.docx") -> Dict[str, 
         text = block.strip()
         if text:
             document.add_paragraph(text)
-    document.save(target)
+    document.save(str(target))
     return {"path": _relative(target), "bytes": target.stat().st_size}
 
 
@@ -107,7 +107,7 @@ def create_pptx(title: str, slides: List[Dict[str, Any]], filename: str = "prese
             paragraph.text = str(bullet)
             paragraph.level = 0
 
-    presentation.save(target)
+    presentation.save(str(target))
     return {"path": _relative(target), "slides": len(presentation.slides), "bytes": target.stat().st_size}
 
 

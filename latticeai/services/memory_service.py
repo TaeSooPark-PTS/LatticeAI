@@ -236,7 +236,7 @@ class MemoryService:
         elif kg_index:
             vector_total = kg_index.get("indexed") or kg_index.get("ready")
 
-        sources = [
+        sources: List[Dict[str, Any]] = [
             {
                 "id": "workspace", "type": "workspace", "label": "Workspace Memory",
                 "count": len(ws_mem), "size_bytes": ws_bytes if ws_mem else 0,
@@ -272,7 +272,7 @@ class MemoryService:
                 "detail": "Local embedding vector index." if kg_index else "Vector index unavailable.",
             },
         ]
-        total_items = sum((s["count"] or 0) for s in sources)
+        total_items = sum(int(s["count"] or 0) for s in sources)
         total_bytes = ws_bytes + kg_bytes + conv_bytes
         healthy = sum(1 for s in sources if s["health"] == "ok")
         overall = "ok" if healthy >= 4 else "degraded" if healthy >= 1 else "unavailable"
@@ -747,7 +747,11 @@ class MemoryService:
         graph_count = int(sources.get("graph", {}).get("count") or 0)
         vector_count = int(sources.get("vector", {}).get("count") or 0)
         query = recall_query.strip() or self._latest_recall_query(user_email=user_email, workspace_id=workspace_id)
-        recall = self.recall(query, user_email=user_email, workspace_id=workspace_id, limit=limit) if query else {"query": "", "results": [], "count": 0, "source": "live"}
+        recall: Dict[str, Any] = (
+            self.recall(query, user_email=user_email, workspace_id=workspace_id, limit=limit)
+            if query
+            else {"query": "", "results": [], "count": 0, "source": "live"}
+        )
         recall_items = [
             {
                 "id": item.get("id"),
@@ -760,7 +764,7 @@ class MemoryService:
                 "matched_terms": item.get("matched_terms") or [],
                 "confidence": item.get("confidence") or "low",
             }
-            for item in recall.get("results", [])[: max(1, min(limit, 8))]
+            for item in list(recall.get("results", []))[: max(1, min(limit, 8))]
         ]
         durable_items = workspace_count + conversation_count + graph_count
         # Capability and proof are deliberately separated. The brain is

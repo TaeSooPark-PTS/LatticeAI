@@ -10,7 +10,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-MARKETPLACE_VERSION = "10.3.0"
+MARKETPLACE_VERSION = "10.4.0"
 TEMPLATE_KINDS = ("plugin", "workflow", "agent", "ingestion_bridge")
 
 
@@ -242,7 +242,7 @@ class TemplateCatalog:
         if not isinstance(payload, dict):
             raise MarketplaceError("template import payload must be an object")
         template = deepcopy(payload.get("template") or payload)
-        kind = _normalize_kind(template.get("kind") or payload.get("kind"))
+        kind = _normalize_kind(str(template.get("kind") or payload.get("kind") or ""))
         if not template.get("id"):
             raise MarketplaceError("template missing id")
         if not template.get("name"):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -63,7 +63,7 @@ def create_setup_router(
 
     # ── Setup Wizard ─────────────────────────────────────────────────────────────
 
-    def setup_auto_state() -> Dict[str, object]:
+    def setup_auto_state() -> Dict[str, Any]:
         """Return the PPT-aligned zero-config setup state used by setup UI/API."""
         profile = auto_setup_probe()
         recommendation = auto_setup_recommend(profile)
@@ -77,7 +77,7 @@ def create_setup_router(
         }
     
     
-    def primary_setup_model(recs: Dict[str, object]) -> Optional[Dict[str, object]]:
+    def primary_setup_model(recs: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         models = recs.get("models") if isinstance(recs, dict) else None
         if not isinstance(models, list):
             return None

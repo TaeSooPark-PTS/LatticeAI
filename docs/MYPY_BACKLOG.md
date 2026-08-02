@@ -1,98 +1,65 @@
 # mypy backlog
 
-`[tool.mypy] files` in `pyproject.toml` lists every module that type-checks
-today — **193 of 270** as of 10.3.0, up from 13 in 10.2.0.
-This file is the remainder, smallest first, so the boundary is a measured
-fact rather than an open-ended intention.
+> **Status: reference**
+> 10.2.0: 13 modules checked. 10.3.0: 193 of 270, with the remaining 77 listed
+> here by error count. **10.4.0: 274 of 274 — the backlog is empty.**
 
-Adding a module to the checked set is a decision to fix that module, not its
-dependencies (`follow_imports = silent`). Work from the top: the short ones
-are usually one missing annotation.
+`[tool.mypy] files` in `pyproject.toml` now lists **every** module in
+`lattice_brain/` and `latticeai/`. There is no "adopted set" any more; adding a
+module to the tree adds it to the checked set, and CI fails if it does not
+type-check.
 
-Three of these turned out to be real defects when 10.3.0 measured them:
-`hooks.py` referenced a non-existent `self._path` inside the handler for an
-unreadable registry, `_kg_fsutil.py` used `Iterable` without importing it,
-and `agent_runtime.py` called `.get` on a value that could be `None`. Those
-are fixed; the list below is what is left.
+This file stays as the record of how the boundary closed, because two of the
+1,407 errors 10.3.0 measured turned out to be worth more than the annotations.
 
-| errors | module | dominant codes |
-| ---: | --- | --- |
-| 1 | `lattice_brain/graph/_kg_fsutil.py` | `union-attr` ×1 |
-| 1 | `latticeai/api/admin.py` | `call-overload` ×1 |
-| 1 | `latticeai/api/computer_use.py` | `var-annotated` ×1 |
-| 1 | `latticeai/api/hooks.py` | `unreachable` ×1 |
-| 1 | `latticeai/api/local_files.py` | `arg-type` ×1 |
-| 1 | `latticeai/api/static_routes.py` | `assignment` ×1 |
-| 1 | `latticeai/core/marketplace.py` | `arg-type` ×1 |
-| 1 | `latticeai/core/model_compat.py` | `unreachable` ×1 |
-| 1 | `latticeai/core/plugins.py` | `unreachable` ×1 |
-| 1 | `latticeai/core/project_sessions.py` | `var-annotated` ×1 |
-| 1 | `latticeai/core/workspace_os.py` | `unreachable` ×1 |
-| 1 | `latticeai/core/workspace_os_state.py` | `arg-type` ×1 |
-| 1 | `latticeai/runtime/sso_config_runtime.py` | `arg-type` ×1 |
-| 1 | `latticeai/services/command_center.py` | `assignment` ×1 |
-| 1 | `latticeai/services/search_service.py` | `assignment` ×1 |
-| 1 | `latticeai/services/triggers.py` | `truthy-function` ×1 |
-| 1 | `latticeai/setup/auto_setup.py` | `attr-defined` ×1 |
-| 2 | `lattice_brain/ingestion.py` | `assignment` ×2 |
-| 2 | `latticeai/api/chat_stream.py` | `var-annotated` ×1, `arg-type` ×1 |
-| 2 | `latticeai/api/mcp.py` | `var-annotated` ×2 |
-| 2 | `latticeai/core/mcp_registry.py` | `index` ×1, `return-value` ×1 |
-| 2 | `latticeai/core/run_explain.py` | `union-attr` ×1, `call-overload` ×1 |
-| 2 | `latticeai/core/workspace_snapshots.py` | `var-annotated` ×2 |
-| 2 | `latticeai/runtime/review_wiring.py` | `call-arg` ×2 |
-| 2 | `latticeai/services/brain_intelligence.py` | `operator` ×1, `index` ×1 |
-| 2 | `latticeai/services/memory_service.py` | `misc` ×1, `index` ×1 |
-| 2 | `latticeai/services/model_loading.py` | `arg-type` ×1, `call-overload` ×1 |
-| 2 | `latticeai/services/multimodal_streaming.py` | `attr-defined` ×1, `arg-type` ×1 |
-| 2 | `latticeai/setup/wizard.py` | `attr-defined` ×1, `dict-item` ×1 |
-| 2 | `latticeai/tools/documents.py` | `arg-type` ×2 |
-| 3 | `lattice_brain/quality.py` | `var-annotated` ×2, `return-value` ×1 |
-| 3 | `latticeai/api/models.py` | `call-overload` ×2, `attr-defined` ×1 |
-| 3 | `latticeai/cli/entrypoint.py` | `operator` ×1, `union-attr` ×1, `arg-type` ×1 |
-| 3 | `latticeai/core/audit.py` | `assignment` ×1, `index` ×1, `operator` ×1 |
-| 3 | `latticeai/integrations/telegram_bot.py` | `union-attr` ×2, `arg-type` ×1 |
-| 3 | `latticeai/runtime/stages.py` | `arg-type` ×3 |
-| 3 | `latticeai/services/cloud_streaming.py` | `arg-type` ×2, `attr-defined` ×1 |
-| 3 | `latticeai/services/hybrid_chat.py` | `arg-type` ×3 |
-| 3 | `latticeai/services/tool_dispatch.py` | `arg-type` ×3 |
-| 4 | `lattice_brain/graph/_kg_common.py` | `misc` ×3, `return-value` ×1 |
-| 4 | `latticeai/api/chat_agent_http.py` | `arg-type` ×2, `misc` ×1, `assignment` ×1 |
-| 4 | `latticeai/api/chat_helpers.py` | `call-overload` ×2, `union-attr` ×1, `arg-type` ×1 |
-| 4 | `latticeai/api/security_dashboard.py` | `assignment` ×3, `unreachable` ×1 |
-| 4 | `latticeai/services/evidence_actions.py` | `union-attr` ×4 |
-| 5 | `lattice_brain/context.py` | `arg-type` ×4, `misc` ×1 |
-| 5 | `latticeai/api/permissions.py` | `arg-type` ×5 |
-| 5 | `latticeai/services/model_engines.py` | `attr-defined` ×2, `call-overload` ×2, `unreachable` ×1 |
-| 5 | `latticeai/services/run_executor.py` | `unreachable` ×3, `arg-type` ×1, `return-value` ×1 |
-| 6 | `lattice_brain/runtime/contracts.py` | `union-attr` ×6 |
-| 6 | `latticeai/core/agent.py` | `arg-type` ×4, `return-value` ×2 |
-| 7 | `lattice_brain/graph/proactive.py` | `assignment` ×2, `arg-type` ×2, `index` ×1 |
-| 7 | `latticeai/app_factory.py` | `arg-type` ×3, `assignment` ×2, `attr-defined` ×2 |
-| 7 | `latticeai/core/embedding_providers.py` | `unreachable` ×2, `assignment` ×2, `union-attr` ×2 |
-| 7 | `latticeai/services/openai_compatible_adapter.py` | `arg-type` ×7 |
-| 8 | `lattice_brain/graph/curator.py` | `operator` ×8 |
-| 8 | `lattice_brain/workflow.py` | `arg-type` ×5, `index` ×2, `assignment` ×1 |
-| 8 | `latticeai/api/setup.py` | `index` ×5, `attr-defined` ×3 |
-| 8 | `latticeai/services/local_knowledge.py` | `union-attr` ×3, `misc` ×2, `operator` ×2 |
-| 10 | `latticeai/api/tools.py` | `arg-type` ×10 |
-| 13 | `latticeai/api/search.py` | `return` ×12, `return-value` ×1 |
-| 15 | `lattice_brain/graph/store.py` | `name-defined` ×15 |
-| 16 | `latticeai/api/chat.py` | `arg-type` ×12, `misc` ×3, `call-overload` ×1 |
-| 16 | `latticeai/tools/computer.py` | `union-attr` ×16 |
-| 19 | `lattice_brain/graph/retrieval_docgen.py` | `name-defined` ×12, `attr-defined` ×7 |
-| 35 | `latticeai/services/model_runtime.py` | `index` ×15, `arg-type` ×8, `attr-defined` ×6 |
-| 45 | `lattice_brain/graph/retrieval_reads.py` | `name-defined` ×30, `attr-defined` ×15 |
-| 46 | `latticeai/models/router.py` | `arg-type` ×26, `assignment` ×7, `attr-defined` ×4 |
-| 57 | `lattice_brain/graph/write_master.py` | `name-defined` ×48, `attr-defined` ×9 |
-| 64 | `lattice_brain/graph/documents.py` | `name-defined` ×45, `attr-defined` ×19 |
-| 71 | `lattice_brain/graph/provenance.py` | `name-defined` ×59, `attr-defined` ×12 |
-| 77 | `lattice_brain/graph/retrieval.py` | `name-defined` ×61, `attr-defined` ×16 |
-| 79 | `lattice_brain/graph/discovery.py` | `name-defined` ×72, `attr-defined` ×7 |
-| 107 | `lattice_brain/graph/retrieval_vector.py` | `name-defined` ×68, `attr-defined` ×39 |
-| 108 | `latticeai/api/workspace.py` | `misc` ×105, `arg-type` ×2, `call-overload` ×1 |
-| 127 | `lattice_brain/graph/discovery_index.py` | `name-defined` ×98, `attr-defined` ×29 |
-| 143 | `lattice_brain/graph/projection.py` | `name-defined` ×122, `attr-defined` ×21 |
-| 177 | `lattice_brain/graph/ingest.py` | `name-defined` ×122, `attr-defined` ×55 |
+## Two root causes were 68% of the backlog
 
-Total outstanding: **1407** errors across **77** modules.
+**`_kg_common.__all__` was computed** (`[name for name in globals() if not
+name.startswith("__")]`). Correct at runtime, opaque to a checker: mypy could
+not resolve a single name behind `from ._kg_common import *`, so twelve graph
+modules reported **~750 false `name-defined` errors** and stayed unchecked.
+Freezing the list to a literal fixed all of them.
+`tests/unit/test_kg_common_exports.py` asserts the literal still equals what
+the expression would produce, so it cannot drift.
+
+**The eleven graph mixins had an unwritten contract.** `ingest` calls
+`_upsert_node` from `write_master`, which calls `_v2_project_node` from
+`projection`, and everything calls `_connect` — 229 `attr-defined` errors,
+because from a checker's position each mixin is a bare class calling methods it
+does not have. `lattice_brain/graph/_kg_contract.py` writes that contract down:
+23 declared members, typing-only (`_Core` is `object` at runtime, so the MRO is
+unchanged), verified by `tests/unit/test_kg_contract.py`.
+
+Neither was a typing problem. Both were *readability* problems that a reader
+had to solve by grepping eleven files.
+
+## Real defects the remaining work surfaced
+
+| defect | module | why it mattered |
+| --- | --- | --- |
+| four lines duplicated after a `return` | `core/workspace_os.py` | dead since the merge that introduced it; `remove_member` looked like it did its work twice |
+| `main` was never exported | `app_factory.py` | `python -m latticeai.server_app` raised `AttributeError` — the module entrypoint did not run |
+| `str` shadowed a `dict` in a loop | `models/router.py` | the custom-cloud-model branch built ids from the wrong variable |
+| `Optional` seam called unguarded | `lattice_brain/context.py` | an unconfigured retrieval port raised `TypeError` inside failure isolation instead of naming itself |
+
+(10.3.0 found three more the same way: `self._path` inside an error handler,
+`Iterable` used without importing it, and `.get` on a possible `None`.)
+
+## Conventions the sweep settled on
+
+* **JSON-shaped payloads are `Dict[str, Any]`, not `Dict[str, object]`.**
+  `object` forced a cast at every nested access without catching anything;
+  the value really is arbitrary JSON.
+* **Optional dependencies are aliased, then re-exported as `Any`**
+  (`AsyncOpenAI`, `mx`, `vlm_load`, `pyautogui`), so "installed" and "absent"
+  have the same declared type and call sites keep their historical name.
+* **Async generators in Protocols are declared with `def`, not `async def`.**
+  `async def … -> AsyncIterator[T]` says "a coroutine resolving to an
+  iterator", which no implementation does.
+* **A router dependency it cannot run without is bound through
+  `AppContext.require("name")`** — an absent dependency names itself at router
+  construction instead of surfacing as `'NoneType' object is not callable`
+  inside a request handler.
+* **A defensive `isinstance` check on a parameter means the annotation is
+  wrong.** Widen the parameter (`Any`, `Optional[str]`) rather than deleting
+  the guard: the guard is what the callers actually need.

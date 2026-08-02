@@ -431,7 +431,7 @@ def fast_postprocess(text: str, profile: Dict[str, Any]) -> str:
 SMOKE_PROMPT = "한국어로 한 문장만 답해. 2+2는?"
 
 
-def classify_smoke_response(text: str) -> Tuple[str, str]:
+def classify_smoke_response(text: Optional[str]) -> Tuple[str, str]:
     """Smoke test 응답을 ok / degraded / failed 로 분류한다. (item 3-3)
 
     - failed: 채팅에 쓸 수 없는 수준 (빈 응답, 특수/role 토큰 누출, 심한 반복,

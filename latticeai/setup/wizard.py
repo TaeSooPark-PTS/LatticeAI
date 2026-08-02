@@ -352,7 +352,7 @@ def _detect_cpu() -> Dict[str, Any]:
                     quiet()
         try:
             import ctypes
-            kernel32 = ctypes.windll.kernel32
+            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]  # Windows-only
             feature_map = {
                 6: "sse",
                 10: "sse2",
@@ -836,9 +836,18 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
         if cid == "homebrew":
             action = {"type": "url", "url": OFFICIAL_DOWNLOADS["homebrew"], "binary": "brew"}
         elif tools.get("brew") and brew_pkg:
-            action = {"type": "brew", "package": brew_pkg, "binary": binary, "official_url": OFFICIAL_DOWNLOADS.get(cid)}
+            action = {
+                "type": "brew",
+                "package": brew_pkg,
+                "binary": binary or "",
+                "official_url": OFFICIAL_DOWNLOADS.get(cid, ""),
+            }
         else:
-            action = {"type": "url", "url": OFFICIAL_DOWNLOADS.get(cid, ""), "binary": binary}
+            action = {
+                "type": "url",
+                "url": OFFICIAL_DOWNLOADS.get(cid, ""),
+                "binary": binary or "",
+            }
         components.append({
             "id": f"component_{cid}", "name": name,
             "subtitle": subtitle, "status": "available",

@@ -1,12 +1,23 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..quiet import quiet
 
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
 
+# The cross-mixin surface (`_connect`, `_upsert_node`, …) is declared in
+# `_kg_contract.KnowledgeGraphCore`. It is a typing-only base: at runtime this
+# is `object`, so the MRO of `KnowledgeGraphStore` is unchanged.
+if TYPE_CHECKING:
+    from ._kg_contract import KnowledgeGraphCore as _Core
+else:
+    _Core = object
 
-class KnowledgeGraphDocumentsMixin:
+
+
+class KnowledgeGraphDocumentsMixin(_Core):
     def find_documents_by_uri_prefix(self, prefix: str) -> List[Dict[str, Any]]:
         """Content nodes whose ``metadata.source_uri`` starts with ``prefix``.
 
@@ -246,7 +257,11 @@ class KnowledgeGraphDocumentsMixin:
 
             prs = Presentation(str(path))
             for slide_index, slide in enumerate(prs.slides, start=1):
-                slide_info = {"index": slide_index, "shapes": [], "texts": []}
+                slide_info: Dict[str, Any] = {
+                    "index": slide_index,
+                    "shapes": [],
+                    "texts": [],
+                }
                 for shape_index, shape in enumerate(slide.shapes, start=1):
                     shape_info = {
                         "index": shape_index,

@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { LatticeAIClient } from "./client";
+import { parseModelRecommendation } from "./surface";
 
 export class ModelPicker {
   constructor(private client: LatticeAIClient) {}
@@ -22,9 +23,34 @@ export class ModelPicker {
 
     const { recommended, loaded, current } = await this.client.listModels();
 
+    // The web Library view explains *why* a model suits this machine. The
+    // picker used to list a catalogue with no reasoning, which SURFACE_PARITY
+    // recorded as ◐. The recommendation is read from the server, never
+    // recomputed here — an unavailable scan simply means no banner.
+    let advice: ReturnType<typeof parseModelRecommendation> = null;
+    try {
+      advice = parseModelRecommendation(await this.client.setupScan());
+    } catch {
+      advice = null;
+    }
+
     type Item = vscode.QuickPickItem & { modelId: string };
 
     const items: Item[] = [];
+
+    if (advice) {
+      items.push({
+        label: "── Recommended for this machine ──",
+        kind: vscode.QuickPickItemKind.Separator,
+        modelId: "",
+      });
+      items.push({
+        label: `$(star-full) ${shortName(advice.modelId)}`,
+        description: advice.runtime ? `${advice.runtime} · recommended here` : "recommended here",
+        detail: advice.rationale.join(" · ") || advice.modelId,
+        modelId: advice.modelId,
+      });
+    }
 
     // 이미 로드된 모델 (즉시 전환 가능)
     if (loaded.length > 0) {

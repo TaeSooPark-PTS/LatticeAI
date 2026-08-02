@@ -165,35 +165,38 @@ def create_workspace_router(context: AppContext) -> APIRouter:
     router = APIRouter()
 
     # Bind injected deps to the names the moved handler bodies expect.
-    service = context.workspace_service
-    require_user = context.require_user
-    require_admin = context.require_admin
-    get_current_user = context.get_current_user
-    append_audit_event = context.append_audit_event
-    get_history = context.get_history
-    get_audit_log = context.get_audit_log
-    load_users = context.load_users
-    scan_environment = context.scan_environment
-    local_sysinfo = context.local_sysinfo
-    get_recommendations = context.get_recommendations
-    install_skill = context.install_skill
-    remove_skill_directory = context.remove_skill_directory
-    redact_secret_text = context.redact_secret_text
-    capability_registry = context.capability_registry
+    # `context.require(...)` for anything this router calls: an absent
+    # dependency now names itself here instead of surfacing as
+    # "'NoneType' object is not callable" inside a request handler.
+    service = context.require("workspace_service")
+    require_user = context.require("require_user")
+    require_admin = context.require("require_admin")
+    get_current_user = context.require("get_current_user")
+    append_audit_event = context.require("append_audit_event")
+    get_history = context.require("get_history")
+    get_audit_log = context.require("get_audit_log")
+    load_users = context.require("load_users")
+    scan_environment = context.require("scan_environment")
+    local_sysinfo = context.require("local_sysinfo")
+    get_recommendations = context.require("get_recommendations")
+    install_skill = context.require("install_skill")
+    remove_skill_directory = context.require("remove_skill_directory")
+    redact_secret_text = context.require("redact_secret_text")
+    capability_registry = context.require("capability_registry")
 
     svc = service
     WORKSPACE_OS = service.store
-    _workspace_graph = context.workspace_graph
-    _graph_stats_safe = context.graph_stats
-    _workspace_models_payload = context.workspace_models
-    _workspace_settings_payload = context.workspace_settings
-    _require_graph = context.require_graph
+    _workspace_graph = context.require("workspace_graph")
+    _graph_stats_safe = context.require("graph_stats")
+    _workspace_models_payload = context.require("workspace_models")
+    _workspace_settings_payload = context.require("workspace_settings")
+    _require_graph = context.require("require_graph")
     KNOWLEDGE_GRAPH = context.knowledge_graph
     LOCAL_KG_WATCHER = context.local_kg_watcher
     SKILLS_DIR = context.skills_dir
     LOCAL_MODEL = context.local_model
     PUBLIC_MODEL = context.public_model
-    _fetch_skills_marketplace = context.fetch_skills_marketplace
+    _fetch_skills_marketplace = context.require("fetch_skills_marketplace")
     _workspace_scope = _workspace_scope_from_request
 
     def _gate_read(request: Request):
@@ -651,7 +654,7 @@ def create_workspace_router(context: AppContext) -> APIRouter:
     @router.get("/workspace/vscode/status")
     async def workspace_vscode_status(request: Request):
         require_user(request)
-        last_seen = int(_VSCODE_STATUS.get("last_seen_ms") or 0)
+        last_seen = int(str(_VSCODE_STATUS.get("last_seen_ms") or 0))
         now_ms = int(datetime.utcnow().timestamp() * 1000)
         connected = last_seen > 0 and (now_ms - last_seen) < 60000
         return {

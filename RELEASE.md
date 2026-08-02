@@ -13,6 +13,80 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.4.0 — Named Ground (2026-08-02)
+
+10.3.0 wrote down what was not measured. 10.4.0 emptied the list.
+
+**The type backlog closed: 1,407 errors across 77 modules → 0 across 274.**
+Two root causes accounted for 954 of them, and neither was a typing problem:
+
+* `_kg_common.__all__` was *computed* (`[name for name in globals() if not
+  name.startswith("__")]`). Correct at runtime, opaque to a checker — so twelve
+  graph modules resolved not one name behind their star import and reported
+  ~750 false `name-defined` errors. Freezing it to a literal fixed all of them;
+  a test asserts the literal still equals what the expression would produce.
+* The eleven graph mixins share a real contract (`_connect`, `_upsert_node`,
+  `_v2_project_node`, …) that was written down nowhere, so 229 `attr-defined`
+  errors were a checker correctly reporting that each mixin calls methods it
+  does not have. `_kg_contract.py` declares those 23 members. It is
+  typing-only: `_Core` is `object` at runtime, so the MRO is unchanged, and a
+  test asserts that.
+
+**The composition root is no longer one function.** `app_factory._build` went
+from **1,318 lines to 26**, split into ten ordered phases sharing a typed
+`RuntimeContext`. The single closure worked because closures resolve free
+variables at call time — several sections legitimately depend on names bound
+150 lines further down. The RuntimeContext preserves exactly that property
+while naming the state, and the phase order is a contract with a test: which
+phase produces which attribute, and that reading one early fails by name.
+
+**Four real defects surfaced doing it:**
+
+* `core/workspace_os.py` had four lines duplicated after a `return` — dead code
+  that made `remove_member` look like it did its work twice.
+* **`python -m latticeai.server_app` had never worked.** `main` was a local
+  inside the old `_build` closure and was never on the export allowlist, so
+  `get_shared_runtime().main()` always raised `AttributeError`. Every test uses
+  `create_app()`, so nothing caught it.
+* `models/router.py` shadowed a `dict` with a `str` in a loop, so the custom
+  cloud-model branch built ids from the wrong variable.
+* `lattice_brain/context.py` called an unconfigured retrieval seam unguarded,
+  which died as a `TypeError` inside failure isolation without naming itself.
+
+**The surface-parity matrix has no ◐ left.** All three remaining gaps were
+rendering gaps, not contract gaps — the sidecar was already reporting the data
+and the editor and bot were discarding it. VS Code gained folder capture
+(`/api/ingestion/folder`, same approval dance as the web), artifact cards that
+distinguish a deterministically repaired scaffold from clean model output, and
+a hardware-derived model recommendation with its reasoning. Telegram gained the
+same artifact card.
+
+**Coverage moved honestly, not to target.** Frontend 28.5% → **32.3%**
+(208 → 337 tests), Python 71.6% → **71.8%** (1,896 → 1,956). The new frontend
+tests all went to modules with real logic and no test: routing, the app store's
+behaviour when localStorage is disabled, API error translation, and the
+knowledge-graph explorer. Frontend 70% is still roughly 2,200 statements away,
+mostly large React page components, and this release does not claim otherwise.
+
+### Verification
+
+| gate | result |
+| --- | --- |
+| pytest (unit) | 1,953 passed |
+| pytest (full, coverage) | 1,956 passed · 71.77% (70% floor enforced) |
+| vitest | 337 passed · 32.31% |
+| mypy | **274 / 274 modules, 0 errors** |
+| ruff | All checks passed |
+| VS Code extension contract | 19 passed |
+
+### Honest limitations
+
+- Frontend coverage is 32.3%, not 70%. The gap is the large page components.
+- `router_registration`'s register functions still take 20–50 keyword
+  arguments; that is the next structural target, not this release's.
+- Release artifacts are built and validated by tag; package-registry publishing
+  stays owner-run.
+
 ## v10.3.0 — Measured Ground (2026-07-29)
 
 A release about knowing where things stand. Three numbers this project reported

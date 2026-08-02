@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.3.0 — Measured Ground**.
+Current release: **10.4.0 — Named Ground**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

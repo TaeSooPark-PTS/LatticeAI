@@ -11,7 +11,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -31,6 +31,20 @@ from latticeai.api.chat_stream import agent_live_stream
 from latticeai.core.agent import AgentRunContext, AgentState, normalize_plan
 from latticeai.core.quiet import quiet
 from latticeai.core.run_explain import explain_run
+
+
+def _bind_case(
+    execute_tool: Callable[[str, Dict[str, Any]], Any],
+    action_name: str,
+    case_input: Dict[str, Any],
+) -> Callable[[], Any]:
+    """Freeze this iteration's action and input into a zero-arg thunk.
+
+    Previously a lambda with default-argument binding, which is correct but
+    invisible to a type checker (`Cannot infer type of lambda`) and one
+    refactor away from every case running the last input.
+    """
+    return lambda: execute_tool(action_name, case_input)
 from latticeai.core.run_store import (
     AgentRunStore,
     hash_approval_token,
@@ -200,9 +214,7 @@ class AgentHTTPController:
                     # Bound as defaults: the lambda is invoked inside this
                     # iteration today, so late binding is harmless — until
                     # someone defers it and every case runs the last input.
-                    lambda action_name=action_name, case_input=case_input: self.execute_tool(
-                        action_name, case_input
-                    ),
+                    _bind_case(self.execute_tool, action_name, case_input),
                     source="eval",
                 )
                 criteria = case.get("pass_criteria", "")
@@ -509,7 +521,7 @@ class AgentHTTPController:
                 }
         try:
             for summary in self.run_store.pending_summaries(current_user):
-                run_id = summary.get("run_id")
+                run_id = str(summary.get("run_id") or "")
                 if run_id and run_id not in pending:
                     pending[run_id] = {
                         "run_id": run_id,
@@ -801,7 +813,7 @@ class AgentHTTPController:
                     detail="Agent run belongs to another user.",
                 )
             if now_monotonic >= entry["expires_monotonic"]:
-                self._approvals.pop(req.run_id, None)
+                self._approvals.pop(req.run_id or "", None)
                 try:
                     self.run_store.delete(req.run_id or "")
                 except Exception:  # noqa: BLE001
@@ -820,7 +832,7 @@ class AgentHTTPController:
                     detail="Invalid approval token for this run.",
                 )
             # Token validated — the pending run is consumed either way.
-            self._approvals.pop(req.run_id, None)
+            self._approvals.pop(req.run_id or "", None)
             try:
                 self.run_store.delete(req.run_id or "")
             except Exception as exc:  # noqa: BLE001 — consumption must proceed

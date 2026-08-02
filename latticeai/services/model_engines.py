@@ -33,7 +33,7 @@ from latticeai.services.process_audit import (
 )
 
 
-def _progress_payload(*args, **kwargs) -> Dict[str, object]:
+def _progress_payload(*args, **kwargs) -> Dict[str, Any]:
     try:
         from latticeai.services.model_runtime import model_download_progress_payload
     except Exception:
@@ -63,7 +63,7 @@ def windows_binary_candidates(binary: str) -> List[Path]:
     local_appdata = os.environ.get("LOCALAPPDATA", "")
     program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
     program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
-    candidates = {
+    candidates: Dict[str, List[Optional[Path]]] = {
         "ollama": [
             Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe" if local_appdata else None,
             Path(program_files) / "Ollama" / "ollama.exe",
@@ -111,7 +111,7 @@ def _json_request(
     headers: Optional[Dict[str, str]] = None,
     payload: Optional[Dict[str, Any]] = None,
     timeout: float = 10.0,
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     data = None
     req_headers = dict(headers or {})
     if payload is not None:
@@ -211,8 +211,6 @@ def get_openai_compatible_server_models(provider: str) -> List[str]:
     if provider == "lmstudio":
         models = []
         for item in get_lmstudio_models():
-            if not isinstance(item, dict):
-                continue
             key = str(item.get("key") or "").strip()
             loaded_instances = item.get("loaded_instances") or []
             if loaded_instances:
@@ -360,7 +358,7 @@ def ensure_llamacpp_server(model_name: str) -> None:
         raise ModelRuntimeError(status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다.")
 
 
-def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, object]:
+def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, Any]:
     ollama = local_binary("ollama")
     if not ollama:
         raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
@@ -447,7 +445,7 @@ def get_ollama_pulled_models() -> set:
         return set()
 
 
-def engine_support_status(engine: str) -> Dict[str, object]:
+def engine_support_status(engine: str) -> Dict[str, Any]:
     if engine != "vllm":
         return {"supported": True, "reason": None}
     is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
@@ -470,7 +468,7 @@ def _engine_install_command(
     if engine not in ENGINE_INSTALLERS:
         raise ModelRuntimeError(status_code=400, detail="지원하지 않는 엔진입니다.")
     installer = ENGINE_INSTALLERS[engine]
-    required_binary = installer.get("requires_binary")
+    required_binary = str(installer.get("requires_binary") or "")
     if required_binary and shutil.which(required_binary) is None:
         raise ModelRuntimeError(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
     command = list(installer["command"])
@@ -528,16 +526,16 @@ def install_engine(
             },
         ) from exc
 
-    run_kwargs = {
-        "cwd": cwd,
-        "capture_output": True,
-        "text": True,
-        "timeout": 900,
-        "check": False,
-    }
     try:
         append_process_audit_event("engine_install", plan=plan, status="started")
-        completed = subprocess.run(command, **run_kwargs)
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=900,
+            check=False,
+        )
     except subprocess.TimeoutExpired:
         append_process_audit_event("engine_install", plan=plan, status="timeout")
         raise ModelRuntimeError(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
@@ -603,7 +601,7 @@ async def _smoke_test_loaded_model(
     *,
     api_key_override: Optional[str] = None,
     model_router: Any = None,
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     """로드 직후 짧은 채팅 테스트를 돌려 ready_to_chat 여부를 판정한다.
 
     Cloud models are skipped to avoid cost.

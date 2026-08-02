@@ -515,10 +515,6 @@ class WorkspaceOSStore:
         self.save_state(state)
         self.record_timeline_event("workspace", "member_removed", {"workspace_id": workspace_id, "user_id": user_id})
         return self._workspace_public(ws, actor)
-        ws["updated_at"] = _now()
-        self.save_state(state)
-        self.record_timeline_event("workspace", "member_removed", {"workspace_id": workspace_id, "user_id": user_id})
-        return self._workspace_public(ws, actor)
 
     def set_active_workspace(self, workspace_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         state = self.load_state()

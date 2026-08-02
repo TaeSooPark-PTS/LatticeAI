@@ -45,14 +45,20 @@ class MultimodalTurnResult:
 
 
 class MultimodalAdapter(Protocol):
-    async def stream_media(
+    # See CloudLLMAdapter.stream: an async generator is declared with `def`.
+    def stream_media(
         self,
         *,
         prompt: str,
         context: str,
         model: Optional[str] = None,
-    ) -> AsyncIterator[Dict[str, Any]]:
-        """Yield progress events, then a final event with media_urls."""
+    ) -> AsyncIterator[Any]:
+        """Yield progress events, then a final event with media_urls.
+
+        Typed as ``Any`` rather than ``Dict[str, Any]`` because adapters are
+        supplied by callers: the bridge validates each event's shape rather
+        than trusting the annotation.
+        """
         ...
 
 
@@ -112,7 +118,7 @@ class MultimodalStreamingBridge:
             answer_text="\n".join(notes),
             sent_node_ids=list(minimal.node_ids),
             provider=getattr(self._adapter, "provider_name", "multimodal"),
-            model=model or getattr(self._adapter, "default_model", ""),
+            model=str(model or getattr(self._adapter, "default_model", "")),
         )
 
 

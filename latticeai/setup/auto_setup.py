@@ -298,7 +298,7 @@ def _detect_cpu_details(prof_os: str) -> Tuple[str, int, int, List[str]]:
                     quiet()
         try:
             import ctypes
-            kernel32 = ctypes.windll.kernel32
+            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]  # Windows-only
             feature_map = {6: "sse", 10: "sse2", 13: "sse3", 19: "neon", 28: "rdrand"}
             flags.extend(name for code, name in feature_map.items() if kernel32.IsProcessorFeaturePresent(code))
         except Exception:

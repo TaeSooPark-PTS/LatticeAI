@@ -269,10 +269,10 @@ def _json_request(
     url: str,
     *,
     method: str = "GET",
-    payload: Optional[Dict[str, object]] = None,
+    payload: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
     timeout: float = 10.0,
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     data = None
     req_headers = dict(headers or {})
     if payload is not None:
@@ -299,12 +299,12 @@ def ensure_lmstudio_server() -> None:
     return _ensure_lmstudio_server()
 
 
-_LMSTUDIO_MODELS_CACHE: List[Dict[str, object]] = []
+_LMSTUDIO_MODELS_CACHE: List[Dict[str, Any]] = []
 _LMSTUDIO_MODELS_CACHE_TS: float = 0.0
 _LMSTUDIO_MODELS_CACHE_TTL: float = 10.0
 
 
-def get_lmstudio_models(*, force: bool = False) -> List[Dict[str, object]]:
+def get_lmstudio_models(*, force: bool = False) -> List[Dict[str, Any]]:
     global _LMSTUDIO_MODELS_CACHE, _LMSTUDIO_MODELS_CACHE_TS
     if not force and time.monotonic() - _LMSTUDIO_MODELS_CACHE_TS < _LMSTUDIO_MODELS_CACHE_TTL:
         return _LMSTUDIO_MODELS_CACHE
@@ -335,15 +335,13 @@ def _lmstudio_candidate_keys(model_name: str) -> List[str]:
     return list(dict.fromkeys(candidates))
 
 
-def _find_lmstudio_model_key(model_name: str, models: List[Dict[str, object]]) -> Optional[str]:
+def _find_lmstudio_model_key(model_name: str, models: List[Dict[str, Any]]) -> Optional[str]:
     if not models:
         return None
     candidate_keys = _lmstudio_candidate_keys(model_name)
     exact = []
     fuzzy = []
     for item in models:
-        if not isinstance(item, dict):
-            continue
         key = str(item.get("key") or "").strip()
         display_name = str(item.get("display_name") or "").strip()
         haystacks = [key.lower(), display_name.lower()]
@@ -352,10 +350,10 @@ def _find_lmstudio_model_key(model_name: str, models: List[Dict[str, object]]) -
             continue
         if any(token and token in hay for token in candidate_keys for hay in haystacks):
             fuzzy.append(key)
-    return (exact or fuzzy or [None])[0]
+    return next(iter(exact or fuzzy), None)
 
 
-def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
+def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
     ensure_lmstudio_server()
     auth_header = {"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"}
     models = get_lmstudio_models()
@@ -430,7 +428,7 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
         "cached": False,
     }
 
-def engine_support_status(engine: str) -> Dict[str, object]:
+def engine_support_status(engine: str) -> Dict[str, Any]:
     return _engine_support_status(engine)
 
 def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
@@ -467,8 +465,8 @@ def model_download_progress_payload(
     eta_seconds: Optional[float] = None,
     file: Optional[str] = None,
     indeterminate: bool = False,
-) -> Dict[str, object]:
-    payload: Dict[str, object] = {
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
         "stage": stage,
         "message": message,
         "indeterminate": indeterminate,
@@ -496,7 +494,7 @@ def estimate_eta_seconds(started_at: float, percent: Optional[float]) -> Optiona
     return elapsed * (100.0 - percent) / percent
 
 
-def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, object]]:
+def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, Any]]:
     from huggingface_hub import HfApi
 
     api = HfApi()
@@ -522,7 +520,7 @@ def download_hf_model(
     repo_id: str,
     provider: str = "local_mlx",
     progress_emit=None,
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     if importlib.util.find_spec("huggingface_hub") is None:
         raise ModelRuntimeError(status_code=400, detail="huggingface_hub가 없습니다. 먼저 MLX runtime 설치를 진행해 주세요.")
 
@@ -695,7 +693,7 @@ def download_hf_model(
     return {"model": repo_id, "path": str(target_dir), "cached": False}
 
 
-def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, object]:
+def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, Any]:
     return _pull_ollama_model_with_progress(model_name, progress_emit)
 
 
@@ -727,7 +725,7 @@ def _safe_engine_install_plan(
     engine: str,
     *,
     base_dir: Path,
-) -> Optional[Dict[str, object]]:
+) -> Optional[Dict[str, Any]]:
     try:
         return _engine_install_plan(engine, base_dir=base_dir)
     except Exception:
@@ -760,7 +758,7 @@ def engine_status(
     r = state.router
     verify_cache = cloud_verify_cache or {}
     cloud_models = r.detected_cloud_models() if r else []
-    cloud_by_provider = {}
+    cloud_by_provider: Dict[str, List[Dict[str, Any]]] = {}
     for model in cloud_models:
         cloud_by_provider.setdefault(model["provider"], []).append(model)
 
@@ -787,10 +785,8 @@ def engine_status(
 
     lmstudio_models = []
     downloaded_lmstudio = get_lmstudio_models()
-    downloaded_by_key = {}
+    downloaded_by_key: Dict[str, Dict[str, Any]] = {}
     for item in downloaded_lmstudio:
-        if not isinstance(item, dict):
-            continue
         key = str(item.get("key") or "").strip()
         if not key:
             continue
@@ -823,7 +819,7 @@ def engine_status(
         llamacpp_models.append({**m, "pulled": hf_model_ready(repo_id, "llamacpp")})
     llamacpp_models = filter_lower_family_versions(llamacpp_models)
 
-    local_server_specs = [
+    local_server_specs: List[Dict[str, Any]] = [
         {
             "id": "vllm",
             "name": "vLLM",
@@ -906,7 +902,7 @@ def engine_status(
         env_key = next((item.get("requires") for item in cloud_by_provider.get(provider, []) if item.get("requires")), None)
         provider_models = []
         for model in cloud_by_provider.get(provider, []):
-            cache = verify_cache.get(model.get("id"))
+            cache = verify_cache.get(str(model.get("id") or ""))
             provider_models.append({
                 **model,
                 "verified": cache.get("ok") if cache else None,
@@ -1009,7 +1005,7 @@ def normalize_local_model_request(model_id: str, engine: Optional[str] = None) -
     return model_id
 
 
-def ensure_engine_ready(engine: str, *, state: ModelRuntimeState) -> Dict[str, object]:
+def ensure_engine_ready(engine: str, *, state: ModelRuntimeState) -> Dict[str, Any]:
     engine = "local_mlx" if engine == "mlx" else engine
     if engine not in ENGINE_INSTALLERS and engine not in OPENAI_COMPATIBLE_PROVIDERS:
         raise ModelRuntimeError(status_code=400, detail=f"지원하지 않는 엔진입니다: {engine}")
@@ -1065,7 +1061,7 @@ async def _smoke_test_loaded_model(
     *,
     api_key_override: Optional[str] = None,
     state: ModelRuntimeState,
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     # Delegated to model_engines for server decomp
     from .model_engines import _smoke_test_loaded_model as _impl_smoke
     return await _impl_smoke(
@@ -1085,7 +1081,7 @@ async def prepare_and_load_model(
     allow_download: bool = False,
     *,
     state: ModelRuntimeState,
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     from .model_loading import prepare_and_load_model as _impl
 
     return await _impl(
@@ -1100,7 +1096,7 @@ async def prepare_and_load_model(
     )
 
 
-def sse_event(event: str, data: Dict[str, object]) -> str:
+def sse_event(event: str, data: Dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
@@ -1128,7 +1124,7 @@ async def prepare_and_load_model_stream(
 
 CLOUD_VERIFY_TTL_SECONDS = 600
 
-async def _probe_cloud_model(model_ref: str) -> Dict[str, object]:
+async def _probe_cloud_model(model_ref: str) -> Dict[str, Any]:
     provider, model_name = parse_model_ref(model_ref)
     config = OPENAI_COMPATIBLE_PROVIDERS.get(provider)
     if not config:
@@ -1140,12 +1136,14 @@ async def _probe_cloud_model(model_ref: str) -> Dict[str, object]:
 
     base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
     base_url = base_url or config.get("base_url")
-    client_kwargs = {"api_key": api_key}
-    if base_url:
-        client_kwargs["base_url"] = base_url
-
     try:
-        client = AsyncOpenAI(**client_kwargs)
+        # base_url is passed only when configured: an explicit None is not
+        # the same as omitting the argument.
+        client = (
+            AsyncOpenAI(api_key=api_key, base_url=base_url)
+            if base_url
+            else AsyncOpenAI(api_key=api_key)
+        )
         await asyncio.wait_for(
             client.chat.completions.create(
                 model=model_name,
@@ -1246,7 +1244,7 @@ class ModelRuntimeService:
         adapter_path: Optional[str] = None,
         draft_model_id: Optional[str] = None,
         allow_download: bool = False,
-    ) -> Dict[str, object]:
+    ) -> Dict[str, Any]:
         return await prepare_and_load_model(
             model_id,
             request,

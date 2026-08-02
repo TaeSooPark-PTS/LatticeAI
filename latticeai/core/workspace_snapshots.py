@@ -31,9 +31,9 @@ class WorkspaceSnapshots:
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         scope = self._store._resolve_scope(workspace_id)
-        graph_payload = {"nodes": [], "edges": []}
-        graph_stats = {}
-        local_sources = {"sources": []}
+        graph_payload: Dict[str, Any] = {"nodes": [], "edges": []}
+        graph_stats: Dict[str, Any] = {}
+        local_sources: Dict[str, Any] = {"sources": []}
         if graph is not None:
             graph_payload = graph.graph(limit=2000)
             graph_stats = graph.stats()

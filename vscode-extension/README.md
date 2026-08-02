@@ -12,12 +12,31 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.3.0 — Measured Ground.** This release adds a local-first hybrid path: the
-Knowledge Graph stays on-device while cloud LLMs become an opt-in worker. The
-default network boundary is `local_only` — cloud use requires an explicit
-acknowledgement, only minimal related nodes leave the machine, and streamed
-answers expand the local Brain with provenance under Review Queue gates. The
-extension talks to the same sidecar API and is unchanged by it.
+**10.4.0 — Named Ground.** This release closes the extension's last three
+surface-parity gaps, and all three were rendering gaps rather than contract
+gaps — the sidecar was already reporting the data and the extension was
+discarding it:
+
+- **`Lattice AI: Capture Folder Into Brain`** sends a whole folder through the
+  same `/api/ingestion/folder` endpoint the web Capture view uses, including
+  the same per-path local-read approval. Previously the editor could only push
+  the current file.
+- **`Lattice AI: Show Run Artifacts`** renders `artifacts[]` as cards carrying
+  the server's own flags, so a deterministically repaired scaffold no longer
+  looks identical to clean model output. The extension never upgrades a
+  `valid: false` verdict, and an older sidecar that reports only
+  `created_files` is labelled "no artifact detail reported" rather than implied
+  to be verified.
+- **The model picker now explains itself** — it reads the hardware-derived
+  recommendation from `GET /setup/scan` and shows the server's reasoning for
+  this machine. No scan means no banner; the extension does not invent a
+  reason.
+
+10.3.0 added a local-first hybrid path: the Knowledge Graph stays on-device
+while cloud LLMs become an opt-in worker. The default network boundary is
+`local_only` — cloud use requires an explicit acknowledgement, only minimal
+related nodes leave the machine, and streamed answers expand the local Brain
+with provenance under Review Queue gates.
 
 9.9.8 added a `strict` / `trusted` / `bypass` permission mode. Editor actions
 run through the same governed tool path, so the mode set in the Lattice AI app

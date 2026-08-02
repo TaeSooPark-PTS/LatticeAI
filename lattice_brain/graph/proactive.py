@@ -191,11 +191,13 @@ class ProactiveBrain:
         for indices in token_index.values():
             if len(indices) < 2 or len(indices) > 50:  # skip too-common tokens
                 continue
-            for i, left in enumerate(indices):
-                for right in indices[i + 1:]:
-                    cooccur[(left, right)] = cooccur.get((left, right), 0) + 1
+            for i, left_idx in enumerate(indices):
+                for right_idx in indices[i + 1:]:
+                    cooccur[(left_idx, right_idx)] = (
+                        cooccur.get((left_idx, right_idx), 0) + 1
+                    )
 
-        near_pairs = []
+        near_pairs: List[Dict[str, Any]] = []
         for (li, ri), shared in sorted(cooccur.items(), key=lambda kv: -kv[1]):
             if shared < 3:
                 continue
@@ -219,7 +221,7 @@ class ProactiveBrain:
             )
             if len(near_pairs) >= max_pairs:
                 break
-        near_pairs.sort(key=lambda p: p["similarity"], reverse=True)
+        near_pairs.sort(key=lambda p: float(p["similarity"]), reverse=True)
 
         return {
             "nodes_scanned": len(nodes),
@@ -467,6 +469,8 @@ class ProactiveBrain:
             mode = "applied"
             for group in groups:
                 try:
+                    if merge_fn is None:  # guarded by apply_supported above
+                        raise RuntimeError("store has no merge_nodes")
                     result = merge_fn(group["keep"], group["remove"])
                     applied.append({"keep": group["keep"], "result": result})
                 except Exception as exc:  # keep going; report per-group failure

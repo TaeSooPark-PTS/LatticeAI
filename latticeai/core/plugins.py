@@ -123,7 +123,7 @@ class PluginManifest:
         }
 
 
-def validate_manifest(data: Dict[str, Any], *, path: str = "") -> Tuple[Optional[PluginManifest], List[str]]:
+def validate_manifest(data: Any, *, path: str = "") -> Tuple[Optional[PluginManifest], List[str]]:
     """Validate a manifest dict. Returns ``(manifest_or_None, errors)``.
 
     A manifest with errors still returns ``None`` so callers never accidentally

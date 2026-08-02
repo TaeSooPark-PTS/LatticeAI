@@ -195,3 +195,82 @@ test("live step frames render with their phase, event and detail", () => {
   assert.match(stepLine({ phase: "future", event: "brand_new" }), /future\/brand_new/);
   assert.match(stepLine(null), /run\/step/);
 });
+
+// ── v10.4.0 surface parity: artifact cards + model recommendation ────────────
+//
+// SURFACE_PARITY listed VS Code artifacts and model choice as ◐. Both gaps
+// were rendering gaps, not contract gaps: the sidecar already reported
+// `artifacts[]` honesty flags and a hardware-derived recommendation, and the
+// editor was dropping them. These fix the parsing against the real shapes.
+
+const {
+  artifactReport,
+  parseArtifacts,
+  parseModelRecommendation,
+} = require("../vscode-extension/out/surface.js");
+
+test("artifact cards carry the honesty flags a flat file list drops", () => {
+  const cards = parseArtifacts({
+    artifacts: [
+      { kind: "file", path: "src/app.py", filename: "app.py", bytes: 2048, previewable: true, valid: true },
+      { kind: "file", path: "src/index.html", filename: "index.html", bytes: 900, repaired: true, valid: true },
+      { kind: "file", path: "broken.json", filename: "broken.json", bytes: 12, valid: false },
+    ],
+  }, "en");
+
+  assert.equal(cards.length, 3);
+  assert.equal(cards[0].repaired, false);
+  assert.match(cards[0].detail, /2 KB/);
+  // A repaired scaffold must not read like clean model output.
+  assert.equal(cards[1].repaired, true);
+  assert.match(cards[1].label, /wand/);
+  assert.match(cards[1].detail, /auto-repaired/);
+  // The extension never upgrades the server's validity verdict.
+  assert.equal(cards[2].valid, false);
+  assert.match(cards[2].detail, /failed validation/);
+});
+
+test("artifact parsing falls back to created_files without inventing detail", () => {
+  const cards = parseArtifacts({ created_files: ["notes.md", { path: "plan.md" }] }, "en");
+  assert.deepEqual(cards.map((card) => card.path), ["notes.md", "plan.md"]);
+  for (const card of cards) {
+    assert.equal(card.bytes, 0);
+    assert.match(card.detail, /no artifact detail reported/);
+  }
+});
+
+test("a run that produced nothing says so rather than rendering an empty list", () => {
+  assert.deepEqual(parseArtifacts({}, "en"), []);
+  assert.match(artifactReport({}, "en"), /no files produced/);
+  assert.match(artifactReport({}, "ko"), /생성된 파일 없음/);
+});
+
+test("artifact report lists every produced file with its caveat", () => {
+  const report = artifactReport({
+    artifacts: [{ path: "a.py", filename: "a.py", bytes: 10, repaired: true, valid: true }],
+  }, "en");
+  assert.match(report, /a\.py/);
+  assert.match(report, /auto-repaired/);
+});
+
+test("model recommendation is read from the server, never recomputed", () => {
+  const advice = parseModelRecommendation({
+    zero_config: {
+      recommend: {
+        model_id: "mlx-community/gemma-3-12b-it-4bit",
+        runtime: "mlx",
+        rationale: ["RAM 32GB", "실제 다운로드 및 로드 가능한 mlx 모델"],
+      },
+    },
+  });
+  assert.equal(advice.modelId, "mlx-community/gemma-3-12b-it-4bit");
+  assert.equal(advice.runtime, "mlx");
+  assert.equal(advice.rationale.length, 2);
+});
+
+test("no recommendation means no banner, not a made-up one", () => {
+  assert.equal(parseModelRecommendation({}), null);
+  assert.equal(parseModelRecommendation({ zero_config: {} }), null);
+  assert.equal(parseModelRecommendation({ zero_config: { recommend: { runtime: "mlx" } } }), null);
+  assert.equal(parseModelRecommendation(null), null);
+});

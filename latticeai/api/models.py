@@ -155,25 +155,25 @@ def create_models_router(
 
     def _recommended_with_engine_options(
         items: List[Dict[str, object]],
-        engines: Optional[List[Dict[str, object]]] = None,
+        engines: Optional[List[Dict[str, Any]]] = None,
         loaded_ids: Optional[List[str]] = None,
         current_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
         from latticeai.core.model_compat import model_runtime_compatibility
 
         engine_lookup = {str(engine.get("id") or ""): engine for engine in engines or []}
-        model_lookup: Dict[str, Dict[str, object]] = {}
+        model_lookup: Dict[str, Dict[str, Any]] = {}
         for engine in engines or []:
             engine_id = str(engine.get("id") or "")
-            for model in engine.get("models") or []:
+            for model in list(engine.get("models") or []):
                 if isinstance(model, dict):
                     model_lookup[str(model.get("id") or "")] = {**model, "_engine": engine_id}
         loaded = set(loaded_ids or [])
-        out: List[Dict[str, object]] = []
+        out: List[Dict[str, Any]] = []
         for item in items:
             short_id = str(item["id"]).lower()
             aliases = MODEL_ENGINE_ALIASES.get(short_id) or {}
-            options: List[Dict[str, object]] = []
+            options: List[Dict[str, Any]] = []
             for engine_name in ("local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"):
                 real = aliases.get(engine_name)
                 if not real:

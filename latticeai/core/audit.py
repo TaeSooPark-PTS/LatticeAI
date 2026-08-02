@@ -87,7 +87,7 @@ def mask_sensitive_text(text: str, matches: List[Dict]) -> str:
 
 def classify_sensitive_message(item: Dict, index: int) -> Dict:
     content = str(item.get("content", ""))
-    found = []
+    found: List[Dict[str, Any]] = []
     seen: set = set()
     for rule in SENSITIVE_PATTERNS:
         for match in re.finditer(rule["pattern"], content, flags=re.IGNORECASE):
@@ -104,9 +104,11 @@ def classify_sensitive_message(item: Dict, index: int) -> Dict:
             })
     severity = "none"
     if found:
-        severity = max(found, key=lambda m: SEVERITY_SCORE[m["severity"]])["severity"]
+        severity = str(
+            max(found, key=lambda m: SEVERITY_SCORE[str(m["severity"])])["severity"]
+        )
     preview_text = content[:240]
-    preview_matches = [m for m in found if m["start"] < len(preview_text)]
+    preview_matches = [m for m in found if int(m["start"]) < len(preview_text)]
     return {
         "index": index,
         "role": item.get("role", ""),

@@ -3,16 +3,17 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **10.3.0 — Measured Ground**.
+Current release: **10.4.0 — Named Ground**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 10.3.0. Security
+The public Git tree keeps release history from 8.0.0 through 10.4.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 10.3.x (latest) | Supported |
+| 10.4.x (latest) | Supported |
+| 10.3.x | Supported |
 | 10.0.x | Supported |
 | 9.9.x | Supported |
 | 9.8.x | Supported |

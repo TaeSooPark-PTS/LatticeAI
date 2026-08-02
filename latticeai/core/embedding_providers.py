@@ -34,7 +34,7 @@ import math
 import os
 import struct
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from latticeai.core.local_embeddings import DEFAULT_EMBEDDING_DIM, LocalEmbeddingModel
 
@@ -288,6 +288,17 @@ class HashEmbeddingProvider(EmbeddingProvider):
         return {"status": "ok", "detail": "deterministic local fallback"}
 
 
+def _as_float_list(value: Any) -> List[Any]:
+    """A pooled embedding row as a flat list.
+
+    ``mx.array.tolist()`` is typed as scalar-or-nested; at this call site the
+    array is always 1-D, so a scalar would be a bug worth surfacing.
+    """
+    if isinstance(value, (int, float)):
+        raise EmbeddingUnavailable("MLX embedding produced a scalar, not a vector")
+    return list(value)
+
+
 # ── shared base for remote/model-backed providers ─────────────────────────────
 @dataclass
 class _RemoteConfig:
@@ -332,7 +343,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
     def __init__(self, cfg: _RemoteConfig):
         super().__init__(cfg)
         self.model_id = f"mlx:{cfg.model}:{self.dim}"
-        self._encoder = None
+        self._encoder: Optional[Tuple[str, Any, Any]] = None
 
     def _load(self):
         if self._encoder is not None:
@@ -358,7 +369,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
                 result = model(tokens)
                 pooled = result[0] if isinstance(result, (tuple, list)) else result
                 vec = mx.mean(pooled, axis=1)[0] if pooled.ndim == 3 else pooled[0]
-                out.append([float(x) for x in vec.tolist()])
+                out.append([float(x) for x in _as_float_list(vec.tolist())])
             return out
         except EmbeddingUnavailable:
             raise
@@ -477,7 +488,7 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
         super().__init__(cfg)
         self._target_ref = str(cfg.extra.get("target") or os.getenv("LATTICEAI_EMBEDDING_CUSTOM_TARGET", ""))
         self.model_id = f"custom:{cfg.model or self._target_ref or 'callable'}:{self.dim}"
-        self._fn = None
+        self._fn: Optional[Callable[..., Any]] = None
 
     def _load(self):
         if self._fn is not None:
@@ -587,8 +598,10 @@ def resolve_embedder(
     """
     requested = str(provider or "hash").strip().lower() or "hash"
     if requested in {"hash", "local", "fallback", ""}:
-        prov = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
-        return ResolvedEmbedder(prov, "hash", "hash", False, prov.health(), "deterministic local fallback")
+        hash_prov = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
+        return ResolvedEmbedder(
+            hash_prov, "hash", "hash", False, hash_prov.health(), "deterministic local fallback"
+        )
 
     try:
         prov = build_embedding_provider(

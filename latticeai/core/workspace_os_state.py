@@ -71,7 +71,7 @@ def migrate_workspaces(state: Dict[str, Any]) -> Dict[str, Any]:
     for ws_id, ws in workspaces.items():
         if not isinstance(ws, dict):
             continue
-        ws_type = ws.get("type") if ws.get("type") in WORKSPACE_TYPES else "organization"
+        ws_type = str(ws.get("type")) if ws.get("type") in WORKSPACE_TYPES else "organization"
         if ws_id == DEFAULT_WORKSPACE_ID:
             ws_type = "personal"
         base = new_workspace_record(

@@ -268,7 +268,7 @@ class MemoryQualityManager:
 
     def merge(self, cands: List[MemoryCandidate]) -> List[MemoryCandidate]:
         # naive merge by content prefix
-        merged = {}
+        merged: Dict[str, MemoryCandidate] = {}
         for c in cands:
             key = c.content[:30]
             if key not in merged or c.score > merged[key].score:
@@ -365,19 +365,19 @@ class GraphEdgeQualityManager:
         return GraphEdgeQuality(edge.get("id", "e0"), conf, ev, quality_score=q)
 
     def detect_duplicate_edges(self, edges: List[Dict]) -> List[str]:
-        seen = {}
-        dups = []
+        seen: Dict[Any, Any] = {}
+        dups: List[str] = []
         for e in edges:
             key = (e.get("source"), e.get("target"), e.get("type"))
             if key in seen:
-                dups.append(e.get("id"))
+                dups.append(str(e.get("id") or ""))
             else:
                 seen[key] = e.get("id")
         return dups
 
     def merge_duplicate_edges(self, edges: List[Dict]) -> List[Dict]:
         # keep highest confidence
-        best = {}
+        best: Dict[Any, Dict[str, Any]] = {}
         for e in edges:
             key = (e.get("source"), e.get("target"), e.get("type"))
             if key not in best or e.get("confidence", 0) > best[key].get("confidence", 0):

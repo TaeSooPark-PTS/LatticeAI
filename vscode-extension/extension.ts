@@ -3,13 +3,17 @@ import { ChatPanel } from "./ChatPanel";
 import { LatticeAIClient } from "./client";
 import { ModelPicker } from "./modelPicker";
 import {
+  artifactReport,
   citedSourceIds,
   groundingBadge,
   groundingLine,
+  parseArtifacts,
   parseEvidenceActions,
+  parseModelRecommendation,
   parseProposals,
   runReport,
   stepLine,
+  type ArtifactCard,
   type EvidenceAction,
   type ProposalSummary,
 } from "./surface";
@@ -24,6 +28,10 @@ let agentOutput: vscode.OutputChannel | undefined;
 // Last recall's question + cited source ids, so "이 근거로 만들기" has real
 // evidence to act on. Cleared implicitly by the next recall; never persisted.
 let lastRecall: { question: string; sourceIds: string[] } | null = null;
+
+// Artifacts from the most recent agent run, so "Show Artifacts" can open them
+// as cards after the run notification is gone. In-memory only.
+let lastArtifacts: { goal: string; cards: ArtifactCard[] } | null = null;
 
 const _diffDocs = new Map<string, string>();
 
@@ -368,6 +376,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand("ltcai.runAgentLive", async () => {
       await runAgentLive(client);
+    }),
+
+    // ── v10.4.0 surface parity ───────────────────────────────────────────
+    vscode.commands.registerCommand("ltcai.captureFolder", async () => {
+      await captureFolder(client);
+    }),
+
+    vscode.commands.registerCommand("ltcai.showArtifacts", async () => {
+      await showArtifactCards();
     })
   );
 
@@ -596,9 +613,146 @@ async function runAgentWithSummary(c: LatticeAIClient): Promise<void> {
     const output = outputChannel();
     output.appendLine(`--- ${goal} ---`);
     output.appendLine(runReport(payload));
+    // Artifact cards carry the honesty flags a flat file list drops: whether
+    // the content was repaired, and whether the server validated it.
+    const cards = parseArtifacts(payload);
+    lastArtifacts = cards.length ? { goal, cards } : null;
+    output.appendLine(artifactReport(payload));
     output.show(true);
+    if (cards.length) {
+      const open = "Show artifacts";
+      const pick = await vscode.window.showInformationMessage(
+        `Lattice AI: ${cards.length} file(s) produced.`,
+        open,
+      );
+      if (pick === open) await vscode.commands.executeCommand("ltcai.showArtifacts");
+    }
   } catch (err: any) {
     vscode.window.showErrorMessage(`Lattice AI: agent run failed (${err?.message || err}).`);
+  }
+}
+
+
+// ── Capture: send a whole folder to the Brain (v10.4.0) ──────────────────────
+//
+// SURFACE_PARITY had VS Code capture at ◐ because `sendToLattice` only ever
+// pushed the current file. The web Capture view ingests folders through
+// `/api/ingestion/folder`; this is the same endpoint and the same approval
+// dance, driven from the editor.
+
+async function captureFolder(c: LatticeAIClient): Promise<void> {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  const picked = folders.length === 1
+    ? folders[0].uri
+    : (await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: false,
+        openLabel: "Send to Brain",
+      }))?.[0];
+  if (!picked) return;
+
+  const folderPath = picked.fsPath;
+  const recursive = (await vscode.window.showQuickPick(
+    [
+      { label: "Include subfolders", value: true },
+      { label: "This folder only", value: false },
+    ],
+    { title: `Lattice AI — capture ${folderPath}` },
+  ))?.value;
+  if (recursive === undefined) return;
+
+  try {
+    // First call is unapproved on purpose: reading local disk requires an
+    // explicit, per-path approval, exactly as in the web app.
+    const probe = await c.ingestFolder({ path: folderPath, recursive, approved: false });
+    const token = String(probe?.approval_token || probe?.token || "");
+    if (!token) {
+      const detail = String(probe?.message || probe?.detail || "");
+      vscode.window.showWarningMessage(
+        `Lattice AI: approve folder access in the web app first.${detail ? ` (${detail})` : ""}`,
+      );
+      return;
+    }
+    const confirm = await vscode.window.showWarningMessage(
+      `Lattice AI will read and index ${folderPath}${recursive ? " and its subfolders" : ""}.`,
+      { modal: true },
+      "Index folder",
+    );
+    if (confirm !== "Index folder") return;
+
+    const summary = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "Lattice AI: capturing folder..." },
+      async () => c.ingestFolder({
+        path: folderPath,
+        recursive,
+        approved: true,
+        approval_token: token,
+        background: true,
+      }),
+    );
+    const jobId = String(summary?.job_id || "");
+    const queued = Number(summary?.queued ?? summary?.total ?? 0);
+    const output = outputChannel();
+    output.appendLine(`--- capture ${folderPath} ---`);
+    output.appendLine(
+      jobId
+        ? `queued ${queued} file(s) as job ${jobId}; progress is visible in the web app`
+        : JSON.stringify(summary),
+    );
+    output.show(true);
+    vscode.window.showInformationMessage(
+      jobId
+        ? `Lattice AI: indexing ${queued} file(s) in the background.`
+        : "Lattice AI: folder sent to the Brain.",
+    );
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Lattice AI: folder capture failed (${err?.message || err}).`);
+  }
+}
+
+// ── Artifact cards (v10.4.0) ─────────────────────────────────────────────────
+//
+// The web app shows produced files as cards with their honesty flags. The
+// editor shows the same fields as a QuickPick, and opening one opens the real
+// file — a rendering difference, not a contract difference.
+
+async function showArtifactCards(): Promise<void> {
+  if (!lastArtifacts || !lastArtifacts.cards.length) {
+    vscode.window.showInformationMessage(
+      "Lattice AI: no artifacts from this session yet. Run an agent task first.",
+    );
+    return;
+  }
+  type Item = vscode.QuickPickItem & { card: ArtifactCard };
+  const items: Item[] = lastArtifacts.cards.map((card) => ({
+    label: card.label,
+    description: card.detail,
+    detail: card.path,
+    card,
+  }));
+  const pick = await vscode.window.showQuickPick(items, {
+    title: `Lattice AI — artifacts from "${lastArtifacts.goal}"`,
+    placeHolder: "Open a produced file",
+    matchOnDetail: true,
+  });
+  if (!pick) return;
+
+  const roots = vscode.workspace.workspaceFolders ?? [];
+  if (!roots.length) {
+    vscode.window.showWarningMessage(`Lattice AI: ${pick.card.path} (no workspace folder open).`);
+    return;
+  }
+  const target = vscode.Uri.joinPath(roots[0].uri, pick.card.path);
+  try {
+    const doc = await vscode.workspace.openTextDocument(target);
+    await vscode.window.showTextDocument(doc);
+  } catch {
+    // The agent workspace is not always the editor workspace; say where the
+    // file is rather than pretending the open succeeded.
+    vscode.window.showWarningMessage(
+      `Lattice AI: ${pick.card.path} was written by the agent but is not in this workspace folder.`,
+    );
   }
 }
 

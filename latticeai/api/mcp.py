@@ -360,7 +360,7 @@ def create_mcp_router(
         require_user(request)
         mcp_registry._SKILLS_MARKETPLACE_FETCHED_AT = None
         skills = await _fetch_skills_marketplace()
-        by_author = {}
+        by_author: Dict[str, int] = {}
         for s in skills:
             by_author[s["author"]] = by_author.get(s["author"], 0) + 1
         return {"status": "ok", "total": len(skills), "by_author": by_author}
@@ -399,7 +399,7 @@ def create_mcp_router(
         require_user(request)
         mcp_registry._PLUGIN_DIRECTORY_FETCHED_AT = None
         plugins = await _fetch_plugin_directory()
-        by_license = {}
+        by_license: Dict[str, int] = {}
         for p in plugins:
             lic = p.get("license", "unknown")
             by_license[lic] = by_license.get(lic, 0) + 1

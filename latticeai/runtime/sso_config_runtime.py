@@ -97,7 +97,7 @@ def build_sso_config_runtime(
 
     async def _get_sso_discovery() -> Optional[Dict]:
         settings = get_sso_settings()
-        url = settings.get("discovery_url", "")
+        url = str(settings.get("discovery_url", "") or "")
         if _discovery_cache["data"] and _discovery_cache["url"] == url:
             return _discovery_cache["data"]
         if not url:

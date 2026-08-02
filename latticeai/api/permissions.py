@@ -11,7 +11,7 @@ import threading
 import time
 import urllib.request
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -33,7 +33,7 @@ class PermissionGateway:
         self.local_approval_ttl_seconds = 5 * 60
         self.local_approval_lock = threading.Lock()
         self.perm_queue_lock = threading.Lock()
-        self.local_approvals: Dict[str, Dict[str, object]] = {}
+        self.local_approvals: Dict[str, Dict[str, Any]] = {}
         self.discord_permission_webhook_url = config.discord_permission_webhook
         self.discord_bot_token = config.discord_bot_token
         self.discord_permission_channel = config.discord_permission_channel

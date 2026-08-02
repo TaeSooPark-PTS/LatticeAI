@@ -9,7 +9,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 from fastapi import APIRouter, Cookie, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
@@ -253,7 +253,12 @@ def create_static_routes_router(
         """CPU / RAM / GPU(MLX) 사용량을 반환합니다."""
         require_user(request)
         import re as _re
-        result = {"cpu_pct": 0.0, "ram_pct": 0.0, "gpu_mem_pct": 0.0, "gpu_mem_gb": 0.0}
+        result: Dict[str, Any] = {
+            "cpu_pct": 0.0,
+            "ram_pct": 0.0,
+            "gpu_mem_pct": 0.0,
+            "gpu_mem_gb": 0.0,
+        }
         try:
             # CPU
             top_out = subprocess.run(["top", "-l", "1", "-n", "0"], capture_output=True, text=True, timeout=4).stdout

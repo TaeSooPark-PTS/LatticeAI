@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
+
+# The cross-mixin surface (`_connect`, `_upsert_node`, …) is declared in
+# `_kg_contract.KnowledgeGraphCore`. It is a typing-only base: at runtime this
+# is `object`, so the MRO of `KnowledgeGraphStore` is unchanged.
+if TYPE_CHECKING:
+    from ._kg_contract import KnowledgeGraphCore as _Core
+else:
+    _Core = object
+
 
 # --- Compat seam (v9.9.5 decomposition) -------------------------------------
 # The non-search read surface (list_documents / workspaces_of /
@@ -46,7 +57,7 @@ def context_quality_signal(
     return {"mode": mode, "nodes": nodes, "limited": limited, "reason": reason}
 
 
-class KnowledgeGraphRetrievalMixin:
+class KnowledgeGraphRetrievalMixin(_Core):
     _GRAPH_VISIBLE_TYPES = (
         "Computer",  # 내 컴퓨터
         "Drive",  # 드라이브 / 볼륨

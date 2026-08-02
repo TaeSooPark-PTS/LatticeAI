@@ -7,7 +7,9 @@ MCP_REGISTRY`` sites are unaffected.
 
 from __future__ import annotations
 
-MCP_REGISTRY = [
+from typing import Any, Dict, List
+
+MCP_REGISTRY: List[Dict[str, Any]] = [
     {
         "id": "presentations",
         "name": "Presentations MCP",

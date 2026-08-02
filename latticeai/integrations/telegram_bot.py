@@ -7,6 +7,7 @@ import socket
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Any, Dict
 
 import httpx
 
@@ -678,6 +679,50 @@ def collect_generated_files(agent_data):
             files.append((path, target))
     return files
 
+def format_artifact_card(data, *, language: str = "ko") -> str:
+    """Artifact card summary for a finished run (v10.4.0).
+
+    Telegram used to send the produced files and nothing else, so a
+    deterministically repaired scaffold arrived looking exactly like clean
+    model output — SURFACE_PARITY recorded that as ◐. This renders the same
+    ``artifacts[]`` flags the web cards show, and reports only what the server
+    said: an absent flag is never promoted into a claim of validity.
+    """
+    if not isinstance(data, dict):
+        return ""
+    artifacts = data.get("artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        return ""
+    korean = not str(language or "ko").startswith("en")
+    lines = ["📄 만든 파일" if korean else "📄 Files produced"]
+    for item in artifacts[:8]:
+        if not isinstance(item, dict):
+            continue
+        path = str(item.get("path") or "").strip()
+        if not path:
+            continue
+        notes = []
+        size = item.get("bytes")
+        if isinstance(size, (int, float)) and size > 0:
+            notes.append(f"{int(size):,} B")
+        if item.get("repaired") is True:
+            notes.append("자동 보정됨" if korean else "auto-repaired")
+        if item.get("valid") is False:
+            notes.append("검증 실패" if korean else "failed validation")
+        suffix = f" ({' · '.join(notes)})" if notes else ""
+        lines.append(f"• {path}{suffix}")
+    extra = len(artifacts) - 8
+    if extra > 0:
+        lines.append(f"… +{extra}")
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
+async def send_artifact_card(client, chat_id, data, *, language: str = "ko") -> None:
+    text = format_artifact_card(data, language=language)
+    if text:
+        await send_message(client, chat_id, text)
+
+
 def format_grounding_badge(data, *, language: str = "ko") -> str:
     """Answer-grounding badge line for a `/chat` reply (v9.9.7).
 
@@ -732,8 +777,10 @@ def format_proposals(payload) -> list:
         item_id = str(raw.get("id") or "").strip()
         if not item_id:
             continue
-        body = raw.get("payload") if isinstance(raw.get("payload"), dict) else {}
-        provenance = raw.get("provenance") if isinstance(raw.get("provenance"), dict) else {}
+        raw_body = raw.get("payload")
+        raw_prov = raw.get("provenance")
+        body: Dict[str, Any] = raw_body if isinstance(raw_body, dict) else {}
+        provenance: Dict[str, Any] = raw_prov if isinstance(raw_prov, dict) else {}
         path = str(body.get("path") or provenance.get("path") or "")
         title = str(raw.get("title") or path or item_id)
         change_class = str(body.get("change_class") or provenance.get("change_class") or "")
@@ -969,7 +1016,7 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
     # A callback is bound to the chat that received the plan. Even two allowed
     # chats cannot approve or cancel each other's plan by replaying callback
     # data.
-    if pending and int(pending.get("chat_id")) != int(chat_id):
+    if pending and int(pending.get("chat_id") or 0) != int(chat_id):
         await send_message(client, chat_id, "❌ 다른 채팅의 작업은 처리할 수 없습니다.")
         return
     pending = _bot_pending_plans.pop(pause_id, None)
@@ -1003,6 +1050,7 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
         await send_message(client, chat_id, str(ans))
         if isinstance(data_r, dict):
             await send_run_explanation(client, chat_id, data_r)
+            await send_artifact_card(client, chat_id, data_r)
             await send_generated_files(client, chat_id, collect_generated_files(data_r))
             await send_preview_links(client, chat_id, collect_preview_urls(data_r))
     except Exception as e:
@@ -1052,6 +1100,7 @@ async def process_ai_request(client, chat_id, user_text, image_data=None):
             await send_grounding_badge(client, chat_id, data)
         if not image_data and isinstance(data, dict):
             await send_run_explanation(client, chat_id, data)
+            await send_artifact_card(client, chat_id, data)
             await send_generated_files(client, chat_id, collect_generated_files(data))
             await send_preview_links(client, chat_id, collect_preview_urls(data))
     except Exception as e:

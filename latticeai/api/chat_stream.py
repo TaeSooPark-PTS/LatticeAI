@@ -57,13 +57,13 @@ def agent_live_stream(
 
     async def _stream() -> AsyncIterator[str]:
         response_model = model_id or router.current_model_id
-        queue: asyncio.Queue = asyncio.Queue()
+        queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue()
 
         def observer(event: Dict[str, Any]) -> None:
             # Called synchronously from the agent coroutine on this loop.
             queue.put_nowait(event)
 
-        task = asyncio.create_task(start(observer))
+        task = asyncio.ensure_future(start(observer))
         try:
             while True:
                 getter = asyncio.create_task(queue.get())

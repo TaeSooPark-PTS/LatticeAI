@@ -231,7 +231,7 @@ async def prepare_and_load_model_stream(
     if compatibility.get("supported") is False:
         raise ModelRuntimeError(status_code=400, detail=compatibility)
 
-    work_queue: "queue.Queue[Dict[str, object]]" = queue.Queue()
+    work_queue: "queue.Queue[Dict[str, Any]]" = queue.Queue()
     work_result: Dict[str, object] = {}
 
     def emit_progress(payload: Dict[str, object]) -> None:

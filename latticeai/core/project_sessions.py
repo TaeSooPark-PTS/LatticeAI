@@ -144,7 +144,7 @@ class ProjectSessionStore:
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         session_id = secrets.token_urlsafe(12)
-        record = {
+        record: Dict[str, Any] = {
             "id": session_id,
             "title": _clean(title, 200) or "프로젝트",
             "goal": _clean(goal, 2000),

@@ -185,7 +185,7 @@ class CommandCenterService:
             "drafts": drafts,
         }
         if last_execution is not None:
-            section["last_execution"] = last_execution
+            section["last_execution"] = last_execution  # type: ignore[assignment]
         return section
 
     def _review_section(

@@ -192,7 +192,7 @@ def _excluded_directory_reason(
     if os_type == "macos":
         home_library = Path.home() / "Library"
         try:
-            root_is_library = bool(root) and _is_relative_to(
+            root_is_library = root is not None and _is_relative_to(
                 root.expanduser().resolve(), home_library.expanduser().resolve()
             )
             if (

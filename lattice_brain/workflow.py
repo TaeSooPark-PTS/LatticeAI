@@ -239,7 +239,10 @@ class ApprovalRequired(Exception):
                  permission: Optional[Dict[str, Any]] = None):
         super().__init__(message)
         self.tool = tool
-        self.args = args or {}
+        # Deliberately shadows BaseException.args: callers read
+        # `exc.args` as the failing tool's argument mapping, not the
+        # exception constructor tuple.
+        self.args = args or {}  # type: ignore[assignment]
         self.permission = permission or {}
 
 
@@ -374,7 +377,7 @@ class WorkflowEngine:
         while current is not None and steps < _MAX_STEPS:
             steps += 1
             ntype = current.get("type")
-            nid = current.get("id")
+            nid = str(current.get("id") or "")
             entry: Dict[str, Any] = {
                 "node": nid,
                 "type": ntype,
@@ -386,7 +389,7 @@ class WorkflowEngine:
                 entry["status"] = "ok"
                 entry["trigger"] = (current.get("config") or {}).get("trigger", "manual")
                 run.timeline.append(entry)
-                current = nodes.get(current.get("next")) if current.get("next") else None
+                current = nodes.get(str(current.get("next") or "")) if current.get("next") else None
                 continue
 
             if ntype == "output":
@@ -395,7 +398,7 @@ class WorkflowEngine:
                 entry["output"] = payload if payload is not None else context.get("last_output")
                 run.outputs[nid] = entry["output"]
                 run.timeline.append(entry)
-                current = nodes.get(current.get("next")) if current.get("next") else None
+                current = nodes.get(str(current.get("next") or "")) if current.get("next") else None
                 continue
 
             if ntype == "condition":
@@ -409,14 +412,14 @@ class WorkflowEngine:
                 continue
 
             # Executable node → dispatch to its runner family.
-            family = _RUNNER_FOR.get(ntype)
+            family = _RUNNER_FOR.get(str(ntype or ""))
             runner = self.runners.get(family) if family else None
             if runner is None:
                 entry["status"] = "skipped"
                 entry["reason"] = f"no '{family}' runner configured"
                 had_skip = True
                 run.timeline.append(entry)
-                current = nodes.get(current.get("next")) if current.get("next") else None
+                current = nodes.get(str(current.get("next") or "")) if current.get("next") else None
                 continue
             try:
                 result = runner(node=current, context=context)
@@ -451,7 +454,7 @@ class WorkflowEngine:
                 entry["reason"] = str(exc)
                 had_error = True
             run.timeline.append(entry)
-            current = nodes.get(current.get("next")) if current.get("next") else None
+            current = nodes.get(str(current.get("next") or "")) if current.get("next") else None
 
         if steps >= _MAX_STEPS:
             run.timeline.append({"node": None, "type": "guard", "status": "error", "reason": f"exceeded {_MAX_STEPS} steps (cycle?)", "timestamp": _now()})

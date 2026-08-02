@@ -84,8 +84,10 @@ def _repaired_artifacts(steps: Sequence[Mapping[str, Any]]) -> List[str]:
         meta = step.get("content_sanitize")
         if not isinstance(meta, Mapping) or not meta.get("repaired"):
             continue
-        result = step.get("result") if isinstance(step.get("result"), Mapping) else {}
-        args = step.get("args") if isinstance(step.get("args"), Mapping) else {}
+        raw_result = step.get("result")
+        raw_args = step.get("args")
+        result: Mapping[str, Any] = raw_result if isinstance(raw_result, Mapping) else {}
+        args: Mapping[str, Any] = raw_args if isinstance(raw_args, Mapping) else {}
         path = result.get("path") or args.get("path")
         if path and str(path) not in paths:
             paths.append(str(path))
@@ -270,7 +272,7 @@ def explain_run(
     repair_sum = sum(repair_totals.values())
 
     strain_score = parse_errors * 2 + corrections + retries + repair_totals["format"]
-    strain = {
+    strain: Dict[str, Any] = {
         "level": _strain_level(strain_score),
         "score": strain_score,
         "parse_errors": parse_errors,
@@ -336,7 +338,7 @@ def explain_run(
             "만들어지지 않은 파일: " + ", ".join(missing_files[:4]),
             "Files that were never written: " + ", ".join(missing_files[:4]),
         ))
-    strain_phrase = _STRAIN_PHRASES.get(strain["level"])
+    strain_phrase = _STRAIN_PHRASES.get(str(strain["level"]))
     if strain_phrase is not None:
         details.append(dict(strain_phrase))
 

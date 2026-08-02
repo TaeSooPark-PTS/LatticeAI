@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, NoReturn, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -84,14 +84,16 @@ def create_search_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    def _guarded(request: Request) -> SearchService:
+    def _guarded(request: Request) -> "_ScopedSearchService":
         user = require_user(request)
         allowed = None
         if allowed_workspaces_for is not None and user:
             allowed = allowed_workspaces_for(user)
         return _ScopedSearchService(service, allowed)
 
-    def _raise_graph_error(exc: Exception) -> None:
+    def _raise_graph_error(exc: Exception) -> NoReturn:
+        # NoReturn, not None: every handler ends with this in its except
+        # branch, and without it each one reads as a missing return.
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/search/hybrid")

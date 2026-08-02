@@ -1,9 +1,20 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..quiet import quiet
 
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
+
+# The cross-mixin surface (`_connect`, `_upsert_node`, …) is declared in
+# `_kg_contract.KnowledgeGraphCore`. It is a typing-only base: at runtime this
+# is `object`, so the MRO of `KnowledgeGraphStore` is unchanged.
+if TYPE_CHECKING:
+    from ._kg_contract import KnowledgeGraphCore as _Core
+else:
+    _Core = object
+
 
 # ── promotion review mode (review 2026-07-25 Wave 4) ─────────────────────────
 # When enabled, curate() parks would-be Topic promotions in graph_meta for a
@@ -22,7 +33,7 @@ def _promotion_review_default() -> bool:
     return os.getenv(_PROMOTION_REVIEW_ENV, "").strip().lower() in ("1", "true", "yes")
 
 
-class KnowledgeGraphProjectionMixin:
+class KnowledgeGraphProjectionMixin(_Core):
     _FTS_SQL = """
         CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(
           node_id UNINDEXED, title, summary, metadata, tokenize='trigram'

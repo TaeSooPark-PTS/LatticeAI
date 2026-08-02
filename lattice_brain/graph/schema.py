@@ -48,6 +48,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..quiet import quiet
@@ -423,8 +424,11 @@ class KGStoreV2:
     프로젝션이 담당하므로 native upsert/get/search API 는 두지 않는다.
     """
 
-    def __init__(self, db_path: str):
-        self.db_path = db_path
+    def __init__(self, db_path: "str | Path"):
+        # Callers pass a Path (the store keeps db_path as a Path); sqlite3
+        # accepts either, so the annotation now matches what is actually
+        # handed in instead of forcing every call site to str() it.
+        self.db_path = str(db_path)
 
     @contextmanager
     def _conn(self):

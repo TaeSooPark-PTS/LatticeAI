@@ -150,7 +150,8 @@ class EvidenceActionService:
                 missing.append(node_id)
                 continue
             # /api/graph/node wraps the record; get_node returns it directly.
-            record = node.get("node") if isinstance(node.get("node"), Mapping) else node
+            wrapped = node.get("node")
+            record: Mapping[str, Any] = wrapped if isinstance(wrapped, Mapping) else node
             title = str(record.get("title") or record.get("id") or node_id)
             body = str(record.get("summary") or record.get("content") or "").strip()
             metadata = record.get("metadata")

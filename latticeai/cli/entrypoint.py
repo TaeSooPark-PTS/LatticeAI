@@ -29,7 +29,7 @@ def _local_ips() -> list[str]:
     try:
         hostname = socket.gethostname()
         for info in socket.getaddrinfo(hostname, None):
-            addr = info[4][0]
+            addr = str(info[4][0])
             if ":" not in addr and not addr.startswith("127."):
                 if addr not in ips:
                     ips.append(addr)

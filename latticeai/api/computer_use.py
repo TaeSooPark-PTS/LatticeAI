@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -401,7 +401,7 @@ def create_computer_use_router(
                 yield _send("error", {"error": "No model loaded."})
                 return
 
-            transcript = []
+            transcript: List[Dict[str, Any]] = []
             last_screenshot_b64: Optional[str] = None
             max_steps = max(1, min(req.max_steps, 20))
             yield _send("start", {"task": req.task, "max_steps": max_steps})

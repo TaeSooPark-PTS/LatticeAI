@@ -143,7 +143,7 @@ class BrainIntelligenceService:
             stale_cutoff = now - timedelta(days=_STALE_DAYS)
             dated = [(_parse_ts(n.get("updated_at")), n) for n in nodes]
             known = [pair for pair in dated if pair[0] is not None]
-            stale = [n for ts, n in known if ts < stale_cutoff]
+            stale = [n for ts, n in known if ts is not None and ts < stale_cutoff]
             fresh_ratio = 1.0 - (len(stale) / len(known)) if known else 0.0
             dimensions["freshness"] = {
                 "status": "ok",
@@ -576,7 +576,9 @@ class BrainIntelligenceService:
                     for c in conflicts
                 ):
                     continue
-                other = next((r for r in memory_rows if r["id"] == other_id), None)
+                other: Dict[str, Any] | None = next(
+                    (r for r in memory_rows if r["id"] == other_id), None
+                )
                 conflicts.append({
                     "kind": "memory_pair",
                     "left_id": candidate.id,

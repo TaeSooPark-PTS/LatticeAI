@@ -525,7 +525,7 @@ def plan_concept_noise_reduction(
     remove: List[Dict[str, Any]] = []
     keep: List[Dict[str, Any]] = []
     for concept in concepts:
-        entry = {
+        entry: Dict[str, Any] = {
             "id": str(concept.get("id") or ""),
             "label": concept.get("label"),
             "df": int(concept.get("df") or 0),
@@ -534,7 +534,7 @@ def plan_concept_noise_reduction(
         if not entry["heuristic"]:
             keep.append({**entry, "reason": "user_created_protected"})
             continue
-        df = entry["df"]
+        df = int(entry["df"])
         if df < int(min_doc_frequency):
             df_ratio = (df / total) if total else 0.0
             remove.append({**entry, "df_ratio": round(df_ratio, 4), "reason": "below_frequency_floor"})
@@ -578,7 +578,7 @@ def plan_relation_noise_reduction(
     keep: List[Dict[str, Any]] = []
     demote: List[Dict[str, Any]] = []
     for edge in edges:
-        entry = {
+        entry: Dict[str, Any] = {
             "id": str(edge.get("id") or ""),
             "from": edge.get("from"),
             "to": edge.get("to"),
@@ -600,7 +600,7 @@ def plan_relation_noise_reduction(
         if not entry["evidence"]:
             keep.append({**entry, "reason": "unknown_evidence"})
             continue
-        if entry["weight"] < float(min_cooccurrence_weight):
+        if float(entry["weight"]) < float(min_cooccurrence_weight):
             demote.append({**entry, "reason": "weak_cooccurrence"})
             continue
         if degree > int(max_cooccurrence_degree):

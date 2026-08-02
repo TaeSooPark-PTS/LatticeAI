@@ -29,6 +29,15 @@ class _RunHandle:
     cancel_requested: bool = False
     started: bool = False
 
+    def is_cancelled(self) -> bool:
+        """Read the flag through a call.
+
+        `cancel_requested` is set by a *different* task (``cancel``), so a
+        reader must not be narrowed by an earlier check in its own frame:
+        the value can change between the guard and the poll.
+        """
+        return self.cancel_requested
+
 
 class RunExecutor:
     """Async task manager for persisted agent/workflow executions."""
@@ -119,9 +128,9 @@ class RunExecutor:
                 roles=roles,
                 inputs=inputs,
                 max_retries=max_retries,
-                cancel_requested=lambda: handle.cancel_requested,
+                cancel_requested=handle.is_cancelled,
             )
-            if handle.cancel_requested and (payload.get("run") or {}).get("status") != "cancelled":
+            if handle.is_cancelled() and (payload.get("run") or {}).get("status") != "cancelled":
                 self._cancel_agent_record(run_id, handle.scope, "cancelled after the final result was persisted")
             else:
                 self._results[run_id] = payload
@@ -232,7 +241,7 @@ class RunExecutor:
                 started_at=run.get("started_at") or _now(),
             )
             result = await asyncio.to_thread(self._execute_workflow_sync, workflow, user_email, handle.scope, inputs)
-            if handle.cancel_requested:
+            if handle.is_cancelled():
                 self._cancel_workflow_record(run_id, handle.scope, "cancelled after the current synchronous step completed")
                 return
             pause = (

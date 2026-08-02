@@ -71,7 +71,7 @@ class TriggerService:
             try:
                 self._tz = ZoneInfo(self._tz_name)
             except Exception:
-                self._tz = ZoneInfo("UTC") if ZoneInfo else None
+                self._tz = ZoneInfo("UTC")
 
     # ── durable state ──────────────────────────────────────────────────────
     def _load_state(self) -> Dict[str, Any]:

@@ -17,7 +17,9 @@ _PLATFORM = platform.system()
 
 # ── Computer Use ──────────────────────────────────────────────────────────────
 _CU_AVAILABLE = False
-_pyautogui = None
+# Optional dependency: None until _init_computer_use() imports it, and the
+# _CU_AVAILABLE flag is what every call site checks.
+_pyautogui: Any = None
 
 def _init_computer_use():
     global _CU_AVAILABLE, _pyautogui

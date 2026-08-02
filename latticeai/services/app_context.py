@@ -97,3 +97,26 @@ class AppContext:
     # persisted; ``None`` means no external chat mirror is registered. The
     # telegram bridge subscribes here only when ENABLE_TELEGRAM is truthy.
     on_chat_message: Optional[Callable[..., None]] = None
+
+    def require(self, field: str) -> Any:
+        """Return a dependency this router cannot operate without.
+
+        Every field defaults to ``None`` so a test can build a context holding
+        only what it exercises. A router that binds an absent dependency used
+        to discover it as ``TypeError: 'NoneType' object is not callable``
+        inside a request handler, far from the wiring mistake. Binding through
+        ``require`` moves that to router construction with the field named.
+
+        It is also what makes the binding statically honest: the declared type
+        is ``Optional[...]``, so a type checker reports every call site as
+        ``"None" not callable`` — 105 of them in the workspace router alone.
+        ``require`` states the precondition once instead.
+        """
+        if field not in self.__dataclass_fields__:
+            raise AttributeError(f"AppContext has no field {field!r}")
+        value = getattr(self, field)
+        if value is None:
+            raise RuntimeError(
+                f"AppContext.{field} is required by this router but was not provided"
+            )
+        return value

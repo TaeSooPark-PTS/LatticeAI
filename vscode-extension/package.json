@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.",
-  "version": "10.3.0",
+  "version": "10.4.0",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
@@ -151,6 +151,14 @@
       {
         "command": "ltcai.runAgentLive",
         "title": "Lattice AI: Run Agent Task (Live Steps)"
+      },
+      {
+        "command": "ltcai.captureFolder",
+        "title": "Lattice AI: Capture Folder Into Brain"
+      },
+      {
+        "command": "ltcai.showArtifacts",
+        "title": "Lattice AI: Show Run Artifacts"
       }
     ],
     "configuration": {

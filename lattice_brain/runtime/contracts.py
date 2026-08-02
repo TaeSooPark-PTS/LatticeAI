@@ -435,7 +435,8 @@ def realtime_event_contract(event: Dict[str, Any]) -> Dict[str, Any]:
     """
     body = dict(event or {})
     seq = body.get("seq")
-    payload = body.get("payload") if isinstance(body.get("payload"), dict) else {}
+    raw_payload = body.get("payload")
+    payload: Dict[str, Any] = raw_payload if isinstance(raw_payload, dict) else {}
     contract_body = {
         "run_id": payload.get("run_id") or body.get("run_id"),
         "agent_id": str(payload.get("agent_id") or payload.get("workflow_id") or f"realtime:{body.get('area') or 'workspace'}"),

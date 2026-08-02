@@ -24,14 +24,27 @@ def approx_tokens(text: str) -> int:
     return max(0, (len(text or "") + 3) // 4)
 
 
-def _call_context_seam(callback: Callable[..., Any], query: str, **context: Any) -> Any:
+class _SeamUnavailable(RuntimeError):
+    """Raised when a context seam is called but was never configured."""
+
+
+def _call_context_seam(
+    callback: Optional[Callable[..., Any]], query: str, **context: Any
+) -> Any:
     """Pass identity/scope only when a legacy seam declares support for it.
 
     Signature inspection preserves old one-argument adapters without catching
     a callback's own ``TypeError`` and retrying it with less restrictive scope.
     If a callable cannot be inspected, the secure behavior is to pass every
     context field and let the caller's failure isolation omit that section.
+
+    ``callback`` is Optional because the seams themselves are: an assembler
+    built without a hybrid-search port simply has no knowledge section. The
+    section builders already run inside failure isolation, so an unconfigured
+    seam degrades to "section omitted" rather than crashing the turn.
     """
+    if callback is None:
+        raise _SeamUnavailable("seam is not configured")
     try:
         parameters = inspect.signature(callback).parameters
     except (TypeError, ValueError):
@@ -47,8 +60,12 @@ def _call_context_seam(callback: Callable[..., Any], query: str, **context: Any)
     return callback(query, **supported)
 
 
-def _call_keyword_seam(callback: Callable[..., Any], **context: Any) -> Any:
+def _call_keyword_seam(
+    callback: Optional[Callable[..., Any]], **context: Any
+) -> Any:
     """Invoke a keyword-only seam while preserving legacy narrow signatures."""
+    if callback is None:
+        raise _SeamUnavailable("seam is not configured")
     try:
         parameters = inspect.signature(callback).parameters
     except (TypeError, ValueError):
@@ -177,7 +194,10 @@ class ContextAssembler:
     # ── section builders (each failure-isolated and honest) ───────────────
     def _memories_section(self, query, user_email, workspace_id, limit) -> ContextSection:
         try:
-            recall = self._memory_recall(query, user_email=user_email, workspace_id=workspace_id, limit=limit)
+            recall_seam = self._memory_recall
+            if recall_seam is None:
+                raise _SeamUnavailable("memory_recall is not configured")
+            recall = recall_seam(query, user_email=user_email, workspace_id=workspace_id, limit=limit)
             results = [r for r in recall.get("results", []) if r.get("source") == "workspace"][:limit]
         except Exception as exc:
             logging.debug("context: memory recall failed: %s", exc)

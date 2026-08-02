@@ -19,7 +19,7 @@ from pathlib import Path
 os.environ.setdefault("MLX_VLM_DRAFT_KIND", "mtp")
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncIterator, Dict, List, Optional, Tuple
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
 from PIL import Image
 
@@ -34,37 +34,44 @@ from latticeai.models.model_providers import (  # noqa: F401
     PROVIDER_MODEL_CATALOG,
 )
 
+# Optional dependencies. Each is aliased on import and then re-exported as
+# `Any`, so "installed" and "absent" are the same declared type and every
+# call site keeps its historical name.
 try:
-    from openai import AsyncOpenAI
+    from openai import AsyncOpenAI as _AsyncOpenAI
 except Exception:
-    AsyncOpenAI = None
+    _AsyncOpenAI = None  # type: ignore[assignment,misc]
+AsyncOpenAI: Any = _AsyncOpenAI
 
 # 추론 전용 싱글 스레드 워커 (GPU 스트림 보호용)
 executor = ThreadPoolExecutor(max_workers=1)
 
 try:
-    import mlx.core as mx
+    import mlx.core as _mx
 except Exception as e:
-    mx = None
+    _mx = None  # type: ignore[assignment]
     print(f"⚠️ MLX core unavailable: {e}")
+mx: Any = _mx
 
 try:
-    from mlx_vlm import load as vlm_load
+    from mlx_vlm import load as _vlm_load
     VLM_AVAILABLE = True
     print("✅ MLX-VLM is ready for multimodal models.")
 except Exception as e:
-    vlm_load = None
+    _vlm_load = None  # type: ignore[assignment]
     VLM_AVAILABLE = False
     print(f"⚠️ MLX-VLM unavailable: {e}")
+vlm_load: Any = _vlm_load
 
 try:
-    from mlx_lm import load as lm_load
+    from mlx_lm import load as _lm_load
     LM_AVAILABLE = True
     print("✅ MLX-LM is ready for text fallback models.")
 except Exception as e:
-    lm_load = None
+    _lm_load = None  # type: ignore[assignment]
     LM_AVAILABLE = False
     print(f"⚠️ MLX-LM unavailable: {e}")
+lm_load: Any = _lm_load
 
 BRAND_NAME = "Lattice AI"
 LEGACY_BRAND_PATTERNS = [
@@ -111,7 +118,11 @@ def normalize_branding(text: Optional[str]) -> str:
     return normalized
 
 
-def source_metadata_for_model(provider: str, model: Dict[str, str], *, local_server: bool) -> Dict[str, str]:
+# Returns a display payload whose `source_display_order` value is a list,
+# so the value type is Any rather than str.
+def source_metadata_for_model(
+    provider: str, model: Dict[str, Any], *, local_server: bool
+) -> Dict[str, Any]:
     family = str(model.get("family") or "")
     country, company = MODEL_SOURCE_BY_FAMILY.get(family, ("미상", provider.title()))
     if local_server:
@@ -139,7 +150,7 @@ def source_metadata_for_model(provider: str, model: Dict[str, str], *, local_ser
 class CloudModel:
     provider: str
     model: str
-    client: object
+    client: Any  # AsyncOpenAI when the optional dependency is installed
     cache_key: str
 
 def parse_model_ref(model_id: str) -> tuple[str, str]:
@@ -272,7 +283,9 @@ def _mlx_sampler(temperature: float):
 
 class LLMRouter:
     def __init__(self):
-        self._cache: Dict[str, Tuple] = {}
+        # A local entry is (model, tokenizer, draft_model, loader_kind); a
+        # cloud entry is a CloudModel. `_unpack_local_cache` splits them.
+        self._cache: Dict[str, Any] = {}
         self._current: Optional[str] = None
         self._last_used: Dict[str, float] = {}
         self._max_local_models = max(1, int(os.getenv("LATTICEAI_MAX_LOCAL_MODELS", "1")))
@@ -366,8 +379,8 @@ class LLMRouter:
     async def load_model(
         self,
         model_id: str,
-        adapter_path: str = None,
-        draft_model_id: str = None,
+        adapter_path: Optional[str] = None,
+        draft_model_id: Optional[str] = None,
         api_key_override: Optional[str] = None,
         owner: Optional[str] = None,
     ) -> str:
@@ -449,21 +462,27 @@ class LLMRouter:
 
         base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
         base_url = base_url or config.get("base_url")
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
+        # base_url is passed only when configured: an explicit None is not
+        # the same as omitting the argument.
+        client = (
+            AsyncOpenAI(api_key=api_key, base_url=base_url)
+            if base_url
+            else AsyncOpenAI(api_key=api_key)
+        )
 
         cache_owner = owner or "global"
         cache_key = f"{provider}:{model}::{cache_owner}"
         with self._lock:
-            self._cache[cache_key] = CloudModel(provider=provider, model=model, client=AsyncOpenAI(**client_kwargs), cache_key=cache_key)
+            self._cache[cache_key] = CloudModel(
+                provider=provider, model=model, client=client, cache_key=cache_key
+            )
             self._current = cache_key
             self._touch(cache_key)
         return f"Cloud provider ready: {cache_key}"
 
     def detected_cloud_models(self) -> List[Dict[str, str]]:
         local_server_providers = {"ollama", "vllm", "lmstudio", "llamacpp"}
-        items = []
+        items: List[Dict[str, Any]] = []
         for provider, config in OPENAI_COMPATIBLE_PROVIDERS.items():
             has_key = bool(os.getenv(config["env_key"]) or config.get("api_key_fallback"))
             provider_models = PROVIDER_MODEL_CATALOG.get(provider) or [{
@@ -486,19 +505,23 @@ class LLMRouter:
                 })
         custom = os.getenv("LATTICEAI_CLOUD_MODELS") or ""
         for raw in [item.strip() for item in custom.split(",") if item.strip()]:
-            provider, model = parse_model_ref(raw)
+            provider, custom_model = parse_model_ref(raw)
             if provider != "local_mlx" and provider in OPENAI_COMPATIBLE_PROVIDERS:
                 config = OPENAI_COMPATIBLE_PROVIDERS[provider]
                 items.append({
-                    "id": f"{provider}:{model}",
-                    "name": f"{provider.title()} · {model}",
+                    "id": f"{provider}:{custom_model}",
+                    "name": f"{provider.title()} · {custom_model}",
                     "provider": provider,
                     "tag": "cloud",
                     "available": bool(os.getenv(config["env_key"]) or config.get("api_key_fallback")),
                     "requires": None,
                     **source_metadata_for_model(
                         provider,
-                        {"id": model, "name": f"{provider.title()} · {model}", "family": provider.title()},
+                        {
+                            "id": custom_model,
+                            "name": f"{provider.title()} · {custom_model}",
+                            "family": provider.title(),
+                        },
                         local_server=provider in local_server_providers,
                     ),
                 })
@@ -551,7 +574,7 @@ class LLMRouter:
             print(f"⚠️ VLM chat template fallback: {e}")
             return self._build_prompt(message, context, processor)
 
-    def _unpack_local_cache(self, cached: Tuple) -> Tuple[object, object, object, str]:
+    def _unpack_local_cache(self, cached: Any) -> Tuple[Any, Any, Any, str]:
         model, tokenizer, draft_model = cached[:3]
         loader_kind = str(cached[3]) if len(cached) > 3 else "mlx_vlm"
         return model, tokenizer, draft_model, loader_kind
@@ -622,8 +645,9 @@ class LLMRouter:
         loop = asyncio.get_event_loop()
         
         def _gen():
-            import mlx.core as mx
-            mx.set_default_device(mx.gpu)
+            import mlx.core as mx  # type: ignore[no-redef]
+
+            mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
             if use_vlm:
                 from mlx_vlm import generate as vlm_gen
                 return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
@@ -679,11 +703,12 @@ class LLMRouter:
             else self._build_prompt(message, context, tokenizer)
         )
         loop = asyncio.get_event_loop()
-        queue = asyncio.Queue()
+        queue: "asyncio.Queue[Any]" = asyncio.Queue()
 
         def _stream():
-            import mlx.core as mx
-            mx.set_default_device(mx.gpu)
+            import mlx.core as mx  # type: ignore[no-redef]
+
+            mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
             try:
                 if use_vlm:
                     from mlx_vlm import stream_generate as vlm_stream
@@ -806,8 +831,9 @@ class LLMRouter:
 
         loop = asyncio.get_event_loop()
         def _gen():
-            import mlx.core as mx
-            mx.set_default_device(mx.gpu)
+            import mlx.core as mx  # type: ignore[no-redef]
+
+            mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
             if loader_kind == "mlx_vlm":
                 from mlx_vlm import generate as vlm_gen
                 return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
@@ -885,11 +911,12 @@ class LLMRouter:
             prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
 
         loop = asyncio.get_event_loop()
-        queue = asyncio.Queue()
+        queue: "asyncio.Queue[Any]" = asyncio.Queue()
 
         def _stream():
-            import mlx.core as mx
-            mx.set_default_device(mx.gpu)
+            import mlx.core as mx  # type: ignore[no-redef]
+
+            mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
             try:
                 if loader_kind == "mlx_vlm":
                     from mlx_vlm import stream_generate as vlm_stream
