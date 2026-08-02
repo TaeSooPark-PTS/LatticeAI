@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v10.3.0)
+# Lattice AI Feature Status (v10.5.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **10.4.0 — Named Ground**.
+Current release: **10.5.0 — Everyday Words**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -35,7 +35,7 @@ recorded gaps — no `✖` remains in the surface parity matrix, and every
 remaining `—` states why it is a design boundary. The 9.9.8 line makes autonomy
 explicit: a `strict` / `trusted` / `bypass` dial widens what runs without an
 extra approval prompt, scoped per user and per workspace, while hard circuit
-breakers stay mode-invariant. The dial is set in 환경설정 → 에이전트 자율성;
+breakers stay mode-invariant. The dial is set in 설정 → 혼자 해도 되는 일 (renamed from 에이전트 자율성 in 10.5.0);
 the default stays `strict`, so behaviour is unchanged from 9.9.7 until a user
 deliberately raises it. The 10.0 line makes the product legible to someone who did not build it:
 the first screen is four zones, capture lives in the composer, and both
@@ -50,7 +50,13 @@ Review Center as a proposal rather than being written. In 10.1.0 that dial is
 reachable through `/api/network-boundary` and environment configuration only —
 there is no in-app control yet. The 9.9.9 line made the shell lean: copy
 follows its route instead of the entry chunk, cutting first-paint JavaScript
-by a third.
+by a third. The 10.5.0 line names every plain-mode surface in the reader's
+words rather than the engine's: the autonomy dial is three sentences instead of
+three mode names, a file's path into memory is three named steps instead of two
+API payloads, and runs carry the name their author gave them instead of a
+database id. Nothing was removed — every engineering panel is one mode switch
+away — and the release screenshots are now captured in `basic`, the mode a
+first-run user actually lands in.
 
 ## Current Feature Status
 
@@ -92,14 +98,21 @@ by a third.
 | Graph Relation Evidence | Current | Relations record whether they came from a verb or from co-occurrence, with matching weights; enumerations no longer manufacture relation chains, and the curator can demote weak/hub adjacency edges without touching verb-backed or legacy ones. |
 | Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
 | Frontend Payload | Current | Every route is a `React.lazy` boundary and copy follows the route: `shell` copy registers eagerly, `brain` / `workspace` / `onboarding` register inside the lazy chunk that needs them. Initial static JS is ~99 KiB gzip against a 150 KiB budget. `npm run check:i18n-namespaces` walks the real module graph and fails the build when a chunk reads a key it never imported — the failure mode is otherwise silent, because `t()` returns the raw key and the UI renders an identifier instead of text. |
-| Permission Modes | Current | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. Set it in **환경설정 → 에이전트 자율성** (`SystemPage` settings tab) or through `POST /api/permission-mode`. The selector renders the server's own catalog rather than a hardcoded mode list, and refuses to send a `bypass` switch until the risk acknowledgement the server requires is ticked. |
-| Network Boundary | Current | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. Set it in **환경설정 → 내 지식이 나가는 범위** (`NetworkBoundaryPanel`) or through `POST /api/network-boundary`. The selector renders the server's own catalog and refuses to send a `cloud_allowed` switch until the risk acknowledgement the server requires is ticked. A built-in **preview** names the actual memories a given question would send, with its token estimate and whether the token guard would refuse the turn — and works in `local_only` too, labelled as hypothetical. Only the minimal extracted node slice is ever sent, never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). |
+| Permission Modes | Current | `strict` (default) / `trusted` / `bypass` over the existing ToolRegistry + Change Governor, resolved per user and per workspace and stamped once per agent run (a paused approval resumes under the mode it was approved with). Circuit breakers are mode-invariant: destructive risk, root/home paths, `rm -rf /` style commands, and binary overwrites are denied in every mode. Set it in **설정 → 혼자 해도 되는 일** (`SystemPage` settings tab), on the home screen dial, or through `POST /api/permission-mode`. The reader sees 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서 — the wire tokens are unchanged. The selector still renders the server's own catalog rather than a hardcoded mode list (`frontend/src/lib/permissionCopy.ts` supplies the plain wording by mode id and falls back to the server's label for an id it does not know), and refuses to send a `bypass` switch until the risk acknowledgement the server requires is ticked. |
+| Network Boundary | Current | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. Set it in **설정 → 내 지식이 나가는 범위** (`NetworkBoundaryPanel`) or through `POST /api/network-boundary`. The selector renders the server's own catalog and refuses to send a `cloud_allowed` switch until the risk acknowledgement the server requires is ticked. A built-in **preview** names the actual memories a given question would send, with its token estimate and whether the token guard would refuse the turn — and works in `local_only` too, labelled as hypothetical. Only the minimal extracted node slice is ever sent, never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). |
 | Hybrid Cloud Chat | Current (requires cloud key) | When the boundary is `cloud_allowed`, `/chat` branches through `api/chat_hybrid.py` → `services/hybrid_chat.py`: minimal KG context is assembled (`hybrid_context.py`), checked against per-turn and per-session token budgets (`cloud_token_guard.py`), and streamed from an OpenAI-compatible provider (`openai_compatible_adapter.py`, `cloud_streaming.py`). Inert without `LATTICEAI_CLOUD_API_KEY`; the local path is untouched. |
 | Cloud Memory Write-Back | Current (proposal-first) | Knowledge extracted from a cloud answer (`cloud_extraction.py`) is enqueued as a Review Center `change_proposal` with provenance. It is written to the graph only when `auto_commit` is explicitly enabled in the hybrid policy (default **false**) and a store write API exists. Multimodal streaming needs both `cloud_allowed` and a separate `allow_multimodal` flag (default **false**). |
-| Release Assets | Current | 10.3.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 10.5.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
+- **The approval card under 작업 → 실행 still labels raw payload fields**
+  (`Action`, `Action Label`, `User Email`) in plain mode. It is visible in
+  `output/release/v10.5.0/screenshots/09-automation-runs.png`, published rather
+  than cropped, and is the first item for the next plain-language pass.
+- The plain-mode vocabulary sweep in `tests/visual/v3.spec.js` checks a word
+  list over ten routes. It catches the engine's vocabulary reaching a reader;
+  it cannot catch a sentence that is jargon-free and still unclear.
 - SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
   scale/migration tooling and requires explicit setup.
 - Package registry publishing is owner-run and can lag behind the GitHub

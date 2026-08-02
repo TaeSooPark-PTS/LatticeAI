@@ -126,8 +126,29 @@ function AccountPanel() {
         </CardContent>
       </Card>
       <DataPanel title={t(language, "system.account.signInOptions")} result={sso.data} className="xl:col-span-2">
-        {(data) => <StructuredView value={data} />}
+        {(data) => <SignInOptionsView data={data as Record<string, unknown>} />}
       </DataPanel>
+    </div>
+  );
+}
+
+/**
+ * How you get in, as a sentence. The payload underneath is a provider list and
+ * an OIDC discovery URL — real, but not an answer to the question this panel is
+ * on the screen to answer. Advanced mode still gets the payload.
+ */
+function SignInOptionsView({ data }: { data: Record<string, unknown> }) {
+  const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
+  const enabled = Boolean(data.enabled) || asArray(data.providers).length > 0;
+  return (
+    <div className="space-y-3">
+      <StatusCard
+        title={t(language, enabled ? "system.account.signIn.sso" : "system.account.signIn.localOnly")}
+        status={t(language, enabled ? "system.value.enabled" : "system.storage.local.badge")}
+        detail={t(language, enabled ? "system.account.signIn.ssoDetail" : "system.account.signIn.localOnlyDetail")}
+      />
+      {mode === "basic" ? null : <StructuredView value={data} />}
     </div>
   );
 }

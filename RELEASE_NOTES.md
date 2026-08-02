@@ -1,3 +1,23 @@
+# [v10.5.0 - Everyday Words] (2026-08-03)
+
+10.4.0이 코드가 딛고 선 땅에 이름을 붙였다면, 10.5.0은 **읽는 사람이 딛고 선 땅**에
+이름을 붙입니다. 처음 켠 사람이 만나는 모든 화면이, 그 사람이 쓸 법한 말로 지금
+무슨 일이 일어나는지 설명합니다. 기능은 하나도 지우지 않았습니다 — 엔진의 어휘는
+그 어휘를 원한 사람들이 있는 고급 모드 뒤로 옮겼습니다. 자율성 다이얼은
+엄격/신뢰/바이패스 대신 **먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서**가
+되었고, 홈과 설정이 같은 문구 모듈을 쓰기 때문에 같은 설정이 두 이름으로 불리지
+않습니다. 숨겨져 있던 '진행 상황' 탭은 **내용 읽기 → 뜻 파악하기 → 기억에 연결하기**
+세 단계를 보여줍니다. 실행 기록은 데이터베이스 id 대신 워크플로 이름으로 표시되고
+`awaiting_approval`은 "내 승인 기다리는 중"으로 읽힙니다. 그리고 그동안 README에
+실리던 스크린샷은 `advanced` 모드로 찍혀 있었습니다 — 이제 앱의 실제 기본값인
+`basic`으로 찍습니다. 열 개 화면을 훑으며 빈 화면과 엔진 어휘를 모두 잡아내는
+시각 테스트가 이 약속을 지킵니다.
+
+See [RELEASE_NOTES_v10.5.0.md](RELEASE_NOTES_v10.5.0.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v10.4.0 - Named Ground] (2026-08-02)
 
 10.3.0은 측정되지 않은 것을 적어두고 끝냈습니다. 10.4.0은 그 목록을 비웠습니다.
@@ -201,7 +221,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.4.0**.
+This repository keeps public release history from **8.0.0 through 10.5.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

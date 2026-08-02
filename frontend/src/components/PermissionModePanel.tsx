@@ -2,12 +2,20 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert } from "lucide-react";
 
-import { latticeApi, type PermissionModeOption, type PermissionModeState } from "@/api/client";
+import { latticeApi, type PermissionModeState } from "@/api/client";
 import { EmptyState } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { t, type Language } from "@/i18n";
+import { t } from "@/i18n";
+// Shared with the home-screen dial so the same setting is named the same way
+// on both surfaces — see lib/permissionCopy.ts.
+import {
+  activeModeLabel,
+  permissionModeLabel as optionLabel,
+  permissionModeSummary as optionSummary,
+  permissionModeWarning as optionWarning,
+} from "@/lib/permissionCopy";
 import { useAppStore } from "@/store/appStore";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "danger"> = {
@@ -15,20 +23,6 @@ const RISK_VARIANT: Record<string, "success" | "warning" | "danger"> = {
   medium: "warning",
   high: "danger",
 };
-
-/** Catalog copy is served localized; pick the field for the active language. */
-function optionLabel(option: PermissionModeOption, language: Language): string {
-  return language === "ko" ? option.label_ko || option.label : option.label;
-}
-
-function optionSummary(option: PermissionModeOption, language: Language): string {
-  return language === "ko" ? option.summary_ko || option.summary : option.summary;
-}
-
-function optionWarning(option: PermissionModeOption, language: Language): string {
-  const warning = language === "ko" ? option.warning_ko || option.warning : option.warning;
-  return warning || "";
-}
 
 /**
  * The autonomy dial (v9.9.8).
@@ -105,7 +99,7 @@ export function PermissionModePanel() {
         <p className="text-sm text-muted-foreground">
           {t(language, "system.permission.current")}:{" "}
           <strong data-testid="permission-mode-active">
-            {language === "ko" ? data.label_ko || data.label : data.label}
+            {activeModeLabel(data, language)}
           </strong>
         </p>
 

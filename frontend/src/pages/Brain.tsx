@@ -428,7 +428,18 @@ function UnifiedMemoryPanel() {
       {/* Unified summary bar */}
       <Card>
         <CardContent className="py-4">
-          <StatGrid stats={[
+          {/* A schema number ("2") and a storage engine ("sqlite") are true but
+              unreadable. The plain view answers the two questions those fields
+              exist to answer — where does this live, and can I take it away. */}
+          <StatGrid stats={mode === "basic" ? [
+            { label: t(language, "brain.stats.sources"), value: usage.sources ?? 0 },
+            { label: t(language, "brain.stats.items"), value: usage.total_items ?? 0 },
+            { label: t(language, "brain.stats.savedWhere"), value: t(language, "brain.stats.savedWhere.local") },
+            {
+              label: t(language, "brain.stats.exportable"),
+              value: t(language, port.data?.ok ? "brain.stats.exportable.yes" : "brain.stats.exportable.unknown"),
+            },
+          ] : [
             { label: t(language, "brain.stats.sources"), value: usage.sources ?? 0 },
             { label: t(language, "brain.stats.items"), value: usage.total_items ?? 0 },
             { label: t(language, "brain.stats.format"), value: portData.graph_schema_version || portData.schema_version || "–" },

@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **10.4.0 — Named Ground**.
+Current release: **10.5.0 — Everyday Words**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

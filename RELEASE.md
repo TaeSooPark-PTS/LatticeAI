@@ -13,6 +13,89 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.5.0 — Everyday Words (2026-08-03)
+
+10.4.0 named the ground the code stands on. 10.5.0 renames the ground the
+reader stands on. Nothing was deleted — every advanced panel is still one mode
+switch away — but the words, the ordering, and the default a first-run user
+lands in all changed.
+
+**The autonomy dial is a sentence, not a mode name.** 엄격 / 신뢰 / 바이패스
+became 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서, each carrying one line
+about what it will and will not do without asking. The home-screen dial and the
+Settings panel had each been translating the server's catalog copy themselves;
+both now read `frontend/src/lib/permissionCopy.ts`, so the same setting cannot
+be named two ways. The lookup is by mode id with the server's own localized
+label as fallback, which means a mode added server-side still renders — that
+fallback has its own test, because a translation table is otherwise an
+accidental allowlist.
+
+**A file's path into memory is three named steps.** The 진행 상황 tab was hidden
+from plain mode and held two raw API payloads. It now renders an `aria-label`ed
+ordered list — 내용 읽기 → 뜻 파악하기 → 기억에 연결하기 — each step saying what
+it does to your file and whether it is waiting, working, or done. 파싱 · 임베딩
+· 인덱싱 no longer appear on it, and the freshness prompt that used to say
+"임베딩 모델이 바뀌었어요 / 다시 인덱싱하기" now says "찾는 방식이 바뀌었어요 /
+기억 다시 정리하기".
+
+**Automations carry their own names.** A run is titled by its workflow name
+(falling back to goal, then to "n번째 작업") instead of a database id, and its
+state is translated per token — `awaiting_approval` reads as "내 승인 기다리는
+중", an unrecognized token reads as "알 수 없음" rather than printing itself.
+Advanced mode still shows the id beneath the name. Plain mode also gains a
+"자동으로 실행되는 작업" summary — workflow name plus "새 자료가 들어오면" /
+"정해진 시간에" — in place of the node canvas and JSON box, which stay for
+advanced.
+
+**Two smaller honesty fixes.** A model this machine cannot run says so in one
+sentence instead of a registry line half-translated word by word (the detector
+looks for long English prose with no Hangul rather than trusting the field).
+The Brain stats panel answers "저장 위치 / 내 컴퓨터" and "가져가기 / 언제든
+내보낼 수 있어요" where it used to print `schema_version` and a storage engine
+name.
+
+**The published evidence was itself wrong.** `capture_release_evidence.mjs` set
+`lattice.mode = "advanced"` before capturing, so every README screenshot showed
+payload panels, storage engines and hook logs that no first-run user is ever
+shown. Capture now runs in the app's real default, `basic`. Two frames changed
+as a result: the old `09-model-setup-status.png` had become a pixel-level
+duplicate of the Brain home (the knowledge-flow strip only expands in advanced),
+and is replaced by `09-automation-runs.png`; the new `11-knowledge-journey.png`
+publishes the three-step journey. The walkthrough GIF was also being encoded
+against ffmpeg's default palette, which rendered the app's ivory background as
+dithered yellow and its greens as olive — the README's first image showed a
+product that does not exist. It is now encoded from a palette generated off the
+clip itself (1.5 MB → 2.8 MB, real colours).
+
+**Guarded by a sweep, not by review.** `tests/visual/v3.spec.js` walks ten
+plain-mode routes and fails if any renders empty, shows the service-unavailable
+banner, or puts engine vocabulary (파싱, 임베딩, 인덱싱, 벡터, 스키마,
+`awaiting_approval`, `retried_ok`, `schema_version`, `sqlite`, …) in front of a
+reader who never asked for it. `#/runs` failed that assertion before this pass.
+
+### Verification
+
+| gate | result |
+| --- | --- |
+| vitest | 339 passed (35 files) · 32.91% |
+| pytest (full, coverage) | 1,955 passed · 71.77% (70% floor enforced) |
+| playwright (plain-mode sweep + journey) | 2 passed |
+| ruff | All checks passed |
+| mypy | 274 / 274 modules, 0 errors |
+| release evidence capture | 12 screenshots + gif, captured in basic mode |
+| docs:check-current | pass |
+
+### Honest limitations
+
+- The approval card under 작업 → 실행 still labels its raw payload fields
+  `Action`, `Action Label`, `User Email`. It is visible in
+  `09-automation-runs.png`, it is published rather than cropped out, and it is
+  the first thing for the next pass.
+- The plain-mode sweep checks a word list, not comprehension. It cannot catch a
+  sentence that is jargon-free and still unclear.
+- Backend behaviour is unchanged this release: no route, request, or response
+  schema moved. `frontend/openapi.json` differs only in `info.version`.
+
 ## v10.4.0 — Named Ground (2026-08-02)
 
 10.3.0 wrote down what was not measured. 10.4.0 emptied the list.

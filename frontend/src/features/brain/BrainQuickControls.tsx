@@ -4,24 +4,20 @@ import { ShieldAlert } from "lucide-react";
 
 import { latticeApi, type PermissionModeOption } from "@/api/client";
 import { t, type Language } from "@/i18n";
+// Shared with the Settings panel so both surfaces name the same dial the same
+// way — see lib/permissionCopy.ts for why the server's own labels are not used
+// directly.
+import {
+  permissionModeLabel as optionLabel,
+  permissionModeSummary as optionSummary,
+  permissionModeWarning as optionWarning,
+} from "@/lib/permissionCopy";
 
 const RISK_DOT: Record<string, string> = {
   low: "is-low",
   medium: "is-medium",
   high: "is-high",
 };
-
-function optionLabel(option: PermissionModeOption, language: Language) {
-  return language === "ko" ? option.label_ko || option.label : option.label;
-}
-
-function optionSummary(option: PermissionModeOption, language: Language) {
-  return language === "ko" ? option.summary_ko || option.summary : option.summary;
-}
-
-function optionWarning(option: PermissionModeOption, language: Language) {
-  return (language === "ko" ? option.warning_ko || option.warning : option.warning) || "";
-}
 
 /**
  * Autonomy and appearance, in reach on the home screen.

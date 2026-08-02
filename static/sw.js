@@ -1,7 +1,7 @@
 // Lattice Service Worker — PWA install + offline shell for the /app SPA.
 // Strategy: precache the Vite app bundle from its asset manifest,
 // cache-first for static assets, network-only for everything dynamic.
-const CACHE = "lattice-v1040";
+const CACHE = "lattice-v1050";
 const MANIFEST_URL = "/static/app/asset-manifest.json";
 
 // Non-manifest assets the shell needs offline.

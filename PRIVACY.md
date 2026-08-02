@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **10.4.0 — Named Ground**.
+Current release: **10.5.0 — Everyday Words**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

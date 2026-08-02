@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **10.4.0 — Named Ground**.
+Current release: **10.5.0 — Everyday Words**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

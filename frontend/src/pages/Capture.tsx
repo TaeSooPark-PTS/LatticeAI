@@ -3,14 +3,15 @@ import * as React from "react";
 // table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, ClipboardPaste, FolderOpen, FolderPlus, Globe2, HardDrive, Loader2, RotateCcw, ScanLine, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardPaste, FolderOpen, FolderPlus, Globe2, HardDrive, Loader2, RotateCcw, ScanLine, Share2, Sparkles, Upload } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
-import { asArray } from "@/lib/utils";
+import { asArray, fmtNumber, isRecord } from "@/lib/utils";
 import { FolderMemoryHealthCard } from "@/features/capture/FolderMemoryHealth";
 import { useAppStore } from "@/store/appStore";
 import { navigateHash } from "@/features/brain/navigation";
@@ -19,7 +20,6 @@ type CaptureTab = "files" | "local" | "browser" | "pipeline";
 
 export function CapturePage({ initialTab }: { initialTab?: string }) {
   const language = useAppStore((state) => state.language);
-  const mode = useAppStore((state) => state.mode);
   const [tab, setTab] = React.useState<CaptureTab>((initialTab as CaptureTab) || "files");
   const tabs: Array<{ id: CaptureTab; label: string }> = [
     { id: "files", label: t(language, "capture.tab.files") },
@@ -41,7 +41,10 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
         <h1 className="page-title">{t(language, "capture.title")}</h1>
         <p className="page-copy">{t(language, "capture.body")}</p>
       </header>
-      <Tabs tabs={mode === "basic" ? tabs.filter((item) => item.id !== "pipeline") : tabs} value={tab} onChange={(id) => selectTab(id as CaptureTab)} />
+      {/* "Where did my file get to?" is a beginner's question, not an expert
+          one. The tab used to be hidden in basic mode because it showed raw
+          payloads; now that it answers in plain steps, everyone gets it. */}
+      <Tabs tabs={tabs} value={tab} onChange={(id) => selectTab(id as CaptureTab)} />
       {tab === "files" ? <FilesPanel /> : null}
       {tab === "local" ? <LocalPanel /> : null}
       {tab === "browser" ? <BrowserPanel /> : null}
@@ -484,18 +487,99 @@ function normalizeWebUrl(value: string) {
   return raw;
 }
 
+/**
+ * What a person can actually see of their own material.
+ *
+ * The two counts and the three states below are read tolerantly from whichever
+ * shape the server sends: `/api/index/status` reports per-stage pipelines, and
+ * older/simpler builds report a flat `{ pending, total }`. Neither is shown as
+ * a number the reader cannot check — every count says what it counted.
+ */
+type JourneyState = "done" | "working" | "waiting";
+
+function readJourney(index: unknown, stats: unknown) {
+  const indexData = isRecord(index) ? index : {};
+  const statsData = isRecord(stats) ? stats : {};
+  const pipelines = isRecord(indexData.pipelines) ? indexData.pipelines : {};
+  const stageState = (name: string): JourneyState | null => {
+    const stage = isRecord(pipelines[name]) ? (pipelines[name] as Record<string, unknown>) : null;
+    if (!stage) return null;
+    const raw = String(stage.state || stage.status || "").toLowerCase();
+    // Bound the tokens: a bare `/ok/` match turned "not_ok" into "done".
+    if (/\b(ready|ok|complete(?:d)?|idle)\b/.test(raw)) return "done";
+    if (/\b(build(?:ing)?|index(?:ing)?|run(?:ning)?|pending|queue(?:d)?)\b/.test(raw)) return "working";
+    return "waiting";
+  };
+  const num = (...values: unknown[]) => {
+    for (const value of values) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) return Math.round(parsed);
+    }
+    return 0;
+  };
+  const remembered = num(indexData.total, indexData.total_items, statsData.nodes, statsData.total_nodes);
+  const connections = num(statsData.edges, statsData.total_edges);
+  const waiting = num(indexData.pending, indexData.pending_items);
+  // With nothing in yet, "read" is the step the reader is being invited into —
+  // calling it "done" would claim work that never happened.
+  const readState: JourneyState = remembered ? "done" : "waiting";
+  return {
+    remembered,
+    connections,
+    waiting,
+    steps: [
+      { key: "read", state: waiting ? "working" : readState },
+      { key: "understand", state: stageState("vector_index") ?? (remembered ? "done" : "waiting") },
+      { key: "connect", state: stageState("knowledge_graph") ?? (connections ? "done" : "waiting") },
+    ] as Array<{ key: string; state: JourneyState }>,
+  };
+}
+
 function PipelinePanel() {
   const language = useAppStore((state) => state.language);
+  const mode = useAppStore((state) => state.mode);
   const index = useQuery({ queryKey: ["index"], queryFn: latticeApi.indexStatus });
   const stats = useQuery({ queryKey: ["graphStats"], queryFn: latticeApi.graphStats });
+  const journey = readJourney(index.data?.data, stats.data?.data);
+  const stepIcon = { read: ScanLine, understand: Sparkles, connect: Share2 } as const;
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title={t(language, "capture.pipeline.status")} result={index.data}>
-        {(data) => <StructuredView value={data} />}
-      </DataPanel>
-      <DataPanel title={t(language, "capture.pipeline.growth")} result={stats.data}>
-        {(data) => <StructuredView value={data} />}
-      </DataPanel>
+      <Card className="xl:col-span-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><ScanLine className="h-4 w-4" /> {t(language, "capture.pipeline.journey.title")}</CardTitle>
+          <CardDescription>{t(language, "capture.pipeline.journey.detail")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ol className="capture-journey" aria-label={t(language, "capture.pipeline.journey.aria")}>
+            {journey.steps.map(({ key, state }) => {
+              const Icon = stepIcon[key as keyof typeof stepIcon];
+              return (
+                <li key={key} className={`capture-journey-step is-${state}`}>
+                  <span className="capture-journey-mark" aria-hidden="true"><Icon className="h-4 w-4" /></span>
+                  <div className="capture-journey-copy">
+                    <strong>{t(language, `capture.pipeline.step.${key}`)}</strong>
+                    <small>{t(language, `capture.pipeline.step.${key}.detail`)}</small>
+                  </div>
+                  <span className="capture-journey-state">{t(language, `capture.pipeline.step.${state}`)}</span>
+                </li>
+              );
+            })}
+          </ol>
+          {journey.remembered || journey.connections ? (
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Badge variant="success">{t(language, "capture.pipeline.count.remembered", { count: fmtNumber(journey.remembered) })}</Badge>
+              <Badge variant="muted">{t(language, "capture.pipeline.count.connections", { count: fmtNumber(journey.connections) })}</Badge>
+              <Badge variant={journey.waiting ? "warning" : "muted"}>
+                {journey.waiting
+                  ? t(language, "capture.pipeline.count.waiting", { count: fmtNumber(journey.waiting) })
+                  : t(language, "capture.pipeline.count.none")}
+              </Badge>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t(language, "capture.pipeline.empty")}</p>
+          )}
+        </CardContent>
+      </Card>
       <Card className="xl:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><HardDrive className="h-4 w-4" /> {t(language, "capture.pipeline.refresh")}</CardTitle>
@@ -505,6 +589,18 @@ function PipelinePanel() {
           <ActionButton label={t(language, "capture.pipeline.rebuild")} action={() => latticeApi.rebuildIndex()} invalidate={["index"]} />
         </CardContent>
       </Card>
+      {/* The raw payloads are still one click away — nothing was removed, it
+          just stopped being the first thing on the screen. */}
+      {mode === "basic" ? null : (
+        <>
+          <DataPanel title={t(language, "capture.pipeline.status")} result={index.data}>
+            {(data) => <StructuredView value={data} />}
+          </DataPanel>
+          <DataPanel title={t(language, "capture.pipeline.growth")} result={stats.data}>
+            {(data) => <StructuredView value={data} />}
+          </DataPanel>
+        </>
+      )}
     </div>
   );
 }

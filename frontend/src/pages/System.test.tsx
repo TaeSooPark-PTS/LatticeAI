@@ -86,7 +86,9 @@ describe("SystemPage", () => {
     await userEvent.click(screen.getByRole("tab", { name: "환경설정" }));
     await waitFor(() => expect(screen.getByTestId("permission-mode-active")).toBeTruthy());
 
-    expect(screen.getByTestId("permission-mode-active").textContent).toBe("엄격");
+    // The autonomy dial names its modes from the i18n table by id (the server
+    // ships "엄격"/"Strict"); the boundary dial still shows the server's label.
+    expect(screen.getByTestId("permission-mode-active").textContent).toBe("먼저 물어보기");
     expect(screen.getByTestId("network-boundary-active").textContent).toBe("로컬만");
   });
 
