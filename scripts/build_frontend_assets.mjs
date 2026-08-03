@@ -1,9 +1,26 @@
 #!/usr/bin/env node
+// Post-processes the `vite build` output in place: normalises trailing
+// whitespace in emitted css/js, rewrites the raw vite manifest into the
+// app-facing asset-manifest.json, and stamps the service-worker cache version.
+//
+// `--out-dir <dir>` points the first two steps at a directory other than
+// static/app so scripts/check_frontend_build_freshness.mjs can reproduce the
+// exact shipped bytes into a scratch tree. In that mode the static/sw.js
+// rewrite is skipped: it is a repo-level side effect, not part of the app dir,
+// and a freshness check must never mutate the working tree.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+
+const argv = process.argv.slice(2);
+const outDirFlag = argv.indexOf("--out-dir");
+const outDirArg = outDirFlag === -1 ? null : argv[outDirFlag + 1];
+if (outDirFlag !== -1 && !outDirArg) {
+  console.error("--out-dir requires a directory argument");
+  process.exit(2);
+}
 
 const repo = join(import.meta.dirname, "..");
-const appDir = join(repo, "static", "app");
+const appDir = outDirArg ? resolve(outDirArg) : join(repo, "static", "app");
 const nestedViteManifest = join(appDir, ".vite", "asset-manifest.json");
 const publicManifest = join(appDir, "asset-manifest.json");
 const serviceWorker = join(repo, "static", "sw.js");
@@ -46,7 +63,7 @@ const manifest = {
 };
 
 writeFileSync(publicManifest, JSON.stringify(manifest, null, 2) + "\n", "utf8");
-if (existsSync(serviceWorker)) {
+if (!outDirArg && existsSync(serviceWorker)) {
   const cacheVersion = pkg.version.replace(/\D/g, "");
   const source = readFileSync(serviceWorker, "utf8");
   const normalized = source.replace(
@@ -55,4 +72,4 @@ if (existsSync(serviceWorker)) {
   );
   if (normalized !== source) writeFileSync(serviceWorker, normalized, "utf8");
 }
-console.log(`wrote static/app/asset-manifest.json with ${Object.keys(assets).length} assets`);
+console.log(`wrote ${publicManifest} with ${Object.keys(assets).length} assets`);
