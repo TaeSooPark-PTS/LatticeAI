@@ -13,6 +13,75 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.6.2 — Ask First (2026-08-03)
+
+10.6.1 rebuilt five screens and only half-rebuilt one of them. The Brain home
+got a new order — composer, then what to try, then the controls — but kept its
+old shape: a 5.4rem organism and a centred headline running down the middle
+before the composer, and the suggestion strip wedged between the composer and
+its own toolbar. The thing to do and the alternatives to doing it wore the same
+border, and the composer's controls were separated from the composer by an
+unrelated block. 10.6.2 splits the screen.
+
+**Two surfaces instead of one tall card.** `.brain-home-station` now holds the
+first move and nothing else: a horizontal greeting banner (organism 5.4rem →
+3.2rem, beside the title rather than above it, on a tinted strip with a
+hairline foot), the composer in its focus-ring wrapper, and the toolbar — add
+material on the left, the autonomy dial on the right — as the card's floor. The
+three suggestions moved out to `.brain-secondary-deck`, a sibling card of the
+station under the stage, and the quiet shelf row stays third. The stage widened
+from 44rem to 50rem to carry the split without crowding, and `BrainConversation`
+renders the three as siblings so `.brain-centered-home > *` keeps `flex: none`
+on each.
+
+**The name moved to the element that has a role.** The suggestion strip carried
+`aria-label` on a plain `<div>` — an element with no role has nothing to name,
+so the browser discarded it and the block reached a screen reader unnamed. The
+label sits on the deck's `<section>` now, which a name promotes to a `region`,
+and the strip inside it carries none.
+
+**The empty branch got a design.** With no `suggested_questions`, the deck
+renders `.brain-prompt-pills-row` instead of `.brain-prompt-grid`. That row had
+been inheriting `conversation.css`'s 2.65rem `.brain-prompt-pill` floor, drawn
+for pills in a live conversation, so the fallback stood half again as tall as
+the cards it replaces. It is scoped and sized on this deck now — and scoped
+rather than written bare, because `.brain-prompt-pill` is shared with two other
+sheets.
+
+**Three defects the move exposed, all specificity, none visible in JSX.**
+
+- `LivingBrain` writes the aura's `box-shadow` inline from the Brain's depth, so
+  a `.brain-hero-organism .brain-aura { box-shadow: … }` rule — written first,
+  and read as correct — could never apply. The blur is now
+  `var(--aura-blur, 60px)`; the banner sets `--aura-blur: 14px` and every other
+  host keeps its exact previous rendering through the fallback.
+- `overflow: hidden` on the station would have clipped the ingestion popover
+  (which anchors to the toolbar and opens below it) *and* made the card a scroll
+  container, so focusing the note field scrolled the greeting and half the
+  composer out of view. The station stays `overflow: visible`; the banner uses
+  `overflow: clip` and rounds its own top corners.
+- `affordance.css` loads last and owns both the app-wide
+  `button { white-space: nowrap }` opt-out list and the `prefers-reduced-motion`
+  cancellation. Its `.brain-home-prompt-strip > button` entries matched nothing
+  after the grid appeared: the hover-lift and reduced-motion selectors are
+  re-pointed at `.brain-prompt-grid button`, while the `white-space` entry is
+  deliberately *not* re-added — `home-simple.css` flips the cards to `nowrap`
+  chips under 900px, and re-listing them here would tie and win that media rule.
+
+**Guarded.** `BrainHome.test.tsx` asserts the three surfaces are direct siblings
+of the stage in order, that the station contains neither the strip nor the deck,
+that the deck is a named `region`, and that the pill branch renders. Five new
+`tests/visual/v3.spec.js` tests cover what jsdom cannot: the popover opens
+unclipped and does not scroll the station, the grid fills the deck's inner
+width, the cards are `nowrap` chips at 900/760/640/420px and the strip stays
+visible at each (a leftover `display: none` in `responsive.css` targets that
+class), reduced motion removes both the transform and the transition while hover
+still answers in colour, and the aura's blur is smaller than a third of the
+organism with its lit box inside the banner.
+
+**Compatibility.** No backend change; `frontend/openapi.json` differs from
+10.6.1 only in `info.version`. No route or deep-link change. No feature removed.
+
 ## v10.6.1 — First Things (2026-08-03)
 
 10.6.0 gave each main screen one leading panel and stopped short of five screens:

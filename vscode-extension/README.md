@@ -12,17 +12,23 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.6.1 — First Things.** This release rebuilds the layout of five app screens,
-not this extension; the extension ships unchanged apart from its version. One of
-those five matters to anyone working between the editor and the app: a review
-item is now **evidence on the left, decision on the right**. A proposal raised
-from the editor used to render as one long column that ended in a button row, so
-a large diff pushed 승인 / 거절 off the bottom of the screen. 승인하고 적용 and
-거절 now sit in a panel that stays beside the diff. The app's 작업 → 실행 tab also
-leads with **승인함** instead of finishing with it, so an approval waiting on you
-is the first thing on that screen. No endpoint, token, or approval path changed:
-`strict` / `trusted` / `bypass` still travel over the wire, and governed tool
-behaviour, the approval prompts, and the audit trail are exactly as they were.
+**10.6.2 — Ask First.** This release re-shapes one app screen — the Brain chat
+home — and does not touch this extension; it ships unchanged apart from its
+version. Nothing an editor session depends on moved: no endpoint, token, or
+approval path changed, `strict` / `trusted` / `bypass` still travel over the
+wire, and governed tool behaviour, the approval prompts, and the audit trail are
+exactly as they were. If you switch to the app after raising a proposal, the
+Brain home you land on is now two cards — the box you type into with its own
+controls, and the suggestions on a separate card below — instead of one tall
+stack.
+
+**10.6.1 — First Things** rebuilt the layout of five app screens. One of them
+matters to anyone working between the editor and the app: a review item is
+**evidence on the left, decision on the right**. A proposal raised from the
+editor used to render as one long column that ended in a button row, so a large
+diff pushed 승인 / 거절 off the bottom of the screen. 승인하고 적용 and 거절 now
+sit in a panel that stays beside the diff, and the app's 작업 → 실행 tab leads
+with **승인함** instead of finishing with it.
 
 **10.6.0 — Promoted Panels** rebuilt the layout of the app's main screens. The
 review inbox became what the app's **작업** link opens — it used to open the goal

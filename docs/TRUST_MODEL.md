@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.6.1 — First Things**.
+Current release: **10.6.2 — Ask First**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

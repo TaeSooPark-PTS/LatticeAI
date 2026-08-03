@@ -31,10 +31,8 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
   const conceptCount = Math.max(readiness.signals.conceptCount, graph.nodes.length);
   const empty = memoryCount === 0 && conceptCount === 0;
 
-  // Column, centring, gap and padding all come from
-  // `.brain-home-station > .brain-hero` in home-simple.css, which is unlayered
-  // and outranks Tailwind utilities either way: it wins where it sets the
-  // property, and stacks where it does not.
+  // Row layout, gap and padding come from `.brain-home-station > .brain-hero`
+  // in home-simple.css, which is unlayered and outranks Tailwind utilities.
   return (
     <section className="brain-hero" data-testid="brain-knowledge-flow" aria-labelledby="brain-home-title">
       {/* LivingBrain renders its own button, so this is a sizing wrapper only —
@@ -50,17 +48,15 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
         />
       </div>
 
-      {/* No wrapper div and no utilities. The stylesheet sets the h1's size and
-          the line's colour, so `text-xl`, `text-xs`, `text-muted-foreground`
-          and `mx-auto` all lost to it; the one that would have applied,
-          `opacity-75`, dimmed a hint whose colour is already 0.75 alpha. */}
-      <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
-      <p className="brain-hero-line">
-        {empty
-          ? t(language, "brain.hero.empty")
-          : t(language, "brain.hero.summary", { memories: memoryCount, concepts: conceptCount })}
-        <span className="brain-hero-hint">{t(language, "brain.hero.hint")}</span>
-      </p>
+      <div className="brain-hero-header-text">
+        <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
+        <p className="brain-hero-line">
+          {empty
+            ? t(language, "brain.hero.empty")
+            : t(language, "brain.hero.summary", { memories: memoryCount, concepts: conceptCount })}
+          <span className="brain-hero-hint">{t(language, "brain.hero.hint")}</span>
+        </p>
+      </div>
     </section>
   );
 });
