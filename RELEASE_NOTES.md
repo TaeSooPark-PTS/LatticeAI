@@ -1,3 +1,10 @@
+# [v10.6.3 - Loud Limits] (2026-08-04)
+
+리뷰 2026-08 지적사항 대응. 검색 recall 리포트, 잡 영속화, CSRF 가드,
+workspace 스코프 단일화, fail-closed 쓰기, 빌드 신선도 게이트.
+
+See [RELEASE_NOTES_v10.6.3.md](RELEASE_NOTES_v10.6.3.md).
+
 # [v10.6.2 - Ask First] (2026-08-03)
 
 10.6.1은 다섯 화면을 다시 짰지만, **Brain 대화 홈은 절반만** 다시 짰습니다.
@@ -325,7 +332,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.6.2**.
+This repository keeps public release history from **8.0.0 through 10.6.3**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

@@ -13,6 +13,21 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.6.3 — Loud Limits (2026-08-04)
+
+리뷰 2026-08 지적사항 대응. 조용히 대충 하던 자리를 찾아, 하던 일은 그대로 하되
+그렇게 하고 있다고 말하게 만든 릴리스.
+
+- 검색: brute-force 벡터 recall의 조용한 절단 제거 — "M개 중 N개 스캔" 리포트
+- 수집: 백그라운드 잡 큐 SQLite 영속화 — 재시작 후 남은 항목부터 재개
+- 보안: CSRF Origin/Referer 가드 + workspace 스코프 단일화(불일치 시 403)
+- 에이전트: 덮어쓰기 fail-closed, 모델 스트림 실패를 ModelStreamError로 구분
+- 그래프: 백업 임포트 직후 벡터 인덱스 재정렬
+- 빌드: 프론트 빌드 신선도 게이트
+- 프론트: SSE 파서 분리, 스티키 스크롤 수정
+
+상세: [RELEASE_NOTES_v10.6.3.md](RELEASE_NOTES_v10.6.3.md)
+
 ## v10.6.2 — Ask First (2026-08-03)
 
 10.6.1 rebuilt five screens and only half-rebuilt one of them. The Brain home

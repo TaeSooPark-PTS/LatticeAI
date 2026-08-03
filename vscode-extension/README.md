@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.6.2 — Ask First.** This release re-shapes one app screen — the Brain chat
+**10.6.3 — Loud Limits.** This release makes the system state its own limits: search reports how much of the index it actually scanned, background imports survive a restart and resume, and cookie-authenticated writes verify their origin.
 home — and does not touch this extension; it ships unchanged apart from its
 version. Nothing an editor session depends on moved: no endpoint, token, or
 approval path changed, `strict` / `trusted` / `bypass` still travel over the
