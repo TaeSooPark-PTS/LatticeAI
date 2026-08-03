@@ -560,41 +560,45 @@ function normalizeWebUrl(value: string) {
  */
 type JourneyState = "done" | "working" | "waiting";
 
-function readJourney(index: unknown, stats: unknown) {
+function readJourney(pipelineStatus: unknown, index: unknown, stats: unknown) {
+  const statusData = isRecord(pipelineStatus) ? pipelineStatus : {};
   const indexData = isRecord(index) ? index : {};
   const statsData = isRecord(stats) ? stats : {};
   const pipelines = isRecord(indexData.pipelines) ? indexData.pipelines : {};
-  const stageState = (name: string): JourneyState | null => {
-    const stage = isRecord(pipelines[name]) ? (pipelines[name] as Record<string, unknown>) : null;
-    if (!stage) return null;
-    const raw = String(stage.state || stage.status || "").toLowerCase();
-    // Bound the tokens: a bare `/ok/` match turned "not_ok" into "done".
-    if (/\b(ready|ok|complete(?:d)?|idle)\b/.test(raw)) return "done";
-    if (/\b(build(?:ing)?|index(?:ing)?|run(?:ning)?|pending|queue(?:d)?)\b/.test(raw)) return "working";
-    return "waiting";
-  };
+
   const num = (...values: unknown[]) => {
     for (const value of values) {
+      if (typeof value === "number" && Number.isFinite(value) && value >= 0) return Math.round(value);
       const parsed = Number(value);
       if (Number.isFinite(parsed) && parsed > 0) return Math.round(parsed);
     }
-    return 0;
+    return undefined;
   };
-  const remembered = num(indexData.total, indexData.total_items, statsData.nodes, statsData.total_nodes);
-  const connections = num(statsData.edges, statsData.total_edges);
-  const waiting = num(indexData.pending, indexData.pending_items);
-  // With nothing in yet, "read" is the step the reader is being invited into —
-  // calling it "done" would claim work that never happened.
-  const readState: JourneyState = remembered ? "done" : "waiting";
+
+  const received = num(statusData.received);
+  const extracted = num(statusData.extracted);
+  const connected = num(statusData.connected);
+
+  const remembered = num(extracted, indexData.total, indexData.total_items, statsData.nodes, statsData.total_nodes) || 0;
+  const connections = num(connected, statsData.edges, statsData.total_edges) || 0;
+  const waiting = num(indexData.pending, indexData.pending_items) || 0;
+
+  const readState: JourneyState = (received !== undefined ? (received > 0 ? "done" : "waiting") : (waiting ? "working" : (remembered ? "done" : "waiting")));
+  const understandState: JourneyState = (extracted !== undefined ? (extracted > 0 ? "done" : "waiting") : (remembered ? "done" : "waiting"));
+  const connectState: JourneyState = (connected !== undefined ? (connected > 0 ? "done" : "waiting") : (connections ? "done" : "waiting"));
+
   return {
     remembered,
     connections,
     waiting,
+    received: received ?? waiting,
+    extracted: extracted ?? remembered,
+    connected: connected ?? connections,
     steps: [
-      { key: "read", state: waiting ? "working" : readState },
-      { key: "understand", state: stageState("vector_index") ?? (remembered ? "done" : "waiting") },
-      { key: "connect", state: stageState("knowledge_graph") ?? (connections ? "done" : "waiting") },
-    ] as Array<{ key: string; state: JourneyState }>,
+      { key: "read", state: readState, count: received ?? (remembered || waiting) },
+      { key: "understand", state: understandState, count: extracted ?? remembered },
+      { key: "connect", state: connectState, count: connected ?? connections },
+    ] as Array<{ key: string; state: JourneyState; count?: number }>,
   };
 }
 
@@ -603,8 +607,18 @@ function PipelinePanel() {
   const mode = useAppStore((state) => state.mode);
   const index = useQuery({ queryKey: ["index"], queryFn: latticeApi.indexStatus });
   const stats = useQuery({ queryKey: ["graphStats"], queryFn: latticeApi.graphStats });
-  const journey = readJourney(index.data?.data, stats.data?.data);
+  const pipelineStatus = useQuery({ queryKey: ["pipelineStatus"], queryFn: latticeApi.pipelineStatus });
+  const statusData = (pipelineStatus.data?.data || pipelineStatus.data);
+
+  const journey = readJourney(statusData, index.data?.data, stats.data?.data);
   const stepIcon = { read: ScanLine, understand: Sparkles, connect: Share2 } as const;
+
+  const hasPipelineData = Boolean(
+    journey.remembered ||
+    journey.connections ||
+    (journey.received && journey.received > 0)
+  );
+
   return (
     <div className="capture-secondary-column space-y-4">
       <Card>
@@ -613,25 +627,32 @@ function PipelinePanel() {
           <CardDescription>{t(language, "capture.pipeline.journey.detail")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <ol className="capture-journey" aria-label={t(language, "capture.pipeline.journey.aria")}>
-            {journey.steps.map(({ key, state }) => {
+          <ol className="capture-journey flex flex-col md:flex-row gap-3 items-stretch" aria-label={t(language, "capture.pipeline.journey.aria")}>
+            {journey.steps.map(({ key, state, count }) => {
               const Icon = stepIcon[key as keyof typeof stepIcon];
               return (
-                <li key={key} className={`capture-journey-step is-${state}`}>
-                  <span className="capture-journey-mark" aria-hidden="true"><Icon className="h-4 w-4" /></span>
-                  <div className="capture-journey-copy">
-                    <strong>{t(language, `capture.pipeline.step.${key}`)}</strong>
-                    <small>{t(language, `capture.pipeline.step.${key}.detail`)}</small>
+                <li key={key} className={`capture-journey-step is-${state} flex-1 p-3 rounded-lg border border-border/60 bg-muted/20 flex flex-col justify-between`}>
+                  <div className="capture-journey-step-header flex items-center gap-2">
+                    <span className="capture-journey-mark" aria-hidden="true"><Icon className="h-4 w-4" /></span>
+                    <div className="capture-journey-copy min-w-0 flex-1">
+                      <strong className="block text-sm">{t(language, `capture.pipeline.step.${key}`)}</strong>
+                      <small className="block text-xs text-muted-foreground">{t(language, `capture.pipeline.step.${key}.detail`)}</small>
+                    </div>
                   </div>
-                  <span className="capture-journey-state">{t(language, `capture.pipeline.step.${state}`)}</span>
+                  <div className="capture-journey-step-meta flex items-center justify-between gap-2 mt-3 pt-2 border-t border-border/40 text-xs">
+                    <Badge variant="muted" className="capture-journey-count">
+                      {count !== undefined ? count : "—"}
+                    </Badge>
+                    <span className="capture-journey-state">{t(language, `capture.pipeline.step.${state}`)}</span>
+                  </div>
                 </li>
               );
             })}
           </ol>
-          {journey.remembered || journey.connections ? (
-            <div className="flex flex-wrap gap-2 text-sm">
-              <Badge variant="success">{t(language, "capture.pipeline.count.remembered", { count: fmtNumber(journey.remembered) })}</Badge>
-              <Badge variant="muted">{t(language, "capture.pipeline.count.connections", { count: fmtNumber(journey.connections) })}</Badge>
+          {hasPipelineData ? (
+            <div className="flex flex-wrap gap-2 text-sm pt-2">
+              <Badge variant="success">{t(language, "capture.pipeline.count.remembered", { count: fmtNumber(journey.extracted ?? journey.remembered) })}</Badge>
+              <Badge variant="muted">{t(language, "capture.pipeline.count.connections", { count: fmtNumber(journey.connected ?? journey.connections) })}</Badge>
               <Badge variant={journey.waiting ? "warning" : "muted"}>
                 {journey.waiting
                   ? t(language, "capture.pipeline.count.waiting", { count: fmtNumber(journey.waiting) })

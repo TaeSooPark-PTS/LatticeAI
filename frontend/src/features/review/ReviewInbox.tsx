@@ -104,50 +104,48 @@ export function ReviewInbox() {
   if (reviews.isLoading) return <LoadingPanel title={t(language, "review.inbox.title")} />;
 
   return (
-    <Card>
-      <CardHeader className="gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle>{t(language, "review.inbox.title")}</CardTitle>
-            <CardDescription>{t(language, "review.inbox.description")}</CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {pendingProposals > 0 ? (
-              <Badge variant="warning" data-testid="proposal-count-badge">
-                {t(language, "review.proposal.badge", { count: pendingProposals })}
-              </Badge>
-            ) : null}
-            {reviews.data ? (
-              <Badge variant={reviews.data.ok ? "success" : "warning"}>{reviews.data.ok ? t(language, "review.status.connected") : t(language, "review.status.unavailable")}</Badge>
-            ) : null}
-          </div>
+    <div className="review-inbox space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/40 pb-4">
+        <div>
+          <h2 className="text-xl font-bold">{t(language, "review.inbox.title")}</h2>
+          <p className="text-sm text-muted-foreground">{t(language, "review.inbox.description")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/40 pt-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span id="review-status-filter-label" className="text-xs font-semibold tracking-wide text-muted-foreground">
-              {t(language, "review.status.title")}
-            </span>
-            <Tabs
-              tabs={reviewStatusFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
-              value={statusFilter}
-              onChange={(id) => setStatusFilter(id as ReviewStatusFilter)}
-              ariaLabelledBy="review-status-filter-label"
-            />
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span id="review-source-filter-label" className="text-xs font-semibold tracking-wide text-muted-foreground">
-              {t(language, "review.source.title")}
-            </span>
-            <Tabs
-              tabs={reviewSourceFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
-              value={sourceFilter}
-              onChange={(id) => setSourceFilter(id as ReviewSourceFilter)}
-              ariaLabelledBy="review-source-filter-label"
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {pendingProposals > 0 ? (
+            <Badge variant="warning" data-testid="proposal-count-badge">
+              {t(language, "review.proposal.badge", { count: pendingProposals })}
+            </Badge>
+          ) : null}
+          {reviews.data ? (
+            <Badge variant={reviews.data.ok ? "success" : "warning"}>{reviews.data.ok ? t(language, "review.status.connected") : t(language, "review.status.unavailable")}</Badge>
+          ) : null}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span id="review-status-filter-label" className="text-xs font-semibold tracking-wide text-muted-foreground">
+            {t(language, "review.status.title")}
+          </span>
+          <Tabs
+            tabs={reviewStatusFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
+            value={statusFilter}
+            onChange={(id) => setStatusFilter(id as ReviewStatusFilter)}
+            ariaLabelledBy="review-status-filter-label"
+          />
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span id="review-source-filter-label" className="text-xs font-semibold tracking-wide text-muted-foreground">
+            {t(language, "review.source.title")}
+          </span>
+          <Tabs
+            tabs={reviewSourceFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
+            value={sourceFilter}
+            onChange={(id) => setSourceFilter(id as ReviewSourceFilter)}
+            ariaLabelledBy="review-source-filter-label"
+          />
+        </div>
+      </div>
+      <div className="pt-2">
         {reviews.isError || (reviews.data && !reviews.data.ok) ? (
           <EmptyState
             title={t(language, "review.inbox.loadError")}
@@ -166,7 +164,7 @@ export function ReviewInbox() {
             detail={statusFilter === "snoozed" ? t(language, "review.inbox.emptySnoozed") : t(language, "review.inbox.emptyPending")}
           />
         ) : (
-          <div className="grid gap-3">
+          <div className="flex flex-col gap-3">
             {items.map((item) => (
               <ReviewCard
                 key={item.id}
@@ -177,7 +175,7 @@ export function ReviewInbox() {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

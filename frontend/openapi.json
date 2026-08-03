@@ -4870,6 +4870,23 @@
         "summary": "Admin Enterprise Siem Export"
       }
     },
+    "/admin/health-summary": {
+      "get": {
+        "description": "One-line admin health for the calm console header (layout rebuild).\n\nAggregates existing admin surfaces \u2014 no new persistence. ``status`` is\n``attention`` when any issue is present, else ``ok``.",
+        "operationId": "admin_health_summary_admin_health_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Health Summary"
+      }
+    },
     "/admin/invite-link": {
       "get": {
         "operationId": "admin_invite_link_admin_invite_link_get",
@@ -6406,6 +6423,45 @@
           }
         },
         "summary": "Agent Runtime Status"
+      }
+    },
+    "/api/activity/runs": {
+      "get": {
+        "description": "Unified agent + workflow run timeline (layout rebuild screen 09).",
+        "operationId": "activity_runs_api_activity_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activity Runs"
       }
     },
     "/api/admin/funnel-metrics": {
@@ -10521,6 +10577,45 @@
         "summary": "Unsnooze Item"
       }
     },
+    "/automations/runs/combined": {
+      "get": {
+        "description": "Alias used by the frontend handoff for the same combined timeline.",
+        "operationId": "automations_runs_combined_automations_runs_combined_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Automations Runs Combined"
+      }
+    },
     "/chat": {
       "get": {
         "operationId": "chat_page_chat_get",
@@ -11975,6 +12070,23 @@
           }
         },
         "summary": "Knowledge Graph Neighbors"
+      }
+    },
+    "/knowledge-graph/pipeline/status": {
+      "get": {
+        "description": "Per-stage counts for the Capture 3-step journey ribbon.\n\nAggregates existing store data only \u2014 no schema change. Keys are\nomitted when a value cannot be computed (never faked as 0 when the\nunderlying source is unavailable).",
+        "operationId": "knowledge_graph_pipeline_status_knowledge_graph_pipeline_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Pipeline Status"
       }
     },
     "/knowledge-graph/promotions": {

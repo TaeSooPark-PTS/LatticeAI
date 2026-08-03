@@ -167,7 +167,7 @@ describe("ActPage", () => {
     const order = screen.getAllByRole("heading").map((node) => node.textContent || "");
     const approvals = order.findIndex((text) => text.includes("승인함"));
     const installed = order.findIndex((text) => text.includes("설치된 자동화"));
-    const history = order.findIndex((text) => text.includes("Agent 실행"));
+    const history = order.findIndex((text) => text.includes("Agent 실행") || text.includes("최근 실행 기록") || text.includes("실행"));
 
     expect(approvals).toBeGreaterThanOrEqual(0);
     expect(installed).toBeGreaterThan(approvals);

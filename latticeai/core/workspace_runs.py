@@ -434,6 +434,99 @@ class WorkspaceRuns:
             runs = [run for run in runs if run.get("workflow_id") == workflow_id]
         return {"runs": list(reversed(runs[-max(1, min(limit, 300)):]))}
 
+    def list_combined_runs(
+        self,
+        *,
+        limit: int = 20,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Merge agent + workflow runs into one ``started_at``-descending timeline.
+
+        Response shape is the product contract for Act screen 09 and the
+        layout-rebuild activity feed: each row carries ``source``, a human
+        ``title``, stop/resume affordances, and normalized timestamps.
+        """
+        capped = max(1, min(int(limit or 20), 100))
+        state = self.load_state()
+        agent_runs = self._scoped(_listify(state.get("agent_runs")), workspace_id)
+        workflow_runs = self._scoped(_listify(state.get("workflow_runs")), workspace_id)
+        combined: List[Dict[str, Any]] = []
+        for run in agent_runs:
+            combined.append(self.activity_run_row(run, source="agent"))
+        for run in workflow_runs:
+            combined.append(self.activity_run_row(run, source="workflow"))
+        combined.sort(key=lambda row: str(row.get("started_at") or ""), reverse=True)
+        return {"runs": combined[:capped]}
+
+    @staticmethod
+    def _first_string(*values: Any) -> str:
+        for value in values:
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
+
+    @classmethod
+    def activity_run_title(cls, run: Dict[str, Any]) -> str:
+        """Public title resolver shared by list_combined_runs and router fallbacks."""
+        direct = cls._first_string(
+            run.get("workflow_name"),
+            run.get("name"),
+            run.get("goal"),
+            run.get("title"),
+            run.get("query"),
+        )
+        if direct:
+            return direct
+        raw_input = run.get("input")
+        if isinstance(raw_input, str) and raw_input.strip():
+            return raw_input.strip()
+        if isinstance(raw_input, dict):
+            nested = cls._first_string(
+                raw_input.get("goal"),
+                raw_input.get("name"),
+                raw_input.get("title"),
+                raw_input.get("query"),
+                raw_input.get("text"),
+                raw_input.get("prompt"),
+            )
+            if nested:
+                return nested
+        return ""
+
+    @classmethod
+    def activity_run_row(cls, run: Dict[str, Any], *, source: str) -> Dict[str, Any]:
+        """Normalize an agent or workflow run into the Act activity-feed row shape.
+
+        Public so API routers (e.g. automation_intelligence fallback) can reuse
+        the same contract without reaching for a private method.
+        """
+        status = str(run.get("status") or "")
+        started_at = (
+            run.get("started_at")
+            or run.get("created_at")
+            or run.get("updated_at")
+            or ""
+        )
+        finished_at = (
+            run.get("finished_at")
+            or run.get("completed_at")
+            or run.get("resolved_at")
+            or run.get("interrupted_at")
+        )
+        run_id = run.get("id") or run.get("run_id")
+        return {
+            "id": run_id,
+            "source": source,
+            "title": cls.activity_run_title(run),
+            "status": status,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "can_stop": status in RUN_ACTIVE_STATUSES,
+            "can_resume": status in {"awaiting_approval", "paused", "waiting_approval"},
+            "workflow_id": run.get("workflow_id"),
+            "agent_id": run.get("agent_id"),
+        }
+
     def mark_workflow_run_resolved(
         self, run_id: str, *, resumed_run_id: str, approved: bool,
         workspace_id: Optional[str] = None,

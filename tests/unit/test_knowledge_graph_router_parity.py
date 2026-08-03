@@ -20,6 +20,8 @@ BASELINE_ROUTES = {
     ("/graph", "GET"),
     ("/knowledge-graph", "GET"),
     ("/knowledge-graph/stats", "GET"),
+    # Layout rebuild: Capture 3-step journey counts (received/extracted/connected).
+    ("/knowledge-graph/pipeline/status", "GET"),
     # v4 T4.1 addition: the provenance coverage honesty metric.
     ("/knowledge-graph/provenance/coverage", "GET"),
     # v4 T4.4 addition: on-demand curation (graph_curator goes live).

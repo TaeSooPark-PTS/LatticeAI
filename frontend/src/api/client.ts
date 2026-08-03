@@ -892,4 +892,7 @@ export const latticeApi = {
   adminSecurityEvents: (limit = 50) => get("/admin/security/events", { events: [] }, { limit }),
   vpcStatus: () => get("/vpc/status", {}),
   toolPermissions: () => get("/tools/permissions", { permissions: [] }),
+  pipelineStatus: () => get("/knowledge-graph/pipeline/status", {}),
+  activityRuns: (limit = 20) => get("/api/activity/runs", { runs: [] }, { limit }),
+  adminHealthSummary: () => get("/admin/health-summary", { status: "ok", issue_count: 0, issues: [] }),
 };

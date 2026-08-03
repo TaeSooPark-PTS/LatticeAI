@@ -173,6 +173,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/health-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin Health Summary
+         * @description One-line admin health for the calm console header (layout rebuild).
+         *
+         *     Aggregates existing admin surfaces — no new persistence. ``status`` is
+         *     ``attention`` when any issue is present, else ``ok``.
+         */
+        get: operations["admin_health_summary_admin_health_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/invite-link": {
         parameters: {
             query?: never;
@@ -936,6 +959,26 @@ export interface paths {
         };
         /** Agent Runtime Status */
         get: operations["agent_runtime_status_agents_api_runtime_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activity/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity Runs
+         * @description Unified agent + workflow run timeline (layout rebuild screen 09).
+         */
+        get: operations["activity_runs_api_activity_runs_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2808,6 +2851,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/automations/runs/combined": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Automations Runs Combined
+         * @description Alias used by the frontend handoff for the same combined timeline.
+         */
+        get: operations["automations_runs_combined_automations_runs_combined_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chat": {
         parameters: {
             query?: never;
@@ -3602,6 +3665,30 @@ export interface paths {
         };
         /** Knowledge Graph Neighbors */
         get: operations["knowledge_graph_neighbors_knowledge_graph_neighbors__node_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge-graph/pipeline/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Knowledge Graph Pipeline Status
+         * @description Per-stage counts for the Capture 3-step journey ribbon.
+         *
+         *     Aggregates existing store data only — no schema change. Keys are
+         *     omitted when a value cannot be computed (never faked as 0 when the
+         *     underlying source is unavailable).
+         */
+        get: operations["knowledge_graph_pipeline_status_knowledge_graph_pipeline_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9291,6 +9378,26 @@ export interface operations {
             };
         };
     };
+    admin_health_summary_admin_health_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     admin_invite_link_admin_invite_link_get: {
         parameters: {
             query?: never;
@@ -10670,6 +10777,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    activity_runs_api_activity_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -14145,6 +14283,37 @@ export interface operations {
             };
         };
     };
+    automations_runs_combined_automations_runs_combined_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     chat_page_chat_get: {
         parameters: {
             query?: never;
@@ -15511,6 +15680,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    knowledge_graph_pipeline_status_knowledge_graph_pipeline_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

@@ -301,7 +301,7 @@ function ModelsPanel() {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+    <div className="flex flex-col gap-4">
       <div className="space-y-4">
         <DataPanel title={t(language, "library.models.setup.title")} description={t(language, "library.models.setup.desc")} result={recs.data}>
           {(data) => {
@@ -423,7 +423,7 @@ function ModelsPanel() {
               const downloadSize = model.download_size || model.estimated_size || recommendation.download_size || recommendation.estimated_size || model.size || recommendation.size;
               const maker = model.provider || recommendation.provider || model.organization || recommendation.organization;
               return (
-                <div key={id} className="grid gap-3 rounded-lg border border-border bg-background/55 p-4 md:grid-cols-[1fr_auto]">
+                <div key={id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-border bg-background/55 p-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="text-base font-semibold">{String(model.name || id)}</div>
@@ -660,10 +660,10 @@ function SkillsPanel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["skills"] }),
   });
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "library.skills.installed")} result={skills.data}>
         {(data) => (
-          <div className="grid gap-2">
+          <div className="flex flex-col gap-2">
             {asArray<Record<string, unknown>>((data as Record<string, unknown>).skills).map((skill) => (
               <div key={String(skill.name || skill.id)} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
                 <div>
@@ -678,7 +678,7 @@ function SkillsPanel() {
       </DataPanel>
       <DataPanel title={t(language, "library.skills.marketplace")} result={market.data}>
         {(data) => (
-          <div className="grid gap-2">
+          <div className="flex flex-col gap-2">
             {asArray<Record<string, unknown>>((data as Record<string, unknown>).skills).slice(0, 10).map((skill) => (
               <div key={String(skill.name || skill.id)} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
                 <div>
@@ -702,7 +702,7 @@ function McpPanel() {
   const tools = useQuery({ queryKey: ["mcpTools"], queryFn: latticeApi.mcpTools });
   const rec = useMutation({ mutationFn: () => latticeApi.mcpRecommend(query) });
   return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, mode === "basic" ? "library.connector.connections" : "library.connector.mcpTools")} result={tools.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).tools || (data as Record<string, unknown>).installed_mcps} titleKey="name" metaKey="status" />}
       </DataPanel>
@@ -729,7 +729,7 @@ function MarketplacePanel() {
   const plugins = useQuery({ queryKey: ["plugins"], queryFn: latticeApi.pluginsRegistry });
   const dir = useQuery({ queryKey: ["pluginsDirectory"], queryFn: latticeApi.pluginsDirectory });
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "library.market.templates")} result={templates.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).templates} titleKey="name" metaKey="kind" />}
       </DataPanel>

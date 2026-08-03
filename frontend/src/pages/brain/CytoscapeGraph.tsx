@@ -1,5 +1,7 @@
 import * as React from "react";
 import cytoscape, { type Core } from "cytoscape";
+import { t } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 import type { ExplorerModel } from "./graphExplorer";
 
 export function CytoscapeGraph({
@@ -17,6 +19,7 @@ export function CytoscapeGraph({
   // parent, which owns the i18n context.
   ariaLabel?: string;
 }) {
+  const language = useAppStore((state) => state.language);
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const cyRef = React.useRef<Core | null>(null);
   // Keyboard cursor over the visible nodes: the canvas itself is focusable and
@@ -109,7 +112,12 @@ export function CytoscapeGraph({
         fit: true,
         padding: 32,
       },
+      maxZoom: 1.4,
     });
+    if (cyRef.current.zoom() > 1.4) {
+      cyRef.current.zoom(1.4);
+      cyRef.current.center();
+    }
     cyRef.current.on("tap", "node", (event) => onSelect(String(event.target.id())));
     cyRef.current.on("tap", (event) => {
       if (event.target === cyRef.current) onSelect(null);
@@ -119,14 +127,19 @@ export function CytoscapeGraph({
   }, [model.elements, onSelect]);
 
   React.useEffect(() => {
-    cyRef.current?.fit(undefined, 32);
+    if (!cyRef.current) return;
+    cyRef.current.fit(undefined, 32);
+    if (cyRef.current.zoom() > 1.4) {
+      cyRef.current.zoom(1.4);
+      cyRef.current.center();
+    }
   }, [fitSignal]);
 
   React.useEffect(() => {
     if (!cyRef.current || !selectedId) return;
     const node = cyRef.current.getElementById(selectedId);
     if (node.length) {
-      cyRef.current.animate({ center: { eles: node }, zoom: Math.max(cyRef.current.zoom(), 1.15) }, { duration: 180 });
+      cyRef.current.animate({ center: { eles: node }, zoom: Math.min(Math.max(cyRef.current.zoom(), 1.15), 1.4) }, { duration: 180 });
     }
   }, [selectedId]);
 
@@ -172,6 +185,11 @@ export function CytoscapeGraph({
 
   return (
     <div className="relative">
+      {model.visibleNodes.length <= 1 ? (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-background/90 backdrop-blur border border-border px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground shadow-sm pointer-events-none">
+          {t(language, "graph.search.hintSingle")}
+        </div>
+      ) : null}
       <div
         ref={hostRef}
         data-testid="brain-cytoscape"

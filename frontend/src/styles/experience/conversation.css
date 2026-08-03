@@ -23,16 +23,7 @@
   backdrop-filter: none;
 }
 
-.brain-centered-home {
-  width: min(100%, var(--experience-reading));
-  min-height: 0;
-  align-items: stretch;
-  margin: 0 auto;
-  overflow: visible;
-  background: transparent;
-  padding: clamp(3.25rem, 8vh, 5.75rem) 0 2.5rem;
-  text-align: left;
-}
+
 
 .brain-home-intro {
   display: grid;

@@ -7,20 +7,42 @@ const port = Number(process.env.LTCAI_VISUAL_PORT || 4927);
 const appVersion = require(path.join(repoRoot, "package.json")).version;
 const releaseRunId = `run-${appVersion.replace(/\D/g, "")}-product`;
 
+// One coherent personal brain for release captures 05 + 11: pipeline counts
+// (received/extracted/connected) must match this graph's scale so the two
+// screenshots look like the same computer.
+//
+// Capture 05 types "workspace" into the graph search. Client-side filter is
+// substring match on id/title/type/summary — at least 4 nodes and 3 edges
+// among those nodes must survive that filter (B1). Labels below intentionally
+// share the token "workspace" so the filtered subgraph stays a real map.
 const graphNodes = [
-  { id: "entity:lattice", type: "Topic", title: "Lattice AI", summary: "Local-first workspace graph", importance_norm: 0.96, metadata: { graph_metrics: { degree: 4, importance_norm: 0.96, mention_count: 14, conversation_count: 5 } } },
-  { id: "entity:workspace", type: "Concept", title: "Workspace Health", summary: "Operational workspace overview", importance_norm: 0.82, metadata: { graph_metrics: { degree: 3, importance_norm: 0.82 } } },
+  { id: "entity:lattice", type: "Topic", title: "Lattice Workspace", summary: "Local-first personal memory system for this workspace", importance_norm: 0.96, metadata: { graph_metrics: { degree: 6, importance_norm: 0.96, mention_count: 14, conversation_count: 5 } } },
+  { id: "entity:workspace", type: "Concept", title: "Workspace Health", summary: "How this computer's Brain is doing in the workspace", importance_norm: 0.82, metadata: { graph_metrics: { degree: 4, importance_norm: 0.82 } } },
   { id: "entity:skills", type: "Task", title: "Skill Marketplace", summary: "Install, validate, and update skills", importance_norm: 0.72, metadata: { graph_metrics: { degree: 2, importance_norm: 0.72 } } },
   { id: "entity:enterprise", type: "Decision", title: "Enterprise Admin", summary: "Capability status without Community lockouts", importance_norm: 0.68, metadata: { graph_metrics: { degree: 2, importance_norm: 0.68 } } },
-  { id: "file:readme", type: "File", title: "README.md", summary: "Release documentation", importance_norm: 0.58, metadata: { filename: "README.md", relative_path: "README.md", graph_metrics: { degree: 2, importance_norm: 0.58 } } },
+  { id: "entity:release", type: "Task", title: "릴리스 절차", summary: "How this release gets out the door", importance_norm: 0.88, metadata: { graph_metrics: { degree: 4, importance_norm: 0.88, mention_count: 9 } } },
+  { id: "entity:memory", type: "Concept", title: "Workspace 개인 기억", summary: "Things kept only on this machine's workspace memory", importance_norm: 0.9, metadata: { graph_metrics: { degree: 3, importance_norm: 0.9 } } },
+  { id: "entity:review", type: "Decision", title: "검토함", summary: "Changes waiting for a human yes", importance_norm: 0.7, metadata: { graph_metrics: { degree: 2, importance_norm: 0.7 } } },
+  { id: "file:readme", type: "File", title: "workspace-README.md", summary: "Release documentation for this workspace", importance_norm: 0.58, metadata: { filename: "workspace-README.md", relative_path: "README.md", graph_metrics: { degree: 3, importance_norm: 0.58 } } },
+  { id: "file:retrieval", type: "File", title: "retrieval-design.pdf", summary: "How search finds the right memory", importance_norm: 0.64, metadata: { filename: "retrieval-design.pdf", relative_path: "docs/retrieval-design.pdf", graph_metrics: { degree: 2, importance_norm: 0.64 } } },
+  { id: "file:meeting", type: "File", title: "meeting-notes.md", summary: "Notes from last planning pass", importance_norm: 0.55, metadata: { filename: "meeting-notes.md", relative_path: "notes/meeting-notes.md", graph_metrics: { degree: 2, importance_norm: 0.55 } } },
+  { id: "file:onboarding", type: "File", title: "onboarding.docx", summary: "How a new person starts with Lattice", importance_norm: 0.5, metadata: { filename: "onboarding.docx", relative_path: "docs/onboarding.docx", graph_metrics: { degree: 1, importance_norm: 0.5 } } },
+  { id: "note:budget", type: "Note", title: "Q3 예산 메모", summary: "Personal note kept in the Brain", importance_norm: 0.48, metadata: { graph_metrics: { degree: 1, importance_norm: 0.48 } } },
 ];
 
+// Edges among the four "workspace" search hits (lattice, workspace, memory,
+// readme): lattice↔workspace, lattice↔memory, workspace→readme, memory→readme.
 const graphEdges = [
   { from: "entity:lattice", to: "entity:workspace", type: "discusses", weight: 1.4 },
   { from: "entity:lattice", to: "entity:skills", type: "mentions", weight: 1.1 },
   { from: "entity:lattice", to: "entity:enterprise", type: "mentions", weight: 1.0 },
+  { from: "entity:lattice", to: "entity:memory", type: "discusses", weight: 1.3 },
+  { from: "entity:lattice", to: "entity:release", type: "mentions", weight: 1.2 },
   { from: "entity:workspace", to: "file:readme", type: "based_on", weight: 0.8 },
+  { from: "entity:memory", to: "file:readme", type: "based_on", weight: 0.85 },
   { from: "entity:skills", to: "file:readme", type: "based_on", weight: 0.7 },
+  { from: "entity:release", to: "file:retrieval", type: "based_on", weight: 0.9 },
+  { from: "entity:review", to: "file:meeting", type: "based_on", weight: 0.75 },
 ];
 
 let installedRecipeWorkflow = null;
@@ -92,7 +114,11 @@ const workspaceOs = {
   version: "1.7.0",
   updated_at: "2026-06-01T12:00:00",
   counts: { snapshots: 2, traces: 3, memories: 7, agent_runs: 4, workflows: 2, skills: 3, timeline: 8 },
-  graph: { nodes: { Topic: 1, Concept: 1, Task: 1, Decision: 1, File: 1 }, edges: { discusses: 1, mentions: 2, based_on: 2 } },
+  // Matches graphNodes (12) + graphEdges (10) used by capture 05 / pipeline 11.
+  graph: {
+    nodes: { Topic: 1, Concept: 2, Task: 2, Decision: 2, File: 4, Note: 1 },
+    edges: { discusses: 2, mentions: 3, based_on: 5 },
+  },
   models: { current_model: "mlx-community/Qwen3-VL-8B-Instruct-4bit", loaded_models: ["mlx-community/Qwen3-VL-8B-Instruct-4bit"], local_model: "mlx-community/Qwen3-VL-8B-Instruct-4bit" },
   workspace_registry: {
     active_workspace: "personal",
@@ -513,12 +539,17 @@ const server = http.createServer((req, res) => {
       ],
     },
   });
+  // Install SSE stage tokens MUST match latticeai/services/model_loading.py
+  // prepare stream wire protocol (B2): engine → download → load → smoke_test → done.
+  // Frontend maps these to UI steps install/download/validate/load via
+  // friendlyInstallStage — never invent mock-only stage names.
   if (pathname === "/engines/prepare-model/stream" && req.method === "POST") {
     res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
     const send = (event, obj) => res.write(`event: ${event}\ndata: ${JSON.stringify(obj)}\n\n`);
     send("progress", { stage: "engine", message: "Execution engine is ready.", percent: 10 });
-    setTimeout(() => send("progress", { stage: "download", message: "Already downloaded model files.", percent: 55 }), 120);
-    setTimeout(() => send("progress", { stage: "smoke_test", message: "Validating chat compatibility.", percent: 88 }), 260);
+    setTimeout(() => send("progress", { stage: "download", message: "Already downloaded model files.", percent: 55 }), 100);
+    setTimeout(() => send("progress", { stage: "load", message: "Loading model into memory.", percent: 92 }), 200);
+    setTimeout(() => send("progress", { stage: "smoke_test", message: "Validating chat compatibility.", percent: 98 }), 300);
     setTimeout(() => {
       send("done", { status: "ok", model: "mlx-community/Qwen3-VL-8B-Instruct-4bit", current: "mlx-community/Qwen3-VL-8B-Instruct-4bit", ready_to_chat: true, compatibility_status: "ok" });
       res.end();
@@ -814,6 +845,62 @@ const server = http.createServer((req, res) => {
 
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
+  // Capture 3-step journey ribbon (layout rebuild screen 11).
+  // Counts match this mock brain: 12 nodes received/extracted, 10 edges connected.
+  // stages.*.status + pending are the single source of truth (B4) — never
+  // return pending=0 with status=waiting when count>0.
+  if (pathname === "/knowledge-graph/pipeline/status") return json(res, {
+    received: graphNodes.length,
+    extracted: graphNodes.length,
+    connected: graphEdges.length,
+    updated_at: "2026-06-06T12:00:00",
+    stages: {
+      received: { count: graphNodes.length, pending: 0, status: "done" },
+      extracted: { count: graphNodes.length, pending: 0, status: "done" },
+      connected: { count: graphEdges.length, pending: 0, status: "done" },
+    },
+  });
+  // Unified Act run timeline (layout rebuild screen 09). Includes an
+  // awaiting_approval row so the approval badge is always capturable.
+  if (pathname === "/api/activity/runs" || pathname === "/automations/runs/combined") {
+    return json(res, {
+      runs: [
+        {
+          id: "wf-run-approval",
+          source: "workflow",
+          title: "Agent Review Workflow",
+          status: "awaiting_approval",
+          started_at: "2026-06-06T12:05:00",
+          finished_at: null,
+          can_stop: false,
+          can_resume: true,
+          workflow_id: "wf-agent-review",
+        },
+        {
+          id: "agent-run-1",
+          source: "agent",
+          title: "Summarize release",
+          status: "ok",
+          started_at: "2026-06-06T12:30:00",
+          finished_at: "2026-06-06T12:31:00",
+          can_stop: false,
+          can_resume: false,
+          agent_id: "agent:executor",
+        },
+        {
+          id: "wf-run-1",
+          source: "workflow",
+          title: "Agent Review Workflow",
+          status: "ok",
+          started_at: "2026-06-06T12:00:00",
+          finished_at: "2026-06-06T12:01:00",
+          can_stop: false,
+          can_resume: false,
+          workflow_id: "wf-agent-review",
+        },
+      ],
+    });
+  }
   if (pathname === "/api/knowledge-graph/portability") return json(res, {
     available: true,
     graph_schema_version: 3,
@@ -864,7 +951,13 @@ const server = http.createServer((req, res) => {
     encrypted: true,
     verified: true,
   });
-  if (pathname === "/knowledge-graph/provenance/coverage") return json(res, { total_nodes: 5, nodes_with_provenance: 4, coverage_ratio: 0.8, provenance_by_source_type: { upload: 2, note: 2 }, uncovered_by_type: { Concept: 1 } });
+  if (pathname === "/knowledge-graph/provenance/coverage") return json(res, {
+    total_nodes: graphNodes.length,
+    nodes_with_provenance: graphNodes.length - 1,
+    coverage_ratio: (graphNodes.length - 1) / graphNodes.length,
+    provenance_by_source_type: { upload: 4, note: 3, conversation: 4 },
+    uncovered_by_type: { Concept: 1 },
+  });
   if (pathname === "/knowledge-graph/search") return json(res, { query: url.searchParams.get("q"), matches: graphNodes });
   if (pathname === "/knowledge-graph/ingest" && req.method === "POST") return json(res, { status: "ok", source_type: "note", node_id: "note:visual" });
   if (pathname === "/knowledge-graph/local/index" && req.method === "POST") return json(res, { status: "ok", source: { id: "source-visual", root_path: repoRoot, status: "indexed" } });
@@ -873,6 +966,15 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith("/knowledge-graph/neighbors/")) return json(res, { node_id: pathname.replace("/knowledge-graph/neighbors/", ""), neighbors: graphNodes, edges: graphEdges });
 
   if (pathname === "/admin/summary") return json(res, { total_users: 2, active_users: 2, admin_users: 1, total_messages: 42, user_messages: 21, assistant_messages: 21 });
+  // Calm admin header (layout rebuild screen 10). ``attention`` so the
+  // non-ok layout is what the release capture actually shows.
+  if (pathname === "/admin/health-summary") return json(res, {
+    status: "attention",
+    issue_count: 1,
+    issues: [
+      { area: "security", severity: "warning", message: "1 medium-risk event awaiting review" },
+    ],
+  });
   if (pathname === "/admin/users") return json(res, [{ email: "admin@example.com", nickname: "Admin", role: "admin", disabled: false }, { email: "member@example.com", nickname: "Member", role: "user", disabled: false }]);
   if (pathname === "/admin/sensitivity") return json(res, { summary: { risky_messages: 1, compliant_messages: 41, risk_rate: 2, severity_counts: { high: 0 }, field_counts: {}, user_counts: {} }, risk_fields: [], compliance_fields: [] });
   if (pathname === "/admin/invite-link") return json(res, { invite_url: `http://127.0.0.1:${port}/`, invite_code: "visual", gate_enabled: false });

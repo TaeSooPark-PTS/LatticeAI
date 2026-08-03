@@ -52,6 +52,38 @@
   --danger: 8 70% 64%;
   --destructive: 8 70% 64%;
   --destructive-foreground: 30 40% 97%;
+
+  /* layout & reading measure tokens (R2) */
+  --lt-measure-text: 68ch;
+  --lt-measure-form: 30rem;
+  --lt-measure-page: 70rem;
+  --lt-measure-full: none;
+
+  /* vertical rhythm */
+  --lt-space-1: 4px;
+  --lt-space-2: 8px;
+  --lt-space-3: 12px;
+  --lt-space-4: 16px;
+  --lt-space-5: 24px;
+  --lt-space-6: 32px;
+  --lt-space-7: 48px;
+  --lt-space-8: 64px;
+
+  /* section gaps */
+  --lt-gap-tight: var(--lt-space-3);
+  --lt-gap-block: var(--lt-space-5);
+  --lt-gap-section: var(--lt-space-7);
+
+  /* typography scale */
+  --lt-type-hero: 1.75rem;
+  --lt-type-title: 1.25rem;
+  --lt-type-body: 0.9375rem;
+  --lt-type-small: 0.8125rem;
+
+  /* radius */
+  --lt-radius-sm: 6px;
+  --lt-radius-md: 8px;
+  --lt-radius-lg: 12px;
 }
 
 :root[data-theme="light"] {

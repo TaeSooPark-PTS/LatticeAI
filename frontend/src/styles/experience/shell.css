@@ -184,6 +184,18 @@ summary {
   box-shadow: none;
 }
 
+.brain-local-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--lt-radius-sm);
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .brain-shell-brand-mark svg {
   width: 1.15rem;
   height: 1.15rem;

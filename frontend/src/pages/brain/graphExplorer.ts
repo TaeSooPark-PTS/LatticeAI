@@ -93,7 +93,10 @@ function groupDefinition(id: string) {
 }
 
 export function parseGraph(data: unknown, language: Language): ParsedGraph {
-  const graph = isRecord(data) ? data : {};
+  let graph = isRecord(data) ? data : {};
+  if (isRecord(graph.data) && (Array.isArray(graph.data.nodes) || isRecord(graph.data.nodes))) {
+    graph = graph.data as Record<string, unknown>;
+  }
   const rawNodes = asArray<Record<string, unknown>>(graph.nodes);
   const rawEdges = asArray<Record<string, unknown>>(graph.edges);
   const ids = new Set(rawNodes.map((node) => field(node, ["id", "node_id", "title", "label"])).filter(Boolean));

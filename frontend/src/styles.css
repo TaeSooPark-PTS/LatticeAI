@@ -5942,13 +5942,20 @@ body {
    already styles is dead code, and one dropped on a property this file does
    not set is worse — it stacks silently on top. */
 
-.ritual-login,
-.ritual-recommend {
-  display: grid;
-  gap: 1.05rem;
-  width: min(100%, 30rem);
+.ritual-login {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: min(100%, 52rem);
   margin: 0 auto;
   text-align: left;
+}
+
+.ritual-login-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(340px, 1.2fr);
+  gap: 2rem;
+  align-items: start;
 }
 
 .ritual-recommend {

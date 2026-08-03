@@ -283,6 +283,43 @@ def create_automation_intelligence_router(
             payload["review_item_id"] = review_item.get("id")
         return payload
 
+    def _combined_runs(request: Request, limit: int = 20) -> dict[str, Any]:
+        require_user(request)
+        scope = gate_read(request)
+        capped = max(1, min(int(limit or 20), 100))
+        if hasattr(store, "list_combined_runs"):
+            return store.list_combined_runs(limit=capped, workspace_id=scope)
+        # Store without the helper: merge the two existing listings in place.
+        agent_listing = (
+            store.list_agents(workspace_id=scope)
+            if hasattr(store, "list_agents")
+            else {"runs": []}
+        )
+        workflow_listing = (
+            store.list_workflow_runs(limit=capped, workspace_id=scope)
+            if hasattr(store, "list_workflow_runs")
+            else {"runs": []}
+        )
+        from latticeai.core.workspace_runs import WorkspaceRuns
+
+        rows = []
+        for run in agent_listing.get("runs") or []:
+            rows.append(WorkspaceRuns.activity_run_row(run, source="agent"))
+        for run in workflow_listing.get("runs") or []:
+            rows.append(WorkspaceRuns.activity_run_row(run, source="workflow"))
+        rows.sort(key=lambda row: str(row.get("started_at") or ""), reverse=True)
+        return {"runs": rows[:capped]}
+
+    @router.get("/api/activity/runs")
+    async def activity_runs(request: Request, limit: int = 20):
+        """Unified agent + workflow run timeline (layout rebuild screen 09)."""
+        return _combined_runs(request, limit=limit)
+
+    @router.get("/automations/runs/combined")
+    async def automations_runs_combined(request: Request, limit: int = 20):
+        """Alias used by the frontend handoff for the same combined timeline."""
+        return _combined_runs(request, limit=limit)
+
     return router
 
 

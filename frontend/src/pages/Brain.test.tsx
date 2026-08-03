@@ -148,8 +148,10 @@ describe("BrainPage", () => {
         graphCoverage: ok({ total_nodes: 2, nodes_with_provenance: 1 }),
       },
     });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "기억 화면으로 돌아가기" })).toBeTruthy());
-    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "기억 화면으로 돌아가기" })).toBeTruthy();
+      expect(screen.getByTestId("brain-cytoscape")).toBeTruthy();
+      expect(screen.getByText("릴리스 절차")).toBeTruthy();
+    });
   });
 });

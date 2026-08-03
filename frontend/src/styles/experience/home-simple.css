@@ -24,6 +24,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
+  min-height: calc(100vh - 12rem);
   gap: 1.1rem;
   width: min(100%, 50rem);
   margin-inline: auto;
@@ -253,11 +255,11 @@
 
 .brain-secondary-deck {
   width: 100%;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg, 1rem);
-  background: hsl(var(--card));
-  box-shadow: var(--elev-1, 0 4px 16px hsl(var(--foreground) / 0.04));
-  padding: 0.85rem 1.1rem 0.95rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.5rem 0;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
