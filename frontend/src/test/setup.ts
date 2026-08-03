@@ -48,6 +48,26 @@ if (typeof globalThis.matchMedia !== "function") {
   })) as typeof globalThis.matchMedia;
 }
 
+// Node 22+ ships its own `localStorage` global, and it reads as `undefined`
+// unless the process was started with `--localstorage-file`. That global
+// shadows the one jsdom installs on the window, so on a current local Node
+// every spec in this suite died in the `afterEach` below before any assertion
+// was reported, while CI (pinned to Node 20) stayed green. Same rationale as
+// the shims above: supply the missing environment piece, never the behaviour
+// under test. Guarded, so a runtime that provides the real thing keeps it.
+if (!globalThis.localStorage) {
+  const entries = new Map<string, string>();
+  const memoryStorage: Storage = {
+    get length() { return entries.size; },
+    key: (index: number) => Array.from(entries.keys())[index] ?? null,
+    getItem: (key: string) => entries.get(String(key)) ?? null,
+    setItem: (key: string, value: string) => { entries.set(String(key), String(value)); },
+    removeItem: (key: string) => { entries.delete(String(key)); },
+    clear: () => entries.clear(),
+  };
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, get: () => memoryStorage });
+}
+
 afterEach(() => {
   cleanup();
   localStorage.clear();

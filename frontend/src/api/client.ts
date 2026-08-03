@@ -14,6 +14,7 @@ import {
   tauriInvoke,
   workspaceHeaders,
 } from "./base";
+import { readEventStream } from "./eventStream";
 
 export type { ApiResult } from "./base";
 
@@ -312,39 +313,30 @@ async function streamModelPrepare(
     const detail = payload?.detail && typeof payload.detail === "object" ? payload.detail : payload;
     const message = friendlyError(payload, res.statusText);
     handlers.onError?.({ status: "error", user_message: message, ...(detail || {}) });
-    return { source: "live" as const, ok: false, status: res.status, data: detail || {}, error: message };
+    return { source: "live" as const, ok: false, status: res.status, data: detail || {}, error: message, malformedFrames: 0 };
   }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let eventName = "message";
   let finalData: Record<string, unknown> = {};
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() || "";
-    for (const part of parts) {
-      const lines = part.split("\n");
-      eventName = lines.find((item) => item.startsWith("event:"))?.slice(6).trim() || "message";
-      const dataLine = lines.find((item) => item.startsWith("data:"));
-      if (!dataLine) continue;
-      const raw = dataLine.slice(5).trim();
-      const data = raw ? JSON.parse(raw) as Record<string, unknown> : {};
-      if (eventName === "progress") handlers.onProgress?.(data);
-      if (eventName === "error") {
-        const detail = typeof data.detail === "object" && data.detail !== null ? data.detail as Record<string, unknown> : data;
-        handlers.onError?.(detail);
-        return { source: "live" as const, ok: false, status: Number(data.status_code || 500), data: detail, error: friendlyError({ detail }, "Model setup failed") };
-      }
-      if (eventName === "done") {
-        finalData = data;
-        handlers.onDone?.(data);
-      }
+  // Count-and-continue: a download-progress stream that hiccups once should
+  // still report "done", not strand the install screen on the last percentage.
+  let malformedFrames = 0;
+  for await (const frame of readEventStream(res.body)) {
+    if (frame.malformed) {
+      malformedFrames += 1;
+      continue;
+    }
+    const data = frame.data || {};
+    if (frame.event === "progress") handlers.onProgress?.(data);
+    if (frame.event === "error") {
+      const detail = typeof data.detail === "object" && data.detail !== null ? data.detail as Record<string, unknown> : data;
+      handlers.onError?.(detail);
+      return { source: "live" as const, ok: false, status: Number(data.status_code || 500), data: detail, error: friendlyError({ detail }, "Model setup failed"), malformedFrames };
+    }
+    if (frame.event === "done") {
+      finalData = data;
+      handlers.onDone?.(data);
     }
   }
-  return { source: "live" as const, ok: true, status: 200, data: finalData };
+  return { source: "live" as const, ok: true, status: 200, data: finalData, malformedFrames };
 }
 
 async function streamChat(body: Record<string, unknown>, handlers: ChatEventHandlers = {}) {
@@ -362,11 +354,8 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
   });
   if (!res.ok || !res.body || !(res.headers.get("content-type") || "").includes("text/event-stream")) {
     const payload = await res.json().catch(() => null);
-    return { source: "live", text: "", trace: null, error: payload?.error || payload?.detail || res.statusText };
+    return { source: "live", text: "", trace: null, error: payload?.error || payload?.detail || res.statusText, malformedFrames: 0 };
   }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
   let text = "";
   let trace: unknown = null;
   let agent: ChatAgentPayload | null = null;
@@ -374,57 +363,50 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
   // trailer as the trace; keep the raw values so the UI parses defensively.
   let contextQuality: unknown = null;
   let grounding: unknown = null;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() || "";
-    for (const part of parts) {
-      const lines = part.split("\n");
-      const line = lines.find((item) => item.startsWith("data:"));
-      if (!line) continue;
-      const raw = line.slice(5).trim();
-      // Named frames (same `event:` convention as streamModelPrepare). The
-      // agent loop emits `event: agent_step` progress frames before the final
-      // plain data frames; unknown named events are ignored gracefully.
-      const eventName = lines.find((item) => item.startsWith("event:"))?.slice(6).trim() || "message";
-      if (eventName === "agent_step") {
-        try {
-          const step = raw ? JSON.parse(raw) : null;
-          if (step && typeof step === "object" && !Array.isArray(step)) {
-            handlers.onAgentStep?.(step as Record<string, unknown>);
-          }
-        } catch {
-          // A malformed progress frame must never break the answer stream.
-        }
-        continue;
-      }
-      if (eventName !== "message") continue;
-      if (raw === "[DONE]") return { source: "live", text, trace, agent, contextQuality, grounding };
-      const data = JSON.parse(raw);
-      const delta = data.chunk || data.text || "";
-      if (delta) {
-        text += delta;
-        handlers.onChunk?.(delta, text);
-      }
-      if (data.trace) {
-        trace = data.trace;
-        handlers.onTrace?.(trace);
-      }
-      if (data.context_quality && typeof data.context_quality === "object") {
-        contextQuality = data.context_quality;
-      }
-      if (data.grounding && typeof data.grounding === "object") {
-        grounding = data.grounding;
-      }
-      if (data.agent && typeof data.agent === "object") {
-        agent = data.agent as ChatAgentPayload;
-        handlers.onAgent?.(agent);
-      }
+  // Frames the reader could not decode. Counted rather than thrown: half an
+  // answer already on screen is worth more than a strict parser.
+  let malformedFrames = 0;
+  for await (const frame of readEventStream(res.body)) {
+    // The terminator is a sentinel, not JSON, so it is matched before the
+    // malformed check — otherwise every healthy stream would count one.
+    if (frame.event === "message" && frame.raw === "[DONE]") {
+      return { source: "live", text, trace, agent, contextQuality, grounding, malformedFrames };
+    }
+    if (frame.malformed) {
+      malformedFrames += 1;
+      continue;
+    }
+    // Named frames (same `event:` convention as streamModelPrepare). The
+    // agent loop emits `event: agent_step` progress frames before the final
+    // plain data frames; unknown named events are ignored gracefully.
+    if (frame.event === "agent_step") {
+      if (frame.data) handlers.onAgentStep?.(frame.data);
+      continue;
+    }
+    if (frame.event !== "message") continue;
+    const data = frame.data;
+    if (!data) continue;
+    const delta = (data.chunk || data.text || "") as string;
+    if (delta) {
+      text += delta;
+      handlers.onChunk?.(delta, text);
+    }
+    if (data.trace) {
+      trace = data.trace;
+      handlers.onTrace?.(trace);
+    }
+    if (data.context_quality && typeof data.context_quality === "object") {
+      contextQuality = data.context_quality;
+    }
+    if (data.grounding && typeof data.grounding === "object") {
+      grounding = data.grounding;
+    }
+    if (data.agent && typeof data.agent === "object") {
+      agent = data.agent as ChatAgentPayload;
+      handlers.onAgent?.(agent);
     }
   }
-  return { source: "live", text, trace, agent, contextQuality, grounding };
+  return { source: "live", text, trace, agent, contextQuality, grounding, malformedFrames };
 }
 
 async function saveChatFile(path: string, content: string): Promise<ApiResult<{ path?: string; bytes?: number }>> {

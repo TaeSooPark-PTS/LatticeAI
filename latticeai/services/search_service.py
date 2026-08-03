@@ -267,7 +267,7 @@ class SearchService:
                 "metadata": match.get("metadata") or {},
                 "updated_at": match.get("updated_at"),
             })
-        return {
+        result = {
             "query": query,
             "mode": "vector",
             "embedding_model": payload.get("embedding_model"),
@@ -278,6 +278,14 @@ class SearchService:
                 include_legacy_global=include_legacy_global,
             ),
         }
+        # Honest recall passthrough: the graph layer scores a capped slice of a
+        # large vector index and says so. Dropping it here would turn "partial
+        # recall" into "these are all the matches" at the API boundary. It also
+        # rides into hybrid_search()["channels"]["vector"] for free.
+        recall = payload.get("recall")
+        if isinstance(recall, dict):
+            result["recall"] = recall
+        return result
 
     def graph_search(
         self,

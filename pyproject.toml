@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "10.6.2"
+version = "10.6.3"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -356,6 +356,7 @@ files = [
   "latticeai/api/voice_capture.py",
   "latticeai/api/workflow_designer.py",
   "latticeai/api/workspace.py",
+  "latticeai/api/workspace_scope.py",
   "latticeai/app_factory.py",
   "latticeai/cli/__init__.py",
   "latticeai/cli/entrypoint.py",
@@ -375,6 +376,7 @@ files = [
   "latticeai/core/builtin_hooks.py",
   "latticeai/core/config.py",
   "latticeai/core/context_builder.py",
+  "latticeai/core/csrf.py",
   "latticeai/core/document_generator.py",
   "latticeai/core/embedding_providers.py",
   "latticeai/core/enterprise.py",

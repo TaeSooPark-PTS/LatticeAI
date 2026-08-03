@@ -14,6 +14,47 @@ else:
     _Core = object
 
 
+# ── brute-force recall cap (review 2026-08 P1 #2) ────────────────────────────
+# There is no ANN index in the default build: sqlite-vec is an optional
+# dependency and, when it is absent, `index_status()["storage"]` honestly
+# reports ``vector_search_backend: "bruteforce-cosine"``. Brute force scores
+# every candidate in Python, so *some* cap is unavoidable on a large graph.
+#
+# What is not acceptable is a SILENT cap. The pre-10.7 code took the 10 000
+# most recently indexed rows — ordered by ``indexed_at``, i.e. by recency, not
+# by similarity — and returned them as if they were the whole index, so recall
+# on a 200 000-row brain quietly became "the newest 5%". The cap is now
+# explicit, configurable, and reported back to the caller in ``recall``.
+#
+# ``LATTICEAI_VECTOR_MAX_CANDIDATES`` overrides the default; ``0`` means "no
+# cap — scan the whole index" (exact recall, paid for in latency).
+VECTOR_MAX_CANDIDATES_ENV = "LATTICEAI_VECTOR_MAX_CANDIDATES"
+DEFAULT_VECTOR_MAX_CANDIDATES = 10_000
+#: Upper bound for a configured cap; ``0``/``None`` still means uncapped.
+VECTOR_MAX_CANDIDATES_CEILING = 500_000
+
+
+def _configured_vector_max_candidates() -> Optional[int]:
+    """Resolve the candidate cap from the environment (None = uncapped).
+
+    Never raises: an unparseable value falls back to the documented default
+    rather than breaking every search.
+    """
+    raw = os.getenv(VECTOR_MAX_CANDIDATES_ENV)
+    if raw is None or not raw.strip():
+        return DEFAULT_VECTOR_MAX_CANDIDATES
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        logging.warning(
+            "%s=%r is not an integer — using the default cap of %d",
+            VECTOR_MAX_CANDIDATES_ENV, raw, DEFAULT_VECTOR_MAX_CANDIDATES,
+        )
+        return DEFAULT_VECTOR_MAX_CANDIDATES
+    if value <= 0:
+        return None  # explicit opt-in to an exhaustive scan
+    return min(value, VECTOR_MAX_CANDIDATES_CEILING)
+
 
 class KnowledgeGraphVectorMixin(_Core):
     """Vector-embedding index build/status/search, split out of retrieval.
@@ -643,24 +684,120 @@ class KnowledgeGraphVectorMixin(_Core):
             "detail": detail,
         }
 
+    def _vector_search_backend(self) -> str:
+        """Which backend actually scores the vectors, per storage capabilities.
+
+        sqlite-vec exposes an ANN index; without it this store scores rows in
+        Python (``bruteforce-cosine``). Never raises — a capability probe
+        failure means "we cannot claim ANN", which is the brute-force answer.
+        """
+        try:
+            capabilities = self.storage_engine.capabilities().as_dict()
+        except Exception:  # noqa: BLE001 — a probe failure is not an ANN index
+            return "bruteforce-cosine"
+        backend = (capabilities or {}).get("vector_backend")
+        return str(backend) if backend else "bruteforce-cosine"
+
+    @staticmethod
+    def _recall_report(
+        *,
+        backend: str,
+        cap: Optional[int],
+        candidates_total: int,
+        candidates_scanned: int,
+    ) -> Dict[str, Any]:
+        """The honest answer to "did this search see the whole index?"."""
+        truncated = candidates_scanned < candidates_total
+        detail: Optional[str] = None
+        if truncated:
+            detail = (
+                f"partial recall: scored the {candidates_scanned} most recently "
+                f"indexed vectors of {candidates_total}. The cut is by index "
+                f"recency, not similarity, so older matches were never compared. "
+                f"Raise {VECTOR_MAX_CANDIDATES_ENV} (0 = scan everything) or "
+                f"install sqlite-vec for an ANN index."
+            )
+        return {
+            "backend": backend,
+            "max_candidates": cap,
+            "candidates_total": candidates_total,
+            "candidates_scanned": candidates_scanned,
+            "truncated": truncated,
+            "detail": detail,
+        }
+
+    def _vector_candidate_cap(
+        self, requested: Optional[int], *, limit: int
+    ) -> Optional[int]:
+        """Resolve the effective candidate cap (None = scan everything).
+
+        ``requested is None`` uses the configured/default cap; an explicit
+        ``<= 0`` is the caller asking for an exhaustive scan. Note the
+        ``is None`` test: ``0`` is a meaningful value here, so truthiness
+        would silently turn "no cap" into "the default cap".
+        """
+        if requested is None:
+            cap = _configured_vector_max_candidates()
+        elif int(requested) <= 0:
+            cap = None
+        else:
+            cap = min(int(requested), VECTOR_MAX_CANDIDATES_CEILING)
+        if cap is None:
+            return None
+        # Never scan fewer rows than the caller intends to receive.
+        return max(limit, cap)
+
     def vector_search(
         self,
         query: str,
         *,
         limit: int = 30,
         min_score: float = 0.0,
-        max_candidates: int = 10_000,
+        max_candidates: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """Brute-force cosine search over the vector index.
+
+        ``max_candidates`` bounds how many indexed rows are scored; ``None``
+        (the default) resolves it from ``LATTICEAI_VECTOR_MAX_CANDIDATES``
+        (default 10 000), and ``0`` or a negative value scans the whole index.
+        When the cap bites, the rows kept are the most recently indexed ones —
+        recency, not similarity — so the result is *partial recall*. That is
+        reported in the additive ``recall`` block
+        (``{backend, max_candidates, candidates_total, candidates_scanned,
+        truncated, detail}``) instead of being hidden, and callers/UIs are
+        expected to surface ``recall.truncated``.
+        """
         query = str(query or "").strip()
         limit = max(1, min(int(limit or 30), 100))
         min_score = float(min_score or 0.0)
+        cap = self._vector_candidate_cap(max_candidates, limit=limit)
+        backend = self._vector_search_backend()
         if not query:
-            return {"query": query, "matches": []}
+            return {
+                "query": query,
+                "matches": [],
+                "recall": {
+                    "backend": backend,
+                    "max_candidates": cap,
+                    "candidates_total": 0,
+                    "candidates_scanned": 0,
+                    "truncated": False,
+                    "detail": None,
+                },
+            }
         query_vector = self._embedding_model.embed(query)
-        max_candidates = max(limit, min(int(max_candidates or 10_000), 50_000))
         with self._connect() as conn:
+            # Counted in the same transaction as the scan so "scanned N of M"
+            # cannot describe two different index states.
+            candidates_total = int(
+                conn.execute(
+                    "SELECT COUNT(*) AS c FROM vector_embeddings "
+                    "WHERE embedding_model=? AND embedding_dim=?",
+                    (self._embedding_model.model_id, self._embedding_model.dim),
+                ).fetchone()["c"]
+            )
             rows = conn.execute(
-                """
+                f"""
                     SELECT
                       ve.item_id, ve.item_type, ve.source_node, ve.embedding,
                       ve.embedding_dim, ve.embedding_model, ve.metadata_json AS vector_metadata,
@@ -677,14 +814,24 @@ class KnowledgeGraphVectorMixin(_Core):
                     LEFT JOIN nodes pn ON pn.id=c.source_node
                     WHERE ve.embedding_model=? AND ve.embedding_dim=?
                     ORDER BY ve.indexed_at DESC
-                    LIMIT ?
+                    {"LIMIT ?" if cap is not None else ""}
                     """,
                 (
-                    self._embedding_model.model_id,
-                    self._embedding_model.dim,
-                    max_candidates,
+                    (
+                        self._embedding_model.model_id,
+                        self._embedding_model.dim,
+                        cap,
+                    )
+                    if cap is not None
+                    else (self._embedding_model.model_id, self._embedding_model.dim)
                 ),
             ).fetchall()
+        recall = self._recall_report(
+            backend=backend,
+            cap=cap,
+            candidates_total=candidates_total,
+            candidates_scanned=len(rows),
+        )
         scored = []
         for row in rows:
             vector = self._embedding_model.decode(
@@ -742,4 +889,5 @@ class KnowledgeGraphVectorMixin(_Core):
             "embedding_model": self._embedding_model.model_id,
             "embedding_dim": self._embedding_model.dim,
             "matches": scored[:limit],
+            "recall": recall,
         }

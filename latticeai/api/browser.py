@@ -28,6 +28,7 @@ from pydantic import BaseModel
 
 from lattice_brain.ingestion import IngestionItem, capture_quality_verdict
 from latticeai import __version__
+from latticeai.api.workspace_scope import resolve_workspace_scope
 from latticeai.core.quiet import quiet
 
 MAX_TAB_BYTES = 4 * 1024 * 1024          # 4 MB per captured tab payload
@@ -399,20 +400,13 @@ def create_browser_router(
             raise HTTPException(status_code=503, detail="Knowledge Graph ingestion is disabled.")
 
     def _write_workspace(request: Request, body_workspace: Optional[str], user: str) -> Optional[str]:
-        header_workspace = request.headers.get("X-Workspace-Id")
-        header_workspace = header_workspace.strip() if header_workspace and header_workspace.strip() else None
-        query_workspace = request.query_params.get("workspace_id")
-        query_workspace = query_workspace.strip() if query_workspace and query_workspace.strip() else None
-        supplied = [value for value in (body_workspace, header_workspace, query_workspace) if value]
-        if len(set(supplied)) > 1:
-            raise HTTPException(status_code=403, detail="Workspace selectors must match.")
-        requested = supplied[0] if supplied else None
-        if workspace_service is None:
-            return requested
-        try:
-            return workspace_service.resolve_write_scope(requested, user or None)
-        except PermissionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return resolve_workspace_scope(
+            request,
+            user=user,
+            workspace_service=workspace_service,
+            write=True,
+            body_workspace=body_workspace,
+        )
 
     @router.post("/api/browser/read-url")
     async def read_url(req: ReadUrlRequest, request: Request):

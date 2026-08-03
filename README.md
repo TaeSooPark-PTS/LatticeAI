@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.6.2 Living Brain walkthrough](output/release/v10.6.2/gifs/v10.6.2-living-brain-walkthrough.gif)
+![v10.6.3 Living Brain walkthrough](output/release/v10.6.3/gifs/v10.6.3-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.6.2/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.6.2/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.6.2/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.6.2/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.6.2/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.6.2/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.6.2/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.6.2/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.6.3/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.6.3/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.6.3/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.6.3/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.6.3/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.6.3/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.6.3/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.6.3/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,14 +58,14 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.6.2/screenshots/01-login.png) | ![Model install](output/release/v10.6.2/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.6.2/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.6.3/screenshots/01-login.png) | ![Model install](output/release/v10.6.3/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.6.3/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.6.2/SCREENSHOT_INDEX.md](output/release/v10.6.2/SCREENSHOT_INDEX.md)
+[output/release/v10.6.3/SCREENSHOT_INDEX.md](output/release/v10.6.3/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.6.2 — Ask First**:
+The current release is **10.6.3 — Loud Limits**:
 
 10.6.1 rebuilt five screens, and the Brain home is the one it only half
 rebuilt: the order changed, the shape did not. A large Brain and a centred
@@ -114,13 +114,13 @@ sharing a card with the first.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.6.2 release must use exact filenames:
+Expected artifacts for 10.6.3 release must use exact filenames:
 
-- `dist/ltcai-10.6.2-py3-none-any.whl`
-- `dist/ltcai-10.6.2.tar.gz`
-- `ltcai-10.6.2.tgz`
-- `dist/ltcai-10.6.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.6.2_aarch64.dmg`
+- `dist/ltcai-10.6.3-py3-none-any.whl`
+- `dist/ltcai-10.6.3.tar.gz`
+- `ltcai-10.6.3.tgz`
+- `dist/ltcai-10.6.3.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.6.3_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -155,6 +155,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.6.3 | Loud Limits |
 | 10.6.2 | Ask First |
 | 10.6.1 | First Things |
 | 10.6.0 | Promoted Panels |

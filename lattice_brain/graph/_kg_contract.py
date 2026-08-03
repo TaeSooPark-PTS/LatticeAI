@@ -158,6 +158,21 @@ class KnowledgeGraphCore:
     ) -> List[str]:
         raise NotImplementedError
 
+    # ── retrieval_vector.py: derived vector index ────────────────────────────
+    def rebuild_vector_index(
+        self,
+        *,
+        full: bool = False,
+        include_nodes: bool = True,
+        include_chunks: bool = True,
+    ) -> Dict[str, Any]:
+        """Re-derive the vector index; also records the embedder fingerprint."""
+        raise NotImplementedError
+
+    def vector_freshness(self) -> Dict[str, Any]:
+        """``{status, pending_items, total_items, detail}`` — never raises."""
+        raise NotImplementedError
+
     # ── retrieval_reads.py: workspace scoping ────────────────────────────────
     def filter_scoped_nodes(
         self,

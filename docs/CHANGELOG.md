@@ -4,6 +4,25 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.6.3] - 2026-08-04
+
+### Security
+- CSRF Origin/Referer 가드 (`latticeai/core/csrf.py`), `LATTICEAI_CSRF_TRUSTED_ORIGINS`
+- workspace 스코프 해석 단일화 — 선택자 불일치 시 403 (`latticeai/api/workspace_scope.py`)
+
+### Changed
+- 벡터 검색이 부분 스캔을 리포트 (`LATTICEAI_VECTOR_MAX_CANDIDATES`, `0`=전체)
+- 백그라운드 수집 잡이 SQLite에 영속화되어 재시작 후 재개
+- 파일 쓰기 도구 fail-closed, 모델 스트림 실패를 `ModelStreamError`로 구분
+- 백업 임포트 직후 벡터 인덱스 재정렬
+
+### Added
+- 프론트 빌드 신선도 게이트 (`scripts/check_frontend_build_freshness.mjs`)
+- SSE 스트리밍 파서 분리 (`frontend/src/api/eventStream.ts`)
+
+### Fixed
+- 대화 자동 하단 고정이 jsdom/표준모드에서 동작하지 않던 문제
+
 ## [10.6.2] - 2026-08-03
 
 The Brain home, re-shaped rather than re-ordered. 10.6.1 gave this screen a new

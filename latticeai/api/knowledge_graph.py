@@ -14,6 +14,10 @@ from pydantic import BaseModel
 
 from lattice_brain.ingestion import IngestionItem
 from latticeai.api.ui_redirects import app_redirect
+from latticeai.api.workspace_scope import (
+    resolve_workspace_scope,
+    workspace_scope_from_request,
+)
 
 
 class KnowledgeGraphIngestRequest(BaseModel):
@@ -43,12 +47,9 @@ class PromotionActionRequest(BaseModel):
     ids: Optional[List[str]] = None
 
 
-def _workspace_scope_from_request(request: Request) -> Optional[str]:
-    header = request.headers.get("X-Workspace-Id")
-    if header and header.strip():
-        return header.strip()
-    query = request.query_params.get("workspace_id")
-    return query.strip() if query and query.strip() else None
+# Kept as a module-level name because callers import it from here; the
+# implementation now lives in the shared resolver.
+_workspace_scope_from_request = workspace_scope_from_request
 
 
 def _format_context(matches: list, limit: int) -> str:
@@ -127,13 +128,44 @@ def create_knowledge_graph_router(
             ]
 
     def _write_workspace(request: Request, user: str) -> Optional[str]:
-        requested = _workspace_scope_from_request(request)
-        if workspace_service is None:
-            return requested
+        return resolve_workspace_scope(
+            request,
+            user=user,
+            workspace_service=workspace_service,
+            write=True,
+        )
+
+    def _scoped_stats(request: Request) -> Dict[str, Any]:
+        """Store statistics restricted to what the caller may read.
+
+        ``stats()`` counted every row in the database, so a member of one
+        organization workspace could read another's node/edge/document volume
+        off a "harmless" metrics endpoint. Unscoped mode (single-user / no
+        auth) still gets the whole-store counts, which is the same number it
+        always was.
+        """
+        kg, allowed = _scoped(request)
+        if allowed is None:
+            return dict(kg.stats())
         try:
-            return workspace_service.resolve_write_scope(requested, user or None)
-        except PermissionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
+            return dict(
+                kg.stats(allowed_workspaces=allowed, include_legacy_global=False)
+            )
+        except TypeError:
+            # A store predating scoped stats cannot answer the scoped
+            # question. Keep the response shape and empty the aggregates it
+            # could not restrict, rather than leaking whole-store totals.
+            payload = dict(kg.stats())
+            empty: Dict[str, Any] = {
+                "nodes": {},
+                "edges": {},
+                "local_sources": 0,
+                "local_file_status": {},
+            }
+            payload.update(
+                {key: value for key, value in empty.items() if key in payload}
+            )
+            return payload
 
     @router.get("/graph")
     async def knowledge_graph_page(request: Request):
@@ -214,13 +246,11 @@ def create_knowledge_graph_router(
 
     @router.get("/knowledge-graph/stats")
     async def knowledge_graph_stats(request: Request):
-        require_user(request)
-        return graph().stats()
+        return _scoped_stats(request)
 
     @router.get("/knowledge-graph/schema")
     async def knowledge_graph_schema(request: Request):
-        require_user(request)
-        stats = graph().stats()
+        stats = _scoped_stats(request)
         return {
             "legacy_schema_version": stats.get("schema_version"),
             "v2_schema_available": stats.get("v2_schema_available"),

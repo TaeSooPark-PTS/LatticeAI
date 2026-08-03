@@ -28,6 +28,7 @@ class ConfigRuntime(RuntimeStage):
     ALLOW_PLAINTEXT_API_KEYS: bool
     CORS_ALLOW_NETWORK: bool
     CORS_EXTRA_ORIGINS: Any
+    CSRF_TRUSTED_ORIGINS: Any
     PUBLIC_MODEL: str
     LOCAL_MODEL: str
     LOCAL_DRAFT_MODEL: str
@@ -59,6 +60,7 @@ def build_config_runtime(config: "Optional[Config]" = None) -> ConfigRuntime:
         ALLOW_PLAINTEXT_API_KEYS=cfg.allow_plaintext_api_keys,
         CORS_ALLOW_NETWORK=cfg.cors_allow_network,
         CORS_EXTRA_ORIGINS=cfg.cors_extra_origins,
+        CSRF_TRUSTED_ORIGINS=cfg.csrf_trusted_origins,
         PUBLIC_MODEL=cfg.public_model,
         LOCAL_MODEL=cfg.local_model,
         LOCAL_DRAFT_MODEL=cfg.local_draft_model,
