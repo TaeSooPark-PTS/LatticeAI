@@ -7,7 +7,14 @@ const repoRoot = process.cwd();
 const version = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version;
 const port = Number(process.env.LTCAI_RELEASE_EVIDENCE_PORT || 4936);
 const baseURL = `http://127.0.0.1:${port}`;
-const root = path.join(repoRoot, "output", "release", `v${version}`);
+// Defaults to the published directory for this version, but can be redirected.
+// This script starts by deleting `root` outright, so anything that wants a
+// preview capture — a reviewer checking whether the UI actually moved before
+// the version is bumped — would otherwise have to overwrite the screenshots of
+// an already-released version to get one.
+const root =
+  process.env.LTCAI_RELEASE_EVIDENCE_DIR ||
+  path.join(repoRoot, "output", "release", `v${version}`);
 const screenshots = path.join(root, "screenshots");
 const videos = path.join(root, "videos");
 const gifs = path.join(root, "gifs");
