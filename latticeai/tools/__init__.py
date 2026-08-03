@@ -269,6 +269,7 @@ __all__ = [
     "search_files", "inspect_html", "preview_url", "create_web_project",
     "todo_read", "todo_write",
     "create_docx", "create_xlsx", "create_pptx", "create_pdf", "read_document",
+    "document_output_target",
     "local_list", "local_read", "local_write", "desktop_bridge_status",
     "knowledge_save", "knowledge_search", "knowledge_tree", "knowledge_scope_root",
     "obsidian_save", "obsidian_search", "obsidian_tree",

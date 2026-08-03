@@ -34,6 +34,7 @@ from latticeai.tools import (
     AGENT_ROOT,
     DEFAULT_TOOL_REGISTRY,
     ToolError,
+    document_output_target,
     ensure_agent_root,
 )
 
@@ -163,16 +164,20 @@ class ToolDispatchService:
                 detail=f"'{tool_name}' 툴에는 '{capability}' capability가 필요합니다.",
             )
 
-    def _governed_path_exists(self, path: str) -> bool:
+    def _governed_path_exists(self, tool_name: str, path: str) -> bool:
         """Best-effort existence check for governance classification.
 
-        Resolves workspace-relative paths under ``AGENT_ROOT`` and honors
-        absolute paths (home-sandbox writes). Never raises — an unresolvable
-        path is treated as non-existent (additive), which the fail-closed
-        guard only escalates when the target actually exists.
+        The document creators rewrite ``filename`` into their own output
+        directory, so the raw argument is resolved through
+        :func:`document_output_target` first — checking the argument verbatim
+        inspects a path nothing ever writes. Workspace-relative paths resolve
+        under ``AGENT_ROOT``; absolute paths (home-sandbox writes) are honored
+        as-is. Never raises — an unresolvable path is treated as non-existent
+        (additive), which the fail-closed guard only escalates when the target
+        actually exists.
         """
         try:
-            candidate = Path(path)
+            candidate = Path(document_output_target(tool_name, path) or path)
             if not candidate.is_absolute():
                 candidate = Path(AGENT_ROOT) / candidate
             return candidate.exists()
@@ -244,7 +249,8 @@ class ToolDispatchService:
         # overwrite has no safe apply path in any mode, so it stays blocked.
         verdict = classify_tool_call(
             tool_name, args or {},
-            policy=dict(policy), path_exists=self._governed_path_exists,
+            policy=dict(policy),
+            path_exists=lambda candidate: self._governed_path_exists(tool_name, candidate),
         )
         if verdict.get("fail_closed"):
             raise HTTPException(

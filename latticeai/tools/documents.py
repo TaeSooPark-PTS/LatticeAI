@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 from latticeai.core.quiet import quiet
 from latticeai.tools import (
@@ -28,6 +28,45 @@ def _safe_filename(name: str, suffix: str) -> str:
     return safe or f"artifact{suffix}"
 
 
+#: tool name → (output directory, enforced suffix). The creators below are the
+#: only writers, so this table is the single source of truth for "where does
+#: this document actually land?".
+_DOCUMENT_TOOL_TARGETS: Dict[str, Tuple[str, str]] = {
+    "create_docx": (DOCUMENT_OUTPUT_DIR, ".docx"),
+    "create_xlsx": (SPREADSHEET_OUTPUT_DIR, ".xlsx"),
+    "create_pptx": (PRESENTATION_OUTPUT_DIR, ".pptx"),
+    "create_pdf": (PDF_OUTPUT_DIR, ".pdf"),
+}
+
+
+def document_output_target(tool_name: str, filename: str) -> Optional[str]:
+    """Workspace-relative path ``tool_name`` will write ``filename`` to.
+
+    Governance needs this: the creators sanitize the caller's ``filename``
+    into their own output directory, so an "does the target already exist?"
+    check against the raw argument looks at a path nothing ever writes — and
+    the fail-closed overwrite guard would silently never fire.
+
+    Returns ``None`` for tools that write wherever the caller points them, so
+    callers fall back to the raw argument.
+    """
+    entry = _DOCUMENT_TOOL_TARGETS.get(tool_name)
+    if entry is None:
+        return None
+    output_dir, suffix = entry
+    return f"{output_dir}/{_safe_filename(filename, suffix)}"
+
+
+def _document_target(tool_name: str, filename: str) -> Path:
+    """Resolved, workspace-confined target for a document creator."""
+    relative = document_output_target(tool_name, filename)
+    if relative is None:  # pragma: no cover — every creator is in the table
+        raise ToolError(f"'{tool_name}' has no document output target.")
+    target = _resolve_path(relative)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
+
+
 def _body_to_str(body) -> str:
     if isinstance(body, list):
         return "\n\n".join(str(item) for item in body)
@@ -40,9 +79,7 @@ def create_docx(title: str, body, filename: str = "document.docx") -> Dict[str, 
     except Exception as exc:
         raise ToolError("python-docx is not installed. Run `pip install -r requirements.txt`.") from exc
 
-    output_dir = _resolve_path(DOCUMENT_OUTPUT_DIR)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    target = output_dir / _safe_filename(filename, ".docx")
+    target = _document_target("create_docx", filename)
 
     document = Document()
     if title:
@@ -64,9 +101,7 @@ def create_xlsx(rows: List[List[Any]], filename: str = "spreadsheet.xlsx", sheet
     if not isinstance(rows, list) or not all(isinstance(row, list) for row in rows):
         raise ToolError("Rows must be a list of lists.")
 
-    output_dir = _resolve_path(SPREADSHEET_OUTPUT_DIR)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    target = output_dir / _safe_filename(filename, ".xlsx")
+    target = _document_target("create_xlsx", filename)
 
     workbook = Workbook()
     sheet = workbook.active
@@ -83,9 +118,7 @@ def create_pptx(title: str, slides: List[Dict[str, Any]], filename: str = "prese
     except Exception as exc:
         raise ToolError("python-pptx is not installed. Run `pip install -r requirements.txt`.") from exc
 
-    output_dir = _resolve_path(PRESENTATION_OUTPUT_DIR)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    target = output_dir / _safe_filename(filename, ".pptx")
+    target = _document_target("create_pptx", filename)
 
     presentation = Presentation()
     first_layout = presentation.slide_layouts[0]
@@ -124,9 +157,7 @@ def create_pdf(title: str, body, filename: str = "document.pdf") -> Dict[str, An
     except Exception as exc:
         raise ToolError("reportlab is not installed. Run `pip install reportlab`.") from exc
 
-    output_dir = _resolve_path(PDF_OUTPUT_DIR)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    target = output_dir / _safe_filename(filename, ".pdf")
+    target = _document_target("create_pdf", filename)
 
     # CJK 폰트 등록
     font_name = "Helvetica"

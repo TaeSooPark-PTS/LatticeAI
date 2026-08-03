@@ -118,6 +118,36 @@ def normalize_branding(text: Optional[str]) -> str:
     return normalized
 
 
+class ModelStreamError(RuntimeError):
+    """A backend failed mid-stream. This is an error, never model output.
+
+    Streaming backends used to hand their failure to the caller as a chunk of
+    text (``"⚠️ Error: ..."``), which every consumer then treated as the
+    model's answer: it was echoed to the client as content and persisted as a
+    successful turn. The failure now travels as this typed exception instead.
+
+    The MLX generators run on a worker thread that cannot raise into the
+    consuming coroutine, so the thread puts an instance on the chunk queue and
+    :meth:`LLMRouter._drain_stream_queue` re-raises it. The SSE endpoints
+    (``latticeai.api.chat_stream.stream_chat`` and the document stream in
+    ``latticeai.api.chat_documents``) already wrap their ``async for`` in
+    ``except Exception`` and emit an ``error`` frame plus a ``[stream_error]``
+    marker on the persisted answer, so the stream framing is unchanged.
+    """
+
+
+def _stream_failure(stage: str, exc: BaseException) -> ModelStreamError:
+    """Envelope a backend exception for transport across the chunk queue.
+
+    ``raise ... from exc`` is unavailable on the worker thread (nothing there
+    consumes the traceback), so the cause is attached explicitly and stays
+    visible in logs when the consumer re-raises.
+    """
+    error = ModelStreamError(f"{stage}: {exc}")
+    error.__cause__ = exc
+    return error
+
+
 # Returns a display payload whose `source_display_order` value is a list,
 # so the value type is Any rather than str.
 def source_metadata_for_model(
@@ -720,16 +750,32 @@ class LLMRouter:
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
                     loop.call_soon_threadsafe(queue.put_nowait, text)
-            except Exception as e:
-                loop.call_soon_threadsafe(queue.put_nowait, f"⚠️ Error: {e}")
+            except Exception as exc:
+                loop.call_soon_threadsafe(
+                    queue.put_nowait, _stream_failure("MLX chat stream failed", exc)
+                )
             finally:
                 loop.call_soon_threadsafe(queue.put_nowait, None)
 
         loop.run_in_executor(executor, _stream)
+        async for chunk in self._drain_stream_queue(queue):
+            yield chunk
+
+    @staticmethod
+    async def _drain_stream_queue(queue: "asyncio.Queue[Any]") -> AsyncIterator[str]:
+        """Yield worker-thread chunks until the terminator; raise failures.
+
+        ``None`` terminates the stream. A :class:`ModelStreamError` on the
+        queue is a backend failure envelope, not model text, so it is raised
+        into the consuming coroutine — callers must never be able to mistake
+        it for an answer.
+        """
         while True:
             chunk = await queue.get()
             if chunk is None:
-                break
+                return
+            if isinstance(chunk, ModelStreamError):
+                raise chunk
             yield normalize_branding(chunk)
 
     async def stream_generate(
@@ -759,9 +805,10 @@ class LLMRouter:
                 temperature=temperature,
                 stream=True,
             )
-        except Exception as e:
-            yield f"⚠️ {self._local_server_error_hint(cloud, e)}"
-            return
+        except Exception as exc:
+            # Same invariant as the MLX path: a backend that never produced a
+            # token failed, and that is an error — not the model's answer.
+            raise ModelStreamError(self._local_server_error_hint(cloud, exc)) from exc
         async for event in stream:
             if not event.choices:
                 continue
@@ -927,17 +974,16 @@ class LLMRouter:
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
                     loop.call_soon_threadsafe(queue.put_nowait, text)
-            except Exception as e:
-                loop.call_soon_threadsafe(queue.put_nowait, f"⚠️ Error: {e}")
+            except Exception as exc:
+                loop.call_soon_threadsafe(
+                    queue.put_nowait, _stream_failure("MLX document stream failed", exc)
+                )
             finally:
                 loop.call_soon_threadsafe(queue.put_nowait, None)
 
         loop.run_in_executor(executor, _stream)
-        while True:
-            chunk = await queue.get()
-            if chunk is None:
-                break
-            yield normalize_branding(chunk)
+        async for chunk in self._drain_stream_queue(queue):
+            yield chunk
 
     async def _cloud_stream_document(self, cloud: CloudModel, message: str, system_prompt: str, max_tokens: int, temperature: float) -> AsyncIterator[str]:
         try:
@@ -951,9 +997,8 @@ class LLMRouter:
                 temperature=temperature,
                 stream=True,
             )
-        except Exception as e:
-            yield f"⚠️ {self._local_server_error_hint(cloud, e)}"
-            return
+        except Exception as exc:
+            raise ModelStreamError(self._local_server_error_hint(cloud, exc)) from exc
         async for event in stream:
             if not event.choices:
                 continue

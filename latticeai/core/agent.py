@@ -80,8 +80,9 @@ from latticeai.core.permission_mode import (
     plan_requires_approval,
     should_stage_proposal,
 )
+from latticeai.core.tool_governor import classify_tool_call
 from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
-from latticeai.tools import ToolError
+from latticeai.tools import ToolError, document_output_target
 
 __all__ = [
     # this module
@@ -292,6 +293,27 @@ class SingleAgentRuntime:
         return resolve_deps_mode(
             self.deps, ctx, user_email=user_email, workspace_id=workspace_id,
         )
+
+    def _governed_path_exists(self, name: str, path: str) -> bool:
+        """Does this tool call's *real* target already exist?
+
+        The document creators sanitize ``filename`` into their own output
+        directory, so the raw argument is resolved through
+        :func:`document_output_target` first — checking it verbatim would
+        inspect a path nothing ever writes and the fail-closed overwrite guard
+        would never fire. Workspace-relative paths resolve under
+        ``deps.agent_root``; absolute paths (home-sandbox writes) are honored
+        as-is. Never raises: governance must not be able to crash the loop, and
+        an unresolvable path degrades to "new file", which the remaining gates
+        still cover.
+        """
+        try:
+            candidate = Path(document_output_target(name, path) or path)
+            if not candidate.is_absolute():
+                candidate = Path(self.deps.agent_root) / candidate
+            return candidate.exists()
+        except Exception:  # noqa: BLE001 — classification is best-effort
+            return False
 
     def _governed_tools(self) -> FrozenSet[str]:
         governor = getattr(self.deps, "change_governor", None)
@@ -833,11 +855,11 @@ class SingleAgentRuntime:
         self, ctx: AgentRunContext, req: Any, name: str, thoughts: str, args: dict,
         policy: Mapping[str, Any], risk: str, current_user: str, governor_allows_additive: bool,
     ) -> bool:
-        """Destructive / circuit-breaker / explicit-approval gates.
+        """Destructive / circuit-breaker / fail-closed-overwrite / approval gates.
 
         Returns True when the step was blocked. The active permission mode can
         widen what runs without an extra approval prompt, but never widens a
-        circuit breaker or the destructive gate.
+        circuit breaker, the destructive gate, or the overwrite check.
         """
         d = self.deps
         mode = self.resolve_permission_mode(
@@ -873,6 +895,49 @@ class SingleAgentRuntime:
             d.audit(
                 "agent_blocked", user_email=current_user, source=getattr(req, "source", None) or "agent",
                 action=name, reason="destructive", governance=dict(policy),
+            )
+            return True
+
+        # Fail-closed overwrite guard — mode-invariant, like the two above.
+        # A call that rewrites existing content but cannot be staged as a
+        # reviewable proposal (binary document creators, home-sandbox writes)
+        # has no safe apply path in ANY mode: trusted/bypass skip the approval
+        # *prompt*, they never remove the existence check. Without this the
+        # loop silently overwrote files that the HTTP surface refuses with 409
+        # (``ToolDispatchService.enforce_policy``).
+        overwrite = classify_tool_call(
+            name, args, policy=dict(policy),
+            path_exists=lambda candidate: self._governed_path_exists(name, candidate),
+        )
+        if overwrite.get("fail_closed"):
+            target = str(args.get("path") or args.get("filename") or "")
+            error = (
+                f"NEEDS_REVIEW: '{name}' 은(는) 이미 있는 파일 '{target}' 을(를) 덮어씁니다. "
+                "이 도구의 변경은 검토 가능한 제안으로 만들 수 없어 실행하지 않았습니다. "
+                "새 파일 이름으로 만들거나 write_file/edit_file 로 수정하세요."
+            )
+            ctx.trace.tool("execute", name=name, outcome="blocked_overwrite", risk=risk)
+            self._emit_step(ctx, "execute", "blocked", action=name, reason="overwrite")
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts,
+                # Same shape as a staged proposal: the payload is never worth
+                # replaying into the transcript, only the decision is.
+                "args": {k: v for k, v in args.items() if k != "content"},
+                "risk": risk,
+                "governance": dict(policy),
+                "permission_mode": mode.value,
+                "change_class": overwrite.get("change_class"),
+                "error": error,
+            })
+            d.audit(
+                "agent_blocked", user_email=current_user,
+                source=getattr(req, "source", None) or "agent",
+                action=name, reason="overwrite_fail_closed",
+                path=target or None,
+                change_class=overwrite.get("change_class"),
+                permission_mode=mode.value,
+                governance=dict(policy),
             )
             return True
 
