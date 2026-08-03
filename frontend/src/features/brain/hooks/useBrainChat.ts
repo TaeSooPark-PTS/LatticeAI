@@ -15,6 +15,7 @@ import {
   parseRunExplanation,
 } from "../brainData";
 import { useConversationSession } from "../conversationSession";
+import { useStickyBottom } from "./useStickyBottom";
 import type {
   BrainProactiveAction,
   BrainProactiveActivity,
@@ -52,7 +53,9 @@ export function useBrainChat({
   const [imageData, setImageData] = React.useState<string | null>(null);
   const [streaming, setStreaming] = React.useState(false);
   const [proactiveActivities, setProactiveActivities] = React.useState<BrainProactiveActivity[]>([]);
-  const streamRef = React.useRef<HTMLDivElement>(null);
+  // Follows the answer as it streams, but only while the reader is still at
+  // the bottom — scrolling up to re-read must not be undone by the next token.
+  const streamRef = useStickyBottom<HTMLDivElement>(messages);
   const abortRef = React.useRef<AbortController | null>(null);
   const recallTimerRef = React.useRef<number | null>(null);
 
@@ -79,10 +82,6 @@ export function useBrainChat({
     else if (draft.trim().length > 4) onBrainChange("listening", 0.76);
     else onBrainChange("idle", 0.58);
   }, [draft, onBrainChange, streaming]);
-
-  React.useEffect(() => {
-    if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight;
-  }, [messages]);
 
   React.useEffect(() => () => {
     if (recallTimerRef.current !== null) window.clearTimeout(recallTimerRef.current);
