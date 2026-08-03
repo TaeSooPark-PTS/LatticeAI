@@ -454,17 +454,25 @@ class KnowledgeGraphRetrievalMixin(_Core):
         mode = "hybrid"
         detail: Optional[str] = None
         vector_matches: List[Dict[str, Any]] = []
+        vector_recall: Optional[Dict[str, Any]] = None
         vector_fn = getattr(self, "vector_search", None)
         if not callable(vector_fn):
             mode = "lexical_only"
             detail = "vector search is not available on this store"
         else:
             try:
-                vector_matches = list(
-                    (vector_fn(search_query, limit=vec_fetch, min_score=min_vector_score) or {}).get(
-                        "matches", []
-                    )
+                vector_payload = (
+                    vector_fn(search_query, limit=vec_fetch, min_score=min_vector_score)
+                    or {}
                 )
+                vector_matches = list(vector_payload.get("matches", []))
+                # Partial recall must reach the caller: the vector channel can
+                # only score a capped slice of a large index (see
+                # retrieval_vector.vector_search), and a fused answer built on
+                # a truncated scan is not the same claim as a complete one.
+                recall = vector_payload.get("recall")
+                if isinstance(recall, dict) and recall.get("truncated"):
+                    vector_recall = dict(recall)
             except Exception as exc:  # noqa: BLE001 — degrade, never fail the search
                 mode = "lexical_only"
                 detail = f"vector index unavailable: {exc}"
@@ -619,6 +627,10 @@ class KnowledgeGraphRetrievalMixin(_Core):
         }
         if vector_degraded is not None:
             result["vector_degraded"] = vector_degraded
+        if vector_recall is not None:
+            result["vector_recall"] = vector_recall
+            if vector_degraded is None:
+                result["vector_degraded"] = "partial_recall"
         return result
 
     def context_for_query(

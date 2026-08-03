@@ -140,6 +140,33 @@ class KnowledgeGraphReadsMixin(_Core):
                 visible.append(item)
         return visible
 
+    @staticmethod
+    def _workspace_scope_sql(
+        allowed_workspaces,
+        include_legacy_global: bool,
+    ) -> Tuple[Optional[str], List[Any]]:
+        """``nodes_v2`` predicate for a caller's scope, or ``(None, [])``.
+
+        ``None`` means "no scoping" and is the unscoped single-user path.
+        An *empty* allowed set is not the same thing: it is a caller who may
+        read nothing, so it yields a predicate that matches nothing rather
+        than silently degrading into the unscoped query.
+        """
+        if allowed_workspaces is None:
+            return None, []
+        allowed = sorted({str(item) for item in allowed_workspaces if item})
+        clauses: List[str] = []
+        params: List[Any] = []
+        if allowed:
+            placeholders = ",".join("?" for _ in allowed)
+            clauses.append(f"workspace_id IN ({placeholders})")
+            params.extend(allowed)
+        if include_legacy_global:
+            clauses.append("workspace_id IS NULL")
+        if not clauses:
+            return "0", []
+        return " OR ".join(clauses), params
+
     def neighbors(
         self,
         node_id: str,
@@ -427,34 +454,82 @@ class KnowledgeGraphReadsMixin(_Core):
             edges = [edge for edge in edges if edge.get("from") in kept and edge.get("to") in kept]
         return {"root": node_id, "depth": depth, "nodes": nodes, "edges": edges}
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(
+        self,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
+        """Store statistics, optionally restricted to a caller's workspaces.
+
+        ``allowed_workspaces=None`` keeps the historical whole-store counts
+        (single-user / no-auth mode). When a scope is given, the node and edge
+        histograms are counted through the authoritative ``nodes_v2``
+        projection, so a member of one organization workspace cannot read
+        another's volume off this endpoint. An edge counts only when *both*
+        endpoints are visible — the same rule ``graph()`` and ``neighbors()``
+        already apply to the rows they return.
+        """
         nt, et = self._read_tables()
+        scope_sql, scope_params = self._workspace_scope_sql(
+            allowed_workspaces, include_legacy_global
+        )
         with self._connect() as conn:
-            node_counts = {
-                row["type"]: row["count"]
-                for row in conn.execute(
-                    f"SELECT type, COUNT(*) AS count FROM {nt} GROUP BY type"
-                )
-            }
-            edge_counts = {
-                row["type"]: row["count"]
-                for row in conn.execute(
-                    f"SELECT type, COUNT(*) AS count FROM {et} GROUP BY type"
-                )
-            }
-            local_sources = conn.execute(
-                "SELECT COUNT(*) AS c FROM knowledge_sources"
-            ).fetchone()["c"]
-            local_file_status = {
-                row["status"]: row["count"]
-                for row in conn.execute(
-                    "SELECT status, COUNT(*) AS count FROM local_file_index GROUP BY status"
-                )
-            }
+            if scope_sql is None:
+                node_counts = {
+                    row["type"]: row["count"]
+                    for row in conn.execute(
+                        f"SELECT type, COUNT(*) AS count FROM {nt} GROUP BY type"
+                    )
+                }
+                edge_counts = {
+                    row["type"]: row["count"]
+                    for row in conn.execute(
+                        f"SELECT type, COUNT(*) AS count FROM {et} GROUP BY type"
+                    )
+                }
+                local_sources = conn.execute(
+                    "SELECT COUNT(*) AS c FROM knowledge_sources"
+                ).fetchone()["c"]
+                local_file_status = {
+                    row["status"]: row["count"]
+                    for row in conn.execute(
+                        "SELECT status, COUNT(*) AS count FROM local_file_index GROUP BY status"
+                    )
+                }
+            else:
+                visible = f"SELECT id FROM nodes_v2 WHERE {scope_sql}"
+                node_counts = {
+                    row["type"]: row["count"]
+                    for row in conn.execute(
+                        f"SELECT type, COUNT(*) AS count FROM {nt} "
+                        f"WHERE id IN ({visible}) GROUP BY type",
+                        scope_params,
+                    )
+                }
+                edge_counts = {
+                    row["type"]: row["count"]
+                    for row in conn.execute(
+                        f"SELECT type, COUNT(*) AS count FROM {et} "
+                        f"WHERE from_node IN ({visible}) AND to_node IN ({visible}) "
+                        f"GROUP BY type",
+                        scope_params + scope_params,
+                    )
+                }
+                # Local sources and the file index are machine-local ingestion
+                # bookkeeping with no workspace column. They are not another
+                # tenant's content, but they are also not this caller's scope,
+                # so a scoped read reports none rather than guessing.
+                local_sources = 0
+                local_file_status = {}
         v2 = None
         if KGStoreV2 is not None:
             try:
-                v2 = KGStoreV2(self.db_path).stats()
+                v2 = (
+                    KGStoreV2(self.db_path).stats()
+                    if scope_sql is None
+                    else self._scoped_v2_stats(scope_sql, scope_params)
+                )
             except Exception as e:
                 v2 = {"available": False, "error": str(e)}
         return {
@@ -467,3 +542,41 @@ class KnowledgeGraphReadsMixin(_Core):
             "local_file_status": local_file_status,
             "v2": v2,
         }
+
+    def _scoped_v2_stats(self, scope_sql: str, scope_params: List[Any]) -> Dict[str, Any]:
+        """``KGStoreV2.stats()`` restricted to a caller's workspaces.
+
+        Starts from the real payload and overwrites only the counts, so the
+        key set stays whatever ``KGStoreV2`` defines — ``/knowledge-graph/schema``
+        returns this sub-object verbatim, making its shape part of the API
+        contract rather than something to re-derive here.
+        """
+        payload: Dict[str, Any] = dict(KGStoreV2(self.db_path).stats())
+        visible = f"SELECT id FROM nodes_v2 WHERE {scope_sql}"
+        with self._connect() as conn:
+            by_node_type = {
+                row["type"]: row["c"]
+                for row in conn.execute(
+                    f"SELECT type, COUNT(*) AS c FROM nodes_v2 "
+                    f"WHERE {scope_sql} GROUP BY type",
+                    scope_params,
+                ).fetchall()
+            }
+            by_edge_type = {
+                row["type"]: row["c"]
+                for row in conn.execute(
+                    f"SELECT type, COUNT(*) AS c FROM edges_v2 "
+                    f"WHERE source IN ({visible}) AND target IN ({visible}) "
+                    f"GROUP BY type",
+                    scope_params + scope_params,
+                ).fetchall()
+            }
+        payload.update(
+            {
+                "nodes": sum(by_node_type.values()),
+                "edges": sum(by_edge_type.values()),
+                "by_node_type": by_node_type,
+                "by_edge_type": by_edge_type,
+            }
+        )
+        return payload
