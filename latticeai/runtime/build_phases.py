@@ -88,6 +88,7 @@ def phase_config(ctx: RuntimeContext) -> None:
         "ALLOW_PLAINTEXT_API_KEYS",
         "CORS_ALLOW_NETWORK",
         "CORS_EXTRA_ORIGINS",
+        "CSRF_TRUSTED_ORIGINS",
         "PUBLIC_MODEL",
         "LOCAL_MODEL",
         "LOCAL_DRAFT_MODEL",
@@ -875,6 +876,7 @@ def phase_web(ctx: RuntimeContext) -> None:
         cors_extra_origins=ctx.CORS_EXTRA_ORIGINS,
         cors_allow_network=ctx.CORS_ALLOW_NETWORK,
         static_dir=ctx.STATIC_DIR,
+        csrf_trusted_origins=ctx.CSRF_TRUSTED_ORIGINS,
     )
     ctx.adopt(web_runtime, "app")
     ensure_agent_root()

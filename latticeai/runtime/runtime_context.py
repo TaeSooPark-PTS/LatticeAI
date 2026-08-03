@@ -55,6 +55,7 @@ class RuntimeContext:
     ALLOW_PLAINTEXT_API_KEYS: bool
     CORS_ALLOW_NETWORK: bool
     CORS_EXTRA_ORIGINS: Any
+    CSRF_TRUSTED_ORIGINS: Any
     PUBLIC_MODEL: str
     LOCAL_MODEL: Any
     LOCAL_DRAFT_MODEL: Any

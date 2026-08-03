@@ -95,6 +95,7 @@ class Config:
     allow_plaintext_api_keys: bool
     cors_allow_network: bool
     cors_extra_origins: List[str]
+    csrf_trusted_origins: List[str]
     rate_limit_enabled: bool
     open_registration: bool
     invite_code: str
@@ -163,6 +164,10 @@ class Config:
         externally_reachable = is_public or network_exposed
 
         cors_extra = [item.strip() for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",") if item.strip()]
+        # Browser origins allowed to send *cookie-authenticated* writes. The
+        # server's own origin and loopback are added by the CSRF guard itself;
+        # this is the escape hatch for a reverse-proxied public hostname.
+        csrf_trusted_origins = [item.strip() for item in _value(env, "LATTICEAI_CSRF_TRUSTED_ORIGINS", "").split(",") if item.strip()]
         admin_emails = [item.strip().lower() for item in _value(env, "LATTICEAI_ADMIN_EMAILS", "").split(",") if item.strip()]
         trusted_proxies = [item.strip() for item in _value(env, "LATTICEAI_TRUSTED_PROXIES", "").split(",") if item.strip()]
 
@@ -201,6 +206,7 @@ class Config:
             allow_plaintext_api_keys=_bool(env, "LATTICEAI_ALLOW_PLAINTEXT_API_KEYS", default=False),
             cors_allow_network=_bool(env, "LATTICEAI_CORS_ALLOW_NETWORK", default=False),
             cors_extra_origins=cors_extra,
+            csrf_trusted_origins=csrf_trusted_origins,
             rate_limit_enabled=_str(env, "LATTICEAI_RATE_LIMIT", "1") != "0",
             # Public/LAN startup is closed-registration even if a stale or
             # unsafe environment file attempts to opt back in.
