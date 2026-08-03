@@ -21,6 +21,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from latticeai.api.ui_redirects import app_redirect
+from latticeai.api.workspace_scope import workspace_scope_from_request
 from latticeai.services.app_context import AppContext
 
 # ── Request models (workspace-only; moved verbatim from server_app) ──────────
@@ -142,17 +143,9 @@ class WorkspaceActivateRequest(BaseModel):
     workspace_id: str
 
 
-def _workspace_scope_from_request(request: Request) -> Optional[str]:
-    """Resolve a requested workspace id from header/query, or None.
-
-    ``None`` lets the service fall back to the active workspace (Personal by
-    default), preserving pre-1.1 behaviour for clients that send no header.
-    """
-    header = request.headers.get("X-Workspace-Id")
-    if header and header.strip():
-        return header.strip()
-    query = request.query_params.get("workspace_id")
-    return query.strip() if query and query.strip() else None
+# Historical name: ``app_factory`` re-exports it as part of the legacy
+# ``server_app`` surface. The implementation is the shared resolver.
+_workspace_scope_from_request = workspace_scope_from_request
 
 
 def create_workspace_router(context: AppContext) -> APIRouter:
