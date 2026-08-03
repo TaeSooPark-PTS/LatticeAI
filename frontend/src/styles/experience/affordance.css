@@ -29,7 +29,13 @@ button,
 button :is(p, div, ul, ol, li, small, span[class~="block"]),
 [role="button"] :is(p, div, ul, ol, li, small, span[class~="block"]),
 .brain-flow-node > strong,
-.brain-home-prompt-strip > button,
+/* `.brain-home-prompt-strip > button` used to be listed here. The suggestion
+   cards moved a level down when the strip gained a grid, so it matched nothing;
+   it is not re-pointed at `.brain-prompt-grid button` because home-simple.css
+   already sets `white-space: normal` on exactly that selector, and then flips
+   it back to nowrap under 900px, where the cards become one-line chips. Listing
+   it here too would tie that media rule on specificity and — this sheet loading
+   last — win, leaving the chips wrapping on the screens with no room to wrap. */
 .brain-quick-confirm p,
 .brain-composer button[data-multiline="true"] {
   white-space: normal;
@@ -77,7 +83,7 @@ button:not(:disabled):hover {
 /* Cards and rows that behave like buttons get a lift instead of a tint, so
    their own colour scheme survives. */
 .brain-flow-node:hover,
-.brain-home-prompt-strip > button:hover,
+.brain-prompt-grid button:hover,
 .brain-prompt-pill:hover {
   transform: translateY(-1px);
 }
@@ -104,13 +110,18 @@ button:not(:disabled):hover {
   button,
   a[href],
   .brain-flow-node,
+  /* The bare `button` above is one specificity point and loses to any sheet
+     that names a class, so a control whose transition is set by a layout sheet
+     keeps animating here. home-simple.css sets one on the suggestion cards, so
+     they are named at matching weight. */
+  .brain-prompt-grid button,
   .brain-prompt-pill {
     transition: none;
   }
 
   button:not(:disabled):hover,
   .brain-flow-node:hover,
-  .brain-home-prompt-strip > button:hover,
+  .brain-prompt-grid button:hover,
   .brain-prompt-pill:hover,
   .brain-composer-submit:not(:disabled):hover {
     transform: none;

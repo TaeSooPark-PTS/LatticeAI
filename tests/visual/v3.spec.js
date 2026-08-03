@@ -103,9 +103,16 @@ test("the Brain home is one screen: Brain, composer, add material, quiet setting
   const toolbar = station.locator(".brain-station-toolbar");
   await expect(toolbar.getByTestId("brain-ingestion-dock")).toBeVisible();
   await expect(toolbar.getByTestId("brain-quick-controls")).toBeVisible();
-  // Exactly one bordered card on the stage — the quiet shelf row below it is
-  // not a competing surface.
   await expect(stage.locator("> .brain-home-station")).toHaveCount(1);
+  // 10.6.2: the suggestions left the station for a deck of their own below it,
+  // so the station is the first move and nothing else.
+  const deck = page.getByTestId("brain-secondary-deck");
+  await expect(deck).toBeVisible();
+  await expect(stage.locator("> [data-testid='brain-secondary-deck']")).toHaveCount(1);
+  await expect(station.locator(".brain-home-prompt-strip")).toHaveCount(0);
+  // A named <section> is a `region`; an aria-label on the plain div inside it
+  // would be discarded, and the deck would reach a screen reader unnamed.
+  await expect(page.getByRole("region", { name: "Brain 추천 질문" })).toBeVisible();
   // The onboarding tracks that used to compete with the composer are gone.
   await expect(page.getByTestId("first-value-loop")).toHaveCount(0);
   await expect(page.getByTestId("brain-first-five")).toHaveCount(0);
@@ -174,6 +181,194 @@ test("compact desktop and low-height Brain homes keep primary controls on screen
       await expect(critical).toBeInViewport({ ratio: 0.9 });
     }
   }
+  expect(errors).toEqual([]);
+});
+
+/**
+ * Three ways the 10.6.2 two-card home broke in CSS rather than in JSX, none of
+ * which a render test can see. All three came from the same root cause: the
+ * suggestion strip's rules were rewritten at one-class specificity, and this
+ * home's stylesheet is not the only unlayered sheet that claims that class.
+ */
+test("the suggestion deck survives its own stylesheet", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+
+  // 1. The station must not clip. The capture popover anchors to the toolbar and
+  //    opens below it — outside the station's box — so `overflow: hidden` there
+  //    both hid the panel and made the card a scroll container, which scrolled
+  //    the greeting and half the composer away when the note field took focus.
+  const station = page.getByTestId("brain-home-station");
+  expect(await station.evaluate((el) => getComputedStyle(el).overflow)).toBe("visible");
+
+  const heroTopBefore = await page.getByTestId("brain-knowledge-flow").evaluate((el) => el.getBoundingClientRect().top);
+  await page.locator(".brain-station-toolbar").getByRole("button", { name: "노트", exact: true }).click();
+  const popover = page.locator(".brain-station-toolbar .brain-ingestion-dock-popover");
+  await expect(popover).toBeVisible();
+  await expect(popover).toBeInViewport({ ratio: 0.99 });
+  expect(await station.evaluate((el) => el.scrollTop)).toBe(0);
+  const heroTopAfter = await page.getByTestId("brain-knowledge-flow").evaluate((el) => el.getBoundingClientRect().top);
+  expect(Math.abs(heroTopAfter - heroTopBefore)).toBeLessThanOrEqual(1);
+  await page.locator(".brain-station-toolbar").getByRole("button", { name: "노트", exact: true }).click();
+
+  // 2. The cards fill the deck. graph-home.css centres `.brain-home-prompt-strip`
+  //    and loads first; at equal specificity that centring survives and the grid
+  //    shrink-wraps to a narrow column in the middle of a wide card.
+  const strip = page.locator(".brain-home-prompt-strip");
+  expect(await strip.evaluate((el) => getComputedStyle(el).alignItems)).toBe("stretch");
+  expect(await strip.evaluate((el) => getComputedStyle(el).overflow)).toBe("visible");
+  const fill = await page.evaluate(() => {
+    const deck = document.querySelector("[data-testid='brain-secondary-deck']");
+    const grid = document.querySelector(".brain-prompt-grid");
+    const style = getComputedStyle(deck);
+    const inner =
+      deck.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    return grid.getBoundingClientRect().width / inner;
+  });
+  expect(fill).toBeGreaterThan(0.98);
+
+  // 3. A card is a card at desktop width and a chip below 900px. Both values are
+  //    set on `.brain-prompt-grid button`, one class deep, and affordance.css
+  //    loads last with an app-wide `button { white-space: nowrap }` plus an
+  //    opt-back-in list. Naming this selector in that list ties the narrow rule
+  //    and wins it, which leaves a wrapping card on the width with no room.
+  const card = page.locator(".brain-prompt-grid button").first();
+  expect(await card.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe("normal");
+
+  // 4. responsive.css hides `.brain-home-prompt-strip` under 760px — a rule left
+  //    over from the layout before this one, and one that only ever lost because
+  //    this sheet outranked it. If it wins, the deck renders as an empty card.
+  for (const width of [900, 760, 640, 420]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(strip).toBeVisible();
+    const cards = await page.locator(".brain-prompt-grid button").count();
+    expect(cards).toBeGreaterThan(0);
+    const stripHeight = await strip.evaluate((el) => el.getBoundingClientRect().height);
+    expect(stripHeight).toBeGreaterThan(20);
+    expect(await card.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe("nowrap");
+  }
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The other half of the deck. A Brain with nothing to suggest yet — which is
+ * every Brain on its first day, the state this screen is designed for — renders
+ * starter pills instead of cards. Nothing captures it: the mock always answers
+ * with two questions, so the release screenshot and every test above show only
+ * the card grid, and the pill row is styled blind. This forces the branch.
+ */
+test("the deck still reads as a deck when Brain has nothing to suggest", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await page.route("**/api/memory/brain-brief*", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({ json: { ...body, suggested_questions: [] } });
+  });
+  await openBrain(page);
+
+  const deck = page.getByTestId("brain-secondary-deck");
+  await expect(deck).toBeVisible();
+  await expect(deck.locator(".brain-prompt-grid")).toHaveCount(0);
+  const pills = deck.locator(".brain-prompt-pills-row > button.brain-prompt-pill");
+  await expect(pills.first()).toBeVisible();
+
+  // The label has to survive the branch — without it the card is three loose
+  // pills with nothing saying what they are.
+  await expect(deck.getByText("이렇게 시작해 보세요")).toBeVisible();
+
+  // conversation.css gives every `.brain-prompt-pill` a 2.65rem floor, drawn for
+  // the pills in a live conversation. Inherited here it would leave this rule's
+  // padding doing nothing and the row half again as tall as it reads.
+  const heights = await pills.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThan(0);
+  for (const height of heights) expect(height).toBeLessThan(40);
+
+  // A pill fills the composer rather than sending — the empty state must never
+  // ask a question the reader did not choose to ask.
+  const label = (await pills.first().textContent()).trim();
+  await pills.first().click();
+  await expect(page.locator(".brain-home-station textarea")).toHaveValue(label);
+  await expect(page.getByTestId("brain-home-station")).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The suggestion cards lift 1px on hover. affordance.css owns that gesture and
+ * owns the `prefers-reduced-motion` rule that cancels it — but it only cancels
+ * what it can outrank, and it is a two-class selector. A layout sheet that
+ * declares `transform` on the same hover with one class more takes the lift
+ * back and moves the card for a reader who asked the system to hold still.
+ */
+test("the suggestion cards honour prefers-reduced-motion", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+
+  const card = page.locator(".brain-prompt-grid button").first();
+  const restingBorder = await card.evaluate((el) => getComputedStyle(el).borderTopColor);
+
+  await card.hover();
+  expect(await card.evaluate((el) => getComputedStyle(el).transform)).not.toBe("none");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.mouse.move(0, 0);
+  await card.hover();
+  expect(await card.evaluate((el) => getComputedStyle(el).transform)).toBe("none");
+  expect(await card.evaluate((el) => getComputedStyle(el).transitionProperty)).toBe("none");
+
+  // Without the lift, colour is the whole hover. It has to still say something,
+  // or a reduced-motion reader gets no answer to the pointer at all.
+  expect(await card.evaluate((el) => getComputedStyle(el).borderTopColor)).not.toBe(restingBorder);
+
+  await page.emulateMedia({ reducedMotion: null });
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The greeting banner shrank the Brain from 5.4rem to 3.2rem, and shrinking the
+ * organism is only half the job: its halo is an inline `box-shadow` that
+ * LivingBrain writes from the Brain's depth, sized for the 220–320px organism it
+ * renders standing alone. No stylesheet can outrank an inline style, so the
+ * first attempt at scaling it down — a plain `.brain-hero-organism .brain-aura`
+ * rule — was dead the moment it was written, and the banner shipped a 60px blur
+ * around a 58px body, clipped flat into a smudge with two straight edges.
+ *
+ * Asserted in geometry rather than on the declaration, so it holds whichever way
+ * the glow is scaled next.
+ */
+test("the Brain's glow is sized to the Brain in the banner, not to the one standing alone", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+
+  const glow = await page.evaluate(() => {
+    const banner = document.querySelector(".brain-home-station > .brain-hero");
+    const organism = document.querySelector(".brain-hero-organism .brain-organism");
+    const aura = document.querySelector(".brain-hero-organism .brain-aura");
+    if (!banner || !organism || !aura) return null;
+    const shadow = getComputedStyle(aura).boxShadow;
+    // "rgba(…) 0px 0px 60px 0px" — offset-x, offset-y, blur, spread.
+    const lengths = (shadow.match(/-?[\d.]+px/g) || []).map(parseFloat);
+    return {
+      shadow,
+      blur: lengths.length >= 3 ? lengths[2] : 0,
+      organism: organism.getBoundingClientRect().width,
+      banner: banner.getBoundingClientRect().toJSON(),
+      aura: aura.getBoundingClientRect().toJSON(),
+    };
+  });
+  expect(glow).not.toBeNull();
+
+  // A halo cannot be wider than the head it surrounds. The default is 60px on a
+  // ~58px organism; anything in that neighbourhood means the host's scaling lever
+  // stopped reaching the inline style again.
+  expect(glow.blur).toBeLessThan(glow.organism / 3);
+
+  // And the lit box itself has to sit inside the banner, which clips: a glow
+  // whose source is already outside the clip edge renders as a cut, not a glow.
+  expect(glow.aura.left).toBeGreaterThanOrEqual(glow.banner.left);
+  expect(glow.aura.top).toBeGreaterThanOrEqual(glow.banner.top);
+  expect(glow.aura.bottom).toBeLessThanOrEqual(glow.banner.bottom);
+
   expect(errors).toEqual([]);
 });
 

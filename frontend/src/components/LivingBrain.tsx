@@ -261,7 +261,14 @@ export function LivingBrain({
             animationDuration: state === "thinking" ? "1.65s" : state === "recalling" ? "2.4s" : "6.8s",
             "--aura-scale": `${1 + effectiveDepth * 0.12}`,
             opacity: 0.65 + effectiveDepth * 0.05,
-            boxShadow: effectiveDepth > 2 ? "0 0 60px hsl(var(--brain-core) / 0.25)" : "none"
+            // The blur is read from `--aura-blur` rather than written literally,
+            // because this is an inline style and no stylesheet can outrank one.
+            // 60px was drawn for the 220–320px organism this component renders
+            // when it stands alone; a host that shrinks the organism has to be
+            // able to shrink the glow with it, or the halo ends up wider than
+            // the body it belongs to. The fallback keeps every existing host
+            // pixel-identical.
+            boxShadow: effectiveDepth > 2 ? "0 0 var(--aura-blur, 60px) hsl(var(--brain-core) / 0.25)" : "none"
           } as React.CSSProperties}
         />
 

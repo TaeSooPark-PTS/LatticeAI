@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **10.6.1 — First Things**.
+Current release: **10.6.2 — Ask First**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

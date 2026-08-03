@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.6.1 Living Brain walkthrough](output/release/v10.6.1/gifs/v10.6.1-living-brain-walkthrough.gif)
+![v10.6.2 Living Brain walkthrough](output/release/v10.6.2/gifs/v10.6.2-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.6.1/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.6.1/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.6.1/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.6.1/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.6.1/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.6.1/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.6.1/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.6.1/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.6.2/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.6.2/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.6.2/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.6.2/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.6.2/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.6.2/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.6.2/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.6.2/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,73 +58,69 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.6.1/screenshots/01-login.png) | ![Model install](output/release/v10.6.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.6.1/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.6.2/screenshots/01-login.png) | ![Model install](output/release/v10.6.2/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.6.2/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.6.1/SCREENSHOT_INDEX.md](output/release/v10.6.1/SCREENSHOT_INDEX.md)
+[output/release/v10.6.2/SCREENSHOT_INDEX.md](output/release/v10.6.2/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.6.1 — First Things**:
+The current release is **10.6.2 — Ask First**:
 
-10.6.0 gave each main screen one leading panel, but five screens never got that
-pass: sign-in, the recommended model, the Brain home, the automation runs list,
-and the review center. This release rebuilds those five on the same rule — the
-thing you came for is the first thing on the screen, and everything else sits
-under it. Nothing was removed; the pieces moved.
+10.6.1 rebuilt five screens, and the Brain home is the one it only half
+rebuilt: the order changed, the shape did not. A large Brain and a centred
+headline still ran down the middle of the screen before the box you type into,
+and the three suggestions still sat between that box and its own toolbar — so
+the alternative to typing wore the same border as typing, and the composer was
+separated from its own controls by an unrelated block. This release splits the
+screen into two surfaces. Nothing was removed; the second choice stopped
+sharing a card with the first.
 
-- **Sign-in is one card, and the reassurances read after the button.** The
-  three-fact promise bar used to stand between the greeting and the form as
-  three bordered cards, so you met two sets of boxes before the one you type in.
-  The form is the only raised surface on the screen now, the promise bar is a
-  quiet hairline strip at the foot of it, and the "this password stays on this
-  computer" notes moved below the submit button instead of sitting between the
-  last field and it. Every field carries a real `<label for>`, and a failure is
-  announced once and pointed at the inputs it applies to.
-- **The recommended model is one card, not a button and then the same model
-  again.** The top recommendation was rendered twice — a bare CTA above the list
-  and the first card of the list — with nothing saying which one to press. It is
-  one hero card now, holding the name, the reason, the size, the time estimate
-  and the button; the two other models sit below it under 다른 선택지 as compact
-  cards. 뒤로 and 모델 없이 Brain 열기 no longer share one undifferentiated row.
-- **The Brain home leads with the box you type into.** The composer has its own
-  frame and focus ring inside the station, the three things to try moved
-  directly under it as a grid of cards whose second line is readable instead of
-  hidden in a tooltip, and add-material plus the autonomy dial dropped to the
-  station floor as one row.
-- **The runs list opens on what is waiting for you.** 승인함 sat at the bottom,
-  under two tables of finished runs; it is the first block now, marked as the
-  one thing that needs a person. Installed automations moved onto the same
-  screen with their last run — mode, result, time, summary — inside the card,
-  and the agent and workflow tables read as history at the end.
-- **A review is evidence on the left, decision on the right.** The card was one
-  column that ended in a row of buttons, so a long diff pushed 승인 / 거절 off
-  the bottom. The decision panel is always beside the evidence now, each item is
-  an `<article>` titled by its own heading, and the status and source filters
-  are named instead of being two unlabelled tab strips.
-- **One layout bug the rebuild surfaced.** The project's own stylesheets are
-  unlayered and Tailwind's utilities live in `@layer utilities`, so a utility on
-  a `.ritual-*` / `.brain-*` element loses to the sheet for every property the
-  sheet sets — and applies for every property it does not. `p-6` on the Brain
-  home stage was in the second group: it stacked padding on children that
-  already pad themselves and pushed the quiet shelves under the fixed mobile
-  nav, where the tap landed on the nav instead.
-- **Guarded, not asserted.** New unit tests hold each screen's order and
-  semantics — the Brain home's composer, then what to try, then the controls;
-  the runs tab's approvals, then automations, then history; the review card's
-  two-column split and its single-column fallback when an item carries no
-  evidence; one hero card per recommendation; a labelled field for every login
-  input.
+- **The greeting introduces the composer instead of headlining the screen.**
+  The Brain and the greeting were a centred column above the input; they are a
+  compact banner across the top of the card now — a small Brain beside the title
+  and the memory count, on a tinted strip closed by a hairline. The Brain is
+  still the button that opens the memory map, and the banner stacks back into a
+  centred column on a phone.
+- **One card is the first move, and only the first move.** The station reads
+  greeting → the box you type into → one row for 자료 추가 and 혼자 해도 되는 일,
+  with nothing between the box and its own controls.
+- **What to try is a card of its own.** The three suggestions moved out of the
+  station onto a second surface below it, where they read as an offer rather
+  than a step. That card is a named `<section>`, so a screen reader announces it
+  as a region — the label used to sit on a plain `<div>`, where the browser
+  discards it.
+- **The empty state is designed rather than inherited.** A Brain with nothing to
+  suggest yet — every Brain on its first day — shows starter pills instead of
+  suggestion cards. That row had never been styled for this screen: it borrowed
+  a pill height drawn for live conversations and sat noticeably taller than the
+  cards it stands in for. Both branches read as peers now, and a pill fills the
+  composer rather than sending a question you did not choose to ask.
+- **Three bugs that only moving things could find.** The Brain's halo is written
+  as an inline `box-shadow`, so no stylesheet could shrink it — a 60px glow
+  stayed wrapped around a 58px Brain until the blur became a CSS variable the
+  host can set (every other screen keeps its old value through the fallback).
+  Clipping the card would have hidden the 노트 / 웹 popover and turned the card
+  into a scroll container that scrolls the greeting away on focus, so the banner
+  clips its own corners instead. And the reduced-motion rule that cancels the
+  card lift had to follow the cards to their new selector, or a reader who asked
+  the system to hold still would have got the animation back.
+- **Guarded, not asserted.** Unit tests hold the split itself — station, deck
+  and footer as three siblings, with the suggestions provably *not* inside the
+  station. Browser tests hold what only a browser can see: the popover opens
+  unclipped, the cards fill their card, they collapse to chips under 900px and
+  stay visible under 760px, reduced motion is honoured, the empty-state pill row
+  renders, and the halo is measured against the Brain it surrounds.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.6.1 release must use exact filenames:
+Expected artifacts for 10.6.2 release must use exact filenames:
 
-- `dist/ltcai-10.6.1-py3-none-any.whl`
-- `dist/ltcai-10.6.1.tar.gz`
-- `ltcai-10.6.1.tgz`
-- `dist/ltcai-10.6.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.6.1_aarch64.dmg`
+- `dist/ltcai-10.6.2-py3-none-any.whl`
+- `dist/ltcai-10.6.2.tar.gz`
+- `ltcai-10.6.2.tgz`
+- `dist/ltcai-10.6.2.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.6.2_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -159,6 +155,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.6.2 | Ask First |
 | 10.6.1 | First Things |
 | 10.6.0 | Promoted Panels |
 | 10.5.0 | Everyday Words |

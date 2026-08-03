@@ -4,6 +4,64 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.6.2] - 2026-08-03
+
+The Brain home, re-shaped rather than re-ordered. 10.6.1 gave this screen a new
+order and left its shape alone: a 5.4rem organism and a centred headline ran
+down the middle before the composer, and the suggestion strip sat between the
+composer and its own toolbar. It is two surfaces now — a station holding the
+first move, and a deck below it holding the alternatives. No feature was
+removed. Backend behaviour is unchanged; `frontend/openapi.json` differs from
+10.6.1 only in `info.version`.
+
+### Changed
+- **The greeting is a banner, not a headline.** `.brain-home-station > .brain-hero`
+  is a `row` instead of a `column`: organism 5.4rem → 3.2rem beside the title and
+  the memory counts (`.brain-hero-header-text`), on a tinted strip with a
+  hairline foot. It stacks back to a centred column under 640px, and the
+  short-window rule now shrinks the organism to 2.6rem rather than growing it.
+- **The station holds the first move and nothing else.** Greeting → composer →
+  one toolbar (`자료 추가` left, `혼자 해도 되는 일` right) with nothing between
+  the composer and its own controls.
+- **The suggestions are their own card.** `.brain-secondary-deck` is a sibling
+  of the station under `.brain-centered-home`, which now carries three direct
+  children: station, deck, quiet row. The stage widened 44rem → 50rem.
+- **The empty branch is styled for this screen.** With no `suggested_questions`,
+  the deck renders `.brain-prompt-pills-row`, scoped and sized here (notably
+  `min-height: 0`, against `conversation.css`'s 2.65rem pill floor) so both
+  branches read as peers. A pill fills the composer instead of sending.
+
+### Fixed
+- **The Brain's halo could not be scaled by any stylesheet.** `LivingBrain`
+  writes the aura's `box-shadow` inline, so a `.brain-hero-organism .brain-aura`
+  rule had no effect and a 60px blur stayed around a 58px organism, clipped into
+  a flat smudge. The blur reads `var(--aura-blur, 60px)`; the banner sets 14px.
+  Every other host is pixel-identical through the fallback.
+- **`aria-label` on a plain `<div>` was being discarded.** The suggestion block
+  reached assistive tech unnamed. The label moved to the deck's `<section>`
+  (named ⇒ `region`); the inner strip carries none.
+- **Reduced motion stopped covering the suggestion cards.** `affordance.css`'s
+  hover-lift and `prefers-reduced-motion` selectors still named
+  `.brain-home-prompt-strip > button`, which matches nothing after the grid; they
+  are re-pointed at `.brain-prompt-grid button`. The `white-space` opt-in entry
+  is deliberately not re-added — `home-simple.css` flips those cards to `nowrap`
+  chips under 900px and a matching selector in the last-loaded sheet would win
+  that media rule.
+- **The station must not clip.** `overflow: hidden` there would hide the capture
+  popover (anchored to the toolbar, opening below it) and make the card a scroll
+  container that scrolls the greeting away on focus. The station stays visible;
+  the banner uses `overflow: clip` and rounds its own top corners.
+
+### Tests
+- `BrainHome.test.tsx`: station/deck/quiet are direct siblings of the stage in
+  order; the station contains neither the strip nor the deck; the deck is a named
+  `region` and the inner strip is unlabelled; the starter-pill branch renders.
+- `tests/visual/v3.spec.js`: the popover opens unclipped without scrolling the
+  station; the grid fills ≥98% of the deck's inner width; the cards stay visible
+  and become chips at 900/760/640/420px; reduced motion drops both `transform`
+  and `transition` while hover still answers in colour; the aura's blur is
+  measured against the organism and its box against the banner.
+
 ## [10.6.1] - 2026-08-03
 
 The second half of the layout rebuild. 10.6.0 promoted one panel per main screen

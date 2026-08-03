@@ -7,11 +7,16 @@ import { BrainHome } from "./BrainHome";
 /**
  * The Brain home on first entry — the screen behind capture 04.
  *
- * 10.6.x rebuilt it around a single vertical axis: greet, then the box you type
- * into, then three things to try, then the controls for what Brain may work
- * with. Everything that is not that first move was pushed into a quiet footer
- * one click away. The order *is* the design, and it lives in JSX, so a reorder
- * during a later edit would change the screenshot without any test objecting.
+ * 10.6.2 split what used to be one tall card into two surfaces. The station is
+ * the first move and nothing else: greet, the box you type into, then the row
+ * that answers "with what, and how far" — add material and the autonomy dial.
+ * The three things to try moved *out* of that card onto a deck of their own
+ * below it, because a suggestion is a second choice, not part of the first one.
+ * Everything quieter still lives in the footer one click away.
+ *
+ * The order and the split are both the design and both live in JSX, so a
+ * reorder or a re-nesting during a later edit would change the screenshot
+ * without any test objecting. Hence the structural assertions here.
  *
  * This file had no unit coverage at all until now, because `LivingBrain` calls
  * `window.matchMedia` on mount and jsdom leaves it undefined — every render
@@ -29,40 +34,63 @@ function order(container: HTMLElement, selectors: string[]) {
 }
 
 describe("BrainHome first entry", () => {
-  it("leads with the box you type into, then what to try, then the controls", async () => {
+  it("leads with the box you type into, then controls on station floor, then discovery deck prompts", async () => {
     const { container } = renderHome();
     await waitFor(() => expect(container.querySelector("[data-testid='brain-home-station']")).toBeTruthy());
 
-    const [hero, composer, prompts, toolbar] = order(container, [
+    const [hero, composer, toolbar, prompts] = order(container, [
       ".brain-hero",
       ".brain-composer-wrapper",
-      ".brain-home-prompt-strip",
       ".brain-station-toolbar",
+      ".brain-home-prompt-strip",
     ]);
 
     expect(hero).toBeGreaterThanOrEqual(0);
     expect(composer).toBeGreaterThan(hero);
-    expect(prompts).toBeGreaterThan(composer);
-    expect(toolbar).toBeGreaterThan(prompts);
+    expect(toolbar).toBeGreaterThan(composer);
+    expect(prompts).toBeGreaterThan(toolbar);
   });
 
-  it("keeps all four on one surface, and the shelves off it", async () => {
-    // The station is the first move; the quiet footer is everything else. If a
-    // shelf drifts back inside the station it competes with the composer again.
+  it("holds the first move on the station and nothing else", async () => {
+    // The station is the first move; the deck and the quiet footer are the
+    // second and third. If a shelf — or the suggestions — drift back inside the
+    // station they compete with the composer again, which is the whole reason
+    // 10.6.2 split them out.
     const { container } = renderHome();
     await waitFor(() => expect(container.querySelector("[data-testid='brain-home-station']")).toBeTruthy());
 
     const station = container.querySelector("[data-testid='brain-home-station']") as HTMLElement;
     expect(station.querySelector("textarea")).toBeTruthy();
     expect(station.querySelector(".brain-station-toolbar")).toBeTruthy();
+    expect(station.querySelector(".brain-home-prompt-strip")).toBeNull();
+    expect(station.querySelector("[data-testid='brain-secondary-deck']")).toBeNull();
     expect(station.querySelector("[data-testid='brain-history-shelf']")).toBeNull();
     expect(station.querySelector("[data-testid='brain-insights-shelf']")).toBeNull();
+  });
 
-    const [stationIndex, quietIndex] = order(container, [
+  it("stacks station, then deck, then footer as three siblings of the stage", async () => {
+    // The three surfaces are siblings, not nested. `.brain-centered-home > *`
+    // in home-simple.css sets `flex: none` on each, so a surface that stopped
+    // being a direct child would silently start shrinking.
+    const { container } = renderHome();
+    await waitFor(() => expect(container.querySelector("[data-testid='brain-secondary-deck']")).toBeTruthy());
+
+    const stage = container.querySelector("[data-testid='brain-home-stage']") as HTMLElement;
+    for (const selector of [
       "[data-testid='brain-home-station']",
+      "[data-testid='brain-secondary-deck']",
+      ".brain-home-quiet",
+    ]) {
+      expect(stage.querySelector(`:scope > ${selector}`)).toBeTruthy();
+    }
+
+    const [stationIndex, deckIndex, quietIndex] = order(container, [
+      "[data-testid='brain-home-station']",
+      "[data-testid='brain-secondary-deck']",
       ".brain-home-quiet",
     ]);
-    expect(quietIndex).toBeGreaterThan(stationIndex);
+    expect(deckIndex).toBeGreaterThan(stationIndex);
+    expect(quietIndex).toBeGreaterThan(deckIndex);
   });
 
   it("opens with both shelves closed, so the first screen is the composer", async () => {
@@ -104,12 +132,48 @@ describe("BrainHome first entry", () => {
     expect(toolbar.getAttribute("aria-label")).not.toMatch(/^brain\./);
   });
 
-  it("labels the suggestion strip without printing an i18n key", async () => {
+  it("names the suggestion deck on the element that has a role", async () => {
+    // `aria-label` on a plain <div> is discarded: an element with no role has
+    // nothing to name. The label has to sit on the <section>, which a name
+    // promotes to a `region`. The strip inside it must not carry one, or the
+    // next reader assumes a div can be labelled and repeats the mistake.
     const { container } = renderHome();
-    await waitFor(() => expect(container.querySelector(".brain-home-prompt-strip")).toBeTruthy());
-    const strip = container.querySelector(".brain-home-prompt-strip") as HTMLElement;
-    expect(strip.getAttribute("aria-label")).not.toMatch(/^brain\./);
+    await waitFor(() => expect(container.querySelector("[data-testid='brain-secondary-deck']")).toBeTruthy());
+
+    const deck = container.querySelector("[data-testid='brain-secondary-deck']") as HTMLElement;
+    expect(deck.tagName).toBe("SECTION");
+    const label = deck.getAttribute("aria-label");
+    expect(label?.trim()).toBeTruthy();
+    // A label sourced from a missing key renders the key itself.
+    expect(label).not.toMatch(/^brain\./);
+    expect(screen.getByRole("region", { name: label as string })).toBe(deck);
+
+    expect(container.querySelector(".brain-home-prompt-strip")?.hasAttribute("aria-label")).toBe(false);
     expect(container.textContent).not.toMatch(/brain\.[a-z]+\.[a-zA-Z]+/);
+  });
+
+  it("falls back to starter pills when Brain has no suggestion of its own", async () => {
+    // The two suggestion branches are covered by different suites, which is
+    // easy to lose track of: `stubApi` resolves the brief to `{}`, so every
+    // render here takes the starter-pill path, while the Playwright mock
+    // returns two questions and only ever renders the card grid. Asserted so
+    // that a harness change flipping the branch shows up as a failure rather
+    // than as a silently uncovered path.
+    const { container } = renderHome();
+    await waitFor(() => expect(container.querySelector("[data-testid='brain-secondary-deck']")).toBeTruthy());
+
+    const deck = container.querySelector("[data-testid='brain-secondary-deck']") as HTMLElement;
+    expect(deck.querySelector(".brain-prompt-grid")).toBeNull();
+    const row = deck.querySelector(".brain-prompt-pills-row") as HTMLElement;
+    expect(row).toBeTruthy();
+    const pills = row.querySelectorAll("button.brain-prompt-pill");
+    expect(pills.length).toBeGreaterThan(0);
+    // A starter pill fills the composer rather than sending; the empty state
+    // must never post a question the reader did not choose to ask.
+    for (const pill of pills) {
+      expect(pill.textContent?.trim()).toBeTruthy();
+      expect(pill.getAttribute("type")).toBe("button");
+    }
   });
 
   it("renders in English when the language is en", async () => {

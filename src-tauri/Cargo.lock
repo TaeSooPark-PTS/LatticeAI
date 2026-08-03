@@ -1584,7 +1584,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-ai-desktop"
-version = "10.6.1"
+version = "10.6.2"
 dependencies = [
  "plist",
  "serde",

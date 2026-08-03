@@ -149,9 +149,6 @@ export function BrainConversation({
   const lastAssistantIndex = findLastAssistantIndex(messages);
   const suggestedQuestions = brief.suggestedQuestions.slice(0, 3);
 
-  // First-five guided card wiring: each step drives a real, already-existing
-  // surface on this screen (composer, ingestion dock, insights shelf).
-  const homeDeckRef = React.useRef<HTMLElement>(null);
   useDismissHomeShelves();
   const insightsShelfRef = React.useRef<HTMLDetailsElement>(null);
 
@@ -329,7 +326,7 @@ export function BrainConversation({
             // themselves. Together they added ~150px and pushed the shelves
             // under the fixed mobile nav, where a tap lands on the nav.
             <div className="brain-centered-home" data-testid="brain-home-stage">
-              <section className="brain-home-station" ref={homeDeckRef} data-testid="brain-home-station">
+              <section className="brain-home-station" data-testid="brain-home-station">
                 <BrainHomeHero
                   language={language}
                   brainState={brainState}
@@ -342,8 +339,7 @@ export function BrainConversation({
 
                 {modelReady ? null : <ModelMissingNotice language={language} />}
 
-                {/* The box you type into — the one thing a newcomer must find.
-                    Its frame and focus ring are in home-simple.css. */}
+                {/* The box you type into — the primary focus station area. */}
                 <div className="brain-composer-wrapper">
                   <BrainComposer
                     language={language}
@@ -359,65 +355,9 @@ export function BrainConversation({
                   />
                 </div>
 
-                {/* Three things to try, directly under the box you type into
-                    rather than below the toolbar. The label and the card grid
-                    are the strip's two children; home-simple.css lays both out
-                    by position, so they carry no classes of their own. */}
-                {suggestedQuestions.length ? (
-                  <section className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
-                    <div className="brain-home-prompt-strip-label">
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{t(language, "brain.suggestions.title")}</span>
-                    </div>
-                    <div>
-                      {suggestedQuestions.map((question) => {
-                        const prompt = t(language, question.promptKey, question.params);
-                        return (
-                          <button
-                            key={question.id}
-                            type="button"
-                            disabled={streaming}
-                            title={t(language, question.detailKey)}
-                            onClick={() => {
-                              onDraftChange("");
-                              onSendText(prompt);
-                            }}
-                          >
-                            <strong>{t(language, question.labelKey)}</strong>
-                            {/* No `truncate`: it sets white-space:nowrap, which
-                                would undo the two-line clamp the sheet gives
-                                this line. */}
-                            <span>{t(language, question.detailKey)}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ) : (
-                  <div className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
-                    <div className="brain-home-prompt-strip-label">
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{t(language, "brain.suggestions.title")}</span>
-                    </div>
-                    <div>
-                      {starterPrompts.slice(0, 3).map((prompt) => (
-                        <button
-                          key={prompt}
-                          type="button"
-                          onClick={() => onDraftChange(prompt)}
-                          className="brain-prompt-pill"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Add-material and autonomy answer the same question — what
                     may Brain work with, and how far may it go — so they read as
-                    one row on the station's floor. The sheet already makes this
-                    a space-between flex row with its own padding and rule. */}
+                    one row on the station's floor. */}
                 <div className="brain-station-toolbar" role="group" aria-label={t(language, "brain.station.toolbar.aria")}>
                   <BrainIngestionDock
                     language={language}
@@ -432,6 +372,65 @@ export function BrainConversation({
                   />
                   <BrainQuickControls language={language} />
                 </div>
+              </section>
+
+              {/* Three things to try, on a card of their own below the station
+                  rather than wedged between the composer and the toolbar. The
+                  name belongs on this <section>: it is the element with a role
+                  (a named section is a `region`), whereas the strip inside it is
+                  a plain div, where `aria-label` is dropped on the floor. */}
+              <section
+                className="brain-secondary-deck"
+                data-testid="brain-secondary-deck"
+                aria-label={t(language, "brain.suggestions.aria")}
+              >
+                {suggestedQuestions.length ? (
+                  <div className="brain-home-prompt-strip">
+                    <div className="brain-home-prompt-strip-label">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t(language, "brain.suggestions.title")}</span>
+                    </div>
+                    <div className="brain-prompt-grid">
+                      {suggestedQuestions.map((question) => {
+                        const prompt = t(language, question.promptKey, question.params);
+                        return (
+                          <button
+                            key={question.id}
+                            type="button"
+                            disabled={streaming}
+                            title={t(language, question.detailKey)}
+                            onClick={() => {
+                              onDraftChange("");
+                              onSendText(prompt);
+                            }}
+                          >
+                            <strong>{t(language, question.labelKey)}</strong>
+                            <span>{t(language, question.detailKey)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="brain-home-prompt-strip">
+                    <div className="brain-home-prompt-strip-label">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t(language, "brain.suggestions.title")}</span>
+                    </div>
+                    <div className="brain-prompt-pills-row">
+                      {starterPrompts.slice(0, 3).map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => onDraftChange(prompt)}
+                          className="brain-prompt-pill"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* Past conversations and the insight panels stay one click away
