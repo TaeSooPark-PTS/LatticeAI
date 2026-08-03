@@ -4,8 +4,11 @@ The Knowledge Graph is the user's durable asset, so it must be portable without
 any cloud service. Two complementary mechanisms, both fully local:
 
 * **Logical export/import** (JSON): nodes/edges/chunks/sources/provenance with a
-  versioned header (schema + projection + embed-dim). Re-embeds on import, so it
-  is portable across machines.
+  versioned header (schema + projection + embed-dim). Vectors are not in the
+  artifact; the importer re-embeds with its own embedder and reports the
+  resulting index state under ``result["index"]`` (``degraded: true`` means the
+  content landed but recall is lexical-only until a rebuild succeeds). That is
+  what makes it portable across machines.
 * **Binary backup/restore** (ZIP): a faithful snapshot of the SQLite DB (incl.
   vector embeddings) plus the blob directory, integrity-checked, for
   same-machine recovery.

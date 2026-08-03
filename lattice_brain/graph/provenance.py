@@ -217,8 +217,10 @@ class KnowledgeGraphProvenanceMixin(_Core):
         include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
         """Raw, lossless logical export of the graph (nodes/edges/chunks/sources/
-        provenance). Vector embeddings are intentionally omitted — they are
-        re-derived on import — so the artifact stays portable and small. Use
+        provenance). Vector embeddings are intentionally omitted — the importer
+        re-derives them with *its own* embedder (:meth:`import_graph_data`
+        embeds on write and then reindexes, reporting the result under
+        ``index``) — so the artifact stays portable and small. Use
         :meth:`backup_database` for a faithful binary copy incl. embeddings.
 
         ``workspace_id`` REALLY filters (v4): the artifact contains only nodes
@@ -274,15 +276,68 @@ class KnowledgeGraphProvenanceMixin(_Core):
         data["counts"] = {k: len(v) for k, v in data.items()}
         return data
 
+    def _reindex_after_import(self) -> Dict[str, Any]:
+        """Bring the vector index in line with what was just imported.
+
+        A logical artifact carries no embeddings (see :meth:`export_graph_data`)
+        so they have to be re-derived on this machine. The write door
+        (``_upsert_node`` / ``_upsert_chunk``) already embeds inline, which
+        makes this pass a *verification* in the common case — but "the index is
+        consistent after an import" has to be a guarantee the import makes, not
+        an accident of where the embedding call happens to live. It also
+        records the embedder fingerprint, which the inline write path never
+        does; without it ``index_status()`` reports ``recorded: None`` and the
+        ``stale_embedder`` honesty signal is dead after every import.
+
+        Never raises. The graph rows are already committed at this point, so an
+        embedding provider that dies here means "content imported, recall
+        degraded" — reported with the repo's existing ``vector_freshness``
+        vocabulary (``ready`` / ``pending`` / ``stale_embedder`` /
+        ``unavailable``) plus an explicit ``degraded`` flag — never a rollback
+        of work that already landed, and never a silent success.
+        """
+        reindexed = 0
+        try:
+            outcome = self.rebuild_vector_index(full=False) or {}
+            reindexed = int(outcome.get("items_indexed") or 0)
+        except Exception as exc:  # noqa: BLE001 — the import already committed
+            return {
+                "status": "unavailable",
+                "degraded": True,
+                "detail": (
+                    "imported content is stored, but the vector index could not "
+                    f"be rebuilt ({exc}); search stays lexical-only for the new "
+                    "items until a rebuild succeeds"
+                ),
+                "reindexed_items": 0,
+            }
+        report = self.vector_freshness() or {}
+        status = str(report.get("status") or "unavailable")
+        return {
+            "status": status,
+            "degraded": status != "ready",
+            "detail": report.get("detail"),
+            "pending_items": int(report.get("pending_items") or 0),
+            "total_items": int(report.get("total_items") or 0),
+            "reindexed_items": reindexed,
+        }
+
     def import_graph_data(
         self, data: Dict[str, Any], *, mode: str = "merge", dry_run: bool = False
     ) -> Dict[str, Any]:
         """Import a logical export back into the store.
 
         ``mode='merge'`` upserts on top of existing data (id collisions update);
-        ``mode='replace'`` clears the graph first. ``dry_run=True`` reports the
-        plan without writing. Refuses artifacts from a NEWER graph schema than
-        this build.
+        ``mode='replace'`` clears the graph first (including the derived vector
+        rows — the re-import re-embeds them inside the same transaction, so a
+        failed artifact rolls back to the previous index rather than an empty
+        one). ``dry_run=True`` reports the plan without writing. Refuses
+        artifacts from a NEWER graph schema than this build.
+
+        A completed import carries an ``index`` block reporting the state of
+        the re-derived vector index (see :meth:`_reindex_after_import`); when
+        ``index["degraded"]`` is true, retrieval for the imported scope is
+        lexical-only until the index is rebuilt.
         """
         nodes = data.get("nodes") or []
         edges = data.get("edges") or []
@@ -418,6 +473,7 @@ class KnowledgeGraphProvenanceMixin(_Core):
                     ),
                 )
         plan["imported"] = True
+        plan["index"] = self._reindex_after_import()
         return plan
 
     def backup_database(self, dest_path) -> Path:
