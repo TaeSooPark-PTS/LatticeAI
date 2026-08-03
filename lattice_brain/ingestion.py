@@ -454,7 +454,14 @@ class IngestionPipeline:
         self._audit = audit
         self._max_text_bytes = int(max_text_bytes)
         self._pipeline_name = pipeline_name
-        self._bg_queue = bg_queue or BackgroundIngestionQueue()
+        # Background job state lives in the graph database by default, so a
+        # restart resumes from the last completed item instead of replaying the
+        # whole corpus. A store without a usable ``db_path`` (mocks, disabled
+        # graph) degrades to the historical in-memory queue, which reports
+        # itself as non-durable through ``BackgroundIngestionQueue.describe()``.
+        self._bg_queue = bg_queue or BackgroundIngestionQueue(
+            db_path=getattr(knowledge_graph, "db_path", None)
+        )
         # Incremental vector sync after each successful non-duplicate ingest.
         # Constructor opt-out AND env opt-out (LATTICEAI_AUTO_VECTOR_INDEX=0)
         # both disable it; a vector failure never fails the ingest.
@@ -786,6 +793,7 @@ class IngestionPipeline:
         job.failed = 0
         job.errors = []
         job.touch()
+        self._bg_queue.save(job)
         runner_email = user_email or job.user_email
         for index in job.remaining_indices():
             item = job.items[index]
@@ -800,6 +808,10 @@ class IngestionPipeline:
                 job.record_error(index, item, detail or status)
             job.processed = len(job.done_indices)
             job.touch()
+            # Checkpoint per item: a crash here must cost at most the item in
+            # flight, never the whole job's progress. One small UPDATE against
+            # an ingest (parse + chunk + embed) is noise.
+            self._bg_queue.save(job)
         job.processed = len(job.done_indices)
         if job.total == 0 or job.processed >= job.total:
             job.status = "completed"
@@ -808,6 +820,7 @@ class IngestionPipeline:
         else:
             job.status = "failed"
         job.touch()
+        self._bg_queue.save(job)
         return job.as_dict()
 
     def ingest_web_page(
