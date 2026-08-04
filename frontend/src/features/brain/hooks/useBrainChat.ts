@@ -271,7 +271,19 @@ export function useBrainChat({
       setMemoryFeedback(aborted ? t(language, "brain.stopped") : null);
       failIngestion("chat", aborted ? "stopped" : error instanceof Error ? error.message : String(error));
     } finally {
-      abortRef.current = null;
+      // `onTrace` parks a 900ms timer that puts the organism back into
+      // "thinking" after a recall pulse. If the answer finished inside that
+      // window the timer still fired, and the Brain sat visibly thinking about
+      // a question it had already answered — until the next keystroke. The
+      // stream ending is the end of thinking, so the timer dies with it.
+      if (recallTimerRef.current !== null) {
+        window.clearTimeout(recallTimerRef.current);
+        recallTimerRef.current = null;
+      }
+      // Only this run's controller is cleared. Two sends racing into the same
+      // tick would otherwise leave `stopStreaming` holding nothing while the
+      // second stream ran on.
+      if (abortRef.current === controller) abortRef.current = null;
       setStreaming(false);
       for (const key of ["chatHistory", "memoryManager", "graphPreview", "graph", "memoryBrainProof", "memoryBrainBrief"]) {
         void qc.invalidateQueries({ queryKey: [key] });

@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from latticeai.core.messages import http_error, resolve_language, translate
 from latticeai.services.change_proposals import ProposalConflictError
 from latticeai.services.review_queue import InvalidReviewTransition, ReviewQueueService
 
@@ -129,7 +130,7 @@ def create_review_queue_router(
         try:
             return service.get(item_id, workspace_id=scope)
         except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="review item not found") from exc
+            raise http_error(404, "review.item_not_found", resolve_language(request)) from exc
 
     @router.post("/automation/reviews/{item_id}/approve", response_model=ReviewItem)
     async def approve_item(item_id: str, request: Request):
@@ -141,12 +142,16 @@ def create_review_queue_router(
             try:
                 stored = service.get(item_id, workspace_id=scope)
             except FileNotFoundError as exc:
-                raise HTTPException(status_code=404, detail="review item not found") from exc
+                raise http_error(404, "review.item_not_found", resolve_language(request)) from exc
             if stored.get("source") == "change_proposal":
                 if stored.get("effective_status") not in ("pending", "snoozed"):
                     raise HTTPException(
                         status_code=409,
-                        detail=f"cannot 'approve' a review item in status {stored.get('status')!r}",
+                        detail=translate(
+                    "review.cannot_approve_in_status",
+                    resolve_language(request),
+                    status=stored.get("status"),
+                ),
                     )
                 try:
                     applied = change_proposals.approve_and_apply(
@@ -177,7 +182,7 @@ def create_review_queue_router(
                 item_id, workspace_id=scope, reason=(req.reason if req else None)
             )
         except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="review item not found") from exc
+            raise http_error(404, "review.item_not_found", resolve_language(request)) from exc
         except InvalidReviewTransition as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         append_audit_event("review_item_dismiss", user_email=user, item_id=item_id)
@@ -190,7 +195,7 @@ def create_review_queue_router(
         try:
             item = service.snooze(item_id, until=req.until, workspace_id=scope)
         except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="review item not found") from exc
+            raise http_error(404, "review.item_not_found", resolve_language(request)) from exc
         except InvalidReviewTransition as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         append_audit_event("review_item_snooze", user_email=user, item_id=item_id)
@@ -211,7 +216,7 @@ def create_review_queue_router(
                 workspace_id=scope,
             )
         except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="review item not found") from exc
+            raise http_error(404, "review.item_not_found", resolve_language(request)) from exc
         except InvalidReviewTransition as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         append_audit_event("review_item_run_now", user_email=user, item_id=item_id)
@@ -224,7 +229,7 @@ def create_review_queue_router(
         try:
             item = fn(item_id, workspace_id=scope)
         except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="review item not found") from exc
+            raise http_error(404, "review.item_not_found", resolve_language(request)) from exc
         except InvalidReviewTransition as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         append_audit_event(f"review_item_{action}", user_email=user, item_id=item_id)

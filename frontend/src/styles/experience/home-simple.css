@@ -292,7 +292,11 @@
   white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 1px 3px hsl(var(--foreground) / 0.03);
-  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  /* `border-color` is deliberately absent, same as the shared pill rule below:
+     easing it means the focus ring fades in over 150ms, so a keyboard user —
+     and anything measuring the border the instant focus lands — still sees the
+     idle colour. Surfaces may ease; the focus outline may not. */
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 
 /* ── 4. Secondary Discovery Deck ────────────────────────────────────────── */

@@ -120,11 +120,50 @@ def test_http_error_carries_the_localized_detail():
 
 # ── the routers actually use it ─────────────────────────────────────────
 
+# 10.9.0 widened this from three routers to the everyday path. The same list
+# lives in scripts/check_server_i18n.mjs (which runs in `npm run lint` and is
+# stricter — it rejects an English literal too, not only a Korean one), and
+# test_the_two_gates_agree below fails if the two ever drift apart.
 MIGRATED_ROUTERS = [
-    "latticeai/api/auth.py",
     "latticeai/api/admin.py",
+    "latticeai/api/auth.py",
     "latticeai/api/browser.py",
+    "latticeai/api/chat.py",
+    "latticeai/api/chat_history.py",
+    "latticeai/api/chat_intents.py",
+    "latticeai/api/knowledge_graph.py",
+    "latticeai/api/local_files.py",
+    "latticeai/api/mcp.py",
+    "latticeai/api/memory.py",
+    "latticeai/api/models.py",
+    "latticeai/api/network_boundary.py",
+    "latticeai/api/portability.py",
+    "latticeai/api/project_sessions.py",
+    "latticeai/api/review_queue.py",
+    "latticeai/api/setup.py",
+    "latticeai/api/tools.py",
 ]
+
+
+def test_the_two_gates_agree_on_which_routers_are_migrated():
+    """One list in Python, one in the lint gate — they must name the same set.
+
+    Either gate alone can be satisfied while the other is not; a router that
+    slipped out of one list would look guarded and not be.
+    """
+    gate = (REPO / "scripts/check_server_i18n.mjs").read_text(encoding="utf-8")
+    body = gate.split("const LOCALIZED = [", 1)[1].split("]", 1)[0]
+    from_gate = {
+        line.strip().strip(',"')
+        for line in body.splitlines()
+        if line.strip().startswith('"')
+    }
+    from_tests = {path.rsplit("/", 1)[1].removesuffix(".py") for path in MIGRATED_ROUTERS}
+    assert from_gate == from_tests, (
+        "scripts/check_server_i18n.mjs and MIGRATED_ROUTERS disagree: "
+        f"only in gate={sorted(from_gate - from_tests)}, "
+        f"only in tests={sorted(from_tests - from_gate)}"
+    )
 
 
 @pytest.mark.parametrize("relative", MIGRATED_ROUTERS)
@@ -138,10 +177,28 @@ def test_migrated_routers_raise_no_hardcoded_korean_detail(relative):
 
 
 @pytest.mark.parametrize("relative", MIGRATED_ROUTERS)
-def test_migrated_routers_resolve_the_language_from_the_request(relative):
+def test_migrated_routers_take_their_wording_from_the_catalog(relative):
     source = (REPO / relative).read_text(encoding="utf-8")
-    assert "resolve_language(" in source
-    assert "http_error(" in source
+    assert "http_error(" in source or "translate(" in source, (
+        f"{relative} is listed as migrated but never reads the catalog"
+    )
+
+
+@pytest.mark.parametrize("relative", MIGRATED_ROUTERS)
+def test_migrated_routers_never_fix_the_language_at_the_raise_site(relative):
+    """The language comes from the request — resolved here, or passed in.
+
+    `chat_intents.py` is the second shape: it is reached from `chat.py`, which
+    resolves once at the HTTP edge and threads `language` down. Requiring
+    `resolve_language(` in every file would push a second resolution into a
+    module that has no request to resolve from.
+    """
+    source = (REPO / relative).read_text(encoding="utf-8")
+    resolves = "resolve_language(" in source
+    receives = "language: str" in source or "language=language" in source
+    assert resolves or receives, (
+        f"{relative} localizes without ever learning which language to use"
+    )
 
 
 def test_every_key_the_routers_reference_exists_in_the_catalog():

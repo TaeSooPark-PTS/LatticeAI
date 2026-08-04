@@ -4504,7 +4504,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "10.8.0"
+    "version": "10.9.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -12437,7 +12437,7 @@
     },
     "/local/sysinfo": {
       "get": {
-        "description": "CPU / RAM / GPU(MLX) usage plus a plain-language readiness bucket.\n\n``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy\ndoes not re-interpret raw percents on the client.",
+        "description": "CPU / RAM / GPU(MLX) usage plus a plain-language readiness bucket.\n\n``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy\ndoes not re-interpret raw percents on the client.\n\nThe probe itself is three subprocesses \u2014 ``top -l 1`` alone samples for\nabout a second \u2014 so it runs on a worker thread. Run inline it held the\nevent loop for the whole sample, and this route is hit on the System\nscreen *and* during first-run analysis, i.e. exactly while an answer is\nstreaming: one status poll used to stall every open stream.",
         "operationId": "local_sysinfo_local_sysinfo_get",
         "responses": {
           "200": {

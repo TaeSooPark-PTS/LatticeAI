@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from latticeai.core.messages import http_error, resolve_language, translate
 from latticeai.core.network_boundary import network_mode_catalog, normalize_network_mode
 from latticeai.services.cloud_egress_audit import record_cloud_egress
 from latticeai.services.cloud_token_guard import budget_for
@@ -164,12 +165,16 @@ def create_network_boundary_router(
         """
         user, scope = _scope(request, body.workspace_id)
         if knowledge_graph is None or not hasattr(knowledge_graph, "set_node_sensitivity"):
-            raise HTTPException(status_code=501, detail="knowledge graph not available")
+            raise http_error(501, "common.graph_unavailable", resolve_language(request))
         result = knowledge_graph.set_node_sensitivity(
             body.node_id, local_only=bool(body.local_only), reason=body.reason
         )
         if not result.get("ok"):
-            raise HTTPException(status_code=404, detail=result.get("reason") or "node not found")
+            raise HTTPException(
+                status_code=404,
+                detail=result.get("reason")
+                or translate("graph.node_not_found", resolve_language(request)),
+            )
         record_cloud_egress(
             node_ids=[body.node_id], token_estimate=0, mode="(policy)",
             provider="(local)", user_email=user, workspace_id=scope,
@@ -184,14 +189,14 @@ def create_network_boundary_router(
         workspace_id: Optional[str] = None,
     ):
         if policy_service is None:
-            raise HTTPException(status_code=501, detail="hybrid policy service not configured")
+            raise http_error(501, "boundary.policy_not_configured", resolve_language(request))
         user, scope = _scope(request, workspace_id)
         return policy_service.resolve(user_email=user, workspace_id=scope)
 
     @router.post("/api/network-boundary/policy")
     async def set_hybrid_policy(body: SetHybridPolicyRequest, request: Request):
         if policy_service is None:
-            raise HTTPException(status_code=501, detail="hybrid policy service not configured")
+            raise http_error(501, "boundary.policy_not_configured", resolve_language(request))
         user, scope = _scope(request, body.workspace_id)
         patch: Dict[str, Any] = {}
         for key in (

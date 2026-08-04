@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **10.8.0 — Within Reach**.
+Current release: **10.9.0 — Never Blocks**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

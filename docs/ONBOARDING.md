@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.8.0 — Within Reach**.
+Current release: **10.9.0 — Never Blocks**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

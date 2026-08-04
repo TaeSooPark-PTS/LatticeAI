@@ -31,9 +31,10 @@ from latticeai.core.file_generation import (
     repair_bundle_references,
     validate_project_bundle,
 )
+from latticeai.core.messages import DEFAULT_LANGUAGE, translate
 
 
-def next_available_path(root: Path, target: str) -> str:
+def next_available_path(root: Path, target: str, language: str = DEFAULT_LANGUAGE) -> str:
     """Return ``target`` unchanged, or a ``name_2.ext``-style variant when the
     file already exists in the workspace.
 
@@ -54,7 +55,7 @@ def next_available_path(root: Path, target: str) -> str:
             return str(Path(target).with_name(variant.name))
     raise HTTPException(
         status_code=409,
-        detail=f"'{target}' 이름의 파일이 너무 많습니다. 다른 이름을 지정해 주세요.",
+        detail=translate("chat.file_name_collision", language, name=target),
     )
 
 
@@ -118,14 +119,10 @@ class ChatIntentController:
         except Exception as exc:  # noqa: BLE001 — metrics must never break chat
             logging.warning("funnel metrics increment failed: %s", exc)
 
-    def no_model_response(self) -> JSONResponse:
-        detail = "No model loaded. Call /models/load first."
+    def no_model_response(self, language: str = DEFAULT_LANGUAGE) -> JSONResponse:
+        detail = translate("chat.no_model_loaded", language)
         if self.config.is_public:
-            detail = (
-                "No public model loaded. Set OPENAI_API_KEY and "
-                f"LATTICEAI_PUBLIC_MODEL={self.public_model}, or call /models/load "
-                "with an OpenAI-compatible model."
-            )
+            detail = translate("models.public_model_missing", language, model=self.public_model)
         return JSONResponse(
             status_code=400,
             content={
@@ -249,6 +246,7 @@ class ChatIntentController:
         model_id: Optional[str],
         effective_email: Optional[str] = None,
         workspace_id: Optional[str] = None,
+        language: str = DEFAULT_LANGUAGE,
     ):
         # An explicit path ("report.txt") wins; otherwise infer one from an
         # explicit type keyword ("html 파일 만들어줘") so weak models never
@@ -266,19 +264,20 @@ class ChatIntentController:
                     model_id=model_id,
                     effective_email=effective_email,
                     workspace_id=workspace_id,
+                    language=language,
                 )
         target_path = explicit_target or infer_file_target(req.message)
         if not target_path:
             return None
         # Never silently overwrite: an existing target gets a _2/_3 suffix so
         # regeneration is safe and repeatable without the proposal flow.
-        deduped_path = next_available_path(self.agent_root, target_path)
+        deduped_path = next_available_path(self.agent_root, target_path, language)
         renamed = deduped_path != target_path
         target_path = deduped_path
         content = inline_file_action_content(req.message)
         generation_meta: Optional[Dict[str, Any]] = None
         if content is None and not model_id:
-            return self.no_model_response()
+            return self.no_model_response(language)
         if content is None and model_id:
             # Model-agnostic pipeline: strict extension-aware prompt →
             # extraction → validation → one corrective retry → deterministic
@@ -302,7 +301,7 @@ class ChatIntentController:
         if content is None:
             raise HTTPException(
                 status_code=400,
-                detail="File content could not be generated.",
+                detail=translate("chat.file_generation_failed", language),
             )
         try:
             result = self.execute_tool(
@@ -395,6 +394,7 @@ class ChatIntentController:
         model_id: Optional[str],
         effective_email: Optional[str] = None,
         workspace_id: Optional[str] = None,
+        language: str = DEFAULT_LANGUAGE,
     ):
         """Artifact Loop: manifest → per-file generate/validate → bundle write.
 
@@ -405,8 +405,8 @@ class ChatIntentController:
         standard ``artifacts[]`` contract, and downloadable as a zip.
         """
         if not model_id:
-            return self.no_model_response()
-        project_dir = next_available_path(self.agent_root, manifest["name"])
+            return self.no_model_response(language)
+        project_dir = next_available_path(self.agent_root, manifest["name"], language)
         bundle_files = [str(f["path"]) for f in manifest["files"]]
 
         async def _generate(context: str) -> str:

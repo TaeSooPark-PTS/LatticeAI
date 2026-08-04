@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.8.0 — Within Reach**.
+Current release: **10.9.0 — Never Blocks**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

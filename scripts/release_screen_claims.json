@@ -26,5 +26,21 @@
       "_why": "Elevated brain-chat-home visual layout with glassmorphic station card, ambient radial mesh aura, gradient title, glowing dot prompt cards, and refined toolbar styling.",
       "min_pct": 1.5
     }
+  },
+
+  "10.9.0": {
+    "_why": [
+      "This release claims no screen redesign, and the empty claim is the",
+      "honest statement of that: 10.9.0 is a correctness release (event-loop",
+      "blocking, a focus ring that faded in too slowly to see, an organism",
+      "stuck in 'thinking', localized server errors).",
+      "",
+      "Its two visual changes are both invisible at the capture viewport by",
+      "construction. The welcome step's compaction lives under",
+      "`@media (max-height: 820px)` and captures run at 1440x900; the capture",
+      "pills' focus border only differs while an input inside them has focus,",
+      "which no screenshot holds. `tests/visual/v3.spec.js` asserts both",
+      "directly instead — a pixel diff is the wrong instrument for either."
+    ]
   }
 }

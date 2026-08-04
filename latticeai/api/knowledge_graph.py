@@ -19,6 +19,7 @@ from latticeai.api.workspace_scope import (
     resolve_workspace_scope,
     workspace_scope_from_request,
 )
+from latticeai.core.messages import http_error, resolve_language
 from latticeai.core.quiet import quiet
 
 
@@ -456,9 +457,9 @@ def create_knowledge_graph_router(
     async def knowledge_graph_neighbors(node_id: str, request: Request):
         kg, allowed = _scoped(request)
         if not node_id:
-            raise HTTPException(status_code=400, detail="node_id required")
+            raise http_error(400, "graph.node_id_required", resolve_language(request))
         if allowed is not None and not _filter_scoped(kg, [{"id": node_id}], allowed):
-            raise HTTPException(status_code=404, detail="node not found")
+            raise http_error(404, "graph.node_not_found", resolve_language(request))
         payload = kg.neighbors(node_id)
         if allowed is not None:
             neighbors = _filter_scoped(kg, payload.get("neighbors", []), allowed)
@@ -476,13 +477,13 @@ def create_knowledge_graph_router(
         current_user = require_user(request)
         if current_user and req.user_email:
             if current_user.strip().lower() != req.user_email.strip().lower():
-                raise HTTPException(status_code=403, detail="user_email must match the authenticated user.")
+                raise http_error(403, "common.user_mismatch", resolve_language(request))
         effective_user = current_user or req.user_email or None
         kg = graph()
         workspace_id = _write_workspace(request, current_user)
         event_type = (req.type or "").strip().lower()
         if event_type not in {"message", "ai_response", "note"}:
-            raise HTTPException(status_code=400, detail="지원하는 type: message, ai_response, note")
+            raise http_error(400, "graph.unsupported_type", resolve_language(request))
         role = req.role or ("assistant" if event_type == "ai_response" else "user")
         if ingestion_pipeline is not None:
             source_type = "chat_message" if event_type in {"message", "ai_response"} else "note"

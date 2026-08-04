@@ -4,6 +4,43 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.9.0] - 2026-08-05
+
+### Fixed
+- 모델 내려받기(`ollama pull`, Hugging Face), 엔진 설치, MCP `pip`/`npm` 설치,
+  `/local/sysinfo` 호스트 측정이 `async def` 안에서 그대로 실행되어 실행 중
+  서버 전체가 다른 요청을 처리하지 못하던 문제 — 전부 `asyncio.to_thread`로
+  이관. 최악의 경우 15분(다운로드 타임아웃)간 채팅·`/health`·UI가 모두 멈췄습니다.
+- Telegram 브리지의 사진/문서 업로드가 파일을 이벤트 루프에서 읽던 문제.
+- 캡처 필의 키보드 포커스 테두리가 150ms에 걸쳐 서서히 나타나, 포커스가 닿는
+  순간에는 여전히 idle 색이던 문제(`home-simple.css` transition에서
+  `border-color` 제거).
+- 답변이 끝난 뒤에도 Brain 유기체가 "생각 중"에 머물던 문제 — 회상 펄스가
+  건 900ms 타이머가 스트림 종료 시 취소되지 않았습니다.
+- 같은 틱에 두 번 전송될 때 `stopStreaming`이 중단 핸들을 잃던 문제.
+- 환영 화면이 747px 뷰포트에서 770px이라 마지막 안내 문장이 접힌 부분 아래에
+  있던 문제(`@media (max-height: 820px)` 단계 추가).
+
+### Added
+- `tests/unit/test_event_loop_not_blocked.py` — 핸들러 실행 중 티커 코루틴을
+  돌려 이벤트 루프가 실제로 제어권을 받았는지 측정하는 회귀 테스트.
+- `frontend/src/test/fakeChatStream.ts` — 프레임이 시간에 걸쳐 도착하는 가짜
+  SSE 하네스. `useBrainChat.test.tsx` 11개 시나리오.
+- `scripts/check_server_i18n.mjs` — 이관 완료 선언된 라우터에서 문자열 리터럴
+  detail을 금지하는 lint 게이트(`npm run lint`에 편입).
+- `tests/visual/v3.spec.js` — 환영 화면 fold 테스트, 캡처 필 포커스 테두리.
+- ruff `ASYNC210/220/221/222/230/251` 규칙.
+
+### Changed
+- 서버 메시지 카탈로그를 14개 라우터로 확대(chat, chat_history, chat_intents,
+  memory, knowledge_graph, local_files, portability, review_queue,
+  project_sessions, network_boundary, models, tools, mcp, setup) — 총 17개.
+  `MIGRATED_ROUTERS`와 lint 게이트 목록이 어긋나면 테스트가 실패합니다.
+- `latticeai/services/model_loading.py`: 엔진 준비/다운로드 블록을
+  `_prepare_model_sources()`로 추출(워커 스레드에서 실행 가능한 동기 함수).
+- `latticeai/api/static_routes.py`: 호스트 측정을 `_probe_host_capacity()`로
+  추출.
+
 ## [10.8.0] - 2026-08-04
 
 ### Fixed

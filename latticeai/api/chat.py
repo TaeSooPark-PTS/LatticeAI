@@ -51,6 +51,7 @@ from latticeai.api.chat_hybrid import (
 )
 from latticeai.api.chat_intents import ChatIntentController
 from latticeai.api.chat_stream import stream_chat
+from latticeai.core.messages import DEFAULT_LANGUAGE, resolve_language, translate
 from latticeai.core.project_sessions import ProjectSessionStore
 from latticeai.core.run_store import AgentRunStore
 from latticeai.services.app_context import AppContext
@@ -122,12 +123,13 @@ def create_chat_router(context: AppContext) -> APIRouter:
     def authenticated_identity(
         current_user: str,
         claimed_email: Optional[str],
+        language: str = DEFAULT_LANGUAGE,
     ) -> Optional[str]:
         if current_user and claimed_email:
             if current_user.strip().lower() != claimed_email.strip().lower():
                 raise HTTPException(
                     status_code=403,
-                    detail="user_email must match the authenticated user.",
+                    detail=translate("common.user_mismatch", language),
                 )
         return current_user or claimed_email or None
 
@@ -239,12 +241,12 @@ def create_chat_router(context: AppContext) -> APIRouter:
         notify=notify_chat_message,
     )
 
-    def request_model(model_id: Optional[str]) -> Optional[str]:
+    def request_model(model_id: Optional[str], language: str = DEFAULT_LANGUAGE) -> Optional[str]:
         selected = model_id or model_router.current_model_id
         if model_id and model_id not in model_router.loaded_model_ids:
             raise HTTPException(
                 status_code=404,
-                detail=f"Model '{model_id}' not loaded.",
+                detail=translate("chat.model_not_loaded", language, model=model_id),
             )
         return selected
 
@@ -258,7 +260,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             len(req.image_data) if req.image_data else 0,
             len(req.message or ""),
         )
-        effective_email = authenticated_identity(current_user, req.user_email)
+        effective_email = authenticated_identity(current_user, req.user_email, resolve_language(request))
         workspace_id = write_workspace(
             workspace_scope_from_request(request),
             current_user,
@@ -293,7 +295,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 history_user=history_user,
             )
 
-        selected_model_id = request_model(req.model)
+        selected_model_id = request_model(req.model, resolve_language(request))
         file_intent = is_file_action_request(req.message)
         if file_intent and context.funnel_metrics is not None:
             context.funnel_metrics.increment("file_requests")
@@ -303,11 +305,12 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 model_id=selected_model_id,
                 effective_email=effective_email,
                 workspace_id=workspace_id,
+                language=resolve_language(request),
             )
             if direct_response is not None:
                 return direct_response
         if not selected_model_id:
-            return intent_controller.no_model_response()
+            return intent_controller.no_model_response(resolve_language(request))
         if file_intent:
             return await intent_controller.route_file_to_agent(
                 req,

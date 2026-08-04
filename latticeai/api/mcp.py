@@ -11,6 +11,7 @@ import cycle.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -29,6 +30,7 @@ from latticeai.core.mcp_registry import (
     _get_combined_registry,
     install_skill,
 )
+from latticeai.core.messages import http_error, resolve_language
 from latticeai.core.tool_registry import (
     KNOWLEDGE_WRITE_TOOLS,
     MCP_TOOL_DESCRIPTIONS,
@@ -130,7 +132,7 @@ def create_mcp_router(
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
-    def _read_workspace(requested: Optional[str], user: Optional[str]) -> Optional[str]:
+    def _read_workspace(request: Request, requested: Optional[str], user: Optional[str]) -> Optional[str]:
         if workspace_service is not None:
             try:
                 return workspace_service.resolve_read_scope(requested, user)
@@ -139,7 +141,7 @@ def create_mcp_router(
         workspace_id = requested or "personal"
         allowed = _allowed_graph_workspaces(user)
         if allowed is not None and workspace_id not in set(allowed):
-            raise HTTPException(status_code=403, detail=f"workspace '{workspace_id}' is not readable")
+            raise http_error(403, "common.workspace_unreadable", resolve_language(request), workspace=workspace_id)
         return workspace_id
 
     @router.get("/mcp/tools")
@@ -204,7 +206,7 @@ def create_mcp_router(
         registry = await _get_combined_registry()
         item = next((e for e in registry if e["id"] == mcp_id), None)
         if not item or item.get("install_mode") != "connector":
-            raise HTTPException(status_code=404, detail="커넥터를 찾을 수 없습니다.")
+            raise http_error(404, "mcp.connector_not_found", resolve_language(request))
         installed = load_mcp_installs().get("installed", {})
         public = mcp_public_item(item, installed)
         public["instructions"] = [
@@ -229,8 +231,10 @@ def create_mcp_router(
         if not settings_path.exists():
             return {"servers": []}
         try:
-            with open(settings_path, "r", encoding="utf-8") as f:
-                settings = json.load(f)
+            # Home may be a network mount, where a read is not the microsecond
+            # a local one is; keep it off the loop like every other file read.
+            raw = await asyncio.to_thread(settings_path.read_text, "utf-8")
+            settings = json.loads(raw)
             mcp_servers = settings.get("mcpServers", {})
             servers = []
             for name, cfg in mcp_servers.items():
@@ -272,9 +276,9 @@ def create_mcp_router(
         admin_email, _ = require_admin(request)
         append_audit_event("mcp_custom_add", user_email=admin_email, name=req.name, package=req.package)
         if not req.name.strip():
-            raise HTTPException(status_code=400, detail="name은 필수입니다.")
+            raise http_error(400, "mcp.name_required", resolve_language(request))
         if not req.package.strip():
-            raise HTTPException(status_code=400, detail="package는 필수입니다.")
+            raise http_error(400, "mcp.package_required", resolve_language(request))
         items = _load_custom_mcps()
         entry = {
             "id": f"custom:{req.name.strip().lower().replace(' ', '-')}",
@@ -302,7 +306,7 @@ def create_mcp_router(
         before = len(items)
         items = [e for e in items if e["id"] != mcp_id]
         if len(items) == before:
-            raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
+            raise http_error(404, "mcp.item_not_found", resolve_language(request))
         _save_custom_mcps(items)
         return {"status": "ok"}
 
@@ -415,7 +419,7 @@ def create_mcp_router(
             # pipeline (provenance + hook lifecycle), not a direct store call.
             claimed_user = str(args.get("user_email") or "").strip()
             if current_user and claimed_user and claimed_user.lower() != current_user.strip().lower():
-                raise HTTPException(status_code=403, detail="user_email must match the authenticated user.")
+                raise http_error(403, "common.user_mismatch", resolve_language(request))
             owner = current_user or claimed_user or None
             workspace_id = _write_workspace(args.get("workspace_id"), owner)
             raw = dict(args)
@@ -464,12 +468,12 @@ def create_mcp_router(
         if req.action in SCOPED_KNOWLEDGE_TOOLS:
             claimed_user = str(dispatch_args.get("user_email") or "").strip().lower()
             if claimed_user and claimed_user != current_user.strip().lower():
-                raise HTTPException(status_code=403, detail="user_email must match the authenticated user.")
+                raise http_error(403, "common.user_mismatch", resolve_language(request))
             requested_workspace = dispatch_args.get("workspace_id")
             if req.action in KNOWLEDGE_WRITE_TOOLS:
                 workspace_id = _write_workspace(requested_workspace, current_user)
             else:
-                workspace_id = _read_workspace(requested_workspace, current_user)
+                workspace_id = _read_workspace(request, requested_workspace, current_user)
             dispatch_args["workspace_id"] = workspace_id
             dispatch_args["user_email"] = current_user
         enforce_tool_policy(req.action, dispatch_args, current_user=current_user, source="mcp")

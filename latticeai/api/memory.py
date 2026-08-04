@@ -12,6 +12,7 @@ from typing import Callable, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.core.messages import http_error, resolve_language
 from latticeai.services.memory_service import MemoryService
 
 
@@ -96,7 +97,7 @@ def create_memory_router(
         try:
             return service.inspect(source, user_email=user, workspace_id=scope, limit=limit)
         except KeyError as exc:
-            raise HTTPException(status_code=404, detail=f"Unknown memory source: {source}") from exc
+            raise http_error(404, "memory.unknown_source", resolve_language(request), source=source) from exc
 
     @router.post("/api/memory/recall")
     async def memory_recall(req: RecallRequest, request: Request):

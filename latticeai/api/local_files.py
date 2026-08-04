@@ -15,6 +15,12 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from latticeai.api.knowledge_graph import create_knowledge_graph_router
+from latticeai.core.messages import (
+    DEFAULT_LANGUAGE,
+    http_error,
+    resolve_language,
+    translate,
+)
 from latticeai.services.local_knowledge import create_local_knowledge_router
 from latticeai.tools import local_list, local_read, local_write
 
@@ -234,20 +240,20 @@ def create_local_files_router(
         )
         target = Path(path).expanduser().resolve()
         if not target.exists() or not target.is_file():
-            raise HTTPException(status_code=404, detail="File not found")
+            raise http_error(404, "common.file_not_found", resolve_language(request))
         return FileResponse(str(target))
 
     # ── v9.8.0 ingestion jobs API (frozen paths — consumed by the frontend) ───
     def _require_pipeline():
         if ingestion_pipeline is None or not ingestion_pipeline.available():
-            raise HTTPException(status_code=503, detail="Knowledge Graph ingestion is disabled.")
+            raise http_error(503, "capture.ingestion_disabled", DEFAULT_LANGUAGE)
 
     def _ingestion_write_workspace(request: Request, body_workspace: Optional[str], user: str) -> Optional[str]:
         header = request.headers.get("X-Workspace-Id")
         header = header.strip() if header and header.strip() else None
         supplied = [value for value in (body_workspace, header) if value]
         if len(set(supplied)) > 1:
-            raise HTTPException(status_code=403, detail="Workspace selectors must match.")
+            raise http_error(403, "common.workspace_mismatch", resolve_language(request))
         requested = supplied[0] if supplied else None
         if workspace_service is None:
             return requested
@@ -271,7 +277,7 @@ def create_local_files_router(
         _require_pipeline()
         job = ingestion_pipeline.get_background_job(job_id)
         if job is None:
-            raise HTTPException(status_code=404, detail="ingestion job not found")
+            raise http_error(404, "ingestion.job_not_found", resolve_language(request))
         return job.as_dict()
 
     @router.post("/api/ingestion/jobs/{job_id}/resume")
@@ -281,7 +287,7 @@ def create_local_files_router(
         _require_pipeline()
         job = ingestion_pipeline.get_background_job(job_id)
         if job is None:
-            raise HTTPException(status_code=404, detail="ingestion job not found")
+            raise http_error(404, "ingestion.job_not_found", resolve_language(request))
         if job.status == "running":
             return {"status": "already_running", "job_id": job_id, "job": job.as_dict()}
         remaining = len(job.remaining_indices())
@@ -312,7 +318,7 @@ def create_local_files_router(
         workspace_id = _ingestion_write_workspace(request, req.workspace_id, current_user)
         path = (req.path or "").strip()
         if not path:
-            raise HTTPException(status_code=400, detail="path is required.")
+            raise http_error(400, "common.path_required", resolve_language(request))
         if not req.approved:
             return permission_gateway.local_permission_response(path, "read", current_user)
         permission_gateway.require_local_approval(
@@ -339,16 +345,16 @@ def create_local_files_router(
         return summary
 
     # ── folder watch mode: opt-in, off by default (backlog #8) ────────────────
-    def _require_folder_watch():
+    def _require_folder_watch(request: Request):
         _require_pipeline()
         if folder_watch is None:
-            raise HTTPException(status_code=503, detail="Folder watch service is unavailable.")
+            raise http_error(503, "ingestion.watch_unavailable", resolve_language(request))
 
     @router.get("/api/ingestion/watch")
     async def folder_watch_status(request: Request):
         """Watch-mode status: stored opt-ins, poller state, last scan results."""
         require_user(request)
-        _require_folder_watch()
+        _require_folder_watch(request)
         return folder_watch.status()
 
     @router.post("/api/ingestion/watch")
@@ -361,11 +367,11 @@ def create_local_files_router(
         watch owner's workspace scope).
         """
         current_user = permission_gateway.require_local_user(request)
-        _require_folder_watch()
+        _require_folder_watch(request)
         workspace_id = _ingestion_write_workspace(request, req.workspace_id, current_user)
         path = (req.path or "").strip()
         if not path:
-            raise HTTPException(status_code=400, detail="path is required.")
+            raise http_error(400, "common.path_required", resolve_language(request))
         if not req.approved:
             return permission_gateway.local_permission_response(path, "read", current_user)
         permission_gateway.require_local_approval(
@@ -381,7 +387,11 @@ def create_local_files_router(
             recursive=req.recursive,
         )
         if result.get("status") != "ok":
-            raise HTTPException(status_code=400, detail=result.get("detail") or "watch enable failed")
+            raise HTTPException(
+                status_code=400,
+                detail=result.get("detail")
+                or translate("ingestion.watch_enable_failed", resolve_language(request)),
+            )
         return result
 
     @router.delete("/api/ingestion/watch")
@@ -392,12 +402,12 @@ def create_local_files_router(
     ):
         """Opt back out of watch mode (removes the stored consent record)."""
         require_user(request)
-        _require_folder_watch()
+        _require_folder_watch(request)
         if not watch_id and not path:
-            raise HTTPException(status_code=400, detail="watch_id or path is required.")
+            raise http_error(400, "ingestion.watch_selector_required", resolve_language(request))
         result = folder_watch.disable(watch_id=watch_id, path=path)
         if result.get("status") == "not_found":
-            raise HTTPException(status_code=404, detail="watch not found")
+            raise http_error(404, "ingestion.watch_not_found", resolve_language(request))
         return result
 
     @router.post("/local/write")

@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.8.0 Living Brain walkthrough](output/release/v10.8.0/gifs/v10.8.0-living-brain-walkthrough.gif)
+![v10.9.0 Living Brain walkthrough](output/release/v10.9.0/gifs/v10.9.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.8.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.8.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.8.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.8.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.8.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.8.0/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.8.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.8.0/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.9.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.9.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.9.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.9.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.9.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.9.0/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.9.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.9.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,63 +58,64 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.8.0/screenshots/01-login.png) | ![Model install](output/release/v10.8.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.8.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.9.0/screenshots/01-login.png) | ![Model install](output/release/v10.9.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.9.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.8.0/SCREENSHOT_INDEX.md](output/release/v10.8.0/SCREENSHOT_INDEX.md)
+[output/release/v10.9.0/SCREENSHOT_INDEX.md](output/release/v10.9.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.8.0 — Within Reach**:
+The current release is **10.9.0 — Never Blocks**:
 
-10.7.0 rearranged all twelve screens. 10.8.0 is about the things that were
-already there but out of reach: a button below the fold, a message in a
-language you did not choose, a file a small model nearly produced.
+Lattice AI runs one event loop on your computer. Several things you could ask
+it to do were being done *on* that loop, so while they ran the server could not
+answer anything else. Downloading a model has a fifteen-minute timeout; that is
+how long the whole product could be frozen by one click.
 
-- **The first three screens fit on the screen.** Onboarding rendered a 390px
-  decorative Brain above *every* step, so on a 1440×900 display the login
-  form, the recommended model and the install progress all began below the
-  fold — the first thing the product asked a new person to do was scroll. The
-  organism is a hero on the welcome step and a 104px mark after it; the
-  welcome screen itself went from 1175px of content to 770px, so its primary
-  button is visible without scrolling.
-- **One language per screen, including the ones the server writes.** API
-  messages were literals at the raise site, written in whichever language the
-  endpoint's author was thinking in — Korean from `auth.py`, English from
-  `browser.py`. `latticeai/core/messages.py` is a catalog with both, resolved
-  from `X-Lattice-Language` (falling back to `Accept-Language`); the browser
-  extension, which showed English and Korean in the same popup, has one too.
-  `tests/unit/test_server_messages.py` fails on a message that exists in only
-  one language, and on a router that reverts to a hardcoded literal.
-- **A small model's near-miss is no longer thrown away.** File generation
-  picked the *longest* rejected reply to repair, so a 900-character apology
-  beat a truncated-but-real HTML document; it now scores candidates by how
-  close they are to being a file. A byte-identical repeated reply buys one
-  extra attempt with a prompt that names the repetition. Prose file types
-  (`.md`, `.txt`) had no validation at all and would save "Sure! Here is the
-  document:" as the document.
-- **Re-indexing costs what changed.** The incremental vector rebuild
-  materialised every node and chunk in memory and asked one `SELECT` per item
-  whether it had changed. It streams now, with a single prefetched hash map —
-  and a settled index performs zero embeddings, asserted rather than assumed.
-- **More ground under the frontend.** Statement coverage 47.35% → 52.26%,
-  424 → 504 tests, including the app shell (`App.tsx`, previously 0%), the
-  admin console (0%), the folder picker (2.7%) and the API client.
-- **Evidence bound to this build.** `output/release/v10.8.0/` holds the twelve
+- **Nothing long runs on the event loop.** Model pulls, engine installs, MCP
+  package installs and the CPU/RAM probe behind the System screen all moved to
+  a worker thread. `/local/sysinfo` is the one most people met without knowing:
+  it is read by the System screen *and* by first-run analysis, so its ~2s
+  freeze landed exactly while an answer was streaming. Two things keep it
+  fixed — ruff's `ASYNC` blocking-call rules, and
+  `tests/unit/test_event_loop_not_blocked.py`, which runs a ticker coroutine
+  during the handler and asserts the loop kept getting control.
+- **A focus ring you can see.** 10.8.0 added `border-color` to the transition
+  on the capture pills, so keyboard focus faded in over 150ms and at the
+  instant it landed the pill still looked idle. Focus rings may not ease.
+- **The Brain stops thinking when it has answered.** A retrieval pulse parked a
+  900ms timer that put the organism back into "thinking"; if the answer
+  finished inside that window the timer still fired, and the Brain sat visibly
+  working on a question it had already answered.
+- **One language, further in.** Fourteen more routers moved to the message
+  catalog — chat, memory, graph, files, portability, review, models, tools,
+  MCP, setup. `models.py`, `mcp.py` and `tools.py` had been answering some
+  errors in Korean and others in English on the same screen. Two gates keep
+  them migrated, and a third fails if the two gates disagree.
+- **The welcome screen fits.** It measured 770px against a 747px viewport, so
+  the line explaining what you are agreeing to sat under the fold. Nothing was
+  removed; the whitespace gave back the 25px.
+- **The streaming answer path has tests.** `useBrainChat` was 12% covered
+  because asserting anything about a stream needs frames arriving over time.
+  `frontend/src/test/fakeChatStream.ts` is that harness; eleven cases now cover
+  the answer building up, the stop button, refusals, grounding badges and live
+  step frames.
+- **Evidence bound to this build.** `output/release/v10.9.0/` holds the twelve
   capture screens, walkthrough gif/webm, and the asset-manifest / mock-server
-  fingerprints that lint re-checks before merge.
-- **Exact artifact names only.** Publish paths list `dist/ltcai-10.8.0-*` and
-  `ltcai-10.8.0.tgz` — never `dist/*`.
+  fingerprints that lint re-checks before merge. 10.9.0 claims no screen
+  redesign, and `scripts/release_screen_claims.json` says so explicitly.
+- **Exact artifact names only.** Publish paths list `dist/ltcai-10.9.0-*` and
+  `ltcai-10.9.0.tgz` — never `dist/*`.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.8.0 release must use exact filenames:
+Expected artifacts for 10.9.0 release must use exact filenames:
 
-- `dist/ltcai-10.8.0-py3-none-any.whl`
-- `dist/ltcai-10.8.0.tar.gz`
-- `ltcai-10.8.0.tgz`
-- `dist/ltcai-10.8.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.8.0_aarch64.dmg`
+- `dist/ltcai-10.9.0-py3-none-any.whl`
+- `dist/ltcai-10.9.0.tar.gz`
+- `ltcai-10.9.0.tgz`
+- `dist/ltcai-10.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.9.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -149,6 +150,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.9.0 | Never Blocks |
 | 10.8.0 | Within Reach |
 | 10.7.0 | Plain Surface |
 | 10.6.4 | Loud Limits |

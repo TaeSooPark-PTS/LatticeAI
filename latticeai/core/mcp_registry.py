@@ -4,6 +4,7 @@ Lattice AI — MCP Registry data & pure helper functions.
 Extracted from server.py to reduce module size.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -354,6 +355,13 @@ async def install_skill(plugin: str, skill: str) -> Dict:
     }
 
 
+def _run_installer(command: List[str], timeout: int) -> "subprocess.CompletedProcess[str]":
+    """Run one package-installer command. Blocking — call off the event loop."""
+    return subprocess.run(
+        command, capture_output=True, text=True, timeout=timeout, check=False
+    )
+
+
 def create_mcp_install_state(data_dir: Path) -> Dict[str, Callable]:
     """Return bound MCP state helpers for given data_dir. No global side effects."""
     MCP_FILE = Path(data_dir) / "mcp_installs.json"
@@ -445,11 +453,15 @@ def create_mcp_install_state(data_dir: Path) -> Dict[str, Callable]:
             status = "needs_auth"
             message = "커넥터 인증이 필요합니다. Codex 앱의 connector 설정에서 계정을 연결하면 바로 사용할 수 있습니다."
         elif item.get("install_mode") == "pip":
+            # Package installers are minutes of network I/O. On the event loop
+            # they froze every other request for the whole install; each one now
+            # runs on a worker thread instead.
             packages = item.get("pip_packages") or []
             for pkg in packages:
-                completed = subprocess.run(
+                completed = await asyncio.to_thread(
+                    _run_installer,
                     [sys.executable, "-m", "pip", "install", "--upgrade", pkg],
-                    capture_output=True, text=True, timeout=900, check=False,
+                    900,
                 )
                 if completed.returncode != 0:
                     raise HTTPException(status_code=500, detail=(completed.stderr or "")[-2000:] or f"{pkg} 설치 실패")
@@ -458,7 +470,9 @@ def create_mcp_install_state(data_dir: Path) -> Dict[str, Callable]:
             pkg = item.get("package", "")
             version = item.get("package_version")
             pkg_str = f"{pkg}=={version}" if version else pkg
-            completed = subprocess.run([sys.executable, "-m", "pip", "install", pkg_str], capture_output=True, text=True, timeout=300, check=False)
+            completed = await asyncio.to_thread(
+                _run_installer, [sys.executable, "-m", "pip", "install", pkg_str], 300
+            )
             if completed.returncode != 0:
                 raise HTTPException(status_code=500, detail=(completed.stderr or "")[-2000:] or f"{pkg} 설치 실패")
             message = f"pip 패키지 설치 완료: {pkg_str}"
@@ -466,7 +480,9 @@ def create_mcp_install_state(data_dir: Path) -> Dict[str, Callable]:
             pkg = item.get("package", "")
             version = item.get("package_version")
             pkg_str = f"{pkg}@{version}" if version else pkg
-            completed = subprocess.run(["npm", "install", "-g", pkg_str], capture_output=True, text=True, timeout=300, check=False)
+            completed = await asyncio.to_thread(
+                _run_installer, ["npm", "install", "-g", pkg_str], 300
+            )
             if completed.returncode != 0:
                 raise HTTPException(status_code=500, detail=(completed.stderr or "")[-2000:] or f"{pkg} 설치 실패")
             message = f"npm 패키지 설치 완료: {pkg_str}"

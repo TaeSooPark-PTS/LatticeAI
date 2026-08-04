@@ -79,13 +79,20 @@ def _app(
 
 
 def test_chat_rejects_claimed_identity_that_differs_from_session(tmp_path: Path) -> None:
-    response = TestClient(_app(tmp_path)).post(
-        "/chat",
-        json={"message": "hello", "stream": False, "user_email": "attacker@example.com"},
-    )
+    client = TestClient(_app(tmp_path))
+    body = {"message": "hello", "stream": False, "user_email": "attacker@example.com"}
 
+    response = client.post("/chat", json=body, headers={"X-Lattice-Language": "en"})
     assert response.status_code == 403
     assert "authenticated user" in response.json()["detail"]
+
+    # The refusal is the same refusal in either language — 10.9.0 moved these
+    # details into the message catalog so one person no longer reads half the
+    # product in a language they did not choose.
+    korean = client.post("/chat", json=body, headers={"X-Lattice-Language": "ko"})
+    assert korean.status_code == 403
+    assert korean.json()["detail"] != response.json()["detail"]
+    assert "사용자" in korean.json()["detail"]
 
 
 def test_chat_uses_explicit_model_without_switching_global_default(tmp_path: Path) -> None:

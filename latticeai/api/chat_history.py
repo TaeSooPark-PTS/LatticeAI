@@ -9,7 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
+
+from latticeai.core.messages import http_error, resolve_language
 
 
 @dataclass(frozen=True)
@@ -48,7 +50,7 @@ def register_history_routes(router: APIRouter, deps: HistoryRouteDependencies) -
             **deps.scope_for_user(current_user),
         )
         if not messages:
-            raise HTTPException(status_code=404, detail="대화를 찾을 수 없습니다.")
+            raise http_error(404, "chat.conversation_not_found", resolve_language(request))
         return {"id": conversation_id, "messages": messages}
 
     @router.delete("/history/conversations/{conversation_id:path}")
