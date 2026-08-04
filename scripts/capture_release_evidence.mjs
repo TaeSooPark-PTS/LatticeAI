@@ -35,6 +35,52 @@ function assetManifestFingerprint() {
 }
 
 /**
+ * Refuse to overwrite published release screenshots for an already-tagged version.
+ *
+ * Failure mode this catches: package.json is still 10.6.3, tag v10.6.3 exists
+ * (the shipped release), and capture writes into output/release/v10.6.3/,
+ * silently replacing the public screenshots of a released version with WIP UI.
+ * Preview captures must use LTCAI_RELEASE_EVIDENCE_DIR (any path other than the
+ * default published dir). To land new evidence under output/release/, bump the
+ * package version first so the tag name no longer collides.
+ *
+ * Guard runs *before* wiping `root`, so a tagged release is never deleted by
+ * an unbumped recapture.
+ */
+function assertNotOverwritingTaggedRelease() {
+  const defaultRoot = path.join(repoRoot, "output", "release", `v${version}`);
+  const writingToPublished = path.resolve(root) === path.resolve(defaultRoot);
+  if (!writingToPublished) {
+    // Explicit LTCAI_RELEASE_EVIDENCE_DIR redirect (preview) — allowed even
+    // when the version tag already exists.
+    return;
+  }
+
+  let tagExists = false;
+  try {
+    execFileSync("git", ["rev-parse", "--verify", `refs/tags/v${version}`], {
+      cwd: repoRoot,
+      stdio: "pipe",
+    });
+    tagExists = true;
+  } catch {
+    tagExists = false;
+  }
+  if (!tagExists) {
+    return;
+  }
+
+  console.error(
+    `release evidence: git tag v${version} already exists.\n` +
+      `  Refusing to overwrite ${path.relative(repoRoot, defaultRoot)}/ — that would\n` +
+      `  replace the published screenshots of an already-released version with WIP UI.\n` +
+      `  Bump the package version first (e.g. node scripts/run_python.mjs scripts/bump_version.py),\n` +
+      `  or set LTCAI_RELEASE_EVIDENCE_DIR to a non-published path for a preview capture.`,
+  );
+  process.exit(1);
+}
+
+/**
  * Refuse to capture when the release lint gate is red.
  *
  * Failure mode this catches: lint is failing (e.g. ruff F841) but
@@ -180,6 +226,7 @@ function assertExistingEvidenceStillBoundToBuild() {
   );
 }
 
+assertNotOverwritingTaggedRelease();
 assertLintClean();
 assertBuiltAssetsFresh();
 assertExistingEvidenceStillBoundToBuild();

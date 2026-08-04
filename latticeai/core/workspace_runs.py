@@ -504,6 +504,11 @@ class WorkspaceRuns:
 
         Public so API routers (e.g. automation_intelligence fallback) can reuse
         the same contract without reaching for a private method.
+
+        ``source`` is the product discriminator for the 레시피/목표 badge.
+        Legacy agent runs may lack ``agent_id`` (and both ids may be None) —
+        those rows must still leave this method with ``source="agent"`` so the
+        Act feed does not collapse every goal row into a recipe badge.
         """
         status = str(run.get("status") or "")
         started_at = (
@@ -519,9 +524,17 @@ class WorkspaceRuns:
             or run.get("interrupted_at")
         )
         run_id = run.get("id") or run.get("run_id")
+        normalized_source = str(source or "").strip().lower()
+        if normalized_source not in {"agent", "workflow"}:
+            # Infer only when the caller failed to pin a valid source; prefer
+            # workflow_id when present, otherwise agent (including bare legacy).
+            if run.get("workflow_id"):
+                normalized_source = "workflow"
+            else:
+                normalized_source = "agent"
         return {
             "id": run_id,
-            "source": source,
+            "source": normalized_source,
             "title": cls.activity_run_title(run),
             "status": status,
             "started_at": started_at,

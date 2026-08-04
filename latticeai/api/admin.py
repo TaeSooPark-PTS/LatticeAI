@@ -220,9 +220,14 @@ def create_admin_router(
             except Exception as exc:
                 logging.warning("admin health-summary hardening failed: %s", exc)
 
+        # issue_count is a first-class field (not client-derived from issues[]).
+        # AdminConsole reads healthData.issue_count for the header sentence;
+        # falling back to || 1 when the field is missing misreports multi-issue
+        # states as a single problem.
+        issue_count = len(issues)
         return {
-            "status": "attention" if issues else "ok",
-            "issue_count": len(issues),
+            "status": "attention" if issue_count else "ok",
+            "issue_count": issue_count,
             "issues": issues,
         }
 

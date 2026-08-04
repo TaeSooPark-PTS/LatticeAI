@@ -363,7 +363,31 @@ const server = http.createServer((req, res) => {
       catalog, scope: { user_email: "admin@example.com", workspace_id: null },
     });
   }
-  if (pathname === "/permissions/pending") return json(res, { pending: { "perm-token": { path: "/tmp/report.md", action: "read", action_label: "read file", user_email: "admin@example.com", approved: false, expires_in: 300 } }, count: 1 });
+  // Match latticeai/api/permissions.py _PERMISSION_ACTION_LABELS:
+  // mapped actions use Korean labels; unmapped actions fall back to the raw key.
+  // Capture 09 must exercise both paths so a Korean-label UI regression is not
+  // masked by an English-only mock (and vice versa for the fallback path).
+  if (pathname === "/permissions/pending") return json(res, {
+    pending: {
+      "perm-token": {
+        path: "/tmp/report.md",
+        action: "read",
+        action_label: "파일 읽기",
+        user_email: "admin@example.com",
+        approved: false,
+        expires_in: 300,
+      },
+      "perm-token-delete": {
+        path: "/tmp/legacy-cache.bin",
+        action: "delete",
+        action_label: "delete",
+        user_email: "admin@example.com",
+        approved: false,
+        expires_in: 240,
+      },
+    },
+    count: 2,
+  });
   if (pathname.startsWith("/permissions/approve/") && req.method === "POST") return json(res, { ok: true, token: pathname.split("/").pop() });
   if (pathname.startsWith("/permissions/deny/") && req.method === "POST") return json(res, { ok: true, denied: true, token: pathname.split("/").pop() });
   if (pathname === "/network/identity") return json(res, { device_id: "device-visual", fingerprint: "sha256:LOCAL", public_key: "-----BEGIN PUBLIC KEY-----\\nlocal\\n-----END PUBLIC KEY-----" });
@@ -872,45 +896,48 @@ const server = http.createServer((req, res) => {
   });
   // Unified Act run timeline (layout rebuild screen 09). Includes an
   // awaiting_approval row so the approval badge is always capturable.
+  // Inline object (no bare `runs` identifier) so mock↔real shape tests can
+  // parse this payload as JSON without evaluating JS.
   if (pathname === "/api/activity/runs" || pathname === "/automations/runs/combined") {
-    // total/truncated match the real combined-runs contract so Act can say
-    // how many rows are hidden when the feed is capped.
-    const runs = [
-      {
-        id: "wf-run-approval",
-        source: "workflow",
-        title: "Agent Review Workflow",
-        status: "awaiting_approval",
-        started_at: "2026-06-06T12:05:00",
-        finished_at: null,
-        can_stop: false,
-        can_resume: true,
-        workflow_id: "wf-agent-review",
-      },
-      {
-        id: "agent-run-1",
-        source: "agent",
-        title: "Summarize release",
-        status: "ok",
-        started_at: "2026-06-06T12:30:00",
-        finished_at: "2026-06-06T12:31:00",
-        can_stop: false,
-        can_resume: false,
-        agent_id: "agent:executor",
-      },
-      {
-        id: "wf-run-1",
-        source: "workflow",
-        title: "Agent Review Workflow",
-        status: "ok",
-        started_at: "2026-06-06T12:00:00",
-        finished_at: "2026-06-06T12:01:00",
-        can_stop: false,
-        can_resume: false,
-        workflow_id: "wf-agent-review",
-      },
-    ];
-    return json(res, { runs, total: runs.length, truncated: false });
+    return json(res, {
+      runs: [
+        {
+          id: "wf-run-approval",
+          source: "workflow",
+          title: "Agent Review Workflow",
+          status: "awaiting_approval",
+          started_at: "2026-06-06T12:05:00",
+          finished_at: null,
+          can_stop: false,
+          can_resume: true,
+          workflow_id: "wf-agent-review",
+        },
+        {
+          id: "agent-run-1",
+          source: "agent",
+          title: "Summarize release",
+          status: "ok",
+          started_at: "2026-06-06T12:30:00",
+          finished_at: "2026-06-06T12:31:00",
+          can_stop: false,
+          can_resume: false,
+          agent_id: "agent:executor",
+        },
+        {
+          id: "wf-run-1",
+          source: "workflow",
+          title: "Agent Review Workflow",
+          status: "ok",
+          started_at: "2026-06-06T12:00:00",
+          finished_at: "2026-06-06T12:01:00",
+          can_stop: false,
+          can_resume: false,
+          workflow_id: "wf-agent-review",
+        },
+      ],
+      total: 3,
+      truncated: false,
+    });
   }
   if (pathname === "/api/knowledge-graph/portability") return json(res, {
     available: true,

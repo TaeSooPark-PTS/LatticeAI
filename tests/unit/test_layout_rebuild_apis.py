@@ -253,6 +253,59 @@ def test_activity_run_row_is_public_api():
     )
 
 
+def test_activity_run_row_legacy_agent_without_ids_keeps_source_agent():
+    """Legacy agent rows may omit both agent_id and workflow_id.
+
+    Failure mode: activity_run_row passes through agent_id=None and a weak
+    source normalizer reclassifies the row, collapsing the 목표 badge into
+    레시피 (or vice versa). Pin source="agent" for bare legacy agent history.
+    """
+    legacy = {
+        "id": "legacy-agent-run",
+        "status": "ok",
+        "goal": "Summarize last week",
+        "created_at": "2026-05-01T09:00:00",
+        # deliberately no agent_id, no workflow_id
+    }
+    row = WorkspaceRuns.activity_run_row(legacy, source="agent")
+    assert row["source"] == "agent"
+    assert row.get("agent_id") is None
+    assert row.get("workflow_id") is None
+    assert row["title"] == "Summarize last week"
+    # Frontend badge: source === "agent" OR (!workflow_id && source !== "workflow")
+    is_goal = row.get("source") == "agent" or (
+        not row.get("workflow_id") and row.get("source") != "workflow"
+    )
+    is_recipe = row.get("source") == "workflow" or bool(row.get("workflow_id"))
+    assert is_goal
+    assert not is_recipe
+
+    # Invalid/blank source still lands on agent when no workflow_id is present.
+    recovered = WorkspaceRuns.activity_run_row(legacy, source="")
+    assert recovered["source"] == "agent"
+
+    # Combined list path: bare agent history must not lose source="agent".
+    store = _MemoryStore({
+        "agent_runs": [
+            {
+                "id": "legacy-bare",
+                "status": "ok",
+                "goal": "Bare legacy goal",
+                "created_at": "2026-06-01T10:00:00",
+                "workspace_id": "personal",
+            }
+        ],
+        "workflow_runs": [],
+    })
+    payload = WorkspaceRuns(store).list_combined_runs(limit=10, workspace_id="personal")
+    assert len(payload["runs"]) == 1
+    bare = payload["runs"][0]
+    assert bare["id"] == "legacy-bare"
+    assert bare["source"] == "agent"
+    assert bare.get("agent_id") is None
+    assert bare.get("workflow_id") is None
+
+
 def test_list_combined_runs_sorts_and_normalizes():
     store = _MemoryStore({
         "agent_runs": [
@@ -352,8 +405,151 @@ def test_activity_and_automations_combined_routes():
         body = response.json()
         assert len(body["runs"]) == 1
         assert body["runs"][0]["status"] == "awaiting_approval"
+        assert body["runs"][0]["source"] == "workflow"
         assert body["total"] == 1
         assert body["truncated"] is False
+
+
+def test_activity_runs_always_carry_source_for_recipe_goal_badge():
+    """Capture 09 badge: source === 'workflow' || Boolean(workflow_id).
+
+    Failure mode: a store returns runs with neither ``source`` nor
+    ``workflow_id``. The merged Act timeline then paints every workflow
+    execution as "목표", silently undoing the two-panel merge.
+    """
+    from latticeai.api.automation_intelligence import (
+        _ensure_activity_run_source,
+        _with_run_truncation_meta,
+    )
+
+    # Pure helper: missing source + workflow_id ⇒ workflow.
+    inferred = _ensure_activity_run_source(
+        {"id": "wf-1", "workflow_id": "recipe-9", "title": "Nightly digest", "status": "ok"}
+    )
+    assert inferred["source"] == "workflow"
+    assert inferred["workflow_id"] == "recipe-9"
+
+    # Missing source + agent_id ⇒ agent.
+    agentish = _ensure_activity_run_source(
+        {"id": "ag-1", "agent_id": "agent-x", "title": "Goal", "status": "running"}
+    )
+    assert agentish["source"] == "agent"
+
+    # Explicit source wins over ids.
+    pinned = _ensure_activity_run_source(
+        {"id": "x", "source": "workflow", "agent_id": "a", "title": "t", "status": "ok"}
+    )
+    assert pinned["source"] == "workflow"
+
+    # Meta wrapper must re-inject source even when the store omitted it.
+    legacy_payload = {
+        "runs": [
+            {
+                "id": "wf-run-no-source",
+                "workflow_id": "wf-1",
+                "title": "Needs eyes",
+                "status": "awaiting_approval",
+                "started_at": "2026-06-06T12:05:00",
+            },
+            {
+                "id": "agent-run-no-source",
+                "agent_id": "agent-1",
+                "title": "A goal",
+                "status": "ok",
+                "started_at": "2026-06-06T12:00:00",
+            },
+        ],
+        "total": 2,
+        "truncated": False,
+    }
+    fixed = _with_run_truncation_meta(legacy_payload, capped=20)
+    by_id = {row["id"]: row for row in fixed["runs"]}
+    assert by_id["wf-run-no-source"]["source"] == "workflow"
+    assert by_id["agent-run-no-source"]["source"] == "agent"
+    # Contract keys the frontend badge depends on.
+    for row in fixed["runs"]:
+        assert row.get("source") in {"agent", "workflow"}, row
+        if row["source"] == "workflow":
+            assert row.get("workflow_id"), row
+
+    # HTTP surface: store that strips source must still advertise it.
+    class _StoreMissingSource:
+        def list_combined_runs(self, *, limit=20, workspace_id=None):
+            return {
+                "runs": [
+                    {
+                        "id": "wf-run-approval",
+                        # deliberately no "source"
+                        "workflow_id": "wf-1",
+                        "title": "Needs approval",
+                        "status": "awaiting_approval",
+                        "started_at": "2026-06-06T12:05:00",
+                        "finished_at": None,
+                        "can_stop": False,
+                        "can_resume": True,
+                    },
+                    {
+                        "id": "agent-run-1",
+                        "agent_id": "agent-1",
+                        "title": "Newest agent goal",
+                        "status": "running",
+                        "started_at": "2026-06-06T12:30:00",
+                        "finished_at": None,
+                        "can_stop": True,
+                        "can_resume": False,
+                    },
+                ],
+                "total": 2,
+                "truncated": False,
+            }
+
+        def list_workflows(self, workspace_id=None):
+            return {"workflows": []}
+
+    store = _StoreMissingSource()
+    service = AutomationIntelligenceService(store=store)
+    app = FastAPI()
+    app.include_router(
+        create_automation_intelligence_router(
+            service=service,
+            store=store,
+            require_user=lambda _request: "user@example.com",
+            gate_read=lambda _request: "personal",
+            gate_write=lambda _request: "personal",
+            append_audit_event=lambda *args, **kwargs: None,
+            workspace_graph=lambda: None,
+        )
+    )
+    client = TestClient(app)
+    body = client.get("/api/activity/runs", params={"limit": 10}).json()
+    assert len(body["runs"]) == 2
+    sources = {row["id"]: row["source"] for row in body["runs"]}
+    assert sources["wf-run-approval"] == "workflow"
+    assert sources["agent-run-1"] == "agent"
+    workflow_row = next(r for r in body["runs"] if r["id"] == "wf-run-approval")
+    assert workflow_row.get("workflow_id") == "wf-1"
+    # Frontend badge predicate must hold for every workflow row.
+    for row in body["runs"]:
+        is_recipe = row.get("source") == "workflow" or bool(row.get("workflow_id"))
+        is_goal = row.get("source") == "agent" or (
+            not row.get("workflow_id") and row.get("source") != "workflow"
+        )
+        assert is_recipe or is_goal
+        if row["id"].startswith("wf-"):
+            assert is_recipe
+        if row["id"].startswith("agent-"):
+            assert row["source"] == "agent"
+
+    # activity_run_row itself must always emit source (unit of the public API).
+    row = WorkspaceRuns.activity_run_row(
+        {"id": "x", "status": "ok", "workflow_id": "wf-z", "workflow_name": "Z"},
+        source="workflow",
+    )
+    assert "source" in row and row["source"] == "workflow"
+    assert row.get("workflow_id") == "wf-z"
+    # Removing source from the row dict is a contract break — pin the key set.
+    required = {"id", "source", "title", "status", "started_at", "workflow_id"}
+    assert required.issubset(row.keys()), row.keys()
 
 
 def _mixed_workspace_state() -> Dict[str, Any]:
@@ -589,12 +785,16 @@ def test_admin_health_summary_ok_and_attention():
     ).json()
     assert ok_body["status"] == "ok"
     assert ok_body["issue_count"] == 0
+    assert ok_body["issue_count"] == len(ok_body["issues"])
+    assert "issue_count" in ok_body  # first-class field, not client-derived
 
     attention = _build_router(disabled_users=True, network_exposed=True).get(
         "/admin/health-summary"
     ).json()
     assert attention["status"] == "attention"
     assert attention["issue_count"] >= 1
+    # Explicit count must match issues[] length (AdminConsole reads issue_count).
+    assert attention["issue_count"] == len(attention["issues"])
     areas = {issue["area"] for issue in attention["issues"]}
     assert "users" in areas
     assert "runtime_trust" in areas
@@ -777,6 +977,522 @@ def test_system_settings_basic_branch_reads_sysinfo_readiness():
     assert dynamic_key, (
         "SettingsPanel basic branch must build system.readiness.<bucket> from the "
         "readiness field; hardcoding system.readiness.plenty alone is a regression"
+    )
+
+
+# ── mock_server.cjs ↔ real API shape parity (layout-rebuild capture surfaces) ──
+
+
+def _mock_server_source() -> str:
+    path = Path(__file__).resolve().parents[1] / "visual" / "mock_server.cjs"
+    assert path.is_file(), f"missing visual mock: {path}"
+    return path.read_text(encoding="utf-8")
+
+
+def _extract_mock_json_object(source: str, pathname: str) -> Dict[str, Any]:
+    """Best-effort extract of ``return json(res, {…})`` for a mock pathname.
+
+    The visual mock is plain JS, not JSON. We locate the pathname branch and
+    hand the object body to ``json.loads`` after a small identifier→string
+    rewrite (unquoted keys, trailing commas, bare null/true/false stay valid
+    enough for the three layout-rebuild endpoints we pin).
+    """
+    import json
+    import re
+
+    # Match both single-line and multi-line ``return json(res, {…})`` forms.
+    # Non-greedy body up to the matching close is hard with nested braces, so
+    # we brace-count from the first ``{`` after the pathname hit.
+    path_idx = source.find(f'pathname === "{pathname}"')
+    if path_idx < 0:
+        path_idx = source.find(f"pathname === '{pathname}'")
+    assert path_idx >= 0, f"mock_server.cjs missing branch for {pathname}"
+    window = source[path_idx : path_idx + 4000]
+    ret_idx = window.find("return json(res,")
+    assert ret_idx >= 0, f"mock branch for {pathname} has no return json(res, …)"
+    brace_start = window.find("{", ret_idx)
+    assert brace_start >= 0, f"mock branch for {pathname} has no object body"
+    depth = 0
+    end = None
+    for i, ch in enumerate(window[brace_start:], start=brace_start):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    assert end is not None, f"unbalanced braces in mock branch for {pathname}"
+    body = window[brace_start:end]
+    # Quote bare identifiers used as object keys: ``action:`` → ``"action":``
+    # but leave already-quoted keys and string values alone.
+    quoted = re.sub(r"(?m)([{\[,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:", r'\1"\2":', body)
+    # Drop trailing commas before } or ] (JS allows them; JSON does not).
+    quoted = re.sub(r",\s*([}\]])", r"\1", quoted)
+    try:
+        return json.loads(quoted)
+    except json.JSONDecodeError as exc:
+        raise AssertionError(
+            f"failed to parse mock JSON for {pathname}: {exc}\n{quoted[:500]}"
+        ) from exc
+
+
+def _deep_key_set(value: Any, *, prefix: str = "") -> set[str]:
+    """Collect dotted key paths for dict/list JSON-ish payloads."""
+    keys: set[str] = set()
+    if isinstance(value, dict):
+        for k, v in value.items():
+            path = f"{prefix}.{k}" if prefix else str(k)
+            keys.add(path)
+            keys |= _deep_key_set(v, prefix=path)
+    elif isinstance(value, list) and value:
+        # Sample first element only — mock arrays are homogeneous for these APIs.
+        keys |= _deep_key_set(value[0], prefix=f"{prefix}[]" if prefix else "[]")
+    return keys
+
+
+def test_mock_permissions_pending_matches_real_api_shape(tmp_path: Path):
+    """Mock /permissions/pending must not invent English action_label strings.
+
+    Failure mode (capture 09): mock sends action_label="read file" while the
+    real router emits _PERMISSION_ACTION_LABELS["read"] = "파일 읽기". UI
+    built against the mock passes capture and ships a raw-key bug to prod.
+    """
+    import time
+
+    from latticeai.api.permissions import (
+        _PERMISSION_ACTION_LABELS,
+        create_permissions_router,
+    )
+
+    mock = _extract_mock_json_object(_mock_server_source(), "/permissions/pending")
+    assert "pending" in mock and "count" in mock
+    assert isinstance(mock["pending"], dict) and mock["pending"]
+    assert mock["count"] == len(mock["pending"])
+
+    # Mock must include one mapped Korean label AND one unmapped fallback.
+    labels = {item.get("action_label") for item in mock["pending"].values()}
+    actions = {item.get("action") for item in mock["pending"].values()}
+    assert "파일 읽기" in labels, (
+        f"mock must use real Korean action_label for action=read; got {labels!r}"
+    )
+    assert "read" in actions
+    assert any(
+        item.get("action") == "delete" and item.get("action_label") == "delete"
+        for item in mock["pending"].values()
+    ), "mock must include unmapped action=delete → action_label='delete' fallback"
+
+    class _Cfg:
+        discord_permission_webhook = ""
+        discord_bot_token = ""
+        discord_permission_channel = ""
+        permission_monitor_secret = ""
+
+    def require_admin(_request):
+        return "admin@example.com", {}
+
+    router, gateway = create_permissions_router(
+        config=_Cfg(),
+        data_dir=tmp_path,
+        require_user=lambda _r: "admin@example.com",
+        require_admin=require_admin,
+        get_current_user=lambda _r: "admin@example.com",
+    )
+    # Seed mapped + unmapped actions exactly like the mock contract.
+    now = time.time()
+    gateway.local_approvals["hash-read"] = {
+        "path": "/tmp/report.md",
+        "action": "read",
+        "user_email": "admin@example.com",
+        "approved": False,
+        "expires_at": now + 300,
+        "token_hint": "perm-token",
+    }
+    gateway.local_approvals["hash-delete"] = {
+        "path": "/tmp/legacy-cache.bin",
+        "action": "delete",
+        "user_email": "admin@example.com",
+        "approved": False,
+        "expires_at": now + 240,
+        "token_hint": "perm-token-delete",
+    }
+    app = FastAPI()
+    app.include_router(router)
+    real = TestClient(app).get("/permissions/pending").json()
+
+    mock_item_keys = set()
+    for item in mock["pending"].values():
+        mock_item_keys |= set(item.keys())
+    real_item_keys = set()
+    for item in real["pending"].values():
+        real_item_keys |= set(item.keys())
+    # Real response keys must be a superset of mock keys (mock ⊆ real).
+    assert mock_item_keys.issubset(real_item_keys), (
+        f"mock pending item keys {mock_item_keys} not ⊆ real {real_item_keys}"
+    )
+    assert {"pending", "count"}.issubset(real.keys())
+    assert {"pending", "count"}.issubset(mock.keys())
+
+    # Enum domain: mapped labels come from _PERMISSION_ACTION_LABELS; unmapped
+    # fall back to the raw action string.
+    for item in real["pending"].values():
+        action = str(item.get("action") or "")
+        expected = _PERMISSION_ACTION_LABELS.get(action, action)
+        assert item.get("action_label") == expected, item
+    read_item = next(v for v in real["pending"].values() if v.get("action") == "read")
+    assert read_item["action_label"] == "파일 읽기"
+    delete_item = next(v for v in real["pending"].values() if v.get("action") == "delete")
+    assert delete_item["action_label"] == "delete"
+
+
+def test_mock_activity_runs_and_health_summary_key_superset():
+    """Mock keys for activity runs + health-summary ⊆ real router response keys.
+
+    Failure mode: UI authored against a mock that invents fields (or omits
+    issue_count) looks green in capture while production shows wrong counts.
+    """
+    mock_src = _mock_server_source()
+    mock_runs = _extract_mock_json_object(mock_src, "/api/activity/runs")
+    mock_health = _extract_mock_json_object(mock_src, "/admin/health-summary")
+
+    # ── /api/activity/runs ──────────────────────────────────────────────
+    class _Store:
+        def list_combined_runs(self, *, limit=20, workspace_id=None):
+            return {
+                "runs": [
+                    {
+                        "id": "wf-run-approval",
+                        "source": "workflow",
+                        "title": "Agent Review Workflow",
+                        "status": "awaiting_approval",
+                        "started_at": "2026-06-06T12:05:00",
+                        "finished_at": None,
+                        "can_stop": False,
+                        "can_resume": True,
+                        "workflow_id": "wf-agent-review",
+                    },
+                    {
+                        "id": "agent-run-1",
+                        "source": "agent",
+                        "title": "Summarize release",
+                        "status": "ok",
+                        "started_at": "2026-06-06T12:30:00",
+                        "finished_at": "2026-06-06T12:31:00",
+                        "can_stop": False,
+                        "can_resume": False,
+                        "agent_id": "agent:executor",
+                    },
+                ],
+                "total": 2,
+                "truncated": False,
+            }
+
+        def list_workflows(self, workspace_id=None):
+            return {"workflows": []}
+
+    store = _Store()
+    service = AutomationIntelligenceService(store=store)
+    runs_app = FastAPI()
+    runs_app.include_router(
+        create_automation_intelligence_router(
+            service=service,
+            store=store,
+            require_user=lambda _request: "user@example.com",
+            gate_read=lambda _request: "personal",
+            gate_write=lambda _request: "personal",
+            append_audit_event=lambda *args, **kwargs: None,
+            workspace_graph=lambda: None,
+        )
+    )
+    real_runs = TestClient(runs_app).get("/api/activity/runs", params={"limit": 20}).json()
+
+    mock_run_keys = _deep_key_set(mock_runs)
+    real_run_keys = _deep_key_set(real_runs)
+    # Top-level + first-row keys the capture UI reads must exist on both sides;
+    # real may add fields the mock omits (superset).
+    required_top = {"runs", "total", "truncated"}
+    assert required_top.issubset(mock_runs.keys())
+    assert required_top.issubset(real_runs.keys())
+    mock_row_keys = set(mock_runs["runs"][0].keys()) if mock_runs.get("runs") else set()
+    real_row_keys: set[str] = set()
+    for row in real_runs.get("runs") or []:
+        real_row_keys |= set(row.keys())
+    assert mock_row_keys.issubset(real_row_keys), (
+        f"mock activity-run row keys {mock_row_keys} not ⊆ real {real_row_keys}"
+    )
+    assert any(r.get("status") == "awaiting_approval" for r in mock_runs["runs"]), (
+        "mock /api/activity/runs must include awaiting_approval for capture 09"
+    )
+    # Source domain must match product enum.
+    for row in list(mock_runs["runs"]) + list(real_runs["runs"]):
+        assert row.get("source") in {"agent", "workflow"}, row
+
+    # ── /admin/health-summary ───────────────────────────────────────────
+    live_users = {
+        "admin@example.com": {"role": "admin", "disabled": False},
+        "disabled@example.com": {"role": "user", "disabled": True},
+    }
+    health_app = FastAPI()
+    health_app.include_router(
+        create_admin_router(
+            require_admin=lambda _request: ("admin@example.com", live_users),
+            require_user=lambda _request: "admin@example.com",
+            load_users=lambda: live_users,
+            save_users=lambda _users: None,
+            get_user_role=lambda email, _users: (_users.get(email) or {}).get("role", "user"),
+            get_history=lambda: [],
+            get_audit_log=lambda: [],
+            public_user=lambda email, user, _users: {"email": email, **user},
+            load_vpc_config=lambda: {},
+            save_vpc_config=lambda _cfg: None,
+            build_admin_audit_report=lambda _users, events: {"recent_events": events},
+            build_sensitivity_report=lambda _history: {
+                "summary": {"severity_counts": {"high": 0}, "risky_messages": 0}
+            },
+            append_audit_event=lambda *args, **kwargs: None,
+            public_sso_config=lambda: {},
+            save_sso_config=lambda _cfg: None,
+            get_graph_stats=lambda: {"nodes": 1},
+            enable_graph=True,
+            invite_code="x",
+            invite_gate_enabled=False,
+            default_port=4825,
+            product_hardening_status=lambda: {"startup": {"network_exposed": False}},
+        )
+    )
+    real_health = TestClient(health_app).get("/admin/health-summary").json()
+
+    mock_health_keys = set(mock_health.keys())
+    real_health_keys = set(real_health.keys())
+    assert mock_health_keys.issubset(real_health_keys), (
+        f"mock health-summary keys {mock_health_keys} not ⊆ real {real_health_keys}"
+    )
+    assert {"status", "issue_count", "issues"}.issubset(real_health_keys)
+    assert isinstance(real_health["issue_count"], int)
+    assert real_health["issue_count"] == len(real_health["issues"])
+    assert mock_health.get("status") in {"ok", "attention"}
+    assert real_health.get("status") in {"ok", "attention"}
+    # Mock is intentionally "attention" so capture 10 shows the non-ok layout.
+    assert mock_health.get("status") == "attention"
+    assert isinstance(mock_health.get("issue_count"), int)
+    assert mock_health["issue_count"] == len(mock_health.get("issues") or [])
+
+    # Silence unused helpers when only top-level keys matter for health.
+    assert mock_run_keys  # parsed successfully
+    assert real_run_keys
+
+
+# ── orphan i18n key gate ────────────────────────────────────────────────────
+#
+# Runtime-assembled keys use ``t(`prefix.${...}`)``. Those prefixes are
+# allowlisted so the gate does not false-positive on every dynamic key.
+# Anything still unreferenced after the allowlist is an orphan.
+#
+# Baseline: tests/unit/fixtures/i18n_known_orphans.txt
+#   - Section 1 = true legacy (orphans already present at git tag v10.6.3)
+#   - Section 2 = layout-rebuild 2026-08 residual (NOT forever-frozen;
+#     frontend should delete unused i18n entries, then remove them here).
+#     Cap = 157 (legacy) + current Section 2 residual. Do NOT raise the cap
+#     to bless new orphans — shrink Section 2 and lower the cap instead.
+
+# Hard ceiling = 157 legacy + residual Section 2. Recounted after frontend
+# round: Section 2 still has 11 keys (frontend did not delete them), so the
+# honest ceiling is 168. Raising above that is a reject; lowering is required
+# whenever Section 2 shrinks.
+I18N_ORPHAN_FIXTURE_CAP = 168  # 157 legacy + 11 section-2 residual; lower when Section 2 shrinks
+
+# Explicit allowlist for ``t(`prefix.${...}`)`` / concat assembly. Keep this
+# list in the test file so reviews can see every runtime-prefix exception.
+I18N_DYNAMIC_PREFIX_ALLOWLIST = (
+    "act.approval.action.",
+    "act.cadence.",
+    "act.creates.",
+    "act.recipe.",
+    "act.runStatus.",
+    "act.trigger.when.",
+    "act.agentRole.",
+    "brain.answerProof.confidence.",
+    "brain.firstScreen.state.",
+    "brain.garden.bed.",
+    "brain.garden.empty.",
+    "brain.headline.",
+    "brain.ingest.",
+    "brain.jobs.status.",
+    "brain.living.state.",
+    "brain.memoryTier.",
+    "brain.proactive.status.",
+    "brain.readiness.",
+    "brain.depth.",
+    "brain.depthTitle.",
+    "brain.rings.",
+    "capture.pipeline.step.",
+    "flow.install.stage.",
+    "flow.install.step.",
+    "intelligence.action.",
+    "intelligence.dim.",
+    "intelligence.grade.",
+    "library.model.status.",
+    "shell.mode.",
+    "shell.sync.",
+    "system.permission.mode.",
+    "system.permission.risk.",
+    "system.readiness.",
+    "ui.entity.",
+    "ui.field.",
+)
+
+
+def _discover_defined_i18n_keys(repo: Path) -> set[str]:
+    import re
+
+    keys: set[str] = set()
+    i18n_dir = repo / "frontend" / "src" / "i18n"
+    for path in i18n_dir.glob("*.ts"):
+        if path.stem in {"types", "registry"}:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(r'^\s+"([^"]+)":\s*"', text, re.M):
+            keys.add(match.group(1))
+    return keys
+
+
+def _frontend_src_blob_excluding_i18n_defs(repo: Path) -> str:
+    parts: List[str] = []
+    src = repo / "frontend" / "src"
+    for path in src.rglob("*"):
+        if path.suffix not in {".ts", ".tsx"}:
+            continue
+        # Skip namespace definition tables — keys only appear there as defs.
+        if path.parent.name == "i18n" and path.stem not in {"types", "registry"}:
+            continue
+        parts.append(path.read_text(encoding="utf-8", errors="replace"))
+    return "\n".join(parts)
+
+
+def _discover_orphan_i18n_keys(repo: Path) -> set[str]:
+    defined = _discover_defined_i18n_keys(repo)
+    blob = _frontend_src_blob_excluding_i18n_defs(repo)
+    orphans: set[str] = set()
+    for key in defined:
+        if any(key.startswith(prefix) for prefix in I18N_DYNAMIC_PREFIX_ALLOWLIST):
+            continue
+        if f'"{key}"' in blob or f"'{key}'" in blob or f"`{key}`" in blob:
+            continue
+        orphans.add(key)
+    return orphans
+
+
+def _load_known_orphan_baseline(repo: Path) -> set[str]:
+    path = repo / "tests" / "unit" / "fixtures" / "i18n_known_orphans.txt"
+    assert path.is_file(), f"missing orphan baseline fixture: {path}"
+    keys: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        keys.add(line)
+    return keys
+
+
+def test_no_new_orphan_i18n_keys():
+    """Keys defined in i18n but never referenced in frontend/src are orphans.
+
+    Bidirectional freeze:
+      - NEW orphans (panel deleted, keys left in i18n) fail.
+      - STALE fixture entries (key re-wired or deleted from i18n) fail so the
+        grandfather list must shrink — never only grow.
+      - Fixture size is capped by I18N_ORPHAN_FIXTURE_CAP; raising the cap
+        requires JUSTIFY comments in the fixture (see file header).
+    """
+    repo = Path(__file__).resolve().parents[2]
+    orphans = _discover_orphan_i18n_keys(repo)
+    known = _load_known_orphan_baseline(repo)
+
+    new_orphans = sorted(orphans - known)
+    assert not new_orphans, (
+        "new orphan i18n keys (defined in frontend/src/i18n but unreferenced "
+        "in frontend/src outside definition tables). Either wire them up, "
+        "delete them from i18n, or — only when intentional — add them to "
+        "tests/unit/fixtures/i18n_known_orphans.txt with a # JUSTIFY: line "
+        "and raise I18N_ORPHAN_FIXTURE_CAP in this test file.\n"
+        + "\n".join(f"  - {key}" for key in new_orphans)
+    )
+
+    stale = sorted(known - orphans)
+    assert not stale, (
+        "stale entries in tests/unit/fixtures/i18n_known_orphans.txt "
+        "(no longer orphans — key was re-wired or removed from i18n). "
+        "Remove them from the fixture (and lower I18N_ORPHAN_FIXTURE_CAP).\n"
+        + "\n".join(f"  - {key}" for key in stale)
+    )
+
+    assert len(known) <= I18N_ORPHAN_FIXTURE_CAP, (
+        f"orphan fixture has {len(known)} keys; cap is {I18N_ORPHAN_FIXTURE_CAP}. "
+        "Do not grow the fixture without a # JUSTIFY: comment per key and an "
+        "explicit raise of I18N_ORPHAN_FIXTURE_CAP in this file."
+    )
+    assert len(orphans) == len(known), (
+        f"orphan set size {len(orphans)} != fixture size {len(known)}"
+    )
+
+    # Fixture header must document the growth policy (review gate).
+    fixture_text = (
+        repo / "tests" / "unit" / "fixtures" / "i18n_known_orphans.txt"
+    ).read_text(encoding="utf-8")
+    assert "GROWTH POLICY" in fixture_text
+    assert "JUSTIFY" in fixture_text
+
+    # Allowlist must stay explicit and non-empty so a wiped list is not silent.
+    assert len(I18N_DYNAMIC_PREFIX_ALLOWLIST) >= 10
+    assert all(p.endswith(".") for p in I18N_DYNAMIC_PREFIX_ALLOWLIST), (
+        "dynamic prefixes must end with '.' so they only match assembled keys"
+    )
+
+    # Sanity: a clearly used key is never reported as orphan.
+    assert "shell.route.brain" not in orphans
+    assert "shell.localBadge" not in orphans
+
+
+def test_orphan_gate_detects_deleted_panel_keys(tmp_path: Path):
+    """Synthetic failure: drop all references to 8 keys → gate sees 8 new orphans."""
+    repo = Path(__file__).resolve().parents[2]
+    known = _load_known_orphan_baseline(repo)
+    defined = _discover_defined_i18n_keys(repo)
+    blob = _frontend_src_blob_excluding_i18n_defs(repo)
+
+    # Only exact-referenced keys that are not dynamic-prefix-covered and not
+    # already grandfathered. Dynamic-prefix keys never surface as orphans.
+    def _is_exact_referenced(key: str) -> bool:
+        return f'"{key}"' in blob or f"'{key}'" in blob or f"`{key}`" in blob
+
+    def _is_dynamic(key: str) -> bool:
+        return any(key.startswith(prefix) for prefix in I18N_DYNAMIC_PREFIX_ALLOWLIST)
+
+    live = [
+        key
+        for key in sorted(defined)
+        if _is_exact_referenced(key) and not _is_dynamic(key) and key not in known
+    ]
+    # Prefer a single panel namespace so the scenario matches "panel deleted".
+    candidates = [k for k in live if k.startswith("act.")] or live
+    assert len(candidates) >= 8, "need at least 8 live keys to simulate panel deletion"
+    doomed = set(candidates[:8])
+
+    scrubbed = blob
+    for key in doomed:
+        scrubbed = scrubbed.replace(f'"{key}"', '""').replace(f"'{key}'", "''")
+
+    orphans: set[str] = set()
+    for key in defined:
+        if _is_dynamic(key):
+            continue
+        if f'"{key}"' in scrubbed or f"'{key}'" in scrubbed or f"`{key}`" in scrubbed:
+            continue
+        orphans.add(key)
+    new_orphans = orphans - known
+    assert doomed.issubset(new_orphans), (
+        f"gate must flag scrubbed keys as new orphans; missing "
+        f"{sorted(doomed - new_orphans)}"
     )
 
 

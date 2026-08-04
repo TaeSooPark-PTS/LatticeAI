@@ -44,16 +44,46 @@ class AutomationRunNowRequest(BaseModel):
     dry_run: bool = True
 
 
+def _ensure_activity_run_source(run: Any) -> dict[str, Any]:
+    """Guarantee the Act feed ``source`` field for 레시피/목표 badge split.
+
+    Capture 09 (``frontend/src/pages/Act.tsx``) distinguishes workflow vs agent
+    with ``run.source === "workflow" || Boolean(run.workflow_id)``. A store that
+    omits both collapses every row to "목표" and silently undoes the merged
+    timeline redesign. Prefer an explicit ``source``; otherwise infer from
+    ``workflow_id`` / ``agent_id``.
+    """
+    if not isinstance(run, dict):
+        return {"source": "agent", "id": None, "title": "", "status": ""}
+    row = dict(run)
+    source = str(row.get("source") or "").strip().lower()
+    if source in {"workflow", "agent"}:
+        row["source"] = source
+        return row
+    if row.get("workflow_id"):
+        row["source"] = "workflow"
+        return row
+    if row.get("agent_id"):
+        row["source"] = "agent"
+        return row
+    # Last resort: keep any non-empty legacy value, else agent.
+    row["source"] = source if source else "agent"
+    return row
+
+
 def _with_run_truncation_meta(payload: Any, *, capped: int) -> dict[str, Any]:
     """Guarantee ``total`` / ``truncated`` on combined-run payloads.
 
     Stores that already implement :meth:`list_combined_runs` may return only
     ``runs``. The Act feed needs to say how many rows are hidden when the
     server slices agent+workflow history (default cap 20).
+
+    Every run is also passed through :func:`_ensure_activity_run_source` so the
+    레시피/목표 badge never loses its discriminator.
     """
     if not isinstance(payload, dict):
         return {"runs": [], "total": 0, "truncated": False}
-    runs = list(payload.get("runs") or [])
+    runs = [_ensure_activity_run_source(run) for run in (payload.get("runs") or [])]
     if "total" in payload:
         try:
             total = max(0, int(payload.get("total") or 0))
@@ -336,9 +366,17 @@ def create_automation_intelligence_router(
 
         rows = []
         for run in agent_listing.get("runs") or []:
-            rows.append(WorkspaceRuns.activity_run_row(run, source="agent"))
+            rows.append(
+                _ensure_activity_run_source(
+                    WorkspaceRuns.activity_run_row(run, source="agent")
+                )
+            )
         for run in workflow_listing.get("runs") or []:
-            rows.append(WorkspaceRuns.activity_run_row(run, source="workflow"))
+            rows.append(
+                _ensure_activity_run_source(
+                    WorkspaceRuns.activity_run_row(run, source="workflow")
+                )
+            )
         rows.sort(key=lambda row: str(row.get("started_at") or ""), reverse=True)
         total = len(rows)
         return {
