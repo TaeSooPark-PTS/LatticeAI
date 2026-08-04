@@ -44,6 +44,35 @@ class AutomationRunNowRequest(BaseModel):
     dry_run: bool = True
 
 
+def _with_run_truncation_meta(payload: Any, *, capped: int) -> dict[str, Any]:
+    """Guarantee ``total`` / ``truncated`` on combined-run payloads.
+
+    Stores that already implement :meth:`list_combined_runs` may return only
+    ``runs``. The Act feed needs to say how many rows are hidden when the
+    server slices agent+workflow history (default cap 20).
+    """
+    if not isinstance(payload, dict):
+        return {"runs": [], "total": 0, "truncated": False}
+    runs = list(payload.get("runs") or [])
+    if "total" in payload:
+        try:
+            total = max(0, int(payload.get("total") or 0))
+        except (TypeError, ValueError):
+            total = len(runs)
+    else:
+        total = len(runs)
+    if "truncated" in payload:
+        truncated = bool(payload.get("truncated"))
+    else:
+        truncated = total > len(runs) or total > capped
+    # Prefer the larger of declared total and visible rows so a buggy store
+    # never claims fewer total than the list it just returned.
+    total = max(total, len(runs))
+    if total > len(runs):
+        truncated = True
+    return {**payload, "runs": runs, "total": total, "truncated": truncated}
+
+
 def _run_now_wait_seconds() -> float:
     raw = os.environ.get("LATTICEAI_AUTOMATION_RUN_NOW_WAIT", "30")
     try:
@@ -288,15 +317,18 @@ def create_automation_intelligence_router(
         scope = gate_read(request)
         capped = max(1, min(int(limit or 20), 100))
         if hasattr(store, "list_combined_runs"):
-            return store.list_combined_runs(limit=capped, workspace_id=scope)
+            payload = store.list_combined_runs(limit=capped, workspace_id=scope)
+            return _with_run_truncation_meta(payload, capped=capped)
         # Store without the helper: merge the two existing listings in place.
         agent_listing = (
             store.list_agents(workspace_id=scope)
             if hasattr(store, "list_agents")
             else {"runs": []}
         )
+        # Pull a wide window so agent+workflow merge can still fill ``capped``
+        # after sort; true total is the unscoped merge size before slice.
         workflow_listing = (
-            store.list_workflow_runs(limit=capped, workspace_id=scope)
+            store.list_workflow_runs(limit=max(capped, 100), workspace_id=scope)
             if hasattr(store, "list_workflow_runs")
             else {"runs": []}
         )
@@ -308,7 +340,12 @@ def create_automation_intelligence_router(
         for run in workflow_listing.get("runs") or []:
             rows.append(WorkspaceRuns.activity_run_row(run, source="workflow"))
         rows.sort(key=lambda row: str(row.get("started_at") or ""), reverse=True)
-        return {"runs": rows[:capped]}
+        total = len(rows)
+        return {
+            "runs": rows[:capped],
+            "total": total,
+            "truncated": total > capped,
+        }
 
     @router.get("/api/activity/runs")
     async def activity_runs(request: Request, limit: int = 20):

@@ -35,6 +35,40 @@ function assetManifestFingerprint() {
 }
 
 /**
+ * Refuse to capture when the release lint gate is red.
+ *
+ * Failure mode this catches: lint is failing (e.g. ruff F841) but
+ * capture still runs and writes 12 screenshots + SCREENSHOT_INDEX.md
+ * bound to the asset manifest — evidence that looks green while the
+ * first CI stage would already have stopped. Capture is not proof that
+ * the tree is releasable; lint must pass first.
+ *
+ * Guard runs *before* wiping `root`, so a red lint never deletes the
+ * last good evidence directory.
+ */
+function assertLintClean() {
+  console.log("release evidence: running npm run lint before capture…");
+  try {
+    // Skip the evidence↔build binding gate during intentional recapture:
+    // this run is about to wipe and rebind SCREENSHOT_INDEX.md. Day-to-day
+    // `npm run lint` still hard-fails when screenshots are stale.
+    execFileSync("npm", ["run", "lint"], {
+      cwd: repoRoot,
+      stdio: "inherit",
+      env: { ...process.env, LTCAI_SKIP_RELEASE_EVIDENCE_BOUND: "1" },
+    });
+  } catch (err) {
+    const code = err && typeof err === "object" && "status" in err ? err.status : 1;
+    console.error(
+      "release evidence: npm run lint failed — capture aborted.\n" +
+        "  Fix lint (ruff / frontend / openapi / i18n gates) before release:evidence.\n" +
+        `  exit status: ${code}`,
+    );
+    process.exit(typeof code === "number" && code !== 0 ? code : 1);
+  }
+}
+
+/**
  * Refuse to capture when static/app is older than frontend/src.
  *
  * Failure mode this catches: someone edits frontend/src, skips
@@ -102,9 +136,12 @@ function assertBuiltAssetsFresh() {
  * that will ship. Recording the manifest sha256 in SCREENSHOT_INDEX.md at
  * capture time, then refusing to trust a mismatched index, closes that hole.
  *
- * When LTCAI_RELEASE_EVIDENCE_REQUIRE_BOUND=1 and an existing index is bound
- * to a different manifest, exit 1 *before* wiping so a later rebuild cannot
- * silently invalidate published evidence without a recapture.
+ * Day-to-day gate: `scripts/check_release_evidence_bound.mjs` (in npm run
+ * lint) hard-fails on sha mismatch. This pre-capture check is different —
+ * when someone deliberately runs release:evidence after build:assets, the
+ * existing index is *expected* to be stale; we continue, wipe, and rebind.
+ * Set LTCAI_RELEASE_EVIDENCE_REQUIRE_BOUND=1 to refuse wipe-and-rebind
+ * (useful in CI that should never recapture from a dirty tree).
  */
 function assertExistingEvidenceStillBoundToBuild() {
   const indexPath = path.join(root, "SCREENSHOT_INDEX.md");
@@ -112,7 +149,7 @@ function assertExistingEvidenceStillBoundToBuild() {
   const index = fs.readFileSync(indexPath, "utf8");
   const match = index.match(/asset-manifest\.sha256:\s*`?([0-9a-f]{64})`?/i);
   if (!match) {
-    // Older captures predate binding — warn only; this run will rebind.
+    // Older captures predate binding — this run will rebind after wipe.
     console.warn(
       "release evidence: existing SCREENSHOT_INDEX.md has no asset-manifest.sha256 binding.\n" +
         "  Recapture will record the current build fingerprint.",
@@ -129,14 +166,21 @@ function assertExistingEvidenceStillBoundToBuild() {
     `  recorded sha256: ${recorded}\n` +
     `  current  sha256: ${current.sha256}\n` +
     `  current  mtime:  ${current.mtime}\n` +
-    "Evidence screenshots are stale relative to static/app. Recapture after build:assets.";
+    "Evidence screenshots are stale relative to static/app.";
   if (process.env.LTCAI_RELEASE_EVIDENCE_REQUIRE_BOUND === "1") {
-    console.error(msg);
+    console.error(
+      `${msg}\n  LTCAI_RELEASE_EVIDENCE_REQUIRE_BOUND=1 — refusing wipe/rebind.\n` +
+        "  Unset the flag and re-run release:evidence to recapture, or restore the matching build.",
+    );
     process.exit(1);
   }
-  console.warn(`${msg}\n  Continuing: this run will wipe and rebind evidence to the current build.`);
+  console.warn(
+    `${msg}\n  Continuing: this run will wipe and rebind evidence to the current build.\n` +
+      "  (Day-to-day lint still fails on stale evidence via check_release_evidence_bound.mjs.)",
+  );
 }
 
+assertLintClean();
 assertBuiltAssetsFresh();
 assertExistingEvidenceStillBoundToBuild();
 

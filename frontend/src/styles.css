@@ -6169,10 +6169,11 @@ body {
 
 /* auto-fit rather than a fixed pair: only one alternative may be supported,
    and a hard two-column rule left a hole beside it. */
-.ritual-alt-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
-  gap: 0.6rem;
+.ritual-alt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-top: 0.75rem;
 }
 
 .ritual-model-card.is-compact {

@@ -12437,7 +12437,7 @@
     },
     "/local/sysinfo": {
       "get": {
-        "description": "CPU / RAM / GPU(MLX) \uc0ac\uc6a9\ub7c9\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+        "description": "CPU / RAM / GPU(MLX) usage plus a plain-language readiness bucket.\n\n``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy\ndoes not re-interpret raw percents on the client.",
         "operationId": "local_sysinfo_local_sysinfo_get",
         "responses": {
           "200": {

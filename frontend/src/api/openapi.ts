@@ -3894,7 +3894,10 @@ export interface paths {
         };
         /**
          * Local Sysinfo
-         * @description CPU / RAM / GPU(MLX) 사용량을 반환합니다.
+         * @description CPU / RAM / GPU(MLX) usage plus a plain-language readiness bucket.
+         *
+         *     ``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy
+         *     does not re-interpret raw percents on the client.
          */
         get: operations["local_sysinfo_local_sysinfo_get"];
         put?: never;

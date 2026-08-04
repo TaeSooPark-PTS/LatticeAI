@@ -179,7 +179,7 @@ export function RecommendationScreen({
           <summary id="recommend-alternatives" className="ritual-alternatives-title cursor-pointer">
             <h2 className="inline text-sm font-semibold">{t(language, "flow.recommend.alternatives")}</h2>
           </summary>
-          <div className="ritual-alt-list flex flex-col gap-3 pt-3">
+          <div className="ritual-alt-list">
             {items.slice(1, 3).map((model, index) => {
               const Icon = model.role === "faster" ? Zap : Gauge;
               return (

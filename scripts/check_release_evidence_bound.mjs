@@ -10,15 +10,28 @@
  *    so it still passes — while screenshots show an older UI than the build.
  *
  * Capture records asset-manifest.sha256 in SCREENSHOT_INDEX.md. This script
- * fails when that binding is missing or does not match the live manifest.
+ * fails (exit 1) when that binding is missing or does not match the live
+ * manifest. Wired into `npm run lint` so a green lint cannot ship stale
+ * screenshots.
  *
  * Exit 0 bound, 1 stale/missing, 2 could not run.
+ *
+ * Escape hatch: LTCAI_SKIP_RELEASE_EVIDENCE_BOUND=1 (used only by
+ * release:evidence while it intentionally wipes and rebinds evidence).
  */
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = process.cwd();
+
+if (process.env.LTCAI_SKIP_RELEASE_EVIDENCE_BOUND === "1") {
+  console.log(
+    "release evidence binding: skipped (LTCAI_SKIP_RELEASE_EVIDENCE_BOUND=1)",
+  );
+  process.exit(0);
+}
+
 const version = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version;
 const root =
   process.env.LTCAI_RELEASE_EVIDENCE_DIR ||

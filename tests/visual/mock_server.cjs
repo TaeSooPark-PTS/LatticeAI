@@ -873,43 +873,44 @@ const server = http.createServer((req, res) => {
   // Unified Act run timeline (layout rebuild screen 09). Includes an
   // awaiting_approval row so the approval badge is always capturable.
   if (pathname === "/api/activity/runs" || pathname === "/automations/runs/combined") {
-    return json(res, {
-      runs: [
-        {
-          id: "wf-run-approval",
-          source: "workflow",
-          title: "Agent Review Workflow",
-          status: "awaiting_approval",
-          started_at: "2026-06-06T12:05:00",
-          finished_at: null,
-          can_stop: false,
-          can_resume: true,
-          workflow_id: "wf-agent-review",
-        },
-        {
-          id: "agent-run-1",
-          source: "agent",
-          title: "Summarize release",
-          status: "ok",
-          started_at: "2026-06-06T12:30:00",
-          finished_at: "2026-06-06T12:31:00",
-          can_stop: false,
-          can_resume: false,
-          agent_id: "agent:executor",
-        },
-        {
-          id: "wf-run-1",
-          source: "workflow",
-          title: "Agent Review Workflow",
-          status: "ok",
-          started_at: "2026-06-06T12:00:00",
-          finished_at: "2026-06-06T12:01:00",
-          can_stop: false,
-          can_resume: false,
-          workflow_id: "wf-agent-review",
-        },
-      ],
-    });
+    // total/truncated match the real combined-runs contract so Act can say
+    // how many rows are hidden when the feed is capped.
+    const runs = [
+      {
+        id: "wf-run-approval",
+        source: "workflow",
+        title: "Agent Review Workflow",
+        status: "awaiting_approval",
+        started_at: "2026-06-06T12:05:00",
+        finished_at: null,
+        can_stop: false,
+        can_resume: true,
+        workflow_id: "wf-agent-review",
+      },
+      {
+        id: "agent-run-1",
+        source: "agent",
+        title: "Summarize release",
+        status: "ok",
+        started_at: "2026-06-06T12:30:00",
+        finished_at: "2026-06-06T12:31:00",
+        can_stop: false,
+        can_resume: false,
+        agent_id: "agent:executor",
+      },
+      {
+        id: "wf-run-1",
+        source: "workflow",
+        title: "Agent Review Workflow",
+        status: "ok",
+        started_at: "2026-06-06T12:00:00",
+        finished_at: "2026-06-06T12:01:00",
+        can_stop: false,
+        can_resume: false,
+        workflow_id: "wf-agent-review",
+      },
+    ];
+    return json(res, { runs, total: runs.length, truncated: false });
   }
   if (pathname === "/api/knowledge-graph/portability") return json(res, {
     available: true,

@@ -444,12 +444,22 @@ function SettingsPanel() {
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>
       <DataPanel title={mode === "basic" ? t(language, "system.panel.readiness") : t(language, "system.panel.hostTelemetry")} result={sys.data}>
-        {() => mode === "basic" ? (
-          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-border/60 bg-muted/20 text-sm text-foreground">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
-            <span>{t(language, "system.readiness.plenty")}</span>
-          </div>
-        ) : <StructuredView value={sys.data} />}
+        {(data) => {
+          if (mode === "basic") {
+            const readiness = String((data as Record<string, unknown>)?.readiness || "roomy");
+            const key = (readiness === "tight" || readiness === "low" || readiness === "roomy")
+              ? `system.readiness.${readiness}`
+              : "system.readiness.plenty";
+            const iconColor = readiness === "low" ? "text-rose-500" : readiness === "tight" ? "text-amber-500" : "text-emerald-500";
+            return (
+              <div className="flex items-center gap-2.5 p-3 rounded-lg border border-border/60 bg-muted/20 text-sm text-foreground">
+                <CheckCircle2 className={`h-4 w-4 ${iconColor} flex-shrink-0`} aria-hidden="true" />
+                <span>{t(language, key)}</span>
+              </div>
+            );
+          }
+          return <StructuredView value={data} />;
+        }}
       </DataPanel>
       <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : t(language, "system.panel.brainStorage")} result={storage.data}>
         {(data) => <StorageView data={data as Record<string, unknown>} mode={mode} language={language} />}

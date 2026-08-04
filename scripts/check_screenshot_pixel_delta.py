@@ -119,10 +119,9 @@ def _pixel_delta_pct(a: Path, b: Path) -> Tuple[float, int, int, int, int]:
         canvas_b.paste(im_b, (0, 0))
         diff = ImageChops.difference(canvas_a, canvas_b)
         # Any channel delta > 8 counts as changed (ignore sub-pixel AA noise).
-        mask = diff.point(lambda p: 255 if p > 8 else 0).convert("L")
-        # Collapse RGB mask: pixel is changed if any channel is on.
-        # point above already per-channel on RGB; convert to L averages — use
-        # getdata on RGB and count manually for a hard threshold.
+        # Count on RGB getdata: a pixel is changed if any channel exceeds the
+        # threshold. (A point()+convert("L") mask would average channels and
+        # under-count single-channel diffs, so we do not use it.)
         pixels = list(diff.getdata())
         changed = sum(1 for r, g, b in pixels if r > 8 or g > 8 or b > 8)
         total = w * h

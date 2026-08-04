@@ -24,9 +24,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-height: calc(100vh - 7rem);
-  gap: 1.5rem;
+  gap: var(--lt-gap-block);
   width: min(100%, 56rem);
   margin-inline: auto;
   padding: 1.25rem 0 2rem;

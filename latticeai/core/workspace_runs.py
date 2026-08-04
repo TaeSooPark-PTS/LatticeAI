@@ -456,7 +456,12 @@ class WorkspaceRuns:
         for run in workflow_runs:
             combined.append(self.activity_run_row(run, source="workflow"))
         combined.sort(key=lambda row: str(row.get("started_at") or ""), reverse=True)
-        return {"runs": combined[:capped]}
+        total = len(combined)
+        return {
+            "runs": combined[:capped],
+            "total": total,
+            "truncated": total > capped,
+        }
 
     @staticmethod
     def _first_string(*values: Any) -> str:

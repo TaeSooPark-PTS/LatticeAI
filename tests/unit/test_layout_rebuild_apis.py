@@ -288,6 +288,13 @@ def test_list_combined_runs_sorts_and_normalizes():
     assert ids[0] == "agent-run-new"
     assert ids[1] == "wf-run-approval"
     assert ids[2] == "agent-run-old"
+    assert payload["total"] == 3
+    assert payload["truncated"] is False
+
+    capped = runs.list_combined_runs(limit=2, workspace_id="personal")
+    assert len(capped["runs"]) == 2
+    assert capped["total"] == 3
+    assert capped["truncated"] is True
 
     approval = next(row for row in payload["runs"] if row["id"] == "wf-run-approval")
     assert approval["source"] == "workflow"
@@ -304,6 +311,7 @@ def test_list_combined_runs_sorts_and_normalizes():
 def test_activity_and_automations_combined_routes():
     class _Store:
         def list_combined_runs(self, *, limit=20, workspace_id=None):
+            # Legacy shape: runs only. Router must still surface total/truncated.
             return {
                 "runs": [
                     {
@@ -344,6 +352,8 @@ def test_activity_and_automations_combined_routes():
         body = response.json()
         assert len(body["runs"]) == 1
         assert body["runs"][0]["status"] == "awaiting_approval"
+        assert body["total"] == 1
+        assert body["truncated"] is False
 
 
 def _mixed_workspace_state() -> Dict[str, Any]:
@@ -398,6 +408,85 @@ def test_list_combined_runs_workspace_scope_isolation():
         assert row["id"].startswith(("agent-a", "wf-a"))
 
 
+def test_list_combined_runs_total_is_workspace_scoped_after_limit():
+    """``total`` must count only the gated workspace — never the global store.
+
+    Failure mode: Act renders "N of total" from this field. If total is the
+    unscoped store size (4) while workspace A only owns 2 rows, a ws-a user
+    sees "1 of 4" / "50건 중 20건" and other workspaces leak into the sentence
+    even when ``runs`` itself is correctly filtered.
+    """
+    runs = WorkspaceRuns(_MemoryStore(_mixed_workspace_state()))
+    global_all = runs.list_combined_runs(limit=50, workspace_id=None)
+    # Mixed fixture has 4 runs across two workspaces when unscoped.
+    assert global_all["total"] == 4
+
+    full = runs.list_combined_runs(limit=50, workspace_id="ws-a")
+    assert full["total"] == 2
+    assert len(full["runs"]) == 2
+    assert full["truncated"] is False
+    assert {row["id"] for row in full["runs"]} == {"agent-a-1", "wf-a-1"}
+
+    # Cap must shrink the page, not the scoped total.
+    slim = runs.list_combined_runs(limit=1, workspace_id="ws-a")
+    assert len(slim["runs"]) == 1
+    assert slim["total"] == 2, (
+        f"total must stay workspace-scoped after limit; got {slim['total']} "
+        f"(global would be {global_all['total']})"
+    )
+    assert slim["total"] != global_all["total"]
+    assert slim["truncated"] is True
+    assert slim["runs"][0]["id"] in {"agent-a-1", "wf-a-1"}
+
+    other = runs.list_combined_runs(limit=1, workspace_id="ws-b")
+    assert other["total"] == 2
+    assert len(other["runs"]) == 1
+    assert other["truncated"] is True
+    assert other["runs"][0]["id"] in {"agent-b-1", "wf-b-1"}
+
+
+def test_combined_runs_route_total_is_workspace_scoped_via_list_combined_runs():
+    """Router path that calls store.list_combined_runs must keep scoped total.
+
+    automation_intelligence._combined_runs caps with limit=capped and trusts
+    the store's total. A store that returned global total would surface other
+    workspaces in the Act sentence even after gate_read scoped the listing.
+    """
+    store = WorkspaceRuns(_MemoryStore(_mixed_workspace_state()))
+    service = AutomationIntelligenceService(store=store)
+    app = FastAPI()
+    app.include_router(
+        create_automation_intelligence_router(
+            service=service,
+            store=store,
+            require_user=lambda _request: "user@example.com",
+            gate_read=lambda _request: "ws-a",
+            gate_write=lambda _request: "ws-a",
+            append_audit_event=lambda *args, **kwargs: None,
+            workspace_graph=lambda: None,
+        )
+    )
+    client = TestClient(app)
+
+    full = client.get("/api/activity/runs", params={"limit": 50}).json()
+    assert {row["id"] for row in full["runs"]} == {"agent-a-1", "wf-a-1"}
+    assert full["total"] == 2
+    assert full["truncated"] is False
+
+    slim = client.get("/api/activity/runs", params={"limit": 1}).json()
+    assert len(slim["runs"]) == 1
+    assert slim["total"] == 2, (
+        "router must not report unscoped total after list_combined_runs cap"
+    )
+    assert slim["truncated"] is True
+    assert slim["runs"][0]["id"] in {"agent-a-1", "wf-a-1"}
+
+    alias = client.get("/automations/runs/combined", params={"limit": 1}).json()
+    assert alias["total"] == 2
+    assert len(alias["runs"]) == 1
+    assert alias["truncated"] is True
+
+
 def test_combined_runs_fallback_workspace_scope_isolation():
     """Router fallback (no list_combined_runs) must still honor workspace scope."""
     state = _mixed_workspace_state()
@@ -443,6 +532,13 @@ def test_combined_runs_fallback_workspace_scope_isolation():
     assert ids == {"agent-a-1", "wf-a-1"}
     assert "agent-b-1" not in ids
     assert "wf-b-1" not in ids
+    assert body["total"] == 2
+    assert body["truncated"] is False
+
+    slim = client.get("/api/activity/runs", params={"limit": 1}).json()
+    assert len(slim["runs"]) == 1
+    assert slim["total"] == 2
+    assert slim["truncated"] is True
 
 
 def test_admin_health_summary_ok_and_attention():
@@ -514,6 +610,174 @@ def test_host_capacity_readiness_buckets():
     assert host_capacity_readiness(cpu_pct=80, ram_pct=10, gpu_mem_pct=10) == "tight"
     assert host_capacity_readiness(cpu_pct=10, ram_pct=10, gpu_mem_pct=81) == "low"
     assert host_capacity_readiness(cpu_pct=99, ram_pct=99, gpu_mem_pct=99) == "low"
+
+
+def _parse_mock_sysinfo() -> Dict[str, Any]:
+    """Extract the /local/sysinfo payload fields from the visual mock server.
+
+    Release capture (`08-system.png`) hits this mock in basic mode. The mock
+    must ship the same readiness bucket the real API would compute for its
+    percents — otherwise the published screenshot can say "넉넉합니다" while
+    ram_pct is 61 (tight).
+
+    Keys in the mock are unquoted JS identifiers, so we parse fields with
+    regex rather than ``json.loads``.
+    """
+    import re
+
+    mock_path = Path(__file__).resolve().parents[1] / "visual" / "mock_server.cjs"
+    source = mock_path.read_text(encoding="utf-8")
+    match = re.search(
+        r'pathname === "/local/sysinfo"[^{]*return json\(res,\s*(\{.*?)\);',
+        source,
+        re.DOTALL,
+    )
+    assert match, "mock_server.cjs must define /local/sysinfo"
+    body = match.group(1)
+
+    def _num(name: str) -> float:
+        m = re.search(rf"\b{name}\s*:\s*([0-9]+(?:\.[0-9]+)?)", body)
+        assert m, f"mock /local/sysinfo missing numeric field {name}"
+        return float(m.group(1))
+
+    def _str(name: str) -> str:
+        m = re.search(rf'\b{name}\s*:\s*"([^"]+)"', body)
+        assert m, f"mock /local/sysinfo missing string field {name}"
+        return m.group(1)
+
+    return {
+        "cpu_pct": _num("cpu_pct"),
+        "ram_pct": _num("ram_pct"),
+        "gpu_mem_pct": _num("gpu_mem_pct"),
+        "gpu_mem_gb": _num("gpu_mem_gb"),
+        "readiness": _str("readiness"),
+    }
+
+
+def _readiness_copy_from_workspace_i18n() -> Dict[str, str]:
+    """Parse ko readiness phrases from frontend/src/i18n/workspace.ts.
+
+    Hand-copied constants drift silently when i18n is edited. Reading the
+    source of truth keeps mock bucket ↔ UI copy agreement honest.
+    """
+    import re
+
+    i18n_path = (
+        Path(__file__).resolve().parents[2]
+        / "frontend"
+        / "src"
+        / "i18n"
+        / "workspace.ts"
+    )
+    source = i18n_path.read_text(encoding="utf-8")
+    # Namespace file is ``{ ko: { ... }, en: { ... } }``; take only the first
+    # (ko) block so en duplicates do not overwrite.
+    ko_match = re.search(r"\bko\s*:\s*\{", source)
+    assert ko_match, "workspace.ts must define a ko copy block"
+    ko_start = ko_match.end()
+    en_match = re.search(r"\ben\s*:\s*\{", source[ko_start:])
+    ko_body = source[ko_start : ko_start + en_match.start()] if en_match else source[ko_start:]
+
+    out: Dict[str, str] = {}
+    for bucket in ("roomy", "tight", "low"):
+        m = re.search(
+            rf'"system\.readiness\.{bucket}"\s*:\s*"([^"]+)"',
+            ko_body,
+        )
+        assert m, f"workspace.ts ko missing system.readiness.{bucket}"
+        out[bucket] = m.group(1)
+    return out
+
+
+def test_mock_sysinfo_readiness_matches_capture_bucket():
+    """Mock /local/sysinfo percents must derive the same readiness the mock pins.
+
+    Failure mode this catches: mock still returns ram_pct=61 but readiness is
+    missing or wrong (e.g. roomy). The System basic-mode UI keys off the
+    readiness field via ``system.readiness.*`` in workspace.ts; a wrong bucket
+    selects the roomy/"넉넉" sentence while the load profile is tight.
+
+    This test does **not** OCR release screenshots. Stale 08-system.png is a
+    separate evidence-binding gate (``scripts/check_release_evidence_bound.mjs``).
+    """
+    from latticeai.api.static_routes import host_capacity_readiness
+
+    mock = _parse_mock_sysinfo()
+    assert mock.get("ram_pct") == 61
+    assert mock.get("cpu_pct") == 34
+    assert mock.get("gpu_mem_pct") == 48
+    assert mock.get("readiness") == "tight", (
+        f"mock must pin readiness=tight for the capture load profile; got {mock!r}"
+    )
+
+    derived = host_capacity_readiness(
+        cpu_pct=float(mock["cpu_pct"]),
+        ram_pct=float(mock["ram_pct"]),
+        gpu_mem_pct=float(mock["gpu_mem_pct"]),
+    )
+    assert derived == mock["readiness"] == "tight"
+
+    copy = _readiness_copy_from_workspace_i18n()
+    assert set(copy) == {"roomy", "tight", "low"}
+    assert len(set(copy.values())) == 3, "ko readiness phrases must stay distinct"
+
+    capture_text = copy[mock["readiness"]]
+    roomy_text = copy["roomy"]
+    assert capture_text != roomy_text
+    assert "타이트" in capture_text
+    assert "넉넉" not in capture_text
+    assert "넉넉" in roomy_text
+
+
+def test_system_settings_basic_branch_reads_sysinfo_readiness():
+    """System.tsx basic branch must consume response ``readiness``, not a hardcode.
+
+    Failure mode this catches: mock↔i18n agreement stays green while SettingsPanel
+    basic mode goes back to always rendering ``system.readiness.plenty`` (or any
+    fixed key) and never reads ``data.readiness``. Capture then shows "넉넉" even
+    when /local/sysinfo correctly returns readiness=tight.
+    """
+    import re
+
+    system_path = (
+        Path(__file__).resolve().parents[2]
+        / "frontend"
+        / "src"
+        / "pages"
+        / "System.tsx"
+    )
+    source = system_path.read_text(encoding="utf-8")
+
+    # SettingsPanel owns the host-capacity DataPanel; isolate its body so a
+    # coincidental ``readiness`` mention elsewhere cannot satisfy the gate.
+    panel_match = re.search(
+        r"function SettingsPanel\b[\s\S]*?(?=\nfunction |\nexport |\Z)",
+        source,
+    )
+    assert panel_match, "System.tsx must define SettingsPanel"
+    panel = panel_match.group(0)
+    assert re.search(r'mode\s*===\s*"basic"', panel), (
+        "SettingsPanel must keep a mode === \"basic\" branch for readiness copy"
+    )
+
+    # The basic branch must pull readiness off the sysinfo payload object.
+    assert re.search(
+        r"(?:\?\.\s*readiness|\[['\"]readiness['\"]\]|\.readiness)\b",
+        panel,
+    ), "SettingsPanel must read data.readiness (or data?.readiness) from /local/sysinfo"
+
+    # i18n key must be derived from that bucket: system.readiness.${readiness}
+    # (or equivalent concat). A static system.readiness.plenty alone is the
+    # regression the review called out.
+    dynamic_key = (
+        re.search(r"`system\.readiness\.\$\{[^}]+\}`", panel) is not None
+        or re.search(r'["\']system\.readiness\.["\']\s*\+\s*\w+', panel) is not None
+        or re.search(r"system\.readiness\.\$\{\s*readiness\s*\}", panel) is not None
+    )
+    assert dynamic_key, (
+        "SettingsPanel basic branch must build system.readiness.<bucket> from the "
+        "readiness field; hardcoding system.readiness.plenty alone is a regression"
+    )
 
 
 def test_prepare_stream_emits_load_before_smoke_test(monkeypatch):
