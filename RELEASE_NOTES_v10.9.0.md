@@ -134,6 +134,7 @@ conversation continuity — 11.92% → 53.15% statement coverage on that file.
   new ASYNC rules · `mypy` clean (276 files)
 - Frontend: 515 passed (504 in 10.8.0) · `tsc --noEmit` clean · bundle budget,
   i18n literal, i18n namespace, legacy-debt and server-i18n gates green
+- Python coverage 72.80% against a 70% floor
 - Visual: 33 Playwright specs passed, including the new welcome-fold test.
   The capture-pill focus assertion already existed — it was the one failing on
   `main` before this release.
