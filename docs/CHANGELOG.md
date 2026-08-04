@@ -4,6 +4,37 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.8.0] - 2026-08-04
+
+### Fixed
+- 온보딩 login/recommend/install 3개 화면에서 주 작업이 접힌 부분 아래에서
+  시작하던 문제 — 히어로 브레인을 단계별 크기(`data-scale`)로 분리.
+- 설치 화면이 번역 키 원문(`flow.install.stage.idle`)을 사용자에게 출력하던
+  문제 — `t()`가 `defaultValue` 옵션을 읽지 않았고, 옵션 자체가 보간 값으로
+  새어 들어가고 있었습니다.
+- 추천 모델 화면이 셸 중앙에서 왼쪽으로 치우쳐 있던 문제(`margin-inline`).
+- Brain 대화 홈의 추천 칩이 4글자를 담은 채 952px로 늘어나던 문제 —
+  `@media (max-height)` 블록이 `display:flex`만 재선언하고 `flex-direction`을
+  다시 쓰지 않아 기본 규칙의 `column` 축을 물려받고 있었습니다.
+- 브라우저 확장 팝업이 한 창 안에서 한국어와 영어를 섞어 보여주던 문제.
+
+### Added
+- `latticeai/core/messages.py` — 서버 사이드 메시지 카탈로그(ko/en)와
+  요청 기반 언어 결정(`X-Lattice-Language` → `Accept-Language`).
+- `frontend/src/styles/mediaQueryOverride.test.ts` — 미디어 쿼리가 `display`를
+  재선언하면서 축을 다시 쓰지 않는 부분 오버라이드 가드.
+- 신규 테스트 스위트: `App.tsx`, `AdminConsole.tsx`, `lib/folderPicker.ts`,
+  `api/client.ts` 확장, 멀티에이전트 JSON 복구, 증분 인덱스 재빌드.
+
+### Changed
+- 파일 생성이 실패 응답 중 "가장 긴" 것이 아니라 "가장 파일에 가까운" 것을
+  복구에 넘깁니다. 동일 응답 반복 시 1회 한정 추가 시도.
+- 산문 파일 타입(`.md`/`.txt`/…)에도 검증 추가 — 파일에 *대한* 답변은 파일이
+  아닙니다.
+- 멀티에이전트 계획 파서: 균형 스팬 스캔 + `<think>` 제거 + trailing comma 복구.
+- 증분 벡터 재빌드가 스트리밍 + 단일 해시맵 조회로 전환.
+- `latticeai/core/workspace_os.py` 1128 → 945줄.
+
 ## [10.7.0] - 2026-08-04
 
 ### Changed

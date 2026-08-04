@@ -136,14 +136,45 @@ class KnowledgeGraphVectorMixin(_Core):
         )
         return {"current": current, "recorded": recorded, "stale_embedder": stale}
 
+    def _vector_text_hashes(self, conn: sqlite3.Connection) -> Dict[str, str]:
+        """``item_id -> text_hash`` for rows already embedded by *this* embedder.
+
+        The incremental rebuild's job is mostly deciding what it does *not*
+        have to do, and it used to ask that question with one ``SELECT`` per
+        candidate item — a round trip per node and per chunk on every run,
+        almost all of which answer "unchanged". One query returning two short
+        columns replaces all of them.
+
+        Rows written by a different embedder are left out, so they compare as
+        missing and get re-embedded, which is what an embedder swap requires.
+        """
+        return {
+            row["item_id"]: row["text_hash"]
+            for row in conn.execute(
+                """
+                    SELECT item_id, text_hash
+                    FROM vector_embeddings
+                    WHERE embedding_model=? AND embedding_dim=?
+                    """,
+                (self._embedding_model.model_id, self._embedding_model.dim),
+            ).fetchall()
+        }
+
     def _iter_vector_source_items(
         self,
         conn: sqlite3.Connection,
         *,
         include_nodes: bool = True,
         include_chunks: bool = True,
-    ) -> List[Dict[str, Any]]:
-        items: List[Dict[str, Any]] = []
+    ) -> Iterator[Dict[str, Any]]:
+        """Stream the graph's embeddable text, one item at a time.
+
+        Yields rather than returns a list. Every caller consumes this exactly
+        once in a ``for``, and building the list first meant a rebuild held
+        the full text of every node and chunk in memory simultaneously — the
+        one shape guaranteed to fail on precisely the large graph that most
+        needs the index.
+        """
         if include_nodes:
             for row in conn.execute(
                 """
@@ -160,15 +191,13 @@ class KnowledgeGraphVectorMixin(_Core):
                     metadata=metadata,
                 )
                 if text:
-                    items.append(
-                        {
-                            "item_id": row["id"],
-                            "item_type": "node",
-                            "source_node": row["id"],
-                            "text": text,
-                            "metadata": {"node_type": row["type"], **metadata},
-                        }
-                    )
+                    yield {
+                        "item_id": row["id"],
+                        "item_type": "node",
+                        "source_node": row["id"],
+                        "text": text,
+                        "metadata": {"node_type": row["type"], **metadata},
+                    }
         if include_chunks:
             for row in conn.execute(
                 """
@@ -181,19 +210,16 @@ class KnowledgeGraphVectorMixin(_Core):
                 metadata = _safe_loads(row["metadata_json"])
                 text = _clean_text(row["text"] or "")
                 if text:
-                    items.append(
-                        {
-                            "item_id": row["id"],
-                            "item_type": "chunk",
-                            "source_node": row["id"],
-                            "text": text,
-                            "metadata": {
-                                **metadata,
-                                "parent_source_node": row["parent_source_node"],
-                            },
-                        }
-                    )
-        return items
+                    yield {
+                        "item_id": row["id"],
+                        "item_type": "chunk",
+                        "source_node": row["id"],
+                        "text": text,
+                        "metadata": {
+                            **metadata,
+                            "parent_source_node": row["parent_source_node"],
+                        },
+                    }
 
     def index_node_incremental(self, node_id: str) -> Dict[str, Any]:
         """Embed/index only ``node_id`` and its chunks (incremental sync).
@@ -345,15 +371,22 @@ class KnowledgeGraphVectorMixin(_Core):
                         conn.execute(
                             f"DELETE FROM vector_embeddings WHERE item_type IN ({','.join(filters)})"
                         )
-                items = self._iter_vector_source_items(
+                # After a full wipe nothing is current by definition, so the
+                # prefetch would only be a wasted scan of a table we just
+                # emptied. Incremental is where it pays: it turns "one SELECT
+                # per item, nearly all of which say unchanged" into one query.
+                known = {} if full else self._vector_text_hashes(conn)
+                total = indexed = skipped = 0
+                for item in self._iter_vector_source_items(
                     conn,
                     include_nodes=include_nodes,
                     include_chunks=include_chunks,
-                )
-                indexed = skipped = 0
-                for item in items:
-                    changed = self._upsert_vector_item(conn, **item)
-                    if changed:
+                ):
+                    total += 1
+                    if known.get(item["item_id"]) == _sha256_text(_clean_text(item["text"])):
+                        skipped += 1
+                        continue
+                    if self._upsert_vector_item(conn, **item):
                         indexed += 1
                     else:
                         skipped += 1
@@ -367,7 +400,7 @@ class KnowledgeGraphVectorMixin(_Core):
                         """,
                     (
                         _now(),
-                        len(items),
+                        total,
                         indexed,
                         skipped,
                         _json(
@@ -390,7 +423,7 @@ class KnowledgeGraphVectorMixin(_Core):
                 "status": "completed",
                 "operation_id": op_id,
                 "full": bool(full),
-                "items_total": len(items),
+                "items_total": total,
                 "items_indexed": indexed,
                 "items_skipped": skipped,
                 "duration_ms": duration_ms,
@@ -442,7 +475,10 @@ class KnowledgeGraphVectorMixin(_Core):
                     "SELECT item_type, COUNT(*) AS count FROM vector_embeddings GROUP BY item_type"
                 )
             }
-            source_items = self._iter_vector_source_items(conn)
+            # Materialised on purpose, unlike the rebuild path: status walks
+            # this set twice (once for ids, once to classify each item) and
+            # reports a count, none of which a one-shot iterator can serve.
+            source_items = list(self._iter_vector_source_items(conn))
             vector_rows = {
                 row["item_id"]: row
                 for row in conn.execute(

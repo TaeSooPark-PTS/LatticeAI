@@ -112,7 +112,16 @@ export function emptyFor<T>(shape: T): T {
 
 export function workspaceHeaders(): Record<string, string> {
   const workspaceId = useAppStore.getState().workspaceId;
-  return workspaceId ? { "X-Workspace-Id": workspaceId } : {};
+  return {
+    // The server writes its own user-facing messages — an expired session, a
+    // rejected password, a capture that was too big — and had no way to know
+    // which language to write them in, so it answered in whichever one the
+    // endpoint's author had used. This header carries the choice the person
+    // actually made in the product; the server falls back to Accept-Language
+    // for callers that do not send it (the extensions, curl, the sidecar).
+    "X-Lattice-Language": uiLanguage(),
+    ...(workspaceId ? { "X-Workspace-Id": workspaceId } : {}),
+  };
 }
 
 // The API layer runs outside React, so it reads the persisted language from

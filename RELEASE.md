@@ -13,6 +13,34 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.8.0 — Within Reach (2026-08-04)
+
+이미 있었지만 손이 닿지 않던 것들을 손에 닿게 만든 릴리스입니다.
+
+- **온보딩 3개 화면이 한 화면에 들어옵니다.** 모든 단계 위에 390px 히어로
+  브레인이 그려지고 있어서 로그인 폼·추천 모델·설치 진행이 전부 접힌 부분
+  아래에서 시작했습니다. `data-scale`로 환영 단계만 히어로, 이후는 104px
+  마크. 환영 화면 자체도 1175px → 770px.
+- **설치 화면이 번역 키 원문을 출력하던 문제 수정** — `t()`가 `defaultValue`를
+  읽지 않아 `flow.install.stage.idle`이 사용자에게 그대로 보였습니다.
+- **서버 메시지 i18n** — `latticeai/core/messages.py` 카탈로그 + 요청에서
+  언어 결정(`X-Lattice-Language` → `Accept-Language`). auth/admin/browser
+  라우터 이관. 브라우저 확장도 같은 문제(한 팝업 안 한/영 혼재)를 해결.
+- **약한 로컬 모델 대응** — 파일 생성이 "가장 긴" 실패 응답 대신 "가장 파일에
+  가까운" 응답을 복구에 넘깁니다. 동일 응답 반복 시 1회 한정 에스컬레이션.
+  산문 파일 타입(.md/.txt)에 검증 추가. 멀티에이전트 JSON 파서도 균형 스캔 +
+  trailing comma 복구(복구만, 창작 아님).
+- **증분 인덱싱 비용 정상화** — 전체 코퍼스를 메모리에 올리고 항목마다 SELECT
+  하던 것을 스트리밍 + 해시맵 1회 조회로. 변경 없으면 임베딩 0회(테스트로 단언).
+- **프론트엔드 커버리지** 47.35% → 52.26%, 테스트 424 → 504.
+- **workspace_os.py** 1128 → 945줄 (indexing/relationships/onboarding/
+  computer-memory 매니저 분리).
+
+빌드 산출물은 `dist/ltcai-10.8.0-py3-none-any.whl`, `dist/ltcai-10.8.0.tar.gz`,
+`ltcai-10.8.0.tgz`, `dist/ltcai-10.8.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_10.8.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
 ## v10.7.0 — Plain Surface (2026-08-04)
 
 12개 화면 전면 재구성 — 대시보드 격자를 해체하고 각 화면을 사용자가 하러 온 일 중심으로 다시 배치했습니다. 해시 경로 38개는 하나도 사라지지 않았고(38 → 38, `frontend/src/routes.test.ts`가 착지 지점을 검증), 12개 화면이 문구만이 아니라 배치가 실제로 달라졌다는 것은 픽셀 델타 게이트가 검증합니다.

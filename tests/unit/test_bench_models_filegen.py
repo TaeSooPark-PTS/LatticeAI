@@ -66,12 +66,18 @@ def test_stubbed_model_dirty_outputs_all_recovered_without_repair():
 def test_stubbed_model_garbage_outputs_report_repair_honestly():
     result = asyncio.run(bench_models.bench_filegen_model("weak-stub", _garbage_stub))
     rows = {row["type"]: row for row in result["targets"]}
-    # Both attempts fail validation, then deterministic repair delivers a
+    # Every attempt fails validation, then deterministic repair delivers a
     # structurally valid file for the scaffoldable types.
+    #
+    # Three attempts, not two: this stub returns a byte-identical reply every
+    # time, which is the case `generate_file_content` spends its single extra
+    # escalation call on. The count is asserted exactly so the escalation
+    # stays bounded — a model stuck in a loop must cost one extra call, not
+    # an unbounded number of them.
     for ext in ("html", "json"):
         assert rows[ext]["valid"], rows[ext]
         assert rows[ext]["repaired"], rows[ext]
-        assert rows[ext]["attempts"] == 2, rows[ext]
+        assert rows[ext]["attempts"] == 3, rows[ext]
     # The aggregate must equal the per-row truth (no rigged success rate).
     valid_count = sum(1 for row in result["targets"] if row["valid"])
     assert result["success_rate"] == round(valid_count / result["total"], 4)

@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
-from collections import deque
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional
@@ -19,8 +18,11 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional
 from latticeai.core.quiet import quiet
 
 from .timeutil import now_iso as _now
+from .workspace_computer_memory import WorkspaceComputerMemory
 from .workspace_graph_trace import WorkspaceGraphTrace
+from .workspace_indexing import WorkspaceIndexing
 from .workspace_memory import WorkspaceMemory
+from .workspace_onboarding import WorkspaceOnboarding
 from .workspace_os_constants import (
     DEFAULT_WORKSPACE_ID,
     EXECUTION_EVENT_TYPES,
@@ -49,6 +51,8 @@ from .workspace_permissions import (  # type: ignore
     _member_role,
 )
 from .workspace_plugins import WorkspacePluginManager
+from .workspace_relationships import WorkspaceRelationships
+from .workspace_relationships import shortest_path as _shortest_path
 from .workspace_review_items import WorkspaceReviewItems
 from .workspace_runs import WorkspaceRuns
 from .workspace_skills import WorkspaceSkills
@@ -108,6 +112,10 @@ class WorkspaceOSStore:
         self.runs = WorkspaceRuns(self)
         self.review_items = WorkspaceReviewItems(self)
         self.skills = WorkspaceSkills(self)
+        self.indexing = WorkspaceIndexing(self)
+        self.relationships = WorkspaceRelationships(self)
+        self.computer_memory = WorkspaceComputerMemory(self)
+        self.onboarding = WorkspaceOnboarding(self)
 
     @contextmanager
     def _connect_state_db(self) -> Iterator[sqlite3.Connection]:
@@ -552,22 +560,7 @@ class WorkspaceOSStore:
     # ------------------------------------------------------------------
 
     def onboarding_status(self, users: Optional[Dict[str, Any]] = None, graph_stats: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        users = users or {}
-        admins = [
-            email for email, user in users.items()
-            if isinstance(user, dict) and user.get("role") == "admin"
-        ]
-        onboarding = state.get("onboarding") or {}
-        steps = onboarding.get("steps") or {}
-        return {
-            **onboarding,
-            "steps": [steps.get(step, {"id": step, "status": "pending"}) for step in ONBOARDING_STEPS],
-            "has_account": bool(users),
-            "has_admin": bool(admins) or bool(users),
-            "graph_ready": bool(graph_stats and not graph_stats.get("disabled")),
-            "required_steps": list(ONBOARDING_STEPS),
-        }
+        return self.onboarding.status(users=users, graph_stats=graph_stats)
 
     def update_onboarding_step(
         self,
@@ -578,40 +571,12 @@ class WorkspaceOSStore:
         error: str = "",
         user_email: Optional[str] = None,
     ) -> Dict[str, Any]:
-        if step not in ONBOARDING_STEPS:
-            raise ValueError(f"unknown onboarding step: {step}")
-        if status not in {"pending", "running", "complete", "failed", "skipped"}:
-            raise ValueError(f"unknown onboarding status: {status}")
-        state = self.load_state()
-        onboarding = state.setdefault("onboarding", {})
-        steps = onboarding.setdefault("steps", {})
-        record = steps.setdefault(step, {"id": step})
-        record.update({
-            "id": step,
-            "status": status,
-            "data": data or record.get("data") or {},
-            "error": error,
-            "updated_at": _now(),
-            "user_email": user_email,
-        })
-        if status in {"complete", "skipped"}:
-            index = ONBOARDING_STEPS.index(step)
-            if step == "complete":
-                onboarding["completed"] = True
-                onboarding["completed_at"] = _now()
-                onboarding["current_step"] = "complete"
-            elif index + 1 < len(ONBOARDING_STEPS):
-                onboarding["current_step"] = ONBOARDING_STEPS[index + 1]
-        elif status == "failed":
-            onboarding["current_step"] = step
-        self.save_state(state)
-        self.record_timeline_event("workspace", "onboarding_step", {"step": step, "status": status})
-        return self.onboarding_status()
+        return self.onboarding.update_step(
+            step, status=status, data=data, error=error, user_email=user_email
+        )
 
     def complete_onboarding(self, data: Optional[Dict[str, Any]] = None, user_email: Optional[str] = None) -> Dict[str, Any]:
-        for step in ONBOARDING_STEPS:
-            self.update_onboarding_step(step, status="complete", data=data if step == "complete" else None, user_email=user_email)
-        return self.onboarding_status()
+        return self.onboarding.complete(data=data, user_email=user_email)
 
     # ------------------------------------------------------------------
     # Graph answer traces
@@ -645,76 +610,16 @@ class WorkspaceOSStore:
     # ------------------------------------------------------------------
 
     def build_indexing_dashboard(self, graph: Any, watcher_status: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        if graph is None:
-            return {
-                "sources": [],
-                "watcher": watcher_status or {"available": False, "active": {}},
-                "totals": {"success": 0, "failed": 0, "nodes": 0, "edges": 0},
-            }
-        stats = graph.stats()
-        sources = graph.local_sources().get("sources", [])
-        watcher_status = watcher_status or {"available": False, "active": {}}
-        active = watcher_status.get("active", {})
-        dashboard_sources = []
-        total_success = 0
-        total_failed = 0
-        for source in sources:
-            file_status = source.get("file_status") or {}
-            success = int(file_status.get("indexed") or 0)
-            failed = sum(int(file_status.get(key) or 0) for key in ("failed", "inaccessible", "skipped_empty_text"))
-            total_success += success
-            total_failed += failed
-            watch = active.get(source.get("id")) or {}
-            dashboard_sources.append({
-                "id": source.get("id"),
-                "label": source.get("label"),
-                "root_path": source.get("root_path"),
-                "status": source.get("status"),
-                "watch_enabled": bool(source.get("watch_enabled")),
-                "watch_active": source.get("id") in active,
-                "watch_status": watch,
-                "success_count": success,
-                "failure_count": failed,
-                "last_run_at": source.get("last_scanned_at") or source.get("updated_at"),
-                "file_status": file_status,
-                "include_ocr": bool(source.get("include_ocr")),
-            })
-        return {
-            "sources": dashboard_sources,
-            "watcher": watcher_status,
-            "totals": {
-                "success": total_success,
-                "failed": total_failed,
-                "nodes": sum(int(v or 0) for v in (stats.get("nodes") or {}).values()),
-                "edges": sum(int(v or 0) for v in (stats.get("edges") or {}).values()),
-                "local_sources": stats.get("local_sources", len(sources)),
-            },
-            "graph_stats": stats,
-        }
+        return self.indexing.build_dashboard(graph, watcher_status)
 
     def pause_indexing(self, graph: Any, source_id: str, watcher: Any = None) -> Dict[str, Any]:
-        result = graph.set_local_source_watch(source_id, False)
-        watch = watcher.stop_source(source_id) if watcher else {"stopped": False, "source_id": source_id}
-        self.record_timeline_event("graph", "indexing_paused", {"source_id": source_id})
-        return {"status": "ok", "source": result, "watch": watch}
+        return self.indexing.pause(graph, source_id, watcher)
 
     def resume_indexing(self, graph: Any, source_id: str, watcher: Any = None) -> Dict[str, Any]:
-        result = graph.set_local_source_watch(source_id, True)
-        watch = {"watching": False, "source_id": source_id}
-        source = next((item for item in graph.local_sources().get("sources", []) if item.get("id") == source_id), None)
-        if watcher and source:
-            watch = watcher.start_source(source)
-        self.record_timeline_event("graph", "indexing_resumed", {"source_id": source_id})
-        return {"status": "ok", "source": result, "watch": watch}
+        return self.indexing.resume(graph, source_id, watcher)
 
     def remove_index_source(self, graph: Any, source_id: str, watcher: Any = None) -> Dict[str, Any]:
-        if watcher:
-            watcher.stop_source(source_id)
-        if not hasattr(graph, "remove_local_source"):
-            raise ValueError("graph store does not support removing local sources")
-        result = graph.remove_local_source(source_id)
-        self.record_timeline_event("graph", "indexing_removed", {"source_id": source_id})
-        return {"status": "ok", **result}
+        return self.indexing.remove_source(graph, source_id, watcher)
 
     # ------------------------------------------------------------------
     # Snapshots, Time Machine, and diffs
@@ -939,63 +844,11 @@ class WorkspaceOSStore:
     # ------------------------------------------------------------------
 
     def relationship_explorer(self, graph: Any, node_id: str, target_id: Optional[str] = None, limit: int = 500) -> Dict[str, Any]:
-        if graph is None:
-            return {"node_id": node_id, "inbound": [], "outbound": [], "related_entities": [], "shortest_path": []}
-        data = graph.graph(limit=limit)
-        nodes = {node.get("id"): node for node in data.get("nodes") or [] if node.get("id")}
-        edges = data.get("edges") or []
-        inbound = [edge for edge in edges if edge.get("to") == node_id]
-        outbound = [edge for edge in edges if edge.get("from") == node_id]
-        if node_id not in nodes:
-            try:
-                neighbors = graph.neighbors(node_id)
-                for node in neighbors.get("neighbors") or []:
-                    nodes[node.get("id")] = node
-                edges.extend(neighbors.get("edges") or [])
-                inbound = [edge for edge in edges if edge.get("to") == node_id]
-                outbound = [edge for edge in edges if edge.get("from") == node_id]
-            except Exception:
-                quiet()
-
-        related_ids = []
-        for edge in inbound + outbound:
-            other = edge.get("from") if edge.get("to") == node_id else edge.get("to")
-            if other:
-                related_ids.append(other)
-        related = [nodes.get(rid, {"id": rid}) for rid in dict.fromkeys(related_ids)]
-        shortest_path = self._shortest_path(edges, node_id, target_id) if target_id else []
-        return {
-            "node_id": node_id,
-            "node": nodes.get(node_id, {"id": node_id}),
-            "inbound": inbound,
-            "outbound": outbound,
-            "related_entities": related,
-            "shortest_path": shortest_path,
-        }
+        return self.relationships.explore(graph, node_id, target_id=target_id, limit=limit)
 
     @staticmethod
     def _shortest_path(edges: List[Dict[str, Any]], start: str, target: Optional[str]) -> List[str]:
-        if not start or not target:
-            return []
-        adjacency: Dict[str, List[str]] = {}
-        for edge in edges:
-            src = edge.get("from")
-            dst = edge.get("to")
-            if src and dst:
-                adjacency.setdefault(src, []).append(dst)
-                adjacency.setdefault(dst, []).append(src)
-        queue: deque[List[str]] = deque([[start]])
-        seen = {start}
-        while queue:
-            path = queue.popleft()
-            node = path[-1]
-            if node == target:
-                return path
-            for neighbor in adjacency.get(node, []):
-                if neighbor not in seen:
-                    seen.add(neighbor)
-                    queue.append(path + [neighbor])
-        return []
+        return _shortest_path(edges, start, target)
 
     # ------------------------------------------------------------------
     # Local Computer Memory
@@ -1009,48 +862,12 @@ class WorkspaceOSStore:
         consent: Optional[Dict[str, Any]] = None,
         scopes: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        consent = consent or {}
-        if enabled and not consent.get("approved"):
-            raise PermissionError("Local Computer Memory requires explicit approval.")
-        state = self.load_state()
-        config = state.setdefault("computer_memory", {})
-        config.update({
-            "enabled": bool(enabled),
-            "approved": bool(enabled),
-            "approved_at": _now() if enabled else config.get("approved_at"),
-            "approved_by": approved_by if enabled else config.get("approved_by"),
-            "scopes": scopes or config.get("scopes") or ["Downloads", "Documents", "Repositories"],
-            "consent": consent,
-        })
-        state.setdefault("feature_flags", {})["local_computer_memory"] = bool(enabled)
-        self.save_state(state)
-        self.record_timeline_event("memory", "computer_memory_configured", {"enabled": bool(enabled), "approved_by": approved_by})
-        return config
+        return self.computer_memory.configure(
+            enabled=enabled, approved_by=approved_by, consent=consent, scopes=scopes
+        )
 
     def record_computer_activity(self, activity: Dict[str, Any], graph: Any = None) -> Dict[str, Any]:
-        state = self.load_state()
-        config = state.setdefault("computer_memory", {})
-        if not config.get("enabled"):
-            return {"status": "ignored", "reason": "local computer memory is disabled"}
-        record = {
-            "id": f"activity-{_json_hash([activity, _now()])[:16]}",
-            "timestamp": _now(),
-            **activity,
-        }
-        config.setdefault("activities", []).append(record)
-        if graph is not None:
-            try:
-                graph.ingest_event(
-                    "ComputerActivity",
-                    str(activity.get("summary") or activity.get("path") or "Computer activity")[:120],
-                    source="workspace_os",
-                    metadata=record,
-                )
-            except Exception as exc:
-                record["graph_error"] = str(exc)
-        self.save_state(state)
-        self.record_timeline_event("memory", "computer_activity", {"activity_id": record["id"]})
-        return {"status": "ok", "activity": record}
+        return self.computer_memory.record_activity(activity, graph)
 
     # ------------------------------------------------------------------
     # Skills

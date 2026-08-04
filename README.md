@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.7.0 Living Brain walkthrough](output/release/v10.7.0/gifs/v10.7.0-living-brain-walkthrough.gif)
+![v10.8.0 Living Brain walkthrough](output/release/v10.8.0/gifs/v10.8.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.7.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.7.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.7.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.7.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.7.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.7.0/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.7.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.7.0/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.8.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.8.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.8.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.8.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.8.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.8.0/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.8.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.8.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,51 +58,63 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.7.0/screenshots/01-login.png) | ![Model install](output/release/v10.7.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.7.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.8.0/screenshots/01-login.png) | ![Model install](output/release/v10.8.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.8.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.7.0/SCREENSHOT_INDEX.md](output/release/v10.7.0/SCREENSHOT_INDEX.md)
+[output/release/v10.8.0/SCREENSHOT_INDEX.md](output/release/v10.8.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.7.0 — Plain Surface**:
+The current release is **10.8.0 — Within Reach**:
 
-Every screen was rebuilt. Lattice AI is a personal memory system that runs on
-your own machine, and it had come to look like an operations console — dense
-grids of panels, developer vocabulary in the labels, and the thing you came to
-do buried under the things you rarely touch. 10.7.0 rearranges all twelve
-screens around what the person is actually there for, in plain language.
+10.7.0 rearranged all twelve screens. 10.8.0 is about the things that were
+already there but out of reach: a button below the fold, a message in a
+language you did not choose, a file a small model nearly produced.
 
-**Nothing was removed to achieve it.** The 38 hash destinations in
-`frontend/src/routes.ts` are the same 38 as before the rebuild — none dropped,
-none added. `frontend/src/routes.test.ts` checks every one of them resolves to a
-real screen, and names the landing spot outright for the paths most likely to
-regress.
-
-- **Layout actually changed.** `scripts/check_screenshot_pixel_delta.py` compares
-  all twelve captures against the previous release and fails when a screen only
-  changed its wording. Multi-column grid classes across `frontend/src` fell from
-  22 occurrences to 6, 4 of them outside test assertions —
-  `grep -rhoE 'grid-cols-[a-z0-9]+' frontend/src | wc -l` against the
-  pre-rebuild tree and this one.
-- **Features still reachable.** Every destination was rearranged, not retired:
-  38 → 38. Copy keys have no such gate — 18 keys no screen rendered any more
-  were removed by hand, each after checking the feature is reachable elsewhere.
-- **Evidence bound to this build.** `output/release/v10.7.0/` holds the twelve
+- **The first three screens fit on the screen.** Onboarding rendered a 390px
+  decorative Brain above *every* step, so on a 1440×900 display the login
+  form, the recommended model and the install progress all began below the
+  fold — the first thing the product asked a new person to do was scroll. The
+  organism is a hero on the welcome step and a 104px mark after it; the
+  welcome screen itself went from 1175px of content to 770px, so its primary
+  button is visible without scrolling.
+- **One language per screen, including the ones the server writes.** API
+  messages were literals at the raise site, written in whichever language the
+  endpoint's author was thinking in — Korean from `auth.py`, English from
+  `browser.py`. `latticeai/core/messages.py` is a catalog with both, resolved
+  from `X-Lattice-Language` (falling back to `Accept-Language`); the browser
+  extension, which showed English and Korean in the same popup, has one too.
+  `tests/unit/test_server_messages.py` fails on a message that exists in only
+  one language, and on a router that reverts to a hardcoded literal.
+- **A small model's near-miss is no longer thrown away.** File generation
+  picked the *longest* rejected reply to repair, so a 900-character apology
+  beat a truncated-but-real HTML document; it now scores candidates by how
+  close they are to being a file. A byte-identical repeated reply buys one
+  extra attempt with a prompt that names the repetition. Prose file types
+  (`.md`, `.txt`) had no validation at all and would save "Sure! Here is the
+  document:" as the document.
+- **Re-indexing costs what changed.** The incremental vector rebuild
+  materialised every node and chunk in memory and asked one `SELECT` per item
+  whether it had changed. It streams now, with a single prefetched hash map —
+  and a settled index performs zero embeddings, asserted rather than assumed.
+- **More ground under the frontend.** Statement coverage 47.35% → 52.26%,
+  424 → 504 tests, including the app shell (`App.tsx`, previously 0%), the
+  admin console (0%), the folder picker (2.7%) and the API client.
+- **Evidence bound to this build.** `output/release/v10.8.0/` holds the twelve
   capture screens, walkthrough gif/webm, and the asset-manifest / mock-server
   fingerprints that lint re-checks before merge.
-- **Exact artifact names only.** Publish paths list `dist/ltcai-10.7.0-*` and
-  `ltcai-10.7.0.tgz` — never `dist/*`.
+- **Exact artifact names only.** Publish paths list `dist/ltcai-10.8.0-*` and
+  `ltcai-10.8.0.tgz` — never `dist/*`.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.7.0 release must use exact filenames:
+Expected artifacts for 10.8.0 release must use exact filenames:
 
-- `dist/ltcai-10.7.0-py3-none-any.whl`
-- `dist/ltcai-10.7.0.tar.gz`
-- `ltcai-10.7.0.tgz`
-- `dist/ltcai-10.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.7.0_aarch64.dmg`
+- `dist/ltcai-10.8.0-py3-none-any.whl`
+- `dist/ltcai-10.8.0.tar.gz`
+- `ltcai-10.8.0.tgz`
+- `dist/ltcai-10.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.8.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -137,6 +149,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.8.0 | Within Reach |
 | 10.7.0 | Plain Surface |
 | 10.6.4 | Loud Limits |
 | 10.6.3 | Loud Limits |

@@ -302,9 +302,14 @@
   letter-spacing: -0.01em;
 }
 
+/* Named a grid and built as a column: two cards holding a four-character
+   title and a six-word sentence each were stacked down a 1200px deck, so
+   every card was ~85% empty and the pair cost twice the height it needed.
+   Auto-fit keeps one column when the deck is narrow and pairs them up when
+   there is room, without hard-coding how many suggestions there are. */
 .brain-prompt-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
   gap: 0.6rem;
   width: 100%;
 }
@@ -601,7 +606,18 @@
   font-size: var(--lt-type-body);
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
-  justify-content: space-between;
+  /* `space-between` distributed whatever children each shelf happened to
+     have, so the two shelves side by side never agreed where their label
+     went: the history shelf has three children (icon, label, count) and put
+     its label in the middle, the insights shelf has two and threw its label
+     against the right edge. Both read as text floating loose in a wide box.
+     Labels start next to their icon; only the count is pushed to the end. */
+  justify-content: flex-start;
+  gap: 0.45rem;
+}
+
+.brain-home-shelves > details > summary > .brain-shelf-count {
+  margin-left: auto;
 }
 
 /* The model notice is part of the flow now — it used to be absolutely
@@ -620,8 +636,14 @@
    the ~55px they cost on a roomy screen; on a 650px-tall laptop they pushed the
    station's toolbar — add material, autonomy — off the first screen, and on a
    phone they slid the shelves under the fixed bottom nav, where a tap lands on
-   the nav instead. Controls outrank suggestions when height is scarce. */
-@media (max-height: 800px), (max-width: 900px) {
+   the nav instead. Controls outrank suggestions when height is scarce.
+
+   The height threshold is 700px, not 800px. At 800px an ordinary laptop window
+   (a 900px-tall display leaves ~750px of viewport) fell into the scarce branch
+   and threw away the description sentence while ~160px of the screen below the
+   shelves sat empty — paying the cost of a short screen without being one. The
+   toolbar this protects still clears a 650px window at 700px. */
+@media (max-height: 700px), (max-width: 900px) {
   .brain-secondary-deck {
     padding: 0.6rem 0.8rem 0.65rem;
   }
@@ -632,11 +654,23 @@
 
   .brain-prompt-grid {
     display: flex;
+    /* `flex-direction: row` is the whole point of this block and was the one
+       property it forgot to state. The base rule above sets `column`, so the
+       chips inherited a column axis and `flex-wrap` had nothing to wrap:
+       each "pill" stretched to the deck's full ~950px to hold four characters,
+       with its description already hidden below. Chips, not bars. */
+    flex-direction: row;
     flex-wrap: wrap;
+    /* Column flex stretches children across the cross axis; row flex must be
+       told not to stretch them down it. */
+    align-items: center;
     gap: 0.35rem;
   }
 
   .brain-prompt-grid button {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
     flex-direction: row;
     align-items: center;
     padding: 0.32rem 0.66rem;

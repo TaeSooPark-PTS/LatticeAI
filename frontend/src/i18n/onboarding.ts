@@ -35,9 +35,15 @@ export const onboardingCopy: NamespaceCopy = {
     "flow.recommend.reason.default": "추천",
     "flow.recommend.sizeReady": "준비됨",
     "flow.recommend.fallbackName": "추천 Brain",
+    // Every InstallStage needs an entry. `idle`/`install`/`done` had none, so
+    // the screen printed the raw key `flow.install.stage.idle` at the moment
+    // the user first lands on it.
+    "flow.install.stage.idle": "아래 버튼을 누르면 준비를 시작합니다.",
+    "flow.install.stage.install": "Brain 준비를 시작합니다.",
     "flow.install.stage.download": "모델 파일을 받는 중입니다.",
     "flow.install.stage.validate": "Brain이 응답할 수 있는지 확인 중입니다.",
     "flow.install.stage.load": "Brain을 불러오는 중입니다.",
+    "flow.install.stage.done": "Brain이 준비되었습니다. 곧 대화가 열립니다.",
     "flow.install.stage.error": "확인이 필요한 일이 있습니다.",
     "flow.install.step.install": "준비",
     "flow.install.step.download": "다운로드",
@@ -214,9 +220,12 @@ export const onboardingCopy: NamespaceCopy = {
     "flow.recommend.reason.default": "Recommended",
     "flow.recommend.sizeReady": "ready",
     "flow.recommend.fallbackName": "Recommended Brain",
+    "flow.install.stage.idle": "Press the button below to start preparing.",
+    "flow.install.stage.install": "Starting to prepare your Brain.",
     "flow.install.stage.download": "Getting the model files.",
     "flow.install.stage.validate": "Checking that the Brain can answer.",
     "flow.install.stage.load": "Loading the Brain.",
+    "flow.install.stage.done": "Your Brain is ready. Opening the conversation.",
     "flow.install.stage.error": "Something needs attention.",
     "flow.install.step.install": "Install",
     "flow.install.step.download": "Download",

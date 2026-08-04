@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.7.0 — Plain Surface**.
+Current release: **10.8.0 — Within Reach**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

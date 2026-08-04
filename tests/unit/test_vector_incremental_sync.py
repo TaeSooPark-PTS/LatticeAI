@@ -158,3 +158,117 @@ def test_pipeline_auto_sync_runs_by_default(tmp_path):
     assert res.indexing_status == "indexed"
     assert res.embedded is True
     assert store.index_status()["status"] == "ready"
+
+
+# ── incremental rebuild: cost proportional to what changed ──────────────
+
+
+class _CountingEmbedder:
+    """Wraps the real embedder and records every text it is asked to encode.
+
+    A proxy rather than a monkeypatch: ``LocalEmbeddingModel`` is a frozen
+    dataclass, so its methods cannot be replaced in place.
+    """
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.calls: list[str] = []
+
+    @property
+    def dim(self):
+        return self._inner.dim
+
+    @property
+    def model_id(self):
+        return self._inner.model_id
+
+    def embed(self, text):
+        self.calls.append(text)
+        return self._inner.embed(text)
+
+    def encode(self, vector):
+        return self._inner.encode(vector)
+
+
+def _embed_calls(store: KnowledgeGraphStore) -> list[str]:
+    """Swap in the counting proxy and hand back its (live) call list."""
+    proxy = _CountingEmbedder(store._embedding_model)
+    store._embedding_model = proxy  # type: ignore[assignment]
+    return proxy.calls
+
+
+def test_incremental_rebuild_embeds_nothing_when_nothing_changed(tmp_path):
+    """The whole point of `full=False`: an unchanged corpus costs zero embeddings.
+
+    The skip already worked, but it cost one `SELECT` per node and per chunk to
+    discover. The assertion here is on the outcome that matters to a user — a
+    re-run of a settled index does no embedding work — and on the counters
+    being honest about it.
+    """
+    store = _store(tmp_path)
+    _seed_node(store)
+    store.rebuild_vector_index(full=True)
+
+    calls = _embed_calls(store)
+    result = store.rebuild_vector_index(full=False)
+
+    assert calls == []
+    assert result["status"] == "completed"
+    assert result["items_indexed"] == 0
+    assert result["items_skipped"] == result["items_total"] > 0
+
+
+def test_incremental_rebuild_embeds_only_the_changed_node(tmp_path):
+    store = _store(tmp_path)
+    _seed_node(store)
+    store.rebuild_vector_index(full=True)
+
+    store.ingest_source(
+        source_type="note",
+        title="Second Note",
+        text="A different note that has never been embedded before.",
+        source_uri="note:second",
+    )
+    # Ingest auto-syncs the new node, so clear just its rows to model the case
+    # a rebuild exists for: content present in the graph, absent from the index.
+    with store._connect() as conn:
+        conn.execute(
+            "DELETE FROM vector_embeddings WHERE item_id IN "
+            "(SELECT id FROM nodes WHERE title='Second Note')"
+        )
+
+    calls = _embed_calls(store)
+    result = store.rebuild_vector_index(full=False)
+
+    assert result["items_indexed"] >= 1
+    assert result["items_skipped"] >= 1
+    # Only the missing node was embedded — the settled rows were not touched.
+    assert len(calls) == result["items_indexed"]
+    assert all("different note" in text.lower() or "Second Note" in text for text in calls)
+
+
+def test_full_rebuild_re_embeds_everything(tmp_path):
+    """`full=True` must stay a real rebuild — the skip path must not leak into it."""
+    store = _store(tmp_path)
+    _seed_node(store)
+    store.rebuild_vector_index(full=True)
+
+    calls = _embed_calls(store)
+    result = store.rebuild_vector_index(full=True)
+
+    assert result["items_indexed"] == result["items_total"] > 0
+    assert result["items_skipped"] == 0
+    assert len(calls) == result["items_total"]
+
+
+def test_source_items_stream_instead_of_materialising(tmp_path):
+    """A rebuild must not hold the whole corpus in memory to decide what to skip."""
+    import inspect
+
+    store = _store(tmp_path)
+    _seed_node(store)
+    assert inspect.isgeneratorfunction(type(store)._iter_vector_source_items)
+    with store._connect() as conn:
+        items = type(store)._iter_vector_source_items(store, conn)
+        assert inspect.isgenerator(items)
+        assert next(iter(items))["item_id"]

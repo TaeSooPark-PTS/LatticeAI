@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "Which screens each release claims to have changed, and where.",
+    "",
+    "The pixel gate used to require all twelve screens to move on every",
+    "release. That was right for 10.6.x/10.7.0, which were explicitly",
+    "'rearrange every screen' releases, and wrong as a standing rule: a",
+    "release that deliberately touches four screens would have to churn the",
+    "other eight or fail — which is the dishonesty the gate exists to catch,",
+    "inverted.",
+    "",
+    "A release lists the screens it claims to have changed. Claimed screens",
+    "are gated exactly as before. Unclaimed screens are still measured and",
+    "printed, so an unintended change is visible, but do not fail the run.",
+    "A version with no entry here is gated on all twelve — forgetting to",
+    "write a claim makes the gate stricter, never weaker.",
+    "",
+    "'region' narrows the comparison to [x0, y0, x1, y1] as fractions of the",
+    "image. Use it when a screen carries an animated element that dominates a",
+    "whole-image delta: naming where the change is makes the claim more",
+    "specific, not less."
+  ],
+
+  "10.8.0": {
+    "01-login.png": {},
+    "02-recommended-models.png": {},
+    "03-install-load-progress.png": {},
+    "05-memory-graph.png": {
+      "_why": "The provenance meter in this screen's header wrapped into a ragged three-line block that ran into the page title. It is a bordered column with a straight left edge now."
+    },
+    "04-brain-chat-home.png": {
+      "_why": "The Brain organism sits in this screen's greeting banner and moved 7.34% of that band between 10.6.3 and 10.7.0 with no layout intent, which is why 04 carries the 8% live threshold. 10.8.0 changed the suggestion deck and the shelf row below the composer; measuring that region directly is both stricter (the claim names where) and able to see a change the whole-image metric cannot.",
+      "region": [0.0, 0.45, 1.0, 0.85],
+      "min_pct": 1.5
+    }
+  }
+}

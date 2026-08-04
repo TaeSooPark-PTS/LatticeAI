@@ -5960,6 +5960,10 @@ body {
 
 .ritual-recommend {
   width: min(100%, 34rem);
+  /* Without this the 34rem column sat flush against the left edge of the 54rem
+     shell and the screen read as though it had slid sideways: ~180px of dead
+     space down the right, greeting and card visibly off the shell's axis. */
+  margin-inline: auto;
 }
 
 /* The greeting stays centred with the rest of the shell; the surfaces under

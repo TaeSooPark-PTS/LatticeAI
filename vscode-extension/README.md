@@ -12,12 +12,15 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.7.0 — Plain Surface** rebuilt all twelve app screens around what the person
-came to do. Lattice AI runs on your own machine, but it had come to look like an
-operations console — dense panel grids and developer vocabulary in front of the
-thing you opened it for. Multi-column grid usage across the page and feature
-components fell from 47 declarations to 9, and nothing was retired to get there:
-the 38 hash destinations in the app's route table are the same 38 as before.
+**10.8.0 — Within Reach** goes after the things that were already there but out
+of reach. The onboarding flow drew a 390px decorative Brain above *every* step,
+so the login form, the recommended model and the install progress all began
+below the fold on a 1440×900 display; the organism is a hero on the welcome
+step and a small mark after it. Server-written messages — an expired session, a
+rejected password — now come back in the language you chose rather than the one
+the endpoint's author happened to write in. File generation stopped discarding a
+small model's near-miss, and re-indexing costs what changed rather than what
+exists.
 
 **This release does not touch the extension**; it ships unchanged apart from its
 version. Nothing an editor session depends on moved: no endpoint, token, or

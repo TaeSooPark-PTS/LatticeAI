@@ -279,8 +279,18 @@ def _default_baseline(root: Path, current: Path) -> Optional[Path]:
     return path
 
 
-def _pixel_delta_pct(a: Path, b: Path) -> Tuple[float, int, int, int, int]:
-    """Return (changed_pct, changed_px, total_px, height_a, height_b)."""
+def _pixel_delta_pct(
+    a: Path,
+    b: Path,
+    region: Optional[List[float]] = None,
+) -> Tuple[float, int, int, int, int]:
+    """Return (changed_pct, changed_px, total_px, height_a, height_b).
+
+    ``region`` is ``[x0, y0, x1, y1]`` as fractions of the aligned canvas. It
+    narrows the comparison to the part of the screen a release says it
+    changed, so an animated element elsewhere cannot mask a real change — or
+    manufacture one. Heights are always reported for the full images.
+    """
     with Image.open(a) as im_a, Image.open(b) as im_b:
         im_a = im_a.convert("RGB")
         im_b = im_b.convert("RGB")
@@ -292,6 +302,18 @@ def _pixel_delta_pct(a: Path, b: Path) -> Tuple[float, int, int, int, int]:
         canvas_b = Image.new("RGB", (w, h), (0, 0, 0))
         canvas_a.paste(im_a, (0, 0))
         canvas_b.paste(im_b, (0, 0))
+        if region:
+            x0, y0, x1, y1 = region
+            box = (
+                max(0, min(w, int(round(w * x0)))),
+                max(0, min(h, int(round(h * y0)))),
+                max(0, min(w, int(round(w * x1)))),
+                max(0, min(h, int(round(h * y1)))),
+            )
+            if box[2] > box[0] and box[3] > box[1]:
+                canvas_a = canvas_a.crop(box)
+                canvas_b = canvas_b.crop(box)
+                w, h = canvas_a.size
         diff = ImageChops.difference(canvas_a, canvas_b)
         # Any channel delta > 8 counts as changed (ignore sub-pixel AA noise).
         # Count on RGB getdata: a pixel is changed if any channel exceeds the
@@ -302,6 +324,33 @@ def _pixel_delta_pct(a: Path, b: Path) -> Tuple[float, int, int, int, int]:
         total = w * h
         pct = (100.0 * changed / total) if total else 0.0
         return pct, changed, total, h_a, h_b
+
+
+CLAIMS_PATH = "scripts/release_screen_claims.json"
+
+
+def _load_screen_claims(root: Path, version: str) -> Optional[Dict[str, Dict[str, object]]]:
+    """What this release says it changed, or None for "all twelve".
+
+    A version with no entry is gated on every screen, so forgetting to write a
+    claim makes this check stricter rather than weaker.
+    """
+    path = root / CLAIMS_PATH
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        print(f"pixel delta: {CLAIMS_PATH} is not valid JSON ({exc})", file=sys.stderr)
+        return None
+    entry = data.get(_normalize_version(version))
+    if not isinstance(entry, dict):
+        return None
+    return {
+        name: (options if isinstance(options, dict) else {})
+        for name, options in entry.items()
+        if name in SHOTS
+    }
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -379,10 +428,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     print("-" * 64)
 
+    claims = _load_screen_claims(root, _package_version(root))
+    if claims is None:
+        print(f"pixel delta: no claim for this version in {CLAIMS_PATH} — gating all {len(SHOTS)} screens")
+    else:
+        print(
+            f"pixel delta: gating {len(claims)} claimed screen(s); "
+            f"{len(SHOTS) - len(claims)} unclaimed screen(s) measured but not gated"
+        )
+
     failures: List[str] = []
     results: List[Dict[str, object]] = []
 
     for name in SHOTS:
+        claimed = claims is None or name in SHOTS and name in claims
+        options = (claims or {}).get(name, {}) if claims is not None else {}
         cur = current / name
         base = baseline / name
         if not cur.is_file():
@@ -394,19 +454,27 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"{name:<32} {'—':>8} {'—':>6} {'—':>6} FAIL")
             continue
 
-        pct, changed, total, h_cur, h_base = _pixel_delta_pct(cur, base)
+        region = options.get("region") if isinstance(options.get("region"), list) else None
+        pct, changed, total, h_cur, h_base = _pixel_delta_pct(cur, base, region)
         height_delta = abs(h_cur - h_base)
         live = name in LIVING_BRAIN
-        min_pct = args.min_pct_live if live else args.min_pct
+        # A claim that names its region has already excluded the animated part
+        # of the screen, so the live threshold no longer buys anything there.
+        default_min = args.min_pct_live if (live and not region) else args.min_pct
+        override = options.get("min_pct")
+        min_pct = float(override) if isinstance(override, (int, float)) else default_min
         # Height growth alone proves layout rebuild for full-page shots.
-        ok = pct >= min_pct or height_delta >= args.min_height_px
-        tag = "ok" if ok else "FAIL"
-        if not ok:
+        moved = pct >= min_pct or height_delta >= args.min_height_px
+        ok = moved or not claimed
+        tag = "ok" if moved else ("—" if not claimed else "FAIL")
+        if claimed and not moved:
             failures.append(
                 f"{name}: pixel={pct:.2f}% (need>={min_pct:.1f}%) "
                 f"height_delta={height_delta}px (need>={args.min_height_px})"
+                + (f" region={region}" if region else "")
             )
-        print(f"{name:<32} {pct:7.2f}% {height_delta:5d}p {min_pct:5.1f}% {tag:>5}")
+        marker = "" if claimed else " (unclaimed)"
+        print(f"{name:<32} {pct:7.2f}% {height_delta:5d}p {min_pct:5.1f}% {tag:>5}{marker}")
         results.append(
             {
                 "file": name,
@@ -416,18 +484,32 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "height_delta": height_delta,
                 "min_pct": min_pct,
                 "living_brain": live,
+                "region": region,
+                "claimed": claimed,
+                "moved": moved,
                 "pass": ok,
             }
         )
 
     print("-" * 64)
+    gated = sum(1 for item in results if item["claimed"])
     if failures:
-        print(f"pixel delta: FAIL — {len(failures)}/{len(SHOTS)} screen(s) below threshold")
+        print(f"pixel delta: FAIL — {len(failures)}/{gated} claimed screen(s) below threshold")
         for item in failures:
             print(f"  - {item}", file=sys.stderr)
         return 1
 
-    print(f"pixel delta: PASS — all {len(SHOTS)} screens moved enough vs baseline v{expected_version}")
+    # An unclaimed screen that moved is not a failure, but it is worth saying:
+    # it is either an unintended side effect or a claim someone forgot to write.
+    surprises = [
+        f"{item['file']} ({item['pixel_pct']:.2f}%)"
+        for item in results
+        if not item["claimed"] and item["moved"]
+    ]
+    if surprises:
+        print(f"pixel delta: note — unclaimed screens that changed anyway: {', '.join(surprises)}")
+
+    print(f"pixel delta: PASS — all {gated} claimed screen(s) moved vs baseline v{expected_version}")
     return 0
 
 

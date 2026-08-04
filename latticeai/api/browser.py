@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from lattice_brain.ingestion import IngestionItem, capture_quality_verdict
 from latticeai import __version__
 from latticeai.api.workspace_scope import resolve_workspace_scope
+from latticeai.core.messages import DEFAULT_LANGUAGE, http_error, resolve_language
 from latticeai.core.quiet import quiet
 
 MAX_TAB_BYTES = 4 * 1024 * 1024          # 4 MB per captured tab payload
@@ -395,9 +396,9 @@ def create_browser_router(
     router = APIRouter()
     _fetch = fetch_url or _default_fetch_url
 
-    def _require_pipeline():
+    def _require_pipeline(language: str = DEFAULT_LANGUAGE):
         if pipeline is None or not pipeline.available():
-            raise HTTPException(status_code=503, detail="Knowledge Graph ingestion is disabled.")
+            raise http_error(503, "capture.ingestion_disabled", language)
 
     def _write_workspace(request: Request, body_workspace: Optional[str], user: str) -> Optional[str]:
         return resolve_workspace_scope(
@@ -412,7 +413,7 @@ def create_browser_router(
     async def read_url(req: ReadUrlRequest, request: Request):
         """Fetch a public URL locally and ingest it as a web_url source."""
         user = require_user(request)
-        _require_pipeline()
+        _require_pipeline(resolve_language(request))
         workspace_id = _write_workspace(request, req.workspace_id, user)
         url = _validate_http_url(req.url)
         try:
@@ -443,7 +444,7 @@ def create_browser_router(
     async def ingest_current_tab(req: IngestTabRequest, request: Request):
         """Ingest a payload captured from the local browser extension."""
         user = require_user(request)
-        _require_pipeline()
+        _require_pipeline(resolve_language(request))
         workspace_id = _write_workspace(request, req.workspace_id, user)
         url = _validate_http_url(req.url)
         # Bound the entire capture, not merely each field independently. The
@@ -462,14 +463,14 @@ def create_browser_router(
             if value
         )
         if captured_bytes > max_tab_bytes:
-            raise HTTPException(status_code=413, detail="Captured payload is too large.")
+            raise http_error(413, "capture.payload_too_large", resolve_language(request))
         text = (req.text or "").strip()
         if not text and req.html:
             _title, text = extract_readable_text(req.html)
         if not text:
             text = (req.selected_text or "").strip()
         if not text:
-            raise HTTPException(status_code=400, detail="No text, html, or selected_text provided.")
+            raise http_error(400, "capture.nothing_to_capture", resolve_language(request))
         res = pipeline.ingest(
             IngestionItem(
                 source_type="browser_tab",

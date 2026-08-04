@@ -54,12 +54,23 @@ describe("emptyFor", () => {
 
 describe("workspaceHeaders", () => {
   it("sends no scope header when there is no active workspace", () => {
-    expect(workspaceHeaders()).toEqual({});
+    expect(workspaceHeaders()["X-Workspace-Id"]).toBeUndefined();
   });
 
   it("sends the active workspace as X-Workspace-Id", () => {
     useAppStore.setState({ workspaceId: "ws-42" });
-    expect(workspaceHeaders()).toEqual({ "X-Workspace-Id": "ws-42" });
+    expect(workspaceHeaders()["X-Workspace-Id"]).toBe("ws-42");
+  });
+
+  // The server writes its own user-facing errors and cannot guess which
+  // language to write them in. Every request carries the choice the person
+  // made in the product, workspace or no workspace.
+  it("always tells the server which language to answer in", () => {
+    useAppStore.setState({ language: "en" });
+    expect(workspaceHeaders()["X-Lattice-Language"]).toBe("en");
+
+    useAppStore.setState({ language: "ko" });
+    expect(workspaceHeaders()["X-Lattice-Language"]).toBe("ko");
   });
 });
 

@@ -300,6 +300,118 @@
   width: min(100%, 54rem);
 }
 
+/* ── The Brain shrinks once it stops being the subject ────────────────────
+   Step one is an invitation, so the organism is the hero. Every step after it
+   asks the person to *do* something — name themselves, pick a model, watch a
+   progress list — and a 390px decoration above that work pushed all three
+   below the fold on a 1440x900 display. Same organism, two scales: it stays
+   the thing you recognise without being the thing you have to scroll past.
+
+   `--brain-scale` is the variable `.brain-organism` already multiplies into
+   its transform, so this rides the existing sizing instead of fighting it, and
+   the negative margins reclaim the whitespace the untransformed box still
+   reserves in flow. */
+.ritual-brain[data-scale="hero"] {
+  margin: 0 auto 1.75rem;
+}
+
+/* A hero is only a hero while there is room for one. At 390px the organism
+   alone was half of a laptop viewport, and "Brain 지금 깨우기" — the single
+   button this screen exists to offer — sat ~200px below the fold, so the
+   first interaction the product asked for was a scroll. The organism yields
+   height before the invitation does. */
+@media (max-height: 900px) {
+  .ritual-brain[data-scale="hero"] {
+    margin-bottom: 0.5rem;
+  }
+
+  .ritual-brain[data-scale="hero"] .brain-presence {
+    padding-top: 0.5rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .ritual-brain[data-scale="hero"] .brain-organism {
+    width: clamp(118px, 12vw, 146px);
+    height: clamp(118px, 12vw, 146px);
+  }
+
+  .ritual-shell {
+    padding-block: 0.9rem;
+  }
+
+  .ritual-language {
+    margin-bottom: 0.5rem;
+  }
+
+  .ritual-wake {
+    gap: 0.55rem;
+  }
+
+  .ritual-wake > .ritual-subtitle {
+    margin-bottom: 0.35rem;
+  }
+
+  .ritual-value-card {
+    padding: 0.7rem 0.75rem;
+  }
+
+  .ritual-wake-plan div {
+    padding-top: 0.35rem;
+  }
+
+  /* The badge is pinned over the organism's lower edge, which reads as a
+     caption at 320px and as graffiti at 168px. Below, like the mark scale. */
+  .ritual-brain[data-scale="hero"] .ritual-edition {
+    position: static;
+    transform: none;
+    margin: 0.3rem auto 0;
+    box-shadow: none;
+  }
+
+  .ritual-wake > .ritual-title {
+    font-size: clamp(1.6rem, 3.4vw, 2.15rem);
+  }
+}
+
+.ritual-brain[data-scale="mark"] {
+  margin: 0 auto 0.5rem;
+}
+
+.ritual-brain[data-scale="mark"] .brain-presence {
+  padding: 0;
+}
+
+.ritual-brain[data-scale="mark"] .brain-organism {
+  --brain-mark-size: 104px;
+  width: var(--brain-mark-size);
+  height: var(--brain-mark-size);
+  /* Descendants are sized in % of the organism, so narrowing the box scales
+     the whole assembly — no transform, so no reserved-but-empty flow box. */
+}
+
+/* At mark scale the badge is a caption under the organism, not a chip pinned
+   over its lower edge: at 104px the pinned chip covered a third of the face. */
+.ritual-brain[data-scale="mark"] .ritual-edition {
+  position: static;
+  transform: none;
+  margin: 0.4rem auto 0;
+  box-shadow: none;
+}
+
+/* The two grids the welcome step stacks — three value cards over three numbered
+   steps — read as one 6-cell block because they share a column count and a
+   card shape. The plan is the quieter of the two: it is a caption for the
+   button under it, so it loses its card entirely. */
+.ritual-wake-plan {
+  gap: 0.5rem;
+}
+
+.ritual-wake-plan div {
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0.25rem 0;
+}
+
 .ritual-login-grid {
   display: flex;
   flex-direction: column;
@@ -336,8 +448,47 @@
   flex-direction: column;
   align-items: center;
   gap: var(--lt-gap-block, 24px);
-  padding: 1.5rem;
+  padding: 1.25rem 1.4rem;
   text-align: center;
+}
+
+/* ── The four stages are a rail, not a list ───────────────────────────────
+   Stacked, they were four short left-aligned rows inside a 966px card: about
+   a fifth of the card carrying content and the rest empty, with the whole
+   thing tall enough to push the buttons under it off screen. They are
+   sequential steps, so they read as a rail — which also says "four steps,
+   you are on the second" at a glance, which the stack never did. */
+.ritual-install {
+  width: min(100%, 40rem);
+  margin-inline: auto;
+}
+
+.ritual-progress {
+  margin: 0.5rem 0 0;
+}
+
+@media (min-width: 640px) {
+  .ritual-stage-list {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.25rem;
+    margin: 0.25rem 0 0.9rem;
+  }
+
+  .ritual-stage {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.4rem 0.25rem;
+    text-align: center;
+    font-size: 0.82rem;
+  }
+
+  .ritual-stage > span {
+    overflow-wrap: anywhere;
+  }
 }
 
 .ritual-value-card,
