@@ -73,8 +73,8 @@ grids of panels, developer vocabulary in the labels, and the thing you came to
 do buried under the things you rarely touch. 10.7.0 rearranges all twelve
 screens around what the person is actually there for, in plain language.
 
-**Nothing was removed to achieve it.** The 41 hash destinations in
-`frontend/src/routes.ts` are the same 41 as before the rebuild — none dropped,
+**Nothing was removed to achieve it.** The 38 hash destinations in
+`frontend/src/routes.ts` are the same 38 as before the rebuild — none dropped,
 none added. `frontend/src/routes.test.ts` checks every one of them resolves to a
 real screen, and names the landing spot outright for the paths most likely to
 regress.
@@ -86,7 +86,7 @@ regress.
   `grep -rhoE 'grid-cols-[a-z0-9]+' frontend/src | wc -l` against the
   pre-rebuild tree and this one.
 - **Features still reachable.** Every destination was rearranged, not retired:
-  41 → 41. Copy keys have no such gate — 18 keys no screen rendered any more
+  38 → 38. Copy keys have no such gate — 18 keys no screen rendered any more
   were removed by hand, each after checking the feature is reachable elsewhere.
 - **Evidence bound to this build.** `output/release/v10.7.0/` holds the twelve
   capture screens, walkthrough gif/webm, and the asset-manifest / mock-server

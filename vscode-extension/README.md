@@ -17,7 +17,7 @@ came to do. Lattice AI runs on your own machine, but it had come to look like an
 operations console — dense panel grids and developer vocabulary in front of the
 thing you opened it for. Multi-column grid usage across the page and feature
 components fell from 47 declarations to 9, and nothing was retired to get there:
-the 41 hash destinations in the app's route table are the same 41 as before.
+the 38 hash destinations in the app's route table are the same 38 as before.
 
 **This release does not touch the extension**; it ships unchanged apart from its
 version. Nothing an editor session depends on moved: no endpoint, token, or

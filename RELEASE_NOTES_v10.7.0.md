@@ -26,12 +26,22 @@ frontend/src/features/**/*.tsx | wc -l`. 앞뒤를 같은 명령으로 셉니다
 "기능을 빼지 말 것"은 보고로 확인할 수 없습니다. 아래는 확인한 방법이고,
 자동 게이트인 것과 사람이 대조한 것을 구분해 적습니다.
 
-- **경로 41 → 41** — `frontend/src/routes.ts` 의 해시 목적지 집합이 재구성 전과
+- **경로 38 → 38** — `frontend/src/routes.ts` 의 해시 목적지 집합이 재구성 전과
   정확히 같습니다. 사라진 것도 새로 생긴 것도 없습니다.
   `frontend/src/routes.test.ts` 가 모든 별칭이 실재하는 화면으로 해석되는지
   전수 검증하고, 회귀가 잦은 경로는 착지 지점까지 이름으로 못박습니다 —
   예전에는 조용히 홈으로 떨어지던 `#/act/review`, `#/brain/graph` 를 포함해서.
-  다만 **경로가 사라졌을 때 병합을 막는 게이트는 없습니다.** 41 → 41 은 이번
+  세는 방법은 `directProductRoutes`(6) 와 `compatibilityRouteAliases`(33) 의
+  키를 합집합으로 센 것입니다 — 두 표에 모두 있는 `settings` 가 한 번만 세어져
+  39개 항목이 목적지 38개가 됩니다. 앞뒤 트리를 같은 방법으로 셉니다:
+  ```
+  node -e "const s=require('fs').readFileSync('frontend/src/routes.ts','utf8');
+  const seg=(a,b)=>s.slice(s.indexOf(a),s.indexOf(b));
+  const k=t=>[...t.matchAll(/^\s{2}\"?([a-z][a-z0-9\/-]*)\"?:\s*\{/gmi)].map(m=>m[1]);
+  console.log(new Set([...k(seg('export const directProductRoutes','export const compatibilityRouteAliases')),
+    ...k(seg('export const compatibilityRouteAliases','export const primaryRoutes'))]).size)"
+  ```
+  다만 **경로가 사라졌을 때 병합을 막는 게이트는 없습니다.** 38 → 38 은 이번
   릴리스에서 위 명령으로 대조한 결과이지, CI 가 매번 지켜주는 값이 아닙니다.
 - **픽셀 델타 게이트** (`scripts/check_screenshot_pixel_delta.py`) — 12개 캡처를
   이전 버전과 대조해, 문구만 바뀌고 배치가 그대로인 화면을 실패로 잡습니다.
@@ -63,7 +73,7 @@ frontend/src/features/**/*.tsx | wc -l`. 앞뒤를 같은 명령으로 셉니다
 - 프론트엔드 424 통과 (42 파일)
 - lint · 버전 일관성 · 문서 동기화 통과
 - 픽셀 델타 12/12 통과 (v10.6.3 대비)
-- 해시 경로 41 → 41 (수동 대조)
+- 해시 경로 38 → 38 (수동 대조)
 - 격자 선언 47 → 9 (`docs/LAYOUT_REBUILD_SPEC.md` 의 명령으로 앞뒤 동일 측정)
 - README 의 walkthrough GIF 는 화면 하나하나를 열어보고 확인했습니다. 화면마다
   별도 청크로 나뉘어 있어서, 캡처가 화면을 전환할 때마다 로딩 표시("Brain

@@ -416,10 +416,17 @@
    what happens on CI, where the Korean glyphs are wider than they are on
    macOS. The suite passed locally and failed in CI for that reason alone.
 
-   The badge is the thing to drop: it repeats a claim the login screen and
-   the boundary panel both make, it is the widest non-interactive element in
-   the bar at 123px, and losing it costs no reachable control. */
-@media (min-width: 761px) and (max-width: 959px) {
+   At 960px it gets worse rather than better: the management quick-nav joins
+   the action row, which jumps from 242px to 424px, and the primary nav is
+   squeezed to 217px against a natural 240px. It only stops being squeezed at
+   1100px, where 127px of slack finally appears.
+
+   The badge is the thing to drop across that whole band: it repeats a claim
+   the login screen and the boundary panel both make, it is the widest
+   non-interactive element in the bar at 123px, and losing it costs no
+   reachable control. Below 761px the desktop nav is hidden entirely, so the
+   badge fits and stays. */
+@media (min-width: 761px) and (max-width: 1099px) {
   .brain-local-badge {
     display: none;
   }
