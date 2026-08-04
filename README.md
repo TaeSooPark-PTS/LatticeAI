@@ -81,8 +81,10 @@ regress.
 
 - **Layout actually changed.** `scripts/check_screenshot_pixel_delta.py` compares
   all twelve captures against the previous release and fails when a screen only
-  changed its wording. Multi-column grid usage across the page and feature
-  components fell from 47 declarations to 9 (7 outside test assertions).
+  changed its wording. Multi-column grid classes across `frontend/src` fell from
+  22 occurrences to 6, 4 of them outside test assertions —
+  `grep -rhoE 'grid-cols-[a-z0-9]+' frontend/src | wc -l` against the
+  pre-rebuild tree and this one.
 - **Features still reachable.** Every destination was rearranged, not retired:
   41 → 41. Copy keys have no such gate — 18 keys no screen rendered any more
   were removed by hand, each after checking the feature is reachable elsewhere.
