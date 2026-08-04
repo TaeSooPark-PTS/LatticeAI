@@ -276,6 +276,59 @@ async function shot(page, name) {
   await page.screenshot({ path: path.join(screenshots, name), fullPage: true });
 }
 
+// The README's hero GIF is this session's screen recording, and 26 of its 79
+// frames were the route-level Suspense fallback ("Brain 작업공간을 여는 중...",
+// App.tsx PageLoader): every screen visited below is a separate lazy chunk, so a
+// cold headless capture pays that chunk's parse cost on first visit and records
+// an empty shell instead of the product. A third of the walkthrough published in
+// the README was therefore a loading screen. Preloading the route chunks once,
+// while the Brain home is already on screen, makes the recording show the
+// screens a person came to see rather than the loader between them.
+//
+// The asset base is read from the module script the page already loaded instead
+// of being hardcoded, so moving the static mount cannot quietly turn this into a
+// no-op — and resolving zero chunks throws rather than shipping a blank GIF.
+async function preloadRouteChunks(page) {
+  const chunks = [
+    ...new Set(fs.readFileSync(manifestPath, "utf8").match(/assets\/[A-Za-z0-9_-]+\.js/g) ?? []),
+  ];
+  if (!chunks.length) {
+    throw new Error(`release evidence: no route chunks found in ${manifestPath}`);
+  }
+  const loaded = await page.evaluate(async (names) => {
+    const entry = document.querySelector('script[type="module"][src]');
+    if (!entry) return 0;
+    const base = new URL(entry.src, location.href).href.replace(/assets\/[^/]+$/, "");
+    let done = 0;
+    await Promise.all(
+      names.map(
+        (name) =>
+          new Promise((resolve) => {
+            const link = document.createElement("link");
+            link.rel = "modulepreload";
+            link.crossOrigin = "anonymous";
+            link.href = base + name;
+            link.onload = () => {
+              done += 1;
+              resolve();
+            };
+            link.onerror = () => resolve();
+            document.head.appendChild(link);
+          }),
+      ),
+    );
+    return done;
+  }, chunks);
+  if (loaded === 0) {
+    throw new Error(
+      `release evidence: preloaded 0 of ${chunks.length} route chunks — the ` +
+        "walkthrough would record the loading fallback instead of the screens",
+    );
+  }
+  await page.waitForTimeout(250);
+  return { loaded, total: chunks.length };
+}
+
 async function main() {
   await waitForServer();
 
@@ -326,6 +379,12 @@ async function main() {
   await shot(page, "03-install-load-progress.png");
   await page.locator("main[aria-label='Lattice Brain']").waitFor();
   await shot(page, "04-brain-chat-home.png");
+
+  const preload = await preloadRouteChunks(page);
+  console.log(
+    `release evidence: preloaded ${preload.loaded}/${preload.total} route chunks ` +
+      "so the walkthrough records screens, not the loading fallback",
+  );
 
   await page.goto(`${baseURL}/app#/knowledge-graph`, { waitUntil: "networkidle" });
   await page.locator("[data-testid='brain-cytoscape']").waitFor();
