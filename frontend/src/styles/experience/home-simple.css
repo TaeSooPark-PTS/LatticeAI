@@ -25,11 +25,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  min-height: calc(100vh - 12rem);
-  gap: 1.1rem;
-  width: min(100%, 50rem);
+  min-height: calc(100vh - 7rem);
+  gap: 1.5rem;
+  width: min(100%, 56rem);
   margin-inline: auto;
-  padding: 0.75rem 0 1.25rem;
+  padding: 1.25rem 0 2rem;
   grid-template-columns: none;
   grid-template-rows: none;
 }
@@ -303,9 +303,10 @@
 }
 
 .brain-prompt-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
 }
 
 .brain-prompt-grid button {
@@ -559,16 +560,14 @@
 
 .brain-centered-home > .brain-home-quiet {
   display: flex;
-  min-height: 0;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem 0.65rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--lt-gap-tight);
   width: 100%;
-  margin-top: 0.15rem;
-  padding-top: 0.55rem;
+  margin-top: auto;
+  padding-top: var(--lt-space-4);
   border-top: 1px solid hsl(var(--border) / 0.45);
-  opacity: 0.92;
+  opacity: 1;
 }
 
 .brain-home-quiet > .brain-quick-controls {
@@ -582,8 +581,23 @@
 .brain-home-quiet .brain-home-shelves {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.45rem;
+  justify-content: stretch;
+  gap: var(--lt-space-3);
+  width: 100%;
+}
+
+.brain-home-shelves > details {
+  flex: 1 1 200px;
+}
+
+.brain-home-shelves > details > summary {
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--lt-radius-md);
+  font-size: var(--lt-type-body);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  justify-content: space-between;
 }
 
 /* The model notice is part of the flow now — it used to be absolutely

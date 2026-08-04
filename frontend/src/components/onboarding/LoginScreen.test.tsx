@@ -106,8 +106,8 @@ describe("LoginScreen", () => {
     expect(promise.textContent).toContain(t("ko", "flow.promise.ownership.v"));
 
     const form = screen.getByRole("form", { name: t("ko", "flow.login.title") });
-    // DOCUMENT_POSITION_FOLLOWING === 4: the bar reads after the form now.
-    expect(form.compareDocumentPosition(promise) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // ProductPromise moved to the left column (preceding the form card).
+    expect(form.compareDocumentPosition(promise) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
   it("signs in and reports success once the API accepts the credentials", async () => {

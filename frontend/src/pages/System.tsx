@@ -3,7 +3,7 @@ import * as React from "react";
 // table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Network, ShieldCheck, UserCircle, Users } from "lucide-react";
+import { CheckCircle2, Network, ShieldCheck, UserCircle, Users } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, ModeGate, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -444,14 +444,12 @@ function SettingsPanel() {
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>
       <DataPanel title={mode === "basic" ? t(language, "system.panel.readiness") : t(language, "system.panel.hostTelemetry")} result={sys.data}>
-        {(data) => mode === "basic" ? (
-          <StatGrid stats={[
-            { label: t(language, "system.stat.cpu"), value: `${String((data as Record<string, unknown>).cpu_pct || "0")}%` },
-            { label: t(language, "system.stat.memory"), value: `${String((data as Record<string, unknown>).ram_pct || "0")}%` },
-            { label: t(language, "system.stat.gpu"), value: `${String((data as Record<string, unknown>).gpu_mem_pct || "0")}%` },
-            { label: t(language, "system.stat.localStatus"), value: t(language, "system.stat.ready") },
-          ]} />
-        ) : <StructuredView value={data} />}
+        {() => mode === "basic" ? (
+          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-border/60 bg-muted/20 text-sm text-foreground">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" aria-hidden="true" />
+            <span>{t(language, "system.readiness.plenty")}</span>
+          </div>
+        ) : <StructuredView value={sys.data} />}
       </DataPanel>
       <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : t(language, "system.panel.brainStorage")} result={storage.data}>
         {(data) => <StorageView data={data as Record<string, unknown>} mode={mode} language={language} />}

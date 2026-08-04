@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { createHash } from "node:crypto";
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -18,6 +19,126 @@ const root =
 const screenshots = path.join(root, "screenshots");
 const videos = path.join(root, "videos");
 const gifs = path.join(root, "gifs");
+const manifestPath = path.join(repoRoot, "static", "app", "asset-manifest.json");
+
+function assetManifestFingerprint() {
+  if (!fs.existsSync(manifestPath)) {
+    return null;
+  }
+  const body = fs.readFileSync(manifestPath);
+  const stat = fs.statSync(manifestPath);
+  return {
+    sha256: createHash("sha256").update(body).digest("hex"),
+    mtime: stat.mtime.toISOString(),
+    bytes: body.length,
+  };
+}
+
+/**
+ * Refuse to capture when static/app is older than frontend/src.
+ *
+ * Failure mode this catches: someone edits frontend/src, skips
+ * `npm run build:assets`, then runs release:evidence. Screenshots look
+ * "fresh" (new mtimes) but still show the previous build. That shipped
+ * stale evidence in 10.6.3 (asset mtime later than screenshot mtime by
+ * 42–50s). Warn-and-continue is useless — exit 1 so CI and humans stop.
+ *
+ * Guard runs *before* wiping `root`, so a stale build never deletes the
+ * last good evidence directory.
+ */
+function assertBuiltAssetsFresh() {
+  const srcRoot = path.join(repoRoot, "frontend", "src");
+  if (!fs.existsSync(manifestPath)) {
+    console.error(
+      "release evidence: static/app/asset-manifest.json 이 없습니다.\n" +
+        "실행 전에 npm run build:assets 를 돌려라.",
+    );
+    process.exit(1);
+  }
+  if (!fs.existsSync(srcRoot)) {
+    console.error(`release evidence: frontend/src 가 없습니다: ${srcRoot}`);
+    process.exit(1);
+  }
+
+  let newestSrcMtime = 0;
+  let newestSrcPath = srcRoot;
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const mtime = fs.statSync(full).mtimeMs;
+      if (mtime > newestSrcMtime) {
+        newestSrcMtime = mtime;
+        newestSrcPath = full;
+      }
+    }
+  };
+  walk(srcRoot);
+
+  const manifestMtime = fs.statSync(manifestPath).mtimeMs;
+  if (newestSrcMtime > manifestMtime) {
+    const rel = path.relative(repoRoot, newestSrcPath);
+    console.error(
+      "release evidence: frontend/src 가 static/app 빌드보다 더 새롭습니다.\n" +
+        `  최신 소스: ${rel}\n` +
+        `  소스 mtime:  ${new Date(newestSrcMtime).toISOString()}\n` +
+        `  빌드 mtime:  ${new Date(manifestMtime).toISOString()} (static/app/asset-manifest.json)\n` +
+        "실행 전에 npm run build:assets 를 돌려라.",
+    );
+    process.exit(1);
+  }
+}
+
+/**
+ * Detect evidence that was captured against a *previous* asset build.
+ *
+ * Failure mode: capture runs (screenshots mtime T0), then someone rebuilds
+ * assets (manifest mtime T1 > T0). The pre-guard only compares src vs
+ * manifest, so it still passes — but screenshots no longer show the build
+ * that will ship. Recording the manifest sha256 in SCREENSHOT_INDEX.md at
+ * capture time, then refusing to trust a mismatched index, closes that hole.
+ *
+ * When LTCAI_RELEASE_EVIDENCE_REQUIRE_BOUND=1 and an existing index is bound
+ * to a different manifest, exit 1 *before* wiping so a later rebuild cannot
+ * silently invalidate published evidence without a recapture.
+ */
+function assertExistingEvidenceStillBoundToBuild() {
+  const indexPath = path.join(root, "SCREENSHOT_INDEX.md");
+  if (!fs.existsSync(indexPath)) return;
+  const index = fs.readFileSync(indexPath, "utf8");
+  const match = index.match(/asset-manifest\.sha256:\s*`?([0-9a-f]{64})`?/i);
+  if (!match) {
+    // Older captures predate binding — warn only; this run will rebind.
+    console.warn(
+      "release evidence: existing SCREENSHOT_INDEX.md has no asset-manifest.sha256 binding.\n" +
+        "  Recapture will record the current build fingerprint.",
+    );
+    return;
+  }
+  const recorded = match[1].toLowerCase();
+  const current = assetManifestFingerprint();
+  if (!current) return;
+  if (recorded === current.sha256) return;
+
+  const msg =
+    "release evidence: SCREENSHOT_INDEX.md is bound to a different asset build.\n" +
+    `  recorded sha256: ${recorded}\n` +
+    `  current  sha256: ${current.sha256}\n` +
+    `  current  mtime:  ${current.mtime}\n` +
+    "Evidence screenshots are stale relative to static/app. Recapture after build:assets.";
+  if (process.env.LTCAI_RELEASE_EVIDENCE_REQUIRE_BOUND === "1") {
+    console.error(msg);
+    process.exit(1);
+  }
+  console.warn(`${msg}\n  Continuing: this run will wipe and rebind evidence to the current build.`);
+}
+
+assertBuiltAssetsFresh();
+assertExistingEvidenceStillBoundToBuild();
 
 // A release capture must be reproducible and must never retain partial videos
 // from an interrupted prior run.
@@ -183,9 +304,26 @@ async function main() {
     gifTarget,
   ], { stdio: "ignore" });
 
+  const fingerprint = assetManifestFingerprint();
+  if (!fingerprint) {
+    throw new Error("asset-manifest.json missing after capture — cannot bind evidence");
+  }
+  // Post-capture binding: if a later build:assets changes the manifest hash,
+  // check_release_evidence_bound.mjs / assertExistingEvidenceStillBoundToBuild
+  // will refuse to trust these screenshots without a recapture.
   const index = `# v${version} Release Evidence
 
 Captured from the built React/Vite app served by the release visual API on ${new Date().toISOString()}.
+
+## Build Binding
+
+Evidence is only trustworthy while this fingerprint matches
+\`static/app/asset-manifest.json\`. A later \`build:assets\` without recapture
+invalidates the screenshots even when their mtimes look fresh.
+
+- asset-manifest.sha256: \`${fingerprint.sha256}\`
+- asset-manifest.mtime: \`${fingerprint.mtime}\`
+- asset-manifest.bytes: ${fingerprint.bytes}
 
 ## Screenshots
 
@@ -210,6 +348,22 @@ Captured from the built React/Vite app served by the release visual API on ${new
 - [v${version}-living-brain-walkthrough.gif](gifs/v${version}-living-brain-walkthrough.gif)
 `;
   fs.writeFileSync(path.join(root, "SCREENSHOT_INDEX.md"), index);
+
+  // Post-hoc: re-hash the manifest *now* and refuse if it drifted mid-run
+  // (e.g. a parallel build:assets while Playwright was shooting).
+  const after = assetManifestFingerprint();
+  if (!after || after.sha256 !== fingerprint.sha256) {
+    console.error(
+      "release evidence: asset-manifest.json changed during capture.\n" +
+        `  bound:    ${fingerprint.sha256}\n` +
+        `  current:  ${after ? after.sha256 : "(missing)"}\n` +
+        "Rebuild was not stable — delete evidence and re-run after a single build:assets.",
+    );
+    process.exit(1);
+  }
+  console.log(
+    `release evidence bound to asset-manifest sha256=${fingerprint.sha256.slice(0, 12)}… mtime=${fingerprint.mtime}`,
+  );
 }
 
 try {

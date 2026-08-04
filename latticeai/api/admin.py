@@ -208,9 +208,10 @@ def create_admin_router(
 
         if product_hardening_status is not None:
             try:
-                hardening = product_hardening_status() or {}
-                startup = hardening.get("startup") or {}
-                if startup.get("network_exposed"):
+                res = product_hardening_status()
+                hardening = res if isinstance(res, dict) else {}
+                startup = hardening.get("startup") if isinstance(hardening, dict) else {}  # type: ignore[union-attr]
+                if isinstance(startup, dict) and startup.get("network_exposed"):
                     issues.append({
                         "area": "runtime_trust",
                         "severity": "warning",

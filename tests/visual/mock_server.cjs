@@ -556,7 +556,14 @@ const server = http.createServer((req, res) => {
     }, 420);
     return;
   }
-  if (pathname === "/local/sysinfo") return json(res, { cpu_pct: 34, ram_pct: 61, gpu_mem_pct: 48, gpu_mem_gb: 9.4 });
+  // readiness is backend-owned (roomy|tight|low). Mock max load is 61% → tight.
+  if (pathname === "/local/sysinfo") return json(res, {
+    cpu_pct: 34,
+    ram_pct: 61,
+    gpu_mem_pct: 48,
+    gpu_mem_gb: 9.4,
+    readiness: "tight",
+  });
   if (pathname === "/knowledge-graph/documents") return json(res, {
     documents: [
       { id: "file:a1b2c3", filename: "retrieval-design.pdf", ext: ".pdf", mime_type: "application/pdf", bytes: 184320, sha256: "a1b2c3d4e5f6", uploader: "you@local", chars: 18240, chunks: 24, indexed: true, ingest_state: "indexed", created_at: "2026-06-07T10:00:00", updated_at: "2026-06-07T10:00:05" },
@@ -846,17 +853,20 @@ const server = http.createServer((req, res) => {
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
   // Capture 3-step journey ribbon (layout rebuild screen 11).
-  // Counts match this mock brain: 12 nodes received/extracted, 10 edges connected.
+  // Counts: received=12, extracted=11 (1 still pending), connected=10.
   // stages.*.status + pending are the single source of truth (B4) — never
   // return pending=0 with status=waiting when count>0.
+  // Intentionally leave extracted.pending=1 / status=working so the capture
+  // gates on stages (not count-only inference): if the UI ignores stages,
+  // screen 11 still looks fully done and the bug stays invisible.
   if (pathname === "/knowledge-graph/pipeline/status") return json(res, {
     received: graphNodes.length,
-    extracted: graphNodes.length,
+    extracted: graphNodes.length - 1,
     connected: graphEdges.length,
     updated_at: "2026-06-06T12:00:00",
     stages: {
       received: { count: graphNodes.length, pending: 0, status: "done" },
-      extracted: { count: graphNodes.length, pending: 0, status: "done" },
+      extracted: { count: graphNodes.length - 1, pending: 1, status: "working" },
       connected: { count: graphEdges.length, pending: 0, status: "done" },
     },
   });

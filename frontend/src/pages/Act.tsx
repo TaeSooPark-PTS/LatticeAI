@@ -25,7 +25,7 @@ type RunsSubTab = "review" | "runs";
 
 const runsSubTabs: Array<{ id: RunsSubTab; labelKey: string }> = [
   { id: "review", labelKey: "act.tab.review" },
-  { id: "runs", labelKey: "act.tab.runs" },
+  { id: "runs", labelKey: "act.tab.runsHistory" },
 ];
 
 // The hero now names whichever panel is open, so every tab needs its own pair.

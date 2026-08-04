@@ -1,7 +1,6 @@
 import * as React from "react";
 import { CheckCircle2 } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { Button } from "@/components/ui/button";
 import { asArray } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
@@ -83,7 +82,7 @@ export function InstallScreen({
       <section className="ritual-card ritual-install-progress-unit" aria-label={statusText}>
         <div className="ritual-progress w-full">
           <div className="ritual-stage-list">
-            {(["install", "download", "validate", "load"] as const).map((item) => (
+            {(["install", "download", "load", "validate"] as const).map((item) => (
               <div key={item} className={`ritual-stage ${installStepState(stage, item)}`}>
                 <CheckCircle2 className="ritual-stage-icon" />
                 <span>{installLabel(item, language, model)}</span>
@@ -214,8 +213,8 @@ function friendlyInstallStage(stage: string): InstallStage {
 function percentForStage(stage: InstallStage) {
   if (stage === "install") return 20;
   if (stage === "download") return 55;
-  if (stage === "validate") return 82;
-  if (stage === "load") return 94;
+  if (stage === "load") return 82;
+  if (stage === "validate") return 94;
   if (stage === "done") return 100;
   return 8;
 }
@@ -233,7 +232,7 @@ function friendlyInstallMessage(event: ApiData, stage: InstallStage, language: L
   return cleanConsumerText(String(event.user_message || event.message || fallback));
 }
 
-function installLabel(stage: "install" | "download" | "validate" | "load", language: Language, model: RecommendedModel) {
+function installLabel(stage: "install" | "download" | "load" | "validate", language: Language, model: RecommendedModel) {
   if (stage === "download" && !model.downloadRequired) return t(language, "flow.install.step.ready");
   return t(language, `flow.install.step.${stage}`);
 }
@@ -243,8 +242,8 @@ function progressClass(percent: number) {
   return `progress-${step}`;
 }
 
-function installStepState(current: InstallStage, item: "install" | "download" | "validate" | "load") {
-  const order: InstallStage[] = ["idle", "install", "download", "validate", "load", "done"];
+function installStepState(current: InstallStage, item: "install" | "download" | "load" | "validate") {
+  const order: InstallStage[] = ["idle", "install", "download", "load", "validate", "done"];
   const currentIndex = order.indexOf(current);
   const itemIndex = order.indexOf(item);
   if (current === "error") return "is-error";

@@ -583,9 +583,25 @@ function readJourney(pipelineStatus: unknown, index: unknown, stats: unknown) {
   const connections = num(connected, statsData.edges, statsData.total_edges) || 0;
   const waiting = num(indexData.pending, indexData.pending_items) || 0;
 
-  const readState: JourneyState = (received !== undefined ? (received > 0 ? "done" : "waiting") : (waiting ? "working" : (remembered ? "done" : "waiting")));
-  const understandState: JourneyState = (extracted !== undefined ? (extracted > 0 ? "done" : "waiting") : (remembered ? "done" : "waiting"));
-  const connectState: JourneyState = (connected !== undefined ? (connected > 0 ? "done" : "waiting") : (connections ? "done" : "waiting"));
+  const getStageState = (stageKeys: string[], fallbackState: JourneyState): JourneyState => {
+    const stages = (statusData.stages || {}) as Record<string, any>;
+    for (const k of stageKeys) {
+      const raw = stages[k];
+      const st = (typeof raw === "object" && raw !== null ? raw.status : raw);
+      if (st === "done" || st === "working" || st === "waiting" || st === "error") {
+        return st as JourneyState;
+      }
+    }
+    return fallbackState;
+  };
+
+  const fallbackReadState: JourneyState = (received !== undefined ? (received > 0 ? "done" : "waiting") : (waiting ? "working" : (remembered ? "done" : "waiting")));
+  const fallbackUnderstandState: JourneyState = (extracted !== undefined ? (extracted > 0 ? "done" : "waiting") : (remembered ? "done" : "waiting"));
+  const fallbackConnectState: JourneyState = (connected !== undefined ? (connected > 0 ? "done" : "waiting") : (connections ? "done" : "waiting"));
+
+  const readState: JourneyState = getStageState(["read", "received"], fallbackReadState);
+  const understandState: JourneyState = getStageState(["understand", "extracted"], fallbackUnderstandState);
+  const connectState: JourneyState = getStageState(["connect", "connected"], fallbackConnectState);
 
   return {
     remembered,
@@ -641,7 +657,7 @@ function PipelinePanel() {
                   </div>
                   <div className="capture-journey-step-meta flex items-center justify-between gap-2 mt-3 pt-2 border-t border-border/40 text-xs">
                     <Badge variant="muted" className="capture-journey-count">
-                      {count !== undefined ? count : "—"}
+                      {count !== undefined ? (typeof count === "number" ? t(language, "ui.value.records", { count }) : count) : t(language, "shell.sync.checking")}
                     </Badge>
                     <span className="capture-journey-state">{t(language, `capture.pipeline.step.${state}`)}</span>
                   </div>

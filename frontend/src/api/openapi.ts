@@ -3682,11 +3682,14 @@ export interface paths {
         };
         /**
          * Knowledge Graph Pipeline Status
-         * @description Per-stage counts for the Capture 3-step journey ribbon.
+         * @description Per-stage counts + status for the Capture 3-step journey ribbon.
          *
-         *     Aggregates existing store data only — no schema change. Keys are
-         *     omitted when a value cannot be computed (never faked as 0 when the
-         *     underlying source is unavailable).
+         *     Aggregates existing store data only — no schema change. Top-level
+         *     ``received`` / ``extracted`` / ``connected`` stay for simple clients;
+         *     ``stages`` is the single source of truth for count, pending, and
+         *     status (``done`` / ``working`` / ``waiting``). Keys are omitted when
+         *     a value cannot be computed (never faked as 0 when the underlying
+         *     source is unavailable).
          */
         get: operations["knowledge_graph_pipeline_status_knowledge_graph_pipeline_status_get"];
         put?: never;

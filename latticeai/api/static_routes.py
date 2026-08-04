@@ -34,6 +34,30 @@ PRODUCTION_CSP = (
 INVITE_COOKIE_NAME = "lattice_invite"
 INVITE_COOKIE_TTL_SECONDS = 60 * 60 * 24 * 7
 
+# Host-capacity plain-language judgment for System basic mode (layout rebuild).
+# Thresholds live here so the frontend never re-derives copy from raw percents.
+SYSINFO_READINESS_ROOMY_MAX = 55.0
+SYSINFO_READINESS_TIGHT_MAX = 80.0
+
+
+def host_capacity_readiness(
+    *,
+    cpu_pct: float = 0.0,
+    ram_pct: float = 0.0,
+    gpu_mem_pct: float = 0.0,
+) -> str:
+    """Map host telemetry to a single plain-language readiness bucket.
+
+    Returns one of ``roomy`` / ``tight`` / ``low``. The product uses this so
+    basic-mode System copy and advanced-mode numbers share one judgment.
+    """
+    load = max(float(cpu_pct or 0.0), float(ram_pct or 0.0), float(gpu_mem_pct or 0.0))
+    if load <= SYSINFO_READINESS_ROOMY_MAX:
+        return "roomy"
+    if load <= SYSINFO_READINESS_TIGHT_MAX:
+        return "tight"
+    return "low"
+
 
 def _sign_invite_cookie(secret: str, *, now: Optional[int] = None) -> str:
     """Create an expiring, nonce-bearing invite-gate capability cookie."""
@@ -250,7 +274,11 @@ def create_static_routes_router(
     
     @api_router.get("/local/sysinfo")
     async def local_sysinfo(request: Request):
-        """CPU / RAM / GPU(MLX) 사용량을 반환합니다."""
+        """CPU / RAM / GPU(MLX) usage plus a plain-language readiness bucket.
+
+        ``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy
+        does not re-interpret raw percents on the client.
+        """
         require_user(request)
         import re as _re
         result: Dict[str, Any] = {
@@ -258,6 +286,7 @@ def create_static_routes_router(
             "ram_pct": 0.0,
             "gpu_mem_pct": 0.0,
             "gpu_mem_gb": 0.0,
+            "readiness": "roomy",
         }
         try:
             # CPU
@@ -291,6 +320,11 @@ def create_static_routes_router(
                 quiet()
         except Exception as e:
             result["error"] = str(e)
+        result["readiness"] = host_capacity_readiness(
+            cpu_pct=float(result.get("cpu_pct") or 0.0),
+            ram_pct=float(result.get("ram_pct") or 0.0),
+            gpu_mem_pct=float(result.get("gpu_mem_pct") or 0.0),
+        )
         return result
 
     return StaticRoutesBundle(

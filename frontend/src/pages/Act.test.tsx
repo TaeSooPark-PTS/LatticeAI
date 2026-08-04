@@ -160,7 +160,7 @@ describe("ActPage", () => {
 
     await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
     const [, sub] = screen.getAllByRole("tablist");
-    await userEvent.click(within(sub).getByRole("tab", { name: "실행" }));
+    await userEvent.click(within(sub).getByRole("tab", { name: /실행/ }));
 
     await waitFor(() => expect(screen.getByText("설치된 자동화")).toBeTruthy());
     // getAllByRole returns document order, which is the reading order here.
@@ -186,7 +186,7 @@ describe("ActPage", () => {
     });
     await waitFor(() => expect(screen.getAllByRole("tablist").length).toBe(2));
     const [, sub] = screen.getAllByRole("tablist");
-    await userEvent.click(within(sub).getByRole("tab", { name: "실행" }));
+    await userEvent.click(within(sub).getByRole("tab", { name: /실행/ }));
     await waitFor(() => expect(screen.getByTestId("installed-automations")).toBeTruthy());
     expect(screen.getByText("매일 기억 요약")).toBeTruthy();
   });

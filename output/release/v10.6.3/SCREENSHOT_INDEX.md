@@ -1,6 +1,16 @@
 # v10.6.3 Release Evidence
 
-Captured from the built React/Vite app served by the release visual API on 2026-08-03T21:47:42.623Z.
+Captured from the built React/Vite app served by the release visual API on 2026-08-04T00:30:26.512Z.
+
+## Build Binding
+
+Evidence is only trustworthy while this fingerprint matches
+`static/app/asset-manifest.json`. A later `build:assets` without recapture
+invalidates the screenshots even when their mtimes look fresh.
+
+- asset-manifest.sha256: `1f3992d1b7bf70ebf70fab4d3bf454e75e543b06b566a7f81f416ba64b5072ad`
+- asset-manifest.mtime: `2026-08-04T00:30:13.486Z`
+- asset-manifest.bytes: 2817
 
 ## Screenshots
 

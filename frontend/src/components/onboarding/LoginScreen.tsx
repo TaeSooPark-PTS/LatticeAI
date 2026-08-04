@@ -79,6 +79,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
       <div className="ritual-login-grid">
         <div className="ritual-login-left">
           <p className="ritual-login-statement">{t(language, "flow.login.statement")}</p>
+          <ProductPromise />
         </div>
 
         <div className="ritual-login-right">
@@ -154,7 +155,6 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
           </div>
         </div>
       </div>
-      <ProductPromise />
     </div>
   );
 }

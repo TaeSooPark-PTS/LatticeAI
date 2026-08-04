@@ -502,3 +502,134 @@ def test_admin_health_summary_ok_and_attention():
     areas = {issue["area"] for issue in attention["issues"]}
     assert "users" in areas
     assert "runtime_trust" in areas
+
+
+def test_host_capacity_readiness_buckets():
+    """System basic mode must not re-derive host capacity copy on the client."""
+    from latticeai.api.static_routes import host_capacity_readiness
+
+    assert host_capacity_readiness(cpu_pct=10, ram_pct=20, gpu_mem_pct=5) == "roomy"
+    assert host_capacity_readiness(cpu_pct=55, ram_pct=40, gpu_mem_pct=10) == "roomy"
+    assert host_capacity_readiness(cpu_pct=34, ram_pct=61, gpu_mem_pct=48) == "tight"
+    assert host_capacity_readiness(cpu_pct=80, ram_pct=10, gpu_mem_pct=10) == "tight"
+    assert host_capacity_readiness(cpu_pct=10, ram_pct=10, gpu_mem_pct=81) == "low"
+    assert host_capacity_readiness(cpu_pct=99, ram_pct=99, gpu_mem_pct=99) == "low"
+
+
+def test_prepare_stream_emits_load_before_smoke_test(monkeypatch):
+    """Install UI stage order is install → download → load → validate.
+
+    The stream must emit ``load`` before ``smoke_test`` (frontend maps
+    smoke_test → validate). Without this gate the UI can reverse the order
+    and every other suite still passes.
+    """
+    import asyncio
+    import json
+    import re
+
+    from latticeai.services import model_loading
+
+    class _Resolution:
+        def __init__(self, model_id, engine=None, user_email=None, engine_aliases=None):
+            self.load_id = model_id
+            self.engine = engine
+            self.user_email = user_email
+            self.actual_current = None
+
+        @classmethod
+        def from_request(cls, model_id, *, engine=None, user_email=None, engine_aliases=None):
+            return cls(model_id, engine=engine, user_email=user_email)
+
+        def update_after_load(self, *, actual_current):
+            self.actual_current = actual_current
+
+        def to_dict(self):
+            return {"load_id": self.load_id, "actual_current": self.actual_current}
+
+    class _Router:
+        def __init__(self):
+            self.current_model_id = "local_mlx:some-model"
+            self.load_calls = 0
+
+        async def load_model(self, model_id, adapter_path, **kwargs):
+            self.load_calls += 1
+            self.current_model_id = model_id
+            return f"loaded {model_id}"
+
+    def _progress(stage, message, **kwargs):
+        payload: Dict[str, Any] = {"stage": stage, "message": message}
+        for key, value in kwargs.items():
+            if value is not None:
+                payload[key] = value
+        return payload
+
+    async def _smoke(resolution, api_key_override=None):
+        return {"ok": True, "status": "ok"}
+
+    router = _Router()
+    deps = {
+        "normalize_local_model_request": lambda mid, engine: mid,
+        "_ModelResolution": _Resolution,
+        "parse_model_ref": lambda mid: ("local_mlx", mid.split(":", 1)[-1])
+        if ":" in mid
+        else ("local_mlx", mid),
+        "_model_runtime_compatibility": lambda model, engine=None: {"supported": True},
+        "engine_installed": lambda provider: True,
+        "_download_allowed": lambda allow: True,
+        "_engine_install_block": lambda provider: None,
+        "ensure_engine_ready": lambda provider: {"installed_now": False},
+        "hf_model_ready": lambda model, engine: True,
+        "_download_block": lambda provider, model: None,
+        "download_hf_model": lambda model, engine, progress_emit=None: {
+            "provider": engine,
+            "model": model,
+            "cached": True,
+        },
+        "ensure_ollama_server": lambda: None,
+        "local_binary": lambda name: f"/usr/bin/{name}",
+        "get_ollama_pulled_models": lambda: [],
+        "ensure_vllm_server": lambda model: None,
+        "ensure_llamacpp_server": lambda model: None,
+        "get_lmstudio_models": lambda: [],
+        "ensure_lmstudio_model": lambda model: {"instance_id": model},
+        "get_current_user": lambda request: "me@local",
+        "get_user_api_key": lambda email, provider: None,
+        "router": router,
+        "_smoke_test_loaded_model": _smoke,
+        "MODEL_ENGINE_ALIASES": {},
+        "_friendly_model_runtime_error": lambda exc, **kw: str(exc),
+        "hf_model_dir": lambda model: Path("/tmp/models") / model,
+        "model_download_progress_payload": _progress,
+        "get_lmstudio_models_raw": lambda: [],
+        "pull_ollama_model_with_progress": lambda *a, **k: None,
+    }
+    monkeypatch.setattr(model_loading, "_get_model_runtime_deps", lambda state: deps)
+
+    async def _collect() -> List[str]:
+        stages: List[str] = []
+        async for frame in model_loading.prepare_and_load_model_stream(
+            "local_mlx:some-model",
+            request=object(),
+            runtime_state=object(),
+            allow_download=True,
+        ):
+            # SSE frames: event: progress\ndata: {...}\n\n
+            for match in re.finditer(r"data: (.+?)(?:\n\n|\n$)", frame, re.DOTALL):
+                try:
+                    payload = json.loads(match.group(1))
+                except json.JSONDecodeError:
+                    continue
+                stage = payload.get("stage")
+                if isinstance(stage, str) and stage:
+                    stages.append(stage)
+        return stages
+
+    stages = asyncio.run(_collect())
+    assert "load" in stages, f"stream must emit load; got {stages}"
+    assert "smoke_test" in stages, f"stream must emit smoke_test; got {stages}"
+    assert stages.index("load") < stages.index("smoke_test"), (
+        f"load must precede smoke_test (frontend maps smoke_test→validate); got {stages}"
+    )
+    # After smoke_test comes done; never reverse load/validate again.
+    assert stages.index("smoke_test") < stages.index("done") if "done" in stages else True
+    assert router.load_calls == 1

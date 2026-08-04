@@ -4902,7 +4902,7 @@ body {
   display: grid;
   align-content: start;
   gap: 0.8rem;
-  min-height: 20rem;
+  min-height: auto;
   padding: 0.95rem;
 }
 
@@ -6024,50 +6024,48 @@ body {
   line-height: 1.45;
 }
 
-/* The promise bar reads as one quiet strip instead of three cards stacked
-   under the card that matters. */
+/* The promise bar in onboarding left column: vertical list with legible typography */
 .ritual-promise.is-quiet {
-  gap: 0;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lt-gap-tight);
+  margin: var(--lt-space-4) 0 0;
   max-width: none;
 }
 
 .ritual-promise.is-quiet div {
-  padding: 0.1rem 0.7rem;
+  padding: var(--lt-space-2) 0;
   border: 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
   border-radius: 0;
   background: transparent;
-  text-align: center;
+  text-align: left;
 }
 
-/* Three columns inside a 30rem card leaves ~9rem each, which is narrow enough
-   that the default break rule split Korean mid-word — "됩니 / 다." keep-all
-   wraps at 어절 boundaries instead, and `anywhere` still lets a long Latin
-   token like "Brain입니다" break rather than overflow. */
+.ritual-promise.is-quiet div:last-child {
+  border-bottom: 0;
+}
+
 .ritual-promise.is-quiet span,
 .ritual-promise.is-quiet strong {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
+.ritual-promise.is-quiet span {
+  display: block;
+  font-size: var(--lt-type-small);
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
 .ritual-promise.is-quiet strong {
-  font-size: 0.8rem;
-  line-height: 1.35;
-}
-
-.ritual-promise.is-quiet div + div {
-  border-left: 1px solid hsl(var(--border) / 0.5);
-}
-
-@media (max-width: 720px) {
-  .ritual-promise.is-quiet div {
-    padding: 0.4rem 0;
-  }
-
-  .ritual-promise.is-quiet div + div {
-    border-left: 0;
-    border-top: 1px solid hsl(var(--border) / 0.5);
-  }
+  display: block;
+  font-size: var(--lt-type-body);
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
 /* ── Recommendation: one hero card, then the alternatives ──────────────── */

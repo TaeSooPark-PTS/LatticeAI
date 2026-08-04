@@ -2,13 +2,13 @@
   "version": "10.6.3",
   "generated_at": "vite",
   "entrypoints": {
-    "app": "/static/app/assets/index-DfzbTJ5H.js"
+    "app": "/static/app/assets/index-DTOsctWu.js"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "_BrainSignals-BkHP96A0.js": "/static/app/assets/BrainSignals-BkHP96A0.js",
+    "_BrainSignals-BAogIuur.js": "/static/app/assets/BrainSignals-BAogIuur.js",
     "_LivingBrain-B_-gdStQ.js": "/static/app/assets/LivingBrain-B_-gdStQ.js",
-    "_ReviewCard-BHJRuBb2.js": "/static/app/assets/ReviewCard-BHJRuBb2.js",
+    "_ReviewCard-BRFHL1xN.js": "/static/app/assets/ReviewCard-BRFHL1xN.js",
     "_arrow-left-sKBLPuYu.js": "/static/app/assets/arrow-left-sKBLPuYu.js",
     "_bot-DNzqZ-rG.js": "/static/app/assets/bot-DNzqZ-rG.js",
     "_brain-DTeSSbfb.js": "/static/app/assets/brain-DTeSSbfb.js",
@@ -21,7 +21,7 @@
     "_hard-drive-CIV9D5Zd.js": "/static/app/assets/hard-drive-CIV9D5Zd.js",
     "_input-BO1MjKhT.js": "/static/app/assets/input-BO1MjKhT.js",
     "_permissionCopy-CrXXnT36.js": "/static/app/assets/permissionCopy-CrXXnT36.js",
-    "_primitives-CNgj5iV6.js": "/static/app/assets/primitives-CNgj5iV6.js",
+    "_primitives-CNcPMJ28.js": "/static/app/assets/primitives-CNcPMJ28.js",
     "_search-C_H7sdER.js": "/static/app/assets/search-C_H7sdER.js",
     "_share-2-DFmcDB6a.js": "/static/app/assets/share-2-DFmcDB6a.js",
     "_shield-alert-2BYksIro.js": "/static/app/assets/shield-alert-2BYksIro.js",
@@ -29,17 +29,17 @@
     "_useFocusTrap-DHZ79ZIW.js": "/static/app/assets/useFocusTrap-DHZ79ZIW.js",
     "_useQuery-BVRsExA3.js": "/static/app/assets/useQuery-BVRsExA3.js",
     "_utils-DYHeeX9D.js": "/static/app/assets/utils-DYHeeX9D.js",
-    "_workspace-s7m2PIMG.js": "/static/app/assets/workspace-s7m2PIMG.js",
-    "index.html": "/static/app/assets/index-DfzbTJ5H.js",
-    "assets/index-CEbNQKKO.css": "/static/app/assets/index-CEbNQKKO.css",
-    "src/components/ProductFlow.tsx": "/static/app/assets/ProductFlow-jlda8HYV.js",
-    "src/features/admin/AdminConsole.tsx": "/static/app/assets/AdminConsole-B8XgYN3C.js",
-    "src/features/brain/BrainHome.tsx": "/static/app/assets/BrainHome-CzeCHCZp.js",
-    "src/features/command/CommandPalette.tsx": "/static/app/assets/CommandPalette-Dl6ZfzOC.js",
-    "src/pages/Act.tsx": "/static/app/assets/Act-DgMD5fME.js",
-    "src/pages/Brain.tsx": "/static/app/assets/Brain-1Rh9QkP0.js",
-    "src/pages/Capture.tsx": "/static/app/assets/Capture-B94PLHQe.js",
-    "src/pages/Library.tsx": "/static/app/assets/Library-w6PZrZmE.js",
-    "src/pages/System.tsx": "/static/app/assets/System-CwhJKbL5.js"
+    "_workspace-Z7gmP2gC.js": "/static/app/assets/workspace-Z7gmP2gC.js",
+    "index.html": "/static/app/assets/index-DTOsctWu.js",
+    "assets/index-Ch3LDove.css": "/static/app/assets/index-Ch3LDove.css",
+    "src/components/ProductFlow.tsx": "/static/app/assets/ProductFlow-BNtX18aD.js",
+    "src/features/admin/AdminConsole.tsx": "/static/app/assets/AdminConsole-BElvjBEZ.js",
+    "src/features/brain/BrainHome.tsx": "/static/app/assets/BrainHome-icUMdh4s.js",
+    "src/features/command/CommandPalette.tsx": "/static/app/assets/CommandPalette-Cfb4SZyK.js",
+    "src/pages/Act.tsx": "/static/app/assets/Act-B3ZfJcs_.js",
+    "src/pages/Brain.tsx": "/static/app/assets/Brain-554KAlxK.js",
+    "src/pages/Capture.tsx": "/static/app/assets/Capture-Br6KqIOj.js",
+    "src/pages/Library.tsx": "/static/app/assets/Library-DTsihaTf.js",
+    "src/pages/System.tsx": "/static/app/assets/System-BOrtWJd3.js"
   }
 }
