@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-WORKSPACE_OS_VERSION = "10.7.0"
+WORKSPACE_OS_VERSION = "10.8.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type

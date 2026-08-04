@@ -81,8 +81,21 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
           each step leads with would have sat outside its own main. */}
       <main className="ritual-container" aria-label={t(language, "flow.shell")}>
         <LanguageChooser />
-        <div className="ritual-brain">
-          <LivingBrain state={brainStateForStep(step)} intensity={step === "install" ? 0.92 : 0.7} size="large" showLabel={false} />
+        {/* The Brain is the hero of the welcome step and a wordmark on every
+            step after it. Rendering it at hero size throughout cost ~390px at
+            the top of the login, recommend and install screens — enough that
+            the name field, the recommended model and the progress list all
+            began below the fold on a 1440x900 display, and the first thing a
+            new person had to do was scroll to find the thing they were asked
+            to do. `data-scale` shrinks the same organism instead of swapping
+            it out, so the identity carries through the flow. */}
+        <div className="ritual-brain" data-scale={step === "wake" ? "hero" : "mark"}>
+          <LivingBrain
+            state={brainStateForStep(step)}
+            intensity={step === "install" ? 0.92 : 0.7}
+            size="large"
+            showLabel={false}
+          />
           <div className="ritual-edition" title={t(language, "brain.edition.tip")}>
             {t(language, "brain.edition")}
           </div>

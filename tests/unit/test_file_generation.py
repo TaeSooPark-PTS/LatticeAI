@@ -278,3 +278,101 @@ def test_fenced_component_reply_is_extracted_then_validates():
     raw = f"Sure! Here is the component:\n```vue\n{VALID_VUE}```\nEnjoy!"
     extracted = extract_file_content(raw, "Counter.vue")
     assert validate_file_content(extracted, "Counter.vue")[0]
+
+
+# ── weak local models: choosing what to salvage, and not looping ────────
+
+
+def _scripted(replies):
+    """An async ``generate`` that returns each reply in turn, then repeats the last."""
+    calls = {"n": 0}
+
+    async def generate(_context):
+        index = min(calls["n"], len(replies) - 1)
+        calls["n"] += 1
+        return replies[index]
+
+    generate.calls = calls  # type: ignore[attr-defined]
+    return generate
+
+
+def test_repair_prefers_a_truncated_document_over_a_longer_apology():
+    """Longest-wins handed repair the apology; the document is the salvageable one.
+
+    A 1-4B model often answers once with a real but unterminated document and
+    once with a wordy refusal. The refusal is the longer string, so picking by
+    length threw away the only reply repair could actually finish.
+    """
+    truncated = "<!DOCTYPE html>\n<html>\n<head><title>Budget</title></head>\n<body><h1>Q3</h1>"
+    apology = (
+        "I'm sorry, but I can't help with generating that file. " * 6
+    )
+    assert len(apology) > len(truncated)
+
+    content, meta = asyncio.run(
+        generate_file_content(
+            _scripted([truncated, apology]),
+            target_path="page.html",
+            user_request="Q3 budget page",
+        )
+    )
+    assert meta["repaired"] is True
+    assert "<h1>Q3</h1>" in content
+    assert content.rstrip().endswith("</html>")
+    assert "I'm sorry" not in content
+
+
+def test_repeated_identical_reply_is_flagged_and_told_so():
+    """The same rejected reply twice is a wasted retry unless the model is told."""
+    prose = "Certainly! I will write that file for you now."
+    seen_contexts = []
+
+    async def generate(context):
+        seen_contexts.append(context)
+        return prose
+
+    content, meta = asyncio.run(
+        generate_file_content(
+            generate, target_path="notes.md", user_request="meeting notes"
+        )
+    )
+    assert meta["attempts"][0]["repeated"] is False
+    assert meta["attempts"][1]["repeated"] is True
+    # Detecting the duplicate has to buy something: one extra call, carrying a
+    # prompt that names the repetition. Without it the detection is a log line.
+    assert meta["attempts"][1]["escalated"] is True
+    assert len(meta["attempts"]) == 3
+    assert "do not repeat" in seen_contexts[2].lower()
+    # ...and only one extra call, no matter how long the model stays stuck.
+    assert len(seen_contexts) == 3
+    assert content  # still ends in a file, never an error
+
+
+def test_prose_only_reply_is_rejected_for_types_with_no_grammar():
+    """.md/.txt had no validation at all, so a chat answer was saved as the file."""
+    ok, reason = validate_file_content(
+        "Sure! Here is the document you asked for:", "notes.md"
+    )
+    assert not ok
+    assert "instead of being the file" in reason
+
+    ok, _ = validate_file_content("Of course, I'll write that up.", "notes.txt")
+    assert not ok
+
+
+def test_real_markdown_is_not_mistaken_for_commentary():
+    """The guard must not eat documents that merely open conversationally."""
+    doc = (
+        "Here are the notes from the planning meeting.\n\n"
+        "## Decisions\n\n- Ship 10.8.0 on Friday\n- Keep the dmg unsigned for now\n"
+    )
+    assert validate_file_content(doc, "notes.md")[0]
+
+    long_prose = "The following summary covers the quarter. " * 20
+    assert validate_file_content(long_prose, "summary.txt")[0]
+
+
+def test_markdown_still_wearing_fences_is_rejected():
+    ok, reason = validate_file_content("```md\n# Title\n```", "notes.md")
+    assert not ok
+    assert "fences" in reason

@@ -41,13 +41,15 @@ orchestrator for the product ``/agents`` surface.
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from ..utils import now_iso as _now
 from .contracts import multi_agent_contract
 
-MULTI_AGENT_VERSION = "10.7.0"
+MULTI_AGENT_VERSION = "10.8.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")
@@ -448,23 +450,102 @@ def default_role_runner(
     return runner
 
 
-def _extract_json_object(raw: str) -> Dict[str, Any]:
-    """Parse one JSON object out of an LLM response (fences/prose tolerated)."""
-    import json as _json
-    import re as _re
+def _json_object_candidates(text: str) -> List[str]:
+    """Every balanced ``{...}`` span in ``text``, outermost first.
 
+    ``find("{")`` to ``rfind("}")`` is one span, and it is the wrong one
+    whenever the model wrote anything after its object — a closing remark, a
+    second example, a stray ``}`` in prose — because the slice then contains
+    the object *and* the noise, and parses as neither. Scanning for balance
+    yields the actual objects, in the order they appear.
+
+    String literals are tracked so a brace inside ``"a } b"`` does not close a
+    span early.
+    """
+    spans: List[str] = []
+    depth = 0
+    start = -1
+    in_string = False
+    escaped = False
+    for index, char in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            if depth == 0:
+                start = index
+            depth += 1
+        elif char == "}":
+            if depth:
+                depth -= 1
+                if depth == 0 and start >= 0:
+                    spans.append(text[start : index + 1])
+    return spans
+
+
+#: A comma directly before a closing brace/bracket. Small local models emit
+#: these constantly — it is the single most common reason an otherwise correct
+#: plan is thrown away.
+_TRAILING_COMMA_RE = re.compile(r",(\s*[}\]])")
+
+#: Reasoning models wrap their scratchpad in these, and the scratchpad is full
+#: of braces. Removed before anything else so it cannot poison a span.
+_THINK_BLOCK_RE = re.compile(
+    r"<(think|thinking|reasoning|reflection)>.*?</\1>",
+    re.DOTALL | re.IGNORECASE,
+)
+_THINK_OPEN_RE = re.compile(r"<(think|thinking|reasoning)>.*\Z", re.DOTALL | re.IGNORECASE)
+
+
+def _extract_json_object(raw: str) -> Dict[str, Any]:
+    """Parse one JSON object out of an LLM response (fences/prose tolerated).
+
+    Recovery only — never invention. Every strategy here returns something the
+    model actually wrote; when none of them parse, this still raises and the
+    run fails loudly with the raw output preserved, exactly as before. The
+    point is that a 1–4B model's plan should not be discarded over a trailing
+    comma or a farewell sentence.
+    """
     text = str(raw or "").strip()
-    fenced = _re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=_re.DOTALL)
-    if fenced:
-        text = fenced.group(1)
-    elif not text.startswith("{"):
-        start, end = text.find("{"), text.rfind("}")
-        if start >= 0 and end > start:
-            text = text[start : end + 1]
-    parsed = _json.loads(text)
-    if not isinstance(parsed, dict):
-        raise ValueError("model returned JSON that is not an object")
-    return parsed
+    text = _THINK_BLOCK_RE.sub("", text)
+    text = _THINK_OPEN_RE.sub("", text).strip()
+
+    candidates: List[str] = []
+    for fenced in re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL):
+        candidates.append(fenced)
+    candidates.extend(_json_object_candidates(text))
+    if text.startswith("{"):
+        candidates.append(text)
+
+    last_error: Optional[Exception] = None
+    empty_fallback: Optional[Dict[str, Any]] = None
+    for candidate in candidates:
+        for attempt in (candidate, _TRAILING_COMMA_RE.sub(r"\1", candidate)):
+            try:
+                parsed = json.loads(attempt)
+            except ValueError as exc:
+                last_error = exc
+                continue
+            if not isinstance(parsed, dict):
+                last_error = ValueError("model returned JSON that is not an object")
+                continue
+            if parsed:
+                return parsed
+            # A prose aside like "I considered using { } notation" is a
+            # syntactically valid empty object, and taking the first thing that
+            # parses handed that back as the plan. An empty object is only ever
+            # the answer when nothing else in the reply is one.
+            empty_fallback = parsed
+    if empty_fallback is not None:
+        return empty_fallback
+    raise last_error or ValueError("model returned no JSON object")
 
 
 def llm_role_runner(

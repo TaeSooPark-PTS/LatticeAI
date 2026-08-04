@@ -5,9 +5,10 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
+from latticeai.core.messages import http_error, resolve_language
 from latticeai.core.workspace_os import DEFAULT_WORKSPACE_ID
 
 
@@ -391,17 +392,18 @@ def create_admin_router(
 
     @router.patch("/admin/users/{email:path}")
     async def admin_update_user(email: str, req: AdminUserUpdate, request: Request):
+        lang = resolve_language(request)
         admin_email, users = require_admin(request)
         if email not in users:
-            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            raise http_error(404, "auth.user_not_found", lang)
         before = public_user(email, users[email], users)
         if req.role is not None:
             if req.role not in {"admin", "user"}:
-                raise HTTPException(status_code=400, detail="role은 admin 또는 user만 가능합니다.")
+                raise http_error(400, "admin.invalid_role", lang)
             users[email]["role"] = req.role
         if req.disabled is not None:
             if email == admin_email and req.disabled:
-                raise HTTPException(status_code=400, detail="자기 자신은 비활성화할 수 없습니다.")
+                raise http_error(400, "admin.cannot_disable_self", lang)
             users[email]["disabled"] = req.disabled
         save_users(users)
         after = public_user(email, users[email], users)
@@ -410,11 +412,12 @@ def create_admin_router(
 
     @router.delete("/admin/users/{email:path}")
     async def admin_delete_user(email: str, request: Request):
+        lang = resolve_language(request)
         admin_email, users = require_admin(request)
         if email == admin_email:
-            raise HTTPException(status_code=400, detail="자기 자신은 삭제할 수 없습니다.")
+            raise http_error(400, "admin.cannot_delete_self", lang)
         if email not in users:
-            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            raise http_error(404, "auth.user_not_found", lang)
         deleted = public_user(email, users[email], users)
         append_audit_event("user_delete", user_email=admin_email, target_email=email, deleted_user=deleted)
         del users[email]

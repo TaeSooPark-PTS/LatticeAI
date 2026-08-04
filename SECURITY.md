@@ -3,16 +3,16 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **10.7.0 — Plain Surface**.
+Current release: **10.8.0 — Within Reach**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 10.7.0. Security
+The public Git tree keeps release history from 8.0.0 through 10.8.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 10.7.x (latest) | Supported |
+| 10.8.x (latest) | Supported |
 | 10.6.x | Supported |
 | 10.5.x | Supported |
 | 10.4.x | Supported |

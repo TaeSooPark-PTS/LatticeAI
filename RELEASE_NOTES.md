@@ -1,3 +1,11 @@
+# [v10.8.0 - Within Reach] (2026-08-04)
+
+이미 있었지만 손이 닿지 않던 것들 — 화면 밖으로 밀려난 버튼, 내가 고르지 않은
+언어로 온 메시지, 작은 모델이 거의 다 만들었던 파일, 아무것도 안 바뀐 걸
+확인하려고 전부 다시 읽던 인덱스.
+
+See [RELEASE_NOTES_v10.8.0.md](RELEASE_NOTES_v10.8.0.md).
+
 # [v10.7.0 - Plain Surface] (2026-08-04)
 
 12개 화면 전면 재구성 — 대시보드 격자를 해체하고 각 화면을 사용자가 하러 온 일 중심으로 다시 배치했습니다. 기능은 하나도 제거하지 않았고, 그 사실을 경로·문구 키 대조와 픽셀 델타 게이트로 기계 검증합니다.
@@ -336,7 +344,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.7.0**.
+This repository keeps public release history from **8.0.0 through 10.8.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

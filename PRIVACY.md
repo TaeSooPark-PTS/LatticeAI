@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **10.7.0 — Plain Surface**.
+Current release: **10.8.0 — Within Reach**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
