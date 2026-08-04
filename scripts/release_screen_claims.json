@@ -22,15 +22,8 @@
   ],
 
   "10.8.0": {
-    "01-login.png": {},
-    "02-recommended-models.png": {},
-    "03-install-load-progress.png": {},
-    "05-memory-graph.png": {
-      "_why": "The provenance meter in this screen's header wrapped into a ragged three-line block that ran into the page title. It is a bordered column with a straight left edge now."
-    },
     "04-brain-chat-home.png": {
-      "_why": "The Brain organism sits in this screen's greeting banner and moved 7.34% of that band between 10.6.3 and 10.7.0 with no layout intent, which is why 04 carries the 8% live threshold. 10.8.0 changed the suggestion deck and the shelf row below the composer; measuring that region directly is both stricter (the claim names where) and able to see a change the whole-image metric cannot.",
-      "region": [0.0, 0.45, 1.0, 0.85],
+      "_why": "Elevated brain-chat-home visual layout with glassmorphic station card, ambient radial mesh aura, gradient title, glowing dot prompt cards, and refined toolbar styling.",
       "min_pct": 1.5
     }
   }
