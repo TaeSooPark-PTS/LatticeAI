@@ -564,7 +564,11 @@
   align-items: stretch;
   gap: var(--lt-gap-tight);
   width: 100%;
-  margin-top: auto;
+  /* No `margin-top: auto`. Inside a column with `min-height: 100vh`, that
+     pinned this row to the floor and opened a 205px band of nothing between
+     the suggestions and it — a third of the first screen the user ever sees,
+     holding no content. The row is quieter than the composer because of how
+     it is styled, not because of how far away it sits. */
   padding-top: var(--lt-space-4);
   border-top: 1px solid hsl(var(--border) / 0.45);
   opacity: 1;
