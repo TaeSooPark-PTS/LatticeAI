@@ -34,6 +34,21 @@ function assetManifestFingerprint() {
   };
 }
 
+const mockServerPath = path.join(repoRoot, "tests", "visual", "mock_server.cjs");
+
+function mockServerFingerprint() {
+  if (!fs.existsSync(mockServerPath)) {
+    return null;
+  }
+  const body = fs.readFileSync(mockServerPath);
+  const stat = fs.statSync(mockServerPath);
+  return {
+    sha256: createHash("sha256").update(body).digest("hex"),
+    mtime: stat.mtime.toISOString(),
+    bytes: body.length,
+  };
+}
+
 /**
  * Refuse to overwrite published release screenshots for an already-tagged version.
  *
@@ -399,8 +414,12 @@ async function main() {
   if (!fingerprint) {
     throw new Error("asset-manifest.json missing after capture — cannot bind evidence");
   }
+  const mockFp = mockServerFingerprint();
+  if (!mockFp) {
+    throw new Error("tests/visual/mock_server.cjs missing after capture — cannot bind evidence");
+  }
   // Post-capture binding: if a later build:assets changes the manifest hash,
-  // check_release_evidence_bound.mjs / assertExistingEvidenceStillBoundToBuild
+  // or mock_server.cjs changes the capture payloads, check_release_evidence_bound.mjs
   // will refuse to trust these screenshots without a recapture.
   const index = `# v${version} Release Evidence
 
@@ -409,12 +428,16 @@ Captured from the built React/Vite app served by the release visual API on ${new
 ## Build Binding
 
 Evidence is only trustworthy while this fingerprint matches
-\`static/app/asset-manifest.json\`. A later \`build:assets\` without recapture
-invalidates the screenshots even when their mtimes look fresh.
+\`static/app/asset-manifest.json\` **and** \`tests/visual/mock_server.cjs\`.
+A later \`build:assets\` or mock-server edit without recapture invalidates the
+screenshots even when their mtimes look fresh.
 
 - asset-manifest.sha256: \`${fingerprint.sha256}\`
 - asset-manifest.mtime: \`${fingerprint.mtime}\`
 - asset-manifest.bytes: ${fingerprint.bytes}
+- mock-server.sha256: \`${mockFp.sha256}\`
+- mock-server.mtime: \`${mockFp.mtime}\`
+- mock-server.bytes: ${mockFp.bytes}
 
 ## Screenshots
 

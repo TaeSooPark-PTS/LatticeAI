@@ -4,6 +4,21 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.6.4] - 2026-08-04
+
+### Changed
+- 패키지·문서·릴리스 증거를 **10.6.4**로 정렬 — `product_readiness` packaging /
+  trust-docs / ecosystem-path 게이트가 현재 버전 문자열을 찾도록 README,
+  CHANGELOG, RELEASE_NOTES, 커뮤니티 문서, VS Code 확장 README 동기화
+- 릴리스 캡처 경로 `output/release/v10.6.4/` (12 스크린샷 + walkthrough gif/webm)
+- 시각 목의 승인함은 mapped(`read` → 한글 라벨) + unmapped(`delete` 원문 키)
+  두 경로를 동시에 노출 — UI i18n 회귀를 가리지 않음
+
+### Notes
+- 스키마·마이그레이션 변경 없음. SQLite Brain 데이터 호환 유지.
+- 프론트 승인 액션 키 `act.approval.action.read` / `delete` 착지는 별도 F1
+  항목; 그 전까지 캡처 09는 원문 키 노출을 증거로 남길 수 있음.
+
 ## [10.6.3] - 2026-08-04
 
 ### Security

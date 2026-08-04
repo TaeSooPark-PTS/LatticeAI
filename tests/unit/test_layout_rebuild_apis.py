@@ -1052,11 +1052,11 @@ def _deep_key_set(value: Any, *, prefix: str = "") -> set[str]:
 
 
 def test_mock_permissions_pending_matches_real_api_shape(tmp_path: Path):
-    """Mock /permissions/pending must not invent English action_label strings.
+    """Mock /permissions/pending must match real action_label bridge values.
 
-    Failure mode (capture 09): mock sends action_label="read file" while the
-    real router emits _PERMISSION_ACTION_LABELS["read"] = "파일 읽기". UI
-    built against the mock passes capture and ships a raw-key bug to prod.
+    Failure mode (capture 09): mock invents a label that does not tokenize to
+    an i18n key (or drifts from _PERMISSION_ACTION_LABELS). Act.tsx prefers
+    action_label for key derivation and t() has no defaultValue — raw keys ship.
     """
     import time
 
@@ -1070,11 +1070,14 @@ def test_mock_permissions_pending_matches_real_api_shape(tmp_path: Path):
     assert isinstance(mock["pending"], dict) and mock["pending"]
     assert mock["count"] == len(mock["pending"])
 
-    # Mock must include one mapped Korean label AND one unmapped fallback.
+    # Mock must include one mapped label (same string as the real map) AND one
+    # unmapped fallback (raw English action).
     labels = {item.get("action_label") for item in mock["pending"].values()}
     actions = {item.get("action") for item in mock["pending"].values()}
-    assert "파일 읽기" in labels, (
-        f"mock must use real Korean action_label for action=read; got {labels!r}"
+    expected_read_label = _PERMISSION_ACTION_LABELS["read"]
+    assert expected_read_label in labels, (
+        f"mock must use real action_label for action=read "
+        f"({expected_read_label!r}); got {labels!r}"
     )
     assert "read" in actions
     assert any(
@@ -1140,9 +1143,68 @@ def test_mock_permissions_pending_matches_real_api_shape(tmp_path: Path):
         expected = _PERMISSION_ACTION_LABELS.get(action, action)
         assert item.get("action_label") == expected, item
     read_item = next(v for v in real["pending"].values() if v.get("action") == "read")
-    assert read_item["action_label"] == "파일 읽기"
+    assert read_item["action_label"] == _PERMISSION_ACTION_LABELS["read"]
     delete_item = next(v for v in real["pending"].values() if v.get("action") == "delete")
     assert delete_item["action_label"] == "delete"
+    # Contract: every pending item always carries a non-empty action string.
+    for item in real["pending"].values():
+        assert isinstance(item.get("action"), str) and item["action"], item
+
+
+def _workspace_i18n_keys() -> set[str]:
+    """Parse quoted keys from frontend/src/i18n/workspace.ts (ko + en blocks)."""
+    import re
+
+    i18n_path = (
+        Path(__file__).resolve().parents[2]
+        / "frontend"
+        / "src"
+        / "i18n"
+        / "workspace.ts"
+    )
+    source = i18n_path.read_text(encoding="utf-8")
+    return set(re.findall(r'"((?:act\.approval\.action\.)[^"]+)"\s*:', source))
+
+
+def test_permission_action_labels_have_matching_i18n_keys():
+    """F1 contract: i18n keys are derived from ``action``, not action_label.
+
+    Frontend (F1) builds:
+      token = action.toLowerCase().replace(/[\\s-]+/g, '_')
+      t(`act.approval.action.${token}`, { defaultValue: action_label || action })
+
+    ``action_label`` is human-readable fallback only (Discord / missing key).
+    Deriving keys from action_label fixed a pre-F1 bridge bug into the contract
+    and left unmapped actions (e.g. delete) untested — capture 09 then showed
+    the raw key ``act.approval.action.delete``.
+
+    Cover every action PermissionGateway can surface: mapped labels (list /
+    read / write) plus at least the unmapped ``delete`` exercised by the mock
+    and real pending responses.
+    """
+    import re
+
+    from latticeai.api.permissions import _PERMISSION_ACTION_LABELS
+
+    i18n_keys = _workspace_i18n_keys()
+    assert i18n_keys, "workspace.ts must define act.approval.action.* keys"
+
+    # Mapped enum + unmapped actions that actually flow through pending.
+    actions = set(_PERMISSION_ACTION_LABELS.keys()) | {"delete"}
+
+    missing: list[str] = []
+    for action in sorted(actions):
+        # F1: key token comes from ``action``, not action_label.
+        token = re.sub(r"[\s-]+", "_", str(action).lower())
+        key = f"act.approval.action.{token}"
+        if key not in i18n_keys:
+            missing.append(f"action={action!r} → {key!r}")
+    assert not missing, (
+        "action-derived i18n keys missing from frontend/src/i18n/workspace.ts "
+        "(F1 builds act.approval.action.<action>; t() has no defaultValue). "
+        "Missing:\n  - "
+        + "\n  - ".join(missing)
+    )
 
 
 def test_mock_activity_runs_and_health_summary_key_superset():

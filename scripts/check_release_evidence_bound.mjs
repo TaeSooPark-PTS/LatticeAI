@@ -9,10 +9,15 @@
  * 3. The pre-capture guard only compares frontend/src mtime vs manifest mtime,
  *    so it still passes — while screenshots show an older UI than the build.
  *
- * Capture records asset-manifest.sha256 in SCREENSHOT_INDEX.md. This script
- * fails (exit 1) when that binding is missing or does not match the live
- * manifest. Wired into `npm run lint` so a green lint cannot ship stale
- * screenshots.
+ * Also: capture hits tests/visual/mock_server.cjs for API payloads. Changing
+ * the mock after capture (e.g. taller Act panel → 1846px vs committed 1721px)
+ * left asset-manifest.sha256 alone, so this gate used to stay green while
+ * SCREENSHOT_INDEX.md described a UI the tree no longer produces.
+ *
+ * Capture records asset-manifest.sha256 and mock-server.sha256 in
+ * SCREENSHOT_INDEX.md. This script fails (exit 1) when either binding is
+ * missing or does not match the live file. Wired into `npm run lint` so a
+ * green lint cannot ship stale screenshots.
  *
  * Exit 0 bound, 1 stale/missing, 2 could not run.
  *
@@ -38,10 +43,15 @@ const root =
   path.join(repoRoot, "output", "release", `v${version}`);
 const indexPath = path.join(root, "SCREENSHOT_INDEX.md");
 const manifestPath = path.join(repoRoot, "static", "app", "asset-manifest.json");
+const mockServerPath = path.join(repoRoot, "tests", "visual", "mock_server.cjs");
 
 function fail(message, code = 1) {
   console.error(message);
   process.exit(code);
+}
+
+function sha256File(filePath) {
+  return createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
 if (!fs.existsSync(indexPath)) {
@@ -49,6 +59,9 @@ if (!fs.existsSync(indexPath)) {
 }
 if (!fs.existsSync(manifestPath)) {
   fail("release evidence binding: static/app/asset-manifest.json missing", 2);
+}
+if (!fs.existsSync(mockServerPath)) {
+  fail("release evidence binding: tests/visual/mock_server.cjs missing", 2);
 }
 
 const index = fs.readFileSync(indexPath, "utf8");
@@ -60,9 +73,17 @@ if (!match) {
   );
 }
 
+const mockMatch = index.match(/mock-server\.sha256:\s*`?([0-9a-f]{64})`?/i);
+if (!mockMatch) {
+  fail(
+    "release evidence binding: SCREENSHOT_INDEX.md has no mock-server.sha256.\n" +
+      "  Capture data comes from tests/visual/mock_server.cjs; re-run\n" +
+      "  npm run release:evidence so the index records the mock fingerprint.",
+  );
+}
+
 const recorded = match[1].toLowerCase();
-const body = fs.readFileSync(manifestPath);
-const current = createHash("sha256").update(body).digest("hex");
+const current = sha256File(manifestPath);
 const mtime = fs.statSync(manifestPath).mtime.toISOString();
 
 if (recorded !== current) {
@@ -75,6 +96,21 @@ if (recorded !== current) {
   );
 }
 
+const recordedMock = mockMatch[1].toLowerCase();
+const currentMock = sha256File(mockServerPath);
+const mockMtime = fs.statSync(mockServerPath).mtime.toISOString();
+
+if (recordedMock !== currentMock) {
+  fail(
+    "release evidence binding: screenshots are stale relative to mock_server.cjs.\n" +
+      `  recorded mock-server.sha256: ${recordedMock}\n` +
+      `  current  mock-server.sha256: ${currentMock}\n` +
+      `  current  mtime:  ${mockMtime}\n` +
+      "  Mock API payloads changed after capture. Run: npm run release:evidence\n" +
+      "  (bump version first if vX.Y.Z is already tagged — see docs/OPERATIONS.md).",
+  );
+}
+
 console.log(
-  `release evidence binding ok: sha256=${current.slice(0, 12)}… mtime=${mtime} dir=${path.relative(repoRoot, root)}`,
+  `release evidence binding ok: asset=${current.slice(0, 12)}… mock=${currentMock.slice(0, 12)}… mtime=${mtime} dir=${path.relative(repoRoot, root)}`,
 );

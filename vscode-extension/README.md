@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.6.3 — Loud Limits.** This release makes the system state its own limits: search reports how much of the index it actually scanned, background imports survive a restart and resume, and cookie-authenticated writes verify their origin.
+**10.6.4 — Loud Limits.** Package metadata, release evidence, and current-release docs name 10.6.4 so product readiness gates cannot pass on a stale version string. 10.6.3 made the system state its own limits: search reports how much of the index it actually scanned, background imports survive a restart and resume, and cookie-authenticated writes verify their origin.
 home — and does not touch this extension; it ships unchanged apart from its
 version. Nothing an editor session depends on moved: no endpoint, token, or
 approval path changed, `strict` / `trusted` / `bypass` still travel over the
