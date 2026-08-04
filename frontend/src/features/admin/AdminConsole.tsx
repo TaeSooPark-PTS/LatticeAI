@@ -3,7 +3,7 @@ import * as React from "react";
 // table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowLeft, ListFilter, RotateCcw, Search, ServerCog, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, ListFilter, RotateCcw, Search, ShieldCheck } from "lucide-react";
 import { latticeApi, type AdminAuditFilters, type ApiResult } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -61,8 +61,17 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
           {t(language, "admin.summaryStatement", {
             users: users.length,
             logs: auditEvents.length + securityEvents.length,
-            security: securityQ.data?.ok ? t(language, "admin.status.ready") : t(language, "admin.status.unavailable"),
-            index: indexQ.data?.ok ? t(language, "admin.status.indexed") : t(language, "admin.status.unknown"),
+            // `.ok` is only "the request succeeded". A server answering 200
+            // with `status: "degraded"` was being summarised as 준비됨, which
+            // shows an admin a green light over a degraded service. Prefer the
+            // status the server actually reports and fall back to the
+            // request-level outcome only when it reports none.
+            security:
+              adminStatusLabel(securityQ.data?.data, "status") ||
+              (securityQ.data?.ok ? t(language, "admin.status.ready") : t(language, "admin.status.unavailable")),
+            index:
+              adminStatusLabel(indexQ.data?.data, "status") ||
+              (indexQ.data?.ok ? t(language, "admin.status.indexed") : t(language, "admin.status.unknown")),
           })}
         </div>
       </section>
@@ -297,14 +306,10 @@ function renderLogRow(event: ApiRecord, language: "ko" | "en") {
   );
 }
 
-function sourceLabel(result: ApiResult<unknown> | undefined, language: "ko" | "en") {
-  if (!result) return t(language, "admin.source.loading");
-  if (result.ok) return t(language, "admin.source.live");
-  // Friendly localized status first; the raw backend detail is demoted to a
-  // trailing note instead of replacing the message.
-  const friendly = t(language, "admin.status.unavailable");
-  return result.error && result.error !== friendly ? `${friendly} · ${result.error}` : friendly;
-}
+// `sourceLabel` lived here unused: the rebuilt console reports each service by
+// the status the service itself returns, not by where the answer came from, so
+// there is no longer a "live / loading / unavailable" line to label. Deleted
+// rather than left dormant — dead code reads as a wiring mistake.
 
 function adminStatusLabel(data: unknown, key: string) {
   const record = isRecord(data) ? data : {};

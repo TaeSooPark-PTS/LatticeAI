@@ -179,15 +179,4 @@ system.network.budget
 
 # Section 2 — NOT LEGACY (layout-rebuild 2026-08). Do not treat as frozen forever.
 # JUSTIFY: panel/copy removed in layout rebuild; frontend must delete i18n entries.
-act.panel.agentRuns
-act.panel.workflowRuns
-admin.metric.index
-admin.metric.logs
-admin.metric.security
-brain.graph.nodeStats
-flow.install.body
-flow.install.body.ready
-graph.advanced.desc.basic
-graph.advanced.desc.other
-graph.advanced.title
 

@@ -1361,7 +1361,7 @@ def test_mock_activity_runs_and_health_summary_key_superset():
 # round: Section 2 still has 11 keys (frontend did not delete them), so the
 # honest ceiling is 168. Raising above that is a reject; lowering is required
 # whenever Section 2 shrinks.
-I18N_ORPHAN_FIXTURE_CAP = 168  # 157 legacy + 11 section-2 residual; lower when Section 2 shrinks
+I18N_ORPHAN_FIXTURE_CAP = 157  # legacy only; the 11 section-2 keys were deleted, not tolerated
 
 # Explicit allowlist for ``t(`prefix.${...}`)`` / concat assembly. Keep this
 # list in the test file so reviews can see every runtime-prefix exception.

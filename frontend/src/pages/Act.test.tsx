@@ -190,4 +190,35 @@ describe("ActPage", () => {
     await waitFor(() => expect(screen.getByTestId("installed-automations")).toBeTruthy());
     expect(screen.getByText("매일 기억 요약")).toBeTruthy();
   });
+
+  // The approval inbox is the one screen where a person has to decide whether
+  // to let the agent touch their files. It showed `act.approval.action.파일_읽기`
+  // instead of an action, because the i18n key was built from the localised
+  // label rather than the `action` enum and `t()` returns the key on a miss.
+  // Both shapes are asserted: an unmapped English action, and a mapped action
+  // arriving with a Korean label — the second is the one that regressed.
+  describe("approval inbox action labels", () => {
+    const pendingWith = (entry: Record<string, unknown>) =>
+      ok({ pending: { "tok-1": entry }, count: 1 });
+
+    it("names an unmapped action without leaking the i18n key", async () => {
+      render({ permissionsPending: pendingWith({ action: "delete", action_label: "delete", path: "notes/old.md" }) }, {}, { initialTab: "runs" });
+      await waitFor(() => expect(screen.getByText("파일 삭제")).toBeTruthy());
+      expect(document.body.textContent).not.toContain("act.approval.action.");
+    });
+
+    it("keys off `action`, not the already-localised `action_label`", async () => {
+      render({ permissionsPending: pendingWith({ action: "read", action_label: "파일 읽기", path: "notes/a.md" }) }, {}, { initialTab: "runs" });
+      await waitFor(() => expect(screen.getByText("파일 읽기")).toBeTruthy());
+      // Keying off action_label produced the token `파일_읽기`, which matches
+      // nothing — this is the assertion that fails if that path comes back.
+      expect(document.body.textContent).not.toContain("act.approval.action.");
+    });
+
+    it("falls back to the server's label when the action has no copy at all", async () => {
+      render({ permissionsPending: pendingWith({ action: "quantum_defrag", action_label: "조각 모음", path: "x" }) }, {}, { initialTab: "runs" });
+      await waitFor(() => expect(screen.getByText("조각 모음")).toBeTruthy());
+      expect(document.body.textContent).not.toContain("act.approval.action.");
+    });
+  });
 });

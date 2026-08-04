@@ -17,7 +17,7 @@ import { InstalledAutomations } from "@/features/act/InstalledAutomations";
 import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
-import { t, type Language } from "@/i18n";
+import { COPY, t, type Language } from "@/i18n";
 import { navigateHash } from "@/features/brain/navigation";
 
 type ActTab = "runs" | "agents" | "workflows" | "hooks" | "tools";
@@ -195,9 +195,24 @@ function RunsPanel({ subTab, onSubTabChange }: { subTab: RunsSubTab; onSubTabCha
 }
 
 function HumanPermissionDetails({ data, language }: { data: Record<string, unknown>; language: Language }) {
-  const rawAction = firstString(data.action_label, data.action, data.tool, data.type) || "";
+  // The lookup key comes from `action` — the stable enum the gateway emits —
+  // not from `action_label`, which is already-localised prose. Deriving the key
+  // from the label produced `act.approval.action.파일_읽기`, which matches
+  // nothing, and `t()` returns the key itself when a lookup misses, so the
+  // approval inbox showed users a raw i18n key on the one screen where a person
+  // has to decide whether to allow a file write.
+  const rawAction = firstString(data.action, data.tool, data.type) || "";
   const actionToken = rawAction.toLowerCase().replace(/[\s-]+/g, "_");
-  const actionLabel = rawAction ? t(language, `act.approval.action.${actionToken}`, { defaultValue: rawAction }) : t(language, "act.approval.defaultAction");
+  // `t()`'s third argument is an interpolation map, not options — there is no
+  // `defaultValue`. So the fallback is an explicit lookup: registered copy if
+  // the action has any, otherwise the human-readable label the server sent.
+  const actionCopy = actionToken
+    ? COPY[language]?.[`act.approval.action.${actionToken}`] ?? COPY.ko[`act.approval.action.${actionToken}`]
+    : undefined;
+  const actionLabel =
+    actionCopy ||
+    firstString(data.action_label, rawAction) ||
+    t(language, "act.approval.defaultAction");
   const targetPath = firstString(data.path, data.target, data.file, data.resource);
   const filename = targetPath ? (targetPath.split("/").pop() || targetPath) : "";
   const requester = firstString(data.user_email, data.requested_by, data.actor);
