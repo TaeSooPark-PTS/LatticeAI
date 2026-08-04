@@ -12,15 +12,21 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.6.4 — Loud Limits.** Package metadata, release evidence, and current-release docs name 10.6.4 so product readiness gates cannot pass on a stale version string. 10.6.3 made the system state its own limits: search reports how much of the index it actually scanned, background imports survive a restart and resume, and cookie-authenticated writes verify their origin.
-home — and does not touch this extension; it ships unchanged apart from its
+**10.7.0 — Plain Surface** rebuilt all twelve app screens around what the person
+came to do. Lattice AI runs on your own machine, but it had come to look like an
+operations console — dense panel grids and developer vocabulary in front of the
+thing you opened it for. Multi-column grid usage across the page and feature
+components fell from 47 declarations to 9, and nothing was retired to get there:
+the 41 hash destinations in the app's route table are the same 41 as before.
+
+**This release does not touch the extension**; it ships unchanged apart from its
 version. Nothing an editor session depends on moved: no endpoint, token, or
 approval path changed, `strict` / `trusted` / `bypass` still travel over the
 wire, and governed tool behaviour, the approval prompts, and the audit trail are
-exactly as they were. If you switch to the app after raising a proposal, the
-Brain home you land on is now two cards — the box you type into with its own
-controls, and the suggestions on a separate card below — instead of one tall
-stack.
+exactly as they were. What you will notice is on the app side — a proposal you
+raise from the editor now lands in a 검토함 that leads the 작업 screen, and the
+approval rows name the action in words (`파일 읽기`) instead of showing the raw
+lookup key.
 
 **10.6.1 — First Things** rebuilt the layout of five app screens. One of them
 matters to anyone working between the editor and the app: a review item is

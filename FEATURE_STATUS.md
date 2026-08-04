@@ -3,7 +3,7 @@
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **10.6.3 — Ask First**.
+Current release: **10.7.0 — Plain Surface**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and

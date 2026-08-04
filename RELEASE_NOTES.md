@@ -1,3 +1,7 @@
+# [v10.7.0 - Plain Surface] (2026-08-04)
+
+12개 화면 전면 재구성 — 대시보드 격자를 해체하고 각 화면을 사용자가 하러 온 일 중심으로 다시 배치했습니다. 기능은 하나도 제거하지 않았고, 그 사실을 경로·문구 키 대조와 픽셀 델타 게이트로 기계 검증합니다.
+
 # [v10.6.3 - Loud Limits] (2026-08-04)
 
 리뷰 2026-08 지적사항 대응. 검색 recall 리포트, 잡 영속화, CSRF 가드,
@@ -332,7 +336,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.6.3**.
+This repository keeps public release history from **8.0.0 through 10.7.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

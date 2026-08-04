@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **10.6.3 — Ask First**.
+Current release: **10.7.0 — Plain Surface**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release

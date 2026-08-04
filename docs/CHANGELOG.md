@@ -4,6 +4,28 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.7.0] - 2026-08-04
+
+### Changed
+- **12개 화면 전면 재구성** — 페이지·기능 컴포넌트의 다단 격자 선언 47 → 9
+  (테스트 단언 2건 제외하면 7). 각 화면이 사용자가 하러 온 일을 1순위로 놓고,
+  개발자용 진단·관리 표면은 접이식 영역으로 내려갔습니다. 해시 경로 41개는
+  하나도 사라지지 않았습니다(41 → 41).
+- 승인함이 i18n 키 원문(`act.approval.action.파일_읽기`)을 표시하던 문제 수정 —
+  조회 키를 백엔드 `action` 열거값에서 만들고, 없으면 서버가 준 라벨로 폴백합니다.
+- 관리자 요약이 HTTP 200을 건강 상태로 오인하던 문제 수정 — 서버가 보고한
+  `status`를 우선 사용합니다.
+
+### Added
+- `scripts/check_screenshot_pixel_delta.py` — 릴리스 캡처가 이전 버전 대비 실제로
+  달라졌는지 검사. 문구만 바뀐 화면은 실패로 잡습니다.
+- `scripts/check_release_evidence_bound.mjs` — 캡처가 현재 빌드에서 나온 것인지
+  해시로 결속. lint 에 배선되어 있습니다.
+
+### Removed
+- 어느 화면에서도 렌더되지 않던 문구 키 18개 (기능은 전부 다른 경로로 도달
+  가능함을 확인 후 삭제). 문구 키에는 자동 게이트가 없어 수동 대조입니다.
+
 ## [10.6.4] - 2026-08-04
 
 ### Changed
