@@ -20,6 +20,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from latticeai.core.messages import http_error, resolve_language, translate
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -140,7 +141,7 @@ def create_models_router(
         current_user = require_user(request)
         if REQUIRE_AUTH:
             if claimed_email and _normalized_identity(claimed_email) != _normalized_identity(current_user):
-                raise HTTPException(status_code=403, detail="다른 사용자의 모델 자격 증명을 사용할 수 없습니다.")
+                raise http_error(403, "models.other_user_credentials", resolve_language(request))
             require_admin(request)
         return current_user
 
@@ -305,9 +306,14 @@ def create_models_router(
     async def engines_install(req: InstallEngineRequest, request: Request):
         _authorize_model_admin(request)
         try:
+            # `install_engine` shells out with a 900s timeout. On the event loop
+            # that is a fifteen-minute freeze of the entire server — no chat, no
+            # status, no UI — for one admin installing an engine.
             if req.confirmation_token:
-                return install_engine(req.engine, confirmation_token=req.confirmation_token)
-            return install_engine(req.engine)
+                return await asyncio.to_thread(
+                    install_engine, req.engine, confirmation_token=req.confirmation_token
+                )
+            return await asyncio.to_thread(install_engine, req.engine)
         except ModelRuntimeError as exc:
             _raise_model_http(exc)
 
@@ -326,11 +332,11 @@ def create_models_router(
         if not req.allow_download:
             raise HTTPException(
                 status_code=403,
-                detail="Model downloads require explicit user consent (allow_download=true).",
+                detail=translate("models.download_consent_required", resolve_language(request)),
             )
         model_ref = normalize_local_model_request(req.model, None)
         if not model_ref:
-            raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+            raise http_error(400, "models.identifier_empty", resolve_language(request))
 
         if ":" in model_ref and model_ref.split(":", 1)[0].strip().lower() in {"ollama", "vllm", "lmstudio", "llamacpp", "local_mlx", "mlx"}:
             provider, model_name = model_ref.split(":", 1)
@@ -340,25 +346,36 @@ def create_models_router(
             provider, model_name = "local_mlx", model_ref
 
         if not model_name:
-            raise HTTPException(status_code=400, detail="모델 이름이 비어 있습니다.")
+            raise http_error(400, "models.name_empty", resolve_language(request))
 
         if provider == "ollama":
             try:
-                ensure_ollama_server()
+                # Starts the daemon and waits for it — blocking, like the pull
+                # below, and for the same reason it may not run on the loop.
+                await asyncio.to_thread(ensure_ollama_server)
             except ModelRuntimeError as exc:
                 _raise_model_http(exc)
             ollama = local_binary("ollama")
             if not ollama:
-                raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
+                raise http_error(400, "models.ollama_missing", resolve_language(request))
             try:
-                completed = subprocess.run(
-                    [ollama, "pull", model_name],
-                    capture_output=True, text=True, timeout=900, check=False,
+                # A model pull is minutes of network I/O. Held on the event loop
+                # it stalled every other request — including the health check the
+                # UI uses to decide the server is alive — until the pull finished.
+                completed = await asyncio.to_thread(
+                    lambda: subprocess.run(
+                        [ollama, "pull", model_name],
+                        capture_output=True, text=True, timeout=900, check=False,
+                    )
                 )
             except subprocess.TimeoutExpired:
-                raise HTTPException(status_code=408, detail="모델 다운로드 시간이 초과되었습니다.")
+                raise http_error(408, "models.download_timeout", resolve_language(request))
             if completed.returncode != 0:
-                raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or "pull 실패")
+                raise HTTPException(
+                    status_code=500,
+                    detail=completed.stderr[-2000:]
+                    or translate("models.pull_failed", resolve_language(request)),
+                )
             return {"provider": provider, "model": model_name, "returncode": completed.returncode}
 
         if provider == "lmstudio":
@@ -374,12 +391,13 @@ def create_models_router(
         if provider in {"vllm", "llamacpp", "local_mlx", "mlx"}:
             download_provider = "local_mlx" if provider == "mlx" else provider
             try:
-                result = download_hf_model(model_name, download_provider)
+                # Multi-gigabyte Hugging Face download; same rule as the pull above.
+                result = await asyncio.to_thread(download_hf_model, model_name, download_provider)
             except ModelRuntimeError as exc:
                 _raise_model_http(exc)
             return {"provider": provider, "model": model_name, "returncode": 0, **result}
 
-        raise HTTPException(status_code=400, detail=f"{provider} 엔진 모델 다운로드는 아직 자동화되지 않았습니다.")
+        raise http_error(400, "models.download_not_automated", resolve_language(request), provider=provider)
 
     @router.post("/engines/prepare-model")
     async def engines_prepare_model(req: PrepareModelRequest, request: Request):
@@ -439,15 +457,15 @@ def create_models_router(
         from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS
         config = OPENAI_COMPATIBLE_PROVIDERS.get(req.provider)
         if not config:
-            raise HTTPException(status_code=400, detail="알 수 없는 프로바이더입니다.")
+            raise http_error(400, "models.unknown_provider", resolve_language(request))
         if not req.key.strip():
-            raise HTTPException(status_code=400, detail="API 키가 비어있습니다.")
+            raise http_error(400, "models.api_key_empty", resolve_language(request))
         current_user = require_user(request)
         if REQUIRE_AUTH and req.user_email and _normalized_identity(req.user_email) != _normalized_identity(current_user):
-            raise HTTPException(status_code=403, detail="다른 사용자의 API 키를 설정할 권한이 없습니다.")
+            raise http_error(403, "models.other_user_api_key", resolve_language(request))
         target_email = str(_effective_email(current_user, req.user_email) or "").strip()
         if not target_email:
-            raise HTTPException(status_code=400, detail="사용자 식별이 필요합니다. 로그인 후 다시 시도하세요.")
+            raise http_error(400, "models.sign_in_required", resolve_language(request))
         set_user_api_key(target_email, req.provider, req.key.strip())
         return {"ok": True, "provider": req.provider, "user_email": target_email, "scope": "user"}
 
@@ -502,10 +520,7 @@ def create_models_router(
             model_id = req.model_id
             requested_engine = req.engine or (model_id.split(":", 1)[0] if ":" in model_id else "local_mlx")
             if IS_PUBLIC_MODE and not ALLOW_LOCAL_MODELS and requested_engine in {"local_mlx", "mlx"}:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Public mode blocks local MLX model loading. Use openai:, openrouter:, groq:, together:, or set LATTICEAI_ALLOW_LOCAL_MODELS=true.",
-                )
+                raise http_error(400, "models.public_mode_blocks_local", resolve_language(request))
             compatibility = model_runtime_compatibility(model_id, engine=requested_engine)
             if compatibility.get("supported") is False:
                 raise HTTPException(status_code=400, detail=compatibility)
@@ -532,7 +547,7 @@ def create_models_router(
             _router.switch_model(model_id)
             return {"status": "ok", "current": _router.current_model_id}
         except KeyError:
-            raise HTTPException(status_code=404, detail=f"Model '{model_id}' not loaded. Call /models/load first.")
+            raise http_error(404, "chat.model_not_loaded", resolve_language(request), model=model_id)
 
     @router.delete("/models/unload/{model_id:path}")
     async def unload_model(model_id: str, request: Request):

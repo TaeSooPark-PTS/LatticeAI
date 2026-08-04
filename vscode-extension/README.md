@@ -12,15 +12,17 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.8.0 — Within Reach** goes after the things that were already there but out
-of reach. The onboarding flow drew a 390px decorative Brain above *every* step,
-so the login form, the recommended model and the install progress all began
-below the fold on a 1440×900 display; the organism is a hero on the welcome
-step and a small mark after it. Server-written messages — an expired session, a
-rejected password — now come back in the language you chose rather than the one
-the endpoint's author happened to write in. File generation stopped discarding a
-small model's near-miss, and re-indexing costs what changed rather than what
-exists.
+**10.9.0 — Never Blocks** fixes the local server blocking its own event loop.
+Pulling a model, installing an engine, installing an MCP package and sampling
+CPU/RAM for the System screen were all being done directly on the one event
+loop the server runs, so while any of them ran nothing else was answered — not
+another chat stream, not `/health`. A model download has a fifteen-minute
+timeout, which is how long the whole product could be frozen by one click. All
+of it moved to worker threads, with a lint rule and a test that measures the
+loop to keep it that way. Alongside: a keyboard focus ring that faded in too
+slowly to be visible when focus landed, a Brain that kept "thinking" after it
+had answered, fourteen more routers whose error messages now come back in the
+language you chose, and a welcome screen that fits on a laptop.
 
 **This release does not touch the extension**; it ships unchanged apart from its
 version. Nothing an editor session depends on moved: no endpoint, token, or

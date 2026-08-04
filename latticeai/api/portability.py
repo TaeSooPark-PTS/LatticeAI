@@ -12,6 +12,8 @@ from typing import Any, Callable, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.core.messages import http_error, resolve_language, translate
+
 
 class ImportRequest(BaseModel):
     artifact: dict
@@ -72,52 +74,52 @@ def create_portability_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    def _require_service():
+    def _require_service(request: Request):
         if service is None or not service.available():
-            raise HTTPException(status_code=503, detail="Knowledge Graph is disabled.")
+            raise http_error(503, "common.graph_disabled", resolve_language(request))
 
     @router.get("/api/knowledge-graph/portability")
     async def portability_status(request: Request):
         require_user(request)
-        _require_service()
+        _require_service(request)
         return service.snapshot_metadata()
 
     @router.get("/api/brain/storage")
     async def brain_storage_status(request: Request):
         require_user(request)
-        _require_service()
+        _require_service(request)
         return service.storage_status()
 
     @router.get("/api/knowledge-graph/backup-health")
     async def backup_health(request: Request):
         require_user(request)
-        _require_service()
+        _require_service(request)
         return service.backup_health()
 
     @router.get("/api/knowledge-graph/provenance")
     async def recent_provenance(request: Request, limit: int = 50, source_type: Optional[str] = None):
         """Recent ingestions (provenance trail) for the ingestion-sources UI."""
         require_admin(request)
-        _require_service()
+        _require_service(request)
         return service.recent_ingestions(limit=limit, source_type=source_type)
 
     @router.post("/api/knowledge-graph/export")
     async def export_graph(request: Request):
         """Logical JSON export of the whole graph (read-only)."""
         require_admin(request)
-        _require_service()
+        _require_service(request)
         return service.export()
 
     @router.post("/api/knowledge-graph/export-file")
     async def export_graph_file(request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         return service.export_to_file()
 
     @router.post("/api/knowledge-graph/import")
     async def import_graph(req: ImportRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         try:
             return service.import_data(req.artifact, mode=req.mode, dry_run=req.dry_run)
         except ValueError as exc:
@@ -126,13 +128,13 @@ def create_portability_router(
     @router.post("/api/knowledge-graph/backup")
     async def backup_graph(req: BackupRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         return service.backup(req.path)
 
     @router.post("/api/knowledge-graph/restore")
     async def restore_graph(req: RestoreRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         try:
             return service.restore(req.path, verify=req.verify, dry_run=req.dry_run, confirm=req.confirm)
         except (ValueError, FileNotFoundError) as exc:
@@ -141,7 +143,7 @@ def create_portability_router(
     @router.post("/api/knowledge-graph/archive")
     async def encrypted_archive(req: EncryptedArchiveRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         try:
             return service.encrypted_archive(req.path, passphrase=req.passphrase)
         except (ValueError, FileNotFoundError) as exc:
@@ -150,7 +152,7 @@ def create_portability_router(
     @router.post("/api/knowledge-graph/archive/inspect")
     async def inspect_encrypted_archive(req: EncryptedInspectRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         try:
             return service.inspect_encrypted_archive(req.path, passphrase=req.passphrase)
         except (ValueError, FileNotFoundError) as exc:
@@ -159,16 +161,22 @@ def create_portability_router(
     @router.post("/api/knowledge-graph/archive/verify")
     async def verify_encrypted_archive(req: EncryptedVerifyRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         result = service.verify_encrypted_archive(req.path, passphrase=req.passphrase)
         if not result.get("ok"):
-            raise HTTPException(status_code=400, detail="; ".join(result.get("errors") or ["Archive verification failed."]))
+            raise HTTPException(
+            status_code=400,
+            detail="; ".join(
+                result.get("errors")
+                or [translate("portability.verification_failed", resolve_language(request))]
+            ),
+        )
         return result
 
     @router.post("/api/knowledge-graph/archive/import")
     async def import_encrypted_archive(req: EncryptedRestoreRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         try:
             return service.import_encrypted_archive(
                 req.path,
@@ -182,7 +190,7 @@ def create_portability_router(
     @router.post("/api/knowledge-graph/archive/restore")
     async def restore_encrypted_archive(req: EncryptedRestoreRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         try:
             return service.restore_encrypted_archive(
                 req.path,
@@ -196,7 +204,7 @@ def create_portability_router(
     @router.post("/api/brain/storage/postgres/docker")
     async def setup_postgres_docker(req: DockerPostgresRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         return service.postgres_docker_setup(
             consent=req.consent,
             dry_run=req.dry_run,
@@ -206,7 +214,7 @@ def create_portability_router(
     @router.post("/api/brain/storage/migrate-postgres")
     async def migrate_sqlite_to_postgres(req: SQLiteToPostgresRequest, request: Request):
         require_admin(request)
-        _require_service()
+        _require_service(request)
         try:
             return service.migrate_sqlite_to_postgres(
                 dsn=req.dsn,

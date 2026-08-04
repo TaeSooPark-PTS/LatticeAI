@@ -106,7 +106,7 @@ def _controller(tmp_path, runtime, run_records=None):
         require_user=lambda request: getattr(request, "user", "owner@example.com"),
         require_admin=None,
         enforce_rate_limit=lambda *a, **k: None,
-        authenticated_identity=lambda current, claimed: current,
+        authenticated_identity=lambda current, claimed, language="ko": current,
         write_workspace=lambda requested, user: requested,
         save_to_history=lambda *a, **k: None,
         workspace_store=SimpleNamespace(record_agent_run=record_agent_run),

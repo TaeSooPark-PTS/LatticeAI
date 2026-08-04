@@ -1,3 +1,15 @@
+# [v10.9.0 - Never Blocks] (2026-08-05)
+
+로컬 서버는 이벤트 루프 하나로 돕니다. 모델 내려받기·엔진 설치·MCP 패키지
+설치·시스템 자원 측정이 그 루프 위에서 그대로 실행되고 있어서, 그 동안에는
+채팅 스트림도 `/health`도 응답하지 못했습니다. 모델 내려받기 타임아웃은
+15분입니다 — 클릭 한 번으로 제품 전체가 그만큼 멈출 수 있었다는 뜻입니다.
+
+함께: 보이지 않던 포커스 링, 답을 다 하고도 계속 생각하던 유기체, 여전히
+작성자의 언어로 오던 서버 메시지.
+
+See [RELEASE_NOTES_v10.9.0.md](RELEASE_NOTES_v10.9.0.md).
+
 # [v10.8.0 - Within Reach] (2026-08-04)
 
 이미 있었지만 손이 닿지 않던 것들 — 화면 밖으로 밀려난 버튼, 내가 고르지 않은
@@ -344,7 +356,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.8.0**.
+This repository keeps public release history from **8.0.0 through 10.9.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

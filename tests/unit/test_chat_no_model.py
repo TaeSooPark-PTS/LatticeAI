@@ -42,13 +42,27 @@ def test_chat_returns_clean_json_error_when_no_model_loaded(tmp_path: Path):
     )
     app.include_router(create_chat_router(context))
 
-    response = TestClient(app).post("/chat", json={"message": "hello", "stream": False})
+    client = TestClient(app)
+    response = client.post(
+        "/chat",
+        json={"message": "hello", "stream": False},
+        headers={"X-Lattice-Language": "en"},
+    )
 
     assert response.status_code == 400
     payload = response.json()
     assert payload["error"] == "no_model_loaded"
     assert payload["action"] == "load_model"
-    assert "No model loaded" in payload["detail"]
+    assert "No model is loaded" in payload["detail"]
+
+    # 10.9.0: the same refusal, in the language the person chose.
+    korean = client.post(
+        "/chat",
+        json={"message": "hello", "stream": False},
+        headers={"X-Lattice-Language": "ko"},
+    )
+    assert korean.status_code == 400
+    assert "모델" in korean.json()["detail"]
 
 
 def test_file_generation_without_inline_content_does_not_create_empty_file_when_no_model_loaded(tmp_path: Path):

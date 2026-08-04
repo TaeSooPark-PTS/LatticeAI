@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from lattice_brain.ingestion import IngestionItem
+from latticeai.core.messages import http_error, resolve_language
 from latticeai.models.router import parse_model_ref
 from latticeai.services.process_audit import command_plan
 from latticeai.setup.auto_setup import (
@@ -184,27 +185,25 @@ def create_setup_router(
         }
         url = auth_urls.get(mcp_id)
         if not url:
-            raise HTTPException(status_code=404, detail=f"알 수 없는 MCP: {mcp_id}")
+            raise http_error(404, "mcp.unknown_id", resolve_language(request), mcp_id=mcp_id)
         open_url(url)
         return {"status": "ok", "opened": url, "mcp_id": mcp_id}
     
     
     # ── First Value Loop demo corpus (backlog #3, review §3.3 P0) ────────────
 
-    def _require_demo_pipeline():
+    def _require_demo_pipeline(request: Request):
         if ingestion_pipeline is None or not ingestion_pipeline.available():
-            raise HTTPException(
-                status_code=503, detail="Knowledge Graph ingestion is disabled.",
-            )
+            raise http_error(503, "capture.ingestion_disabled", resolve_language(request))
         if knowledge_graph is None:
-            raise HTTPException(status_code=503, detail="Knowledge Graph is disabled.")
+            raise http_error(503, "common.graph_disabled", resolve_language(request))
 
     def _demo_workspace(request: Request, body_workspace: Optional[str], user: str) -> Optional[str]:
         header = request.headers.get("X-Workspace-Id")
         header = header.strip() if header and header.strip() else None
         supplied = [value for value in (body_workspace, header) if value]
         if len(set(supplied)) > 1:
-            raise HTTPException(status_code=403, detail="Workspace selectors must match.")
+            raise http_error(403, "common.workspace_mismatch", resolve_language(request))
         requested = supplied[0] if supplied else None
         if workspace_service is None:
             return requested
@@ -217,7 +216,7 @@ def create_setup_router(
     async def demo_corpus_status(request: Request):
         """Whether the demo corpus is installed + the suggestion chips."""
         require_user(request)
-        _require_demo_pipeline()
+        _require_demo_pipeline(request)
         installed = knowledge_graph.find_documents_by_uri_prefix(DEMO_URI_PREFIX)
         return {
             "installed": bool(installed),
@@ -236,7 +235,7 @@ def create_setup_router(
         instead of duplicating.
         """
         user = require_user(request)
-        _require_demo_pipeline()
+        _require_demo_pipeline(request)
         workspace_id = _demo_workspace(request, req.workspace_id if req else None, user)
         results = []
         ingested = 0
@@ -285,7 +284,7 @@ def create_setup_router(
     async def demo_corpus_remove(request: Request):
         """Remove every demo document (node + chunks + edges + orphan source)."""
         require_user(request)
-        _require_demo_pipeline()
+        _require_demo_pipeline(request)
         installed = knowledge_graph.find_documents_by_uri_prefix(DEMO_URI_PREFIX)
         removed = []
         for doc in installed:
@@ -314,7 +313,7 @@ def create_setup_router(
         }
         url = urls.get(permission_id)
         if not url:
-            raise HTTPException(status_code=404, detail="알 수 없는 권한 설정입니다.")
+            raise http_error(404, "setup.unknown_permission", resolve_language(request))
         open_url(url)
         return {"status": "ok", "opened": url, "permission": permission_id}
     return api_router

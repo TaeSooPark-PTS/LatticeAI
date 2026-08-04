@@ -157,9 +157,12 @@ async def send_message(client, chat_id, text, reply_markup=None):
 async def send_photo(client, chat_id, file_path: Path, caption: str = ""):
     url = f"{API_URL}/sendPhoto"
     try:
-        with open(file_path, "rb") as f:
-            res = await client.post(url, data={"chat_id": str(chat_id), "caption": caption[:1024]},
-                                    files={"photo": (file_path.name, f)}, timeout=60.0)
+        # Read on a worker thread: a screenshot is megabytes, and reading it
+        # inline stalled the bot's poll loop (and everything else on the loop)
+        # for the length of the read.
+        blob = await asyncio.to_thread(Path(file_path).read_bytes)
+        res = await client.post(url, data={"chat_id": str(chat_id), "caption": caption[:1024]},
+                                files={"photo": (file_path.name, blob)}, timeout=60.0)
         if res.status_code != 200:
             await send_message(client, chat_id, f"사진 전송 실패 ({res.status_code})")
     except Exception as e:
@@ -169,15 +172,15 @@ async def send_photo(client, chat_id, file_path: Path, caption: str = ""):
 async def send_document(client, chat_id, file_path, caption=None, filename=None):
     url = f"{API_URL}/sendDocument"
     try:
-        with open(file_path, "rb") as f:
-            res = await client.post(
-                url,
-                data={"chat_id": str(chat_id), **({"caption": caption[:1024]} if caption else {})},
-                files={"document": (filename or Path(file_path).name, f)},
-                timeout=300.0,
-            )
-            if res.status_code != 200:
-                logger.error("파일 전송 실패 (%s): %s", res.status_code, safe_log_text(res.text))
+        blob = await asyncio.to_thread(Path(file_path).read_bytes)
+        res = await client.post(
+            url,
+            data={"chat_id": str(chat_id), **({"caption": caption[:1024]} if caption else {})},
+            files={"document": (filename or Path(file_path).name, blob)},
+            timeout=300.0,
+        )
+        if res.status_code != 200:
+            logger.error("파일 전송 실패 (%s): %s", res.status_code, safe_log_text(res.text))
     except Exception as e:
         logger.error("파일 전송 실패: %s", safe_log_text(e))
 
@@ -584,12 +587,11 @@ async def process_document_file(client, chat_id, file_id: str, filename: str, ca
     try:
         tmp.write_bytes(raw)
         async with _server_client() as lc:
-            with open(tmp, "rb") as f:
-                res = await lc.post(
-                    UPLOAD_DOC_URL,
-                    files={"file": (filename, f)},
-                    timeout=60.0,
-                )
+            res = await lc.post(
+                UPLOAD_DOC_URL,
+                files={"file": (filename, raw)},
+                timeout=60.0,
+            )
         if res.status_code == 200:
             data = res.json()
             chars   = data.get("chars") or len(raw)

@@ -160,6 +160,36 @@ test("the Brain home is one screen: Brain, composer, add material, quiet setting
   expect(errors).toEqual([]);
 });
 
+/**
+ * 10.8.0 shipped a welcome step that measured 770px against a 747px viewport,
+ * so the very first screen of the product opened with a scrollbar and its
+ * closing line — the one that says what the person is agreeing to — sat under
+ * the fold. Two ordinary laptop heights, and the invitation has to fit in both.
+ */
+test("the welcome step fits on a laptop without scrolling", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  for (const viewport of [
+    { width: 1280, height: 747 },
+    { width: 1440, height: 800 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/app");
+    await page.getByRole("button", { name: "한국어" }).click();
+    await expect(page.getByRole("button", { name: "Brain 지금 깨우기" })).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    );
+    expect(overflow, `welcome overflows at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(1);
+
+    // The closing note is the last thing on the page, so if it is in view the
+    // whole invitation is.
+    await expect(page.locator(".ritual-start-note")).toBeInViewport({ ratio: 0.99 });
+    await expect(page.getByRole("button", { name: "Brain 지금 깨우기" })).toBeInViewport({ ratio: 0.99 });
+  }
+  expect(errors).toEqual([]);
+});
+
 test("compact desktop and low-height Brain homes keep primary controls on screen", async ({ page }) => {
   const errors = trackPageErrors(page);
   for (const viewport of [

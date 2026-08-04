@@ -11,8 +11,10 @@ from __future__ import annotations
 
 from typing import Any, Callable, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
+
+from latticeai.core.messages import http_error, resolve_language
 
 
 class CreateProjectRequest(BaseModel):
@@ -65,7 +67,7 @@ def create_project_sessions_router(
         user = require_user(request)
         record = store.get(session_id, user_email=user, workspace_id=_scope(request))
         if record is None:
-            raise HTTPException(status_code=404, detail="project not found")
+            raise http_error(404, "project.not_found", resolve_language(request))
         return record
 
     @router.patch("/api/projects/{session_id}")
@@ -80,7 +82,7 @@ def create_project_sessions_router(
             workspace_id=_scope(request, write=True),
         )
         if record is None:
-            raise HTTPException(status_code=404, detail="project not found")
+            raise http_error(404, "project.not_found", resolve_language(request))
         return record
 
     @router.put("/api/projects/{session_id}/todos")
@@ -93,7 +95,7 @@ def create_project_sessions_router(
             workspace_id=_scope(request, write=True),
         )
         if record is None:
-            raise HTTPException(status_code=404, detail="project not found")
+            raise http_error(404, "project.not_found", resolve_language(request))
         return record
 
     @router.delete("/api/projects/{session_id}")
@@ -103,7 +105,7 @@ def create_project_sessions_router(
             session_id, user_email=user, workspace_id=_scope(request, write=True)
         )
         if not removed:
-            raise HTTPException(status_code=404, detail="project not found")
+            raise http_error(404, "project.not_found", resolve_language(request))
         return {"status": "deleted", "id": session_id}
 
     return router

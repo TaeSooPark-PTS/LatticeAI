@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
+import re
 import secrets
 import subprocess
 import time
@@ -38,6 +40,59 @@ INVITE_COOKIE_TTL_SECONDS = 60 * 60 * 24 * 7
 # Thresholds live here so the frontend never re-derives copy from raw percents.
 SYSINFO_READINESS_ROOMY_MAX = 55.0
 SYSINFO_READINESS_TIGHT_MAX = 80.0
+
+
+def _probe_host_capacity() -> Dict[str, Any]:
+    """Sample CPU / RAM / GPU on this machine. Blocking — call off the loop.
+
+    Extracted from the route so the subprocess sampling can be handed to a
+    worker thread, and so the parsing is testable without an HTTP request.
+    """
+    result: Dict[str, Any] = {
+        "cpu_pct": 0.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 0.0,
+        "gpu_mem_gb": 0.0,
+        "readiness": "roomy",
+    }
+    try:
+        # CPU
+        top_out = subprocess.run(["top", "-l", "1", "-n", "0"], capture_output=True, text=True, timeout=4).stdout
+        for line in top_out.splitlines():
+            if "CPU usage" in line:
+                m = re.search(r"([\d.]+)% user.*?([\d.]+)% sys", line)
+                if m:
+                    result["cpu_pct"] = round(float(m.group(1)) + float(m.group(2)), 1)
+        # RAM
+        vm_out = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=4).stdout
+        pages: dict = {}
+        for line in vm_out.splitlines():
+            for key in ["Pages free", "Pages active", "Pages inactive", "Pages wired down", "Pages occupied by compressor"]:
+                if line.startswith(key):
+                    m = re.search(r"(\d+)", line)
+                    if m:
+                        pages[key] = int(m.group(1))
+        total = sum(pages.values())
+        used = total - pages.get("Pages free", 0)
+        result["ram_pct"] = round(used / total * 100, 1) if total else 0.0
+        # GPU (MLX / Apple Silicon unified memory)
+        try:
+            import mlx.core as _mx
+            hw_out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=2).stdout
+            total_bytes = int(hw_out.strip())
+            gpu_bytes = _mx.get_active_memory() + _mx.get_cache_memory()
+            result["gpu_mem_gb"] = round(gpu_bytes / (1024 ** 3), 2)
+            result["gpu_mem_pct"] = round(gpu_bytes / total_bytes * 100, 1) if total_bytes else 0.0
+        except Exception:
+            quiet()
+    except Exception as e:
+        result["error"] = str(e)
+    result["readiness"] = host_capacity_readiness(
+        cpu_pct=float(result.get("cpu_pct") or 0.0),
+        ram_pct=float(result.get("ram_pct") or 0.0),
+        gpu_mem_pct=float(result.get("gpu_mem_pct") or 0.0),
+    )
+    return result
 
 
 def host_capacity_readiness(
@@ -278,54 +333,15 @@ def create_static_routes_router(
 
         ``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy
         does not re-interpret raw percents on the client.
+
+        The probe itself is three subprocesses — ``top -l 1`` alone samples for
+        about a second — so it runs on a worker thread. Run inline it held the
+        event loop for the whole sample, and this route is hit on the System
+        screen *and* during first-run analysis, i.e. exactly while an answer is
+        streaming: one status poll used to stall every open stream.
         """
         require_user(request)
-        import re as _re
-        result: Dict[str, Any] = {
-            "cpu_pct": 0.0,
-            "ram_pct": 0.0,
-            "gpu_mem_pct": 0.0,
-            "gpu_mem_gb": 0.0,
-            "readiness": "roomy",
-        }
-        try:
-            # CPU
-            top_out = subprocess.run(["top", "-l", "1", "-n", "0"], capture_output=True, text=True, timeout=4).stdout
-            for line in top_out.splitlines():
-                if "CPU usage" in line:
-                    m = _re.search(r"([\d.]+)% user.*?([\d.]+)% sys", line)
-                    if m:
-                        result["cpu_pct"] = round(float(m.group(1)) + float(m.group(2)), 1)
-            # RAM
-            vm_out = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=4).stdout
-            pages: dict = {}
-            for line in vm_out.splitlines():
-                for key in ["Pages free", "Pages active", "Pages inactive", "Pages wired down", "Pages occupied by compressor"]:
-                    if line.startswith(key):
-                        m = _re.search(r"(\d+)", line)
-                        if m:
-                            pages[key] = int(m.group(1))
-            total = sum(pages.values())
-            used  = total - pages.get("Pages free", 0)
-            result["ram_pct"] = round(used / total * 100, 1) if total else 0.0
-            # GPU (MLX / Apple Silicon unified memory)
-            try:
-                import mlx.core as _mx
-                hw_out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=2).stdout
-                total_bytes = int(hw_out.strip())
-                gpu_bytes = _mx.get_active_memory() + _mx.get_cache_memory()
-                result["gpu_mem_gb"]  = round(gpu_bytes / (1024 ** 3), 2)
-                result["gpu_mem_pct"] = round(gpu_bytes / total_bytes * 100, 1) if total_bytes else 0.0
-            except Exception:
-                quiet()
-        except Exception as e:
-            result["error"] = str(e)
-        result["readiness"] = host_capacity_readiness(
-            cpu_pct=float(result.get("cpu_pct") or 0.0),
-            ram_pct=float(result.get("ram_pct") or 0.0),
-            gpu_mem_pct=float(result.get("gpu_mem_pct") or 0.0),
-        )
-        return result
+        return await asyncio.to_thread(_probe_host_capacity)
 
     return StaticRoutesBundle(
         api_router,

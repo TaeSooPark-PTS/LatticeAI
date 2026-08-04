@@ -19,6 +19,7 @@ from latticeai.api.computer_use import create_computer_use_router
 from latticeai.api.local_files import create_local_files_router
 from latticeai.api.mcp import create_mcp_router
 from latticeai.api.permissions import create_permissions_router
+from latticeai.core.messages import http_error, resolve_language
 from latticeai.services.router_context import ToolRouterContext
 from latticeai.services.tool_dispatch import (
     TOOL_GOVERNANCE,
@@ -510,7 +511,7 @@ def create_tools_router(
         )
         target = Path(path).expanduser().resolve()
         if not target.exists() or not target.is_file():
-            raise HTTPException(status_code=404, detail="File not found")
+            raise http_error(404, "common.file_not_found", resolve_language(request))
         import pypdfium2 as pdfium
         doc = None
         try:
@@ -527,7 +528,7 @@ def create_tools_router(
                 pages.append({"page": i + 1, "b64": b64})
             return {"total": total, "pages": pages}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"PDF 렌더링 실패: {e}")
+            raise http_error(500, "tools.pdf_render_failed", resolve_language(request), reason=e)
         finally:
             if doc is not None:
                 try:
@@ -544,9 +545,9 @@ def create_tools_router(
         rel = unquote(path).lstrip("/")
         target = (AGENT_ROOT / rel).resolve()
         if AGENT_ROOT not in target.parents and target != AGENT_ROOT:
-            raise HTTPException(status_code=403, detail="경로가 작업 공간 밖입니다.")
+            raise http_error(403, "tools.path_outside_workspace", resolve_language(request))
         if not target.exists() or not target.is_file():
-            raise HTTPException(status_code=404, detail="파일이 없습니다.")
+            raise http_error(404, "common.file_not_found", resolve_language(request))
         return FileResponse(
             path=target,
             filename=target.name,
@@ -570,9 +571,9 @@ def create_tools_router(
         rel = unquote(path).lstrip("/")
         target = (AGENT_ROOT / rel).resolve()
         if AGENT_ROOT not in target.parents and target != AGENT_ROOT:
-            raise HTTPException(status_code=403, detail="경로가 작업 공간 밖입니다.")
+            raise http_error(403, "tools.path_outside_workspace", resolve_language(request))
         if not target.exists() or not target.is_dir():
-            raise HTTPException(status_code=404, detail="디렉터리가 없습니다.")
+            raise http_error(404, "tools.directory_not_found", resolve_language(request))
         try:
             payload, filename = zip_workspace_dir(rel)
         except ToolError as exc:

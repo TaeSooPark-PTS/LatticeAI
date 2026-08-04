@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **10.8.0 — Within Reach**.
+Current release: **10.9.0 — Never Blocks**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`

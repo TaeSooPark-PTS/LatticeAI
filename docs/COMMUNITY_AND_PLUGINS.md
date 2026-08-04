@@ -1,6 +1,6 @@
 # Community And Plugins
 
-Current release: **10.8.0 — Within Reach**.
+Current release: **10.9.0 — Never Blocks**.
 
 LatticeAI defines the path from a strong local-first framework (8.4.0
 action-aware baseline, 8.5.0 registry+DI hardening, 8.6.0 capture/navigation

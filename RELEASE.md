@@ -13,6 +13,40 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.9.0 — Never Blocks (2026-08-05)
+
+로컬 서버가 자기 이벤트 루프를 스스로 막던 문제를 잡은 릴리스입니다.
+
+- **긴 작업이 이벤트 루프에서 내려왔습니다.** `ollama pull`, 엔진 설치,
+  Hugging Face 가중치 다운로드, MCP `pip`/`npm` 설치, `/local/sysinfo`의
+  `top`/`vm_stat`/`sysctl` 세 subprocess — 전부 `async def` 안에서 그대로
+  실행되고 있었습니다. 다운로드 타임아웃이 900초이므로 최악의 경우 15분간
+  서버 전체가 응답하지 못했습니다. `asyncio.to_thread`로 이관(스트리밍
+  변형인 `prepare_and_load_model_stream`은 원래 올바르게 하고 있었습니다).
+- **재발 방지 2중 게이트** — ruff `ASYNC210/220/221/222/230/251` 규칙 활성화
+  (`ASYNC240`는 의도적 제외: 단일 stat 호출은 스레드 전환이 더 비쌉니다),
+  그리고 `tests/unit/test_event_loop_not_blocked.py`가 핸들러 실행 중 티커
+  코루틴을 돌려 루프가 실제로 살아 있었는지를 측정합니다.
+- **보이지 않던 포커스 링 수정** — 10.8.0이 캡처 필 규칙의 transition에
+  `border-color`를 넣어, 포커스가 닿는 순간에는 아직 idle 색이었습니다.
+  같은 파일 아래쪽 공용 규칙의 주석이 정확히 이걸 금지하고 있었습니다.
+- **답변 완료 후에도 "생각 중"이던 유기체 수정** — 회상 펄스가 걸어둔 900ms
+  타이머가 스트림 종료 후에 발화하고 있었습니다.
+- **서버 메시지 i18n 14개 라우터 추가 이관** — chat/chat_history/chat_intents/
+  memory/knowledge_graph/local_files/portability/review_queue/project_sessions/
+  network_boundary/models/tools/mcp/setup. `models.py`·`mcp.py`·`tools.py`는
+  한 화면 안에서 한국어와 영어가 섞여 나오던 라우터였습니다.
+  `scripts/check_server_i18n.mjs` 게이트 + `MIGRATED_ROUTERS` 확장 + 두 목록
+  불일치를 잡는 테스트.
+- **환영 화면이 접힌 부분 위에 들어옵니다** — 770px/747px → 747px/747px.
+- **스트리밍 채팅 경로 테스트** — `frontend/src/test/fakeChatStream.ts` 가짜
+  SSE 하네스 + 11개 시나리오. `useBrainChat` 12% → 약 70%.
+
+빌드 산출물은 `dist/ltcai-10.9.0-py3-none-any.whl`, `dist/ltcai-10.9.0.tar.gz`,
+`ltcai-10.9.0.tgz`, `dist/ltcai-10.9.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_10.9.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
 ## v10.8.0 — Within Reach (2026-08-04)
 
 이미 있었지만 손이 닿지 않던 것들을 손에 닿게 만든 릴리스입니다.

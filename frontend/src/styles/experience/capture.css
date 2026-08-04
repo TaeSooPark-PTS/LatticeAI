@@ -373,6 +373,52 @@
   }
 }
 
+/* One tier tighter, for the laptop that is not 900px tall.
+   Through 10.8.0 the welcome step measured 770px against a 747px viewport, so
+   the closing line — "평균 2분 안에 첫 대화 시작 · 로컬 우선 · 사용자가 제어",
+   the sentence that tells a first-time visitor what they are agreeing to — sat
+   8px under the fold and the very first screen of the product opened with a
+   scrollbar. Nothing is removed here; the whitespace between the pieces gives
+   up the ~25px, which is where it was hiding. `tests/visual/v3.spec.js` pins
+   the result at exactly this height. */
+@media (max-height: 820px) {
+  .ritual-shell {
+    padding-block: 0.6rem;
+  }
+
+  .ritual-brain[data-scale="hero"] {
+    margin-bottom: 0.25rem;
+  }
+
+  .ritual-brain[data-scale="hero"] .brain-presence {
+    padding-top: 0.25rem;
+    padding-bottom: 0.2rem;
+  }
+
+  .ritual-brain[data-scale="hero"] .brain-organism {
+    width: clamp(104px, 10vw, 126px);
+    height: clamp(104px, 10vw, 126px);
+  }
+
+  .ritual-wake {
+    gap: 0.4rem;
+  }
+
+  .ritual-value-card {
+    padding: 0.55rem 0.7rem;
+  }
+
+  .ritual-wake-plan div {
+    padding-top: 0.25rem;
+  }
+
+  .ritual-start-note {
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+}
+
 .ritual-brain[data-scale="mark"] {
   margin: 0 auto 0.5rem;
 }

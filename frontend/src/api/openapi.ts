@@ -3898,6 +3898,12 @@ export interface paths {
          *
          *     ``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy
          *     does not re-interpret raw percents on the client.
+         *
+         *     The probe itself is three subprocesses — ``top -l 1`` alone samples for
+         *     about a second — so it runs on a worker thread. Run inline it held the
+         *     event loop for the whole sample, and this route is hit on the System
+         *     screen *and* during first-run analysis, i.e. exactly while an answer is
+         *     streaming: one status poll used to stall every open stream.
          */
         get: operations["local_sysinfo_local_sysinfo_get"];
         put?: never;

@@ -155,6 +155,228 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "저장할 내용이 없습니다. 텍스트나 페이지 내용을 함께 보내주세요.",
         "en": "Nothing to capture — send text, html, or a selection.",
     },
+    # ── shared ──────────────────────────────────────────────────────────
+    "common.user_mismatch": {
+        "ko": "로그인한 사용자와 요청한 사용자가 다릅니다.",
+        "en": "user_email must match the authenticated user.",
+    },
+    "common.workspace_mismatch": {
+        "ko": "작업 공간 지정이 서로 다릅니다.",
+        "en": "Workspace selectors must match.",
+    },
+    "common.workspace_unreadable": {
+        "ko": "'{workspace}' 작업 공간을 읽을 권한이 없습니다.",
+        "en": "Workspace '{workspace}' is not readable.",
+    },
+    "common.file_not_found": {
+        "ko": "파일을 찾을 수 없습니다.",
+        "en": "File not found.",
+    },
+    "common.path_required": {
+        "ko": "경로를 입력해주세요.",
+        "en": "A path is required.",
+    },
+    "common.graph_disabled": {
+        "ko": "지식 그래프가 꺼져 있습니다.",
+        "en": "The Knowledge Graph is turned off.",
+    },
+    "common.graph_unavailable": {
+        "ko": "지식 그래프를 사용할 수 없습니다.",
+        "en": "The Knowledge Graph is not available.",
+    },
+    # ── chat ────────────────────────────────────────────────────────────
+    "chat.model_not_loaded": {
+        "ko": "'{model}' 모델이 아직 준비되지 않았습니다.",
+        "en": "Model '{model}' is not loaded.",
+    },
+    "chat.no_model_loaded": {
+        "ko": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "en": "No model is loaded. Prepare a model first.",
+    },
+    "chat.conversation_not_found": {
+        "ko": "대화를 찾을 수 없습니다.",
+        "en": "That conversation no longer exists.",
+    },
+    "chat.file_name_collision": {
+        "ko": "'{name}' 이름의 파일이 너무 많습니다. 다른 이름을 지정해 주세요.",
+        "en": "Too many files are already named '{name}'. Please choose another name.",
+    },
+    "chat.file_generation_failed": {
+        "ko": "파일 내용을 만들지 못했습니다.",
+        "en": "The file content could not be generated.",
+    },
+    # ── memory / graph ──────────────────────────────────────────────────
+    "memory.unknown_source": {
+        "ko": "'{source}'는 알 수 없는 기억 출처입니다.",
+        "en": "Unknown memory source: {source}.",
+    },
+    "graph.node_id_required": {
+        "ko": "노드 식별자가 필요합니다.",
+        "en": "A node id is required.",
+    },
+    "graph.node_not_found": {
+        "ko": "노드를 찾을 수 없습니다.",
+        "en": "That node was not found.",
+    },
+    "graph.unsupported_type": {
+        "ko": "지원하는 종류: message, ai_response, note",
+        "en": "Supported types are: message, ai_response, note.",
+    },
+    # ── ingestion / folders ─────────────────────────────────────────────
+    "ingestion.job_not_found": {
+        "ko": "수집 작업을 찾을 수 없습니다.",
+        "en": "That ingestion job was not found.",
+    },
+    "ingestion.watch_unavailable": {
+        "ko": "폴더 감시 기능을 사용할 수 없습니다.",
+        "en": "The folder watch service is unavailable.",
+    },
+    "ingestion.watch_enable_failed": {
+        "ko": "폴더 감시를 켜지 못했습니다.",
+        "en": "Turning folder watch on did not succeed.",
+    },
+    "ingestion.watch_selector_required": {
+        "ko": "감시 항목 또는 경로가 필요합니다.",
+        "en": "A watch id or a path is required.",
+    },
+    "ingestion.watch_not_found": {
+        "ko": "감시 중인 폴더를 찾을 수 없습니다.",
+        "en": "That watched folder was not found.",
+    },
+    "portability.verification_failed": {
+        "ko": "보관 파일 검증에 실패했습니다.",
+        "en": "Archive verification failed.",
+    },
+    # ── review queue ────────────────────────────────────────────────────
+    "review.item_not_found": {
+        "ko": "검토 항목을 찾을 수 없습니다.",
+        "en": "That review item was not found.",
+    },
+    "review.cannot_approve_in_status": {
+        "ko": "'{status}' 상태의 검토 항목은 승인할 수 없습니다.",
+        "en": "A review item in status '{status}' cannot be approved.",
+    },
+    # ── projects ────────────────────────────────────────────────────────
+    "project.not_found": {
+        "ko": "프로젝트를 찾을 수 없습니다.",
+        "en": "That project was not found.",
+    },
+    # ── network boundary ────────────────────────────────────────────────
+    "boundary.policy_not_configured": {
+        "ko": "혼합 검색 정책 서비스가 설정되지 않았습니다.",
+        "en": "The hybrid policy service is not configured.",
+    },
+    # ── models ──────────────────────────────────────────────────────────
+    "models.other_user_credentials": {
+        "ko": "다른 사용자의 모델 자격 증명을 사용할 수 없습니다.",
+        "en": "You cannot use another user's model credentials.",
+    },
+    "models.download_consent_required": {
+        "ko": "모델 내려받기는 사용자가 직접 동의해야 시작됩니다.",
+        "en": "Model downloads require explicit consent (allow_download=true).",
+    },
+    "models.identifier_empty": {
+        "ko": "모델 식별자가 비어 있습니다.",
+        "en": "The model identifier is empty.",
+    },
+    "models.name_empty": {
+        "ko": "모델 이름이 비어 있습니다.",
+        "en": "The model name is empty.",
+    },
+    "models.ollama_missing": {
+        "ko": "Ollama가 설치되어 있지 않습니다.",
+        "en": "Ollama is not installed.",
+    },
+    "models.download_timeout": {
+        "ko": "모델 내려받기 시간이 초과되었습니다.",
+        "en": "The model download timed out.",
+    },
+    "models.pull_failed": {
+        "ko": "모델 내려받기에 실패했습니다.",
+        "en": "The model download failed.",
+    },
+    "models.download_not_automated": {
+        "ko": "{provider} 엔진의 모델 내려받기는 아직 자동화되지 않았습니다.",
+        "en": "Model downloads for the {provider} engine are not automated yet.",
+    },
+    "models.unknown_provider": {
+        "ko": "알 수 없는 제공자입니다.",
+        "en": "Unknown provider.",
+    },
+    "models.api_key_empty": {
+        "ko": "API 키가 비어 있습니다.",
+        "en": "The API key is empty.",
+    },
+    "models.other_user_api_key": {
+        "ko": "다른 사용자의 API 키를 설정할 권한이 없습니다.",
+        "en": "You are not allowed to set another user's API key.",
+    },
+    "models.sign_in_required": {
+        "ko": "사용자 확인이 필요합니다. 로그인 후 다시 시도하세요.",
+        "en": "Sign in first, then try again.",
+    },
+    # ── tools / files ───────────────────────────────────────────────────
+    "tools.pdf_render_failed": {
+        "ko": "PDF를 그리지 못했습니다: {reason}",
+        "en": "The PDF could not be rendered: {reason}",
+    },
+    "tools.path_outside_workspace": {
+        "ko": "경로가 작업 공간 밖입니다.",
+        "en": "That path is outside the workspace.",
+    },
+    "tools.directory_not_found": {
+        "ko": "디렉터리를 찾을 수 없습니다.",
+        "en": "That directory was not found.",
+    },
+    # ── MCP / setup ─────────────────────────────────────────────────────
+    "mcp.connector_not_found": {
+        "ko": "커넥터를 찾을 수 없습니다.",
+        "en": "That connector was not found.",
+    },
+    "mcp.name_required": {
+        "ko": "이름은 필수입니다.",
+        "en": "A name is required.",
+    },
+    "mcp.package_required": {
+        "ko": "패키지는 필수입니다.",
+        "en": "A package is required.",
+    },
+    "mcp.item_not_found": {
+        "ko": "항목을 찾을 수 없습니다.",
+        "en": "That item was not found.",
+    },
+    "mcp.unknown_id": {
+        "ko": "알 수 없는 MCP입니다: {mcp_id}",
+        "en": "Unknown MCP: {mcp_id}",
+    },
+    "setup.unknown_permission": {
+        "ko": "알 수 없는 권한 설정입니다.",
+        "en": "Unknown permission setting.",
+    },
+    "models.public_mode_blocks_local": {
+        "ko": (
+            "공개 모드에서는 로컬 MLX 모델을 불러올 수 없습니다. "
+            "openai:, openrouter:, groq:, together: 모델을 쓰거나 "
+            "LATTICEAI_ALLOW_LOCAL_MODELS=true 로 설정하세요."
+        ),
+        "en": (
+            "Public mode does not load local MLX models. Use an openai:, "
+            "openrouter:, groq: or together: model, or set "
+            "LATTICEAI_ALLOW_LOCAL_MODELS=true."
+        ),
+    },
+    "models.public_model_missing": {
+        "ko": (
+            "공개 모델이 준비되지 않았습니다. OPENAI_API_KEY 와 "
+            "LATTICEAI_PUBLIC_MODEL={model} 을 설정하거나, OpenAI 호환 모델로 "
+            "/models/load 를 호출하세요."
+        ),
+        "en": (
+            "No public model is loaded. Set OPENAI_API_KEY and "
+            "LATTICEAI_PUBLIC_MODEL={model}, or call /models/load with an "
+            "OpenAI-compatible model."
+        ),
+    },
 }
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "10.8.0"
+version = "10.9.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -130,10 +130,25 @@ extend-exclude = ["ltcai-0.3.1", "dist-smoke", "agent_workspace", "venv", "outpu
 #   RET  return       — inconsistent returns
 #   C901 complexity   — a ceiling, ratcheted down over time
 #
+# 10.9.0 added the ASYNC blocking-call rules for the same reason: this server
+# runs one event loop, and an `ollama pull` or engine install invoked straight
+# from an `async def` held it for up to fifteen minutes — no chat, no /health,
+# no UI, for everyone, while one admin downloaded a model. The rules below are
+# the ones with a real freeze behind them:
+#   ASYNC210        — blocking HTTP call
+#   ASYNC220/1/2    — starting or waiting on a subprocess
+#   ASYNC230        — opening a file
+#   ASYNC251        — time.sleep
+# ASYNC240 (pathlib) is deliberately absent: those sites are single `exists()`
+# / `is_file()` stat calls, where a thread hop costs more than the syscall.
+#
 # UP (pyupgrade) is deliberately absent: 5,046 violations, almost all
 # `Optional[X]` → `X | None`, and rewriting annotation syntax across the tree
 # is a change to every file for no behavioural gain while 3.11 is the floor.
-select = ["E4", "E7", "E9", "F", "B", "S", "I", "SIM", "RET", "C901"]
+select = [
+  "E4", "E7", "E9", "F", "B", "S", "I", "SIM", "RET", "C901",
+  "ASYNC210", "ASYNC220", "ASYNC221", "ASYNC222", "ASYNC230", "ASYNC251",
+]
 ignore = [
   # B904 (raise ... from err): 47 sites, all in handlers that deliberately
   # translate a low-level failure into a product-level message. Chaining would

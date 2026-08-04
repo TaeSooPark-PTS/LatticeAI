@@ -78,36 +78,22 @@ def _get_model_runtime_deps(runtime_state: Any):
     }
 
 
-async def prepare_and_load_model(
+def _prepare_model_sources(
+    deps: Any,
+    parsed_provider: str,
+    parsed_model: str,
     model_id: str,
-    request: Any,
-    engine: Optional[str] = None,
-    user_email: Optional[str] = None,
-    adapter_path: Optional[str] = None,
-    draft_model_id: Optional[str] = None,
-    allow_download: bool = False,
-    *,
-    runtime_state: Any,
-) -> Dict[str, object]:
-    deps = _get_model_runtime_deps(runtime_state)
-    model_id = deps["normalize_local_model_request"](model_id, engine)
-    if not model_id:
-        raise ModelRuntimeError(status_code=400, detail="모델 식별자가 비어 있습니다.")
+    allow_download: bool,
+) -> Dict[str, Any]:
+    """Make sure the engine and weights this model needs exist locally.
 
-    resolution = deps["_ModelResolution"].from_request(
-        model_id,
-        engine=engine,
-        user_email=user_email or deps["get_current_user"](request),
-        engine_aliases=deps["MODEL_ENGINE_ALIASES"],
-    )
+    Every branch here shells out, downloads, or waits on a child server, so this
+    is deliberately a plain sync function: callers run it on a worker thread
+    (see :func:`prepare_and_load_model`) rather than on the event loop.
 
-    parsed_provider, parsed_model = deps["parse_model_ref"](model_id)
-    if parsed_provider == "mlx":
-        parsed_provider = "local_mlx"
-    compatibility = deps["_model_runtime_compatibility"](parsed_model, engine=parsed_provider)
-    if compatibility.get("supported") is False:
-        raise ModelRuntimeError(status_code=400, detail=compatibility)
-
+    Returns the four values the caller needs back, including the two the
+    LM Studio branch rewrites (``parsed_model`` and ``model_id``).
+    """
     local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
     install_result: Dict[str, object] = {}
     download_result: Optional[Dict[str, object]] = None
@@ -168,6 +154,56 @@ async def prepare_and_load_model(
         parsed_model = resolved_model
         model_id = f"lmstudio:{resolved_model}"
         download_result = ensured
+
+    return {
+        "install_result": install_result,
+        "download_result": download_result,
+        "parsed_model": parsed_model,
+        "model_id": model_id,
+    }
+
+
+async def prepare_and_load_model(
+    model_id: str,
+    request: Any,
+    engine: Optional[str] = None,
+    user_email: Optional[str] = None,
+    adapter_path: Optional[str] = None,
+    draft_model_id: Optional[str] = None,
+    allow_download: bool = False,
+    *,
+    runtime_state: Any,
+) -> Dict[str, object]:
+    deps = _get_model_runtime_deps(runtime_state)
+    model_id = deps["normalize_local_model_request"](model_id, engine)
+    if not model_id:
+        raise ModelRuntimeError(status_code=400, detail="모델 식별자가 비어 있습니다.")
+
+    resolution = deps["_ModelResolution"].from_request(
+        model_id,
+        engine=engine,
+        user_email=user_email or deps["get_current_user"](request),
+        engine_aliases=deps["MODEL_ENGINE_ALIASES"],
+    )
+
+    parsed_provider, parsed_model = deps["parse_model_ref"](model_id)
+    if parsed_provider == "mlx":
+        parsed_provider = "local_mlx"
+    compatibility = deps["_model_runtime_compatibility"](parsed_model, engine=parsed_provider)
+    if compatibility.get("supported") is False:
+        raise ModelRuntimeError(status_code=400, detail=compatibility)
+
+    # Engine install, model download and local-server startup are all blocking
+    # and all measured in minutes. Run on the event loop they froze the whole
+    # server for the duration — the UI could not even poll /health to find out
+    # why. One hop to a worker thread; the async shape above is unchanged.
+    sources = await asyncio.to_thread(
+        _prepare_model_sources, deps, parsed_provider, parsed_model, model_id, allow_download
+    )
+    install_result = sources["install_result"]
+    download_result = sources["download_result"]
+    parsed_model = sources["parsed_model"]
+    model_id = sources["model_id"]
 
     effective_email = (user_email or deps["get_current_user"](request) or "").strip()
     user_api_key = deps["get_user_api_key"](effective_email, parsed_provider) if parsed_provider != "local_mlx" else None
