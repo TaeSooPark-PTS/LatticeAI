@@ -62,7 +62,7 @@ export function InstalledAutomations({ language }: { language: Language }) {
   const installed = asArray<InstalledAutomation>(data.installed);
 
   return (
-    <Card className="installed-automations xl:col-span-2" data-testid="installed-automations">
+    <Card className="installed-automations" data-testid="installed-automations">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Workflow className="h-4 w-4" /> {t(language, "act.installed.title")}
@@ -73,7 +73,7 @@ export function InstalledAutomations({ language }: { language: Language }) {
         {installed.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t(language, "act.installed.empty")}</p>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="flex flex-col gap-4">
             {installed.map((automation) => {
               const id = String(automation.id || "");
               const isBusy = runNow.isPending && runNow.variables?.id === id;

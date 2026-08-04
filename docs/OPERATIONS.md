@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v10.6.3)
+# Lattice AI — Operations Guide (v10.7.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -162,3 +162,31 @@ Ctrl+C  또는  kill <pid>
 ```
 
 서버는 종료 시 진행 중인 HTTP 요청을 완료한 후 종료됩니다 (graceful shutdown — uvicorn 기본 동작).
+
+## 10. 릴리스 증거 캡처 순서 (레이아웃·UI 변경 후)
+
+`scripts/capture_release_evidence.mjs` 의 `assertNotOverwritingTaggedRelease()` 는
+`package.json` 버전과 동일한 git 태그(`vX.Y.Z`)가 이미 있으면 **즉시 exit 1** 한다.
+레이아웃/UI를 바꾼 뒤 스크린샷을 다시 찍을 때는 반드시 아래 순서를 지킨다.
+
+1. **버전 범프 먼저** — `node scripts/run_python.mjs scripts/bump_version.py`
+   (또는 동등한 package/pyproject/extension 버전 일괄 상향). 캡처 **전에** 한다.
+2. `npm run build:assets` — 캡처는 빌드된 `static/app` 을 본다.
+3. `npm run release:evidence` — `output/release/v<새버전>/` 에만 기록한다.
+   캡처 → 오래된 버전 정리 → **픽셀 델타 검사**까지 한 번에 돈다.
+4. 결속 검사 — `SCREENSHOT_INDEX.md` 의 `asset-manifest.sha256` 과
+   `mock-server.sha256` 이 각각 `static/app/asset-manifest.json`,
+   `tests/visual/mock_server.cjs` 와 일치해야 `npm run lint` 가 통과한다.
+
+레이아웃을 바꿨다고 보고했는데 배치는 그대로인 경우를 잡기 위해 v10.7.0 부터
+`scripts/check_screenshot_pixel_delta.py` 가 12개 캡처를 직전 버전과 대조한다
+(`npm run check:screenshot-delta` 로 단독 실행). 정적 화면은 1.5%, 애니메이션이
+있는 화면은 8% 이상 픽셀이 달라져야 통과한다. 문구만 고친 화면은 여기서 실패로
+잡히므로, 실패했다면 캡처가 아니라 레이아웃을 다시 본다. 직전 버전 디렉터리가
+정리되어 없으면 기준선을 꺼낼 태그를 체크아웃한 뒤 다시 돌린다.
+
+이미 태그가 찍힌 버전의 `output/release/vX.Y.Z/` 를 WIP UI로 덮으면 그 릴리스
+증거가 영구히 거짓이 된다. 미리보기만 필요하면
+`LTCAI_RELEASE_EVIDENCE_DIR=/tmp/lattice-preview npm run release:evidence` 로
+게시 경로 밖을 쓴다. 태그된 버전의 원본 증거가 오염됐다면 태그 시점 트리에서
+해당 디렉터리를 복원한 뒤, 새 버전 디렉터리에 다시 캡처한다.

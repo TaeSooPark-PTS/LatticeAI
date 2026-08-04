@@ -408,6 +408,30 @@
   }
 }
 
+/* ── The narrow-desktop band ─────────────────────────────────────────────
+   Above 760px the mobile menu gives way to the full desktop nav and the
+   action row, but the viewport has barely grown. At 761px the topbar's
+   children add up to exactly its width with nothing left to shrink, so the
+   bar overflows the moment the labels render a few pixels wider — which is
+   what happens on CI, where the Korean glyphs are wider than they are on
+   macOS. The suite passed locally and failed in CI for that reason alone.
+
+   At 960px it gets worse rather than better: the management quick-nav joins
+   the action row, which jumps from 242px to 424px, and the primary nav is
+   squeezed to 217px against a natural 240px. It only stops being squeezed at
+   1100px, where 127px of slack finally appears.
+
+   The badge is the thing to drop across that whole band: it repeats a claim
+   the login screen and the boundary panel both make, it is the widest
+   non-interactive element in the bar at 123px, and losing it costs no
+   reachable control. Below 761px the desktop nav is hidden entirely, so the
+   badge fits and stays. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .brain-local-badge {
+    display: none;
+  }
+}
+
 @media (max-width: 460px) {
   .brain-flow-source {
     min-height: 2rem;
@@ -458,6 +482,38 @@
   .brain-shell-content:has(.brain-chat-home-card.is-empty-home) {
     height: calc(100dvh - var(--experience-header-height) - 4.3rem - env(safe-area-inset-bottom, 0px));
   }
+
+  /* The empty home is a one-viewport screen that must not scroll, so the last
+     row has to FIT rather than be scrolled to. It did not: the shelf summary
+     ended 2px below the fixed bottom nav's top edge, and the nav — being
+     fixed and painted above — swallowed the click. Locally the pointer still
+     landed on the summary's centre; on CI, where Korean glyphs render wider
+     and the row wraps taller, it did not, and the suite timed out trying to
+     open a control nothing could reach.
+
+     Tightening the quiet row's own breathing room is what buys the space
+     back. Enlarging the container would only push the row further past the
+     bar, since the page cannot scroll. */
+  .brain-centered-home > .brain-home-quiet {
+    padding-top: 0.35rem;
+    gap: 0.3rem;
+    /* Whatever else gives, this row keeps its size — it is the one that was
+       being pushed under the bar. */
+    flex: none;
+  }
+
+  /* `.brain-centered-home > * { flex: none }` in home-simple.css is right on a
+     desktop page that can grow downward, and wrong here where the height is
+     locked to one viewport that must not scroll: nothing could absorb the
+     ~2px the children exceeded the container by, so the overflow landed on
+     whichever child came last — the quiet row, which then sat under the fixed
+     bottom nav and could not be clicked. The station is the tall, elastic one
+     at 436px of a 638px column; it gives, and the row below stays reachable. */
+  .brain-centered-home > .brain-home-station {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
 
   .brain-home:has(.brain-chat-home-card.is-empty-home),
   .brain-conversation:has(.brain-chat-home-card.is-empty-home),

@@ -3,7 +3,7 @@ import * as React from "react";
 // table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowLeft, ListFilter, RotateCcw, Search, ServerCog, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, ListFilter, RotateCcw, Search, ShieldCheck } from "lucide-react";
 import { latticeApi, type AdminAuditFilters, type ApiResult } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -18,7 +18,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
   const qc = useQueryClient();
   const language = useAppStore((state) => state.language);
   const [filters, setFilters] = React.useState<AdminFilterState>({ q: "", actor: "", action: "", severity: "", limit: 50 });
-  const { summaryQ, statsQ, usersQ, auditQ, securityQ, securityEventsQ, policiesQ, rolesQ, retentionQ, indexQ, agentRuntimeQ, toolRegistryQ } = useAdminConsoleData(filters);
+  const { summaryQ, statsQ, usersQ, auditQ, securityQ, securityEventsQ, policiesQ, rolesQ, retentionQ, indexQ, agentRuntimeQ, toolRegistryQ, healthSummaryQ } = useAdminConsoleData(filters);
   const rebuildIndex = useMutation({
     mutationFn: latticeApi.rebuildIndex,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["indexStatus"] }),
@@ -30,6 +30,8 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
   const policies = asArray((policiesQ.data?.data as ApiRecord | undefined)?.policies);
   const roles = asArray((rolesQ.data?.data as ApiRecord | undefined)?.roles);
   const retention = (retentionQ.data?.data || {}) as ApiRecord;
+  const healthData = (healthSummaryQ.data?.data || healthSummaryQ.data) as ApiRecord | undefined;
+  const hasIssue = healthData?.status === "attention" || (typeof healthData?.issue_count === "number" && healthData.issue_count > 0);
 
   return (
     <main className="admin-console" aria-label={t(language, "admin.aria.console")}>
@@ -46,106 +48,129 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
         <LanguageSwitcher compact />
       </header>
 
-      <section className="admin-metrics" aria-label={t(language, "admin.overview")}>
-        <AdminMetric icon={<Users className="h-4 w-4" />} label={t(language, "admin.metric.users")} value={String(users.length)} detail={sourceLabel(usersQ.data, language)} />
-        <AdminMetric
-          icon={<Activity className="h-4 w-4" />}
-          label={t(language, "admin.metric.logs")}
-          value={String(auditEvents.length + securityEvents.length)}
-          detail={sourceLabel(auditQ.data, language)}
-        />
-        <AdminMetric
-          icon={<ShieldCheck className="h-4 w-4" />}
-          label={t(language, "admin.metric.security")}
-          value={adminStatusLabel(securityQ.data?.data, "status") || (securityQ.data?.ok ? t(language, "admin.status.ready") : t(language, "admin.status.unavailable"))}
-          detail={sourceLabel(securityQ.data, language)}
-        />
-        <AdminMetric
-          icon={<ServerCog className="h-4 w-4" />}
-          label={t(language, "admin.metric.index")}
-          value={adminStatusLabel(indexQ.data?.data, "status") || (indexQ.data?.ok ? t(language, "admin.status.indexed") : t(language, "admin.status.unknown"))}
-          detail={indexDetail(indexQ.data?.data, language)}
-        />
+      <section className="admin-metrics-statement px-4 py-3 border border-border/40 rounded-lg bg-muted/25 text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" aria-label={t(language, "admin.overview")}>
+        <div className="flex items-center gap-2 font-medium text-foreground">
+          <ShieldCheck className={`h-4 w-4 ${hasIssue ? "text-amber-500" : "text-emerald-500"}`} />
+          <span>
+            {hasIssue
+              ? t(language, "admin.health.attention", { count: String(healthData?.issue_count || 1) })
+              : t(language, "admin.health.ok")}
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {t(language, "admin.summaryStatement", {
+            users: users.length,
+            logs: auditEvents.length + securityEvents.length,
+            // `.ok` is only "the request succeeded". A server answering 200
+            // with `status: "degraded"` was being summarised as 준비됨, which
+            // shows an admin a green light over a degraded service. Prefer the
+            // status the server actually reports and fall back to the
+            // request-level outcome only when it reports none.
+            security:
+              adminStatusLabel(securityQ.data?.data, "status") ||
+              (securityQ.data?.ok ? t(language, "admin.status.ready") : t(language, "admin.status.unavailable")),
+            index:
+              adminStatusLabel(indexQ.data?.data, "status") ||
+              (indexQ.data?.ok ? t(language, "admin.status.indexed") : t(language, "admin.status.unknown")),
+          })}
+        </div>
       </section>
 
-      <section className="admin-grid">
-        <AdminPanel title={t(language, "admin.panel.users")} eyebrow={t(language, "admin.panel.people")}>
-          <AdminList
-            items={users.slice(0, 8)}
-            empty={t(language, "admin.empty.users")}
-            render={(item) => {
-              const user = item as ApiRecord;
-              return (
-                <>
-                  <strong>{stringValue(user.name || user.email || user.id, t(language, "admin.fallback.localUser"))}</strong>
-                  <span>{stringValue(user.role || user.status || user.workspace_id, t(language, "admin.fallback.member"))}</span>
-                </>
-              );
-            }}
-          />
-        </AdminPanel>
+      <section className="admin-accordion-list flex flex-col gap-4 mt-4">
+        <details className="admin-accordion-details border border-border rounded-lg bg-card p-4" open>
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.users")} · {t(language, "admin.panel.people")}</h2></summary>
+          <AdminPanel title={t(language, "admin.panel.users")} eyebrow={t(language, "admin.panel.people")}>
+            <AdminList
+              items={users.slice(0, 8)}
+              empty={t(language, "admin.empty.users")}
+              render={(item) => {
+                const user = item as ApiRecord;
+                return (
+                  <>
+                    <strong>{stringValue(user.name || user.email || user.id, t(language, "admin.fallback.localUser"))}</strong>
+                    <span>{stringValue(user.role || user.status || user.workspace_id, t(language, "admin.fallback.member"))}</span>
+                  </>
+                );
+              }}
+            />
+          </AdminPanel>
+        </details>
 
-        <AdminPanel title={t(language, "admin.panel.roles")} eyebrow={t(language, "admin.panel.access")}>
-          <AdminList
-            items={roles.slice(0, 6)}
-            empty={t(language, "admin.empty.roles")}
-            render={(item) => {
-              const role = item as ApiRecord;
-              return (
-                <>
-                  <strong>{stringValue(role.role, t(language, "admin.fallback.role"))} · {stringValue(role.members, "0")} {t(language, "admin.metric.users")}</strong>
-                  <span>{asArray(role.caps).slice(0, 4).map((cap) => stringValue(cap, "")).filter(Boolean).join(", ") || t(language, "admin.fallback.noCaps")}</span>
-                </>
-              );
-            }}
-          />
-        </AdminPanel>
+        <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.roles")} · {t(language, "admin.panel.access")}</h2></summary>
+          <AdminPanel title={t(language, "admin.panel.roles")} eyebrow={t(language, "admin.panel.access")}>
+            <AdminList
+              items={roles.slice(0, 6)}
+              empty={t(language, "admin.empty.roles")}
+              render={(item) => {
+                const role = item as ApiRecord;
+                return (
+                  <>
+                    <strong>{stringValue(role.role, t(language, "admin.fallback.role"))} · {stringValue(role.members, "0")} {t(language, "admin.metric.users")}</strong>
+                    <span>{asArray(role.caps).slice(0, 4).map((cap) => stringValue(cap, "")).filter(Boolean).join(", ") || t(language, "admin.fallback.noCaps")}</span>
+                  </>
+                );
+              }}
+            />
+          </AdminPanel>
+        </details>
 
-        <AdminPanel title={t(language, "admin.panel.logs")} eyebrow={t(language, "admin.panel.audit")}>
-          <AdminLogFilters language={language} filters={filters} onChange={setFilters} matched={(auditQ.data?.data as ApiRecord | undefined)?.filters as ApiRecord | undefined} />
-          <AdminList
-            items={auditEvents.slice(0, 8)}
-            empty={t(language, "admin.empty.audit")}
-            render={(item) => renderLogRow(item as ApiRecord, language)}
-          />
-        </AdminPanel>
+        <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.logs")} · {t(language, "admin.panel.audit")}</h2></summary>
+          <AdminPanel title={t(language, "admin.panel.logs")} eyebrow={t(language, "admin.panel.audit")}>
+            <AdminLogFilters language={language} filters={filters} onChange={setFilters} matched={(auditQ.data?.data as ApiRecord | undefined)?.filters as ApiRecord | undefined} />
+            <AdminList
+              items={auditEvents.slice(0, 8)}
+              empty={t(language, "admin.empty.audit")}
+              render={(item) => renderLogRow(item as ApiRecord, language)}
+            />
+          </AdminPanel>
+        </details>
 
-        <AdminPanel title={t(language, "admin.panel.securityEvents")} eyebrow={t(language, "admin.panel.protection")}>
-          <AdminList
-            items={securityEvents.slice(0, 8)}
-            empty={t(language, "admin.empty.security")}
-            render={(item) => renderLogRow(item as ApiRecord, language)}
-          />
-        </AdminPanel>
+        <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.securityEvents")} · {t(language, "admin.panel.protection")}</h2></summary>
+          <AdminPanel title={t(language, "admin.panel.securityEvents")} eyebrow={t(language, "admin.panel.protection")}>
+            <AdminList
+              items={securityEvents.slice(0, 8)}
+              empty={t(language, "admin.empty.security")}
+              render={(item) => renderLogRow(item as ApiRecord, language)}
+            />
+          </AdminPanel>
+        </details>
 
-        <AdminPanel title={t(language, "admin.panel.brainOps")} eyebrow={t(language, "admin.panel.maintenance")}>
-          <div className="admin-operation">
-            <div>
-              <strong>{indexDetail(indexQ.data?.data, language)}</strong>
-              <span>{summaryText(summaryQ.data?.data) || summaryText(statsQ.data?.data) || t(language, "admin.brain.summaryFallback")}</span>
+        <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.brainOps")} · {t(language, "admin.panel.maintenance")}</h2></summary>
+          <AdminPanel title={t(language, "admin.panel.brainOps")} eyebrow={t(language, "admin.panel.maintenance")}>
+            <div className="admin-operation">
+              <div>
+                <strong>{indexDetail(indexQ.data?.data, language)}</strong>
+                <span>{summaryText(summaryQ.data?.data) || summaryText(statsQ.data?.data) || t(language, "admin.brain.summaryFallback")}</span>
+              </div>
+              <Button variant="outline" size="sm" disabled={rebuildIndex.isPending} onClick={() => rebuildIndex.mutate()}>
+                <RotateCcw className="h-3.5 w-3.5" />
+                {rebuildIndex.isPending ? t(language, "admin.brain.rebuilding") : t(language, "admin.brain.rebuild")}
+              </Button>
             </div>
-            <Button variant="outline" size="sm" disabled={rebuildIndex.isPending} onClick={() => rebuildIndex.mutate()}>
-              <RotateCcw className="h-3.5 w-3.5" />
-              {rebuildIndex.isPending ? t(language, "admin.brain.rebuilding") : t(language, "admin.brain.rebuild")}
-            </Button>
-          </div>
-          <div className="admin-policy-strip">
-            {policies.slice(0, 5).map((item, index) => {
-              const policy = item as ApiRecord;
-              return <span key={`${stringValue(policy.id || policy.name, "policy")}-${index}`}>{stringValue(policy.label || policy.name || policy.id, t(language, "admin.policy.fallback"))}</span>;
-            })}
-            {!policies.length ? <span>{t(language, "admin.policy.quiet")}</span> : null}
-          </div>
-          <div className="admin-retention">
-            <strong>{t(language, "admin.retention.days", { days: stringValue(retention.retention_days, "90") })}</strong>
-            <span>{t(language, "admin.retention.detail", { events: stringValue(retention.retained_events, "0"), candidates: stringValue(retention.prune_candidates, "0") })}</span>
-          </div>
-        </AdminPanel>
+            <div className="admin-policy-strip">
+              {policies.slice(0, 5).map((item, index) => {
+                const policy = item as ApiRecord;
+                return <span key={`${stringValue(policy.id || policy.name, "policy")}-${index}`}>{stringValue(policy.label || policy.name || policy.id, t(language, "admin.policy.fallback"))}</span>;
+              })}
+              {!policies.length ? <span>{t(language, "admin.policy.quiet")}</span> : null}
+            </div>
+            <div className="admin-retention">
+              <strong>{t(language, "admin.retention.days", { days: stringValue(retention.retention_days, "90") })}</strong>
+              <span>{t(language, "admin.retention.detail", { events: stringValue(retention.retained_events, "0"), candidates: stringValue(retention.prune_candidates, "0") })}</span>
+            </div>
+          </AdminPanel>
+        </details>
 
-        <AdminPanel title={t(language, "admin.panel.runtimeTrust")} eyebrow={t(language, "admin.panel.contracts")}>
-          <RuntimeTrustPanel runtime={agentRuntimeQ.data?.data as ApiRecord | undefined} registry={toolRegistryQ.data?.data as ApiRecord | undefined} language={language} />
-        </AdminPanel>
-
+        <details className="admin-accordion-details border border-border rounded-lg bg-card p-4">
+          <summary className="font-semibold text-base cursor-pointer mb-3"><h2 className="inline font-semibold text-base">{t(language, "admin.panel.runtimeTrust")} · {t(language, "admin.panel.contracts")}</h2></summary>
+          <AdminPanel title={t(language, "admin.panel.runtimeTrust")} eyebrow={t(language, "admin.panel.contracts")}>
+            <RuntimeTrustPanel runtime={agentRuntimeQ.data?.data as ApiRecord | undefined} registry={toolRegistryQ.data?.data as ApiRecord | undefined} language={language} />
+          </AdminPanel>
+        </details>
       </section>
     </main>
   );
@@ -173,6 +198,7 @@ function useAdminConsoleData(filters: AdminFilterState) {
     indexQ: useQuery({ queryKey: ["indexStatus"], queryFn: latticeApi.indexStatus }),
     agentRuntimeQ: useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime }),
     toolRegistryQ: useQuery({ queryKey: ["toolRegistryDiagnostics"], queryFn: latticeApi.toolRegistryDiagnostics }),
+    healthSummaryQ: useQuery({ queryKey: ["adminHealthSummary"], queryFn: latticeApi.adminHealthSummary }),
   };
 }
 
@@ -251,17 +277,6 @@ function AdminLogFilters({
   );
 }
 
-function AdminMetric({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
-  return (
-    <div className="admin-metric">
-      <div>{icon}</div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </div>
-  );
-}
-
 function AdminPanel({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
   return (
     <section className="admin-panel">
@@ -291,14 +306,10 @@ function renderLogRow(event: ApiRecord, language: "ko" | "en") {
   );
 }
 
-function sourceLabel(result: ApiResult<unknown> | undefined, language: "ko" | "en") {
-  if (!result) return t(language, "admin.source.loading");
-  if (result.ok) return t(language, "admin.source.live");
-  // Friendly localized status first; the raw backend detail is demoted to a
-  // trailing note instead of replacing the message.
-  const friendly = t(language, "admin.status.unavailable");
-  return result.error && result.error !== friendly ? `${friendly} · ${result.error}` : friendly;
-}
+// `sourceLabel` lived here unused: the rebuilt console reports each service by
+// the status the service itself returns, not by where the answer came from, so
+// there is no longer a "live / loading / unavailable" line to label. Deleted
+// rather than left dormant — dead code reads as a wiring mistake.
 
 function adminStatusLabel(data: unknown, key: string) {
   const record = isRecord(data) ? data : {};

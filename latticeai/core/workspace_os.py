@@ -883,6 +883,9 @@ class WorkspaceOSStore:
     def list_workflow_runs(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         return self.runs.list_workflow_runs(*args, **kwargs)
 
+    def list_combined_runs(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.list_combined_runs(*args, **kwargs)
+
     def mark_workflow_run_resolved(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         return self.runs.mark_workflow_run_resolved(*args, **kwargs)
 

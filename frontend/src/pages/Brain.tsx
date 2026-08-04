@@ -87,10 +87,12 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
       {view === "knowledge" ? <HybridSearch /> : null}
       {view === "memory" ? <UnifiedMemoryPanel /> : null}
       {isGraph ? (
-        graph.isLoading ? <LoadingPanel title={t(language, "graph.deep.title")} /> : (
-          <DataPanel title={t(language, "graph.advanced.title")} description={mode === "basic" ? t(language, "graph.advanced.desc.basic") : t(language, "graph.advanced.desc.other")} result={graph.data}>
-            {(data) => <DigitalBrainExplorer data={data} />}
-          </DataPanel>
+        graph.isLoading ? (
+          <LoadingPanel title={t(language, "graph.deep.title")} />
+        ) : graph.data?.ok === false ? (
+          <OperationResult result={graph.data} />
+        ) : (
+          <DigitalBrainExplorer data={graph.data?.data ?? graph.data} />
         )
       ) : (
         <button
@@ -255,10 +257,17 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
   }
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 xl:grid-cols-[1fr_220px_180px_170px]">
-        <div className="relative">
+      {/* Floating control bar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={mode === "basic" ? t(language, "graph.search.basic") : t(language, "graph.search.advanced")} />
+          <Input
+            className="pl-9 bg-background/90"
+            aria-label={t(language, "graph.search.aria")}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={mode === "basic" ? t(language, "graph.search.basic") : t(language, "graph.search.advanced")}
+          />
         </div>
         <select className="h-9 rounded-md border border-border bg-background px-3 text-sm" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
           <option value="all">{t(language, "graph.group.all")}</option>
@@ -269,23 +278,33 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
           <option value="all">{t(language, "graph.labels.all")}</option>
           <option value="off">{t(language, "graph.labels.off")}</option>
         </select>
-        <Button variant="outline" onClick={() => setFitSignal((value) => value + 1)}><LocateFixed className="h-4 w-4" /> {t(language, "graph.fit")}</Button>
+        <Button variant="outline" onClick={() => setFitSignal((value) => value + 1)}>
+          <LocateFixed className="h-4 w-4" /> {t(language, "graph.fit")}
+        </Button>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[1fr_18rem]">
-        <Card>
-          <CardHeader className="flex-row items-start justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> {t(language, "graph.deep.title")}</CardTitle>
-              <CardDescription>
-                {t(language, "graph.deep.summary", { nodes: fmtNumber(model.visibleNodes.length), edges: fmtNumber(model.visibleEdges.length), total: fmtNumber(model.totalNodes) })}
-              </CardDescription>
+
+      {/* Main Canvas + Conditional Side Panel */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <div className="flex-1 w-full min-w-0 space-y-3">
+          <CytoscapeGraph
+            model={model}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            fitSignal={fitSignal}
+            ariaLabel={t(language, "graph.canvas.aria")}
+          />
+
+          {/* Quiet bottom bar for stats & filters */}
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground bg-card/60 p-2.5 rounded-lg border border-border">
+            <div className="flex items-center gap-3">
+              <span>{t(language, "graph.deep.summary", { nodes: fmtNumber(model.visibleNodes.length), edges: fmtNumber(model.visibleEdges.length), total: fmtNumber(model.totalNodes) })}</span>
+              <Badge variant={model.hiddenByFilters ? "warning" : "success"}>
+                {model.hiddenByFilters ? t(language, "graph.filtered", { count: fmtNumber(model.hiddenByFilters) }) : t(language, "graph.allInView")}
+              </Badge>
             </div>
-            <Badge variant={model.hiddenByFilters ? "warning" : "success"}>{model.hiddenByFilters ? t(language, "graph.filtered", { count: fmtNumber(model.hiddenByFilters) }) : t(language, "graph.allInView")}</Badge>
-          </CardHeader>
-          <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <label className="text-sm text-muted-foreground" htmlFor="importance">{t(language, "graph.importance")}</label>
+              <Filter className="h-3.5 w-3.5" />
+              <label htmlFor="importance">{t(language, "graph.importance")}</label>
               <input
                 id="importance"
                 type="range"
@@ -294,101 +313,100 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                 step="0.05"
                 value={minImportance}
                 onChange={(event) => setMinImportance(Number(event.target.value))}
-                className="w-44"
+                className="w-28"
                 aria-label={t(language, "graph.minImportance.aria")}
               />
               <Badge variant="muted">{Math.round(minImportance * 100)}%+</Badge>
               {selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>{t(language, "graph.clearFocus")}</Button> : null}
               {search.trim() ? <Button variant="outline" size="sm" onClick={() => backendSearch.mutate()} disabled={backendSearch.isPending}>{t(language, "graph.searchAll")}</Button> : null}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {model.groups.map((group) => (
-                <button
-                  key={group.id}
-                  onClick={() => toggleGroup(group.id)}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs hover:bg-muted"
-                >
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
-                  <span>{group.label}</span>
-                  <Badge variant={group.collapsed ? "warning" : "muted"}>{group.collapsed ? t(language, "graph.collapsed") : fmtNumber(group.count)}</Badge>
-                </button>
-              ))}
-            </div>
-            <CytoscapeGraph
-              model={model}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              fitSignal={fitSignal}
-              ariaLabel={t(language, "graph.canvas.aria")}
-            />
-          </CardContent>
-        </Card>
-        <aside className="space-y-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Focus className="h-4 w-4" /> {t(language, "graph.focus.title")}</CardTitle>
-              <CardDescription>{t(language, "graph.focus.desc")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {selected ? (
-                <>
-                  <div>
-                    <div className="text-lg font-semibold">{selected.label}</div>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      <Badge variant="muted">{graphTypeLabel(selected.type, language)}</Badge>
-                      <Badge variant="muted">{model.groups.find((group) => group.id === selected.group)?.label || selected.group}</Badge>
-                      <Badge variant="success">{t(language, "graph.importanceBadge", { n: Math.round(selected.importance * 100) })}</Badge>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            {model.groups.map((group) => (
+              <button
+                key={group.id}
+                onClick={() => toggleGroup(group.id)}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs hover:bg-muted"
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
+                <span>{group.label}</span>
+                <Badge variant={group.collapsed ? "warning" : "muted"}>{group.collapsed ? t(language, "graph.collapsed") : fmtNumber(group.count)}</Badge>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <aside className="w-full lg:w-80 space-y-3 flex-shrink-0">
+          {selectedId ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Focus className="h-4 w-4" /> {t(language, "graph.focus.title")}</CardTitle>
+                <CardDescription>{t(language, "graph.focus.desc")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {selected ? (
+                  <>
+                    <div>
+                      <div className="text-lg font-semibold">{selected.label}</div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        <Badge variant="muted">{graphTypeLabel(selected.type, language)}</Badge>
+                        <Badge variant="muted">{model.groups.find((group) => group.id === selected.group)?.label || selected.group}</Badge>
+                        <Badge variant="success">{t(language, "graph.importanceBadge", { n: Math.round(selected.importance * 100) })}</Badge>
+                      </div>
                     </div>
+                    {selected.summary ? <p className="text-sm text-muted-foreground">{selected.summary}</p> : null}
+                    {mode === "basic" ? (
+                      <KeyValueList data={{
+                        connections: selected.degree,
+                        source: selected.source || t(language, "graph.source.none"),
+                        source_type: sourceType(selected.raw, language),
+                        created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
+                      }} />
+                    ) : (
+                      <StructuredView value={{
+                        id: selected.id,
+                        degree: selected.degree,
+                        source: selected.source || t(language, "graph.source.none"),
+                        source_type: sourceType(selected.raw, language),
+                        created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
+                      }} />
+                    )}
+                    {selected.source ? <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(selected.source)}>{t(language, "graph.copySource")}</Button> : null}
+                  </>
+                ) : selectedGroup ? (
+                  <div className="space-y-2">
+                    <Badge variant="warning">{t(language, "graph.collapsedGroup")}</Badge>
+                    <div className="text-lg font-semibold">{selectedGroup.label}</div>
+                    <Button variant="outline" onClick={() => toggleGroup(selectedGroup.id)}>{t(language, "graph.expandGroup")}</Button>
                   </div>
-                  {selected.summary ? <p className="text-sm text-muted-foreground">{selected.summary}</p> : null}
-                  {mode === "basic" ? (
-                    <KeyValueList data={{
-                      connections: selected.degree,
-                      source: selected.source || t(language, "graph.source.none"),
-                      source_type: sourceType(selected.raw, language),
-                      created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
-                    }} />
-                  ) : (
-                    <StructuredView value={{
-                      id: selected.id,
-                      degree: selected.degree,
-                      source: selected.source || t(language, "graph.source.none"),
-                      source_type: sourceType(selected.raw, language),
-                      created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
-                    }} />
-                  )}
-                  {selected.source ? <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(selected.source)}>{t(language, "graph.copySource")}</Button> : null}
-                </>
-              ) : selectedGroup ? (
-                <div className="space-y-2">
-                  <Badge variant="warning">{t(language, "graph.collapsedGroup")}</Badge>
-                  <div className="text-lg font-semibold">{selectedGroup.label}</div>
-                  <Button variant="outline" onClick={() => toggleGroup(selectedGroup.id)}>{t(language, "graph.expandGroup")}</Button>
-                </div>
-              ) : <EmptyState title={t(language, "graph.nothingSelected.title")} detail={t(language, "graph.nothingSelected.detail")} />}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t(language, "graph.important.title")}</CardTitle>
-              <CardDescription>{t(language, "graph.important.desc")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {model.visibleNodes.slice(0, 8).map((node) => (
-                <button
-                  key={node.id}
-                  onClick={() => setSelectedId(node.id)}
-                  className="block w-full rounded-md border border-border bg-background p-2 text-left text-sm hover:bg-muted"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{node.label}</span>
-                    <Badge variant="muted">{graphTypeLabel(node.type, language)}</Badge>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">{t(language, "brain.graph.nodeStats", { importance: Math.round(node.importance * 100), links: fmtNumber(node.degree) })}</div>
-                </button>
-              ))}
-            </CardContent>
-          </Card>
+                ) : <EmptyState title={t(language, "graph.nothingSelected.title")} detail={t(language, "graph.nothingSelected.detail")} />}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> {t(language, "graph.important.title")}</CardTitle>
+                <CardDescription>{t(language, "graph.important.desc")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {model.visibleNodes.slice(0, 8).map((node) => (
+                  <button
+                    key={node.id}
+                    type="button"
+                    onClick={() => setSelectedId(node.id)}
+                    className="w-full text-left p-2 rounded-md hover:bg-muted border border-transparent hover:border-border transition-colors flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{node.label}</div>
+                      <div className="text-xs text-muted-foreground truncate">{graphTypeLabel(node.type, language)}</div>
+                    </div>
+                    <Badge variant="muted">{Math.round(node.importance * 100)}%</Badge>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </aside>
       </div>
       {backendSearch.data ? (

@@ -46,7 +46,11 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await page.getByRole("button", { name: "Brain 지금 깨우기" }).click();
 
   await expect(page.locator("body")).toContainText("이 Brain의 주인을 정합니다.");
-  await expect(page.locator("body")).toContainText("로컬 Brain의 소유권");
+  // The eyebrow "로컬 Brain의 소유권" is gone: the rebuilt login screen says the
+  // same thing as a sentence instead of a label above one. Assert the sentence
+  // — the claim under test is that this screen states the memory is local and
+  // owned here, not that a particular label survived.
+  await expect(page.locator("body")).toContainText("이 컴퓨터 안에서만 사는 기억을 만듭니다.");
   await expect(page.locator("body")).toContainText("먼저 안전하게 확인합니다.");
   await expect(page.locator("body")).toContainText("모델은 목소리이고, 자산은 Brain입니다.");
 
@@ -596,7 +600,10 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await page.getByRole("button", { name: "관리자 콘솔 열기" }).click();
   await expect(page).toHaveURL(/#\/admin$/);
   await expect(page.locator("main.admin-console")).toBeVisible();
-  await expect(page.locator("body")).toContainText("Admin Console");
+  // Korean UI now titles this screen 관리자 설정 — the English string was the one
+  // untranslated heading left in the product. Matched either way, like the
+  // assertions below it, so the test pins the screen and not the locale.
+  await expect(page.locator("body")).toContainText(/Admin Console|관리자 설정/);
   await expect(page.locator("body")).toContainText(/Activity Logs|활동 로그/);
   await expect(page.locator("body")).toContainText(/Security Events|보안 이벤트/);
 

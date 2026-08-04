@@ -6,6 +6,7 @@ remains as a deprecation shim. Route paths and response shapes are frozen by
 data endpoints back the v3 SPA (Files, Hybrid Search, graph explorer).
 """
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -18,6 +19,7 @@ from latticeai.api.workspace_scope import (
     resolve_workspace_scope,
     workspace_scope_from_request,
 )
+from latticeai.core.quiet import quiet
 
 
 class KnowledgeGraphIngestRequest(BaseModel):
@@ -69,6 +71,25 @@ def _format_context(matches: list, limit: int) -> str:
         summary = " ".join(str(match.get("summary") or "").split())[:700]
         lines.append(f"- [{match.get('type')}] {match.get('title')} | source={source} | {summary}")
     return "\n".join(lines)
+
+
+def _pipeline_stage_view(*, count: int, pending: int) -> Dict[str, Any]:
+    """Derive a coherent journey-ribbon stage from count + pending.
+
+    Invariants (enforced for layout-rebuild Capture screen 11):
+    - ``pending > 0`` → ``working``
+    - ``pending == 0`` and ``count > 0`` → ``done`` (never ``waiting``)
+    - ``pending == 0`` and ``count == 0`` → ``waiting`` (nothing arrived yet)
+    """
+    safe_count = max(0, int(count))
+    safe_pending = max(0, int(pending))
+    if safe_pending > 0:
+        status = "working"
+    elif safe_count > 0:
+        status = "done"
+    else:
+        status = "waiting"
+    return {"count": safe_count, "pending": safe_pending, "status": status}
 
 
 def create_knowledge_graph_router(
@@ -247,6 +268,118 @@ def create_knowledge_graph_router(
     @router.get("/knowledge-graph/stats")
     async def knowledge_graph_stats(request: Request):
         return _scoped_stats(request)
+
+    @router.get("/knowledge-graph/pipeline/status")
+    async def knowledge_graph_pipeline_status(request: Request):
+        """Per-stage counts + status for the Capture 3-step journey ribbon.
+
+        Aggregates existing store data only — no schema change. Top-level
+        ``received`` / ``extracted`` / ``connected`` stay for simple clients;
+        ``stages`` is the single source of truth for count, pending, and
+        status (``done`` / ``working`` / ``waiting``). Keys are omitted when
+        a value cannot be computed (never faked as 0 when the underlying
+        source is unavailable).
+        """
+        kg, allowed = _scoped(request)
+        received: Optional[int] = None
+        extracted: Optional[int] = None
+        connected: Optional[int] = None
+        index_pending: Optional[int] = None
+
+        try:
+            docs_payload = kg.list_documents(10_000)
+            documents = list(docs_payload.get("documents") or [])
+            if allowed is not None:
+                documents = _filter_scoped(kg, documents, allowed)
+            received = len(documents)
+            extracted = sum(
+                1
+                for doc in documents
+                if doc.get("indexed") or int(doc.get("chunks") or 0) > 0
+            )
+        except Exception:
+            quiet()
+
+        try:
+            stats = _scoped_stats(request)
+            edges = stats.get("edges")
+            if isinstance(edges, dict):
+                connected = sum(int(value or 0) for value in edges.values())
+            elif isinstance(edges, (int, float)) and not isinstance(edges, bool):
+                connected = int(edges)
+            elif isinstance(stats.get("v2"), dict):
+                v2_edges = stats["v2"].get("edges")
+                if isinstance(v2_edges, (int, float)) and not isinstance(v2_edges, bool):
+                    connected = int(v2_edges)
+            if received is None:
+                nodes = stats.get("nodes")
+                if isinstance(nodes, dict):
+                    received = sum(
+                        int(value or 0)
+                        for key, value in nodes.items()
+                        if str(key).lower() != "chunk"
+                    )
+                elif isinstance(nodes, (int, float)) and not isinstance(nodes, bool):
+                    received = int(nodes)
+        except Exception:
+            quiet()
+
+        index_fn = getattr(kg, "index_status", None)
+        if callable(index_fn):
+            try:
+                index = index_fn() or {}
+                if received is None and index.get("source_items") is not None:
+                    received = int(index.get("source_items") or 0)
+                if extracted is None and index.get("ready_items") is not None:
+                    extracted = int(index.get("ready_items") or 0)
+                if index.get("pending_items") is not None:
+                    index_pending = max(0, int(index.get("pending_items") or 0))
+                elif index.get("pending") is not None:
+                    index_pending = max(0, int(index.get("pending") or 0))
+            except Exception:
+                quiet()
+
+        payload: Dict[str, Any] = {}
+        if received is not None:
+            payload["received"] = max(0, int(received))
+        if extracted is not None:
+            payload["extracted"] = max(0, int(extracted))
+        if connected is not None:
+            payload["connected"] = max(0, int(connected))
+
+        if payload:
+            stages: Dict[str, Dict[str, Any]] = {}
+            if "received" in payload:
+                # Once listed as a document it has been received — no backlog.
+                stages["received"] = _pipeline_stage_view(
+                    count=payload["received"], pending=0
+                )
+            if "extracted" in payload:
+                # Prefer vector-index backlog; fall back to docs not yet chunked.
+                if index_pending is not None:
+                    extract_pending = index_pending
+                elif "received" in payload:
+                    extract_pending = max(
+                        0, int(payload["received"]) - int(payload["extracted"])
+                    )
+                else:
+                    extract_pending = 0
+                stages["extracted"] = _pipeline_stage_view(
+                    count=payload["extracted"], pending=extract_pending
+                )
+            if "connected" in payload:
+                # Connections are graph edges; backlog only when index reports
+                # pending items that still need linking (reuse extract backlog
+                # only when we have no better signal — 0 when graph is ready).
+                connect_pending = 0
+                if index_pending is not None and payload["connected"] == 0:
+                    connect_pending = index_pending
+                stages["connected"] = _pipeline_stage_view(
+                    count=payload["connected"], pending=connect_pending
+                )
+            payload["stages"] = stages
+            payload["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        return payload
 
     @router.get("/knowledge-graph/schema")
     async def knowledge_graph_schema(request: Request):

@@ -125,22 +125,16 @@ export function RecommendationScreen({
   }
 
   return (
-    // As on the login screen, `.ritual-*` layout is owned by styles.css, which
-    // is unlayered and beats Tailwind's `@layer utilities`. The structure below
-    // is real — one hero card instead of a CTA duplicated above the list it
-    // repeats — but the sizing and spacing that expresses it lives in CSS.
     <div className="ritual-recommend">
       <header>
         <h1 className="ritual-title">{t(language, "flow.recommend.title")}</h1>
         <p className="ritual-subtitle">{t(language, "flow.recommend.body")}</p>
+        <div className="ritual-env-line">
+          {renderEnvironmentCheck(analysis, language)}
+        </div>
       </header>
 
-      {renderEnvironmentCheck(analysis, language)}
-
-      {/* The first recommendation used to appear twice: once as a bare CTA
-          button at the top, then again as the first card of the list under it,
-          with no way to tell which one to press. It is one card now, and the
-          button lives inside it. */}
+      {/* Hero card is the main star of the screen */}
       {items[0] ? (
         <section className="ritual-primary-hero-card" aria-labelledby="recommend-primary-name">
           <div className="ritual-hero-topline">
@@ -179,12 +173,13 @@ export function RecommendationScreen({
         </section>
       ) : null}
 
+      {/* Other choices are collapsed in <details> by default */}
       {items.length > 1 ? (
-        <section className="ritual-alternatives" aria-labelledby="recommend-alternatives">
-          <h2 id="recommend-alternatives" className="ritual-alternatives-title">
-            {t(language, "flow.recommend.alternatives")}
-          </h2>
-          <div className="ritual-alt-grid">
+        <details className="ritual-alternatives-details">
+          <summary id="recommend-alternatives" className="ritual-alternatives-title cursor-pointer">
+            <h2 className="inline text-sm font-semibold">{t(language, "flow.recommend.alternatives")}</h2>
+          </summary>
+          <div className="ritual-alt-list">
             {items.slice(1, 3).map((model, index) => {
               const Icon = model.role === "faster" ? Zap : Gauge;
               return (
@@ -216,7 +211,7 @@ export function RecommendationScreen({
               );
             })}
           </div>
-        </section>
+        </details>
       ) : null}
 
       <footer className="ritual-action-row is-split">

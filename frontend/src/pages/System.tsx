@@ -3,7 +3,7 @@ import * as React from "react";
 // table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Network, ShieldCheck, UserCircle, Users } from "lucide-react";
+import { CheckCircle2, Network, ShieldCheck, UserCircle, Users } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, ModeGate, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +122,7 @@ function AccountPanel() {
   const saveProfile = useMutation({ mutationFn: () => latticeApi.updateProfile({ name, nickname }), onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }) });
   const changePassword = useMutation({ mutationFn: () => latticeApi.changePassword(password, newPassword) });
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "system.account.profile")} result={profile.data}>
         {(data) => <KeyValueList data={data as Record<string, unknown>} />}
       </DataPanel>
@@ -131,10 +131,10 @@ function AccountPanel() {
           <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> {t(language, "system.account.title")}</CardTitle>
           <CardDescription>{t(language, "system.account.detail")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3">
+        <CardContent className="flex flex-col gap-3">
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t(language, "system.account.email")} />
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t(language, "system.account.password")} />
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t(language, "system.account.name")} />
             <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={t(language, "system.account.nickname")} />
           </div>
@@ -151,7 +151,7 @@ function AccountPanel() {
           ))}
         </CardContent>
       </Card>
-      <DataPanel title={t(language, "system.account.signInOptions")} result={sso.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "system.account.signInOptions")} result={sso.data}>
         {(data) => <SignInOptionsView data={data as Record<string, unknown>} />}
       </DataPanel>
     </div>
@@ -193,10 +193,10 @@ function WorkspacePanel() {
   const accept = useMutation({ mutationFn: () => latticeApi.acceptInvitation(inviteToken), onSuccess: () => qc.invalidateQueries({ queryKey: ["workspaceRegistry"] }) });
   const workspaces = asArray<Record<string, unknown>>((registry.data?.data as Record<string, unknown>)?.workspaces);
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "system.workspace.yours")} result={registry.data}>
         {() => (
-          <div className="grid gap-2">
+          <div className="flex flex-col gap-2">
             {workspaces.map((workspace) => {
               const id = String(workspace.workspace_id || workspace.id);
               return (
@@ -223,7 +223,7 @@ function WorkspacePanel() {
           <CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" /> {t(language, "system.workspace.organizations")}</CardTitle>
           <CardDescription>{t(language, "system.workspace.organizationsHint")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3">
+        <CardContent className="flex flex-col gap-3">
           <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder={t(language, "system.workspace.orgPlaceholder")} />
           <Button disabled={!orgName.trim() || createOrg.isPending} onClick={() => createOrg.mutate()}>{t(language, "system.workspace.createOrg")}</Button>
           <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder={t(language, "system.workspace.inviteeEmail")} />
@@ -250,7 +250,7 @@ function SnapshotsPanel() {
   const compare = useMutation({ mutationFn: () => latticeApi.compareSnapshots(before, after) });
   const rows = asArray<Record<string, unknown>>((snaps.data?.data as Record<string, unknown>)?.snapshots);
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "system.snapshots.title")} result={snaps.data}>
         {() => (
           <div className="space-y-2">
@@ -274,10 +274,10 @@ function SnapshotsPanel() {
           <CardTitle>{t(language, "system.snapshots.actions")}</CardTitle>
           <CardDescription>{t(language, "system.snapshots.actionsHint")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3">
+        <CardContent className="flex flex-col gap-3">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t(language, "system.snapshots.namePlaceholder")} />
           <Button onClick={() => create.mutate()} disabled={create.isPending}>{t(language, "system.snapshots.create")}</Button>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input value={before} onChange={(e) => setBefore(e.target.value)} placeholder={t(language, "system.snapshots.beforeId")} />
             <Input value={after} onChange={(e) => setAfter(e.target.value)} placeholder={t(language, "system.snapshots.afterId")} />
           </div>
@@ -285,7 +285,7 @@ function SnapshotsPanel() {
           {compare.data ? <OperationResult result={compare.data} successLabel={t(language, "system.snapshots.compareDone")} /> : null}
         </CardContent>
       </Card>
-      <DataPanel title={t(language, "system.snapshots.timeline")} result={timeline.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "system.snapshots.timeline")} result={timeline.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).events || data} titleKey="event" metaKey="type" limit={14} />}
       </DataPanel>
     </div>
@@ -297,7 +297,7 @@ function ActivityPanel() {
   const feed = useQuery({ queryKey: ["realtimeFeed"], queryFn: latticeApi.realtimeFeed });
   const presence = useQuery({ queryKey: ["presence"], queryFn: latticeApi.presence });
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "system.activity.feed")} result={feed.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).events} titleKey="event_type" metaKey="area" limit={14} />}
       </DataPanel>
@@ -321,7 +321,7 @@ function NetworkPanel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["networkPeers"] }),
   });
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "system.network.identity")} result={identity.data}>
         {(data) => <DeviceIdentityView data={data as Record<string, unknown>} />}
       </DataPanel>
@@ -415,7 +415,7 @@ function SettingsPanel() {
     },
   });
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
+    <div className="flex flex-col gap-4 max-w-[54rem]">
       <Card>
         <CardHeader>
           <CardTitle>{t(language, "system.panel.appearance")}</CardTitle>
@@ -426,9 +426,7 @@ function SettingsPanel() {
           <Button variant={theme === "light" ? "default" : "outline"} onClick={() => setTheme("light")}>{t(language, "system.theme.light")}</Button>
         </CardContent>
       </Card>
-      {/* Basic/advanced/admin decide how much detail a screen shows — that is not
-          "appearance", and sitting in the same row as light/dark read as if it
-          were a fourth colour theme. */}
+
       <Card>
         <CardHeader>
           <CardTitle>{t(language, "system.panel.detailLevel")}</CardTitle>
@@ -441,39 +439,44 @@ function SettingsPanel() {
         </CardContent>
       </Card>
       <PermissionModePanel />
-      {/* The two dials sit together because users read them as one question —
-          "what is this thing allowed to do on its own, and what may leave the
-          machine" — even though the server keeps them independent. */}
       <NetworkBoundaryPanel />
       <DataPanel title={mode === "basic" ? t(language, "system.panel.brainStatus") : t(language, "system.panel.serverHealth")} result={health.data}>
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>
       <DataPanel title={mode === "basic" ? t(language, "system.panel.readiness") : t(language, "system.panel.hostTelemetry")} result={sys.data}>
-        {(data) => mode === "basic" ? (
-          <StatGrid stats={[
-            { label: t(language, "system.stat.cpu"), value: `${String((data as Record<string, unknown>).cpu_pct || "0")}%` },
-            { label: t(language, "system.stat.memory"), value: `${String((data as Record<string, unknown>).ram_pct || "0")}%` },
-            { label: t(language, "system.stat.gpu"), value: `${String((data as Record<string, unknown>).gpu_mem_pct || "0")}%` },
-            { label: t(language, "system.stat.localStatus"), value: t(language, "system.stat.ready") },
-          ]} />
-        ) : <StructuredView value={data} />}
+        {(data) => {
+          if (mode === "basic") {
+            const readiness = String((data as Record<string, unknown>)?.readiness || "roomy");
+            const key = (readiness === "tight" || readiness === "low" || readiness === "roomy")
+              ? `system.readiness.${readiness}`
+              : "system.readiness.plenty";
+            const iconColor = readiness === "low" ? "text-rose-500" : readiness === "tight" ? "text-amber-500" : "text-emerald-500";
+            return (
+              <div className="flex items-center gap-2.5 p-3 rounded-lg border border-border/60 bg-muted/20 text-sm text-foreground">
+                <CheckCircle2 className={`h-4 w-4 ${iconColor} flex-shrink-0`} aria-hidden="true" />
+                <span>{t(language, key)}</span>
+              </div>
+            );
+          }
+          return <StructuredView value={data} />;
+        }}
       </DataPanel>
-      <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : t(language, "system.panel.brainStorage")} result={storage.data} className="xl:col-span-3">
+      <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : t(language, "system.panel.brainStorage")} result={storage.data}>
         {(data) => <StorageView data={data as Record<string, unknown>} mode={mode} language={language} />}
       </DataPanel>
       {mode === "basic" ? null : (
-        <DataPanel title={t(language, "system.backup.health")} result={backupHealth.data} className="xl:col-span-3">
+        <DataPanel title={t(language, "system.backup.health")} result={backupHealth.data}>
           {(data) => <BackupHealthView data={data as Record<string, unknown>} />}
         </DataPanel>
       )}
       {mode === "basic" ? null : (
-      <Card className="xl:col-span-3">
+      <Card>
         <CardHeader>
           <CardTitle>{t(language, "system.archive.title")}</CardTitle>
           <CardDescription>{t(language, "system.archive.detail")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3">
-          <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input value={archivePath} onChange={(e) => setArchivePath(e.target.value)} placeholder={t(language, "system.archive.exportPath")} />
             <Input value={restorePath} onChange={(e) => setRestorePath(e.target.value)} placeholder={t(language, "system.archive.restorePath")} />
           </div>
@@ -501,13 +504,13 @@ function SettingsPanel() {
         </CardContent>
       </Card>
       )}
-      {mode !== "basic" ? <Card className="xl:col-span-3">
+      {mode !== "basic" ? <Card>
         <CardHeader>
           <CardTitle>{t(language, "system.scale.title")}</CardTitle>
           <CardDescription>{t(language, "system.scale.detail")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3">
-          <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input value={dsn} onChange={(e) => setDsn(e.target.value)} placeholder={t(language, "system.scale.dsn")} />
             <Input value={schema} onChange={(e) => setSchema(e.target.value)} placeholder={t(language, "system.scale.schema")} />
           </div>
@@ -525,7 +528,7 @@ function SettingsPanel() {
         </CardContent>
       </Card> : null}
       {mode === "basic" ? null : (
-        <DataPanel title={t(language, "system.computerMemory.title")} result={comp.data} className="xl:col-span-3">
+        <DataPanel title={t(language, "system.computerMemory.title")} result={comp.data}>
           {(data) => (
             <div className="space-y-3">
               <StructuredView value={data} />
@@ -637,7 +640,7 @@ function StorageView({ data, mode = "advanced", language = "en" }: { data: Recor
         { label: t(language, "system.storage.vector"), value: vector || t(language, "system.value.notReported") },
         { label: t(language, "system.storage.postgres"), value: postgresAvailable ? t(language, "system.value.available") : t(language, "system.value.optional") },
       ]} />
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <StatusCard title={t(language, "system.storage.sqlite")} status={active.available === false ? t(language, "system.value.unavailable") : t(language, "system.value.default")} detail={localizedTextValue(language, active.reason || active.path || data.path, t(language, "system.storage.sqliteDetail"))} />
         <StatusCard title={t(language, "system.storage.vector")} status={localizedTextValue(language, vector, t(language, "system.value.reported"))} detail={localizedTextValue(language, active.vector_reason || active.sqlite_vec_reason || data.vector_reason, t(language, "system.storage.vectorDetail"))} />
         <StatusCard title={t(language, "system.storage.postgres")} status={postgresAvailable ? t(language, "system.value.available") : t(language, "system.value.notEnabled")} detail={localizedTextValue(language, postgres.reason || postgres.dsn || postgres.status, t(language, "system.storage.postgresDetail"))} />
@@ -696,7 +699,7 @@ function HardeningView({ data }: { data: Record<string, unknown> }) {
         { label: t(language, "system.hardening.storage"), value: isRecord(storage.active) ? (storage.active as Record<string, unknown>).engine : t(language, "system.value.reported") },
         { label: t(language, "system.hardening.backups"), value: backup.count || backup.available || t(language, "system.value.reported") },
       ]} />
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <StatusCard title={t(language, "system.hardening.startup")} status={t(language, startup.network_exposed ? "system.value.networkExposed" : "system.value.localOnly")} detail={t(language, "system.hardening.startupDetail")} />
         <StatusCard title={t(language, "system.hardening.integrations")} status={t(language, privacy.local_only_default === false ? "system.value.reviewRequired" : "system.value.optIn")} detail={t(language, "system.hardening.integrationsDetail")} />
         <StatusCard title={t(language, "system.hardening.identity")} status={localizedTextValue(language, identity.algorithm || identity.fingerprint, t(language, "system.value.reported"))} detail={localizedTextValue(language, identity.storage, t(language, "system.hardening.identityStorage"))} />
@@ -738,7 +741,7 @@ function AdminPanel() {
     return <ModeGate title={t(language, "system.admin.controls")} detail={t(language, "system.admin.controlsDetail")} target="admin" />;
   }
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "system.admin.summary")} result={summary.data}>{(data) => <KeyValueList data={data as Record<string, unknown>} />}</DataPanel>
       <DataPanel title={t(language, "system.admin.users")} result={users.data}>{(data) => <EntityList items={data} titleKey="email" metaKey="role" />}</DataPanel>
       <DataPanel title={t(language, "system.admin.audit")} result={audit.data}>{(data) => <EntityList items={(data as Record<string, unknown>).recent_events || data} titleKey="act" metaKey="sev" />}</DataPanel>
@@ -746,7 +749,7 @@ function AdminPanel() {
       <DataPanel title={t(language, "system.admin.policies")} result={policies.data}>{(data) => <EntityList items={(data as Record<string, unknown>).policies || data} titleKey="label" metaKey="enforced" />}</DataPanel>
       <DataPanel title={t(language, "system.admin.hardening")} result={hardening.data}>{(data) => <HardeningView data={data as Record<string, unknown>} />}</DataPanel>
       <DataPanel title={t(language, "system.admin.security")} result={security.data}>{(data) => <SecurityView data={data as Record<string, unknown>} />}</DataPanel>
-      <DataPanel title={t(language, "system.admin.vpc")} result={vpc.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "system.admin.vpc")} result={vpc.data}>
         {(data) => (
           <div className="space-y-2">
             <Badge variant="muted">{t(language, "system.admin.communityUnavailable")}</Badge>

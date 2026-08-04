@@ -44,6 +44,65 @@ class AutomationRunNowRequest(BaseModel):
     dry_run: bool = True
 
 
+def _ensure_activity_run_source(run: Any) -> dict[str, Any]:
+    """Guarantee the Act feed ``source`` field for 레시피/목표 badge split.
+
+    Capture 09 (``frontend/src/pages/Act.tsx``) distinguishes workflow vs agent
+    with ``run.source === "workflow" || Boolean(run.workflow_id)``. A store that
+    omits both collapses every row to "목표" and silently undoes the merged
+    timeline redesign. Prefer an explicit ``source``; otherwise infer from
+    ``workflow_id`` / ``agent_id``.
+    """
+    if not isinstance(run, dict):
+        return {"source": "agent", "id": None, "title": "", "status": ""}
+    row = dict(run)
+    source = str(row.get("source") or "").strip().lower()
+    if source in {"workflow", "agent"}:
+        row["source"] = source
+        return row
+    if row.get("workflow_id"):
+        row["source"] = "workflow"
+        return row
+    if row.get("agent_id"):
+        row["source"] = "agent"
+        return row
+    # Last resort: keep any non-empty legacy value, else agent.
+    row["source"] = source if source else "agent"
+    return row
+
+
+def _with_run_truncation_meta(payload: Any, *, capped: int) -> dict[str, Any]:
+    """Guarantee ``total`` / ``truncated`` on combined-run payloads.
+
+    Stores that already implement :meth:`list_combined_runs` may return only
+    ``runs``. The Act feed needs to say how many rows are hidden when the
+    server slices agent+workflow history (default cap 20).
+
+    Every run is also passed through :func:`_ensure_activity_run_source` so the
+    레시피/목표 badge never loses its discriminator.
+    """
+    if not isinstance(payload, dict):
+        return {"runs": [], "total": 0, "truncated": False}
+    runs = [_ensure_activity_run_source(run) for run in (payload.get("runs") or [])]
+    if "total" in payload:
+        try:
+            total = max(0, int(payload.get("total") or 0))
+        except (TypeError, ValueError):
+            total = len(runs)
+    else:
+        total = len(runs)
+    if "truncated" in payload:
+        truncated = bool(payload.get("truncated"))
+    else:
+        truncated = total > len(runs) or total > capped
+    # Prefer the larger of declared total and visible rows so a buggy store
+    # never claims fewer total than the list it just returned.
+    total = max(total, len(runs))
+    if total > len(runs):
+        truncated = True
+    return {**payload, "runs": runs, "total": total, "truncated": truncated}
+
+
 def _run_now_wait_seconds() -> float:
     raw = os.environ.get("LATTICEAI_AUTOMATION_RUN_NOW_WAIT", "30")
     try:
@@ -282,6 +341,59 @@ def create_automation_intelligence_router(
         if review_item is not None:
             payload["review_item_id"] = review_item.get("id")
         return payload
+
+    def _combined_runs(request: Request, limit: int = 20) -> dict[str, Any]:
+        require_user(request)
+        scope = gate_read(request)
+        capped = max(1, min(int(limit or 20), 100))
+        if hasattr(store, "list_combined_runs"):
+            payload = store.list_combined_runs(limit=capped, workspace_id=scope)
+            return _with_run_truncation_meta(payload, capped=capped)
+        # Store without the helper: merge the two existing listings in place.
+        agent_listing = (
+            store.list_agents(workspace_id=scope)
+            if hasattr(store, "list_agents")
+            else {"runs": []}
+        )
+        # Pull a wide window so agent+workflow merge can still fill ``capped``
+        # after sort; true total is the unscoped merge size before slice.
+        workflow_listing = (
+            store.list_workflow_runs(limit=max(capped, 100), workspace_id=scope)
+            if hasattr(store, "list_workflow_runs")
+            else {"runs": []}
+        )
+        from latticeai.core.workspace_runs import WorkspaceRuns
+
+        rows = []
+        for run in agent_listing.get("runs") or []:
+            rows.append(
+                _ensure_activity_run_source(
+                    WorkspaceRuns.activity_run_row(run, source="agent")
+                )
+            )
+        for run in workflow_listing.get("runs") or []:
+            rows.append(
+                _ensure_activity_run_source(
+                    WorkspaceRuns.activity_run_row(run, source="workflow")
+                )
+            )
+        rows.sort(key=lambda row: str(row.get("started_at") or ""), reverse=True)
+        total = len(rows)
+        return {
+            "runs": rows[:capped],
+            "total": total,
+            "truncated": total > capped,
+        }
+
+    @router.get("/api/activity/runs")
+    async def activity_runs(request: Request, limit: int = 20):
+        """Unified agent + workflow run timeline (layout rebuild screen 09)."""
+        return _combined_runs(request, limit=limit)
+
+    @router.get("/automations/runs/combined")
+    async def automations_runs_combined(request: Request, limit: int = 20):
+        """Alias used by the frontend handoff for the same combined timeline."""
+        return _combined_runs(request, limit=limit)
 
     return router
 

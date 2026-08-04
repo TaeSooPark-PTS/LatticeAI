@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **10.6.3 — Ask First**.
+Current release: **10.7.0 — Plain Surface**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

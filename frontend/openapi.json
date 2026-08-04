@@ -4504,7 +4504,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "10.6.3"
+    "version": "10.7.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -4868,6 +4868,23 @@
           }
         },
         "summary": "Admin Enterprise Siem Export"
+      }
+    },
+    "/admin/health-summary": {
+      "get": {
+        "description": "One-line admin health for the calm console header (layout rebuild).\n\nAggregates existing admin surfaces \u2014 no new persistence. ``status`` is\n``attention`` when any issue is present, else ``ok``.",
+        "operationId": "admin_health_summary_admin_health_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Health Summary"
       }
     },
     "/admin/invite-link": {
@@ -6406,6 +6423,45 @@
           }
         },
         "summary": "Agent Runtime Status"
+      }
+    },
+    "/api/activity/runs": {
+      "get": {
+        "description": "Unified agent + workflow run timeline (layout rebuild screen 09).",
+        "operationId": "activity_runs_api_activity_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activity Runs"
       }
     },
     "/api/admin/funnel-metrics": {
@@ -10521,6 +10577,45 @@
         "summary": "Unsnooze Item"
       }
     },
+    "/automations/runs/combined": {
+      "get": {
+        "description": "Alias used by the frontend handoff for the same combined timeline.",
+        "operationId": "automations_runs_combined_automations_runs_combined_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Automations Runs Combined"
+      }
+    },
     "/chat": {
       "get": {
         "operationId": "chat_page_chat_get",
@@ -11977,6 +12072,23 @@
         "summary": "Knowledge Graph Neighbors"
       }
     },
+    "/knowledge-graph/pipeline/status": {
+      "get": {
+        "description": "Per-stage counts + status for the Capture 3-step journey ribbon.\n\nAggregates existing store data only \u2014 no schema change. Top-level\n``received`` / ``extracted`` / ``connected`` stay for simple clients;\n``stages`` is the single source of truth for count, pending, and\nstatus (``done`` / ``working`` / ``waiting``). Keys are omitted when\na value cannot be computed (never faked as 0 when the underlying\nsource is unavailable).",
+        "operationId": "knowledge_graph_pipeline_status_knowledge_graph_pipeline_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Pipeline Status"
+      }
+    },
     "/knowledge-graph/promotions": {
       "get": {
         "description": "Pending curator promotions awaiting human review (review Wave 4).\n\nPopulated when ``curate()`` runs in review mode (explicit\n``review_mode=True`` or the LATTICEAI_GRAPH_PROMOTION_REVIEW env\nopt-in). Administrative like ``/knowledge-graph/curate``: the queue\ngoverns the shared graph.",
@@ -12325,7 +12437,7 @@
     },
     "/local/sysinfo": {
       "get": {
-        "description": "CPU / RAM / GPU(MLX) \uc0ac\uc6a9\ub7c9\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+        "description": "CPU / RAM / GPU(MLX) usage plus a plain-language readiness bucket.\n\n``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy\ndoes not re-interpret raw percents on the client.",
         "operationId": "local_sysinfo_local_sysinfo_get",
         "responses": {
           "200": {

@@ -252,6 +252,9 @@ function BrainShell({
           </span>
           Lattice
         </a>
+        <span className="brain-local-badge" data-testid="brain-local-badge">
+          {t(language, "shell.localBadge")}
+        </span>
 
         <nav className="brain-desktop-nav brain-primary-nav" aria-label={t(language, "shell.menu.nav")}>
           {primaryRoutes.map((item) => {

@@ -4,6 +4,43 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.7.0] - 2026-08-04
+
+### Changed
+- **12개 화면 전면 재구성** — `frontend/src`의 다단 격자 클래스 22 → 6
+  (테스트 단언 2건 제외하면 4). 각 화면이 사용자가 하러 온 일을 1순위로 놓고,
+  개발자용 진단·관리 표면은 접이식 영역으로 내려갔습니다. 해시 경로 38개는
+  하나도 사라지지 않았습니다(38 → 38).
+- 승인함이 i18n 키 원문(`act.approval.action.파일_읽기`)을 표시하던 문제 수정 —
+  조회 키를 백엔드 `action` 열거값에서 만들고, 없으면 서버가 준 라벨로 폴백합니다.
+- 관리자 요약이 HTTP 200을 건강 상태로 오인하던 문제 수정 — 서버가 보고한
+  `status`를 우선 사용합니다.
+
+### Added
+- `scripts/check_screenshot_pixel_delta.py` — 릴리스 캡처가 이전 버전 대비 실제로
+  달라졌는지 검사. 문구만 바뀐 화면은 실패로 잡습니다.
+- `scripts/check_release_evidence_bound.mjs` — 캡처가 현재 빌드에서 나온 것인지
+  해시로 결속. lint 에 배선되어 있습니다.
+
+### Removed
+- 어느 화면에서도 렌더되지 않던 문구 키 18개 (기능은 전부 다른 경로로 도달
+  가능함을 확인 후 삭제). 문구 키에는 자동 게이트가 없어 수동 대조입니다.
+
+## [10.6.4] - 2026-08-04
+
+### Changed
+- 패키지·문서·릴리스 증거를 **10.6.4**로 정렬 — `product_readiness` packaging /
+  trust-docs / ecosystem-path 게이트가 현재 버전 문자열을 찾도록 README,
+  CHANGELOG, RELEASE_NOTES, 커뮤니티 문서, VS Code 확장 README 동기화
+- 릴리스 캡처 경로 `output/release/v10.6.4/` (12 스크린샷 + walkthrough gif/webm)
+- 시각 목의 승인함은 mapped(`read` → 한글 라벨) + unmapped(`delete` 원문 키)
+  두 경로를 동시에 노출 — UI i18n 회귀를 가리지 않음
+
+### Notes
+- 스키마·마이그레이션 변경 없음. SQLite Brain 데이터 호환 유지.
+- 프론트 승인 액션 키 `act.approval.action.read` / `delete` 착지는 별도 F1
+  항목; 그 전까지 캡처 09는 원문 키 노출을 증거로 남길 수 있음.
+
 ## [10.6.3] - 2026-08-04
 
 ### Security

@@ -1,0 +1,182 @@
+# i18n known-orphan baseline (orphan = defined in frontend/src/i18n, unreferenced elsewhere).
+#
+# GROWTH POLICY — read before adding a key to this file:
+#   1. Prefer deleting the unused key from frontend/src/i18n (ko + en) instead.
+#   2. Prefer re-wiring the key in the UI if the string is still product copy.
+#   3. Adding a key here is a last resort. Every addition MUST be accompanied by
+#      a `# JUSTIFY: <one-line reason + issue/PR>` comment on the line above the key.
+#   4. Fixture growth without a JUSTIFY comment is a review reject. Raising
+#      I18N_ORPHAN_FIXTURE_CAP in tests/unit/test_layout_rebuild_apis.py is
+#      required in the same change — that constant is the hard ceiling.
+#   5. Removing entries is always fine (and required) when keys are deleted from
+#      i18n or re-wired; the gate fails on stale fixture entries.
+#
+# Generation: true legacy = orphans at git tag v10.6.3 (157 keys).
+# Layout-rebuild 2026-08 residual Section 2 = 11 keys (recounted 2026-08-04
+# after frontend round — still unreferenced; frontend must delete i18n
+# entries, then remove them here and LOWER I18N_ORPHAN_FIXTURE_CAP).
+# Cap formula: 157 + Section 2 residual. Do NOT raise the cap to bless new
+# orphans. Target after deleting Section 2: 157 keys.
+#
+# Section 1 — true legacy (orphans already present at v10.6.3)
+brain.action.find
+brain.action.model
+brain.action.settings
+brain.answerProof.markerShort
+brain.answerProof.modelLine
+brain.aria.actions
+brain.aria.exploration
+brain.aria.ownership
+brain.aria.quickViews
+brain.aria.starterPrompts
+brain.brief.action.backup
+brain.brief.action.backup.detail
+brain.brief.action.topics
+brain.brief.action.topics.detail
+brain.brief.action.verify
+brain.brief.action.verify.detail
+brain.brief.body.alive
+brain.brief.body.forming
+brain.brief.headline.alive
+brain.brief.headline.forming
+brain.chatHome.body
+brain.chatHome.headerLine
+brain.chatHome.kicker
+brain.chatHome.title
+brain.citation.announce.close
+brain.citation.announce.open
+brain.citation.chip
+brain.citation.chip.long
+brain.citation.close
+brain.citation.count
+brain.citation.expand
+brain.citation.keyboard.tip
+brain.citation.preview.from
+brain.citation.preview.snippet
+brain.citation.region
+brain.citation.score
+brain.delegate.cta
+brain.delegate.detail
+brain.delegate.running
+brain.delegate.saved
+brain.delegate.title
+brain.depthRail.aria
+brain.empty.body
+brain.empty.kicker
+brain.empty.title
+brain.empty.trail.backup
+brain.empty.trail.label
+brain.empty.trail.recall
+brain.empty.trail.save
+brain.firstScreen.action.source
+brain.firstScreen.action.talk
+brain.firstScreen.actions
+brain.firstScreen.aria
+brain.firstScreen.concept.empty
+brain.firstScreen.concept.with
+brain.firstScreen.connection
+brain.firstScreen.memory
+brain.firstScreen.memory.empty
+brain.firstScreen.memory.with
+brain.firstScreen.memoryAria
+brain.firstScreen.next
+brain.firstScreen.next.ask
+brain.firstScreen.next.graph
+brain.firstScreen.next.source
+brain.firstScreen.readiness
+brain.graph.control.filter
+brain.graph.focus.recent
+brain.graph.focus.smooth
+brain.graph.search.matchCount
+brain.graph.search.typeahead
+brain.hero.openGraph
+brain.home.add.title
+brain.home.insights.detail
+brain.home.line
+brain.home.more
+brain.home.wakingHint
+brain.proactive.addSource.detail
+brain.proactive.addSource.label
+brain.proactive.aria
+brain.proactive.delegate.detail
+brain.proactive.delegate.label
+brain.proactive.intent.ask
+brain.proactive.intent.delegate
+brain.proactive.intent.review
+brain.proactive.intent.route
+brain.proactive.map.detail
+brain.proactive.map.label
+brain.proactive.review.detail
+brain.proactive.review.label
+brain.proactive.seed.detail
+brain.proactive.seed.label
+brain.proactive.title
+brain.proactive.trail.title
+brain.proactive.weekly.detail
+brain.proactive.weekly.label
+brain.recalled
+brain.suggestion.context.detail
+brain.suggestion.context.label
+brain.suggestion.context.prompt
+brain.suggestion.evidence.detail
+brain.suggestion.evidence.label
+brain.suggestion.evidence.prompt
+brain.suggestion.graph.detail
+brain.suggestion.graph.label
+brain.suggestion.graph.prompt
+brain.suggestion.history.detail
+brain.suggestion.history.label
+brain.suggestion.history.prompt
+brain.suggestion.start.detail
+brain.suggestion.start.label
+brain.suggestion.start.prompt
+brain.surface
+brain.tab.conversation
+brain.tab.portability
+brain.tab.relationships
+brain.timeline.at
+brain.upload.cta
+brain.upload.hint
+brain.view.graph
+brain.view.memories
+brain.view.relationships
+brain.view.topics
+capture.files.description
+capture.files.title
+capture.pipeline.details
+feedback.error.body
+feedback.error.title
+flow.analysis.error
+flow.analysis.fact.graphics
+flow.analysis.fact.memory
+flow.analysis.fact.models
+flow.analysis.fact.support
+flow.recommend.fallbackName
+flow.recommend.reason.advanced
+flow.recommend.reason.best
+flow.recommend.reason.default
+flow.recommend.reason.faster
+intelligence.insights
+intelligence.unavailable
+language.en
+language.ko
+review.action.failed
+shell.account.admin
+shell.account.aria
+shell.account.menuAria
+shell.account.mode.admin
+shell.account.mode.advanced
+shell.account.mode.basic
+shell.account.modeLabel
+shell.account.open
+shell.account.personal
+shell.account.profile
+shell.account.settings
+shell.account.workspaceLabel
+shell.account.workspaces
+shell.workspace.close
+system.network.budget
+
+# Section 2 — NOT LEGACY (layout-rebuild 2026-08). Do not treat as frozen forever.
+# JUSTIFY: panel/copy removed in layout rebuild; frontend must delete i18n entries.
+

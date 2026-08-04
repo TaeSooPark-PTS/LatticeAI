@@ -1,7 +1,6 @@
 import * as React from "react";
 import { CheckCircle2 } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { Button } from "@/components/ui/button";
 import { asArray } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
@@ -23,11 +22,14 @@ export function InstallScreen({
   onLater: () => void;
 }) {
   const language = useAppStore((state) => state.language);
+  const mode = useAppStore((state) => state.mode);
   const [busy, setBusy] = React.useState(false);
   const [stage, setStage] = React.useState<InstallStage>("idle");
   const [percent, setPercent] = React.useState(0);
   const [message, setMessage] = React.useState(t(language, "flow.install.wait"));
   const [error, setError] = React.useState<string | null>(null);
+
+  const statusText = t(language, `flow.install.stage.${stage}`, { defaultValue: message });
 
   async function start() {
     setBusy(true);
@@ -67,63 +69,39 @@ export function InstallScreen({
     }
   }
 
-  const brainStateForStage: BrainState =
-    stage === "download" ? "thinking" :
-    stage === "validate" ? "recalling" :
-    stage === "load" ? "synthesizing" :
-    stage === "done" ? "idle" : "listening";
-
   return (
-    <div>
-      <div className="ritual-title">{t(language, model.downloadRequired ? "flow.install.title" : "flow.install.title.ready")}</div>
-      <div className="ritual-subtitle">
-        <strong>{model.shortName}</strong> — {model.reason}.<br />
-        {t(language, model.downloadRequired ? "flow.install.body" : "flow.install.body.ready")}
-      </div>
+    <div className="ritual-install">
+      <header>
+        <h1 className="ritual-title">{t(language, model.downloadRequired ? "flow.install.title" : "flow.install.title.ready")}</h1>
+        <p className="ritual-subtitle">
+          <strong>{model.shortName}</strong> — {model.reason}.
+        </p>
+      </header>
 
-      <section className="ritual-card ritual-expected-card" aria-label={t(language, "flow.install.expectedTitle")}>
-        <div className="ritual-fact-label">{t(language, "flow.install.expectedTitle")}</div>
-        <div className="ritual-time-estimate ritual-expected-line">{expectedLine(model, language)}</div>
-        <ol className="ritual-timeline">
-          {timelineSteps(model, language).map((step) => (
-            <li key={step.key} className="ritual-timeline-step">
-              <span className="ritual-timeline-name">{step.name}</span>
-              <span className="ritual-timeline-time">{step.time}</span>
-            </li>
-          ))}
-        </ol>
-        <div className="ritual-muted-hint">{t(language, "flow.install.expectedCompletion")}</div>
+      {/* (B) Single visual unit for progress */}
+      <section className="ritual-card ritual-install-progress-unit" aria-label={statusText}>
+        <div className="ritual-progress w-full">
+          <div className="ritual-stage-list">
+            {(["install", "download", "load", "validate"] as const).map((item) => (
+              <div key={item} className={`ritual-stage ${installStepState(stage, item)}`}>
+                <CheckCircle2 className="ritual-stage-icon" />
+                <span>{installLabel(item, language, model)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="ritual-bar">
+            <span className={`ritual-bar-fill ${progressClass(percent)}`} />
+          </div>
+        </div>
+
+        <div className="ritual-status">
+          {statusText}
+          {mode === "advanced" && message !== statusText ? (
+            <span className="ritual-status-raw block text-xs opacity-70 mt-1">{message}</span>
+          ) : null}
+        </div>
       </section>
-
-      <div className="ritual-install-brain">
-        <LivingBrain
-          state={brainStateForStage}
-          intensity={stage === "download" || stage === "load" ? 0.96 : 0.82}
-          size="normal"
-        />
-      </div>
-
-      <DownloadConsentPanel model={model} />
-
-      <div className="ritual-progress">
-        <div className="ritual-stage-list">
-          {(["install", "download", "validate", "load"] as const).map((item) => (
-            <div key={item} className={`ritual-stage ${installStepState(stage, item)}`}>
-              <CheckCircle2 className="ritual-stage-icon" />
-              <span>{installLabel(item, language, model)}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="ritual-bar">
-          <span className={`ritual-bar-fill ${progressClass(percent)}`} />
-        </div>
-      </div>
-
-      <div className="ritual-status">{message}</div>
-      <div className="ritual-card ritual-status-card">
-        {t(language, model.downloadRequired ? "flow.install.note" : "flow.install.note.ready")}
-      </div>
 
       {error && (
         <div className="ritual-card ritual-error-card ritual-install-error" role="alert">
@@ -131,6 +109,38 @@ export function InstallScreen({
           <div className="ritual-error-detail">{t(language, "flow.install.retry")}</div>
         </div>
       )}
+
+      {/* (C) Folded details */}
+      <details className="ritual-install-details">
+        <summary className="cursor-pointer py-2 text-sm text-muted-foreground hover:text-foreground">
+          {t(language, "flow.install.expectedTitle")} & {t(language, "flow.consent.readyTitle")}
+        </summary>
+        <div className="ritual-install-details-content flex flex-col gap-3 py-2">
+          <section className="ritual-card ritual-expected-card" aria-label={t(language, "flow.install.expectedTitle")}>
+            <div className="ritual-fact-label">{t(language, "flow.install.expectedTitle")}</div>
+            <div className="ritual-time-estimate ritual-expected-line">{expectedLine(model, language)}</div>
+            <ol className="ritual-timeline">
+              {timelineSteps(model, language).map((step) => (
+                <li key={step.key} className="ritual-timeline-step">
+                  <span className="ritual-timeline-name">{step.name}</span>
+                  <span className="ritual-timeline-time">{step.time}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="ritual-muted-hint">{t(language, "flow.install.expectedCompletion")}</div>
+          </section>
+
+          <DownloadConsentPanel model={model} />
+
+          <div className="ritual-card ritual-status-card">
+            {t(language, model.downloadRequired ? "flow.install.note" : "flow.install.note.ready")}
+          </div>
+
+          <div className="ritual-local-note">
+            {t(language, model.downloadRequired ? "flow.install.local" : "flow.install.local.ready")}
+          </div>
+        </div>
+      </details>
 
       <div className="ritual-button-row">
         <Button variant="ghost" onClick={onBack} disabled={busy}>{t(language, "flow.install.back")}</Button>
@@ -146,10 +156,6 @@ export function InstallScreen({
         ) : (
           <Button onClick={onComplete}>{t(language, "flow.install.enter")}</Button>
         )}
-      </div>
-
-      <div className="ritual-local-note">
-        {t(language, model.downloadRequired ? "flow.install.local" : "flow.install.local.ready")}
       </div>
     </div>
   );
@@ -207,8 +213,8 @@ function friendlyInstallStage(stage: string): InstallStage {
 function percentForStage(stage: InstallStage) {
   if (stage === "install") return 20;
   if (stage === "download") return 55;
-  if (stage === "validate") return 82;
-  if (stage === "load") return 94;
+  if (stage === "load") return 82;
+  if (stage === "validate") return 94;
   if (stage === "done") return 100;
   return 8;
 }
@@ -226,7 +232,7 @@ function friendlyInstallMessage(event: ApiData, stage: InstallStage, language: L
   return cleanConsumerText(String(event.user_message || event.message || fallback));
 }
 
-function installLabel(stage: "install" | "download" | "validate" | "load", language: Language, model: RecommendedModel) {
+function installLabel(stage: "install" | "download" | "load" | "validate", language: Language, model: RecommendedModel) {
   if (stage === "download" && !model.downloadRequired) return t(language, "flow.install.step.ready");
   return t(language, `flow.install.step.${stage}`);
 }
@@ -236,8 +242,8 @@ function progressClass(percent: number) {
   return `progress-${step}`;
 }
 
-function installStepState(current: InstallStage, item: "install" | "download" | "validate" | "load") {
-  const order: InstallStage[] = ["idle", "install", "download", "validate", "load", "done"];
+function installStepState(current: InstallStage, item: "install" | "download" | "load" | "validate") {
+  const order: InstallStage[] = ["idle", "install", "download", "load", "validate", "done"];
   const currentIndex = order.indexOf(current);
   const itemIndex = order.indexOf(item);
   if (current === "error") return "is-error";

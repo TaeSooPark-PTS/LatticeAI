@@ -159,6 +159,78 @@ def create_admin_router(
             "last_message_at": history[-1].get("timestamp") if history else None,
         }
 
+    @router.get("/admin/health-summary")
+    async def admin_health_summary(request: Request):
+        """One-line admin health for the calm console header (layout rebuild).
+
+        Aggregates existing admin surfaces — no new persistence. ``status`` is
+        ``attention`` when any issue is present, else ``ok``.
+        """
+        _, users = require_admin(request)
+        issues: List[Dict[str, Any]] = []
+
+        disabled = sum(1 for user in users.values() if user.get("disabled"))
+        if disabled:
+            issues.append({
+                "area": "users",
+                "severity": "warning",
+                "message": f"{disabled} disabled user(s)",
+            })
+
+        try:
+            report = build_sensitivity_report(_scoped_history(request)) or {}
+            severity = ((report.get("summary") or {}).get("severity_counts") or {})
+            high = int(severity.get("high") or 0)
+            if high:
+                issues.append({
+                    "area": "security",
+                    "severity": "high",
+                    "message": f"{high} high-risk event(s)",
+                })
+        except Exception as exc:
+            logging.warning("admin health-summary sensitivity failed: %s", exc)
+
+        if enable_graph:
+            try:
+                stats = get_graph_stats() or {}
+                if isinstance(stats, dict) and stats.get("error"):
+                    issues.append({
+                        "area": "brain_ops",
+                        "severity": "warning",
+                        "message": "Knowledge graph unavailable",
+                    })
+            except Exception as exc:
+                issues.append({
+                    "area": "brain_ops",
+                    "severity": "warning",
+                    "message": str(exc)[:160],
+                })
+
+        if product_hardening_status is not None:
+            try:
+                res = product_hardening_status()
+                hardening = res if isinstance(res, dict) else {}
+                startup = hardening.get("startup") if isinstance(hardening, dict) else {}  # type: ignore[union-attr]
+                if isinstance(startup, dict) and startup.get("network_exposed"):
+                    issues.append({
+                        "area": "runtime_trust",
+                        "severity": "warning",
+                        "message": "Server is network-exposed",
+                    })
+            except Exception as exc:
+                logging.warning("admin health-summary hardening failed: %s", exc)
+
+        # issue_count is a first-class field (not client-derived from issues[]).
+        # AdminConsole reads healthData.issue_count for the header sentence;
+        # falling back to || 1 when the field is missing misreports multi-issue
+        # states as a single problem.
+        issue_count = len(issues)
+        return {
+            "status": "attention" if issue_count else "ok",
+            "issue_count": issue_count,
+            "issues": issues,
+        }
+
     @router.get("/admin/stats")
     async def admin_stats(request: Request):
         require_admin(request)

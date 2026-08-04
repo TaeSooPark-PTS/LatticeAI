@@ -75,88 +75,86 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    // Layout for every `.ritual-*` element below lives in styles.css. That
-    // sheet is unlayered and Tailwind's utilities are in `@layer utilities`, so
-    // an unlayered rule wins no matter the specificity or order — sizing,
-    // spacing and colour utilities dropped on these classes are dead code that
-    // reads like it works. The screen's own structure gets `.ritual-login-*`
-    // classes instead, which nothing else claims.
     <div className="ritual-login">
-      <header>
-        <h1 id="login-title" className="ritual-title">
-          {t(language, "flow.login.title")}
-        </h1>
-        <p className="ritual-subtitle">{t(language, "flow.login.body")}</p>
-      </header>
+      <div className="ritual-login-grid">
+        <div className="ritual-login-left">
+          <p className="ritual-login-statement">{t(language, "flow.login.statement")}</p>
+          <ProductPromise />
+        </div>
 
-      {/* The form is the whole job of this screen, so it is the only raised
-          surface on it. The promise bar below and the greeting above are
-          deliberately flat. */}
-      <div className="ritual-login-card">
-        <form onSubmit={submit} className="ritual-form" aria-labelledby="login-title">
-          <div className="ritual-field-stack">
-            <div>
-              <label htmlFor="login-name" className="ritual-field-label">
-                {t(language, "flow.name")}
-              </label>
-              <Input
-                id="login-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t(language, "flow.name.placeholder")}
-                autoComplete="name"
-              />
-            </div>
-            <div>
-              <label htmlFor="login-email" className="ritual-field-label">
-                {t(language, "flow.email")}
-              </label>
-              <Input
-                id="login-email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder={t(language, "flow.email.placeholder")}
-                autoComplete="email"
-                required
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? "login-error" : undefined}
-              />
-            </div>
-            <div>
-              <label htmlFor="login-password" className="ritual-field-label">
-                {t(language, "flow.password")}
-              </label>
-              <Input
-                id="login-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder={t(language, "flow.password.placeholder")}
-                autoComplete="current-password"
-                required
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? "login-error" : undefined}
-              />
-            </div>
+        <div className="ritual-login-right">
+          <header>
+            <h1 id="login-title" className="ritual-title">
+              {t(language, "flow.login.title")}
+            </h1>
+            <p className="ritual-subtitle">{t(language, "flow.login.body")}</p>
+          </header>
+
+          {/* The form is the whole job of this screen, so it is the only raised
+              surface on it. */}
+          <div className="ritual-login-card">
+            <form onSubmit={submit} className="ritual-form" aria-labelledby="login-title">
+              <div className="ritual-field-stack">
+                <div>
+                  <label htmlFor="login-name" className="ritual-field-label">
+                    {t(language, "flow.name")}
+                  </label>
+                  <Input
+                    id="login-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t(language, "flow.name.placeholder")}
+                    autoComplete="name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="login-email" className="ritual-field-label">
+                    {t(language, "flow.email")}
+                  </label>
+                  <Input
+                    id="login-email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder={t(language, "flow.email.placeholder")}
+                    autoComplete="email"
+                    required
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? "login-error" : undefined}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="login-password" className="ritual-field-label">
+                    {t(language, "flow.password")}
+                  </label>
+                  <Input
+                    id="login-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type="password"
+                    placeholder={t(language, "flow.password.placeholder")}
+                    autoComplete="current-password"
+                    required
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? "login-error" : undefined}
+                  />
+                </div>
+              </div>
+
+              {error && <div id="login-error" className="ritual-error" role="alert">{error}</div>}
+
+              <Button type="submit" disabled={busy || !email.trim() || !password.trim()} className="ritual-full-button">
+                {busy ? t(language, "flow.login.busy") : t(language, "flow.login.submit")}
+              </Button>
+
+              <div className="ritual-login-footnotes">
+                <div className="ritual-muted-hint">{t(language, "flow.login.passwordLocal")}</div>
+                <div className="ritual-note">{t(language, "flow.login.note")}</div>
+              </div>
+            </form>
           </div>
-
-          {error && <div id="login-error" className="ritual-error" role="alert">{error}</div>}
-
-          <Button type="submit" disabled={busy || !email.trim() || !password.trim()} className="ritual-full-button">
-            {busy ? t(language, "flow.login.busy") : t(language, "flow.login.submit")}
-          </Button>
-
-          {/* Both reassurances read after the button, not between the fields
-              and it, where they used to break the run from typing to pressing. */}
-          <div className="ritual-login-footnotes">
-            <div className="ritual-muted-hint">{t(language, "flow.login.passwordLocal")}</div>
-            <div className="ritual-note">{t(language, "flow.login.note")}</div>
-          </div>
-        </form>
+        </div>
       </div>
-
-      <ProductPromise />
     </div>
   );
 }

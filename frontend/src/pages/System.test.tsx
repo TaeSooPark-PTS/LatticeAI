@@ -180,4 +180,16 @@ describe("SystemPage", () => {
     await waitFor(() => expect(screen.getAllByRole("tab").length).toBeGreaterThan(0));
     expect(document.body.textContent).not.toMatch(/undefined|NaN|\[object Object\]/);
   });
+
+  it("renders host telemetry in advanced mode with unwrapped data containing ram_pct", async () => {
+    render(
+      {
+        sysinfo: ok({ cpu_pct: 12, ram_pct: 61, gpu_pct: 0, readiness: "tight" }),
+      },
+      { mode: "advanced" }
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "환경설정" }));
+    await waitFor(() => expect(screen.getByTestId("permission-mode-panel")).toBeTruthy());
+    await waitFor(() => expect(document.body.textContent).toContain("61"));
+  });
 });

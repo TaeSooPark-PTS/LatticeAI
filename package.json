@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "10.6.3",
+  "version": "10.7.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -24,7 +24,8 @@
     "build:assets": "vite build && node scripts/build_frontend_assets.mjs",
     "build:python": "node scripts/run_python.mjs -m build",
     "check:python": "node scripts/run_python.mjs scripts/check_python.py",
-    "lint": "npm run lint:python && node --check tests/visual/mock_server.cjs && node --check tests/visual/v3.spec.js && npm run lint:frontend && npm run frontend:openapi:check && node scripts/check_i18n_literals.mjs && npm run check:i18n-namespaces && npm run check:bundle && npm run check:legacy-debt && npm run test:browser-extension && npm run test:vscode-extension",
+    "lint": "npm run lint:python && node --check tests/visual/mock_server.cjs && node --check tests/visual/v3.spec.js && npm run lint:frontend && npm run frontend:openapi:check && node scripts/check_i18n_literals.mjs && npm run check:i18n-namespaces && npm run check:bundle && npm run check:legacy-debt && npm run test:browser-extension && npm run test:vscode-extension && node scripts/check_release_evidence_bound.mjs",
+    "check:release-evidence-bound": "node scripts/check_release_evidence_bound.mjs",
     "check:legacy-debt": "node scripts/check_legacy_debt.mjs",
     "lint:python": "node scripts/run_python.mjs -m ruff check . && npm run typecheck:python",
     "lint:frontend": "node scripts/lint_frontend.mjs",
@@ -48,7 +49,8 @@
     "desktop:tauri:check": "cd src-tauri && cargo check",
     "desktop:electron": "electron desktop/electron/main.cjs",
     "package:vsix": "node scripts/build_vsix.mjs",
-    "release:evidence": "node scripts/capture_release_evidence.mjs && node scripts/prune_release_evidence.mjs",
+    "check:screenshot-delta": "node scripts/run_python.mjs scripts/check_screenshot_pixel_delta.py",
+    "release:evidence": "node scripts/capture_release_evidence.mjs && node scripts/prune_release_evidence.mjs && npm run check:screenshot-delta",
     "release:evidence:prune": "node scripts/prune_release_evidence.mjs",
     "release:artifacts": "node scripts/clean_release_artifacts.mjs $npm_package_version && npm run build:assets && npm run build:python && npm pack && npm run package:vsix && npm run desktop:tauri:build",
     "release:validate": "node scripts/run_python.mjs scripts/validate_release_artifacts.py $npm_package_version --require-vsix --require-tgz --require-dmg",

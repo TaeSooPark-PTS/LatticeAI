@@ -17,7 +17,7 @@ import { InstalledAutomations } from "@/features/act/InstalledAutomations";
 import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
-import { t, type Language } from "@/i18n";
+import { COPY, t, type Language } from "@/i18n";
 import { navigateHash } from "@/features/brain/navigation";
 
 type ActTab = "runs" | "agents" | "workflows" | "hooks" | "tools";
@@ -25,7 +25,7 @@ type RunsSubTab = "review" | "runs";
 
 const runsSubTabs: Array<{ id: RunsSubTab; labelKey: string }> = [
   { id: "review", labelKey: "act.tab.review" },
-  { id: "runs", labelKey: "act.tab.runs" },
+  { id: "runs", labelKey: "act.tab.runsHistory" },
 ];
 
 // The hero now names whichever panel is open, so every tab needs its own pair.
@@ -127,7 +127,7 @@ function AgentsPanel() {
     : String(runtimeMeta.unavailable_reason || t(language, "act.runtime.modelUnavailable"));
   const canRunAgent = Boolean(goal.trim()) && runtimeReady && !run.isPending;
   return (
-    <div className="work-start-flow grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className="work-start-flow flex flex-col gap-4">
       <Card className="work-goal-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Bot className="h-4 w-4" /> {t(language, "act.goal.title")}</CardTitle>
@@ -194,20 +194,67 @@ function RunsPanel({ subTab, onSubTabChange }: { subTab: RunsSubTab; onSubTabCha
   );
 }
 
+function HumanPermissionDetails({ data, language }: { data: Record<string, unknown>; language: Language }) {
+  // The lookup key comes from `action` — the stable enum the gateway emits —
+  // not from `action_label`, which is already-localised prose. Deriving the key
+  // from the label produced `act.approval.action.파일_읽기`, which matches
+  // nothing, and `t()` returns the key itself when a lookup misses, so the
+  // approval inbox showed users a raw i18n key on the one screen where a person
+  // has to decide whether to allow a file write.
+  const rawAction = firstString(data.action, data.tool, data.type) || "";
+  const actionToken = rawAction.toLowerCase().replace(/[\s-]+/g, "_");
+  // `t()`'s third argument is an interpolation map, not options — there is no
+  // `defaultValue`. So the fallback is an explicit lookup: registered copy if
+  // the action has any, otherwise the human-readable label the server sent.
+  const actionCopy = actionToken
+    ? COPY[language]?.[`act.approval.action.${actionToken}`] ?? COPY.ko[`act.approval.action.${actionToken}`]
+    : undefined;
+  const actionLabel =
+    actionCopy ||
+    firstString(data.action_label, rawAction) ||
+    t(language, "act.approval.defaultAction");
+  const targetPath = firstString(data.path, data.target, data.file, data.resource);
+  const filename = targetPath ? (targetPath.split("/").pop() || targetPath) : "";
+  const requester = firstString(data.user_email, data.requested_by, data.actor);
+  const reason = firstString(data.reason, data.purpose, data.explanation);
+
+  return (
+    <div className="space-y-1.5 text-sm">
+      <div className="font-medium text-foreground flex flex-wrap items-center gap-2">
+        <Badge variant="warning">{actionLabel}</Badge>
+        {targetPath ? (
+          <code className="bg-muted px-1.5 py-0.5 rounded text-xs break-all" title={targetPath}>
+            <strong>{filename}</strong>
+          </code>
+        ) : null}
+      </div>
+      {reason ? <p className="text-xs text-muted-foreground">{reason}</p> : null}
+      {requester ? <p className="text-[11px] text-muted-foreground/80">{t(language, "act.approval.requestedBy")}: {requester}</p> : null}
+    </div>
+  );
+}
+
 function RunsListPanel() {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   const runtime = useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime });
   const workflows = useQuery({ queryKey: ["workflowRuns"], queryFn: latticeApi.workflowRuns });
+  const activity = useQuery({ queryKey: ["activityRuns"], queryFn: () => latticeApi.activityRuns(20) });
   const pending = useQuery({ queryKey: ["permissions"], queryFn: latticeApi.permissionsPending });
+
+  const activityData = (activity.data?.data || activity.data) as Record<string, unknown> | undefined;
+  const activityRuns = asArray<Record<string, unknown>>(activityData?.runs);
   const agentRuns = asArray<Record<string, unknown>>((runtime.data?.data as Record<string, unknown>)?.runs);
   const workflowRuns = asArray<Record<string, unknown>>((workflows.data?.data as Record<string, unknown>)?.runs);
+
+  const combinedRuns = activityRuns.length > 0 ? activityRuns : [
+    ...agentRuns.map((r) => ({ ...r, source: "agent" })),
+    ...workflowRuns.map((r) => ({ ...r, source: "workflow" })),
+  ];
+
   return (
     <div className="space-y-6">
-      {/* First tier: what is waiting on the person. This used to sit below both
-          run lists; nothing else on this screen needs a decision. `is-attention`
-          rather than a Tailwind border utility — `.data-panel` sets border-color
-          in plain CSS and would win. */}
+      {/* First tier: what is waiting on the person. */}
       <DataPanel title={t(language, "act.panel.approvalInbox")} result={pending.data} className="is-attention">
         {(data) => {
           const pendingMap = ((data as Record<string, unknown>).pending || {}) as Record<string, unknown>;
@@ -217,16 +264,12 @@ function RunsListPanel() {
               {rows.map(([token, value], index) => (
                 <div key={token} className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-amber-500/30 bg-card p-4 shadow-sm">
                   <div className="space-y-1">
-                    {/* A steady dot, not `animate-pulse`. This row is captured
-                        for the release screenshots and an animated opacity
-                        lands on a different frame every run, so the evidence
-                        gate would see a diff with no change behind it. */}
                     <div className="font-semibold text-sm flex items-center gap-2">
                       <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
                       {mode === "basic" ? t(language, "act.approval.request", { index: index + 1 }) : shortId(token, 16)}
                     </div>
                     <div className="mt-1">
-                      <KeyValueList data={(value || {}) as Record<string, unknown>} limit={5} />
+                      <HumanPermissionDetails data={(value || {}) as Record<string, unknown>} language={language} />
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -243,31 +286,20 @@ function RunsListPanel() {
       {/* Second tier: active / installed automations */}
       <InstalledAutomations language={language} />
 
-      {/* Third tier: Agent Runs and Workflow Runs execution history */}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <DataPanel title={t(language, "act.panel.agentRuns")} result={runtime.data}>
-          {() => <RunList runs={agentRuns} kind="agent" />}
-        </DataPanel>
-        <DataPanel title={t(language, "act.panel.workflowRuns")} result={workflows.data}>
-          {() => <RunList runs={workflowRuns} kind="workflow" />}
-        </DataPanel>
-      </div>
+      {/* Third tier: Chronological execution history */}
+      <DataPanel title={t(language, "act.panel.combinedRuns")} result={activity.data?.ok !== false ? activity.data : runtime.data}>
+        {() => <RunList runs={combinedRuns} kind="combined" />}
+      </DataPanel>
     </div>
   );
 }
 
-/**
- * Run states arrive as server enums. Translate by token and fall back to a
- * neutral phrase — printing an unrecognised token is how `retried_ok` ended up
- * on a badge in the first place.
- */
 function runStatusLabel(status: string, language: Language) {
   const key = `act.runStatus.${status}`;
   const label = t(language, key);
   return label === key ? t(language, "act.status.unknown") : label;
 }
 
-/** Prefer a human string field; never stringify an object into the title. */
 function firstString(...values: unknown[]): string {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -275,11 +307,6 @@ function firstString(...values: unknown[]): string {
   return "";
 }
 
-/**
- * A run's title is what it was asked to do — not its database id, and not
- * `String(input)` when the payload is a nested object (which produced
- * "[object Object]" on the list).
- */
 function humanRunTitle(run: Record<string, unknown>): string {
   const direct = firstString(run.workflow_name, run.name, run.goal, run.title, run.query);
   if (direct) return direct;
@@ -292,7 +319,7 @@ function humanRunTitle(run: Record<string, unknown>): string {
   return "";
 }
 
-function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "agent" | "workflow" }) {
+function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "agent" | "workflow" | "combined" }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   if (!runs.length) return <EntityList items={[]} />;
@@ -302,8 +329,7 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
         const id = String(run.run_id || run.id);
         const status = String(run.status || "");
         const label = runStatusLabel(status, language);
-        // A run id is a database key, not a name. Lead with whatever the run
-        // was actually about; the id stays visible in advanced mode.
+        const isWorkflow = run.source === "workflow" || kind === "workflow" || Boolean(run.workflow_id);
         const title = humanRunTitle(run)
           || (mode === "basic" ? t(language, "act.run.fallbackName", { index: index + 1 }) : shortId(id, 18));
         const isSuccess = /^(ok|retried_ok|succeed(?:ed)?|complet(?:e|ed)?)$/i.test(status);
@@ -311,13 +337,16 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
         return (
           <div key={id} className="rounded-md border border-border bg-background p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-medium">{title}</div>
+              <div className="font-medium flex items-center gap-2">
+                <Badge variant="muted">{isWorkflow ? t(language, "act.tab.recipes") : t(language, "act.tab.goals")}</Badge>
+                <span>{title}</span>
+              </div>
               <Badge variant={isSuccess ? "success" : needsApproval ? "warning" : "muted"}>{label}</Badge>
             </div>
             {mode === "basic" ? null : <div className="mt-1 text-xs text-muted-foreground">{shortId(id, 18)}</div>}
             <div className="mt-2 flex flex-wrap gap-2">
-              <ActionButton label={t(language, "act.action.stop")} action={() => kind === "agent" ? latticeApi.stopAgentRun(id) : latticeApi.stopWorkflowRun(id)} />
-              {needsApproval && kind === "workflow" ? (
+              <ActionButton label={t(language, "act.action.stop")} action={() => isWorkflow ? latticeApi.stopWorkflowRun(id) : latticeApi.stopAgentRun(id)} />
+              {needsApproval && isWorkflow ? (
                 <>
                   <ActionButton label={t(language, "act.action.resumeApproved")} action={() => latticeApi.resumeWorkflowRun(id, true)} />
                   <ActionButton label={t(language, "act.action.resumeDenied")} action={() => latticeApi.resumeWorkflowRun(id, false)} variant="destructive" />
@@ -423,14 +452,14 @@ function WorkflowsPanel() {
   }));
   const edges: Edge[] = nodes.slice(1).map((node, index) => ({ id: `e-${index}`, source: nodes[index].id, target: node.id }));
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+    <div className="flex flex-col gap-4">
       <AutomationSuggestions language={language} />
       <InstalledAutomations language={language} />
-      <DataPanel title={t(language, "act.automation.title")} result={recipes.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "act.automation.title")} result={recipes.data}>
         {(data) => {
           const items = asArray<Record<string, unknown>>((data as Record<string, unknown>).recipes);
           return (
-            <div className="grid gap-3 lg:grid-cols-3">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3">
               {items.map((recipe) => {
                 const id = String(recipe.id || "");
                 // Recipe copy ships from the backend in English; the id is the
@@ -610,7 +639,7 @@ function HooksPanel() {
   const runs = useQuery({ queryKey: ["hookRuns"], queryFn: latticeApi.hookRuns });
   if (mode === "basic") {
     return (
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="flex flex-col gap-4">
         <DataPanel title={t(language, "act.panel.safeguards")} result={hooks.data}>
           {(data) => <EntityList items={(data as Record<string, unknown>).hooks} titleKey="name" metaKey="kind" />}
         </DataPanel>
@@ -619,14 +648,14 @@ function HooksPanel() {
     );
   }
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <DataPanel title={t(language, "act.panel.hooks")} result={hooks.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).hooks} titleKey="name" metaKey="kind" />}
       </DataPanel>
       <DataPanel title={t(language, "act.panel.hookRuns")} result={runs.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).runs} titleKey="hook_id" metaKey="status" />}
       </DataPanel>
-      <Card className="xl:col-span-2">
+      <Card>
         <CardHeader>
         <CardTitle className="flex items-center gap-2"><PauseCircle className="h-4 w-4" /> {t(language, "act.hooks.runManual")}</CardTitle>
           <CardDescription>{t(language, "act.hooks.runManualHint")}</CardDescription>

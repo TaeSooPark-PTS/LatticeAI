@@ -13,6 +13,15 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v10.7.0 — Plain Surface (2026-08-04)
+
+12개 화면 전면 재구성 — 대시보드 격자를 해체하고 각 화면을 사용자가 하러 온 일 중심으로 다시 배치했습니다. 해시 경로 38개는 하나도 사라지지 않았고(38 → 38, `frontend/src/routes.test.ts`가 착지 지점을 검증), 12개 화면이 문구만이 아니라 배치가 실제로 달라졌다는 것은 픽셀 델타 게이트가 검증합니다.
+
+빌드 산출물은 `dist/ltcai-10.7.0-py3-none-any.whl`, `dist/ltcai-10.7.0.tar.gz`,
+`ltcai-10.7.0.tgz`, `dist/ltcai-10.7.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_10.7.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
 ## v10.6.3 — Loud Limits (2026-08-04)
 
 리뷰 2026-08 지적사항 대응. 조용히 대충 하던 자리를 찾아, 하던 일은 그대로 하되
