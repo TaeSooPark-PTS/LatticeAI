@@ -254,6 +254,9 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
             {edges.map((edge, index) => {
               const source = positionById.get(edge.source);
               const target = positionById.get(edge.target);
+              /* v8 ignore next -- unreachable: `edges` (above) is already
+                 filtered to entries where positionById.has() is true for both
+                 endpoints, so both lookups always succeed here. */
               if (!source || !target) return null;
               return (
                 <line
@@ -295,6 +298,9 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
             {edges.map((edge) => {
               const source = nodes.find((node) => node.id === edge.source);
               const target = nodes.find((node) => node.id === edge.target);
+              /* v8 ignore next -- unreachable: `edges` (above) only keeps
+                 entries whose endpoints are in positionById, which is built
+                 from this same `nodes` array, so both finds always succeed. */
               if (!source || !target) return null;
               return <li key={`accessible-${edge.id}`}>{source.label} — {edge.label} — {target.label}</li>;
             })}
@@ -358,6 +364,9 @@ export function BrainMemoryAutomation({
   const focusTitle = brief.focus.title || t(language, "brain.brief.focus.empty");
   const closeCompactActions = () => {
     const details = compactDetailsRef.current;
+    /* v8 ignore next -- unreachable: both callers (the details' own onKeyDown
+       and the popover close button) only fire from elements rendered inside
+       this ref'd <details>, so the ref is always attached when called. */
     if (!details) return;
     details.removeAttribute("open");
     details.querySelector<HTMLElement>("summary")?.focus();

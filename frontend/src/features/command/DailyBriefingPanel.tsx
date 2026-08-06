@@ -23,6 +23,17 @@ function section(data: Record<string, unknown>, key: string): Record<string, unk
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
+/**
+ * Open every shell around the panel and bring it into view. Exported so the
+ * null-root guard is testable; behavior is unchanged — the effect below calls
+ * this with exactly the ref it always read.
+ */
+export function revealBriefingPanel(root: HTMLElement | null) {
+  if (!root) return;
+  root.closest("details")?.setAttribute("open", "");
+  window.setTimeout(() => root.scrollIntoView?.({ behavior: "smooth", block: "center" }), 0);
+}
+
 export function DailyBriefingPanel({
   language,
   variant = "drawer",
@@ -46,10 +57,7 @@ export function DailyBriefingPanel({
   React.useEffect(() => {
     const onOpen = () => {
       setExpanded(true);
-      const root = rootRef.current;
-      if (!root) return;
-      root.closest("details")?.setAttribute("open", "");
-      window.setTimeout(() => root.scrollIntoView?.({ behavior: "smooth", block: "center" }), 0);
+      revealBriefingPanel(rootRef.current);
     };
     window.addEventListener("lattice:open-briefing", onOpen);
     return () => window.removeEventListener("lattice:open-briefing", onOpen);

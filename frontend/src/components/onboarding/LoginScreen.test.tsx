@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -118,5 +118,150 @@ describe("LoginScreen", () => {
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("alert")).toBeNull();
+    // Success remembers who this Brain belongs to.
+    expect(JSON.parse(localStorage.getItem("lattice.productFlow.user") || "{}")).toMatchObject({
+      email: "you@local",
+    });
+  });
+
+  it("still refuses a submit forced through with a missing password", async () => {
+    renderLogin();
+    // The button is disabled, but a form can be submitted by other means; the
+    // guard has to answer for itself.
+    fireEvent.submit(screen.getByRole("form", { name: t("ko", "flow.login.title") }));
+    expect((await screen.findByRole("alert")).textContent).toBe(t("ko", "flow.login.missing"));
+  });
+
+  it("prefills identity saved by an earlier visit", () => {
+    localStorage.setItem(
+      "lattice.productFlow.user",
+      JSON.stringify({ email: "saved@example.com", name: "Saved Person" }),
+    );
+    renderLogin();
+    expect((screen.getByLabelText(t("ko", "flow.email")) as HTMLInputElement).value).toBe("saved@example.com");
+    expect((screen.getByLabelText(t("ko", "flow.name")) as HTMLInputElement).value).toBe("Saved Person");
+  });
+
+  it("falls back to defaults when the saved identity is corrupt", () => {
+    localStorage.setItem("lattice.productFlow.user", "{not json");
+    renderLogin();
+    expect((screen.getByLabelText(t("ko", "flow.email")) as HTMLInputElement).value).toBe("you@local");
+    expect((screen.getByLabelText(t("ko", "flow.name")) as HTMLInputElement).value).toBe("You");
+  });
+
+  it("waves a live session through when login fails but the profile answers", async () => {
+    const register = vi.fn();
+    const onSuccess = renderLogin({
+      login: fail("no password auth", {}, 401),
+      profile: ok({ email: "you@local" }),
+      register,
+    });
+    await userEvent.type(screen.getByLabelText(t("ko", "flow.password")), "whatever");
+    await userEvent.click(screen.getByRole("button", { name: t("ko", "flow.login.submit") }));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    expect(register).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem("lattice.productFlow.user") || "{}")).toMatchObject({
+      email: "you@local",
+    });
+  });
+
+  it("accepts the profile bypass for the same saved email", async () => {
+    localStorage.setItem(
+      "lattice.productFlow.user",
+      JSON.stringify({ email: "you@local", name: "You" }),
+    );
+    const onSuccess = renderLogin({
+      login: fail("bad", {}, 401),
+      profile: ok({ email: "you@local" }),
+    });
+    await userEvent.type(screen.getByLabelText(t("ko", "flow.password")), "whatever");
+    await userEvent.click(screen.getByRole("button", { name: t("ko", "flow.login.submit") }));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  });
+
+  it("names the mismatch when a different email owns this Brain", async () => {
+    localStorage.setItem(
+      "lattice.productFlow.user",
+      JSON.stringify({ email: "owner@example.com", name: "Owner" }),
+    );
+    // Even a live profile does not excuse the wrong email.
+    const onSuccess = renderLogin({
+      login: fail("bad", {}, 401),
+      profile: ok({ email: "owner@example.com" }),
+    });
+    // The saved owner prefills the field, so type a different address over it.
+    const email = screen.getByLabelText(t("ko", "flow.email"));
+    await userEvent.clear(email);
+    await userEvent.type(email, "intruder@local");
+    await userEvent.type(screen.getByLabelText(t("ko", "flow.password")), "whatever");
+    await userEvent.click(screen.getByRole("button", { name: t("ko", "flow.login.submit") }));
+    expect((await screen.findByRole("alert")).textContent).toBe(t("ko", "flow.login.otherEmail"));
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it("registers a brand-new person and signs them straight in", async () => {
+    const login = vi.fn()
+      .mockResolvedValueOnce(fail("unknown user", {}, 401))
+      .mockResolvedValueOnce(ok({ token: "fresh" }));
+    const register = vi.fn().mockResolvedValue(ok({ id: "u1" }));
+    const onSuccess = renderLogin({
+      login,
+      profile: fail("no session", {}, 401),
+      register,
+    });
+
+    const nameField = screen.getByLabelText(t("ko", "flow.name"));
+    await userEvent.clear(nameField);
+    await userEvent.type(screen.getByLabelText(t("ko", "flow.password")), "hunter2");
+    await userEvent.click(screen.getByRole("button", { name: t("ko", "flow.login.submit") }));
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    expect(login).toHaveBeenCalledTimes(2);
+    // The blank name fell back to the email's local part.
+    expect(register).toHaveBeenCalledWith(expect.objectContaining({ name: "you", nickname: "you" }));
+  });
+
+  it("uses a plain 'You' when even the email has no local part", async () => {
+    const login = vi.fn()
+      .mockResolvedValueOnce(fail("unknown", {}, 401))
+      .mockResolvedValueOnce(ok({ token: "t" }));
+    const register = vi.fn().mockResolvedValue(ok({}));
+    renderLogin({ login, profile: fail("no", {}, 401), register });
+
+    await userEvent.clear(screen.getByLabelText(t("ko", "flow.name")));
+    const email = screen.getByLabelText(t("ko", "flow.email"));
+    await userEvent.clear(email);
+    await userEvent.type(email, "@example.com");
+    await userEvent.type(screen.getByLabelText(t("ko", "flow.password")), "hunter2");
+    // "@example.com" fails native email validation, so force the submit the
+    // way a password manager or script would.
+    fireEvent.submit(screen.getByRole("form", { name: t("ko", "flow.login.title") }));
+
+    await waitFor(() => expect(register).toHaveBeenCalledWith(expect.objectContaining({ name: "You" })));
+  });
+
+  it("admits the local profile is unavailable when nothing works", async () => {
+    const onSuccess = renderLogin({
+      login: fail("down", {}, 503),
+      profile: fail("down", {}, 503),
+      register: fail("down", {}, 503),
+    });
+    await userEvent.type(screen.getByLabelText(t("ko", "flow.password")), "hunter2");
+    await userEvent.click(screen.getByRole("button", { name: t("ko", "flow.login.submit") }));
+    expect((await screen.findByRole("alert")).textContent).toBe(t("ko", "flow.login.unavailable"));
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it("shows the working label and freezes the button while signing in", async () => {
+    let release: (value: unknown) => void = () => {};
+    const login = vi.fn(() => new Promise((resolve) => { release = resolve; }));
+    renderLogin({ login });
+    await userEvent.type(screen.getByLabelText(t("ko", "flow.password")), "hunter2");
+    await userEvent.click(screen.getByRole("button", { name: t("ko", "flow.login.submit") }));
+
+    const busy = await screen.findByRole("button", { name: t("ko", "flow.login.busy") });
+    expect((busy as HTMLButtonElement).disabled).toBe(true);
+    release(ok({ token: "t" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: t("ko", "flow.login.busy") })).toBeNull());
   });
 });

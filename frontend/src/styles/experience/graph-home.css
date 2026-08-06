@@ -19,18 +19,8 @@
   padding: 1rem 0 1.25rem;
 }
 
-/* Overlay notice: it must not sit on top of what it is describing. Centred at
-   34rem it reached x ≈ 25–75% and covered the first graph node cards, which
-   start at x ≈ 56%. Park it in the free band between the source column
-   (ends ≈ 13%) and the card grid instead. */
-.brain-centered-home > .brain-model-missing {
-  position: absolute;
-  top: 4.65rem;
-  left: 16%;
-  z-index: 24;
-  width: min(26rem, 38%);
-  margin: 0;
-}
+/* The model notice rides inside the hero as a status pill since 10.10.0 —
+   see .brain-model-missing in experience/home-dock.css. */
 
 .brain-knowledge-flow {
   display: grid;
@@ -817,138 +807,11 @@
   font-size: 0.6rem;
 }
 
-.brain-home-shelves {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.25rem;
-}
-
-.brain-home-shelves > details {
-  position: relative;
-  min-width: 0;
-  margin: 0;
-  border: 0;
-}
-
-.brain-home-shelves > details[open] {
-  z-index: 80;
-}
-
-.brain-home-shelves > details > summary {
-  display: flex;
-  min-width: 0;
-  min-height: 1.72rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.26rem;
-  border: 1px solid hsl(var(--border) / 0.82);
-  border-radius: 10px;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  padding: 0 0.3rem;
-  font-size: 0.6rem;
-  font-weight: 600;
-  list-style: none;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.brain-home-shelves > details > summary::-webkit-details-marker {
-  display: none;
-}
-
-.brain-home-shelves > details > summary:hover,
-.brain-home-shelves > details[open] > summary {
-  border-color: hsl(var(--primary) / 0.38);
-  background: hsl(var(--primary) / 0.06);
-  color: hsl(var(--foreground));
-}
-
-.brain-home-shelves > details > summary span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.brain-home-shelves > details > summary small {
-  color: hsl(var(--primary));
-  font-size: 0.6rem;
-}
-
-/* The saved-conversation count reads as a badge rather than a loose number, so
-   "지난 대화 3" parses at a glance as a shelf holding three things. */
-.brain-home-shelves > details > summary small.brain-shelf-count {
-  min-width: 1.05rem;
-  padding: 0 0.28rem;
-  border-radius: 999px;
-  background: hsl(var(--primary) / 0.16);
-  font-weight: 700;
-  text-align: center;
-}
-
-.brain-home-shelf-popover {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 0.55rem);
-  z-index: 90;
-  width: min(31rem, calc(100vw - 2rem));
-  max-height: min(68dvh, 38rem);
-  overflow: auto;
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--surface));
-  box-shadow: var(--elev-3);
-  padding: 0.8rem;
-}
-
-.brain-home-shelf-close {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  margin: 0 0 0.35rem auto;
-  border: 0;
-  border-radius: 10px;
-  background: hsl(var(--muted) / 0.78);
-  color: hsl(var(--muted-foreground));
-  box-shadow: 0 0 0 0.3rem hsl(var(--surface));
-}
-
-.brain-home-shelf-close:hover,
-.brain-home-shelf-close:focus-visible {
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
-}
-
-.brain-home-history-shelf .brain-history-panel {
-  width: 100%;
-  margin: 0;
-}
-
-.brain-home-history-shelf .brain-history-list {
-  max-height: 22rem;
-  overflow: auto;
-}
-
-.brain-home-shelves .brain-home-insights {
-  width: auto;
-  max-width: none;
-  margin: 0;
-  border: 0;
-}
-
-.brain-home-shelves .brain-home-insights-content {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.brain-home-shelves .brain-home-insights-content :is(.brain-rings, .brain-brief-panel, .brain-home-proactive, .brain-proactive-trail) {
-  width: 100%;
-  max-width: none;
-  margin: 0;
+/* The conversation drawer inside the dock reuses the history panel sizing the
+   old home shelf carried. */
+.brain-home-drawer-body .brain-history-list {
+  max-height: none;
+  overflow: visible;
 }
 
 @media (min-width: 761px) {
@@ -1463,13 +1326,6 @@
   top: 3rem;
 }
 
-/* The model notice is conditional, so it must not overlay content that is
-   always there. In the flow it simply takes its own auto row. */
-.brain-centered-home > .brain-model-missing {
-  position: static;
-  width: 100%;
-  transform: none;
-}
 
 /* Shorter cards so three rows still clear the status bar in a short canvas. */
 .brain-centered-home .brain-flow-node {

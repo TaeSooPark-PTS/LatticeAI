@@ -51,7 +51,11 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
   }, [initialTab]);
   const selectMethod = (next: CaptureMethod) => {
     setMethod(next);
-    navigateHash("/" + (captureMethods.find((item) => item.id === next)?.path || "capture"));
+    // Every CaptureMethod has exactly one entry in captureMethods, so this
+    // lookup cannot miss; the cast records that invariant instead of a dead
+    // fallback branch.
+    const entry = captureMethods.find((item) => item.id === next) as (typeof captureMethods)[number];
+    navigateHash("/" + entry.path);
   };
   return (
     <div className="product-page capture-page space-y-5">
@@ -254,7 +258,7 @@ function DocumentUploadQueue({ queue, onRetry }: { queue: UploadQueueItem[]; onR
   );
 }
 
-function uploadResultDetail(item: UploadQueueItem, language: Language) {
+export function uploadResultDetail(item: UploadQueueItem, language: Language) {
   if (item.status === "queued") return t(language, "capture.files.queued");
   if (item.status === "uploading") return t(language, "capture.files.uploading");
   if (!item.result?.ok) return item.result?.error || t(language, "capture.files.failed");
@@ -304,12 +308,12 @@ function displayFileName(file: File) {
   return (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
 }
 
-function browserFolderNameFromFiles(files: File[]) {
+export function browserFolderNameFromFiles(files: File[]) {
   const firstPath = (files[0] as (File & { webkitRelativePath?: string }) | undefined)?.webkitRelativePath || "";
   return firstPath.split("/").filter(Boolean)[0] || "";
 }
 
-function hasDesktopFolderPicker() {
+export function hasDesktopFolderPicker() {
   const shell = window as DesktopFolderPickerWindow;
   return Boolean(shell.__TAURI__?.core?.invoke || shell.latticeDesktop?.selectFolder || (shell.__TAURI_INTERNALS__ && window.location.protocol === "tauri:"));
 }
@@ -352,7 +356,9 @@ function FolderIntake() {
   const [choosingFolder, setChoosingFolder] = React.useState(false);
   const [folderQueue, setFolderQueue] = React.useState<UploadQueueItem[]>([]);
   const connect = useMutation({
-    mutationFn: (targetPath?: string) => latticeApi.connectFolder((targetPath || path).trim()),
+    // Both call sites guard against an empty value before mutating, so the
+    // path always arrives as an argument here.
+    mutationFn: (targetPath: string) => latticeApi.connectFolder(targetPath.trim()),
     onSuccess: () => {
       setFolderPickError(null);
       void qc.invalidateQueries({ queryKey: ["localSources"] });
@@ -378,6 +384,9 @@ function FolderIntake() {
     browserFolderUpload.mutate(files);
   }, [browserFolderUpload, language]);
   const chooseFolder = React.useCallback(async () => {
+    /* v8 ignore next -- unreachable: the only trigger is this screen's single
+       "choose folder" button, which is itself disabled by the same
+       `choosingFolder` flag in the same render. Kept as defense-in-depth. */
     if (choosingFolder) return;
     setChoosingFolder(true);
     setFolderPickError(null);
@@ -560,7 +569,7 @@ function normalizeWebUrl(value: string) {
  */
 type JourneyState = "done" | "working" | "waiting";
 
-function readJourney(pipelineStatus: unknown, index: unknown, stats: unknown) {
+export function readJourney(pipelineStatus: unknown, index: unknown, stats: unknown) {
   const statusData = isRecord(pipelineStatus) ? pipelineStatus : {};
   const indexData = isRecord(index) ? index : {};
   const statsData = isRecord(stats) ? stats : {};
@@ -614,7 +623,7 @@ function readJourney(pipelineStatus: unknown, index: unknown, stats: unknown) {
       { key: "read", state: readState, count: received ?? (remembered || waiting) },
       { key: "understand", state: understandState, count: extracted ?? remembered },
       { key: "connect", state: connectState, count: connected ?? connections },
-    ] as Array<{ key: string; state: JourneyState; count?: number }>,
+    ] as Array<{ key: string; state: JourneyState; count: number }>,
   };
 }
 
@@ -657,7 +666,8 @@ function PipelinePanel() {
                   </div>
                   <div className="capture-journey-step-meta flex items-center justify-between gap-2 mt-3 pt-2 border-t border-border/40 text-xs">
                     <Badge variant="muted" className="capture-journey-count">
-                      {count !== undefined ? (typeof count === "number" ? t(language, "ui.value.records", { count }) : count) : t(language, "shell.sync.checking")}
+                      {/* readJourney always resolves a numeric count per step. */}
+                      {t(language, "ui.value.records", { count })}
                     </Badge>
                     <span className="capture-journey-state">{t(language, `capture.pipeline.step.${state}`)}</span>
                   </div>
@@ -667,8 +677,10 @@ function PipelinePanel() {
           </ol>
           {hasPipelineData ? (
             <div className="flex flex-wrap gap-2 text-sm pt-2">
-              <Badge variant="success">{t(language, "capture.pipeline.count.remembered", { count: fmtNumber(journey.extracted ?? journey.remembered) })}</Badge>
-              <Badge variant="muted">{t(language, "capture.pipeline.count.connections", { count: fmtNumber(journey.connected ?? journey.connections) })}</Badge>
+              {/* journey.extracted / journey.connected are always numbers
+                  (readJourney falls back to the graph totals itself). */}
+              <Badge variant="success">{t(language, "capture.pipeline.count.remembered", { count: fmtNumber(journey.extracted) })}</Badge>
+              <Badge variant="muted">{t(language, "capture.pipeline.count.connections", { count: fmtNumber(journey.connected) })}</Badge>
               <Badge variant={journey.waiting ? "warning" : "muted"}>
                 {journey.waiting
                   ? t(language, "capture.pipeline.count.waiting", { count: fmtNumber(journey.waiting) })

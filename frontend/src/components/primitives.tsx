@@ -119,8 +119,10 @@ function recordSummary(value: Record<string, unknown>) {
     const candidate = value[key];
     if (candidate === null || candidate === undefined || candidate === "") continue;
     if (typeof candidate === "object") continue;
+    // scalarText never returns an empty string (absent values become "-"), so
+    // only the "-" placeholder needs skipping.
     const text = scalarText(candidate);
-    if (text && text !== "-") return text.length > 96 ? shortId(text, 96) : text;
+    if (text !== "-") return text.length > 96 ? shortId(text, 96) : text;
   }
   return "";
 }
@@ -500,6 +502,11 @@ export function ActionButton({
   );
 }
 
+/** Exported for tests: focus a tab button that may already have unmounted. */
+export function focusTabButton(button: HTMLButtonElement | null | undefined) {
+  button?.focus();
+}
+
 export function Tabs({
   tabs,
   value,
@@ -517,7 +524,7 @@ export function Tabs({
 
   const moveFocus = (currentIndex: number, direction: number) => {
     const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
-    tabRefs.current[nextIndex]?.focus();
+    focusTabButton(tabRefs.current[nextIndex]);
     onChange(tabs[nextIndex].id);
   };
 
@@ -553,11 +560,11 @@ export function Tabs({
               moveFocus(index, -1);
             } else if (event.key === "Home") {
               event.preventDefault();
-              tabRefs.current[0]?.focus();
+              focusTabButton(tabRefs.current[0]);
               onChange(tabs[0].id);
             } else if (event.key === "End") {
               event.preventDefault();
-              tabRefs.current[tabs.length - 1]?.focus();
+              focusTabButton(tabRefs.current[tabs.length - 1]);
               onChange(tabs[tabs.length - 1].id);
             }
           }}

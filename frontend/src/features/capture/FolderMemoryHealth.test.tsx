@@ -69,6 +69,16 @@ describe("parseFolderHealth", () => {
     expect(parsed.vectorPending).toBe(4);
     expect(parseFolderHealth(null).vectorStatus).toBe("unavailable");
   });
+
+  it("tolerates folder and error entries that are not records", () => {
+    const parsed = parseFolderHealth({
+      folders: [42, { id: "f1", recent_errors: ["oops", { path: "p", detail: "why" }] }],
+    });
+    expect(parsed.folders.map((f) => f.id)).toEqual(["f1"]);
+    // No label or root_path → the id names the folder rather than a blank.
+    expect(parsed.folders[0].label).toBe("f1");
+    expect(parsed.folders[0].errors).toEqual([{ path: "p", detail: "why" }]);
+  });
 });
 
 describe("FolderMemoryHealthCard", () => {
@@ -94,5 +104,14 @@ describe("FolderMemoryHealthCard", () => {
     renderCard();
     await waitFor(() => expect(latticeApi.localFolderHealth).toHaveBeenCalled());
     expect(screen.queryByTestId("folder-memory-health")).toBeNull();
+  });
+
+  it("omits the global vector note when nothing is pending", async () => {
+    mockHealth({
+      folders: [{ id: "solo", label: "Solo", coverage: 0.5, files: { total: 2, indexed: 1 } }],
+    });
+    renderCard();
+    await waitFor(() => expect(screen.getByTestId("folder-health-solo")).toBeTruthy());
+    expect(screen.queryByText(/폴더별 아님/)).toBeNull();
   });
 });

@@ -71,9 +71,10 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
         <p className="page-copy">{t(language, "system.body")}</p>
       </header>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3" data-testid="system-tab-groups">
-        {groups.map((group) => {
-          const items = visibleTabs.filter((item) => item.group === group.id);
-          if (!items.length) return null;
+        {groups
+          .map((group) => ({ group, items: visibleTabs.filter((item) => item.group === group.id) }))
+          .filter(({ items }) => items.length > 0)
+          .map(({ group, items }) => {
           const labelId = `system-group-${group.id}`;
           return (
             <div key={group.id} className="flex flex-col gap-1.5">
@@ -544,7 +545,7 @@ function SettingsPanel() {
   );
 }
 
-function localizedTextValue(language: Language, value: unknown, fallback = t(language, "system.value.notReported")) {
+function localizedTextValue(language: Language, value: unknown, fallback: string) {
   if (value === null || value === undefined || value === "") return fallback;
   if (typeof value === "boolean") return t(language, value ? "system.value.enabled" : "system.value.disabled");
   return String(value);
@@ -609,7 +610,7 @@ function HealthView({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function StorageView({ data, mode = "advanced", language = "en" }: { data: Record<string, unknown>; mode?: string; language?: Language }) {
+function StorageView({ data, mode, language }: { data: Record<string, unknown>; mode: string; language: Language }) {
   const active = isRecord(data.active) ? data.active : data;
   const postgres = isRecord(data.postgres) ? data.postgres : {};
   const backup = isRecord(data.backup_health) ? data.backup_health : {};

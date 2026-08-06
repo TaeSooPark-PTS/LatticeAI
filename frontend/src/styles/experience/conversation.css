@@ -199,8 +199,7 @@
 
 .brain-home-suggestions,
 .brain-home-prompts,
-.brain-history-panel,
-.brain-home-insights {
+.brain-history-panel {
   width: 100%;
   max-width: none;
 }
@@ -333,76 +332,8 @@
   border-radius: 10px;
 }
 
-.brain-home-insights {
-  margin-top: 1.5rem;
-  border-top: 1px solid hsl(var(--border));
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.brain-home-insights > summary {
-  display: flex;
-  min-height: 4.4rem;
-  align-items: center;
-  gap: 0.75rem;
-  border-radius: 10px;
-  color: hsl(var(--foreground));
-  padding: 0.55rem;
-  list-style: none;
-  cursor: pointer;
-}
-
-.brain-home-insights > summary::-webkit-details-marker {
-  display: none;
-}
-
-.brain-home-insights > summary:hover {
-  background: hsl(var(--muted) / 0.48);
-}
-
-.brain-home-insights > summary > svg {
-  color: hsl(var(--brain-core));
-}
-
-.brain-home-insights > summary span {
-  display: grid;
-  gap: 0.08rem;
-}
-
-.brain-home-insights > summary strong {
-  font-size: 0.86rem;
-}
-
-.brain-home-insights > summary small {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.68rem;
-  font-weight: 400;
-}
-
-.brain-home-insights-content {
-  display: grid;
-  gap: 1rem;
-  padding: 1rem 0 1.35rem;
-}
-
-.brain-home-insights-content .brain-rings {
-  border-radius: var(--experience-radius);
-  background: hsl(var(--muted) / 0.28);
-  padding: 1.25rem 1rem;
-}
-
-.brain-home-insights-content .brain-brief-panel,
-.brain-home-insights-content .brain-home-proactive,
-.brain-home-insights-content .brain-proactive-trail {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
-
-.brain-home-insights-content .brain-brief-panel {
-  border-color: hsl(var(--border));
-  border-radius: var(--experience-radius);
-  background: hsl(var(--surface));
-}
+/* The home's insight shelf left this sheet in 10.10.0 — its panels live in the
+   dock drawer now (see experience/home-dock.css). */
 
 .brain-home-proactive-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **10.9.0 — Never Blocks**.
+Current release: **10.10.0 — Quiet Station**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

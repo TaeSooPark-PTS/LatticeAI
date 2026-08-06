@@ -55,9 +55,13 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
   const byName = (pattern: RegExp) => pool.find((item) => pattern.test(`${item.name} ${item.id}`));
   const byId = (id?: unknown) => pool.find((item) => item.id === String(id));
   const best = byId(topPick.id) || byName(/gemma.*12|12b/i) || pool[0];
-  const faster = pool.find((item) => item.id !== best?.id && /qwen|8b|7b/i.test(`${item.name} ${item.id}`)) || pool.find((item) => item.id !== best?.id);
-  const advanced = pool.find((item) => item.id !== best?.id && item.id !== faster?.id && /26b|32b|70b|advanced/i.test(`${item.name} ${item.id}`))
-    || pool.find((item) => item.id !== best?.id && item.id !== faster?.id);
+  // Hoisted so the "no best/faster yet" reads happen even when the pool is
+  // empty and the find callbacks never run; behaviour is unchanged.
+  const bestId = best?.id;
+  const faster = pool.find((item) => item.id !== bestId && /qwen|8b|7b/i.test(`${item.name} ${item.id}`)) || pool.find((item) => item.id !== bestId);
+  const fasterId = faster?.id;
+  const advanced = pool.find((item) => item.id !== bestId && item.id !== fasterId && /26b|32b|70b|advanced/i.test(`${item.name} ${item.id}`))
+    || pool.find((item) => item.id !== bestId && item.id !== fasterId);
   return [
     best ? { ...best, role: "best" as const, reason: best.reason || "best" } : null,
     faster ? { ...faster, role: "faster" as const, reason: faster.reason || "faster" } : null,
@@ -150,7 +154,8 @@ export function fallbackModel(): RecommendedModel {
   };
 }
 
-function toRecommendedModel(row: ApiData): RecommendedModel {
+/** Exported for tests: raw catalog rows are untyped, so every fallback here is live. */
+export function toRecommendedModel(row: ApiData): RecommendedModel {
   const compatibility = asRecord(row.runtime_compatibility);
   const id = String(row.id || row.model_id || row.recommended_load_id || "");
   const loadId = String(row.recommended_load_id || row.load_id || id);
@@ -167,8 +172,10 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
     loadId,
     engine: String(row.recommended_engine || row.engine || "local_mlx"),
     name,
-    shortName: friendlyModelName(name || id),
-    family: friendlyModelName(String(row.family || name || "local_brain")),
+    // `name` can never be empty (its own chain ends in a literal), so the old
+    // `name || id` / `|| "local_brain"` tails were dead code, not fallbacks.
+    shortName: friendlyModelName(name),
+    family: friendlyModelName(String(row.family || name)),
     size: String(row.size || ""),
     role: "best",
     reason: String(row.reason || ""),
@@ -212,8 +219,10 @@ export function estimateDownloadMinutes(downloadSize: string): number | null {
 export function parseParameterBillions(text: string): number | null {
   const match = String(text || "").match(/(\d{1,3}(?:\.\d)?)\s*b\b/i);
   if (!match) return null;
+  // The digit-only capture group always parses to a finite number, so the old
+  // `Number.isFinite` guard could never fail and has been dropped.
   const value = Number(match[1]);
-  return Number.isFinite(value) && value > 0 ? value : null;
+  return value > 0 ? value : null;
 }
 
 /** Estimate seconds to first response from model scale: 8B→5s, 12B→10s, 70B→30s. */

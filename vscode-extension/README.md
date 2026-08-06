@@ -12,17 +12,16 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**10.9.0 — Never Blocks** fixes the local server blocking its own event loop.
-Pulling a model, installing an engine, installing an MCP package and sampling
-CPU/RAM for the System screen were all being done directly on the one event
-loop the server runs, so while any of them ran nothing else was answered — not
-another chat stream, not `/health`. A model download has a fifteen-minute
-timeout, which is how long the whole product could be frozen by one click. All
-of it moved to worker threads, with a lint rule and a test that measures the
-loop to keep it that way. Alongside: a keyboard focus ring that faded in too
-slowly to be visible when focus landed, a Brain that kept "thinking" after it
-had answered, fourteen more routers whose error messages now come back in the
-language you chose, and a welcome screen that fits on a laptop.
+**10.10.0 — Quiet Station** rebuilds the Brain chat home around the composer.
+The memory stats moved into a hover badge with a small summary graph, the six
+capture chips folded behind one + on the composer, the model banner became a
+status pill with the single accented CTA, and past conversations / stats / the
+memory map moved onto a dock rail that opens a focus-trapped drawer instead of
+stacking cards under the fold. Cards trade borders for soft shadow, and the
+accent colour appears exactly twice. Alongside: the frontend test suite now
+covers 100% of statements, branches, functions and lines, with vitest
+thresholds and a CI coverage gate holding that floor, and the public release
+history now starts at 9.0.0.
 
 **This release does not touch the extension**; it ships unchanged apart from its
 version. Nothing an editor session depends on moved: no endpoint, token, or

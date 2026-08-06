@@ -125,6 +125,23 @@ function focusablesIn(root: HTMLElement | null): HTMLElement[] {
   );
 }
 
+/** Exported for tests: focus a target that may already have gone away. */
+export function restoreFocusTo(element: HTMLElement | null) {
+  element?.focus();
+}
+
+/** Exported for tests: whether a pointer-down landed on the menu or one of its triggers. */
+export function pointerDownHitsMenu(
+  target: Node,
+  panel: HTMLElement | null,
+  desktopButton: HTMLElement | null,
+  mobileButton: HTMLElement | null,
+) {
+  return Boolean(
+    panel?.contains(target) || desktopButton?.contains(target) || mobileButton?.contains(target),
+  );
+}
+
 function BrainShell({
   active,
   contentOwnsMain = false,
@@ -146,7 +163,7 @@ function BrainShell({
   const closeMenu = React.useCallback((restoreFocus = true) => {
     setMenuOpen(false);
     if (restoreFocus) {
-      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+      window.requestAnimationFrame(() => restoreFocusTo(returnFocusRef.current));
     }
   }, []);
 
@@ -180,9 +197,12 @@ function BrainShell({
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (
-        menuPanelRef.current?.contains(target)
-        || desktopMenuButtonRef.current?.contains(target)
-        || mobileMenuButtonRef.current?.contains(target)
+        pointerDownHitsMenu(
+          target,
+          menuPanelRef.current,
+          desktopMenuButtonRef.current,
+          mobileMenuButtonRef.current,
+        )
       ) {
         return;
       }
@@ -239,7 +259,7 @@ function BrainShell({
         href="#brain-main-content"
         onClick={(event) => {
           event.preventDefault();
-          document.getElementById("brain-main-content")?.focus();
+          restoreFocusTo(document.getElementById("brain-main-content"));
         }}
       >
         {skipLabel}
@@ -266,7 +286,7 @@ function BrainShell({
                 href={`#/${item.path}`}
                 aria-current={item.id === active ? "page" : undefined}
               >
-                {Icon && <Icon className="nav-icon" aria-hidden="true" />}
+                <Icon className="nav-icon" aria-hidden="true" />
                 <span>{t(language, item.labelKey)}</span>
               </a>
             );
@@ -293,7 +313,7 @@ function BrainShell({
                   href={`#/${item.path}`}
                   aria-current={item.id === active ? "page" : undefined}
                 >
-                  {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>{t(language, item.labelKey)}</span>
                 </a>
               );
@@ -376,7 +396,7 @@ function BrainShell({
                       aria-current={item.id === active ? "page" : undefined}
                       onClick={() => closeMenu(false)}
                     >
-                      {Icon && <Icon className="nav-icon" aria-hidden="true" />}
+                      <Icon className="nav-icon" aria-hidden="true" />
                       <span>{t(language, item.labelKey)}</span>
                     </a>
                   );
@@ -418,7 +438,7 @@ function BrainShell({
               href={`#/${item.path}`}
               aria-current={item.id === active ? "page" : undefined}
             >
-              {Icon && <Icon className="nav-icon" aria-hidden="true" />}
+              <Icon className="nav-icon" aria-hidden="true" />
               <span>{t(language, item.labelKey)}</span>
             </a>
           );

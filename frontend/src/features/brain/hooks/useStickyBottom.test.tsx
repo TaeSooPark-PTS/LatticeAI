@@ -136,4 +136,71 @@ describe("useStickyBottom", () => {
     expect(box.top).toBe(1000);
     expect(document.activeElement).toBe(composer);
   });
+
+  it("does nothing at all when its ref was never attached", () => {
+    // A conditional layout can render the hook without mounting the stream
+    // element; there is no scroll box to resolve, so both the follow effect and
+    // the scroll listener must return without touching anything.
+    function Detached({ items }: { items: number }) {
+      useStickyBottom<HTMLDivElement>(items);
+      return <p>no stream</p>;
+    }
+    const { rerender } = render(<Detached items={1} />);
+    fireEvent.scroll(document);
+    rerender(<Detached items={2} />);
+    expect(document.documentElement.scrollTop).toBe(0);
+  });
+
+  it("ignores scroll noise from unrelated boxes", () => {
+    const box: ScrollBox = { scrollHeight: 1400, clientHeight: 400, top: 0 };
+    const { getByTestId, rerender } = render(<Harness items={3} box={box} scroller="element" />);
+    const stream = getByTestId("stream");
+    expect(box.top).toBe(1000);
+
+    // The stream moved (e.g. a programmatic jump), but the event the listener
+    // hears comes from some other element — a nested code block scrolling.
+    const other = document.createElement("div");
+    document.body.appendChild(other);
+    stream.scrollTop = 200;
+    fireEvent.scroll(other);
+    other.remove();
+
+    // Had the event been attributed to the stream, following would have
+    // stopped; because it was ignored, the next append still re-pins.
+    box.scrollHeight = 1800;
+    rerender(<Harness items={4} box={box} scroller="element" />);
+    expect(box.top).toBe(1400);
+  });
+
+  it("hears the page scroller when the event fires on the document element", () => {
+    const box: ScrollBox = { scrollHeight: 3000, clientHeight: 800, top: 0 };
+    const { rerender } = render(<Harness items={2} box={box} scroller="page" />);
+    expect(box.top).toBe(2200);
+
+    // Some browsers dispatch page scrolls on the root element, not the document.
+    document.documentElement.scrollTop = 100;
+    fireEvent.scroll(document.documentElement);
+
+    box.scrollHeight = 3600;
+    rerender(<Harness items={3} box={box} scroller="page" />);
+    expect(box.top).toBe(100);
+  });
+
+  it("scrolling further down while still away from the bottom stays unpinned", () => {
+    const box: ScrollBox = { scrollHeight: 1400, clientHeight: 400, top: 0 };
+    const { getByTestId, rerender } = render(<Harness items={3} box={box} scroller="element" />);
+    const stream = getByTestId("stream");
+    expect(box.top).toBe(1000);
+
+    // Walk away from the newest line…
+    stream.scrollTop = 100;
+    fireEvent.scroll(stream);
+    // …then inch downward without reaching the bottom: still reading history.
+    stream.scrollTop = 200;
+    fireEvent.scroll(stream);
+
+    box.scrollHeight = 1800;
+    rerender(<Harness items={4} box={box} scroller="element" />);
+    expect(box.top).toBe(200);
+  });
 });

@@ -33,6 +33,18 @@ export default defineConfig({
         "frontend/src/main.tsx", // bootstrap, covered by the visual suite
       ],
       reporter: ["text-summary", "text"],
+      // 10.10.0 brought every file in `frontend/src` to 100 on all four
+      // metrics. Thresholds turn that from a snapshot into a floor: a new
+      // branch without a test fails here and in CI, the same run either way.
+      // Note when reading the printed table: vitest hides fully-covered files
+      // from the `text` reporter under an agent, so "my file vanished" means
+      // 100, not missing — confirm with `--coverage.reporter=json-summary`.
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+      },
     },
   },
 });

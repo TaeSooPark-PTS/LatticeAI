@@ -38,7 +38,8 @@ const TIME_WINDOWS: Array<{ days: number | null }> = [{ days: 7 }, { days: 30 },
 const RECENT_WINDOW_MS = 7 * DAY_MS;
 
 // Highlight occurrences of `query` inside `label` by wrapping matches in <mark>.
-function highlightMatch(label: string, query: string): React.ReactNode {
+// Exported for direct unit testing of the split/merge edge cases.
+export function highlightMatch(label: string, query: string): React.ReactNode {
   if (!query) return label;
   const lower = label.toLowerCase();
   const target = query.toLowerCase();
@@ -46,7 +47,9 @@ function highlightMatch(label: string, query: string): React.ReactNode {
   let cursor = 0;
   let matchIndex = lower.indexOf(target, cursor);
   let key = 0;
-  while (matchIndex !== -1 && target.length > 0) {
+  // `target` is non-empty here (empty queries returned above), so indexOf can
+  // never loop in place and the cursor always advances.
+  while (matchIndex !== -1) {
     if (matchIndex > cursor) parts.push(label.slice(cursor, matchIndex));
     parts.push(<mark key={`m-${key++}`}>{label.slice(matchIndex, matchIndex + target.length)}</mark>);
     cursor = matchIndex + target.length;
@@ -125,6 +128,7 @@ export function BrainGraphLayer({
     [model.edges, positionById],
   );
   const selected = visibleNodes.find((node) => node.id === selectedId) || visibleNodes[0] || null;
+  const selectedVisibleId = selected ? selected.id : null;
 
   // 1-hop neighbor set for the focused node, drives focus/dim + edge highlight.
   const neighborIds = React.useMemo(
@@ -297,9 +301,10 @@ export function BrainGraphLayer({
         <div className="brain-graph-canvas" data-focus-active={focusActive ? "true" : "false"}>
           <svg className="brain-graph-edges" viewBox="0 0 100 100" aria-hidden>
             {visibleEdges.map((edge, index) => {
-              const source = positionById.get(edge.source);
-              const target = positionById.get(edge.target);
-              if (!source || !target) return null;
+              // visibleEdges is filtered on positionById membership above, in
+              // the same render pass, so both lookups always resolve.
+              const source = positionById.get(edge.source)!;
+              const target = positionById.get(edge.target)!;
               const touchesFocus =
                 focusActive && (edge.source === selectedId || edge.target === selectedId);
               const touchesMatch = matchedIds.has(edge.source) || matchedIds.has(edge.target);
@@ -326,7 +331,7 @@ export function BrainGraphLayer({
               <button
                 key={node.id}
                 type="button"
-                className={`graph-node ${selected?.id === node.id ? "is-selected" : ""} ${matchedIds.has(node.id) ? "is-match" : ""}`}
+                className={`graph-node ${selectedVisibleId === node.id ? "is-selected" : ""} ${matchedIds.has(node.id) ? "is-match" : ""}`}
                 data-focus={focusState(node.id)}
                 data-recent={isRecent ? "true" : undefined}
                 style={layerStyle({ "--x": `${x}%`, "--y": `${y}%`, "--delay": `${index * 35}ms` })}

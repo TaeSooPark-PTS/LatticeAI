@@ -113,6 +113,10 @@ describe("friendlyError", () => {
     expect(friendlyError({ error: "nope" }, "fallback")).toBe("nope");
   });
 
+  it("keeps falling when a structured detail has none of the known keys", () => {
+    expect(friendlyError({ detail: { code: 42 } }, "fallback")).toBe("fallback");
+  });
+
   it("uses the fallback for a shape it does not recognise", () => {
     expect(friendlyError({ unexpected: 1 }, "fallback")).toBe("fallback");
     expect(friendlyError("a bare string", "fallback")).toBe("fallback");
@@ -173,5 +177,161 @@ describe("friendlyCaughtError", () => {
     useAppStore.setState({ language: "ko" });
     const korean = friendlyCaughtError(new Error("aborted"), "fallback");
     expect(korean).not.toBe(english);
+  });
+});
+
+/**
+ * The desktop shells. `tauriInvoke`, `selectFolder` and the Tauri half of
+ * `apiBase` decide whether the app talks to a sidecar it discovered or to the
+ * page's own origin. Wrong answers here don't throw — they quietly point every
+ * request at the wrong place.
+ */
+
+import { apiBase, selectFolder, tauriInvoke } from "./base";
+
+const tauriCore = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: tauriCore.invoke }));
+
+type ShellWindow = Record<string, unknown>;
+const shell = () => window as unknown as ShellWindow;
+
+function clearShellBridges() {
+  delete shell().__TAURI__;
+  delete shell().__TAURI_INTERNALS__;
+  delete shell().latticeDesktop;
+}
+
+afterEach(() => {
+  clearShellBridges();
+  tauriCore.invoke.mockReset();
+});
+
+describe("tauriInvoke", () => {
+  it("answers null in a plain browser with no bridge at all", async () => {
+    expect(await tauriInvoke("backend_status")).toBeNull();
+  });
+
+  it("uses the injected global bridge when the shell provides one", async () => {
+    const invoke = vi.fn().mockResolvedValue({ running: true });
+    shell().__TAURI__ = { core: { invoke } };
+
+    expect(await tauriInvoke("backend_status", { probe: 1 })).toEqual({ running: true });
+    expect(invoke).toHaveBeenCalledWith("backend_status", { probe: 1 });
+  });
+
+  it("turns a global-bridge failure into null instead of throwing", async () => {
+    shell().__TAURI__ = { core: { invoke: vi.fn().mockRejectedValue(new Error("ipc down")) } };
+
+    expect(await tauriInvoke("backend_status")).toBeNull();
+  });
+
+  it("falls back to the imported API when only the internals marker exists", async () => {
+    shell().__TAURI_INTERNALS__ = {};
+    tauriCore.invoke.mockResolvedValue("pong");
+
+    expect(await tauriInvoke("ping")).toBe("pong");
+    expect(tauriCore.invoke).toHaveBeenCalledWith("ping", undefined);
+  });
+
+  it("turns an imported-API failure into null instead of throwing", async () => {
+    shell().__TAURI_INTERNALS__ = {};
+    tauriCore.invoke.mockRejectedValue(new Error("no such command"));
+
+    expect(await tauriInvoke("ping")).toBeNull();
+  });
+});
+
+describe("selectFolder", () => {
+  it("prefers the Tauri dialog when it returns a path", async () => {
+    shell().__TAURI__ = { core: { invoke: vi.fn().mockResolvedValue("/Users/me/Notes") } };
+
+    expect(await selectFolder()).toBe("/Users/me/Notes");
+  });
+
+  it("falls through to the Electron preload bridge", async () => {
+    shell().latticeDesktop = { selectFolder: vi.fn().mockResolvedValue("/Users/me/Docs") };
+
+    expect(await selectFolder()).toBe("/Users/me/Docs");
+  });
+
+  it("reports a dismissed Electron dialog as null, not as an empty string", async () => {
+    shell().latticeDesktop = { selectFolder: vi.fn().mockResolvedValue("") };
+
+    expect(await selectFolder()).toBeNull();
+  });
+
+  it("reports null when no shell offers a picker", async () => {
+    expect(await selectFolder()).toBeNull();
+  });
+
+  it("turns an Electron bridge failure into null instead of throwing", async () => {
+    shell().latticeDesktop = { selectFolder: vi.fn().mockRejectedValue(new Error("dialog crashed")) };
+
+    expect(await selectFolder()).toBeNull();
+  });
+});
+
+describe("apiBase inside the desktop shell", () => {
+  // Each scenario needs a fresh module: `base.ts` caches the discovered origin
+  // for the lifetime of the module, which is exactly the behavior under test.
+  async function freshBase() {
+    vi.resetModules();
+    const base = await import("./base");
+    const store = (await import("@/store/appStore")).useAppStore;
+    store.setState({ apiBase: null });
+    return { base, store };
+  }
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("adopts the sidecar origin the Tauri backend reports, then caches it", async () => {
+    shell().__TAURI_INTERNALS__ = {};
+    tauriCore.invoke.mockResolvedValue("http://127.0.0.1:8765");
+    const { base, store } = await freshBase();
+
+    expect(await base.apiBase()).toBe("http://127.0.0.1:8765");
+    expect(store.getState().apiBase).toBe("http://127.0.0.1:8765");
+    expect(tauriCore.invoke).toHaveBeenCalledWith("backend_origin");
+
+    // Second read: the stored base answers without a second invoke.
+    expect(await base.apiBase()).toBe("http://127.0.0.1:8765");
+    // And even with the store cleared, the module-level promise is reused.
+    store.setState({ apiBase: null });
+    expect(await base.apiBase()).toBe("http://127.0.0.1:8765");
+    expect(tauriCore.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats an empty origin report as 'no sidecar' and stays on the page origin", async () => {
+    shell().__TAURI_INTERNALS__ = {};
+    tauriCore.invoke.mockResolvedValue("");
+    const { base, store } = await freshBase();
+
+    expect(await base.apiBase()).toBe("");
+    expect(store.getState().apiBase).toBeNull();
+  });
+
+  it("treats a failed origin probe as 'no sidecar' instead of throwing", async () => {
+    shell().__TAURI_INTERNALS__ = {};
+    tauriCore.invoke.mockRejectedValue(new Error("not ready"));
+    const { base } = await freshBase();
+
+    expect(await base.apiBase()).toBe("");
+  });
+});
+
+describe("uiLanguage resilience", () => {
+  it("falls back to Korean copy when the store itself is unreadable", () => {
+    const spy = vi.spyOn(useAppStore, "getState").mockImplementation(() => {
+      throw new Error("store torn down");
+    });
+    try {
+      const message = friendlyCaughtError(new Error("The operation was aborted"), "fallback");
+      expect(message).not.toBe("fallback");
+      expect(message.length).toBeGreaterThan(0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

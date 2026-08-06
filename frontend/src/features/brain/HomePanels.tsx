@@ -31,12 +31,16 @@ import type {
 } from "./types";
 
 // A friendly, actionable path out of the "no model loaded" dead end: the chat
-// politely refuses without a model, so the way to fix it must be one click away.
+// politely refuses without a model, so the way to fix it must be one click
+// away. A pill, not a banner — the full sentence rides on the tooltip and the
+// accessible name, so the screen keeps its calm and a screen reader keeps the
+// whole story.
 export function ModelMissingNotice({ language }: { language: Language }) {
+  const detail = t(language, "brain.noModel.banner");
   return (
-    <div className="brain-model-missing" role="note">
-      <Cpu className="h-4 w-4" aria-hidden="true" />
-      <span>{t(language, "brain.noModel.banner")}</span>
+    <div className="brain-model-missing" role="note" aria-label={detail} title={detail}>
+      <Cpu className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className="brain-model-missing-text">{t(language, "brain.noModel.pill")}</span>
       <button type="button" onClick={() => navigateHash("/models")}>
         {t(language, "brain.noModel.cta")}
         <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -45,7 +49,9 @@ export function ModelMissingNotice({ language }: { language: Language }) {
   );
 }
 
-function formatConversationTime(language: Language, updatedAt?: number): string {
+// Exported for unit tests: the panel only calls this behind an `updatedAt ?`
+// guard, so the empty-input contract is asserted directly.
+export function formatConversationTime(language: Language, updatedAt?: number): string {
   if (!updatedAt) return "";
   const locale = language === "ko" ? "ko-KR" : "en-US";
   const date = new Date(updatedAt);

@@ -32,18 +32,18 @@ const down = <T,>(data: T) => ({
 /** Every query the console fires, answered with an empty-but-valid payload. */
 function stubAdminApi(overrides: Partial<Record<string, unknown>> = {}) {
   const defaults: Record<string, unknown> = {
-    workspaceOs: live({ counts: {}, models: {} }),
-    graphStats: live({ nodes: {}, edges: {}, total_nodes: 0, total_edges: 0 }),
+    adminSummary: live({}),
+    adminStats: live({}),
     adminUsers: live([]),
     adminAudit: live({ recent_events: [] }),
     adminSecurity: live({ status: "ready" }),
     adminSecurityEvents: live({ events: [] }),
     adminPolicies: live({ policies: [] }),
     adminRoles: live({ roles: [] }),
-    adminRetention: live({}),
+    adminLogRetention: live({}),
     indexStatus: live({ status: "ready" }),
     agentRuntime: live({}),
-    toolRegistry: live({}),
+    toolRegistryDiagnostics: live({ diagnostics: { ready: false } }),
     adminHealthSummary: live({ status: "ok", issue_count: 0 }),
     rebuildIndex: live({}),
   };
@@ -191,5 +191,213 @@ describe("rebuilding the index", () => {
 
     fireEvent.click(rebuildButton!);
     await waitFor(() => expect(rebuild).toHaveBeenCalled());
+  });
+
+  it("says it is rebuilding while the request is in flight", async () => {
+    stubAdminApi();
+    let release!: (value: unknown) => void;
+    vi.spyOn(latticeApi, "rebuildIndex").mockImplementation(
+      () => new Promise((resolve) => { release = resolve; }) as never,
+    );
+    renderConsole();
+    const main = await screen.findByRole("main");
+
+    const rebuildButton = within(main)
+      .getAllByRole("button")
+      .find((button) => /rebuild|reindex/i.test(button.textContent || ""))!;
+    fireEvent.click(rebuildButton);
+
+    // While the server works, the control must say so and refuse a second run.
+    expect(await screen.findByText("Rebuilding")).toBeTruthy();
+    expect((screen.getByText("Rebuilding").closest("button") as HTMLButtonElement).disabled).toBe(true);
+
+    release(live({}));
+    expect(await screen.findByText("Rebuild index")).toBeTruthy();
+  });
+});
+
+describe("the health statement, edge answers", () => {
+  it("counts at least one issue when attention arrives without a number", async () => {
+    stubAdminApi({ adminHealthSummary: live({ status: "attention" }) });
+    renderConsole();
+    expect(await screen.findByText(/1 issue\(s\) need attention/i)).toBeTruthy();
+  });
+
+  it("treats a positive issue count as attention even when the status says ok", async () => {
+    stubAdminApi({ adminHealthSummary: live({ status: "ok", issue_count: 2 }) });
+    renderConsole();
+    expect(await screen.findByText(/2 issue\(s\) need attention/i)).toBeTruthy();
+  });
+
+  it("falls back to the raw envelope when the summary carries no payload", async () => {
+    stubAdminApi({ adminHealthSummary: live(null) });
+    renderConsole();
+    expect(await screen.findByText(/All Systems Normal/i)).toBeTruthy();
+  });
+
+  it("summarises a security service that reports no status by the request outcome", async () => {
+    stubAdminApi({ adminSecurity: live({}) });
+    renderConsole();
+    expect(await screen.findByText(/Security status: Ready/i)).toBeTruthy();
+  });
+
+  it("reads a numeric state field as the security status", async () => {
+    stubAdminApi({ adminSecurity: live({ state: 3 }) });
+    renderConsole();
+    expect(await screen.findByText(/Security status: 3/i)).toBeTruthy();
+  });
+
+  it("calls an unreachable index unknown, not indexed", async () => {
+    stubAdminApi({ indexStatus: down({}) });
+    renderConsole();
+    expect(await screen.findByText(/Index status: Unknown/i)).toBeTruthy();
+  });
+
+  it("calls a responding index with no status Indexed", async () => {
+    stubAdminApi({ indexStatus: live({}) });
+    renderConsole();
+    expect(await screen.findByText(/Index status: Indexed/i)).toBeTruthy();
+  });
+});
+
+describe("roles, policies and security events render their rows", () => {
+  it("lists roles with member counts and capability chips", async () => {
+    stubAdminApi({
+      adminRoles: live({ roles: [
+        { role: "admin", members: 2, caps: ["read", "write", "exec", "net", "extra"] },
+        {},
+      ] }),
+    });
+    renderConsole();
+    expect(await screen.findByText(/admin · 2 Users/i)).toBeTruthy();
+    expect(screen.getByText("read, write, exec, net")).toBeTruthy();
+    // A role the server left blank still reads as a role, with no caps.
+    expect(screen.getByText(/role · 0 Users/i)).toBeTruthy();
+    expect(screen.getByText("No caps")).toBeTruthy();
+  });
+
+  it("shows the policy strip with label, name and id fallbacks", async () => {
+    stubAdminApi({
+      adminPolicies: live({ policies: [
+        { id: "p1", label: "policy-retention" },
+        { name: "policy-unlabeled" },
+        { id: "policy-raw-id" },
+      ] }),
+    });
+    renderConsole();
+    expect(await screen.findByText("policy-retention")).toBeTruthy();
+    expect(screen.getByText("policy-unlabeled")).toBeTruthy();
+    expect(screen.getByText("policy-raw-id")).toBeTruthy();
+    expect(screen.queryByText("Policy API quiet")).toBeNull();
+  });
+
+  it("renders security events, including one with no fields at all", async () => {
+    stubAdminApi({
+      adminSecurityEvents: live({ events: [
+        { event: "blocked_write", user: "u9", time: "just now" },
+        {},
+      ] }),
+    });
+    renderConsole();
+    expect(await screen.findByText("blocked_write")).toBeTruthy();
+    expect(screen.getByText(/u9 · just now/)).toBeTruthy();
+    expect(screen.getByText(/system · recently/)).toBeTruthy();
+  });
+
+  it("names a user row from whatever identity fields exist", async () => {
+    stubAdminApi({ adminUsers: live([{}, { name: "Kim", status: "active" }]) });
+    renderConsole();
+    expect(await screen.findByText("Local user")).toBeTruthy();
+    expect(screen.getByText("member")).toBeTruthy();
+    expect(screen.getByText("Kim")).toBeTruthy();
+    expect(screen.getByText("active")).toBeTruthy();
+  });
+});
+
+describe("brain operations detail", () => {
+  it("describes the index by its document and chunk counts", async () => {
+    stubAdminApi({ indexStatus: live({ documents: 5, chunks: 12 }) });
+    renderConsole();
+    expect(await screen.findByText("5 docs · 12 chunks")).toBeTruthy();
+  });
+
+  it("accepts the alternate docs/vectors spelling", async () => {
+    stubAdminApi({ indexStatus: live({ docs: 7, vectors: 9 }) });
+    renderConsole();
+    expect(await screen.findByText("7 docs · 9 chunks")).toBeTruthy();
+  });
+
+  it("falls back to the index message, then to ready copy", async () => {
+    stubAdminApi({ indexStatus: live({ message: "reindexing soon" }) });
+    renderConsole();
+    expect(await screen.findByText("reindexing soon")).toBeTruthy();
+  });
+
+  it("says the index is ready when it reports nothing at all", async () => {
+    stubAdminApi({ indexStatus: live({}) });
+    renderConsole();
+    expect(await screen.findByText("Index status ready")).toBeTruthy();
+  });
+
+  it("prefers the summary sentence, then the stats message", async () => {
+    stubAdminApi({ adminSummary: live({ summary: "5 users active this week" }) });
+    const first = renderConsole();
+    expect(await screen.findByText("5 users active this week")).toBeTruthy();
+    first.unmount();
+
+    stubAdminApi({ adminStats: live({ message: "stats warming up" }) });
+    renderConsole();
+    expect(await screen.findByText("stats warming up")).toBeTruthy();
+  });
+
+  it("prints retention values exactly as the server reports them", async () => {
+    stubAdminApi({
+      adminLogRetention: live({ retention_days: true, retained_events: Number.NaN, prune_candidates: false }),
+    });
+    renderConsole();
+    // Booleans print as text, and NaN is not a count — the copy falls back to 0.
+    expect(await screen.findByText("true day retention")).toBeTruthy();
+    expect(screen.getByText(/0 retained · false ready for export\/prune review/)).toBeTruthy();
+  });
+});
+
+describe("runtime trust", () => {
+  it("reports a ready runtime and an aligned tool registry", async () => {
+    stubAdminApi({
+      agentRuntime: live({ runtime: { ready: true, mode: "local", execution_mode: "inline" }, health: { status: "ok" } }),
+      toolRegistryDiagnostics: live({ diagnostics: { ready: true, registered_tools: 12, governed_tools: 4, described_tools: 12 } }),
+    });
+    renderConsole();
+    expect(await screen.findByText("Aligned")).toBeTruthy();
+    expect(screen.getByText("Run preview and execution are ready.")).toBeTruthy();
+    expect(screen.getByText(/12/)).toBeTruthy();
+  });
+
+  it("shows the blocking reason when the runtime is not ready", async () => {
+    stubAdminApi({ agentRuntime: live({ runtime: { ready: false, unavailable_reason: "model missing" } }) });
+    renderConsole();
+    expect(await screen.findByText("model missing")).toBeTruthy();
+    expect(screen.getByText("Needs review")).toBeTruthy();
+  });
+});
+
+describe("log filters, severity and matched count", () => {
+  it("sends the chosen severity through to the audit request", async () => {
+    stubAdminApi();
+    const auditSpy = vi.spyOn(latticeApi, "adminAudit");
+    renderConsole();
+    await screen.findByRole("main");
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "high" } });
+    await waitFor(() => {
+      const sent = auditSpy.mock.calls.map(([filters]) => (filters as { severity?: string })?.severity);
+      expect(sent).toContain("high");
+    });
+  });
+
+  it("shows how many events the filters matched", async () => {
+    stubAdminApi({ adminAudit: live({ recent_events: [], filters: { matched_events: 42 } }) });
+    renderConsole();
+    expect(await screen.findByText(/42/)).toBeTruthy();
   });
 });

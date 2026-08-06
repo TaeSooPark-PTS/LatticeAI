@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.9.0 Living Brain walkthrough](output/release/v10.9.0/gifs/v10.9.0-living-brain-walkthrough.gif)
+![v10.10.0 Living Brain walkthrough](output/release/v10.10.0/gifs/v10.10.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.9.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.9.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.9.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.9.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.9.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.9.0/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.9.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.9.0/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.10.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.10.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.10.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.10.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.10.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.10.0/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.10.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.10.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,64 +58,52 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.9.0/screenshots/01-login.png) | ![Model install](output/release/v10.9.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.9.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v10.10.0/screenshots/01-login.png) | ![Model install](output/release/v10.10.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.10.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.9.0/SCREENSHOT_INDEX.md](output/release/v10.9.0/SCREENSHOT_INDEX.md)
+[output/release/v10.10.0/SCREENSHOT_INDEX.md](output/release/v10.10.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.9.0 — Never Blocks**:
+The current release is **10.10.0 — Quiet Station**:
 
-Lattice AI runs one event loop on your computer. Several things you could ask
-it to do were being done *on* that loop, so while they ran the server could not
-answer anything else. Downloading a model has a fifteen-minute timeout; that is
-how long the whole product could be frozen by one click.
+The Brain chat home used to greet you with everything at once — a stats
+sentence, six capture chips, a model banner, an autonomy strip, and two
+shelves stacked under the composer. 10.10.0 rebuilds it around one idea: the
+canvas holds the composer; everything else blooms on demand.
 
-- **Nothing long runs on the event loop.** Model pulls, engine installs, MCP
-  package installs and the CPU/RAM probe behind the System screen all moved to
-  a worker thread. `/local/sysinfo` is the one most people met without knowing:
-  it is read by the System screen *and* by first-run analysis, so its ~2s
-  freeze landed exactly while an answer was streaming. Two things keep it
-  fixed — ruff's `ASYNC` blocking-call rules, and
-  `tests/unit/test_event_loop_not_blocked.py`, which runs a ticker coroutine
-  during the handler and asserts the loop kept getting control.
-- **A focus ring you can see.** 10.8.0 added `border-color` to the transition
-  on the capture pills, so keyboard focus faded in over 150ms and at the
-  instant it landed the pill still looked idle. Focus rings may not ease.
-- **The Brain stops thinking when it has answered.** A retrieval pulse parked a
-  900ms timer that put the organism back into "thinking"; if the answer
-  finished inside that window the timer still fired, and the Brain sat visibly
-  working on a question it had already answered.
-- **One language, further in.** Fourteen more routers moved to the message
-  catalog — chat, memory, graph, files, portability, review, models, tools,
-  MCP, setup. `models.py`, `mcp.py` and `tools.py` had been answering some
-  errors in Korean and others in English on the same screen. Two gates keep
-  them migrated, and a third fails if the two gates disagree.
-- **The welcome screen fits.** It measured 770px against a 747px viewport, so
-  the line explaining what you are agreeing to sat under the fold. Nothing was
-  removed; the whitespace gave back the 25px.
-- **The streaming answer path has tests.** `useBrainChat` was 12% covered
-  because asserting anything about a stream needs frames arriving over time.
-  `frontend/src/test/fakeChatStream.ts` is that harness; eleven cases now cover
-  the answer building up, the stop button, refusals, grounding badges and live
-  step frames.
-- **Evidence bound to this build.** `output/release/v10.9.0/` holds the twelve
-  capture screens, walkthrough gif/webm, and the asset-manifest / mock-server
-  fingerprints that lint re-checks before merge. 10.9.0 claims no screen
-  redesign, and `scripts/release_screen_claims.json` says so explicitly.
-- **Exact artifact names only.** Publish paths list `dist/ltcai-10.9.0-*` and
-  `ltcai-10.9.0.tgz` — never `dist/*`.
+- **Stats became a badge.** "기억 13 · 주제 299" sits as a chip beside the
+  greeting; hovering (or clicking) it opens a summary popover with a small
+  memory/topics/links graph and the memory-map shortcut. The sentence left the
+  reading line.
+- **Capture folds behind one +.** 문서 · 이미지 · 파일 · 폴더 · 노트 · 웹 live
+  in the composer's Add menu — hover opens it, click pins it, Escape and
+  outside-click close it, and an in-flight upload keeps it open.
+- **The model banner became a status pill.** "모델 준비 필요" now sits on the
+  hero's right edge with the one accented CTA; the full sentence rides on the
+  tooltip and the accessible name.
+- **The shelves became a dock.** 대화 · 통계 · 기억 지도 sit on a quiet rail —
+  a left column on desktop, a row above the fold elsewhere — and open a
+  focus-trapped drawer over the screen instead of stacking cards under it.
+- **Borders got quieter, colour got scarcer.** Cards float on soft shadow
+  instead of rules, and the warm accent appears exactly twice: the send
+  button and the model CTA.
+- **The frontend test floor is 100%.** Every statement, branch, function and
+  line under `frontend/src` is covered, `vitest` enforces the thresholds, and
+  CI runs the coverage gate — a claim the suite fails loudly if it drifts.
+- **Release history starts at 9.0.0.** The 8.x notes left the tree; README,
+  the notes index, RELEASE.md and the changelog all begin the public story at
+  9.0.0.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.9.0 release must use exact filenames:
+Expected artifacts for 10.10.0 release must use exact filenames:
 
-- `dist/ltcai-10.9.0-py3-none-any.whl`
-- `dist/ltcai-10.9.0.tar.gz`
-- `ltcai-10.9.0.tgz`
-- `dist/ltcai-10.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.9.0_aarch64.dmg`
+- `dist/ltcai-10.10.0-py3-none-any.whl`
+- `dist/ltcai-10.10.0.tar.gz`
+- `ltcai-10.10.0.tgz`
+- `dist/ltcai-10.10.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_10.10.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -150,6 +138,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 10.10.0 | Quiet Station |
 | 10.9.0 | Never Blocks |
 | 10.8.0 | Within Reach |
 | 10.7.0 | Plain Surface |
@@ -185,16 +174,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 | 9.2.0 | Model-Agnostic File Generation |
 | 9.1.0 | Code Review Completion & Fail-Closed Runtime |
 | 9.0.0 | Code Review Closure & Runtime Cleanup |
-| 8.9.0 | Scoped Memory & Tool Policy Hardening |
-| 8.8.0 | Brain Core Extraction & Recall Proof Hardening |
-| 8.7.0 | Runtime State Hygiene & Release Evidence Refresh |
-| 8.6.0 | Desktop Capture & Navigation Reliability |
-| 8.5.0 | Tool Registry Readiness & Config DI |
-| 8.4.0 | Action-Aware Brain Chat |
-| 8.3.0 | Orchestrated Brain Readiness |
-| 8.2.0 | Brain Brief |
-| 8.1.0 | Intuitive Brain Home |
-| 8.0.0 | Runtime Architecture Contract |
 
 Per-release details: [RELEASE_NOTES.md](RELEASE_NOTES.md)
 

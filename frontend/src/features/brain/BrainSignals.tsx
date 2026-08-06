@@ -88,7 +88,10 @@ function isActiveJob(job: IngestionJob) {
   return ACTIVE_JOB_STATUSES.has(job.status);
 }
 
-function jobStatusKey(status: IngestionJob["status"]) {
+// Exported for unit tests: the panel itself only ever passes the statuses it
+// keeps visible (queued/running/failed/partial), so the remaining arms are
+// exercised directly.
+export function jobStatusKey(status: IngestionJob["status"]) {
   if (status === "queued" || status === "running" || status === "completed" || status === "failed" || status === "partial") {
     return `brain.jobs.status.${status}`;
   }

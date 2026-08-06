@@ -25,7 +25,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  /* Centred, not top-aligned. Once capture and the shelves left the canvas in
+     10.10.0 the column stopped reaching the floor, and a top-aligned station
+     left ~39% of the first screen as a dead band under the suggestions —
+     which reads as unfinished, not calm. Centring cannot clip here: the
+     height below is a `min-height`, so a column taller than it grows the box
+     rather than overflowing it, and centring in a box that fits its content
+     is a no-op. */
+  justify-content: center;
   min-height: calc(100vh - 7rem);
   gap: var(--lt-gap-block);
   width: min(100%, 56rem);
@@ -62,15 +69,18 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  border: 1px solid hsl(var(--border) / 0.7);
+  /* Borderless: the card reads as a surface floating on soft shadow, not a
+     ruled box. The 1px stays transparent so the focus ring below can colour
+     it without a layout shift. */
+  border: 1px solid transparent;
   border-radius: var(--radius-lg, 1.15rem);
-  background: linear-gradient(180deg, hsl(var(--card) / 0.96) 0%, hsl(var(--card)) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(180deg, hsl(var(--card) / 0.92) 0%, hsl(var(--card)) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   box-shadow:
-    0 1px 0 0 hsl(var(--foreground) / 0.08) inset,
-    0 14px 36px -10px hsl(var(--foreground) / 0.08),
-    0 2px 6px -1px hsl(var(--foreground) / 0.04);
+    0 1px 0 0 hsl(var(--foreground) / 0.05) inset,
+    0 24px 48px -18px hsl(var(--foreground) / 0.12),
+    0 4px 14px -4px hsl(var(--foreground) / 0.05);
   transition: border-color 200ms ease, box-shadow 200ms ease;
   /* Deliberately *not* `overflow: hidden`. The capture popover anchors to the
      toolbar and opens below it, i.e. outside this box; clipping it made the
@@ -90,26 +100,29 @@
     0 18px 44px -8px hsl(var(--primary) / 0.18);
 }
 
-/* The greeting header: compact horizontal banner with LivingBrain beside title. */
+/* The greeting header: compact horizontal banner with LivingBrain beside title.
+   Untinted and unruled in 10.10.0 — the organism's own aura is the only colour
+   the header carries, and the composer below is the first bordered-feeling
+   thing the eye meets (via its focus ring, not a resting border). */
 .brain-home-station > .brain-hero {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 1.1rem;
   width: 100%;
-  padding: 1.05rem 1.35rem 0.8rem;
+  /* Bottom padding must hold the organism's aura box: at 0.55rem the halo's
+     bottom edge poked 0.65px past the banner, which the glow-geometry visual
+     test rightly reads as a glow escaping its row. */
+  padding: 1.05rem 1.35rem 0.7rem;
   text-align: left;
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.08) 0%, hsl(var(--muted) / 0.28) 60%, transparent 100%);
-  border-bottom: 1px solid hsl(var(--border) / 0.4);
-  /* Rounds its own top corners so the tint stops at the card's edge without the
-     station having to clip (which would eat the capture popover). */
+  background: transparent;
+  border-bottom: 0;
   border-radius: calc(var(--radius-lg, 1.15rem) - 1px) calc(var(--radius-lg, 1.15rem) - 1px) 0 0;
-  /* `clip`, not `hidden`. The banner has nothing to scroll and nothing that
-     opens out of it — this is only here to stop the organism's halo washing
-     past the card's edge — and `hidden` would make it a scroll container that
-     focus can scroll, which is the bug the station above is careful to avoid.
-     `clip` follows the corners set above and creates no scroll box. */
-  overflow: clip;
+  /* No `overflow: clip` any more: the stats badge opens its summary popover
+     out of this row, and a clip here swallowed it whole. The clip was only
+     ever halo containment, and the halo has been sized to the banner organism
+     via --aura-blur since 10.6.x — at 16px it dies inside the hero's own
+     padding, so there is nothing left to contain. */
 }
 
 .brain-hero-organism {
@@ -174,39 +187,35 @@
   min-width: 0;
 }
 
+/* Ink, not gradient: the accent is reserved for the send CTA and the model
+   pill's action — a headline wearing it diluted both. */
 .brain-home-station > .brain-hero h1 {
   margin: 0;
   font-size: 1.28rem;
   font-weight: 750;
   line-height: 1.28;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, hsl(var(--foreground)) 30%, hsl(var(--primary)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: hsl(var(--foreground));
 }
 
 .brain-hero-line {
-  margin: 0.2rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.3rem 0 0;
   font-size: 0.86rem;
   color: hsl(var(--muted-foreground));
   line-height: 1.38;
 }
 
-.brain-hero-hint {
-  margin-left: 0.45rem;
-  font-size: 0.78rem;
-  color: hsl(var(--primary) / 0.85);
-  font-weight: 500;
-  background: hsl(var(--primary) / 0.08);
-  padding: 0.08rem 0.48rem;
-  border-radius: 999px;
-  border: 1px solid hsl(var(--primary) / 0.18);
-}
-
-/* A model notice is a one-line prompt, not a banner. */
-.brain-home-station > .brain-model-missing {
-  padding: 0.45rem 1.2rem;
-  font-size: 0.86rem;
+/* Status indicators (the model pill) keep to the hero's right edge, clear of
+   the reading line. */
+.brain-hero-trailing {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* ── 2. the composer, inside the station ──────────────────────────────── */
@@ -222,10 +231,12 @@
 .brain-home-station > .brain-composer-wrapper {
   width: auto;
   margin: 0.7rem 1.1rem 0.7rem;
-  border: 1px solid hsl(var(--border) / 0.75);
+  /* Transparent at rest so the focus ring can arrive without a layout shift —
+     the resting box is drawn by depth (inset + drop shadow), not by a rule. */
+  border: 1px solid transparent;
   border-radius: var(--radius-md, 0.85rem);
-  background: hsl(var(--background) / 0.9);
-  box-shadow: inset 0 2px 4px hsl(var(--foreground) / 0.03), 0 2px 8px hsl(var(--foreground) / 0.04);
+  background: hsl(var(--background) / 0.92);
+  box-shadow: inset 0 2px 5px hsl(var(--foreground) / 0.045), 0 3px 12px -2px hsl(var(--foreground) / 0.05);
   transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
@@ -244,18 +255,18 @@
 
 /* ── 3. the station's floor: toolbar ───────────────────────────────────── */
 
-/* The capture popover anchors here — it is the toolbar, not the station, that
-   is the positioned ancestor — so the station must stay unclipped above. */
+/* Capture moved into the composer's + menu, so the floor holds one thing: the
+   autonomy dial, right-aligned and untinted. */
 .brain-station-toolbar {
   position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.55rem 1rem;
-  padding: 0.7rem 1.1rem 0.8rem;
-  background: linear-gradient(180deg, hsl(var(--muted) / 0.15) 0%, hsl(var(--muted) / 0.3) 100%);
-  border-top: 1px solid hsl(var(--border) / 0.45);
+  padding: 0.15rem 1.1rem 0.75rem;
+  background: transparent;
+  border-top: 0;
   border-radius: 0 0 calc(var(--radius-lg, 1.15rem) - 1px) calc(var(--radius-lg, 1.15rem) - 1px);
 }
 
@@ -275,28 +286,6 @@
 .brain-station-toolbar > .brain-quick-controls .brain-quick-confirm,
 .brain-station-toolbar > .brain-quick-controls .brain-quick-error {
   flex-basis: 100%;
-}
-
-.brain-station-toolbar .brain-ingestion-dock.is-inline .brain-ingestion-dock-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.32rem;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 999px;
-  background: hsl(var(--card));
-  color: hsl(var(--muted-foreground));
-  font-size: 0.76rem;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  cursor: pointer;
-  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.03);
-  /* `border-color` is deliberately absent, same as the shared pill rule below:
-     easing it means the focus ring fades in over 150ms, so a keyboard user —
-     and anything measuring the border the instant focus lands — still sees the
-     idle colour. Surfaces may ease; the focus outline may not. */
-  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 
 /* ── 4. Secondary Discovery Deck ────────────────────────────────────────── */
@@ -370,15 +359,15 @@
   min-width: 0;
   max-width: 100%;
   padding: 0.8rem 0.95rem;
-  border: 1px solid hsl(var(--border) / 0.8);
+  border: 1px solid transparent;
   border-radius: var(--radius-md, 0.85rem);
-  background: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.25) 100%);
+  background: hsl(var(--card) / 0.82);
   color: hsl(var(--foreground));
   font-size: 0.82rem;
   text-align: left;
   white-space: normal;
   cursor: pointer;
-  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.03);
+  box-shadow: 0 6px 18px -8px hsl(var(--foreground) / 0.14), 0 1px 4px hsl(var(--foreground) / 0.04);
   transition: background 160ms ease, border-color 160ms ease, transform 140ms ease, box-shadow 160ms ease;
 }
 
@@ -386,11 +375,11 @@
    every card-shaped control and, crucially, owns the `prefers-reduced-motion`
    rule that cancels it. Declaring `transform` here instead would outrank that
    cancellation (three classes to its two) and move the card for a reader who
-   asked the system not to. */
+   asked the system not to. Depth deepens on hover; the accent stays put — it
+   belongs to the send CTA alone on this screen. */
 .brain-prompt-grid button:hover:not(:disabled) {
-  border-color: hsl(var(--primary) / 0.55);
-  background: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--primary) / 0.09) 100%);
-  box-shadow: 0 8px 24px -4px hsl(var(--primary) / 0.15);
+  background: hsl(var(--card));
+  box-shadow: 0 12px 30px -10px hsl(var(--foreground) / 0.2), 0 2px 6px hsl(var(--foreground) / 0.05);
 }
 
 .brain-prompt-grid button:disabled {
@@ -408,14 +397,15 @@
   color: hsl(var(--foreground));
 }
 
+/* A quiet ink tick, not a glowing accent dot: the marker orders the cards, it
+   does not compete with the send CTA. */
 .brain-prompt-grid button > strong::before {
   content: "";
   display: inline-block;
   width: 0.38rem;
   height: 0.38rem;
   border-radius: 50%;
-  background: hsl(var(--primary));
-  box-shadow: 0 0 6px hsl(var(--primary) / 0.7);
+  background: hsl(var(--muted-foreground) / 0.55);
   flex-shrink: 0;
 }
 
@@ -637,9 +627,10 @@
      pinned this row to the floor and opened a 205px band of nothing between
      the suggestions and it — a third of the first screen the user ever sees,
      holding no content. The row is quieter than the composer because of how
-     it is styled, not because of how far away it sits. */
-  padding-top: var(--lt-space-4);
-  border-top: 1px solid hsl(var(--border) / 0.45);
+     it is styled, not because of how far away it sits. Unruled in 10.10.0:
+     the dock rail inside it carries its own shape. */
+  padding-top: var(--lt-space-3);
+  border-top: 0;
   opacity: 1;
 }
 
@@ -649,65 +640,6 @@
   border: 0;
   background: transparent;
   box-shadow: none;
-}
-
-.brain-home-quiet .brain-home-shelves {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: stretch;
-  gap: var(--lt-space-3);
-  width: 100%;
-}
-
-.brain-home-shelves > details {
-  flex: 1 1 200px;
-}
-
-.brain-home-shelves > details > summary {
-  min-height: 2.65rem;
-  padding: 0.55rem 1.05rem;
-  border-radius: var(--lt-radius-md, 0.75rem);
-  font-size: var(--lt-type-body, 0.9rem);
-  font-weight: 550;
-  border: 1px solid hsl(var(--border) / 0.75);
-  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.15) 100%);
-  box-shadow: 0 1px 4px hsl(var(--foreground) / 0.03);
-  /* `space-between` distributed whatever children each shelf happened to
-     have, so the two shelves side by side never agreed where their label
-     went: the history shelf has three children (icon, label, count) and put
-     its label in the middle, the insights shelf has two and threw its label
-     against the right edge. Both read as text floating loose in a wide box.
-     Labels start next to their icon; only the count is pushed to the end. */
-  justify-content: flex-start;
-  gap: 0.5rem;
-  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-}
-
-.brain-home-shelves > details > summary:hover {
-  border-color: hsl(var(--primary) / 0.5);
-  background: hsl(var(--card));
-  box-shadow: 0 4px 14px hsl(var(--primary) / 0.08);
-}
-
-.brain-home-shelves > details > summary > .brain-shelf-count {
-  margin-left: auto;
-  padding: 0.12rem 0.52rem;
-  border-radius: 999px;
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--primary));
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-/* The model notice is part of the flow now — it used to be absolutely
-   positioned over the graph canvas that no longer exists here. */
-.brain-home-station > .brain-model-missing {
-  position: static;
-  left: auto;
-  top: auto;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
 }
 
 /* Short or narrow screens. The suggestion cards fold back to one-line chips and

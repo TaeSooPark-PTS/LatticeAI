@@ -8,7 +8,7 @@ import { useAppStore } from "@/store/appStore";
 import { DownloadConsentPanel } from "./DownloadConsentPanel";
 import { asRecord, type ApiData, type RecommendedModel } from "./recommendationModel";
 
-type InstallStage = "idle" | "install" | "download" | "validate" | "load" | "done" | "error";
+export type InstallStage = "idle" | "install" | "download" | "validate" | "load" | "done" | "error";
 
 export function InstallScreen({
   model,
@@ -210,7 +210,8 @@ function friendlyInstallStage(stage: string): InstallStage {
   return "install";
 }
 
-function percentForStage(stage: InstallStage) {
+/** Exported for tests: the idle/error fallback is unreachable through the stream mapper. */
+export function percentForStage(stage: InstallStage) {
   if (stage === "install") return 20;
   if (stage === "download") return 55;
   if (stage === "load") return 82;

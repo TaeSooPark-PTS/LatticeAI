@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle2, Copy, DatabaseZap, History, ListTodo, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
+import { CheckCircle2, Copy, DatabaseZap, ListTodo, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -31,21 +31,18 @@ import { KnowledgeGardenPanel } from "./KnowledgeGarden";
 import { DailyBriefingPanel } from "@/features/command/DailyBriefingPanel";
 import { PendingProposalsPanel } from "@/features/command/PendingProposalsPanel";
 import { BrainComposer } from "./BrainComposer";
+import { BrainHomeDock } from "./BrainHomeDock";
 import { BrainOverviewPanel } from "./BrainOverviewPanel";
 import {
-  BrainBriefPanel,
-  handleBriefAction,
   ModelContinuityDemo,
   ModelMissingNotice,
-  PastConversationsPanel,
 } from "./HomePanels";
 import { BrainIngestionDock, BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
-import { IngestionJobsPanel, PendingApprovalsNotice, StaleEmbedderNotice, VectorFreshnessNotice, WatchHealthCard } from "./BrainSignals";
+import { IngestionJobsPanel, PendingApprovalsNotice, StaleEmbedderNotice, VectorFreshnessNotice } from "./BrainSignals";
 import { BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
 import { BrainHomeHero } from "./BrainHomeHero";
 import { BrainQuickControls } from "./BrainQuickControls";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
-import { MemoryRings } from "./MemoryRings";
 import { navigateHash } from "./navigation";
 
 export function BrainConversation({
@@ -149,14 +146,28 @@ export function BrainConversation({
   const lastAssistantIndex = findLastAssistantIndex(messages);
   const suggestedQuestions = brief.suggestedQuestions.slice(0, 3);
 
-  useDismissHomeShelves();
-  const insightsShelfRef = React.useRef<HTMLDetailsElement>(null);
-
   // Approval runs already represented by an inline card — the pending-
   // approvals notice only surfaces runs that would otherwise be invisible.
   const knownApprovalRunIds = React.useMemo(
     () => messages.flatMap((message) => (message.approval ? [message.approval.runId] : [])),
     [messages],
+  );
+
+  // The same capture controls ride inside the composer's + menu on both
+  // surfaces — a person should not have to leave the conversation (or the
+  // home) to add a folder.
+  const ingestionDock = (
+    <BrainIngestionDock
+      language={language}
+      variant="inline"
+      uploadingDocument={uploadingDocument}
+      ingestionStates={ingestionStates}
+      onUploadDocument={onUploadDocument}
+      onPickFolder={onPickFolder}
+      onConnectFolder={onConnectFolder}
+      onIngestNote={onIngestNote}
+      onIngestWeb={onIngestWeb}
+    />
   );
 
   return (
@@ -289,8 +300,6 @@ export function BrainConversation({
                 onAction={onProactiveAction}
               />
               {modelReady ? null : <ModelMissingNotice language={language} />}
-              {/* Same capture controls as the home — a person should not have to
-                  go back to the first screen to add a folder mid-conversation. */}
               <BrainComposer
                 language={language}
                 draft={draft}
@@ -302,29 +311,14 @@ export function BrainConversation({
                 onUploadDocument={onUploadDocument}
                 onSend={onSend}
                 onStop={onStop}
-                attachments={
-                  <BrainIngestionDock
-                    language={language}
-                    variant="inline"
-                    uploadingDocument={uploadingDocument}
-                    ingestionStates={ingestionStates}
-                    onUploadDocument={onUploadDocument}
-                    onPickFolder={onPickFolder}
-                    onConnectFolder={onConnectFolder}
-                    onIngestNote={onIngestNote}
-                    onIngestWeb={onIngestWeb}
-                  />
-                }
+                attachments={ingestionDock}
               />
             </>
           ) : (
             // Spacing for the stage and the station lives in
             // experience/home-simple.css, which is unlayered and therefore
-            // outranks Tailwind utilities. Width/gap utilities here were dead;
-            // padding ones were worse — the stylesheet sets no padding on the
-            // station, so `p-6` stacked on top of children that already pad
-            // themselves. Together they added ~150px and pushed the shelves
-            // under the fixed mobile nav, where a tap lands on the nav.
+            // outranks Tailwind utilities — width/gap/padding utilities here
+            // would be dead weight (see the 10.6.x notes in that file).
             <div className="brain-centered-home" data-testid="brain-home-stage">
               <section className="brain-home-station" data-testid="brain-home-station">
                 <BrainHomeHero
@@ -334,12 +328,14 @@ export function BrainConversation({
                   readiness={readiness}
                   memories={memories}
                   graph={graph}
+                  relationshipCount={relationshipCount}
                   onExploreBrain={onExploreBrain}
+                  trailing={modelReady ? null : <ModelMissingNotice language={language} />}
                 />
 
-                {modelReady ? null : <ModelMissingNotice language={language} />}
-
-                {/* The box you type into — the primary focus station area. */}
+                {/* The box you type into — the primary focus of the screen.
+                    Capture (문서 · 이미지 · 파일 · 폴더 · 노트 · 웹) folds
+                    behind the composer's + so the station floor stays quiet. */}
                 <div className="brain-composer-wrapper">
                   <BrainComposer
                     language={language}
@@ -352,33 +348,21 @@ export function BrainConversation({
                     onUploadDocument={onUploadDocument}
                     onSend={onSend}
                     onStop={onStop}
+                    attachments={ingestionDock}
                   />
                 </div>
 
-                {/* Add-material and autonomy answer the same question — what
-                    may Brain work with, and how far may it go — so they read as
-                    one row on the station's floor. */}
+                {/* The station's floor answers one question — how far Brain may
+                    go on its own. */}
                 <div className="brain-station-toolbar" role="group" aria-label={t(language, "brain.station.toolbar.aria")}>
-                  <BrainIngestionDock
-                    language={language}
-                    variant="inline"
-                    uploadingDocument={uploadingDocument}
-                    ingestionStates={ingestionStates}
-                    onUploadDocument={onUploadDocument}
-                    onPickFolder={onPickFolder}
-                    onConnectFolder={onConnectFolder}
-                    onIngestNote={onIngestNote}
-                    onIngestWeb={onIngestWeb}
-                  />
                   <BrainQuickControls language={language} />
                 </div>
               </section>
 
-              {/* Three things to try, on a card of their own below the station
-                  rather than wedged between the composer and the toolbar. The
-                  name belongs on this <section>: it is the element with a role
-                  (a named section is a `region`), whereas the strip inside it is
-                  a plain div, where `aria-label` is dropped on the floor. */}
+              {/* Three things to try, on a card of their own below the station.
+                  The name belongs on this <section>: it is the element with a
+                  role (a named section is a `region`), whereas the strip inside
+                  it is a plain div, where `aria-label` is dropped on the floor. */}
               <section
                 className="brain-secondary-deck"
                 data-testid="brain-secondary-deck"
@@ -433,132 +417,34 @@ export function BrainConversation({
                 )}
               </section>
 
-              {/* Past conversations and the insight panels stay one click away
-                  in this quiet row, never competing with the composer for the
-                  first screen. Their pill, popover and close-button styling is
-                  all in graph-home.css — utilities added on top of those
-                  classes were dead, except for the one that anchored the
-                  popover to the wrong edge. */}
+              {/* Everything quieter — past conversations, stats, the memory
+                  map — lives on the dock: a rail on the canvas's edge that
+                  opens a drawer, so the first screen stays the composer. */}
               <footer className="brain-home-quiet">
-                <div className="brain-home-shelves">
-                  <details
-                    className="brain-home-history-shelf"
-                    data-testid="brain-history-shelf"
-                    onKeyDown={(event) => {
-                      if (event.key !== "Escape") return;
-                      event.preventDefault();
-                      closeHomeShelf(event.currentTarget);
-                    }}
-                  >
-                    <summary>
-                      <History className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{t(language, "brain.history.title")}</span>
-                      <small className="brain-shelf-count">{pastConversations.length}</small>
-                    </summary>
-                    {/* `left-0` here was the one utility that took: the sheet
-                        sets `right: 0` and no left, so adding left over-
-                        constrained the box and flipped a 31rem popover to open
-                        rightward off a pill that sits left of centre. */}
-                    <div className="brain-home-shelf-popover">
-                      <button
-                        type="button"
-                        className="brain-home-shelf-close"
-                        aria-label={t(language, "brain.home.shelf.close")}
-                        onClick={(event) => closeHomeShelf(event.currentTarget)}
-                      >
-                        <X className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                      <PastConversationsPanel
-                        language={language}
-                        items={pastConversations}
-                        busyId={historyBusyId}
-                        onResume={onResumeConversation}
-                        onDelete={onDeleteConversation}
-                      />
-                    </div>
-                  </details>
-
-                  <details
-                    ref={insightsShelfRef}
-                    className="brain-home-insights"
-                    data-testid="brain-insights-shelf"
-                    onToggle={(event) => event.currentTarget.open && onRequestDetails()}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Escape") return;
-                      if (event.currentTarget.querySelector("#brain-ring-peek")) return;
-                      event.preventDefault();
-                      closeHomeShelf(event.currentTarget);
-                    }}
-                  >
-                    <summary>
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{t(language, "brain.home.insights")}</span>
-                    </summary>
-                    {/* `space-y-4` here stacked 1rem margins on top of the
-                        0.75rem grid gap this popover already has. */}
-                    <div className="brain-home-shelf-popover brain-home-insights-content">
-                      <button
-                        type="button"
-                        className="brain-home-shelf-close"
-                        aria-label={t(language, "brain.home.shelf.close")}
-                        onClick={(event) => closeHomeShelf(event.currentTarget)}
-                      >
-                        <X className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                      <BrainMemoryAutomation
-                        language={language}
-                        brief={brief}
-                        activities={proactiveActivities}
-                        streaming={streaming}
-                        onAction={onProactiveAction}
-                      />
-                      <MemoryRings
-                        language={language}
-                        brainState={brainState}
-                        intensity={intensity}
-                        readiness={readiness}
-                        memories={memories}
-                        concepts={concepts}
-                        relationshipCount={relationshipCount}
-                        onExploreBrain={onExploreBrain}
-                        onOpenDepth={onOpenDepth}
-                      />
-
-                      <BrainBriefPanel
-                        language={language}
-                        brief={brief}
-                        showEvidence={!isBasic}
-                        onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
-                      />
-
-                      {isBasic ? null : (
-                        <>
-                          <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
-                          <ModelContinuityDemo
-                            language={language}
-                            proof={proof}
-                            modelName={modelName}
-                            onVerify={onVerifyModelContinuity}
-                          />
-                          <BrainOverviewPanel
-                            memories={memories}
-                            concepts={concepts}
-                            readiness={readiness}
-                            proof={proof}
-                            onOpenDepth={onOpenDepth}
-                          />
-                        </>
-                      )}
-                      <DailyBriefingPanel language={language} variant="home" />
-                      <WatchHealthCard language={language} />
-                      <IngestionJobsPanel language={language} />
-                      <PendingProposalsPanel language={language} />
-                      <BrainIntelligencePanel language={language} />
-                      <KnowledgeGardenPanel language={language} />
-                      <BrainCarePanel language={language} />
-                    </div>
-                  </details>
-                </div>
+                <BrainHomeDock
+                  language={language}
+                  brainState={brainState}
+                  intensity={intensity}
+                  readiness={readiness}
+                  memories={memories}
+                  concepts={concepts}
+                  relationshipCount={relationshipCount}
+                  emergenceEvents={emergenceEvents}
+                  proactiveActivities={proactiveActivities}
+                  pastConversations={pastConversations}
+                  historyBusyId={historyBusyId}
+                  streaming={streaming}
+                  modelName={modelName}
+                  proof={proof}
+                  brief={brief}
+                  onOpenDepth={onOpenDepth}
+                  onExploreBrain={onExploreBrain}
+                  onVerifyModelContinuity={onVerifyModelContinuity}
+                  onProactiveAction={onProactiveAction}
+                  onResumeConversation={onResumeConversation}
+                  onDeleteConversation={onDeleteConversation}
+                  onRequestDetails={onRequestDetails}
+                />
               </footer>
             </div>
           )}
@@ -589,21 +475,20 @@ export function BrainConversation({
               <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.portable")}</span>
             </div>
             <div className="brain-utility-grid">
-              {hasMessages ? (
-                <>
-                  <BrainIngestionPanel
-                    language={language}
-                    uploadingDocument={uploadingDocument}
-                    ingestionStates={ingestionStates}
-                    onUploadDocument={onUploadDocument}
-                    onPickFolder={onPickFolder}
-                    onConnectFolder={onConnectFolder}
-                    onIngestNote={onIngestNote}
-                    onIngestWeb={onIngestWeb}
-                  />
-                  <IngestionJobsPanel language={language} />
-                </>
-              ) : null}
+              {/* No `hasMessages ?` here: the drawer itself only renders on the
+                  hasMessages surface, so re-checking would be a constant-true
+                  conditional. */}
+              <BrainIngestionPanel
+                language={language}
+                uploadingDocument={uploadingDocument}
+                ingestionStates={ingestionStates}
+                onUploadDocument={onUploadDocument}
+                onPickFolder={onPickFolder}
+                onConnectFolder={onConnectFolder}
+                onIngestNote={onIngestNote}
+                onIngestWeb={onIngestWeb}
+              />
+              <IngestionJobsPanel language={language} />
               {isBasic ? null : (
                 <>
                   <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
@@ -676,41 +561,6 @@ function ContextQualityNote({ language, reason }: { language: Language; reason: 
       {reason ? <small>{t(language, "brain.contextQuality.reason", { reason })}</small> : null}
     </p>
   );
-}
-
-/**
- * Close an open home shelf when attention moves elsewhere.
- *
- * These shelves are `<details>` whose panel floats over the composer at
- * z-index 90. Without this, an open shelf stayed open and intercepted pointer
- * events on the send button: the primary action of the screen became a dead
- * target with nothing on screen explaining why.
- */
-function useDismissHomeShelves() {
-  React.useEffect(() => {
-    const dismiss = (event: Event) => {
-      const target = event.target as Node | null;
-      for (const details of document.querySelectorAll<HTMLDetailsElement>(
-        ".brain-home-history-shelf[open], .brain-home-insights[open]",
-      )) {
-        if (target && details.contains(target)) continue;
-        details.removeAttribute("open");
-      }
-    };
-    document.addEventListener("pointerdown", dismiss, true);
-    document.addEventListener("focusin", dismiss, true);
-    return () => {
-      document.removeEventListener("pointerdown", dismiss, true);
-      document.removeEventListener("focusin", dismiss, true);
-    };
-  }, []);
-}
-
-function closeHomeShelf(target: HTMLElement) {
-  const details = target instanceof HTMLDetailsElement ? target : target.closest("details");
-  if (!details) return;
-  details.removeAttribute("open");
-  details.querySelector<HTMLElement>("summary")?.focus();
 }
 
 function findLastAssistantIndex(messages: Message[]): number {

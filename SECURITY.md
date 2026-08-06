@@ -3,16 +3,16 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **10.9.0 — Never Blocks**.
+Current release: **10.10.0 — Quiet Station**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 10.9.0. Security
+The public Git tree keeps release history from 9.0.0 through 10.10.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 10.9.x (latest) | Supported |
+| 10.10.x (latest) | Supported |
 | 10.8.x | Supported |
 | 10.6.x | Supported |
 | 10.5.x | Supported |

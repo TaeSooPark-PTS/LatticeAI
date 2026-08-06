@@ -6,7 +6,7 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const releaseDir = `output/release/v${version}`;
-const releaseTheme = "Never Blocks";
+const releaseTheme = "Quiet Station";
 const title = `${version} — ${releaseTheme}`;
 const escapedVersion = version.replaceAll(".", "\\.");
 
@@ -96,7 +96,9 @@ requireIncludes("RELEASE.md", `## v${version} — ${releaseTheme}`);
 requireIncludes("docs/CHANGELOG.md", `## [${version}]`);
 requireIncludes("RELEASE_NOTES.md", `[v${version} - ${releaseTheme}]`);
 requireIncludes("CHANGELOG.md", "starts at v8.0.0");
-requireIncludes("RELEASE_NOTES.md", `8.0.0 through ${version}`);
+// 10.10.0 moved the public history floor from 8.0.0 to 9.0.0 — the 8.x notes
+// left the tree, so this gate follows the boundary the docs now state.
+requireIncludes("RELEASE_NOTES.md", `9.0.0 through ${version}`);
 requireIncludes("SECURITY.md", `${version.split(".").slice(0, 2).join(".")}.x (latest)`);
 
 for (const rel of ["README.md", "RELEASE.md", "docs/CHANGELOG.md", "RELEASE_NOTES.md"]) {

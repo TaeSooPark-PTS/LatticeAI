@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.9.0 — Never Blocks**.
+Current release: **10.10.0 — Quiet Station**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

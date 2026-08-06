@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -169,5 +169,155 @@ describe("RecommendationScreen", () => {
     renderScreen({ status: "ready", reason: null, recommendations: [supportedModel] });
     expect(document.querySelector(".ritual-alternatives")).toBeNull();
     expect(screen.queryByText(t("en", "flow.recommend.alternatives"))).toBeNull();
+  });
+
+  it("shows download plus first-reply time for a model that must be fetched", () => {
+    const downloadable: RecommendedModel = {
+      ...supportedModel,
+      downloadRequired: true,
+      downloadSize: "8GB",
+      size: "8GB",
+      estimatedDownloadMinutes: 25,
+    };
+    renderScreen({ status: "ready", reason: null, recommendations: [downloadable] });
+    const download = t("en", "flow.recommend.minutes", { count: 25 });
+    expect(
+      screen.getByText(t("en", "flow.recommend.timeEstimate", { download, response: 5 })),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(new RegExp(t("en", "flow.recommend.primaryNote", { time: download }))),
+    ).toBeTruthy();
+    expect(screen.getByText(new RegExp(t("en", "flow.recommend.nextHint")))).toBeTruthy();
+    // A known size shows itself instead of the ready badge.
+    expect(screen.getByText("8GB")).toBeTruthy();
+  });
+
+  it("admits an unknown download time on the hero card", () => {
+    const unknownSize: RecommendedModel = {
+      ...supportedModel,
+      downloadRequired: true,
+      downloadSize: "",
+      estimatedDownloadMinutes: null,
+    };
+    renderScreen({ status: "ready", reason: null, recommendations: [unknownSize] });
+    expect(
+      screen.getByText(t("en", "flow.recommend.timeEstimate.unknown", { response: 5 })),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(new RegExp(t("en", "flow.recommend.primaryNote.unknown"))),
+    ).toBeTruthy();
+  });
+
+  it("compares a faster or advanced hero against the default pick", () => {
+    renderScreen({ status: "ready", reason: null, recommendations: [faster, supportedModel] });
+    expect(screen.getByText(t("en", "flow.recommend.rank.faster"))).toBeTruthy();
+    expect(screen.getByText(t("en", "flow.recommend.comparison.faster"))).toBeTruthy();
+    // The compact alternative with no size wears the ready badge.
+    expect(
+      document.querySelector(".ritual-model-card.is-compact .ritual-alt-size")?.textContent,
+    ).toBe(t("en", "flow.recommend.sizeReady"));
+  });
+
+  it("labels an advanced hero with its comparison", () => {
+    renderScreen({
+      status: "ready",
+      reason: null,
+      recommendations: [{ ...unsupported, supported: true }],
+    });
+    expect(screen.getByText(t("en", "flow.recommend.rank.advanced"))).toBeTruthy();
+    expect(screen.getByText(t("en", "flow.recommend.comparison.advanced"))).toBeTruthy();
+  });
+
+  it("falls back to a numbered choice label for an unknown role", () => {
+    // Runtime data is untyped: a role outside the known set must still label.
+    renderScreen({
+      status: "ready",
+      reason: null,
+      recommendations: [{ ...supportedModel, role: "choice" as RecommendedModel["role"] }],
+    });
+    expect(screen.getByText(t("en", "flow.recommend.rank.choice", { index: 1 }))).toBeTruthy();
+  });
+
+  it("warns instead of offering a start when the hero itself cannot run", () => {
+    renderScreen({ status: "ready", reason: null, recommendations: [unsupported] });
+    expect(screen.getByText(t("en", "flow.recommend.unsupported"))).toBeTruthy();
+    expect(document.querySelector(".ritual-primary-model-button")).toBeNull();
+  });
+
+  it("keeps the guard even if a click slips through to a disabled alternative", () => {
+    const props = renderScreen({
+      status: "ready",
+      reason: null,
+      recommendations: [supportedModel, unsupported],
+    });
+    const card = screen.getByText("Llama 70B").closest("button") as HTMLButtonElement;
+    // fireEvent dispatches even on disabled controls (assistive tech and
+    // scripts can); the handler's own check must hold the line.
+    fireEvent.click(card);
+    expect(props.onSelect).not.toHaveBeenCalled();
+  });
+
+  it("starts the headline model from the hero card itself", async () => {
+    const props = renderScreen({ status: "ready", reason: null, recommendations: [supportedModel, faster] });
+    await userEvent.click(document.querySelector(".ritual-primary-model-button") as HTMLButtonElement);
+    expect(props.onSelect).toHaveBeenCalledWith(supportedModel);
+  });
+
+  it("renders footer actions but no hero when ready arrives empty", () => {
+    renderScreen({ status: "ready", reason: null, recommendations: [] });
+    expect(document.querySelector(".ritual-primary-hero-card")).toBeNull();
+    expect(document.querySelector(".ritual-alternatives-details")).toBeNull();
+    expect(screen.getByRole("button", { name: t("en", "flow.recommend.back") })).toBeTruthy();
+  });
+
+  describe("environment banner", () => {
+    it("keeps checking while the analysis has not landed", () => {
+      renderScreen({ status: "ready", reason: null, recommendations: [supportedModel], analysis: null });
+      expect(document.querySelector(".ritual-scan-banner.is-loading")).toBeTruthy();
+    });
+
+    it("confirms Apple Silicon with the flag and the reported RAM", () => {
+      renderScreen({
+        status: "ready",
+        reason: null,
+        recommendations: [supportedModel],
+        analysis: { recommendations: { recommendations: { apple_silicon: true, ram_gb: 32 } } },
+      });
+      expect(document.querySelector(".ritual-scan-banner.is-success")?.textContent).toContain(
+        t("en", "flow.recommend.environment.apple", { ram: 32 }),
+      );
+    });
+
+    it("recognises Apple Silicon from the arch and RAM from megabytes", () => {
+      renderScreen({
+        status: "ready",
+        reason: null,
+        recommendations: [supportedModel],
+        analysis: {
+          setup: { environment: { arch: "arm64", ram_mb: 16384 } },
+          recommendations: { profile: {} },
+        },
+      });
+      expect(document.querySelector(".ritual-scan-banner.is-success")?.textContent).toContain(
+        t("en", "flow.recommend.environment.apple", { ram: 16 }),
+      );
+    });
+
+    it("marks other hardware as standard without inventing memory", () => {
+      renderScreen({
+        status: "ready",
+        reason: null,
+        recommendations: [supportedModel],
+        analysis: { setup: { environment: { arch: "x86_64" } } },
+      });
+      expect(document.querySelector(".ritual-scan-banner.is-warning")?.textContent).toContain(
+        t("en", "flow.recommend.environment.standard", { ram: 0 }),
+      );
+    });
+
+    it("treats a probe that reported nothing as standard hardware", () => {
+      renderScreen({ status: "ready", reason: null, recommendations: [supportedModel], analysis: {} });
+      expect(document.querySelector(".ritual-scan-banner.is-warning")).toBeTruthy();
+    });
   });
 });

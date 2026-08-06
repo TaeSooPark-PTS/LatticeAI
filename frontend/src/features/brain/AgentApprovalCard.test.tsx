@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { latticeApi } from "@/api/client";
 import { AgentApprovalCard, formatCountdown } from "./AgentApprovalCard";
-import { parseApprovalPayload, resolveApprovalRequest } from "./approvalFlow";
+import { parseApprovalPayload, parseReplanMessage, resolveApprovalRequest } from "./approvalFlow";
 import type { MessageApproval } from "./types";
 
 function pendingApproval(overrides: Partial<MessageApproval> = {}): MessageApproval {
@@ -50,6 +50,71 @@ describe("parseApprovalPayload", () => {
   it("rejects payloads without a resumable token", () => {
     expect(parseApprovalPayload({ status: "awaiting_approval", run_id: "run-9" })).toBeNull();
     expect(parseApprovalPayload({ status: "ok" })).toBeNull();
+    // A token without a run id is just as unusable.
+    expect(parseApprovalPayload({ status: "awaiting_approval", approval: { token: "tok" } })).toBeNull();
+    expect(
+      parseApprovalPayload({ status: "awaiting_approval", run_id: 7 as never, approval: { token: "tok" } }),
+    ).toBeNull();
+  });
+
+  it("fills defensive defaults for a sparse but resumable payload", () => {
+    expect(
+      parseApprovalPayload({
+        status: "awaiting_approval",
+        run_id: "run-9",
+        approval: { token: "tok" },
+        plan: "broken" as never,
+      }),
+    ).toEqual({
+      runId: "run-9",
+      token: "tok",
+      expiresAt: "",
+      planSummary: "",
+      plan: null,
+      status: "pending",
+    });
+  });
+});
+
+describe("parseReplanMessage", () => {
+  it("extracts and trims the replan message from either level", () => {
+    expect(parseReplanMessage({ detail: { replan: { message: "  다시 요청  " } } })).toBe("다시 요청");
+    expect(parseReplanMessage({ replan: { message: "루트 레벨" } })).toBe("루트 레벨");
+  });
+
+  it("returns an empty string for anything malformed", () => {
+    expect(parseReplanMessage(null)).toBe("");
+    expect(parseReplanMessage("gone")).toBe("");
+    expect(parseReplanMessage({ detail: ["array"] })).toBe("");
+    expect(parseReplanMessage({ detail: { replan: ["array"] } })).toBe("");
+    expect(parseReplanMessage({ detail: { replan: "text" } })).toBe("");
+    expect(parseReplanMessage({ detail: { replan: { message: 7 } } })).toBe("");
+    expect(parseReplanMessage({ detail: {} })).toBe("");
+  });
+});
+
+describe("resolveApprovalRequest failures", () => {
+  it("treats a lost run (404) exactly like an expired token", async () => {
+    mockResume({ ok: false, status: 404, error: "Run not found." });
+    const resolution = await resolveApprovalRequest({ runId: "run-1", token: "token-1" }, { approve: true });
+    expect(resolution).toEqual({ kind: "expired" });
+  });
+
+  it("reports other failures with the error text or the bare status", async () => {
+    mockResume({ ok: false, status: 500, error: "internal" });
+    expect(
+      await resolveApprovalRequest({ runId: "run-1", token: "token-1" }, { approve: true }),
+    ).toEqual({ kind: "error", reason: "internal" });
+
+    mockResume({ ok: false, status: 500 });
+    expect(
+      await resolveApprovalRequest({ runId: "run-1", token: "token-1" }, { approve: true }),
+    ).toEqual({ kind: "error", reason: "500" });
+
+    mockResume({ ok: false, status: 0 });
+    expect(
+      await resolveApprovalRequest({ runId: "run-1", token: "token-1" }, { approve: true }),
+    ).toEqual({ kind: "error", reason: "" });
   });
 });
 
@@ -149,6 +214,131 @@ describe("AgentApprovalCard", () => {
       approve: true,
       edited_plan: { goal: "edited", steps: [] },
     });
+  });
+
+  it("rejects JSON that is valid but not a plan object", async () => {
+    const resume = mockResume({ ok: true, status: 200, data: { status: "ok" } });
+    render(
+      <AgentApprovalCard language="ko" approval={pendingApproval()} onResolved={() => {}} />,
+    );
+    await userEvent.click(screen.getByTestId("approval-edit"));
+    const textarea = screen.getByTestId("approval-edit-textarea") as HTMLTextAreaElement;
+
+    for (const value of ["null", "7", "[1, 2]"]) {
+      fireEvent.change(textarea, { target: { value } });
+      await userEvent.click(screen.getByTestId("approval-edit-run"));
+      expect(screen.getByRole("alert")).toBeTruthy();
+    }
+    expect(resume).not.toHaveBeenCalled();
+  });
+
+  it("lets the user leave the editor without running anything", async () => {
+    const resume = mockResume({ ok: true, status: 200, data: { status: "ok" } });
+    render(
+      <AgentApprovalCard language="ko" approval={pendingApproval({ plan: null })} onResolved={() => {}} />,
+    );
+    await userEvent.click(screen.getByTestId("approval-edit"));
+    // Without a normalized plan the editor seeds from the summary.
+    const textarea = screen.getByTestId("approval-edit-textarea") as HTMLTextAreaElement;
+    expect(textarea.value).toContain("1. write_file → page.html");
+
+    await userEvent.click(screen.getByRole("button", { name: "수정 닫기" }));
+    expect(screen.queryByTestId("approval-edit-textarea")).toBeNull();
+    expect(screen.getByTestId("approval-approve")).toBeTruthy();
+    expect(resume).not.toHaveBeenCalled();
+  });
+
+  it("shows the busy label on the editor's run button while resuming", async () => {
+    let release: (value: unknown) => void = () => {};
+    vi.spyOn(latticeApi, "resumeAgentApproval").mockReturnValue(
+      new Promise((resolve) => { release = resolve; }) as never,
+    );
+    render(
+      <AgentApprovalCard language="ko" approval={pendingApproval()} onResolved={() => {}} />,
+    );
+    await userEvent.click(screen.getByTestId("approval-edit"));
+    await userEvent.click(screen.getByTestId("approval-edit-run"));
+    expect(screen.getByTestId("approval-edit-run").textContent).toContain("실행 중");
+    // A second press while busy is ignored.
+    fireEvent.click(screen.getByTestId("approval-edit-run"));
+    expect(latticeApi.resumeAgentApproval).toHaveBeenCalledTimes(1);
+    release({ ok: true, status: 200, source: "live", data: { status: "ok" } });
+    await waitFor(() =>
+      expect((screen.getByTestId("approval-edit-run") as HTMLButtonElement).disabled).toBe(false),
+    );
+  });
+
+  it("renders without countdown or expiry line when the TTL is unknown", () => {
+    render(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ expiresAt: "", planSummary: "" })}
+        onResolved={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("approval-countdown")).toBeNull();
+    expect(document.querySelector(".brain-approval-expiry")).toBeNull();
+    expect(screen.queryByTestId("approval-plan-summary")).toBeNull();
+  });
+
+  it("treats an unparseable expiry timestamp like no TTL at all", () => {
+    render(
+      <AgentApprovalCard
+        language="en"
+        approval={pendingApproval({ expiresAt: "definitely-not-a-date" })}
+        onResolved={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("approval-countdown")).toBeNull();
+    expect(document.querySelector(".brain-approval-expiry")).toBeNull();
+  });
+
+  it("formats the expiry clock time in en-US for English", () => {
+    render(
+      <AgentApprovalCard
+        language="en"
+        approval={pendingApproval({ expiresAt: "2026-07-22T09:00:00+00:00" })}
+        onResolved={() => {}}
+      />,
+    );
+    const expected = new Date("2026-07-22T09:00:00+00:00").toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    expect(document.querySelector(".brain-approval-expiry")!.textContent).toContain(expected);
+  });
+
+  it("renders each terminal status with its honest note", () => {
+    const { rerender } = render(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ status: "approved" })}
+        onResolved={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("agent-approval-note").getAttribute("role")).toBe("status");
+
+    rerender(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ status: "cancelled" })}
+        onResolved={() => {}}
+      />,
+    );
+    const cancelled = screen.getByTestId("agent-approval-note");
+    expect(cancelled.getAttribute("role")).toBe("alert");
+    expect(cancelled.className).toContain("is-cancelled");
+
+    rerender(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ status: "error", errorReason: "resume broke" })}
+        onResolved={() => {}}
+      />,
+    );
+    const errored = screen.getByTestId("agent-approval-note");
+    expect(errored.textContent).toContain("resume broke");
+    expect(errored.className).toContain("is-error");
   });
 });
 

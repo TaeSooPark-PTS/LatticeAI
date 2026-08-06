@@ -4,6 +4,38 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [10.10.0] - 2026-08-06
+
+### Changed
+- Brain 대화 홈 "Quiet Station" 재설계 — 기억/주제 통계가 인사말 줄의 문장에서
+  호버·클릭 팝오버(요약 그래프 + 기억 지도 바로가기)를 여는 배지로, 캡처 칩
+  6개(문서/이미지/파일/폴더/노트/웹)가 컴포저의 `+ 추가` 접이식 메뉴로, 모델
+  준비 배너가 히어로 우측 상태 필로, 하단 서랍 2개(지난 대화 · Brain이 정리한
+  내용)가 좌측 독 레일(대화 · 통계 · 기억 지도)의 포커스 트랩 서랍으로
+  이동했습니다. 카드 보더는 소프트 섀도로 대체되고, 액센트 컬러는 보내기
+  버튼과 모델 CTA 두 곳에만 남습니다.
+- 공개 릴리스 히스토리가 9.0.0부터 시작합니다 — 8.x 릴리스 노트 9개 파일을
+  제거하고 README/RELEASE_NOTES.md/RELEASE.md/CHANGELOG이 같은 경계를
+  서술합니다.
+
+### Fixed
+- 히어로의 `overflow: clip`이 새 통계 팝오버를 잘라내던 문제(클립 제거 —
+  헤일로는 `--aura-blur`로 이미 조여져 있어 가둘 것이 없습니다).
+- 포털 서랍 내부에서 `.brain-care-panel` 계열 중첩 그리드 패널의 행이 2px로
+  붕괴해 버튼이 클릭 불가능하던 문제 — 서랍 본문을 flex 컬럼으로 전환.
+- 호버로 열린 배지/+ 메뉴를 곧바로 이은 클릭이 도로 닫아버리던 경합 —
+  350ms 열림 디바운스.
+- 새 + 버튼 aria-label의 "메뉴 열기" 문구가 셸 메뉴 버튼과 role 매칭
+  충돌하던 문제.
+
+### Added
+- 프론트엔드 커버리지 100% — `frontend/src` 전체 statements/branches/
+  functions/lines, vitest thresholds 100, CI 커버리지 게이트.
+- `scripts/release_screen_claims.json`의 10.10.0 항목
+  (04-brain-chat-home, min 3%).
+- 비주얼 스펙이 새 홈 계약(+ 메뉴 접힘, 독 서랍, 배지 팝오버, 글로우 기하)을
+  검증합니다.
+
 ## [10.9.0] - 2026-08-05
 
 ### Fixed
@@ -1633,240 +1665,3 @@ Response to a full code review of 10.1.1 (71/100). All twelve findings.
   bridge notification, no-model, single-answer, direct-file, and agent-file
   response paths out of the main `/chat` handler, with regression coverage for
   the shared fast-path epilogue.
-
-## [8.9.0] - 2026-07-06
-
-### Added
-- Added authenticated user/workspace scoping to durable conversation history
-  reads and deletes.
-- Added workspace-aware Knowledge Graph search, traversal, relationship, node,
-  and chat-context reads.
-- Added direct HTTP/MCP Tool API policy enforcement for registry-governed tools.
-- Added permission approval queue hashing and atomic writes so raw tokens are
-  not persisted at rest.
-- Added confirmation-token guarded installer/process command plans with redacted
-  local process audit events.
-- Added regression coverage for scoped history, graph scoping, tool policy
-  gates, AgentRuntime approval semantics, permission tokens, session TTL
-  injection, and model-download runtime config.
-
-### Changed
-- AgentRuntime now requires explicit human approval for non-auto-approved plans
-  and rolls back git-governed tool results even when `success` is omitted.
-- Model download consent now uses configured runtime state instead of direct
-  environment-variable reads.
-- Frontend API base logic, CSS token/base rules, and i18n literal checks were
-  split into smaller maintainability seams.
-- Version bumped to 8.9.0 across Python, npm, VS Code extension, Tauri, static
-  metadata, readiness gates, release notes, and current-release documentation.
-- Documentation now states that SQLite is the live local Brain store; Postgres
-  remains optional scale/migration tooling.
-
-### Fixed
-- Conversation store migration now creates the workspace index only after the
-  scope columns exist.
-- Direct `write_file`/`edit_file` policy lookup now blocks system write
-  prefixes consistently with local-file approvals.
-- Workspace selection clearing now removes the persisted workspace id.
-- Tauri/local API fetches now include credentials for localhost backend
-  sessions.
-
-## [8.8.0] - 2026-07-06
-
-### Added
-- Added Brain Core isolation coverage that keeps `lattice_brain` independent of
-  product-package imports.
-- Added recall proof quality gates for matched terms, confidence labels, and
-  lexical evidence filtering.
-- Added Brain Chat conversation controls for new/resume/delete, stop,
-  regenerate, copy, and richer ingestion progress.
-
-### Changed
-- Removed internal-only Brain shim layers: flat pre-graph modules,
-  `latticeai.brain`, and `latticeai.services.agent_runtime`.
-- Updated legacy compatibility reporting so removed shim layers are tracked
-  separately from remaining external root shims.
-- Hardened AgentRuntime boundary handling for unknown roles, legacy run
-  contracts, and persisted retry budgets.
-- Version bumped to 8.8.0 across Python, npm, VS Code extension, Tauri, static
-  metadata, readiness gates, release notes, and current-release documentation.
-
-### Fixed
-- File ingestion now rejects directory paths before dispatching to document
-  ingestion.
-- Memory recall filters low-evidence noise when stronger lexical matches are
-  present and surfaces explainable citation confidence.
-
-## [8.7.0] - 2026-07-05
-
-### Added
-- Added unit test coverage for model-runtime `STATE` source-of-truth behavior
-  and deprecation warnings on legacy global synchronization.
-- Added refreshed 8.7.0 screenshots, walkthrough GIF/WebM, and capture notes
-  under `output/release/v8.7.0/`.
-
-### Changed
-- Reduced internal reliance on bare module globals in
-  `latticeai/services/model_runtime.py`; implementation logic now consistently
-  reads from the `ModelRuntimeState` instance while globals remain as a legacy
-  compatibility surface.
-- Added `DeprecationWarning` to `sync_to_module_globals()` while preserving the
-  external shim behavior.
-- Removed a loose `as any` cast from `frontend/src/pages/Act.tsx`.
-- Version bumped to 8.7.0 across Python, npm, VS Code extension, Tauri, static
-  metadata, README evidence links, release notes, and current-release
-  documentation.
-
-### Fixed
-- Internal model-runtime functions now prefer the typed state object per the
-  project preference for composition over global mutable state.
-
-## [8.6.0] - 2026-07-05
-
-### Added
-- Added Tauri localhost remote capability coverage so the desktop app can keep
-  using local IPC commands after navigating to the FastAPI-served `/app`.
-- Added a regression trust gate for the Tauri localhost capability.
-
-### Changed
-- Improved the Capture source flow: desktop users can choose a folder with the
-  native folder picker and immediately scan/connect it, while web page capture
-  now supports paste, Enter-to-save, and `https://` normalization for bare
-  domains.
-- Updated Visual Smoke coverage for the new Brain shell sidebar and admin
-  console entry flow.
-- Version bumped to 8.6.0 across Python, npm, VS Code extension, Tauri, static
-  metadata, readiness gates, and current-release documentation.
-
-### Fixed
-- Fixed native folder selection from the Tauri production app's localhost
-  webview and added visible fallback feedback when the picker is unavailable.
-- Removed negative letter spacing from updated frontend shell styling.
-
-## [8.5.0] - 2026-07-01
-
-### Added
-- ToolRegistry now reports `ready: true` with full handler/governance/description alignment (added `vision_analyze` policy and description).
-- `tz_name` now flows from central `Config` into `TriggerService` (via updated automation and platform wiring runtimes) for better DI and Config centralization.
-
-### Changed
-- Full codebase scan completed; improvements prioritized per AGENTS.md (registry, config injection, wiring seams).
-- Version bumped to 8.5.0 across pyproject.toml, package.json, vscode-extension; all current-release doc references synchronized.
-- Documentation sync performed for README, RELEASE.md, docs/CHANGELOG.md and Current release markers.
-
-### Fixed
-- Eliminated ToolRegistry drift for `vision_analyze` (handler existed in tools/ but missing from core registry governance surface used by diagnostics, MCP, and permission views).
-
-## [8.4.0] - 2026-07-01
-
-### Added
-- Added a chat-to-agent file action gate so explicit file create/write/save/edit
-  requests from Brain Chat execute through the governed workspace file tool.
-- Added regression coverage that verifies `/chat` routes file creation intent to
-  the workspace file tool and returns created artifact metadata.
-
-### Changed
-- Kept ordinary Q&A on `/chat` while routing only explicit side-effect file
-  requests into the planner/executor/reviewer tool loop.
-- Synchronized package/runtime/static/Tauri metadata and current-release docs to
-  8.4.0.
-
-### Fixed
-- Allowed literal `/chat` file writes with user-provided content to execute
-  before model loading, while still using a loaded model when content must be
-  synthesized.
-- Narrowed file target and content parsing to avoid treating surrounding prose
-  as the workspace path or literal file body.
-- Restored model loading dependency exports after the runtime/loading split so
-  `/models/load` can prepare local MLX models again.
-- Added the common Gemma 4 26B shorthand alias to the canonical
-  `mlx-community/gemma-4-26b-a4b-it-4bit` model id.
-- Updated the local server launcher to run `python -m uvicorn` from the active
-  virtual environment, avoiding stale console-script interpreter bindings.
-
-## [8.3.0] - 2026-07-01
-
-### Added
-- Added a managed legacy compatibility report for remaining root shims,
-  including owners, replacements, reasons, removal phases, and readiness
-  metrics.
-- Added AgentRuntime/workflow maturity evidence through lifecycle helper reuse,
-  legacy event compatibility, WorkflowEngine boundary/config inspection, and
-  centralized legacy workflow step projection.
-- Added graph ingestion coverage for upload-to-pipeline behavior and
-  workspace-safe duplicate content.
-- Added 8.3.0 onboarding and community/plugin growth documentation.
-
-### Changed
-- Routed `/knowledge-graph/ingest` through the unified `IngestionPipeline` when
-  available, preserving provenance and hook lifecycle behavior for MCP notes and
-  messages.
-- Isolated text/web/note graph node identity by workspace while preserving the
-  content hash used for duplicate detection.
-- Converted `mcp_registry.py` and `llm_router.py` into physical module aliases
-  for their current implementations.
-- Improved upload client error handling so failed uploads cannot look
-  successful.
-- Synchronized package/runtime/static/Tauri metadata and current-release docs to
-  8.3.0.
-
-### Upgrade Notes
-- Existing legacy-global text/web/note graph nodes are not rewritten in place.
-  Re-ingesting the same content with a workspace id can create a separate
-  workspace-scoped node; re-index existing sources after upgrading when you want
-  provenance to converge on workspace scopes.
-
-## [8.2.0] - 2026-06-27
-
-### Added
-- Added an evidence-backed Brain Brief to Brain Home so users can see what to
-  notice, what evidence supports it, and what action to take next.
-- Added `GET /api/memory/brain-brief`, backed by `MemoryService.brain_brief()`,
-  with honest empty-state guidance and recall/graph/model-proof actions.
-- Added unit coverage for Brain Brief service behavior and the memory API route.
-
-### Changed
-- Completed the remaining model loading/runtime extraction into
-  `model_loading.py` and `model_engines.py` while preserving compatibility
-  delegations from `model_runtime.py`.
-- Extracted WorkspaceOS graph trace, agent/workflow run, skill, and snapshot
-  comparison ownership into focused manager modules.
-- Wired Knowledge Graph embedding dimensions from the central resolved `Config`
-  embedder at app startup.
-- Synchronized Python, npm, VS Code extension, Tauri, workspace, readiness,
-  static asset, and current-release documentation versions to 8.2.0.
-
-## [8.1.0] - 2026-06-27
-
-### Changed
-- Rebuilt Brain Home around an intuitive first screen with LivingBrain, recent
-  memory, connected topic, next-best action, and the composer visible together.
-- Replaced dashboard-style Brain growth metrics with narrative, product-facing
-  copy and focused primary actions.
-- Tightened mobile and narrow viewport behavior so the Brain and composer remain
-  visible without horizontal overflow.
-- Refreshed release screenshots, walkthrough GIF/WebM, static app assets, and
-  exact 8.1.0 artifact metadata.
-- Synchronized Python, npm, VS Code extension, Tauri, workspace, readiness, and
-  current-release documentation versions to 8.1.0.
-
-## [8.0.0] - 2026-06-24
-
-### Changed
-- Added `lattice-architecture-contract/v1` to make the AgentRuntime,
-  ToolRegistry, Config, server decomposition, and Knowledge Graph stabilization
-  boundaries explicit and testable for the major architecture line.
-- Added `tool-registry-contract/v1` to the ToolRegistry manifest, including
-  dispatch, policy, and permission ownership.
-- Updated architecture and product readiness targets to 8.0.0.
-- Synchronized package/runtime/static/Tauri metadata to 8.0.0.
-- Updated current-release docs and exact artifact names to 8.0.0 while
-  setting 8.0.0 as the oldest retained release-history entry.
-
-### Fixed
-- Made logical Knowledge Graph `replace` imports transactional so malformed
-  imports roll back without clearing the existing graph.
-- Locked v2 read-equivalence coverage for `list_documents`, `get_node`,
-  `relationship_search`, and `traverse`.
-- Preserved colliding legacy edge labels during logical import/backfill while
-  keeping native write-door synonym dedupe canonical.

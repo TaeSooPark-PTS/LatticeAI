@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { APP_VERSION, COPY, t } from "./i18n";
+import { APP_VERSION, COPY, resolveAppVersion, t } from "./i18n";
 // Namespaces register on import. The app pulls them in per lazy route; the
 // parity check needs all of them, so import every one explicitly.
 import "./i18n/brain";
@@ -22,6 +22,27 @@ describe("i18n namespaces", () => {
     expect(t("en", "library.model.recommended")).toBe("recommended");
     expect(t("ko", "system.archive.verify")).toBe("검증");
     expect(t("en", "system.workspace.activate")).toBe("Activate");
+  });
+});
+
+describe("resolveAppVersion", () => {
+  it("uses the string the build injected", () => {
+    expect(resolveAppVersion(() => "10.9.0")).toBe("10.9.0");
+  });
+
+  it("says 'dev' when the identifier does not exist at all", () => {
+    // The bare `__APP_VERSION__` reference throws a ReferenceError outside the
+    // bundle (plain tsc output, a REPL). That is the case the thunk exists for.
+    expect(
+      resolveAppVersion(() => {
+        throw new ReferenceError("__APP_VERSION__ is not defined");
+      }),
+    ).toBe("dev");
+  });
+
+  it("says 'dev' when something non-string was injected", () => {
+    expect(resolveAppVersion(() => 10.9)).toBe("dev");
+    expect(resolveAppVersion(() => undefined)).toBe("dev");
   });
 });
 

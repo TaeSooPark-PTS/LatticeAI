@@ -88,4 +88,37 @@ describe("KnowledgeGardenPanel", () => {
       expect(screen.getByText("아직 정원을 볼 수 없어요. 자료를 조금 더 모아 보세요.")).toBeTruthy(),
     );
   });
+
+  it("treats a failed request like an unavailable garden", async () => {
+    mockGarden({}, false);
+    renderPanel();
+    await userEvent.click(screen.getByText("내 지식 정원"));
+    await waitFor(() =>
+      expect(screen.getByText("아직 정원을 볼 수 없어요. 자료를 조금 더 모아 보세요.")).toBeTruthy(),
+    );
+  });
+
+  it("shows the loading line while the beds are on their way", async () => {
+    let release: (value: unknown) => void = () => {};
+    vi.spyOn(latticeApi, "brainGarden").mockReturnValue(
+      new Promise((resolve) => { release = resolve; }) as never,
+    );
+    renderPanel();
+    await userEvent.click(screen.getByText("내 지식 정원"));
+    expect(screen.getByRole("status").textContent).toContain("정원을 둘러보는 중");
+    release({ ok: true, status: 200, source: "live", data: PAYLOAD });
+    await waitFor(() => expect(screen.getByTestId("garden-bed-recent")).toBeTruthy());
+  });
+
+  it("skips blank titles in favor of the next candidate field", async () => {
+    mockGarden({
+      available: true,
+      beds: {
+        recent: { items: [{ id: "b1", title: "   ", summary: "실제 요약 제목", degree: Number.NaN }] },
+      },
+    });
+    renderPanel();
+    await userEvent.click(screen.getByText("내 지식 정원"));
+    await waitFor(() => expect(screen.getByText("실제 요약 제목")).toBeTruthy());
+  });
 });

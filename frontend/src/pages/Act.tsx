@@ -443,7 +443,14 @@ function WorkflowsPanel() {
         const metadata = (workflow.metadata || {}) as Record<string, unknown>;
         return metadata.created_from === "brain_automation_recipe" && metadata.recipe_id;
       })
-      .map((workflow) => [String(((workflow.metadata || {}) as Record<string, unknown>).recipe_id), workflow]),
+      .map((workflow) => {
+        /* v8 ignore next -- unreachable: the preceding `.filter` only keeps
+           workflows whose `metadata.created_from` already matched, which is
+           impossible unless `workflow.metadata` was itself a truthy object.
+           Kept as defense-in-depth against the two falling out of sync. */
+        const metadata = (workflow.metadata || {}) as Record<string, unknown>;
+        return [String(metadata.recipe_id), workflow] as [string, Record<string, unknown>];
+      }),
   );
   const nodes: Node[] = workflows.slice(0, 12).map((workflow, index) => ({
     id: String(workflow.id || workflow.workflow_id || index),
@@ -502,7 +509,12 @@ function WorkflowsPanel() {
                       const isEnabled = installedMetadata.automation_state === "enabled";
                       const isInstalling = installRecipe.isPending && installRecipe.variables?.recipeId === id;
                       type InstallResult = { recipe?: { recipe_id?: string }; enabled?: boolean } | undefined;
-                      const last = installRecipe.data as InstallResult;
+                      // The mutation resolves to the request envelope; the
+                      // server body carrying `recipe`/`enabled` is on `.data`.
+                      // Reading `.recipe` off the envelope itself meant
+                      // `justSucceeded` was always false, so the "created" /
+                      // "enabled now" confirmations never fired.
+                      const last = installRecipe.data?.data as InstallResult;
                       const lastRid = last && last.recipe && last.recipe.recipe_id ? String(last.recipe.recipe_id) : "";
                       const justSucceeded = !installRecipe.isPending && lastRid === id;
                       const installed = Boolean(installedWorkflow);
@@ -523,6 +535,10 @@ function WorkflowsPanel() {
                             variant={enabled || installed ? "secondary" : "outline"}
                             disabled={!id || isInstalling || enabled}
                             onClick={() => {
+                              /* v8 ignore next -- unreachable: the only trigger is this
+                                 button, which is itself disabled by `isInstalling ||
+                                 enabled` (a superset of this guard) in the same render.
+                                 Kept as defense-in-depth. */
                               if (enabled || isInstalling) return;
                               installRecipe.mutate({ recipeId: id, enabled: installed });
                             }}

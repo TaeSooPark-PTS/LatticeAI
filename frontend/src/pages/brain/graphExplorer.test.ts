@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { buildExplorerModel, parseGraph, type ParsedGraph } from "./graphExplorer";
+import { buildExplorerModel, parseGraph, type GraphEdge, type GraphNode, type ParsedGraph } from "./graphExplorer";
 
 const NO_COLLAPSE = new Set<string>();
 
@@ -321,5 +321,151 @@ describe("buildExplorerModel", () => {
     expect(result.elements).toEqual([]);
     expect(result.visibleNodes).toEqual([]);
     expect(result.hiddenByFilters).toBe(0);
+  });
+});
+
+describe("parseGraph payload variants", () => {
+  it("unwraps a `{ data: … }` envelope when it carries the graph", () => {
+    const parsed = parseGraph({ data: { nodes: [{ id: "a" }], edges: [] } }, "en");
+    expect(parsed.nodes.map((node) => node.id)).toEqual(["a"]);
+  });
+
+  it("accepts an envelope whose nodes come as a record rather than a list", () => {
+    // The unwrap must trigger for this shape too; a record of nodes then reads
+    // as an empty list rather than crashing.
+    const parsed = parseGraph({ data: { nodes: { a: { id: "a" } } } }, "en");
+    expect(parsed.nodes).toEqual([]);
+  });
+
+  it("leaves a `data` field alone when it does not look like a graph", () => {
+    const parsed = parseGraph({ data: { message: "no graph here" }, nodes: [{ id: "outer" }] }, "en");
+    expect(parsed.nodes.map((node) => node.id)).toEqual(["outer"]);
+  });
+
+  it("accepts a numeric node id and stringifies it", () => {
+    const parsed = parseGraph({ nodes: [{ id: 7 }, { id: NaN }] }, "en");
+    expect(parsed.nodes.map((node) => node.id)).toEqual(["7"]);
+  });
+
+  it("drops an edge that has no endpoints at all", () => {
+    const parsed = parseGraph(
+      {
+        nodes: [{ id: "a" }, { id: "b" }],
+        edges: [{ to: "b" }, { from: "a" }, { from: "ghost", to: "b" }, { from: "a", to: "b" }],
+      },
+      "en",
+    );
+    expect(parsed.edges).toHaveLength(1);
+  });
+
+  it("reads importance from metadata graph metrics when the node has none", () => {
+    const parsed = parseGraph(
+      { nodes: [{ id: "m", metadata: { graph_metrics: { importance_norm: 0.7 } } }] },
+      "en",
+    );
+    expect(parsed.nodes[0].importance).toBeCloseTo(0.7);
+  });
+
+  it("falls back to metadata for the summary and prefers a top-level source", () => {
+    const parsed = parseGraph(
+      {
+        nodes: [
+          { id: "s", source: "s3://bucket/file", metadata: { summary: "메타 요약" } },
+        ],
+      },
+      "en",
+    );
+    expect(parsed.nodes[0].summary).toBe("메타 요약");
+    expect(parsed.nodes[0].source).toBe("s3://bucket/file");
+  });
+});
+
+describe("buildExplorerModel hand-built graphs", () => {
+  const gnode = (over: Partial<GraphNode> & { id: string }): GraphNode => ({
+    label: over.id,
+    type: "Node",
+    group: "other",
+    summary: "",
+    source: "",
+    importance: 0.5,
+    degree: 0,
+    searchText: over.id.toLowerCase(),
+    raw: {},
+    ...over,
+  });
+  const gedge = (id: string, source: string, target: string): GraphEdge => ({
+    id,
+    source,
+    target,
+    label: "related",
+    weight: 1,
+  });
+
+  it("selecting a collapsed cluster does not narrow to a neighbourhood", () => {
+    const graph = parseGraph(
+      {
+        nodes: [{ id: "a", type: "Topic" }, { id: "b", type: "Person" }],
+        edges: [],
+      },
+      "en",
+    );
+    const result = model(graph, { selectedId: "group:knowledge" });
+    expect(result.visibleNodes).toHaveLength(2);
+  });
+
+  it("marks an edge as connected when the selected node is its target", () => {
+    const graph = parseGraph(
+      { nodes: [{ id: "hub" }, { id: "leaf" }], edges: [{ from: "hub", to: "leaf" }] },
+      "en",
+    );
+    const result = model(graph, { selectedId: "leaf" });
+    const edge = result.elements.find((element) => element.data.source);
+    expect(edge?.classes).toBe("connected");
+  });
+
+  it("falls back to the definition id when the groups list does not know the group", () => {
+    const graph: ParsedGraph = {
+      nodes: [gnode({ id: "k1", group: "knowledge" }), gnode({ id: "s1", group: "source" })],
+      edges: [],
+      groups: [],
+    };
+    const result = model(graph, { collapsedGroups: new Set(["knowledge"]) });
+    const cluster = result.elements.find((element) => element.data.id === "group:knowledge");
+    expect(cluster?.data.displayLabel).toBe("knowledge (1)");
+    const plain = result.elements.find((element) => element.data.id === "s1");
+    expect(plain?.data.group).toBe("source");
+  });
+
+  it("puts a node with an unknown group into the catch-all bucket", () => {
+    const graph: ParsedGraph = {
+      nodes: [gnode({ id: "x", group: "martian" })],
+      edges: [],
+      groups: [],
+    };
+    const result = model(graph);
+    const element = result.elements.find((item) => item.data.id === "x");
+    // The last definition ("other") supplies colour and grouping.
+    expect(element?.data.color).toBe("#f8fafc");
+    expect(element?.data.group).toBe("other");
+  });
+
+  it("drops an edge whose duplicate-id endpoint resolves to a group that never collapsed", () => {
+    // Two nodes share the id "dup" in different groups. The low-importance
+    // twin ("people", listed first) falls outside the node cap, the
+    // high-importance twin ("knowledge") is collapsed into a cluster. The edge
+    // lookup finds the first twin, whose group has no cluster — the edge must
+    // vanish rather than point at a cluster that is not on the canvas.
+    const graph: ParsedGraph = {
+      nodes: [
+        gnode({ id: "dup", group: "people", importance: 0.1 }),
+        gnode({ id: "dup", group: "knowledge", importance: 0.9 }),
+        gnode({ id: "anchor", group: "source", importance: 0.8 }),
+      ],
+      edges: [gedge("e1", "dup", "anchor"), gedge("e2", "anchor", "dup")],
+      groups: [],
+    };
+    const result = model(graph, { collapsedGroups: new Set(["knowledge"]), maxNodes: 2 });
+    expect(result.visibleNodes.map((node) => node.id)).toEqual(["anchor"]);
+    expect(result.elements.filter((element) => element.data.source)).toEqual([]);
   });
 });

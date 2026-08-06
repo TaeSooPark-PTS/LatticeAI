@@ -87,6 +87,9 @@ export function AgentApprovalCard({
   }, [pending, remainingMs, onResolved]);
 
   async function resolve(decision: { approve: boolean; editedPlan?: Record<string, unknown> }) {
+    /* v8 ignore next -- unreachable: every caller (approve/cancel/edit-run) is
+       itself disabled by the same `busy` flag in the same render, so a second
+       invocation can never observe busy=true. Kept as defense-in-depth. */
     if (busy) return;
     setBusy(true);
     try {

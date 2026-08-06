@@ -82,8 +82,11 @@ jobs:
         run: npm run lint:python
 
       - name: Run tests
+        # Frontend runs under coverage: vitest.config.ts pins 100% thresholds
+        # on all four metrics, so a single uncovered line fails this step the
+        # same way it fails locally.
         run: |
-          npm run test:frontend
+          npm run test:frontend:coverage
           python -m pytest tests/unit/ -v --tb=short
 
       - name: Coverage floor

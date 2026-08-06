@@ -146,3 +146,53 @@ describe("streamModelPrepare frame skipping", () => {
     expect(result.malformedFrames).toBe(1);
   });
 });
+
+describe("readEventStream teardown", () => {
+  it("drops a trailing fragment that never grew a data line", async () => {
+    const frames = await collect([
+      'data: {"chunk":"a"}\n\n',
+      ": half a keep-alive comment with no data",
+    ]);
+
+    expect(frames).toHaveLength(1);
+    expect(frames[0].data).toEqual({ chunk: "a" });
+  });
+
+  it("cancels the body when the consumer breaks early, even if cancel rejects", async () => {
+    let cancelled = false;
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(encoder.encode('data: {"chunk":"more"}\n\n'));
+      },
+      cancel() {
+        cancelled = true;
+        return Promise.reject(new Error("cancel failed"));
+      },
+    });
+
+    for await (const frame of readEventStream(body)) {
+      expect(frame.data).toEqual({ chunk: "more" });
+      break;
+    }
+
+    expect(cancelled).toBe(true);
+    // Give the swallowed rejection a microtask to surface if it ever leaks.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  it("tolerates a reader whose cancel throws synchronously after a completed read", async () => {
+    const reader = {
+      read: async () => ({ done: true as const, value: undefined }),
+      cancel: () => {
+        throw new Error("already released");
+      },
+    };
+    const body = { getReader: () => reader } as unknown as ReadableStream<Uint8Array>;
+
+    const frames = [];
+    for await (const frame of readEventStream(body)) frames.push(frame);
+
+    expect(frames).toEqual([]);
+  });
+});

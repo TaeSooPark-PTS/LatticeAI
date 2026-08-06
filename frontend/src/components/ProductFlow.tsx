@@ -123,7 +123,7 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
         {step === "install" && (
           <InstallScreen
-            model={selected || outcome.recommendations[0] || fallbackModel()}
+            model={pickInstallModel(selected, outcome.recommendations)}
             onBack={() => setStep("recommend")}
             onComplete={() => completeFlow(onComplete)}
             onLater={() => completeFlow(onComplete)}
@@ -191,7 +191,19 @@ function completeFlow(onComplete: () => void) {
   onComplete();
 }
 
-function brainStateForStep(step: FlowStep): BrainState {
+/**
+ * Exported for tests: the install step is only ever entered through a
+ * selection today, so the fallbacks are defensive and not reachable via UI.
+ */
+export function pickInstallModel(
+  selected: RecommendedModel | null,
+  recommendations: RecommendedModel[],
+): RecommendedModel {
+  return selected || recommendations[0] || fallbackModel();
+}
+
+/** Exported for tests: the "analysis" step is in the type but no screen sets it yet. */
+export function brainStateForStep(step: FlowStep): BrainState {
   if (step === "wake") return "idle";
   if (step === "analysis") return "listening";
   if (step === "recommend") return "recalling";

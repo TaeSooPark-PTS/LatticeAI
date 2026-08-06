@@ -73,17 +73,16 @@ export function useBrainIngestion({
     return () => window.clearTimeout(timer);
   }, [emergenceEvents]);
 
+  // `stage` is always a mid-flight stage here ("indexing" from completeIngestion);
+  // terminal stages are written by resolveEmergence/failIngestion below, which
+  // stamp completedAt themselves.
   const setStage = React.useCallback((sourceType: IngestionSourceType, stage: IngestionPipelineStage) => {
     setIngestionStates((previous) => {
       const current = previous[sourceType];
       if (!current) return previous;
       return {
         ...previous,
-        [sourceType]: {
-          ...current,
-          stage,
-          completedAt: stage === "complete" || stage === "error" ? Date.now() : current.completedAt,
-        },
+        [sourceType]: { ...current, stage },
       };
     });
   }, []);

@@ -28,6 +28,20 @@
     }
   },
 
+  "10.10.0": {
+    "04-brain-chat-home.png": {
+      "_why": [
+        "The quiet-station redesign: the memory stats left the hero sentence",
+        "for a hover badge, the six capture chips folded behind the composer's",
+        "+ control, the model banner became a status pill on the hero's right,",
+        "the two bottom shelves became a dock rail (대화 · 통계 · 기억 지도),",
+        "cards dropped their borders for soft shadows, and the accent colour",
+        "was pulled back to the send CTA and the model action."
+      ],
+      "min_pct": 3.0
+    }
+  },
+
   "10.9.0": {
     "_why": [
       "This release claims no screen redesign, and the empty claim is the",

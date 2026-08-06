@@ -1,0 +1,552 @@
+/* ── 10.10.0: the quiet station's new furniture ──────────────────────────
+   Four instruments, one philosophy: the canvas holds the composer; everything
+   else is an affordance that blooms on demand.
+
+     1. the stats badge   — "기억 · 주제" as a chip; the summary graph lives in
+                            its hover/click popover (.brain-hero-stats)
+     2. the + menu        — 문서 · 이미지 · 파일 · 폴더 · 노트 · 웹 fold behind
+                            one Add control on the composer (.brain-attach)
+     3. the model pill    — "모델 준비 필요" as a status pill with the one
+                            accented CTA (.brain-model-missing, reshaped)
+     4. the dock          — 대화 · 통계 · 기억 지도 on a rail that opens a
+                            drawer, left on desktop, bottom on touch widths
+                            (.brain-home-dock, .brain-home-drawer)
+
+   Loads after home-simple.css and before responsive.css: it owns these four
+   components everywhere they appear, and home-simple stays the authority on
+   the station's bones. */
+
+/* ── 1. the stats badge ─────────────────────────────────────────────────── */
+
+.brain-hero-stats {
+  position: relative;
+  display: inline-flex;
+}
+
+.brain-hero-stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.16rem 0.62rem;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.55);
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.4);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.brain-hero-stats-badge:hover,
+.brain-hero-stats-badge[aria-expanded="true"] {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+.brain-hero-stats-badge strong {
+  color: hsl(var(--foreground));
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.brain-hero-stats-badge > i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+.brain-hero-stats-popover {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: 0;
+  z-index: 85;
+  display: grid;
+  gap: 0.6rem;
+  width: 17.5rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 0.9rem;
+  background: hsl(var(--card) / 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 18px 44px -16px hsl(var(--foreground) / 0.28),
+    inset 0 0 0 1px hsl(var(--border) / 0.35);
+  text-align: left;
+  white-space: normal;
+}
+
+.brain-hero-stats-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.brain-hero-stats-graph {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.brain-hero-stats-row {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brain-hero-stats-label {
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.brain-hero-stats-track {
+  display: block;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.6);
+  overflow: hidden;
+}
+
+.brain-hero-stats-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.brain-hero-stats-fill.is-memory { background: hsl(var(--memory) / 0.85); }
+.brain-hero-stats-fill.is-knowledge { background: hsl(var(--knowledge) / 0.85); }
+.brain-hero-stats-fill.is-core { background: hsl(var(--brain-core) / 0.85); }
+
+.brain-hero-stats-value {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  font-variant-numeric: tabular-nums;
+}
+
+.brain-hero-stats-hint {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: hsl(var(--muted-foreground));
+}
+
+.brain-hero-stats-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.7);
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.4);
+  color: hsl(var(--foreground));
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.brain-hero-stats-cta:hover {
+  background: hsl(var(--muted));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brain-hero-stats-popover {
+    animation: brain-pop-in 150ms ease-out;
+  }
+}
+
+@keyframes brain-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* ── 2. the + menu ──────────────────────────────────────────────────────── */
+
+.brain-attach {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.brain-attach-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  padding: 0.26rem 0.62rem 0.26rem 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.55);
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.45);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.brain-attach-toggle:hover,
+.brain-attach-toggle[aria-expanded="true"] {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+.brain-attach-toggle > svg {
+  transition: transform 160ms ease;
+}
+
+.brain-attach.is-open .brain-attach-toggle > svg {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-attach-toggle > svg {
+    transition: none;
+  }
+
+  .brain-attach.is-open .brain-attach-toggle > svg {
+    transform: none;
+  }
+}
+
+.brain-attach > .brain-composer-attachments {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brain-attach > .brain-composer-attachments {
+    animation: brain-attach-in 140ms ease-out;
+  }
+}
+
+@keyframes brain-attach-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
+/* ── 3. the model pill ──────────────────────────────────────────────────── */
+
+/* Reshapes the banner in styles.css into a status pill: auto width, no rule
+   line, the full sentence on the tooltip/accessible name. The CTA inside it is
+   one of the two places on the home allowed to wear the accent. */
+.brain-model-missing {
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0.26rem 0.3rem 0.26rem 0.7rem;
+  gap: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--brain-core) / 0.1);
+  box-shadow: inset 0 0 0 1px hsl(var(--brain-core) / 0.3);
+  font-size: 0.78rem;
+}
+
+.brain-model-missing .brain-model-missing-text {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  font-weight: 650;
+}
+
+.brain-model-missing button {
+  padding: 0.26rem 0.7rem;
+  border: 0;
+  box-shadow: inset 0 0 0 1px hsl(var(--brain-core) / 0.5);
+  background: hsl(var(--brain-core) / 0.18);
+  font-size: 0.76rem;
+}
+
+.brain-hero-trailing .brain-model-missing {
+  margin: 0;
+}
+
+/* In a live conversation the pill floats centred above the composer instead of
+   spanning it. */
+.has-messages .brain-model-missing {
+  margin: 0.4rem auto 0;
+}
+
+/* ── 4. the dock and its drawer ─────────────────────────────────────────── */
+
+.brain-home-dock {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.brain-home-dock-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 12px 30px -14px hsl(var(--foreground) / 0.2),
+    inset 0 0 0 1px hsl(var(--border) / 0.35);
+}
+
+.brain-home-dock-rail > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.44rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.brain-home-dock-rail > button:hover {
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--foreground));
+}
+
+.brain-home-dock-rail > button[aria-expanded="true"] {
+  background: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground));
+}
+
+.brain-dock-count {
+  padding: 0.05rem 0.42rem;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.8);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Desktop: the rail leaves the flow and docks on the canvas's left edge, a
+   fixed column that never competes with the station for height. */
+@media (min-width: 1200px) {
+  .brain-home-dock-rail {
+    position: fixed;
+    top: 50%;
+    left: max(0.9rem, calc(50vw - 28rem - 6.75rem));
+    z-index: 60;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    padding: 0.4rem 0.35rem;
+    border-radius: 1.15rem;
+    transform: translateY(-50%);
+  }
+
+  .brain-home-dock-rail > button {
+    flex-direction: column;
+    gap: 0.22rem;
+    padding: 0.55rem 0.55rem 0.5rem;
+    border-radius: 0.85rem;
+    font-size: 0.68rem;
+    font-weight: 650;
+  }
+}
+
+.brain-home-dock-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+.brain-home-dock-scrim {
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--background) / 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.brain-home-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(27rem, 94vw);
+  border-radius: 0 1.1rem 1.1rem 0;
+  background: hsl(var(--card) / 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    14px 0 44px -20px hsl(var(--foreground) / 0.4),
+    inset 0 0 0 1px hsl(var(--border) / 0.3);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brain-home-dock-scrim {
+    animation: brain-scrim-in 180ms ease-out;
+  }
+
+  .brain-home-drawer {
+    animation: brain-drawer-in 200ms cubic-bezier(0.32, 0.72, 0.35, 1);
+  }
+}
+
+@keyframes brain-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes brain-drawer-in {
+  from {
+    opacity: 0.4;
+    transform: translateX(-16px);
+  }
+}
+
+.brain-home-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 0.9rem 0.6rem;
+}
+
+.brain-home-drawer-tabs {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.5);
+}
+
+.brain-home-drawer-tabs > button {
+  padding: 0.32rem 0.78rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.brain-home-drawer-tabs > button:hover {
+  color: hsl(var(--foreground));
+}
+
+.brain-home-drawer-tabs > button.is-active {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 4px hsl(var(--foreground) / 0.14);
+}
+
+.brain-home-drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.brain-home-drawer-close:hover {
+  background: hsl(var(--muted) / 0.6);
+  color: hsl(var(--foreground));
+}
+
+/* A flex column, not a grid: as grid rows inside this portaled scroll
+   container, the nested-grid panels (.brain-care-panel family — themselves
+   `display: grid` with `overflow: hidden` and a backdrop-filter) resolved
+   their rows to 2px and clipped their own buttons unreachable. Flex sizes
+   every panel by its content; `flex: none` keeps the last one from being
+   squashed when the column runs long. */
+.brain-home-drawer-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.85rem;
+  padding: 0.35rem 0.9rem 1.1rem;
+  overflow-y: auto;
+}
+
+.brain-home-drawer-body > * {
+  flex: none;
+}
+
+/* The panels inside were drawn for the old insights popover; the same width
+   discipline applies in the drawer. */
+.brain-home-drawer-body .brain-rings {
+  border-radius: var(--experience-radius);
+  background: hsl(var(--muted) / 0.28);
+  padding: 1.25rem 1rem;
+}
+
+.brain-home-drawer-body :is(.brain-brief-panel, .brain-home-proactive, .brain-proactive-trail, .brain-history-panel) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.brain-home-drawer-body .brain-brief-panel {
+  border-color: hsl(var(--border));
+  border-radius: var(--experience-radius);
+  background: hsl(var(--surface));
+}
+
+.brain-home-drawer-map-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: hsl(var(--muted) / 0.7);
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.4);
+  color: hsl(var(--foreground));
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.brain-home-drawer-map-cta:hover {
+  background: hsl(var(--muted));
+}
+
+/* Short screens: the drawer keeps its own scroll, the head stays pinned. */
+.brain-home-drawer-head {
+  flex: none;
+}

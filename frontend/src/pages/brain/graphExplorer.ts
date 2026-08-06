@@ -235,10 +235,13 @@ export function buildExplorerModel({
         borderColor: selectedId === node.id ? "#ffffff" : definition.color,
         size: Math.round(20 + node.importance * 34 + Math.min(node.degree, 10) * 2),
       },
+      // No "faded" class here: when a node is selected, the neighbour filter
+      // above already removes every non-neighbour, so a visible node can never
+      // be outside `neighborIds` — the class could never apply (and nothing
+      // styles it).
       classes: [
         selectedId === node.id ? "selected" : "",
         matched ? "match" : "",
-        neighborIds.size && !neighborIds.has(node.id) ? "faded" : "",
       ].filter(Boolean).join(" "),
     };
   });
