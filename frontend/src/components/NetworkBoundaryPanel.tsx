@@ -96,7 +96,12 @@ export function NetworkBoundaryPanel() {
   // Open showing what is actually in force, not an empty form.
   const draft = selected ?? active;
   const draftOption = catalog.find((option) => option.id === draft);
-  const needsAck = Boolean(draftOption?.requires_ack) && draft !== active;
+  // The ack box exists only for a *different* mode that demands an
+  // acknowledgement, so carry that option itself: rendering from it keeps the
+  // warning copy tied to the mode that needs it, with no impossible
+  // "ack box without an option" state to guard against.
+  const ackOption = draftOption?.requires_ack && draft !== active ? draftOption : undefined;
+  const needsAck = ackOption !== undefined;
   const blocked = needsAck && !acknowledged;
   const unchanged = draft === active;
   const policy = data?.policy ?? {};
@@ -187,11 +192,11 @@ export function NetworkBoundaryPanel() {
           })}
         </div>
 
-        {needsAck ? (
+        {ackOption ? (
           <div className="space-y-2 rounded-md border border-border bg-muted p-3">
             <p className="flex items-start gap-2 text-xs">
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>{draftOption ? optionWarning(draftOption, language) : ""}</span>
+              <span>{optionWarning(ackOption, language)}</span>
             </p>
             <label className="flex items-center gap-2 text-xs">
               <input

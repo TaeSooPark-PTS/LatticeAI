@@ -1427,6 +1427,14 @@ def _frontend_src_blob_excluding_i18n_defs(repo: Path) -> str:
         # Skip namespace definition tables — keys only appear there as defs.
         if path.parent.name == "i18n" and path.stem not in {"types", "registry"}:
             continue
+        # Tests are not a use site. A spec asserting `t(lang, "x.y")` renders
+        # the right copy does not put that copy on any screen, so counting the
+        # test blob let a key look wired up because it was *tested*. That is
+        # the exact dishonesty this gate exists to catch, and it went live the
+        # moment 10.10.0 gave the frontend a full test suite: thirteen keys no
+        # panel renders started reading as "re-wired".
+        if ".test." in path.name or path.parent.name == "test":
+            continue
         parts.append(path.read_text(encoding="utf-8", errors="replace"))
     return "\n".join(parts)
 

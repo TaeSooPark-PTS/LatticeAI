@@ -16,7 +16,7 @@ import { asArray, humanizeModelId } from "@/lib/utils";
 import { navigateHash } from "@/features/brain/navigation";
 
 /** Say what the search engine can do, not which provider is wired in. */
-function embeddingStateLabel(state: unknown, language: Language) {
+export function embeddingStateLabel(state: unknown, language: Language) {
   const value = String(state || "").toLowerCase();
   if (value === "production") return t(language, "library.embedding.state.production");
   if (value === "fallback" || value === "hash" || value === "local") {
@@ -26,7 +26,7 @@ function embeddingStateLabel(state: unknown, language: Language) {
 }
 
 /** Name the machine the way its owner would, not the way `uname` does. */
-function describeComputer(profile: Record<string, unknown> | undefined, language: Language) {
+export function describeComputer(profile: Record<string, unknown> | undefined, language: Language) {
   const os = String(profile?.os || "").toLowerCase();
   const arch = String(profile?.arch || "").toLowerCase();
   if (!os) return t(language, "library.value.detected");
@@ -42,7 +42,7 @@ function describeComputer(profile: Record<string, unknown> | undefined, language
  * may legitimately be Latin script; a multi-word English sentence with no
  * Hangul in it is copy that was never translated.
  */
-function isUntranslatedProse(text: string) {
+export function isUntranslatedProse(text: string) {
   if (/[ㄱ-힝]/u.test(text)) return false;
   return text.trim().split(/\s+/).length >= 6;
 }
@@ -229,6 +229,12 @@ function ModelsPanel() {
   const [lastResult, setLastResult] = React.useState<Record<string, unknown> | null>(null);
   const [lastError, setLastError] = React.useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = React.useState(false);
+  // Whether the stream itself reported the failure. `lastError` cannot answer
+  // that from inside `prepareModel`: it is the value captured when this render
+  // created the function, so it is still null after `onError` has run, and the
+  // guard at the end of the run overwrote the stream's specific message with
+  // the envelope's generic payload.
+  const streamReportedError = React.useRef(false);
   const loadedIds = asArray<string>((models.data?.data as Record<string, unknown> | undefined)?.loaded);
   const currentId = String((models.data?.data as Record<string, unknown> | undefined)?.current || "");
   // Order by what the person can actually do right now. The catalog arrives in
@@ -237,7 +243,10 @@ function ModelsPanel() {
   // here works". Loaded first, then ready to use, then everything else.
   const catalogRank = (model: Record<string, unknown>) => {
     const id = String(model.id || model.model_id || "");
-    if (loadedIds.includes(id) || id === currentId) return 0;
+    // A row with neither `id` nor `model_id` (the registry ships these) must
+    // never rank as "currently active" just because both sides of the
+    // comparison happen to be the empty string.
+    if (id && (loadedIds.includes(id) || id === currentId)) return 0;
     if (model.load_available || model.load_status === "ready") return 1;
     if (model.pulled) return 2;
     return 3;
@@ -253,12 +262,19 @@ function ModelsPanel() {
     ((recs.data?.data as Record<string, unknown>)?.recommendations as Record<string, unknown> | undefined)?.models,
   );
   const recommendationById = new Map(recommendationRows.map((item) => [String(item.id), item]));
-  const current = catalog.find((model) => loadedIds.includes(String(model.id)) || String(model.id) === currentId);
+  // Same guard as `catalogRank` above: a row with no `id` must never be
+  // mistaken for the active model just because both sides read as "".
+  const current = catalog.find((model) => {
+    const id = String(model.id || "");
+    return Boolean(id) && (loadedIds.includes(id) || id === currentId);
+  });
   const topPick = (((recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined)?.top_pick || null) as Record<string, unknown> | null;
   const latestProgress = progress[progress.length - 1] || null;
 
   const modelMessage = React.useCallback((message: unknown, fallbackKey = "library.model.notReady") => {
-    const text = String(message || t(language, fallbackKey));
+    // Every caller pre-fills its own fallback (`x || t(...)`), so `message`
+    // always arrives as a non-empty string here.
+    const text = String(message);
     // The registry ships compatibility prose in English. Substituting terms
     // inside it produced word salad — a released screenshot read "uses the 이
     // 로컬 모델 형식 로컬 모델 지원 format. The installed 로컬 모델 지원 모델
@@ -286,18 +302,22 @@ function ModelsPanel() {
     setProgress([]);
     setLastResult(null);
     setLastError(null);
+    streamReportedError.current = false;
     const result = await latticeApi.streamModelPrepare(
       { model: loadId, engine: engine || "local_mlx", allow_download: allowDownload },
       {
         onProgress: (event) => setProgress((items) => [...items.slice(-8), event]),
         onDone: (event) => setLastResult(event),
-        onError: (event) => setLastError(event),
+        onError: (event) => {
+          streamReportedError.current = true;
+          setLastError(event);
+        },
       },
     );
     setBusy(false);
     await qc.invalidateQueries({ queryKey: ["models"] });
     await qc.invalidateQueries({ queryKey: ["modelRecommendations", "local_mlx"] });
-    if (!result.ok && !lastError) setLastError(result.data as Record<string, unknown>);
+    if (!result.ok && !streamReportedError.current) setLastError(result.data as Record<string, unknown>);
   }
 
   return (
@@ -319,7 +339,17 @@ function ModelsPanel() {
                   latestProgress={latestProgress}
                   lastResult={lastResult}
                   onReload={() => {
-                    if (current) void prepareModel(String(current.recommended_load_id || current.id || currentId), String(current.recommended_engine || current.engine || "local_mlx"), consent);
+                    if (current) {
+                      // `current` (above) is only ever set by `catalog.find`, which now
+                      // requires a non-empty `id` (see its comment) — so `preferredId`
+                      // below is always truthy and the bare `currentId` fallback on the
+                      // next line can never fire. Kept as defense-in-depth.
+                      const preferredId = current.recommended_load_id || current.id;
+                      /* v8 ignore next -- unreachable: see comment above. */
+                      const loadId = String(preferredId || currentId);
+                      const engine = String(current.recommended_engine || current.engine || "local_mlx");
+                      void prepareModel(loadId, engine, consent);
+                    }
                   }}
                   onUnload={() => {
                     if (currentId) void latticeApi.unloadModel(currentId).then(() => qc.invalidateQueries({ queryKey: ["models"] }));
@@ -493,7 +523,9 @@ function ModelsPanel() {
                           : !canPrepare ? unavailableReason
                           : undefined
                         }
-                        onClick={() => prepareModel(loadId, engine || "local_mlx", consent)}
+                        // `prepareModel` already defaults a missing engine, so
+                        // defaulting it again here only duplicated the answer.
+                        onClick={() => prepareModel(loadId, engine, consent)}
                       >
                         {activeModel === loadId && busy ? t(language, "library.btn.preparing") : downloadRequired ? t(language, "library.btn.installLoad") : t(language, "library.btn.validateLoad")}
                       </Button>

@@ -88,6 +88,9 @@ export function FilePreviewModal({
   }, [file.path]);
 
   async function download() {
+    /* v8 ignore next -- unreachable: the only trigger is this modal's single
+       download button, which is itself disabled by the same `downloading`
+       flag in the same render. Kept as defense-in-depth. */
     if (downloading) return;
     setDownloading(true);
     await latticeApi.downloadWorkspaceFile(file.path, file.filename);

@@ -64,8 +64,8 @@ describe("BrainHome first entry", () => {
     expect(station.querySelector(".brain-station-toolbar")).toBeTruthy();
     expect(station.querySelector(".brain-home-prompt-strip")).toBeNull();
     expect(station.querySelector("[data-testid='brain-secondary-deck']")).toBeNull();
-    expect(station.querySelector("[data-testid='brain-history-shelf']")).toBeNull();
-    expect(station.querySelector("[data-testid='brain-insights-shelf']")).toBeNull();
+    expect(station.querySelector("[data-testid='brain-home-dock']")).toBeNull();
+    expect(station.querySelector("[data-testid='brain-home-drawer']")).toBeNull();
   });
 
   it("stacks station, then deck, then footer as three siblings of the stage", async () => {
@@ -93,15 +93,35 @@ describe("BrainHome first entry", () => {
     expect(quietIndex).toBeGreaterThan(deckIndex);
   });
 
-  it("opens with both shelves closed, so the first screen is the composer", async () => {
+  it("opens with the dock closed, so the first screen is the composer", async () => {
+    // 10.10.0 moved the shelves onto a dock: a rail with 대화 · 통계 · 기억 지도
+    // that opens a drawer. On first paint the drawer must not exist — the rail
+    // alone is on screen, and nothing competes with the composer.
     const { container } = renderHome();
-    await waitFor(() => expect(container.querySelector("[data-testid='brain-history-shelf']")).toBeTruthy());
+    await waitFor(() => expect(container.querySelector("[data-testid='brain-home-dock']")).toBeTruthy());
 
-    for (const id of ["brain-history-shelf", "brain-insights-shelf"]) {
-      const shelf = container.querySelector<HTMLDetailsElement>(`[data-testid='${id}']`);
-      expect(shelf).toBeTruthy();
-      expect(shelf?.open).toBe(false);
+    for (const id of ["brain-dock-conversations", "brain-dock-stats", "brain-dock-map"]) {
+      const button = container.querySelector<HTMLButtonElement>(`[data-testid='${id}']`);
+      expect(button).toBeTruthy();
+      expect(button?.getAttribute("aria-expanded")).toBe("false");
     }
+    expect(document.querySelector("[data-testid='brain-home-drawer']")).toBeNull();
+  });
+
+  it("keeps the capture chips folded behind the composer's + until asked", async () => {
+    // The six capture chips (문서 · 이미지 · 파일 · 폴더 · 노트 · 웹) fold
+    // behind one Add control; an always-open row is the noise 10.10.0 removed.
+    const { container } = renderHome();
+    await waitFor(() => expect(container.querySelector("[data-testid='brain-attach-toggle']")).toBeTruthy());
+
+    const toggle = container.querySelector<HTMLButtonElement>("[data-testid='brain-attach-toggle']");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector("[data-testid='brain-attach-menu']")).toBeNull();
+
+    toggle?.click();
+    await waitFor(() => expect(container.querySelector("[data-testid='brain-attach-menu']")).toBeTruthy());
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector("[data-testid='brain-ingestion-dock']")).toBeTruthy();
   });
 
   it("scopes its header and footer so they are not page landmarks", async () => {

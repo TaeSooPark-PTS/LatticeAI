@@ -1,3 +1,15 @@
+# [v10.10.0 - Quiet Station] (2026-08-06)
+
+Brain 대화 홈을 "고요한 스테이션"으로 재설계했습니다 — 통계는 호버 배지로,
+캡처 칩 여섯 개는 컴포저의 + 하나로, 모델 배너는 상태 필로, 하단 서랍 두
+개는 좌측 독(대화 · 통계 · 기억 지도)의 서랍으로. 카드는 보더 대신 부드러운
+그림자를 입고, 포인트 컬러는 보내기와 모델 CTA 두 곳에만 남습니다.
+
+함께: 프론트엔드 커버리지 100%(4개 지표 전부, thresholds+CI 게이트), 공개
+릴리스 히스토리 9.0.0 시작으로 정리.
+
+See [RELEASE_NOTES_v10.10.0.md](RELEASE_NOTES_v10.10.0.md).
+
 # [v10.9.0 - Never Blocks] (2026-08-05)
 
 로컬 서버는 이벤트 루프 하나로 돕니다. 모델 내려받기·엔진 설치·MCP 패키지
@@ -356,7 +368,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 10.9.0**.
+This repository keeps public release history from **9.0.0 through 10.10.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
@@ -382,23 +394,10 @@ history stays focused on the current product era.
 - [v9.2.0 - Model-Agnostic File Generation](RELEASE_NOTES_v9.2.0.md)
 - [v9.1.0 - Code Review Completion & Fail-Closed Runtime](RELEASE_NOTES_v9.1.0.md)
 - [v9.0.0 - Code Review Closure & Runtime Cleanup](RELEASE_NOTES_v9.0.0.md)
-- [v8.9.0 - Scoped Memory & Tool Policy Hardening](RELEASE_NOTES_v8.9.0.md)
-- [v8.8.0 - Brain Core Extraction & Recall Proof Hardening](RELEASE_NOTES_v8.8.0.md)
-- [v8.7.0 - Runtime State Hygiene & Release Evidence Refresh](RELEASE_NOTES_v8.7.0.md)
-- [v8.6.0 - Desktop Capture & Navigation Reliability](RELEASE_NOTES_v8.6.0.md)
-- [v8.5.0 - Tool Registry Readiness & Config DI](RELEASE.md#v850--tool-registry-readiness--config-di-2026-07-01)
-- [v8.4.0 - Action-Aware Brain Chat](RELEASE_NOTES_v8.4.0.md)
-
-## Preserved Release Notes
-
-- [v8.3.0 - Orchestrated Brain Readiness](RELEASE_NOTES_v8.3.0.md)
-- [v8.2.0 - Brain Brief](RELEASE_NOTES_v8.2.0.md)
-- [v8.1.0 - Intuitive Brain Home](RELEASE_NOTES_v8.1.0.md)
-- [v8.0.0 - Runtime Architecture Contract](RELEASE_NOTES_v8.0.0.md)
 
 ## Canonical History
 
-The canonical 8.0.0-9.4.0 history is maintained in:
+The canonical 9.0.0-9.4.0 history is maintained in:
 
 - [RELEASE.md](RELEASE.md)
 - [docs/CHANGELOG.md](docs/CHANGELOG.md)

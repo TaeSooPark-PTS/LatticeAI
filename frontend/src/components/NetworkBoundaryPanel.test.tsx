@@ -24,6 +24,14 @@ const CATALOG = [
     warning: "Cloud mode sends a compact summary of selected local nodes.",
     warning_ko: "클라우드 모드는 선택된 로컬 노드의 압축 요약을 전송합니다.",
   },
+  {
+    // A mode added server-side: English-only copy, a risk word this client has
+    // never heard of, an acknowledgement demanded but no warning shipped.
+    id: "peer_sync",
+    label: "Peer sync (beta)",
+    summary: "Streams to paired devices.",
+    risk: "experimental", requires_ack: true,
+  },
 ];
 
 function state(mode: string, policy: Record<string, unknown> = {}) {
@@ -111,6 +119,34 @@ describe("NetworkBoundaryPanel", () => {
     expect(screen.getByTestId("network-boundary-active").textContent).toBe("Local only");
     expect(screen.getByTestId("network-boundary-option-cloud_allowed").textContent)
       .toContain("Minimal related nodes may be sent to a cloud LLM.");
+
+    // The warning too — the English reader gets the English caution.
+    await userEvent.click(screen.getByTestId("network-boundary-option-cloud_allowed"));
+    expect(screen.getByText("Cloud mode sends a compact summary of selected local nodes.")).toBeTruthy();
+  });
+
+  it("falls back to the server's English label for an active mode without Korean copy", async () => {
+    mockGet("peer_sync");
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    expect(screen.getByTestId("network-boundary-active").textContent).toBe("Peer sync (beta)");
+  });
+
+  it("renders a server-added mode it has never heard of, warts and all", async () => {
+    mockGet("local_only");
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    // No Korean copy shipped — fall back to the server's English rather than hiding it.
+    const row = screen.getByTestId("network-boundary-option-peer_sync");
+    expect(row.textContent).toContain("Peer sync (beta)");
+    expect(row.textContent).toContain("Streams to paired devices.");
+
+    // requires_ack still gates it, even with no warning copy to show.
+    await userEvent.click(row);
+    expect(screen.getByTestId("network-boundary-ack")).toBeTruthy();
+    expect((screen.getByTestId("network-boundary-apply") as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("blocks cloud until the risk is acknowledged, then sends the ack", async () => {
@@ -224,6 +260,60 @@ describe("NetworkBoundaryPanel", () => {
     await waitFor(() => expect(savePolicy).toHaveBeenCalledWith({ auto_commit: true }));
   });
 
+  it("persists the multimodal switch the same way", async () => {
+    mockGet("cloud_allowed");
+    const savePolicy = vi.spyOn(latticeApi, "setHybridPolicy").mockResolvedValue({
+      ok: true, status: 200, source: "live", data: {},
+    } as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-policy")).toBeTruthy());
+    await userEvent.click(screen.getByTestId("network-boundary-multimodal"));
+
+    await waitFor(() => expect(savePolicy).toHaveBeenCalledWith({ allow_multimodal: true }));
+  });
+
+  it("treats a missing policy object as review-everything defaults", async () => {
+    vi.spyOn(latticeApi, "networkBoundary").mockResolvedValue({
+      ok: true, status: 200, source: "live",
+      data: { ...state("cloud_allowed"), policy: undefined },
+    } as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-policy")).toBeTruthy());
+    expect((screen.getByTestId("network-boundary-auto-commit") as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByTestId("network-boundary-multimodal") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("says when the preview itself is unavailable", async () => {
+    mockGet("local_only");
+    vi.spyOn(latticeApi, "previewCloudContext").mockResolvedValue({
+      ok: false, status: 503, source: "unavailable", data: {}, error: "preview engine down",
+    } as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    await userEvent.type(screen.getByTestId("network-boundary-probe"), "릴리스");
+    await userEvent.click(screen.getByTestId("network-boundary-preview"));
+
+    await waitFor(() => expect(screen.getByText("preview engine down")).toBeTruthy());
+    expect(screen.queryByTestId("network-boundary-preview-result")).toBeNull();
+  });
+
+  it("offers no hold control for a memory the server did not identify", async () => {
+    mockGet("cloud_allowed");
+    mockPreview({ allows_cloud: true, titles: ["공개 메모", "이름 없는 메모"], node_ids: ["n1"] });
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    await userEvent.type(screen.getByTestId("network-boundary-probe"), "메모");
+    await userEvent.click(screen.getByTestId("network-boundary-preview"));
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-hold-0")).toBeTruthy());
+    expect(screen.getByText("· 이름 없는 메모")).toBeTruthy();
+    expect(screen.queryByTestId("network-boundary-hold-1")).toBeNull();
+  });
+
   it("reports an unavailable dial instead of showing local_only as confirmed", async () => {
     mockGet("local_only", false);
     renderPanel();
@@ -276,6 +366,31 @@ describe("NetworkBoundaryPanel — holding a memory back", () => {
     // would actually be sent.
     await waitFor(() =>
       expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("다시 허용"));
+  });
+
+  it("releases a held memory on a second press", async () => {
+    mockGet("cloud_allowed");
+    mockPreview({ allows_cloud: true });
+    const mark = vi.spyOn(latticeApi, "setNodeSensitivity").mockResolvedValue({
+      ok: true, status: 200, source: "live",
+      data: { ok: true, node_id: "n1", local_only: true },
+    } as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    await userEvent.type(screen.getByTestId("network-boundary-probe"), "릴리스");
+    await userEvent.click(screen.getByTestId("network-boundary-preview"));
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-hold-0")).toBeTruthy());
+    await userEvent.click(screen.getByTestId("network-boundary-hold-0"));
+    await waitFor(() =>
+      expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("다시 허용"));
+
+    await userEvent.click(screen.getByTestId("network-boundary-hold-0"));
+    await waitFor(() => expect(mark).toHaveBeenLastCalledWith("n1", false));
+    // Released: the row offers to hold it again and loses its strike-through.
+    await waitFor(() =>
+      expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("내보내지 않기"));
   });
 
   it("does not mark anything when the server rejects the change", async () => {

@@ -1,9 +1,16 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { latticeApi } from "@/api/client";
-import { FilePreviewModal, htmlWithPreviewCsp, isPreviewableFile, prettyJson, previewKind } from "./FilePreviewModal";
+import {
+  fileExtension,
+  FilePreviewModal,
+  htmlWithPreviewCsp,
+  isPreviewableFile,
+  prettyJson,
+  previewKind,
+} from "./FilePreviewModal";
 
 function mockRead(content: string) {
   return vi.spyOn(latticeApi, "readWorkspaceFile").mockResolvedValue({
@@ -17,6 +24,11 @@ describe("preview helpers", () => {
     expect(previewKind("notes.md")).toBe("markdown");
     expect(previewKind("data.json")).toBe("json");
     expect(previewKind("log.txt")).toBe("text");
+  });
+
+  it("treats a filename with no extension as having none, defaulting to text", () => {
+    expect(fileExtension("README")).toBe("");
+    expect(previewKind("README")).toBe("text");
   });
 
   it("prefers the backend previewable flag and falls back to extensions", () => {
@@ -83,6 +95,133 @@ describe("FilePreviewModal", () => {
     );
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("missing");
+  });
+
+  it("renders HTML in a sandboxed iframe with the injected CSP and a note", async () => {
+    mockRead("<html><head><title>페이지</title></head><body><p>안녕</p></body></html>");
+    render(
+      <FilePreviewModal
+        language="ko"
+        file={{ path: "out/page.html", filename: "page.html", bytes: 64 }}
+        onClose={() => {}}
+      />,
+    );
+    await waitFor(() => expect(document.querySelector(".file-preview-frame")).toBeTruthy());
+    const frame = document.querySelector<HTMLIFrameElement>(".file-preview-frame")!;
+    expect(frame.getAttribute("sandbox")).toBe("");
+    expect(frame.getAttribute("srcdoc")).toContain("Content-Security-Policy");
+    // The sandbox footnote renders only for HTML previews.
+    expect(document.querySelector(".file-preview-foot")).toBeTruthy();
+  });
+
+  it("shows the loading line until the file content arrives", async () => {
+    let release: (value: unknown) => void = () => {};
+    vi.spyOn(latticeApi, "readWorkspaceFile").mockReturnValue(
+      new Promise((resolve) => { release = resolve; }) as never,
+    );
+    render(
+      <FilePreviewModal
+        language="ko"
+        file={{ path: "out/a.txt", filename: "a.txt", bytes: 5 }}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByRole("status")).toBeTruthy();
+    release({ ok: true, status: 200, source: "live", data: { content: "늦게 온 내용" } });
+    await screen.findByTestId("file-preview-code");
+    expect(screen.getByTestId("file-preview-code").textContent).toBe("늦게 온 내용");
+  });
+
+  it("ignores a read that resolves after the modal closed", async () => {
+    let release: (value: unknown) => void = () => {};
+    vi.spyOn(latticeApi, "readWorkspaceFile").mockReturnValue(
+      new Promise((resolve) => { release = resolve; }) as never,
+    );
+    const { unmount } = render(
+      <FilePreviewModal
+        language="ko"
+        file={{ path: "out/a.txt", filename: "a.txt", bytes: 5 }}
+        onClose={() => {}}
+      />,
+    );
+    unmount();
+    release({ ok: true, status: 200, source: "live", data: { content: "유령" } });
+    await Promise.resolve();
+    expect(screen.queryByTestId("file-preview-modal")).toBeNull();
+  });
+
+  it("falls back to the HTTP status when a failure carries no message", async () => {
+    vi.spyOn(latticeApi, "readWorkspaceFile").mockResolvedValue({
+      ok: false, status: 500, source: "unavailable", data: { content: "" },
+    } as never);
+    render(
+      <FilePreviewModal
+        language="ko"
+        file={{ path: "out/broken.txt", filename: "broken.txt", bytes: 0 }}
+        onClose={() => {}}
+      />,
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("500");
+  });
+
+  it("shows an empty reason for a transport-level failure without a status", async () => {
+    vi.spyOn(latticeApi, "readWorkspaceFile").mockResolvedValue({
+      ok: false, status: 0, source: "unavailable", data: { content: "" },
+    } as never);
+    render(
+      <FilePreviewModal
+        language="ko"
+        file={{ path: "out/gone.txt", filename: "gone.txt", bytes: 0 }}
+        onClose={() => {}}
+      />,
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("미리보기를 불러오지 못했어요: ");
+  });
+
+  it("downloads once even under double-clicks and shows the busy label", async () => {
+    mockRead("본문");
+    let release: (value: unknown) => void = () => {};
+    const download = vi.spyOn(latticeApi, "downloadWorkspaceFile").mockReturnValue(
+      new Promise((resolve) => { release = resolve; }) as never,
+    );
+    render(
+      <FilePreviewModal
+        language="ko"
+        file={{ path: "out/a.txt", filename: "a.txt", bytes: 5 }}
+        onClose={() => {}}
+      />,
+    );
+    await screen.findByTestId("file-preview-code");
+    const button = screen.getByRole("button", { name: /다운로드/ });
+    fireEvent.click(button);
+    await screen.findByText("내려받는 중…");
+    fireEvent.click(screen.getByText("내려받는 중…"));
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(download).toHaveBeenCalledWith("out/a.txt", "a.txt");
+    release({ ok: true });
+    await waitFor(() => expect(screen.getByText("다운로드")).toBeTruthy());
+  });
+
+  it("closes from the backdrop but not from inside the dialog", async () => {
+    mockRead("본문");
+    const onClose = vi.fn();
+    render(
+      <FilePreviewModal
+        language="ko"
+        file={{ path: "out/a.txt", filename: "a.txt", bytes: 5 }}
+        onClose={onClose}
+      />,
+    );
+    await screen.findByTestId("file-preview-code");
+    fireEvent.mouseDown(screen.getByTestId("file-preview-modal"));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.mouseDown(document.querySelector(".file-preview-backdrop")!);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "미리보기 닫기" }));
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
   it("traps focus inside the dialog and closes on Escape", async () => {

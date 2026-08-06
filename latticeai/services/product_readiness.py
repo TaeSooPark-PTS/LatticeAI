@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "10.9.0"
+PRODUCT_VERSION_TARGET = "10.10.0"
 
 
 @dataclass(frozen=True)
@@ -37,8 +37,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "docs/ONBOARDING.md::five-minute",
             "frontend/src/components/ProductFlow.tsx::WakeBrainScreen",
-            "frontend/src/features/brain/BrainConversation.tsx::brain-home-insights",
-            "frontend/src/features/brain/BrainConversation.tsx::BrainBriefPanel",
+            # 10.10.0: the insight panels left the home shelf for the dock —
+            # a rail (대화 · 통계 · 기억 지도) whose drawer hosts the brief.
+            "frontend/src/features/brain/BrainConversation.tsx::BrainHomeDock",
+            "frontend/src/features/brain/BrainHomeDock.tsx::BrainBriefPanel",
             "frontend/src/features/brain/BrainHome.tsx",
             "frontend/src/App.tsx::brain-mobile-nav",
             "latticeai/setup/auto_setup.py",

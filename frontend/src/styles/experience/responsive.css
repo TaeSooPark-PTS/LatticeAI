@@ -329,10 +329,6 @@
     display: none;
   }
 
-  .brain-home-insights > summary small {
-    max-width: 16rem;
-  }
-
   .brain-chat-home-card.has-messages {
     min-height: calc(100dvh - var(--experience-header-height) - 5rem);
     padding: 0 1rem;
@@ -835,37 +831,14 @@
     max-height: min(70dvh, 36rem);
   }
 
-  .brain-home-shelves {
-    flex: 1 1 auto;
-    gap: 0.18rem;
-  }
-
-  .brain-home-shelves > details > summary {
-    height: 100%;
-    min-height: 0;
-    padding: 0;
-  }
-
-  .brain-home-shelves > details > summary span,
-  .brain-home-shelves > details > summary small {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-  }
-
-  .brain-home-shelf-popover {
-    position: fixed;
-    right: 0.75rem;
-    bottom: calc(4.85rem + env(safe-area-inset-bottom, 0px));
-    left: 0.75rem;
-    width: auto;
-    max-height: min(70dvh, 36rem);
-  }
-
-  .brain-centered-home > .brain-model-missing {
-    top: 3.65rem;
+  /* The dock drawer becomes a bottom sheet on a phone: the rail sits over the
+     bottom nav band, so a left column would fight the thumb. */
+  .brain-home-drawer {
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    max-height: min(78dvh, 40rem);
+    border-radius: 1.1rem 1.1rem 0 0;
   }
 }
 

@@ -7,7 +7,23 @@ declare const __APP_VERSION__: string;
 export type { Language, TextMap } from "./i18n/types";
 export { COPY, registerCopy } from "./i18n/registry";
 
-export const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "dev";
+/**
+ * The build stamps `__APP_VERSION__` in via `define`; anything else that runs
+ * this module (plain tsc output, a REPL) has no such identifier at all. The
+ * thunk keeps that reference lazy, so the absent-identifier case stays a caught
+ * ReferenceError — the same condition the old inline `typeof` guard answered
+ * with "dev" — while a non-string injection still falls back the same way.
+ */
+export function resolveAppVersion(read: () => unknown): string {
+  try {
+    const value = read();
+    return typeof value === "string" ? value : "dev";
+  } catch {
+    return "dev";
+  }
+}
+
+export const APP_VERSION = resolveAppVersion(() => __APP_VERSION__);
 
 export const LANGUAGE_LABELS: Record<Language, string> = {
   ko: "한국어",

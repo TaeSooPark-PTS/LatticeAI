@@ -201,6 +201,11 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
   );
 
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    /* v8 ignore if -- unreachable: useFocusTrap's own native keydown
+       listener sits on the dialog element above this input and calls
+       stopPropagation() for Escape, so React's delegated root listener never
+       dispatches this handler for that key. The trap closes the palette the
+       same way. Kept as defense-in-depth if the trap is ever removed. */
     if (event.key === "Escape") {
       event.preventDefault();
       close();

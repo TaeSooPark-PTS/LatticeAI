@@ -371,8 +371,7 @@
 .brain-live-source-panel,
 .brain-centered-home > .brain-home-suggestions,
 .brain-centered-home > .brain-home-prompts,
-.brain-centered-home > .brain-history-panel,
-.brain-centered-home > .brain-home-insights {
+.brain-centered-home > .brain-history-panel {
   width: min(100%, var(--experience-reading));
   margin-right: auto;
   margin-left: auto;

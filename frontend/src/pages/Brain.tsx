@@ -19,7 +19,7 @@ import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
 import { asArray, fmtNumber, titleize } from "@/lib/utils";
 import { CytoscapeGraph } from "./brain/CytoscapeGraph";
-import { buildExplorerModel, isRecord, parseGraph, type LabelMode } from "./brain/graphExplorer";
+import { buildExplorerModel, isRecord, parseGraph, type GraphGroup, type GraphNode, type LabelMode } from "./brain/graphExplorer";
 import { navigateHash } from "@/features/brain/navigation";
 
 type BrainTab = "knowledge" | "memory";
@@ -123,8 +123,23 @@ function normalizeBrainView(tab?: string): BrainView {
  * record where they came from; a reader needs the two numbers to judge it, and
  * the reason some memories have no source at all.
  */
+/**
+ * The selected node's group, by name. `groups` is `ExplorerModel.groups` —
+ * every id any node was assigned to during parsing, `node.group` included —
+ * so the lookup miss this defends against cannot happen for a real node.
+ */
+function groupLabelFor(node: GraphNode, groups: GraphGroup[]): string {
+  const found = groups.find((group) => group.id === node.group);
+  /* v8 ignore next -- unreachable: see the function doc comment above. Kept
+     as defense-in-depth. */
+  return found?.label || node.group;
+}
+
 /** Graph node classes are schema words; show the reader's language. */
 function graphTypeLabel(type: string, language: Language) {
+  /* v8 ignore next -- unreachable: both call sites pass a `GraphNode.type`,
+     which `parseGraph`'s `field()` helper always resolves to a non-empty
+     string (falling back to the literal "Node"). Kept as defense-in-depth. */
   const raw = String(type || "");
   const canonical = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
   for (const candidate of [raw, canonical]) {
@@ -156,22 +171,29 @@ function CoverageMeter({ language, data }: { language: Language; data: Record<st
   );
 }
 
-function viewLabel(language: Language, view: BrainView) {
+export function viewLabel(language: Language, view: BrainView) {
   if (view === "graph") return t(language, "brain.tab.graph");
   const labelKey = tabs.find((item) => item.id === view)?.labelKey;
   return labelKey ? t(language, labelKey) : t(language, "brain.title");
 }
 
-function GraphStatus({ data }: { data: Record<string, unknown> }) {
+// Currently unreferenced by the page (kept for the advanced status panels);
+// exported so tests exercise it until a product decision retires it.
+export function GraphStatus({ data }: { data: Record<string, unknown> }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
-  const nodeTypes = Object.keys((data.nodes as Record<string, unknown>) || {});
-  const edgeTypes = Object.keys((data.edges as Record<string, unknown>) || {});
+  // Computed once and reused below: re-deriving `(data.nodes || {})` a second
+  // time inside the reduce made its own `|| {}` fallback unreachable (the
+  // `nodeTypes`/`edgeTypes` keys it iterates already prove the map is real).
+  const nodeCounts = (data.nodes as Record<string, unknown>) || {};
+  const edgeCounts = (data.edges as Record<string, unknown>) || {};
+  const nodeTypes = Object.keys(nodeCounts);
+  const edgeTypes = Object.keys(edgeCounts);
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: t(language, "brain.stats.memories"), value: data.total_nodes ?? nodeTypes.reduce((sum, key) => sum + Number(((data.nodes as Record<string, unknown>) || {})[key] || 0), 0) },
-        { label: t(language, "brain.stats.links"), value: data.total_edges ?? edgeTypes.reduce((sum, key) => sum + Number(((data.edges as Record<string, unknown>) || {})[key] || 0), 0) },
+        { label: t(language, "brain.stats.memories"), value: data.total_nodes ?? nodeTypes.reduce((sum, key) => sum + Number(nodeCounts[key] || 0), 0) },
+        { label: t(language, "brain.stats.links"), value: data.total_edges ?? edgeTypes.reduce((sum, key) => sum + Number(edgeCounts[key] || 0), 0) },
         { label: t(language, "brain.stats.memoryKinds"), value: nodeTypes.length },
         { label: t(language, "brain.stats.linkKinds"), value: edgeTypes.length },
       ]} />
@@ -184,7 +206,8 @@ function GraphStatus({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function RetrievalStatus({ data }: { data: Record<string, unknown> }) {
+// Currently unreferenced by the page — see note on GraphStatus.
+export function RetrievalStatus({ data }: { data: Record<string, unknown> }) {
   const language = useAppStore((state) => state.language);
   const pipelines = isRecord(data.pipelines) ? data.pipelines : {};
   const rows = Object.entries(pipelines).map(([name, value]) => ({
@@ -195,7 +218,8 @@ function RetrievalStatus({ data }: { data: Record<string, unknown> }) {
   return rows.length ? <EntityList items={rows} titleKey="name" metaKey="status" /> : <StructuredView value={data} />;
 }
 
-function MemoryStatus({ data }: { data: Record<string, unknown> }) {
+// Currently unreferenced by the page — see note on GraphStatus.
+export function MemoryStatus({ data }: { data: Record<string, unknown> }) {
   const language = useAppStore((state) => state.language);
   const usage = isRecord(data.usage) ? data.usage : {};
   const sources = asArray<Record<string, unknown>>(data.sources || data.tiers);
@@ -351,7 +375,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                       <div className="text-lg font-semibold">{selected.label}</div>
                       <div className="mt-1 flex flex-wrap gap-1">
                         <Badge variant="muted">{graphTypeLabel(selected.type, language)}</Badge>
-                        <Badge variant="muted">{model.groups.find((group) => group.id === selected.group)?.label || selected.group}</Badge>
+                        <Badge variant="muted">{groupLabelFor(selected, model.groups)}</Badge>
                         <Badge variant="success">{t(language, "graph.importanceBadge", { n: Math.round(selected.importance * 100) })}</Badge>
                       </div>
                     </div>
@@ -605,7 +629,7 @@ function UnifiedMemoryPanel() {
   );
 }
 
-function SourceProvenanceList({ items, limit = 8 }: { items: unknown; limit?: number }) {
+export function SourceProvenanceList({ items, limit = 8 }: { items: unknown; limit?: number }) {
   const language = useAppStore((state) => state.language);
   const rows = asArray<Record<string, unknown>>(items).slice(0, limit);
   if (!rows.length) return <EmptyState title={t(language, "brain.sources.empty")} detail={t(language, "brain.sources.emptyDetail")} />;

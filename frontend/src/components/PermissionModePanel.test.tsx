@@ -110,12 +110,14 @@ describe("PermissionModePanel", () => {
   it("falls back to the server's own copy for a mode it does not know", async () => {
     // The catalog is the server's to define. A mode added server-side must
     // still render — translating by id must not become a hidden allowlist.
+    // The risk word is unknown too — the badge falls back to caution rather
+    // than crashing on a vocabulary the server grew after this client shipped.
     const extended = [...CATALOG, {
       id: "supervised",
       label: "Supervised", label_ko: "감독",
       summary: "A mode this client has never heard of.",
       summary_ko: "이 클라이언트가 모르는 모드.",
-      risk: "low", requires_ack: false,
+      risk: "experimental", requires_ack: false,
     }];
     vi.spyOn(latticeApi, "permissionMode").mockResolvedValue({
       ok: true, status: 200, source: "live",

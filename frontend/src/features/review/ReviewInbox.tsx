@@ -72,32 +72,32 @@ export function ReviewInbox() {
       }));
       return result;
     }
-    if (result.ok) {
-      if (action === "run_now") {
-        const payload = result.data.payload || {};
-        const provenance = result.data.provenance || {};
-        const runId = String(payload.last_run_id || provenance.run_id || "");
-        const executedLabel = hadRunBefore ? t(language, "review.regenerated") : t(language, "review.executed");
-        setRunFeedback((prev) => ({
-          ...prev,
-          [item.id]: {
-            tone: "success",
-            message: runId ? `${executedLabel} · ${runId}` : executedLabel,
-          },
-        }));
-      } else {
-        setRunFeedback((prev) => {
-          const next = { ...prev };
-          delete next[item.id];
-          return next;
-        });
-      }
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["automationReviews"] }),
-        qc.invalidateQueries({ queryKey: ["proposalCounts"] }),
-        qc.invalidateQueries({ queryKey: ["pendingProposals"] }),
-      ]);
+    // The early return above already handled every !ok result, so from here
+    // the call is known to have succeeded.
+    if (action === "run_now") {
+      const payload = result.data.payload || {};
+      const provenance = result.data.provenance || {};
+      const runId = String(payload.last_run_id || provenance.run_id || "");
+      const executedLabel = hadRunBefore ? t(language, "review.regenerated") : t(language, "review.executed");
+      setRunFeedback((prev) => ({
+        ...prev,
+        [item.id]: {
+          tone: "success",
+          message: runId ? `${executedLabel} · ${runId}` : executedLabel,
+        },
+      }));
+    } else {
+      setRunFeedback((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
     }
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["automationReviews"] }),
+      qc.invalidateQueries({ queryKey: ["proposalCounts"] }),
+      qc.invalidateQueries({ queryKey: ["pendingProposals"] }),
+    ]);
     return result;
   };
 

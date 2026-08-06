@@ -3,19 +3,26 @@ import { describe, expect, it } from "vitest";
 import {
   agentPayloadFiles,
   currentModelName,
+  hasLoadedModel,
   humanizeModelId,
+  buildBrainBrief,
   buildBrainProof,
+  buildBrainReadiness,
   buildConversationSummaries,
+  buildMemoryFragments,
   extractIngestionEvidence,
   parseAgentStepEvent,
   parseAgentTranscript,
   parseContextQuality,
   parseConversationMessages,
+  parseExtractionQuality,
+  parseGrounding,
   parseIngestionJobs,
   parseIngestionWatchStatus,
   parseKnowledgeGraph,
   parseLoopSummary,
   parsePendingApprovals,
+  parseRunExplanation,
   parseVectorFreshness,
 } from "./brainData";
 
@@ -275,5 +282,415 @@ describe("currentModelName", () => {
   it("never shows a package coordinate", () => {
     expect(humanizeModelId("mlx-community/Qwen3-VL-8B-Instruct-4bit")).not.toContain("/");
     expect(humanizeModelId("mlx-community/Qwen3-VL-8B-Instruct-4bit")).not.toContain("4bit");
+  });
+
+  it("skips catalog rows for other models and rows whose label repeats the id", () => {
+    expect(currentModelName({
+      current: "target-model",
+      recommended: [{ id: "other-model", display_name: "Other" }],
+      cloud: [{ id: "target-model", display_name: "target-model" }],
+      loaded: [{ id: "target-model", display_name: "Target Pro" }],
+    })).toBe("Target Pro");
+  });
+
+  it("names the brain from the loaded pool when nothing is current", () => {
+    // model_id-only row → tidied id.
+    expect(currentModelName({ loaded: [{ model_id: "mlx/loaded-x-4bit" }] })).toBe("Loaded X");
+    // Display name straight from the row.
+    expect(currentModelName({ loaded_models: [{ name: "친근한 모델" }] })).toBe("친근한 모델");
+    // Loaded id resolved through the catalog pools.
+    expect(currentModelName({
+      loaded: [{ id: "pretty-id" }],
+      models: [{ id: "pretty-id", display_name: "Pretty Model" }],
+    })).toBe("Pretty Model");
+    // Label repeating the id falls through to the tidied id.
+    expect(currentModelName({ loaded: [{ id: "same", display_name: "same" }] })).toBe("Same");
+    // Rows with no identity at all cannot name anything.
+    expect(currentModelName({ loaded: [{}] })).toBe("local mind");
+    expect(currentModelName({ loaded: [{ name: "   " }] })).toBe("local mind");
+    expect(currentModelName(null)).toBe("local mind");
+  });
+});
+
+describe("hasLoadedModel", () => {
+  it("checks the current model first, then any identifiable loaded row", () => {
+    expect(hasLoadedModel({ current_model: "m" })).toBe(true);
+    expect(hasLoadedModel({ loaded: [{ nothing: 1 }, { model_id: "x" }] })).toBe(true);
+    expect(hasLoadedModel({ loaded_models: [{ name: "n" }] })).toBe(true);
+    expect(hasLoadedModel({ loaded: [{}] })).toBe(false);
+    expect(hasLoadedModel({})).toBe(false);
+    expect(hasLoadedModel(null)).toBe(false);
+  });
+});
+
+describe("buildMemoryFragments", () => {
+  it("blends recent memories, sources and conversations, deduplicated", () => {
+    const fragments = buildMemoryFragments({
+      sources: [
+        { id: "workspace", label: "Workspace Memory", type: "sqlite" },
+        { id: "mystery", title: "Custom Source", health: "healthy" },
+        { path: "/tmp/notes" },
+      ],
+      recent_memories: [
+        { id: "m1", content: "긴   내용  줄바꿈", tags: ["agent-synthesis", "", 3], kind: "note" },
+        { id: "m2", summary: "요약", metadata: { source: "agent_runtime" } },
+        { kind: "distillation", metadata: { source: "agent_runtime_synthesis" } },
+        { id: "m4", detail: "세부" },
+      ],
+    }, [
+      { id: "c1", title: "대화 제목" },
+      { conversation_id: "c2" },
+      { id: "m1", title: "같은 아이디" },
+    ]);
+
+    expect(fragments.map((fragment) => fragment.id)).toEqual([
+      "m1", "m2", "recent-memory-2", "m4", "workspace", "mystery", "memory-2", "c1", "c2",
+    ]);
+    // Whitespace collapses in derived titles; the tier id translates.
+    expect(fragments[0]).toMatchObject({ title: "긴 내용 줄바꿈", kind: "Note", tags: ["agent-synthesis"], agentGenerated: true });
+    expect(fragments[1].agentGenerated).toBe(true);
+    expect(fragments[2]).toMatchObject({ title: "Distillation", agentGenerated: true });
+    expect(fragments[3].agentGenerated).toBe(false);
+    expect(fragments[4].title).toBe("작업공간 기억");
+    expect(fragments[5]).toMatchObject({ title: "Custom Source", kind: "Healthy" });
+    expect(fragments[6].title).toBe("/tmp/notes");
+    expect(fragments[8].title).toBe("Conversation");
+  });
+
+  it("falls back to tiers and the requested language, and survives junk", () => {
+    const fragments = buildMemoryFragments({ tiers: [{ id: "workspace" }], recentMemories: [{ id: "rm" }] }, undefined, "en");
+    expect(fragments.map((fragment) => fragment.id)).toEqual(["rm", "workspace"]);
+    expect(fragments[1].title).toBe("Workspace memory");
+    expect(buildMemoryFragments(null, undefined, "en")).toEqual([]);
+  });
+});
+
+describe("brainData parser edges", () => {
+  it("summaries: numeric ids, blank titles and rows without timestamps", () => {
+    const summaries = buildConversationSummaries([
+      { id: 7, title: "   " },
+      { id: Number.NaN, conversation_id: "real", title: "실제" },
+      { id: "b", title: "B" },
+    ]);
+    expect(summaries.map((summary) => [summary.id, summary.title])).toEqual(
+      expect.arrayContaining([["7", "7"], ["real", "실제"], ["b", "B"]]),
+    );
+    expect(summaries.every((summary) => summary.updatedAt === undefined)).toBe(true);
+  });
+
+  it("summaries: timestamps in seconds, milliseconds, digit strings and junk", () => {
+    const byId = new Map(buildConversationSummaries([
+      { id: "sec", updated_at: "1700000000" },
+      { id: "msec", updated_at: "1700000000123" },
+      { id: "hex", updated_at: "0x10", created_at: 1_700_000_000 },
+      { id: "never", updated_at: "언젠가" },
+    ]).map((summary) => [summary.id, summary.updatedAt]));
+    expect(byId.get("sec")).toBe(1_700_000_000_000);
+    expect(byId.get("msec")).toBe(1_700_000_000_123);
+    // The unparseable primary key falls through to the next timestamp key.
+    expect(byId.get("hex")).toBe(1_700_000_000_000);
+    expect(byId.get("never")).toBeUndefined();
+  });
+
+  it("conversation messages reject junk containers and non-text content", () => {
+    expect(parseConversationMessages(null)).toEqual([]);
+    expect(parseConversationMessages({ messages: [{ role: "user", content: 5 }] })).toEqual([]);
+  });
+
+  it("graph: from/to edge keys survive and a zero score is not dropped", () => {
+    const graph = parseKnowledgeGraph({
+      nodes: [
+        { id: "a", label: "알파", importance: 0, metadata: { summary: "메타 요약", created_at: 1_700_000_000 } },
+        { id: "b", name: "베타", importance_norm: 2, created_at: "2026-08-01T00:00:00Z" },
+        { id: "prefix:c" },
+        { bogus: true },
+      ],
+      edges: [
+        { from: "a", to: "b", score: 0 },
+        { from: "a", to: "prefix:c", weight: 0.4, id: "e-7", relationship: "supports" },
+      ],
+    });
+
+    expect(graph.nodes.map((node) => node.id)).toEqual(["b", "a", "prefix:c"]);
+    expect(graph.nodes[0]).toMatchObject({ label: "베타", importance: 1, createdAt: Date.parse("2026-08-01T00:00:00Z") });
+    // Zero importance takes the midpoint; metadata supplies summary and time.
+    expect(graph.nodes[1]).toMatchObject({ importance: 0.5, summary: "메타 요약", createdAt: 1_700_000_000_000 });
+    expect(graph.nodes[2]).toMatchObject({ label: "c", type: "Concept" });
+    expect(graph.nodes[2].createdAt).toBeUndefined();
+    // The zero-score edge survives with the default weight — never dropped.
+    expect(graph.edges).toEqual([
+      { id: "edge-0", source: "a", target: "b", label: "Relates", weight: 1 },
+      { id: "e-7", source: "a", target: "prefix:c", label: "Supports", weight: 0.4 },
+    ]);
+    expect(parseKnowledgeGraph(null)).toEqual({ nodes: [], edges: [] });
+  });
+
+  it("evidence: collects node ids, chunks and provenance across nested containers", () => {
+    const evidence = extractIngestionEvidence({
+      ingestion: { provenance_id: "prov-1", chunk_count: 2 },
+      result: { node_id: "doc:1", duplicate: true, indexed_nodes: ["doc:2", "  ", 7, { node_id: "doc:3" }, { title: "x" }] },
+      knowledge_graph: { indexed_nodes: [{ id: "doc:4" }] },
+    });
+    expect(evidence.nodeIds.sort()).toEqual(["doc:1", "doc:2", "doc:3", "doc:4"]);
+    expect(evidence).toMatchObject({ chunkCount: 2, duplicate: true, provenanceId: "prov-1" });
+    // duplicate:false must persist — a falsy verdict is still a verdict.
+    expect(extractIngestionEvidence({ duplicate: false }).duplicate).toBe(false);
+    expect(extractIngestionEvidence(null)).toEqual({ nodeIds: [], chunkCount: 0 });
+  });
+
+  it("evidence: extraction quality from a nested container, warnings on the quality object", () => {
+    const nested = extractIngestionEvidence({
+      result: { extraction_quality: { score: 0.6, level: "medium", reasons: ["r1", "", 2] } },
+    });
+    expect(nested.extraction).toEqual({ score: 0.6, level: "medium", reasons: ["r1"], warnings: [] });
+    expect(parseExtractionQuality({ extraction_quality: { level: "high", warnings: ["w1"] } }))
+      .toMatchObject({ level: "high", warnings: ["w1"] });
+    expect(parseExtractionQuality({ extraction_quality: { level: "extreme" } })).toBeNull();
+    expect(parseExtractionQuality(null)).toBeNull();
+  });
+
+  it("context quality without a mode stays silent", () => {
+    expect(parseContextQuality({ context_quality: { limited: true } })).toBeNull();
+  });
+
+  it("grounding: root-shaped payloads, invalid statuses and blank reasons", () => {
+    expect(parseGrounding({ status: "supported", label: "근거 있음" })).toEqual({ status: "supported", reason: null });
+    expect(parseGrounding({ grounding: { status: "questionable" } })).toBeNull();
+    expect(parseGrounding({ status: "supported" })).toBeNull();
+    expect(parseGrounding({ grounding: { status: "no_context", reason: "   " } })).toEqual({ status: "no_context", reason: null });
+    expect(parseGrounding({ grounding: { status: "unsupported", reason: " 인용 없음 " } })).toEqual({ status: "unsupported", reason: "인용 없음" });
+    expect(parseGrounding(null)).toBeNull();
+  });
+
+  it("step events keep decision, state and error detail", () => {
+    expect(parseAgentStepEvent({ phase: "plan", event: "decision", decision: "approve", state: "PLANNING", detail: "이유" }))
+      .toEqual({ phase: "plan", event: "decision", decision: "approve", state: "PLANNING", detail: "이유" });
+    expect(parseAgentStepEvent({ phase: "execute", event: "state", error: "폭발" }))
+      .toEqual({ phase: "execute", event: "state", detail: "폭발" });
+  });
+
+  it("transcripts: errors without an action collapse into failed state markers", () => {
+    expect(parseAgentTranscript([
+      { state: "EXECUTING", error: "tool missing" },
+      { error: "loop crashed" },
+      { action: "list_files" },
+    ])).toEqual([
+      { phase: "execute", event: "state", state: "EXECUTING", ok: false, detail: "tool missing" },
+      { phase: "execute", event: "state", ok: false, detail: "loop crashed" },
+      { phase: "execute", event: "tool", action: "list_files", ok: true },
+    ]);
+  });
+
+  it("loop summaries drop non-finite or non-positive repair counts", () => {
+    expect(parseLoopSummary({ repairs: { junk: "many", negative: -2 }, parse_recovered: 1 }))
+      .toEqual({ repairs: {}, parseErrors: 0, parseRecovered: 1, total: 1 });
+    expect(parseLoopSummary({ parse_recovered: 3 }))
+      .toEqual({ repairs: {}, parseErrors: 0, parseRecovered: 3, total: 3 });
+  });
+});
+
+describe("parseRunExplanation", () => {
+  it("stays silent for clean verified runs and junk payloads", () => {
+    expect(parseRunExplanation({ code: "verified_done", ok: true, headline: { ko: "다 됐어요", en: "All done" }, details: [] }, "ko")).toBeNull();
+    expect(parseRunExplanation({ headline: {}, details: [] }, "ko")).toBeNull();
+    expect(parseRunExplanation(null, "ko")).toBeNull();
+  });
+
+  it("localizes the surface language and keeps only renderable details", () => {
+    expect(parseRunExplanation({
+      code: "needs_review",
+      ok: false,
+      headline: { ko: "확인 필요", en: "Needs review" },
+      details: [{ ko: "다시 시도했어요", en: "Retried" }, "garbage", { ko: "한국어만" }],
+      model_strain: { level: "heavy" },
+    }, "en")).toEqual({
+      code: "needs_review", ok: false, headline: "Needs review", details: ["Retried"], strainLevel: "heavy",
+    });
+  });
+
+  it("keeps an ok run that still has details, defaulting strain to none", () => {
+    expect(parseRunExplanation({ ok: true, headline: { ko: "제목" }, details: [{ ko: "덧붙임" }] }, "ko"))
+      .toEqual({ code: "", ok: true, headline: "제목", details: ["덧붙임"], strainLevel: "none" });
+    expect(parseRunExplanation({ ok: "yes", headline: { ko: "h" }, model_strain: { level: "odd" } }, "ko"))
+      .toMatchObject({ ok: false, strainLevel: "none" });
+  });
+});
+
+describe("buildBrainReadiness", () => {
+  it("adopts a valid backend readiness with keys, defaults and signals", () => {
+    expect(buildBrainReadiness({
+      brain_readiness: {
+        state: "alive", depth: 5, score: 91,
+        title_key: "custom.title", action_key: "custom.action",
+        signals: { memory_count: 9, concept_count: 4, relationship_count: 2, healthy_sources: 3 },
+      },
+    }, 0, 0)).toEqual({
+      score: 91, state: "alive", depth: 5,
+      titleKey: "custom.title", actionKey: "custom.action", source: "memory_service",
+      signals: { memoryCount: 9, conceptCount: 4, relationshipCount: 2, healthySources: 3 },
+    });
+
+    const defaults = buildBrainReadiness({ brain_readiness: { state: "forming", depth: 3, signals: { memoryCount: 1, conceptCount: 1 } } }, 0, 0);
+    expect(defaults).toMatchObject({ score: 0, titleKey: "brain.readiness.forming", actionKey: "brain.readiness.grow" });
+    expect(defaults.signals).toEqual({ memoryCount: 1, conceptCount: 1, relationshipCount: 0, healthySources: 0 });
+
+    expect(buildBrainReadiness({ brain_readiness: { state: "quiet", depth: 1 } }, 5, 5))
+      .toMatchObject({ actionKey: "brain.readiness.start", signals: { memoryCount: 0 } });
+  });
+
+  it("rejects invalid backend states or depths and falls back by counts", () => {
+    expect(buildBrainReadiness({ brain_readiness: { state: "sideways", depth: 3 } }, 0, 0).source).toBe("frontend_fallback");
+    expect(buildBrainReadiness({ brain_readiness: { state: "alive", depth: 9 } }, 4, 4).source).toBe("frontend_fallback");
+    expect(buildBrainReadiness({ brain_readiness: { state: "alive", depth: 2.5 } }, 0, 0).source).toBe("frontend_fallback");
+    expect(buildBrainReadiness({ brain_readiness: { state: "alive", depth: 0 } }, 0, 0).source).toBe("frontend_fallback");
+
+    expect(buildBrainReadiness(null, 0, 0)).toMatchObject({ state: "quiet", score: 12, depth: 2 });
+    expect(buildBrainReadiness({}, 2, 1)).toMatchObject({ state: "forming", score: 38 });
+    expect(buildBrainReadiness({}, 6, 4)).toMatchObject({ state: "alive", score: 100 });
+  });
+});
+
+describe("buildBrainProof shapes", () => {
+  it("reads a raw (non-envelope) payload with explicit fields and score bands", () => {
+    const proof = buildBrainProof({
+      status: "alive",
+      model_continuity: { active_model: "Gemma", brain_owner: "brain", capability: false, survives_model_switch: true, proven: true, context_store: "workspace" },
+      proofs: { durable_items: 4, has_durable_evidence: false, workspace_memories: 2, conversations: 1, graph_concepts: 5, vector_items: 6, healthy_sources: 2 },
+      recall: { query: "질문", count: 4, items: [
+        { id: "r1", source: "note_source", title: "제목", snippet: "내용", score: 0.9, matched_terms: ["제목"], confidence: "low", locator: "p.3" },
+        { score: 0.5 },
+        { score: 0 },
+        { score: 0.8 },
+      ] },
+      claims: { can_recall_user_context: true, keeps_context_across_models: true, is_knowledge_store: true },
+    }, "fallback-model");
+
+    expect(proof.modelContinuity).toEqual({
+      activeModel: "Gemma", brainOwner: "brain", capability: false,
+      survivesModelSwitch: true, proven: true, contextStore: "workspace",
+    });
+    // The explicit has_durable_evidence beats the derived count.
+    expect(proof.proofs).toMatchObject({ durableItems: 4, hasDurableEvidence: false, vectorItems: 6 });
+    expect(proof.recall.items[0]).toMatchObject({ source: "Note Source", confidence: "low", locator: "p.3" });
+    expect(proof.recall.items.map((item) => item.confidence)).toEqual(["low", "medium", "low", "high"]);
+    expect(proof.recall.items[1].id).toBe("recall-1");
+    expect(proof.claims).toEqual({ canRecallUserContext: true, keepsContextAcrossModels: true, isKnowledgeStore: true });
+  });
+
+  it("unwraps an ok envelope and defaults everything for silence", () => {
+    const wrapped = buildBrainProof({ ok: true, status: 200, source: "live", data: { status: "forming", proofs: { durable_items: 2 } } }, "");
+    expect(wrapped.status).toBe("forming");
+    expect(wrapped.proofs.hasDurableEvidence).toBe(true);
+
+    const empty = buildBrainProof(undefined);
+    expect(empty.status).toBe("quiet");
+    expect(empty.proofs.hasDurableEvidence).toBe(false);
+    expect(empty.modelContinuity).toMatchObject({ activeModel: "", capability: true, proven: false });
+  });
+});
+
+describe("buildBrainBrief", () => {
+  it("fills a quiet default brief when the backend is silent", () => {
+    const brief = buildBrainBrief(null);
+    expect(brief).toMatchObject({
+      status: "quiet", score: 0,
+      headlineKey: "brain.brief.headline.quiet", bodyKey: "brain.brief.body.quiet", generatedAt: "",
+    });
+    expect(brief.focus).toMatchObject({ kind: "empty", empty: true, source: "Memory" });
+    expect(brief.nextActions.map((action) => action.id)).toEqual(["add_source", "ask_brain"]);
+    expect(brief.suggestedQuestions).toEqual([]);
+    expect(brief.proactiveActions).toEqual([]);
+    expect(brief.evidence.map((entry) => entry.id)).toEqual(["durable", "graph", "sources"]);
+  });
+
+  it("maps a full brief, sorts by priority and filters junk params", () => {
+    const brief = buildBrainBrief({
+      status: "alive", score: 250,
+      headline_key: "h", body_key: "b", generated_at: "2026-08-05T00:00:00Z",
+      focus: { kind: "memory", title: "초점", detail: "설명", source: "note_book", score: 0.7, empty: false },
+      next_actions: [{ id: "verify_model", label_key: "l", detail_key: "d", route: "/system", priority: 5 }, {}],
+      suggested_questions: [
+        { id: "q-low", priority: 1, label_key: "ql", detail_key: "qd", prompt_key: "qp", params: { topic: "브레인", count: 2, junk: { nested: true } } },
+        { id: "q-high", priority: 9 },
+      ],
+      proactive_actions: [
+        { id: "p-low", intent: "delegate", prompt: "정리해줘", priority: 1, context: "not-a-record" },
+        { id: "p-high", intent: "route", route: "/capture", priority: 8 },
+      ],
+      evidence: [{ id: "durable", label_key: "e", value: 12, detail_key: "ed" }],
+    });
+
+    expect(brief.score).toBe(100);
+    expect(brief.focus).toEqual({ kind: "memory", title: "초점", detail: "설명", source: "Note Book", score: 0.7, empty: false });
+    expect(brief.nextActions[0]).toMatchObject({ id: "verify_model", route: "/system", priority: 5 });
+    expect(brief.nextActions[1]).toEqual({
+      id: "ask_brain", labelKey: "brain.brief.action.ask", detailKey: "brain.brief.action.ask.detail", route: "", priority: 0,
+    });
+    expect(brief.suggestedQuestions.map((question) => question.id)).toEqual(["q-high", "q-low"]);
+    expect(brief.suggestedQuestions[1].params).toEqual({ topic: "브레인", count: 2 });
+    expect(brief.proactiveActions.map((action) => action.id)).toEqual(["p-high", "p-low"]);
+    expect(brief.proactiveActions[1].context).toEqual({});
+    expect(brief.evidence).toEqual([{ id: "durable", labelKey: "e", value: 12, detailKey: "ed" }]);
+    expect(brief.generatedAt).toBe("2026-08-05T00:00:00Z");
+  });
+
+  it("accepts camelCase keys and derives focus emptiness from the title", () => {
+    const brief = buildBrainBrief({
+      nextActions: [{ id: "a1" }],
+      suggestedQuestions: [{ id: "q1" }],
+      proactiveActions: [{ id: "p1" }],
+      focus: { title: "제목" },
+    });
+    expect(brief.nextActions.map((action) => action.id)).toEqual(["a1"]);
+    expect(brief.suggestedQuestions.map((question) => question.id)).toEqual(["q1"]);
+    expect(brief.proactiveActions.map((action) => action.id)).toEqual(["p1"]);
+    expect(brief.focus.empty).toBe(false);
+  });
+});
+
+describe("watch status and job edges", () => {
+  it("keeps path-only watches, skips junk rows and unreadable errors", () => {
+    const status = parseIngestionWatchStatus({
+      watches: [
+        "junk",
+        { path: "/only/path", last_errors: ["   ", { code: 3 }, { path: "/x" }, { detail: "d" }] },
+      ],
+    });
+    expect(status.watches).toHaveLength(1);
+    expect(status.watches[0].id).toBe("/only/path");
+    expect(status.watches[0].lastErrors).toEqual([{ path: "/x", detail: "" }, { path: "", detail: "d" }]);
+    expect(parseIngestionWatchStatus(null)).toEqual({ enabledCount: 0, polling: false, intervalSeconds: 0, watches: [] });
+  });
+
+  it("normalizes structured job errors and keeps timestamps", () => {
+    const jobs = parseIngestionJobs({ jobs: [{
+      job_id: "job-2",
+      created_at: "2026-08-01T00:00:00Z",
+      updated_at: "2026-08-02T00:00:00Z",
+      errors: [{ source: "a.pdf", detail: "깨짐" }, { detail: "이유만" }, { source: "b.md" }, {}, 42, "  "],
+    }] });
+    expect(jobs[0].errors).toEqual(["a.pdf — 깨짐", "이유만", "b.md"]);
+    expect(jobs[0]).toMatchObject({ createdAt: "2026-08-01T00:00:00Z", updatedAt: "2026-08-02T00:00:00Z" });
+    expect(parseIngestionJobs(null)).toEqual([]);
+  });
+});
+
+describe("agentPayloadFiles joins", () => {
+  it("joins artifact preview verdicts and falls back filename/bytes/path", () => {
+    const files = agentPayloadFiles({
+      created_files: [
+        { path: "out/a.html", filename: "a.html", bytes: 10 },
+        { path: "out/b.css" },
+        { path: "" },
+      ],
+      artifacts: [{ path: "out/a.html", previewable: true }, null as never, { previewable: false }],
+      generation: { repaired: true },
+    });
+    expect(files[0]).toMatchObject({ previewable: true, repaired: true });
+    expect(files[1]).toMatchObject({ filename: "b.css", bytes: 0 });
+    expect(files[1].previewable).toBeUndefined();
+    // A degenerate empty path still yields a stable (empty) filename.
+    expect(files[2].filename).toBe("");
+    expect(agentPayloadFiles({})).toEqual([]);
   });
 });

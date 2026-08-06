@@ -113,8 +113,9 @@ export function LivingBrain({
 
   const handleTilt = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
     if (reducedMotionRef.current || event.pointerType === "touch") return;
-    const el = organismRef.current;
-    if (!el) return;
+    // The handler runs synchronously on the very element the ref points at, so
+    // read `currentTarget` instead of the ref and its can-never-be-null guard.
+    const el = event.currentTarget;
     const rect = el.getBoundingClientRect();
     const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
@@ -129,13 +130,13 @@ export function LivingBrain({
     });
   }, []);
 
-  const resetTilt = React.useCallback(() => {
+  const resetTilt = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
     if (tiltFrameRef.current !== null) {
       window.cancelAnimationFrame(tiltFrameRef.current);
       tiltFrameRef.current = null;
     }
-    const el = organismRef.current;
-    if (!el) return;
+    // Same reasoning as handleTilt: `currentTarget` is the organism itself.
+    const el = event.currentTarget;
     el.style.setProperty("--tilt-y", "0deg");
     el.style.setProperty("--tilt-x", "0deg");
   }, []);

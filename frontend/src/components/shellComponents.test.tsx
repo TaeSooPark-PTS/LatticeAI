@@ -12,14 +12,14 @@
 
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminAccessGate } from "./AdminAccessGate";
 import { CoreServiceUnavailableBanner } from "./CoreServiceUnavailableBanner";
 import { FeedbackState } from "./FeedbackState";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { useAppStore } from "@/store/appStore";
+import { useAppStore, type WorkspaceMode } from "@/store/appStore";
 
 beforeEach(() => {
   useAppStore.setState({ language: "en", mode: "basic" });
@@ -81,6 +81,19 @@ describe("FeedbackState", () => {
     );
     expect(container.querySelector(".feedback-state")?.className).toContain("is-compact");
   });
+
+  it("offers a custom action for an empty state, without the retry icon", () => {
+    const onAction = vi.fn();
+    render(
+      <FeedbackState tone="empty" language="en" title="Nothing yet" actionLabel="Add a file" onAction={onAction} />,
+    );
+    const button = screen.getByRole("button");
+    expect(button.textContent).toContain("Add a file");
+    // The spinning-arrow icon belongs to retries, not to invitations.
+    expect(button.querySelector("svg")).toBeNull();
+    fireEvent.click(button);
+    expect(onAction).toHaveBeenCalledOnce();
+  });
 });
 
 describe("AdminAccessGate", () => {
@@ -117,6 +130,19 @@ describe("AdminAccessGate", () => {
     const group = screen.getByRole("group");
     const adminButton = Array.from(group.querySelectorAll("button")).at(-1)!;
     fireEvent.click(adminButton);
+    expect(useAppStore.getState().mode).toBe("admin");
+  });
+
+  it("locks the console behind a promotion for an out-of-contract mode", () => {
+    // The store validates what it reads from persistence, but the gate still
+    // guards against a value outside the three known modes (corrupted storage,
+    // a future mode this build predates): the console is locked behind an
+    // explicit promotion to admin rather than shown or silently dropped.
+    useAppStore.setState({ mode: "expert" as unknown as WorkspaceMode });
+    render(<AdminAccessGate language="en" />);
+    const locked = screen.getAllByRole("button").find((b) => b.className.includes("is-locked"));
+    expect(locked).toBeTruthy();
+    fireEvent.click(locked!);
     expect(useAppStore.getState().mode).toBe("admin");
   });
 });
@@ -190,5 +216,36 @@ describe("CoreServiceUnavailableBanner", () => {
     });
     const banner = screen.getByTestId("service-unavailable-banner");
     expect(banner.textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it("notices a core failure that arrives after mount", async () => {
+    const { client, container } = renderWithCache(() => {});
+    expect(container.firstChild).toBeNull();
+
+    act(() => {
+      client.setQueryData(["health"], { ok: false, error: "went away" });
+    });
+
+    expect(await screen.findByTestId("service-unavailable-banner")).toBeTruthy();
+    expect(screen.getByText(/went away/)).toBeTruthy();
+  });
+
+  it("retries through the real cache and leaves non-core queries alone", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const coreFn = vi.fn().mockResolvedValue({ ok: false, error: "still down" });
+    const optionalFn = vi.fn().mockResolvedValue({ ok: true });
+    await client.prefetchQuery({ queryKey: ["graph"], queryFn: coreFn });
+    // A query whose key starts with a falsy segment must not crash the predicate.
+    await client.prefetchQuery({ queryKey: [""], queryFn: optionalFn });
+
+    render(
+      <QueryClientProvider client={client}>
+        <CoreServiceUnavailableBanner />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button"));
+
+    await waitFor(() => expect(coreFn).toHaveBeenCalledTimes(2));
+    expect(optionalFn).toHaveBeenCalledTimes(1);
   });
 });

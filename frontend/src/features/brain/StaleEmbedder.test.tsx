@@ -48,6 +48,33 @@ describe("StaleEmbedderNotice", () => {
     expect(rebuild).toHaveBeenCalled();
   });
 
+  it("stays silent when the freshness endpoint itself is unavailable", async () => {
+    vi.spyOn(latticeApi, "brainVectorFreshness").mockResolvedValue({
+      ok: false, status: 404, source: "unavailable",
+      data: { status: "unavailable", pending_items: 0, total_items: 0, detail: "" },
+    } as never);
+    renderNotice();
+    await waitFor(() => expect(latticeApi.brainVectorFreshness).toHaveBeenCalled());
+    expect(screen.queryByTestId("stale-embedder-notice")).toBeNull();
+  });
+
+  it("shows the running label and blocks double-clicks while re-indexing", async () => {
+    mockFreshness("stale_embedder");
+    let release: (value: unknown) => void = () => {};
+    const rebuild = vi.spyOn(latticeApi, "memoryRebuild").mockReturnValue(
+      new Promise((resolve) => { release = resolve; }) as never,
+    );
+    renderNotice();
+    await waitFor(() => expect(screen.getByTestId("stale-embedder-notice")).toBeTruthy());
+    const button = screen.getByTestId("stale-embedder-reindex") as HTMLButtonElement;
+    await userEvent.click(button);
+    await waitFor(() => expect(button.textContent).toContain("기억을 다시 정리하는 중…"));
+    expect(button.disabled).toBe(true);
+    release({ ok: true, status: 200, source: "live", data: { status: "ok" } });
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+
   it("reports a failed re-index instead of pretending it worked", async () => {
     mockFreshness("stale_embedder");
     vi.spyOn(latticeApi, "memoryRebuild").mockResolvedValue({

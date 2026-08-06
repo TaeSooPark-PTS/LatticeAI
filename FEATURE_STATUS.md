@@ -1,12 +1,12 @@
-# Lattice AI Feature Status (v10.9.0)
+# Lattice AI Feature Status (v10.10.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **10.9.0 — Never Blocks**.
+Current release: **10.10.0 — Quiet Station**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
+change history is intentionally limited to 9.0.0 and later in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -83,18 +83,17 @@ wore the same border as typing. The screen is two surfaces now — a station
 separate deck below it holding the suggestions. Nothing left the screen; the
 second choice simply stopped sharing a card with the first.
 
-The 10.9.0 line is about the one event loop this server runs. Pulling a model,
-installing an engine, installing an MCP package and sampling host capacity for
-the System screen were all executed directly inside `async def` handlers, so for
-the duration of any of them the process answered nothing else — a model
-download's timeout is 900 seconds. All five paths hand their blocking body to a
-worker thread; ruff's `ASYNC` blocking-call rules and
-`tests/unit/test_event_loop_not_blocked.py` (which runs a ticker coroutine
-during the handler and asserts the loop kept getting control) keep it that way.
-The same release makes keyboard focus visible on the capture pills again,
-stops the organism sitting in "thinking" after it has answered, and moves
-fourteen more routers onto the server message catalog so an error arrives in
-the language the reader chose.
+The 10.10.0 line is the quiet station: the home canvas holds the composer, and
+everything else became an affordance that opens on demand. The memory stats
+are a hover badge with a summary-graph popover, the six capture chips fold
+behind the composer's +, the model banner is a status pill on the hero's right
+edge, and past conversations / stats / the memory map live on a dock rail
+whose drawer is focus-trapped and portaled over the screen. The same release
+raises the frontend test floor to 100% on all four coverage metrics (enforced
+by vitest thresholds and CI) and trims public release history to start at
+9.0.0. The 10.9.0 event-loop guarantees stay in force: ruff's `ASYNC`
+blocking-call rules and `tests/unit/test_event_loop_not_blocked.py` keep long
+work off the loop.
 
 ## Current Feature Status
 
@@ -140,7 +139,7 @@ the language the reader chose.
 | Network Boundary | Current | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. Set it in **설정 → 내 지식이 나가는 범위** (`NetworkBoundaryPanel`) or through `POST /api/network-boundary`. The selector renders the server's own catalog and refuses to send a `cloud_allowed` switch until the risk acknowledgement the server requires is ticked. A built-in **preview** names the actual memories a given question would send, with its token estimate and whether the token guard would refuse the turn — and works in `local_only` too, labelled as hypothetical. Only the minimal extracted node slice is ever sent, never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). |
 | Hybrid Cloud Chat | Current (requires cloud key) | When the boundary is `cloud_allowed`, `/chat` branches through `api/chat_hybrid.py` → `services/hybrid_chat.py`: minimal KG context is assembled (`hybrid_context.py`), checked against per-turn and per-session token budgets (`cloud_token_guard.py`), and streamed from an OpenAI-compatible provider (`openai_compatible_adapter.py`, `cloud_streaming.py`). Inert without `LATTICEAI_CLOUD_API_KEY`; the local path is untouched. |
 | Cloud Memory Write-Back | Current (proposal-first) | Knowledge extracted from a cloud answer (`cloud_extraction.py`) is enqueued as a Review Center `change_proposal` with provenance. It is written to the graph only when `auto_commit` is explicitly enabled in the hybrid policy (default **false**) and a store write API exists. Multimodal streaming needs both `cloud_allowed` and a separate `allow_multimodal` flag (default **false**). |
-| Release Assets | Current | 10.9.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 10.10.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 

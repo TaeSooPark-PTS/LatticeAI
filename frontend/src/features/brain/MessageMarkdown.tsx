@@ -104,6 +104,10 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
       nodes.push(<code key={key++}>{token.slice(1, -1)}</code>);
     } else {
       const link = /^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/.exec(token);
+      /* v8 ignore else -- unreachable: `token` only reaches this branch by
+         having already matched the link alternative of `pattern` above,
+         whose character classes are identical to this anchored re-check
+         (verified by fuzzing), so it always matches too. */
       if (link) {
         nodes.push(
           <a key={key++} href={link[2]} target="_blank" rel="noreferrer noopener">
@@ -212,6 +216,9 @@ function CodeBlock({ language, code, lang }: { language: Language; code: string;
   }
 
   async function saveAsFile() {
+    /* v8 ignore next -- unreachable: the only trigger is this block's own
+       save button, which is itself disabled while saveState is "saving" in
+       the same render. Kept as defense-in-depth. */
     if (saveState === "saving") return;
     setSaveState("saving");
     setSaveError("");
@@ -256,6 +263,9 @@ function CodeBlock({ language, code, lang }: { language: Language; code: string;
 }
 
 function formatFileSize(bytes: number): string {
+  /* v8 ignore next -- unreachable: the sole call site already guards with
+     `file.bytes ? formatFileSize(file.bytes) : null`, so this only ever runs
+     with a truthy value. Kept as defense-in-depth for future callers. */
   if (!bytes) return "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

@@ -45,10 +45,13 @@ def test_version_metadata_matches_release():
 
 
 def test_markdown_current_release_references_match_release():
+    # Public release history starts at 9.0.0 since 10.10.0 — the 8.x era was
+    # removed from the README, the notes index, RELEASE.md and the changelog.
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     history = readme.split("## Release History", 1)[1]
-    assert "8.1.0" in history
-    assert "8.0.0" in history
+    assert "9.0.0" in history
+    assert "8.9.0" not in history
+    assert "8.0.0" not in history
     assert "7.9.0" not in history
     assert "7.0.0" not in history
     assert "6.7.0" not in history

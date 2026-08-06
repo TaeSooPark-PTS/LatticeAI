@@ -69,4 +69,41 @@ describe("EvidenceActionRow", () => {
       expect(screen.getByText("Summarize from this evidence")).toBeTruthy(),
     );
   });
+
+  it("shows the transport error when the endpoint itself fails", async () => {
+    vi.spyOn(latticeApi, "evidenceActions").mockResolvedValue({
+      ok: false, status: 503, source: "unavailable", error: "backend down",
+      data: { sources: [], missing: [], actions: [], reason: "" },
+    } as never);
+    render(
+      <EvidenceActionRow language="ko" query="q" sourceIds={["node-a"]} onUseEvidence={() => {}} />,
+    );
+    await userEvent.click(screen.getByTestId("evidence-actions-open"));
+    await waitFor(() => expect(screen.getByText("backend down")).toBeTruthy());
+  });
+
+  it("falls back to the generic unavailable copy when the failure is silent", async () => {
+    vi.spyOn(latticeApi, "evidenceActions").mockResolvedValue({
+      ok: false, status: 503, source: "unavailable",
+      data: { sources: [], missing: [], actions: [], reason: "" },
+    } as never);
+    render(
+      <EvidenceActionRow language="ko" query="q" sourceIds={["node-a"]} onUseEvidence={() => {}} />,
+    );
+    await userEvent.click(screen.getByTestId("evidence-actions-open"));
+    await waitFor(() =>
+      expect(screen.getByText("이 답변의 출처로는 바로 만들 수 있는 게 없습니다.")).toBeTruthy(),
+    );
+  });
+
+  it("names the suggested output path on the action itself", async () => {
+    mockActions({ actions: [{ ...SUMMARY_ACTION, suggested_path: "out/summary.md" }] });
+    render(
+      <EvidenceActionRow language="ko" query="예산" sourceIds={["node-a"]} onUseEvidence={() => {}} />,
+    );
+    await userEvent.click(screen.getByTestId("evidence-actions-open"));
+    await waitFor(() =>
+      expect(screen.getByTestId("evidence-action-summary").getAttribute("title")).toBe("out/summary.md"),
+    );
+  });
 });

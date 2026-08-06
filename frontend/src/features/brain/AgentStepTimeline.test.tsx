@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { AgentStepTimeline, LoopRepairsNote, stepKind } from "./AgentStepTimeline";
+import { AgentStepTimeline, LoopRepairsNote, RunExplanationNote, stepKind } from "./AgentStepTimeline";
 import type { AgentStepEvent } from "./types";
 
 const STEPS: AgentStepEvent[] = [
@@ -57,6 +57,61 @@ describe("AgentStepTimeline", () => {
     render(<AgentStepTimeline language="ko" steps={[]} streaming={false} />);
     expect(screen.queryByTestId("agent-step-timeline")).toBeNull();
   });
+
+  it("labels the verify/terminal event family and falls back for unknown events", () => {
+    render(
+      <AgentStepTimeline
+        language="ko"
+        streaming
+        steps={[
+          { phase: "execute", event: "parse_error", detail: "json broke" },
+          { phase: "verify", event: "verdict", verdict: "PASS" },
+          { phase: "terminal", event: "final" },
+          { phase: "terminal", event: "state", state: "DONE" },
+          { phase: "rollback", event: "state", state: "REVERTED" },
+          { phase: "plan", event: "planned" },
+          { phase: "future", event: "hologram" },
+        ]}
+      />,
+    );
+    const timeline = screen.getByTestId("agent-step-timeline");
+    expect(timeline.textContent).toContain("모델 응답 보정");
+    expect(timeline.textContent).toContain("검증 결과");
+    expect(timeline.textContent).toContain("PASS");
+    expect(timeline.textContent).toContain("마무리");
+    expect(timeline.textContent).toContain("상태 변경");
+    expect(timeline.textContent).toContain("변경 되돌림");
+    expect(timeline.textContent).toContain("계획 수립");
+    // Unknown backend additions degrade to the neutral step label.
+    expect(timeline.textContent).toContain("단계");
+  });
+
+  it("shows only the newest thirty steps of a very long run", () => {
+    const steps: AgentStepEvent[] = Array.from({ length: 33 }, (_, index) => ({
+      phase: "execute",
+      event: "tool",
+      action: `tool_${index}`,
+      ok: true,
+    }));
+    render(<AgentStepTimeline language="ko" steps={steps} streaming />);
+    const timeline = screen.getByTestId("agent-step-timeline");
+    expect(timeline.textContent).toContain("33단계 진행 중");
+    expect(timeline.querySelectorAll(".brain-step-item").length).toBe(30);
+    expect(timeline.textContent).not.toContain("tool_2 ");
+    expect(timeline.textContent).toContain("tool_32");
+  });
+
+  it("falls back to the raw path when it has no segment left after trimming slashes", () => {
+    render(
+      <AgentStepTimeline
+        language="ko"
+        streaming
+        steps={[{ phase: "execute", event: "tool", action: "write_file", path: "///", ok: true }]}
+      />,
+    );
+    const timeline = screen.getByTestId("agent-step-timeline");
+    expect(timeline.textContent).toContain("write_file · ///");
+  });
 });
 
 describe("LoopRepairsNote", () => {
@@ -81,5 +136,53 @@ describe("LoopRepairsNote", () => {
       />,
     );
     expect(screen.queryByTestId("loop-repairs-note")).toBeNull();
+  });
+
+  it("omits the tooltip when the loop cannot name its repairs", () => {
+    render(
+      <LoopRepairsNote
+        language="ko"
+        summary={{ repairs: {}, parseErrors: 0, parseRecovered: 0, total: 2 }}
+      />,
+    );
+    const note = screen.getByTestId("loop-repairs-note");
+    expect(note.textContent).toContain("2회 보정");
+    expect(note.getAttribute("title")).toBeNull();
+  });
+});
+
+describe("RunExplanationNote", () => {
+  it("renders a strained but successful run as ok with its details", () => {
+    render(
+      <RunExplanationNote
+        language="ko"
+        explanation={{
+          code: "done",
+          ok: true,
+          headline: "끝났지만 힘들었어요.",
+          details: ["형식을 3번 고쳤습니다."],
+          strainLevel: "heavy",
+        }}
+      />,
+    );
+    const note = screen.getByTestId("run-explanation");
+    expect(note.className).toContain("is-ok");
+    expect(note.className).toContain("strain-heavy");
+    expect(note.querySelector("strong")!.textContent).toBe("끝났지만 힘들었어요.");
+    expect(note.querySelectorAll("li").length).toBe(1);
+  });
+
+  it("still renders the why-line when headline and details are empty", () => {
+    render(
+      <RunExplanationNote
+        language="ko"
+        explanation={{ code: "failed", ok: false, headline: "", details: [], strainLevel: "none" }}
+      />,
+    );
+    const note = screen.getByTestId("run-explanation");
+    expect(note.className).toContain("is-caution");
+    expect(note.querySelector("strong")).toBeNull();
+    expect(note.querySelector("ul")).toBeNull();
+    expect(note.querySelector("small")).toBeTruthy();
   });
 });

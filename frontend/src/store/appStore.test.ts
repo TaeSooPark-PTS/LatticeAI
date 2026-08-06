@@ -79,6 +79,14 @@ describe("initial state", () => {
     expect(store.getState().language).toBe("ko");
   });
 
+  it("defaults to English where there is no navigator to ask", async () => {
+    // Server-side rendering and non-browser runtimes have no `navigator`; the
+    // language read must not throw before the store is even created.
+    Object.defineProperty(window, "navigator", { value: undefined, configurable: true });
+    const store = await freshStore();
+    expect(store.getState().language).toBe("en");
+  });
+
   it("treats an empty stored workspace as no workspace", async () => {
     localStorage.setItem("lattice.workspace", "");
     const store = await freshStore();

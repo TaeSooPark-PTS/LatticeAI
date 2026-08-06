@@ -8,7 +8,9 @@ export function buildConversationSummaries(historyData: unknown): ConversationSu
     .flatMap((item): ConversationSummary[] => {
       const id = textValue(item, ["id", "conversation_id"]);
       if (!id) return [];
-      const title = textValue(item, ["title", "summary", "last_message"], id).trim() || id;
+      // textValue falls back to the id, which the guard above proved non-blank,
+      // so the trimmed title can never be empty.
+      const title = textValue(item, ["title", "summary", "last_message"], id).trim();
       return [{
         id,
         title,

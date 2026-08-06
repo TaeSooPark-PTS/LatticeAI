@@ -33,7 +33,9 @@ type RunNowResponse = {
   last_execution?: LastExecution;
 };
 
-function shortWhen(value?: string): string {
+// Exported for tests: every render-site call is guarded by a truthy check, so
+// the empty-input contract is only reachable directly.
+export function shortWhen(value?: string): string {
   if (!value) return "";
   return value.replace("T", " ").slice(0, 16);
 }
