@@ -450,7 +450,7 @@ class AgentRuntime:
                 f"Plan: {plan_summary}" if plan_summary else "",
             ]).strip()
             if not content or len(content) < 20:
-                return
+                return  # pragma: no cover — the "[Agent synthesis] Goal: " prefix is always >= 20 chars
             tags = ["agent-synthesis", "delegated", "auto"]
             self._memory_ingest(
                 kind="long_term",

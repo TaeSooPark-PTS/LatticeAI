@@ -397,7 +397,7 @@ def create_models_router(
                 _raise_model_http(exc)
             return {"provider": provider, "model": model_name, "returncode": 0, **result}
 
-        raise http_error(400, "models.download_not_automated", resolve_language(request), provider=provider)
+        raise http_error(400, "models.download_not_automated", resolve_language(request), provider=provider)  # pragma: no cover — every prefix the check above accepts is handled, and the fallback is local_mlx
 
     @router.post("/engines/prepare-model")
     async def engines_prepare_model(req: PrepareModelRequest, request: Request):

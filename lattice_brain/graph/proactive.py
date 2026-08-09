@@ -470,7 +470,7 @@ class ProactiveBrain:
             for group in groups:
                 try:
                     if merge_fn is None:  # guarded by apply_supported above
-                        raise RuntimeError("store has no merge_nodes")
+                        raise RuntimeError("store has no merge_nodes")  # pragma: no cover — unreachable: callable(merge_fn) above proves it is not None
                     result = merge_fn(group["keep"], group["remove"])
                     applied.append({"keep": group["keep"], "result": result})
                 except Exception as exc:  # keep going; report per-group failure

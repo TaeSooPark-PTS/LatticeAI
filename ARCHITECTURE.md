@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **10.10.0 — Quiet Station**.
+Current release: **11.0.0 — Full Measure**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -387,26 +387,26 @@ estimates with figures.
 
 ```mermaid
 flowchart LR
-  subgraph py["Python — 33,263 statements"]
+  subgraph py["Python — 34,374 statements"]
     direction TB
-    pyt["pytest<br/>1,896 tests"]
-    pycov["coverage<br/><b>71.6%</b> · floor 70%"]
-    pymypy["mypy<br/><b>193 / 270</b> modules"]
-    pyruff["ruff<br/>10 rule groups"]
+    pyt["pytest<br/>5,426 tests"]
+    pycov["coverage<br/><b>100.00%</b> · floor 100"]
+    pymypy["mypy<br/><b>276 / 276</b> modules"]
+    pyruff["ruff<br/>16 rule groups"]
     pyt --> pycov
   end
 
-  subgraph fe["Frontend — 5,879 statements"]
+  subgraph fe["Frontend"]
     direction TB
-    fet["vitest<br/>208 tests"]
-    fecov["coverage<br/><b>28.5%</b> · measured, not gated"]
+    fet["vitest<br/>1,646 tests"]
+    fecov["coverage<br/><b>100%</b> · thresholds gated"]
     fets["tsc --noEmit<br/>strict"]
     fet --> fecov
   end
 
   subgraph e2e["Whole-product"]
     direction TB
-    play["Playwright<br/>20 specs"]
+    play["Playwright<br/>33 visual specs"]
     eval["agent_eval<br/>23 / 23"]
     smoke["release smoke<br/>5 artifacts"]
   end
@@ -416,23 +416,22 @@ flowchart LR
   pymypy --> gate
   pyruff --> gate
   fets --> gate
+  fecov --> gate
   play --> gate
   eval --> gate
   smoke --> gate
 
   gate -- "blocks merge" --> main[("main")]
-
-  style fecov stroke-dasharray: 5 5
 ```
 
-The dashed box is the one figure that is reported but not enforced. Frontend
-coverage became measurable in 10.3.0 (`all: true`, so untested files count
-against the denominator instead of vanishing from it) and the honest number is
-28.5% — too low to floor without freezing it there. `docs/MYPY_BACKLOG.md`
-does the same job for the 77 modules mypy does not yet check: the boundary is
-written down rather than implied.
+Since 11.0.0 there is no dashed box: both coverage figures are enforced
+floors. Python coverage is `fail_under = 100` — every statement that ships
+executes under the suite, with exactly eight reasoned `pragma: no cover`
+lines (each names why its branch is unreachable) plus the generic
+`TYPE_CHECKING` / `NotImplementedError` / `@abstractmethod` patterns.
+Frontend coverage has pinned 100% on all four vitest metrics since 10.10.0.
 
-Two figures moved for reasons worth recording:
+Two figures moved earlier for reasons worth recording:
 
 - Python coverage was first reported as 80%, which was wrong. The `omit`
   pattern `*/tests/*` does not match the repo-relative `tests/...` paths
@@ -550,13 +549,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-10.10.0 exact artifact names:
+11.0.0 exact artifact names:
 
-- `dist/ltcai-10.10.0-py3-none-any.whl`
-- `dist/ltcai-10.10.0.tar.gz`
-- `ltcai-10.10.0.tgz`
-- `dist/ltcai-10.10.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.10.0_aarch64.dmg`
+- `dist/ltcai-11.0.0-py3-none-any.whl`
+- `dist/ltcai-11.0.0.tar.gz`
+- `ltcai-11.0.0.tgz`
+- `dist/ltcai-11.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.0.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

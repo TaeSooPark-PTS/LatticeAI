@@ -21,6 +21,15 @@
     "specific, not less."
   ],
 
+  "11.0.0": {
+    "_why": [
+      "A verification-and-docs release: Python coverage 72.80% -> 100.00%",
+      "(fail_under=100) with no UI change. No screen claims layout movement;",
+      "all twelve are measured but not gated. Visible pixels may still drift",
+      "where the version string renders."
+    ]
+  },
+
   "10.8.0": {
     "04-brain-chat-home.png": {
       "_why": "Elevated brain-chat-home visual layout with glassmorphic station card, ambient radial mesh aura, gradient title, glowing dot prompt cards, and refined toolbar styling.",

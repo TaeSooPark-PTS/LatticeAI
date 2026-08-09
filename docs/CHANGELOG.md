@@ -4,6 +4,23 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.0.0] - 2026-08-10
+
+### Changed
+- Python 테스트 커버리지 72.80% → **100.00%**, CI 게이트 `fail_under = 100`.
+  테스트 2,269 → 5,426개(+3,157, 신규 파일 145개). 제외는 도달 불가 사유가
+  명시된 `pragma: no cover` 8줄뿐이며, MLX/Windows/watchdog 등 플랫폼 잠금
+  분기는 페이크 모듈·시임 패치로 ubuntu CI에서도 실행됩니다.
+- `build_phases` 후반 4개 페이즈가 `test_security.py`의 server-import
+  부수효과 없이 전용 테스트(RuntimeContext 직접 구동)로 커버됩니다.
+- ARCHITECTURE.md 검증 다이어그램이 실측값으로 갱신되고 "보고만 되고 강제
+  안 되는" 점선 상자가 사라졌습니다(양쪽 커버리지 모두 100% 플로어).
+
+### Internal
+- 커버리지 작업이 드러낸 실제 결함·죽은 분기 11건은 동작 변경 없이
+  RELEASE_NOTES_v11.0.0.md에 기록되고, 현재 동작을 그대로 단언하는
+  테스트로 고정됐습니다(수정은 다음 릴리스 후보).
+
 ## [10.10.0] - 2026-08-06
 
 ### Changed

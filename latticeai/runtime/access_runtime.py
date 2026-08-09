@@ -118,7 +118,7 @@ def build_access_runtime(
             return ""
         if effective_require_auth and not email:
             raise http_exception(status_code=401, detail="인증이 필요합니다.")
-        return email or ""
+        return email or ""  # pragma: no cover — unreachable: trusted_local_owner is the exact complement of effective_require_auth
 
     def require_admin(request: request_type) -> tuple[str, Dict]:
         users = load_users()

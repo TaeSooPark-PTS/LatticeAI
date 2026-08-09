@@ -196,7 +196,7 @@ def extract_topic_candidates(
         seen_in_doc: Set[str] = set()
         for term in bag:
             if term in seen_in_doc:
-                continue
+                continue  # pragma: no cover — unreachable: bag is list(set(...)), already deduplicated
             seen_in_doc.add(term)
             counts[term] = counts.get(term, 0.0) + weight
             sources.setdefault(term, []).append(str(doc.get("id") or ""))

@@ -1,3 +1,14 @@
+# [v11.0.0 - Full Measure] (2026-08-10)
+
+출하되는 모든 Python 라인이 테스트 아래에서 실행됩니다 — 커버리지 72.80% →
+**100.00%**, 테스트 2,269 → 5,426개(+3,157), `fail_under = 100` CI 게이트.
+제외는 사유가 명시된 `pragma: no cover` 8줄이 전부이고, 플랫폼 잠금 분기도
+페이크 모듈로 ubuntu CI에서 실행됩니다. 커버리지 작업이 드러낸 실제
+결함들은 고치지 않고 기록했습니다 — 검증 릴리스는 동작 변경을 싣지
+않습니다. 화면 변경 없음.
+
+See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
+
 # [v10.10.0 - Quiet Station] (2026-08-06)
 
 Brain 대화 홈을 "고요한 스테이션"으로 재설계했습니다 — 통계는 호버 배지로,
@@ -368,7 +379,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 10.10.0**.
+This repository keeps public release history from **9.0.0 through 11.0.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

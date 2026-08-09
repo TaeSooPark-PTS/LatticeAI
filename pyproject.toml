@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "10.10.0"
+version = "11.0.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -551,9 +551,11 @@ source = ["latticeai", "lattice_brain"]
 omit = ["tests/*", "scripts/*", "*/__main__.py", "*/conftest.py"]
 
 [tool.coverage.report]
-# A floor, not a target. Set just under the measured figure so a regression
-# fails CI while ordinary work does not. Raise it when a release earns it.
-fail_under = 70
+# 11.0.0: every line ships tested. The measured figure is 100.00% across
+# 5,400+ tests; the floor pins it there so a single uncovered line fails CI.
+# The only exclusions are 8 reasoned `pragma: no cover` lines (each names why
+# its branch is unreachable) plus the generic patterns below.
+fail_under = 100
 skip_covered = true
 exclude_lines = [
   "pragma: no cover",

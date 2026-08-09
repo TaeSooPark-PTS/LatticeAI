@@ -13,6 +13,33 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.0.0 — Full Measure (2026-08-10)
+
+기능이 아니라 바닥을 출하한 메이저 릴리스입니다. **Python 커버리지 72.80% →
+100.00%, `fail_under = 100`이 CI 게이트**가 됐습니다. 화면은 의도적으로
+한 픽셀도 바뀌지 않았습니다.
+
+- **테스트 2,269 → 5,426개(+3,157, 신규 파일 145개).** 라우터 팩토리 + 주입
+  페이크, tmp_path 위 실제 SQLite 스토어, 실제 문서 포맷 입력으로 작성.
+- **플랫폼 잠금 분기도 ubuntu CI에서 실행** — MLX/Windows/watchdog/reportlab/
+  psycopg 경로는 sys.modules 페이크·시임 패치로 구동.
+- **`pragma: no cover`는 정확히 8줄**, 전부 도달 불가 사유를 주석으로 지님.
+- **커버리지가 실제 결함을 드러냄** — Telegram 인증 헤더 오발송, 언로드
+  성공 조작, 죽은 스타일시트 수집, 리뷰 아이템 id 초 단위 충돌, vLLM 좀비
+  오판, 보안 대시보드 목록의 마스킹 갭 등. 동작 변경 없이 릴리스 노트에
+  기록되고 현재 동작 그대로 테스트로 고정됨(수정은 다음 릴리스 후보).
+- **부수효과 커버리지 제거** — build_phases 후반 4페이즈가 server-import
+  부수효과 없이 전용 테스트로 커버됨.
+- mypy 276/276 · 0 에러, ruff 클린, 프론트 100%(1,646 테스트) 유지,
+  agent_eval 23/23.
+
+빌드 산출물은 `dist/ltcai-11.0.0-py3-none-any.whl`,
+`dist/ltcai-11.0.0.tar.gz`, `ltcai-11.0.0.tgz`, `dist/ltcai-11.0.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.0.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md)
+
 ## v10.10.0 — Quiet Station (2026-08-06)
 
 Brain 대화 홈을 "고요한 스테이션"으로 다시 지은 릴리스입니다.

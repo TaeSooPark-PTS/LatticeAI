@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **10.10.0 — Quiet Station**.
+Current release: **11.0.0 — Full Measure**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

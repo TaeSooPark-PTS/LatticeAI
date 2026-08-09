@@ -195,7 +195,7 @@ def parse_model_ref(model_id: str) -> tuple[str, str]:
         if provider in {"local_mlx", "mlx"}:
             return "local_mlx", model
     if model_id.startswith("local_mlx:"):
-        return "local_mlx", model_id.split(":", 1)[1]
+        return "local_mlx", model_id.split(":", 1)[1]  # pragma: no cover — dead: a "local_mlx:" ref always has a ":" and returned above
     return "local_mlx", model_id
 
 HF_MODELS_ROOT = Path.home() / ".ltcai" / "hf-models"

@@ -162,7 +162,7 @@ class KnowledgeGraphRetrievalMixin(_Core):
             from_node = node_by_id.get(edge["from"])
             to_node = node_by_id.get(edge["to"])
             if not from_node or not to_node:
-                continue
+                continue  # pragma: no cover — unreachable: the edge query selects endpoints from the same node window
             for topic_node, other_node in ((from_node, to_node), (to_node, from_node)):
                 if topic_node["type"] != "Topic":
                     continue

@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **10.10.0 — Quiet Station**.
+Current release: **11.0.0 — Full Measure**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

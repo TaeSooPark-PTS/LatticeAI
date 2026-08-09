@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v10.10.0 Living Brain walkthrough](output/release/v10.10.0/gifs/v10.10.0-living-brain-walkthrough.gif)
+![v11.0.0 Living Brain walkthrough](output/release/v11.0.0/gifs/v11.0.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v10.10.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v10.10.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v10.10.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v10.10.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v10.10.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v10.10.0/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v10.10.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v10.10.0/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.0.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.0.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.0.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.0.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.0.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v11.0.0/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.0.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.0.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,52 +58,54 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v10.10.0/screenshots/01-login.png) | ![Model install](output/release/v10.10.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v10.10.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v11.0.0/screenshots/01-login.png) | ![Model install](output/release/v11.0.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.0.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v10.10.0/SCREENSHOT_INDEX.md](output/release/v10.10.0/SCREENSHOT_INDEX.md)
+[output/release/v11.0.0/SCREENSHOT_INDEX.md](output/release/v11.0.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **10.10.0 — Quiet Station**:
+The current release is **11.0.0 — Full Measure**:
 
-The Brain chat home used to greet you with everything at once — a stats
-sentence, six capture chips, a model banner, an autonomy strip, and two
-shelves stacked under the composer. 10.10.0 rebuilds it around one idea: the
-canvas holds the composer; everything else blooms on demand.
+10.3.0 measured the ground. 10.4.0 named it. 11.0.0 finishes the arc the
+project has been walking since: **every line of Python that ships now executes
+under the test suite, and CI fails if a single one stops.**
 
-- **Stats became a badge.** "기억 13 · 주제 299" sits as a chip beside the
-  greeting; hovering (or clicking) it opens a summary popover with a small
-  memory/topics/links graph and the memory-map shortcut. The sentence left the
-  reading line.
-- **Capture folds behind one +.** 문서 · 이미지 · 파일 · 폴더 · 노트 · 웹 live
-  in the composer's Add menu — hover opens it, click pins it, Escape and
-  outside-click close it, and an in-flight upload keeps it open.
-- **The model banner became a status pill.** "모델 준비 필요" now sits on the
-  hero's right edge with the one accented CTA; the full sentence rides on the
-  tooltip and the accessible name.
-- **The shelves became a dock.** 대화 · 통계 · 기억 지도 sit on a quiet rail —
-  a left column on desktop, a row above the fold elsewhere — and open a
-  focus-trapped drawer over the screen instead of stacking cards under it.
-- **Borders got quieter, colour got scarcer.** Cards float on soft shadow
-  instead of rules, and the warm accent appears exactly twice: the send
-  button and the model CTA.
-- **The frontend test floor is 100%.** Every statement, branch, function and
-  line under `frontend/src` is covered, `vitest` enforces the thresholds, and
-  CI runs the coverage gate — a claim the suite fails loudly if it drifts.
-- **Release history starts at 9.0.0.** The 8.x notes left the tree; README,
-  the notes index, RELEASE.md and the changelog all begin the public story at
-  9.0.0.
+- **Python coverage is 100.00%, and it is a floor, not a report.** The suite
+  grew from 2,269 to 5,426 tests (+3,157) to take coverage from 72.80% to
+  100.00% across 34,374 statements, and `fail_under = 100` is wired into the
+  same CI step that used to hold the 70% floor.
+- **The number is honest.** Exactly eight `pragma: no cover` lines exist in
+  the tree, each carrying an inline reason why its branch is unreachable
+  (shadowed guards, boolean complements frozen at build time, defensive
+  narrowing). Nothing else is excluded beyond the standard `TYPE_CHECKING` /
+  `NotImplementedError` / `@abstractmethod` patterns.
+- **The tests run everywhere CI runs.** OS-locked branches (MLX, Windows
+  probes, watchdog, reportlab, psycopg) execute through injected fake modules
+  and patched seams, so the ubuntu coverage leg measures the same 100% a Mac
+  does — no platform is quietly excluded.
+- **Coverage found real defects.** Writing 3,157 tests surfaced genuine bugs
+  and dead branches — a Telegram helper that sends the local server's auth
+  header to the Telegram API, an unload-all that fabricates success, an HTML
+  inspector whose stylesheet collection can never fire, a review-item id that
+  collides within one second, a memory-clear scope that a membership check
+  permanently shadows. They are documented (not silently fixed) in
+  [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md) and pinned by tests
+  that assert today's actual behaviour.
+- **Both coverage floors now match.** Frontend has held 100% on all four
+  vitest metrics since 10.10.0; Python joins it, so the verification diagram
+  in [ARCHITECTURE.md](ARCHITECTURE.md) has no dashed "reported, not
+  enforced" box left.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 10.10.0 release must use exact filenames:
+Expected artifacts for 11.0.0 release must use exact filenames:
 
-- `dist/ltcai-10.10.0-py3-none-any.whl`
-- `dist/ltcai-10.10.0.tar.gz`
-- `ltcai-10.10.0.tgz`
-- `dist/ltcai-10.10.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_10.10.0_aarch64.dmg`
+- `dist/ltcai-11.0.0-py3-none-any.whl`
+- `dist/ltcai-11.0.0.tar.gz`
+- `ltcai-11.0.0.tgz`
+- `dist/ltcai-11.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.0.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -138,6 +140,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 11.0.0 | Full Measure |
 | 10.10.0 | Quiet Station |
 | 10.9.0 | Never Blocks |
 | 10.8.0 | Within Reach |

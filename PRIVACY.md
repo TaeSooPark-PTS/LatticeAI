@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **10.10.0 — Quiet Station**.
+Current release: **11.0.0 — Full Measure**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

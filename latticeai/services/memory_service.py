@@ -1134,7 +1134,7 @@ class MemoryService:
         if scope in WORKSPACE_KINDS:
             result = self.prune(kind=scope, user_email=user_email, workspace_id=workspace_id)
             return {"cleared": scope, **result}
-        if scope == "workspace":
+        if scope == "workspace":  # pragma: no cover — shadowed: "workspace" is itself a WORKSPACE_KINDS member, so the by-kind branch above always wins; reordering would widen what clear() deletes, which is an owner decision
             ids = [m["id"] for m in self._workspace_memories(user_email=user_email, workspace_id=workspace_id) if m.get("id")]
             result = self.prune(ids=ids, user_email=user_email, workspace_id=workspace_id)
             return {"cleared": "workspace", **result}
