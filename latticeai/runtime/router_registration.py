@@ -675,4 +675,15 @@ def register_review_and_brain_tail_routers(
         append_audit_event=append_audit_event,
         knowledge_graph=knowledge_graph,
     )
+    # The opt-in switchboard. Mounted last on purpose: binding the gates to the
+    # service is what makes a stored preference beat an env var, and every
+    # module that owns one of those gates has been imported by now.
+    from latticeai.runtime.feature_toggle_wiring import register_features_router
+
+    register_features_router(
+        app,
+        require_user=require_user,
+        data_dir=data_dir,
+        append_audit_event=append_audit_event,
+    )
     return brain_network

@@ -214,11 +214,17 @@ class CommandCenterService:
         except Exception:
             LOGGER.exception("command center health read failed")
             return {"available": False}
-        overall = report.get("overall") or {}
+        # ``BrainIntelligenceService.health_report()`` publishes the score and
+        # the grade at the top level. This used to read them out of a nested
+        # ``overall`` block that no producer has ever written, so the section
+        # was permanently unavailable: Today's Briefing showed a dash with no
+        # reason beside it, and the "check-health" quick action below could
+        # never fire. Read the shape the real collaborator returns.
+        score = report.get("overall_score")
         return {
-            "available": overall.get("score") is not None,
-            "grade": overall.get("grade"),
-            "score": overall.get("score"),
+            "available": score is not None,
+            "grade": report.get("grade"),
+            "score": score,
             "recommended_actions": list(report.get("recommended_actions") or [])[:3],
         }
 

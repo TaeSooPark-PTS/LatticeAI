@@ -32,14 +32,54 @@ FAMILY_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("qwen", re.compile(r"qwen", re.I)),
     ("llama", re.compile(r"\bllama|meta[-_]?llama", re.I)),
     ("claude", re.compile(r"claude", re.I)),
+    # gpt-oss is its own local family with its own chat format, so it must be
+    # matched before the cloud `gpt` pattern rather than falling into it.
+    ("gpt_oss", re.compile(r"gpt[-_]?oss", re.I)),
     ("gpt", re.compile(r"gpt[-_]?(?:4|5)|openai", re.I)),
     ("gemini", re.compile(r"gemini", re.I)),
     ("grok", re.compile(r"grok|x[-_]?ai", re.I)),
+    ("lfm2", re.compile(r"\blfm[-_]?2", re.I)),
 ]
 
+#: HF ``config.json`` ``model_type`` → family code. An id is a name somebody
+#: chose; an architecture is what mlx-lm / mlx-vlm actually dispatches on, so it
+#: is the more reliable signal when we have it. Values here are the architectures
+#: pinned in the model capability registry (11.2.0) plus the ones that came
+#: before, so a model already on disk keeps its profile after its generation
+#: stops being offered.
+ARCHITECTURE_FAMILIES: Dict[str, str] = {
+    "gemma2": "gemma",
+    "gemma3": "gemma",
+    "gemma4": "gemma",
+    "gemma4_unified": "gemma",
+    "qwen2_5_vl": "qwen",
+    "qwen3_vl": "qwen",
+    "qwen3_vl_moe": "qwen",
+    "qwen3_5": "qwen",
+    "qwen3_5_moe": "qwen",
+    "llama": "llama",
+    "llama4": "llama",
+    "mllama": "llama",
+    "gpt_oss": "gpt_oss",
+    "lfm2": "lfm2",
+}
 
-def detect_model_family(model_id: str) -> str:
-    """주어진 model_id 문자열에서 family 코드를 추론한다."""
+
+def family_for_architecture(architecture: Optional[str]) -> str:
+    """Map an HF ``model_type`` to a family code (``"unknown"`` when unmapped)."""
+    return ARCHITECTURE_FAMILIES.get(str(architecture or "").strip().lower(), "unknown")
+
+
+def detect_model_family(model_id: str, architecture: Optional[str] = None) -> str:
+    """주어진 model_id 문자열에서 family 코드를 추론한다.
+
+    ``architecture`` (HF config ``model_type``) 가 주어지고 알려진 값이면 그것을
+    우선한다 — 로더가 실제로 분기하는 값이기 때문이다.
+    """
+    if architecture:
+        by_arch = family_for_architecture(architecture)
+        if by_arch != "unknown":
+            return by_arch
     if not model_id:
         return "unknown"
     raw = str(model_id)
@@ -93,6 +133,35 @@ FAMILY_PROFILES: Dict[str, Dict[str, Any]] = {
         "top_p": 0.9,
         "max_tokens": 4096,
         "stop_sequences": ["</s>", "[INST]", "[/INST]"],
+        "disable_draft": False,
+        "postprocess": ["strip_role_tokens"],
+    },
+    # gpt-oss speaks the "harmony" response format: the channel markers are
+    # stop sequences, not text, so the reply never has to be salvaged from them.
+    "gpt_oss": {
+        "family": "gpt_oss",
+        "supports_system": True,
+        "supports_vision": False,
+        "chat_template": "tokenizer_default",
+        "preferred_engines": ["local_mlx", "ollama", "llamacpp"],
+        "temperature": 0.2,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+        "stop_sequences": ["<|return|>", "<|call|>", "<|endoftext|>"],
+        "disable_draft": False,
+        "postprocess": ["strip_role_tokens"],
+    },
+    # LFM2 uses a ChatML-style template; text only, so no vision claim.
+    "lfm2": {
+        "family": "lfm2",
+        "supports_system": True,
+        "supports_vision": False,
+        "chat_template": "tokenizer_default",
+        "preferred_engines": ["local_mlx", "ollama", "llamacpp"],
+        "temperature": 0.2,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+        "stop_sequences": ["<|im_end|>", "<|endoftext|>"],
         "disable_draft": False,
         "postprocess": ["strip_role_tokens"],
     },
@@ -623,9 +692,11 @@ def get_stop_sequences(model_id: str, engine: Optional[str] = None) -> List[str]
 
 
 __all__ = [
+    "ARCHITECTURE_FAMILIES",
     "FAMILY_PROFILES",
     "CompatProfile",
     "detect_model_family",
+    "family_for_architecture",
     "friendly_model_runtime_error",
     "get_model_profile",
     "model_runtime_compatibility",

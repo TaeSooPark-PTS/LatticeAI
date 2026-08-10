@@ -550,3 +550,274 @@
 .brain-home-drawer-head {
   flex: none;
 }
+
+/* ── 5. the 기능 drawer: the opt-in switchboard ─────────────────────────────
+   One column of rows, each a sentence and a switch. No card chrome per row —
+   the drawer already is the surface, and ten bordered cards would read as ten
+   competing decisions. Jade is the *only* colour that moves: it appears on the
+   track of a switch that is on, and nowhere else, so a glance down the column
+   answers "what is on here" without reading a word. */
+
+.brain-features-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.brain-features-head {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.brain-features-head > strong {
+  color: hsl(var(--foreground));
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.brain-features-head > p,
+.brain-features-loading {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.brain-features-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--experience-radius);
+  background: hsl(var(--muted) / 0.28);
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.4);
+  list-style: none;
+}
+
+.brain-feature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.brain-feature-row + .brain-feature-row {
+  box-shadow: inset 0 1px 0 hsl(var(--border) / 0.34);
+}
+
+/* A sub-switch is indented and hung off a hairline, so "this belongs to the
+   one above" is structural rather than something the copy has to say twice. */
+.brain-feature-row.is-child {
+  padding-left: 1.55rem;
+  position: relative;
+}
+
+.brain-feature-row.is-child::before {
+  content: "";
+  position: absolute;
+  top: 0.9rem;
+  left: 0.95rem;
+  width: 0.4rem;
+  height: 1px;
+  background: hsl(var(--border));
+}
+
+.brain-feature-copy {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.brain-feature-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  color: hsl(var(--foreground));
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.brain-feature-source {
+  padding: 0.02rem 0.4rem;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.85);
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.5);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.brain-feature-summary {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* The caution line is a quiet amber note, not an alarm: this is a setting a
+   person may well want, and shouting at them about it is how warnings stop
+   being read. */
+.brain-feature-caution {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.32rem;
+  margin-top: 0.16rem;
+  padding: 0.34rem 0.44rem;
+  border-radius: 0.55rem;
+  background: hsl(var(--brain-core) / 0.12);
+  box-shadow: inset 0 0 0 1px hsl(var(--brain-core) / 0.3);
+  color: hsl(var(--foreground));
+  font-size: 0.71rem;
+  line-height: 1.45;
+}
+
+.brain-feature-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: none;
+  padding: 0.2rem 0.2rem 0.2rem 0.34rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+/* Busy is a cursor, never `disabled`: disabling blurs the button and takes the
+   drawer's Escape handler with it. */
+.brain-features-panel[aria-busy="true"] .brain-feature-switch {
+  cursor: progress;
+}
+
+.brain-feature-state {
+  order: -1;
+  min-width: 1.9rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.brain-feature-switch-track {
+  position: relative;
+  display: block;
+  width: 2.25rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  box-shadow: inset 0 0 0 1px hsl(var(--border));
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.brain-feature-switch-thumb {
+  position: absolute;
+  top: 0.19rem;
+  left: 0.19rem;
+  width: 0.92rem;
+  height: 0.92rem;
+  border-radius: 50%;
+  background: hsl(var(--card));
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.28);
+  transition: transform 160ms cubic-bezier(0.32, 0.72, 0.35, 1);
+}
+
+.brain-feature-switch[aria-checked="true"] .brain-feature-switch-track {
+  background: hsl(var(--primary));
+  box-shadow: inset 0 0 0 1px hsl(var(--primary));
+}
+
+.brain-feature-switch[aria-checked="true"] .brain-feature-switch-thumb {
+  transform: translateX(0.95rem);
+}
+
+.brain-feature-switch[aria-checked="true"] .brain-feature-state {
+  color: hsl(var(--foreground));
+}
+
+.brain-feature-switch:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.brain-feature-choices {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  max-width: 11rem;
+}
+
+.brain-feature-choices > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.26rem 0.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--card));
+  box-shadow: inset 0 0 0 1px hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 620;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.brain-feature-choices > button:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+}
+
+.brain-feature-choices > button.is-active {
+  background: hsl(var(--primary) / 0.16);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.55);
+  color: hsl(var(--foreground));
+}
+
+/* Shown, disabled, with the reason in the tooltip — an option that is hidden
+   is a mystery, and one that looks live is a lie. */
+.brain-feature-choices > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.brain-feature-choices > button > em {
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.brain-feature-choices > button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.brain-features-notice {
+  margin: 0;
+  min-height: 1rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+}
+
+/* Touch widths: the switch keeps its size, the copy gets the rest, and the
+   choice pills wrap under their row rather than squeezing the sentence. */
+@media (max-width: 560px) {
+  .brain-feature-row {
+    flex-wrap: wrap;
+  }
+
+  /* `flex: 1 1 100%`, not `flex: none`: a `none` box sizes to its max-content
+     row, so the pills never reach their own `flex-wrap` and the whole group
+     hangs past the drawer's edge. Given the full row they wrap as intended. */
+  .brain-feature-choices {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    max-width: none;
+  }
+}

@@ -35,13 +35,13 @@ def test_runtime_incompatibility_marks_model_not_recommended(monkeypatch):
             "status": "unsupported",
             "supported": False,
             "user_message": "This model is not supported by the installed runtime.",
-        } if "gemma-4-12b" in model_id else _runtime_supported(model_id, engine=engine),
+        } if "gemma-4-12b" in model_id.lower() else _runtime_supported(model_id, engine=engine),
     )
 
     result = mr.recommend_catalog(_mac(64), engine="local_mlx")
     by_id = {m["id"]: m for m in result["models"]}
-    assert by_id["mlx-community/gemma-4-12b-it-4bit"]["status"] == mr.NOT_RECOMMENDED
-    assert "installed runtime" in by_id["mlx-community/gemma-4-12b-it-4bit"]["reason"]
+    assert by_id["mlx-community/gemma-4-12B-it-4bit"]["status"] == mr.NOT_RECOMMENDED
+    assert "installed runtime" in by_id["mlx-community/gemma-4-12B-it-4bit"]["reason"]
 
 
 def test_standard_gemma4_fallback_available_is_not_marked_not_recommended(monkeypatch):
@@ -65,7 +65,7 @@ def test_standard_gemma4_fallback_available_is_not_marked_not_recommended(monkey
 
 def test_gemma4_12b_runtime_update_needed_is_not_recommended_but_26b_is_supported(monkeypatch):
     def fake_runtime(model_id, *, engine=None):
-        if "gemma-4-12b" in model_id:
+        if "gemma-4-12b" in model_id.lower():
             return {
                 "model_id": model_id,
                 "engine": engine,
@@ -79,7 +79,7 @@ def test_gemma4_12b_runtime_update_needed_is_not_recommended_but_26b_is_supporte
 
     result = mr.recommend_catalog(_mac(64), engine="local_mlx")
     by_id = {m["id"]: m for m in result["models"]}
-    assert by_id["mlx-community/gemma-4-12b-it-4bit"]["status"] == mr.NOT_RECOMMENDED
+    assert by_id["mlx-community/gemma-4-12B-it-4bit"]["status"] == mr.NOT_RECOMMENDED
     assert by_id["mlx-community/gemma-4-26b-a4b-it-4bit"]["status"] != mr.NOT_RECOMMENDED
 
 
@@ -129,7 +129,10 @@ def test_small_mac_recommends_small_models_only():
     result = mr.recommend_catalog(_mac(8), engine="local_mlx")
     assert result["engine_available"] is True
     by_id = {m["id"]: m for m in result["models"]}
-    assert by_id["mlx-community/Qwen3-VL-4B-Instruct-4bit"]["status"] == mr.RECOMMENDED
+    # 8GB fits only the ultralight tier: LFM2.5 outright, Gemma 4 E2B with
+    # little headroom. Everything above stays off the table.
+    assert by_id["mlx-community/LFM2.5-2.6B-4bit"]["status"] == mr.RECOMMENDED
+    assert by_id["mlx-community/gemma-4-e2b-it-4bit"]["status"] == mr.COMPATIBLE
     assert by_id["mlx-community/gemma-4-31b-it-4bit"]["status"] == mr.NOT_RECOMMENDED
 
 
@@ -158,10 +161,13 @@ def test_families_grouped_and_ordered():
     result = mr.recommend_catalog(_mac(64), engine="local_mlx")
     fam_names = [f["family"] for f in result["families"]]
     assert "Gemma 4" in fam_names
-    assert "Qwen3-VL" in fam_names
+    assert "Qwen3.6" in fam_names
+    assert "Qwen3.5" in fam_names
+    # Superseded generations never reach the catalog, so they cannot group.
+    assert "Qwen3-VL" not in fam_names
     assert "Gemma 3" not in fam_names
     assert "Gemma 2" not in fam_names
-    assert fam_names.index("Gemma 4") < fam_names.index("Qwen3-VL")
+    assert fam_names.index("Gemma 4") < fam_names.index("Qwen3.6")
     # each family exposes a best pick structure
     for fam in result["families"]:
         assert "best" in fam and "models" in fam
@@ -177,7 +183,9 @@ def test_server_models_compatible_without_size():
 def test_source_metadata_is_present_for_general_mode():
     result = mr.recommend_catalog(_mac(32), engine="ollama")
     sample = result["models"][0]
-    assert sample["modality"] == "multimodal"
+    # Text-only entries earn a place in the tiers, so the recommender is no
+    # longer multimodal-only — but every row still states its own modality.
+    assert sample["modality"] in mr._RECOMMENDABLE_MODALITIES
     assert sample["source_country"]
     assert sample["source_company"]
     assert sample["execution_method"]

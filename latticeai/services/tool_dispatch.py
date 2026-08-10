@@ -486,6 +486,7 @@ def build_agent_runtime(
     brain_memory: Any = None,
     dispatch_service: ToolDispatchService = DEFAULT_TOOL_DISPATCH_SERVICE,
     permission_mode: Any = None,
+    self_model_summary: Any = None,
 ) -> SingleAgentRuntime:
     ensure_agent_root()
     mode = permission_mode if permission_mode is not None else dispatch_service.permission_mode
@@ -513,6 +514,9 @@ def build_agent_runtime(
         hooks=hooks,
         brain_memory=brain_memory,
         permission_mode=mode,
+        # v11.2.0: what the Brain knows about its owner reaches the agent loop.
+        # ``None`` keeps the pre-11.2.0 prompt bytes exactly.
+        self_model_summary=self_model_summary,
     )
     return SingleAgentRuntime(deps)
 

@@ -55,6 +55,13 @@ _SIGNATURE_SIMILARITY = 0.6
 _MIN_SUGGESTION_CONFIDENCE = 0.35
 _LOW_CONFIDENCE_THRESHOLD = 0.5
 _KG_GROUNDING_LIMIT = 5
+#: Charged when the graph *was* consulted and found nothing related. v11.2.0
+#: fixes a dead policy: the floor above was unreachable for recurring questions
+#: (the cheapest possible question — asked twice, one phrasing, no recipe —
+#: scored 0.475), so the suppression branch could only ever be exercised by a
+#: test that moved the constant. Absence of grounding is real evidence, and
+#: charging for it is what makes the floor mean something again.
+_UNGROUNDED_PENALTY = 0.15
 
 
 def _question_confidence(
@@ -67,7 +74,13 @@ def _question_confidence(
 
     Evidence factors: how often the question repeats, how many distinct
     phrasings exist, whether it maps onto a known starter-recipe intent, and
-    (when the graph is available) how many Brain nodes relate to it.
+    what the Brain knows about it.
+
+    That last factor is three-valued on purpose. ``None`` means the graph could
+    not be consulted — unknown, so nothing is added or taken away. A positive
+    count is supporting evidence. **Zero** is not the same as unknown: the
+    graph was asked, and it knows nothing about this question, which is a
+    reason to be less sure rather than a reason to be neutral.
     """
     score = 0.3 + 0.5 * min(1.0, (int(count) - 1) / 4)
     score += min(0.15, 0.05 * len(examples or []))
@@ -75,13 +88,16 @@ def _question_confidence(
         score += 0.15
     if kg_related:
         score += min(0.2, 0.05 * int(kg_related))
+    elif kg_related == 0:
+        score -= _UNGROUNDED_PENALTY
     factors = {
         "repeat_count": int(count),
         "distinct_examples": len(examples or []),
         "intent_match": bool(recipe_id),
         "kg_related_nodes": kg_related,
+        "kg_grounded": None if kg_related is None else bool(kg_related),
     }
-    return round(min(1.0, score), 2), factors
+    return round(max(0.0, min(1.0, score)), 2), factors
 
 
 def _source_confidence(indexed: int, watch_enabled: bool) -> tuple:
@@ -357,6 +373,10 @@ class AutomationIntelligenceService:
                 pattern["count"], pattern["examples"], recipe_id, kg_related
             )
             if confidence < _MIN_SUGGESTION_CONFIDENCE:
+                # Asked a couple of times, phrased one way, matching no recipe,
+                # and the Brain knows nothing about it — not enough to propose
+                # automating. Counted, so the surface can say how many were held
+                # back rather than silently showing fewer.
                 suppressed_low_confidence += 1
                 continue
             if recipe_id:

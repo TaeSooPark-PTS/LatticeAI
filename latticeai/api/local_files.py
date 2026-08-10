@@ -60,8 +60,32 @@ class FolderWatchEnableRequest(BaseModel):
     path: str
     recursive: bool = True
     workspace_id: Optional[str] = None
+    #: ``folder`` (default, unchanged) or ``vault`` — a watched external
+    #: Obsidian vault, which re-runs the whole bridge sync when it changes and
+    #: carries its own opt-in gate on top of this approval.
+    kind: str = "folder"
     # Watching continuously reads local disk → same approval dance as
     # /api/ingestion/folder. This is the explicit opt-in the review requires.
+    approved: bool = False
+    approval_token: Optional[str] = None
+
+
+class InteropIngestRequest(BaseModel):
+    """Read one local interop source through the one ingestion gate (v11.2.0).
+
+    ``source`` picks the bridge — ``notion`` (an export directory or ``.zip``),
+    ``git`` (a local repository), ``mail`` (``.eml``/``.ics`` files or a folder
+    of them). Every one of them reads a path the user approves through the same
+    local-read dance as ``/api/ingestion/folder``, and ``dry_run`` reports what
+    a real run would touch without writing anything.
+    """
+
+    source: str
+    path: str
+    workspace_id: Optional[str] = None
+    dry_run: bool = False
+    #: Git only: how far back to read. Ignored by the other bridges.
+    max_commits: Optional[int] = None
     approved: bool = False
     approval_token: Optional[str] = None
 
@@ -107,10 +131,18 @@ def create_local_files_router(
     if folder_watch is None and ingestion_pipeline is not None and data_dir is not None:
         try:
             from latticeai.services.folder_watch import FolderWatchService
+            from latticeai.services.obsidian_bridge import ObsidianVaultBridge
 
             folder_watch = FolderWatchService(
                 pipeline=ingestion_pipeline,
                 config_path=Path(data_dir) / "folder_watch.json",
+                # A watched vault re-runs the *whole* bridge sync, which is what
+                # makes its link edges real; the bridge is handed in rather than
+                # imported inside the poller so the watch service keeps knowing
+                # nothing about how a vault is parsed.
+                vault_bridge=ObsidianVaultBridge(
+                    pipeline=ingestion_pipeline, knowledge_graph=knowledge_graph,
+                ),
             )
             folder_watch.restore()
         except Exception:  # noqa: BLE001 — watch mode is optional, never blocks routes
@@ -405,6 +437,66 @@ def create_local_files_router(
             dry_run=req.dry_run,
         )
 
+    # ── interop bridges: Notion export / git history / mail + calendar ───────
+    @router.get("/api/ingestion/interop")
+    async def interop_status(request: Request):
+        """Which interop bridges this machine can actually run, and why not."""
+        require_user(request)
+        from latticeai.services.interop_bridges import bridge_status
+
+        return bridge_status()
+
+    @router.post("/api/ingestion/interop")
+    async def interop_ingest(req: InteropIngestRequest, request: Request):
+        """Read an approved local interop source through the one gate.
+
+        Same approval dance and the same ``IngestionPipeline`` door as the
+        vault bridge: no vendor API, no credentials, nothing leaves the
+        machine. ``dry_run`` writes nothing and reports what a real run would.
+        """
+        current_user = permission_gateway.require_local_user(request)
+        _require_pipeline()
+        workspace_id = _ingestion_write_workspace(request, req.workspace_id, current_user)
+        path = (req.path or "").strip()
+        if not path:
+            raise http_error(400, "ingestion.interop_path_required", resolve_language(request))
+        from latticeai.services.interop_bridges import build_bridge
+
+        try:
+            bridge = build_bridge(
+                req.source, pipeline=ingestion_pipeline, knowledge_graph=knowledge_graph,
+            )
+        except ValueError:
+            raise http_error(
+                400,
+                "ingestion.interop_unknown_source",
+                resolve_language(request),
+                source=req.source,
+            )
+        if not req.approved:
+            return permission_gateway.local_permission_response(path, "read", current_user)
+        permission_gateway.require_local_approval(
+            token=req.approval_token,
+            path=path,
+            action="read",
+            user_email=current_user,
+        )
+        options: Dict[str, Any] = {}
+        if req.max_commits is not None:
+            options["max_commits"] = req.max_commits
+        # Walking an export and embedding its pages is blocking work; the server
+        # owns one event loop and it may not sit here (10.9.0 ASYNC gate).
+        return await asyncio.to_thread(
+            lambda: bridge.sync(
+                path,
+                owner=current_user or None,
+                workspace_id=workspace_id,
+                user_email=current_user or None,
+                dry_run=req.dry_run,
+                **options,
+            )
+        )
+
     # ── folder watch mode: opt-in, off by default (backlog #8) ────────────────
     def _require_folder_watch(request: Request):
         _require_pipeline()
@@ -446,7 +538,16 @@ def create_local_files_router(
             owner=current_user or None,
             workspace_id=workspace_id,
             recursive=req.recursive,
+            kind=req.kind,
         )
+        if result.get("status") == "disabled":
+            # Turned off rather than broken: 403 with the reason, the same shape
+            # every other opt-in gate in this product answers with.
+            raise HTTPException(
+                status_code=403,
+                detail=result.get("detail")
+                or translate("ingestion.vault_watch_disabled", resolve_language(request)),
+            )
         if result.get("status") != "ok":
             raise HTTPException(
                 status_code=400,
@@ -518,6 +619,7 @@ def create_local_files_router(
 __all__ = [
     "FolderIngestRequest",
     "FolderWatchEnableRequest",
+    "InteropIngestRequest",
     "LocalAccessRequest",
     "LocalWriteRequest",
     "ObsidianSyncRequest",

@@ -225,7 +225,7 @@ def test_detected_cloud_models_reports_availability_and_provenance(monkeypatch):
     assert configured["source_company"] == "OpenAI"
     assert configured["execution_method"] == "인터넷 연결 후 사용"
 
-    unconfigured = by_id["xai:grok-beta"]
+    unconfigured = by_id["xai:grok-4.5"]
     assert unconfigured["available"] is False
     assert unconfigured["requires"] == "XAI_API_KEY"
 
@@ -280,8 +280,8 @@ def test_detected_cloud_models_appends_custom_refs_with_their_own_identity(monke
     assert local_custom["available"] is True
 
     # Catalog rows are unchanged by the custom pass.
-    catalogued = next(item for item in items if item["id"] == "xai:grok-vision-beta")
-    assert catalogued["model_name"] == "Grok Vision Beta"
+    catalogued = next(item for item in items if item["id"] == "xai:grok-4.5")
+    assert catalogued["model_name"] == "Grok 4.5"
     assert catalogued["source_company"] == "xAI"
 
 

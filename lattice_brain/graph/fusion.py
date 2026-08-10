@@ -30,6 +30,7 @@ import os
 import re
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from ..gates import FeatureGate
 from ..quiet import quiet
 
 QUERY_CLASSES = ("fact", "code", "person", "recency")
@@ -50,8 +51,20 @@ FUSION_WEIGHTS_ENV = "LATTICEAI_FUSION_WEIGHTS"
 # get shipped. Turn it on with LATTICEAI_FUSION_STRATEGY=rrf (all classes) or
 # a JSON object like {"code": "rrf"} (per class).
 FUSION_STRATEGY_ENV = "LATTICEAI_FUSION_STRATEGY"
+#: The one-switch form of the per-class table above, for the settings panel:
+#: "combine by rank instead of score", everywhere. It is applied as the *base*
+#: of the table, so the per-class ``LATTICEAI_FUSION_STRATEGY`` config — the
+#: more specific statement — still wins over it, and an install that touched
+#: neither is byte-identical to what it was.
+FUSION_RRF_ENV = "LATTICEAI_FUSION_RRF"
 FUSION_STRATEGIES = ("alpha", "rrf")
 DEFAULT_FUSION_STRATEGY: Dict[str, str] = dict.fromkeys(QUERY_CLASSES, "alpha")
+FUSION_RRF_GATE = FeatureGate(
+    FUSION_RRF_ENV,
+    default=False,
+    name="fusion_rrf",
+    detail="Search channels are combined by rank rather than by score.",
+)
 #: The smoothing constant from the original RRF paper (Cormack et al., 2009).
 #: Larger k flattens the curve, so rank 1 wins by less.
 DEFAULT_RRF_K = 60
@@ -195,8 +208,16 @@ def _env_strategy_overrides() -> Dict[str, str]:
 def fusion_strategy_table(
     overrides: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, str]:
-    """Full per-class strategy table: defaults ← env override ← caller."""
+    """Full per-class table: defaults ← simple switch ← env override ← caller.
+
+    The simple switch (:data:`FUSION_RRF_GATE`, the settings panel's "combine by
+    rank") sits *under* the per-class env config on purpose: a person who wrote
+    ``{"code": "alpha"}`` said something specific, and a single global flag must
+    not overrule it.
+    """
     table = dict(DEFAULT_FUSION_STRATEGY)
+    if FUSION_RRF_GATE.enabled():
+        table = dict.fromkeys(QUERY_CLASSES, "rrf")
     for source in (_env_strategy_overrides(), overrides or {}):
         for cls, value in source.items():
             if cls in table and str(value).lower() in FUSION_STRATEGIES:
@@ -243,6 +264,14 @@ def rrf_fuse(
 # failure mode is dilution: an unbounded expansion turns a precise answer into
 # a tour of the graph.
 GRAPH_EXPANSION_ENV = "LATTICEAI_GRAPH_EXPANSION"
+#: Resolved when asked so the settings panel can move it without a restart; the
+#: env parsing is the same set of words the hand-written check used.
+GRAPH_EXPANSION_GATE = FeatureGate(
+    GRAPH_EXPANSION_ENV,
+    default=False,
+    name="graph_expansion",
+    detail="Memories one link away from a hit are offered as extra candidates.",
+)
 DEFAULT_EXPANSION_SEEDS = 3
 DEFAULT_EXPANSION_CAP = 5
 #: Expanded candidates inherit a damped share of their seed's score: they are
@@ -251,9 +280,8 @@ EXPANSION_DECAY = 0.5
 
 
 def graph_expansion_enabled() -> bool:
-    """True when ``LATTICEAI_GRAPH_EXPANSION`` opts in (default: off)."""
-    raw = os.getenv(GRAPH_EXPANSION_ENV, "").strip().lower()
-    return raw in {"1", "true", "yes", "on"}
+    """True when the expansion gate opts in (default: off)."""
+    return GRAPH_EXPANSION_GATE.enabled()
 
 
 def expand_with_neighbors(
@@ -348,10 +376,13 @@ __all__ = [
     "DEFAULT_FUSION_WEIGHTS",
     "DEFAULT_RRF_K",
     "EXPANSION_DECAY",
+    "FUSION_RRF_ENV",
+    "FUSION_RRF_GATE",
     "FUSION_STRATEGIES",
     "FUSION_STRATEGY_ENV",
     "FUSION_WEIGHTS_ENV",
     "GRAPH_EXPANSION_ENV",
+    "GRAPH_EXPANSION_GATE",
     "QUERY_CLASSES",
     "classify_query",
     "expand_with_neighbors",

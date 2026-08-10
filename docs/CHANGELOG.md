@@ -4,6 +4,39 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.2.0] - 2026-08-11 — All Systems On
+
+### Changed
+- 모델 카탈로그 전수 최신화: HF API 무부하 검증(가중치 다운로드 0, 실로드
+  0) 후 추천 10종을 2025–2026 세대(Gemma 4 · Qwen3.5/3.6 · gpt-oss-20b ·
+  LFM2.5)로 재구성. Hub 소멸 2종·gated 3종·vllm 전용·구세대 제거(완전
+  삭제), 기존 다운로드 모델은 인식 전용 목록으로 보호. 검증기에서
+  `--deep`/`--test-load` 제거(무부하 원칙 구조화). 크기 오기(11.8→61.1GB)
+  등 부수 결함 8건 수정.
+- 빈 Brain이 가용 1차원만으로 100/excellent를 받던 건강 채점을 정직화
+  (측정 불가 차원은 사유와 함께 unavailable, 전무 시 등급 없음).
+
+### Added
+- Brain 홈 dock **기능 서랍**: opt-in 10종(멀티모달·비디오·브레인 네트워크
+  ·볼트 감시·사진 의미 검색·RRF·이웃 확장·자동 합성·배경 인덱싱·벡터
+  백엔드)의 서버 카탈로그 라이브 토글 — `GET/POST /api/features`,
+  FeatureGate 시임으로 재시작 없이 반영, 사용자>env>기본.
+- Interop 브릿지: Notion export · Git 히스토리 · 메일(.eml)/캘린더(.ics)
+  — 단일 인제스트 게이트+승인+dry_run(`/api/ingestion/interop`).
+- 서브그래프 공유 수신자 공개키 암호화(X25519 sealed box, ephemeral 키)
+  + `GET /api/knowledge-graph/share/recipient-key`.
+- 비디오 인제스트(ffmpeg 가드 키프레임 + .srt/.vtt, NodeType.VIDEO),
+  볼트 감시 모드, 일괄 리뷰 승인/기각, Self-Model 요약의 에이전트 루프
+  도달, 텍스트→이미지 의미 검색(`/api/search/image-query`).
+- 58행 증거 기반 기능 감사 문서 docs/FEATURE_AUDIT_v11.2.0.md.
+
+### Fixed
+- 오늘의 브리핑 건강 섹션 영구 공백(스키마 불일치), 클라우드 유래 지식이
+  리뷰 센터에 도달하지 않던 write-back 미배선(+auto_commit 정책 연결),
+  vector-freshness 세분화 미노출, 멀티모달 context_quality 신호 미배선,
+  `kgv2_edges`가 canonical 엣지 타입을 ''로 읽던 뷰(`COALESCE(NULLIF)`),
+  죽은 자동화 저신뢰 게이트, 사어 grok id(→grok-4.5).
+
 ## [11.1.0] - 2026-08-10 — Product Intelligence Layer
 
 ### Added

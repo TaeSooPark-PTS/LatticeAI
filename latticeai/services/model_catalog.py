@@ -94,64 +94,83 @@ _RAW_ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = _build_engine_model
 # are all defined; declared here so the public name exists for static readers.
 ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = {}
 
-# Historical aliases preserved (used by _recommended_with_engine_options and resolution).
-# These can be enriched later from registry if needed; kept verbatim for safety.
-MODEL_ENGINE_ALIASES = {
-    "gemma-4-12b-it-4bit": {
-        "local_mlx": "mlx-community/gemma-4-12b-it-4bit",
-        "ollama": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
-        "vllm": "google/gemma-4-12b-it",
-        "lmstudio": "ggml-org/gemma-4-12B-it-GGUF",
-        "llamacpp": "ggml-org/gemma-4-12B-it-GGUF",
+# Per-engine repo ids for the recommended catalog. Every repo below was resolved
+# through the HF API on 2026-08-10 and is stored in the Hub's canonical casing
+# (`google/gemma-4-12b-it` answers as `google/gemma-4-12B-it`; `ggml-org/
+# gemma-4-26b-a4b-it-GGUF` answers as `ggml-org/gemma-4-26B-A4B-it-GGUF`).
+# Lookups are lowercase, so each model is keyed by both its short name and its
+# full mlx repo id — see `_normalize_engine_entry` and `ModelResolution`.
+#
+# Removed in 11.2.0: `qwen3-vl-8b` and `llama-4-scout`. Their vllm/lmstudio
+# targets pointed at `meta-llama/Llama-4-Scout-17B-16E-Instruct`, which is
+# gated — the download could never succeed without Hub credentials.
+
+
+def _gguf_routes(mlx_repo: str, gguf_repo: str, hf_repo: str) -> Dict[str, str]:
+    """One model's engine map: MLX weights, a GGUF repo, and the upstream HF repo."""
+    return {
+        "local_mlx": mlx_repo,
+        "ollama": f"hf.co/{gguf_repo}:Q4_K_M",
+        "vllm": hf_repo,
+        "lmstudio": gguf_repo,
+        "llamacpp": gguf_repo,
+    }
+
+
+_ENGINE_ROUTES: Dict[str, Dict[str, str]] = {
+    "mlx-community/LFM2.5-2.6B-4bit": _gguf_routes(
+        "mlx-community/LFM2.5-2.6B-4bit", "LiquidAI/LFM2.5-2.6B-GGUF", "LiquidAI/LFM2.5-2.6B",
+    ),
+    "mlx-community/gemma-4-e2b-it-4bit": _gguf_routes(
+        "mlx-community/gemma-4-e2b-it-4bit", "ggml-org/gemma-4-E2B-it-GGUF", "google/gemma-4-E2B-it",
+    ),
+    "mlx-community/gemma-4-e4b-it-4bit": _gguf_routes(
+        "mlx-community/gemma-4-e4b-it-4bit", "ggml-org/gemma-4-E4B-it-GGUF", "google/gemma-4-E4B-it",
+    ),
+    "mlx-community/gemma-4-12B-it-4bit": _gguf_routes(
+        "mlx-community/gemma-4-12B-it-4bit", "ggml-org/gemma-4-12B-it-GGUF", "google/gemma-4-12B-it",
+    ),
+    "mlx-community/gemma-4-26b-a4b-it-4bit": _gguf_routes(
+        "mlx-community/gemma-4-26b-a4b-it-4bit", "ggml-org/gemma-4-26B-A4B-it-GGUF",
+        "google/gemma-4-26B-A4B-it",
+    ),
+    "mlx-community/gemma-4-31b-it-4bit": _gguf_routes(
+        "mlx-community/gemma-4-31b-it-4bit", "ggml-org/gemma-4-31B-it-GGUF", "google/gemma-4-31B-it",
+    ),
+    "mlx-community/Qwen3.6-27B-4bit": _gguf_routes(
+        "mlx-community/Qwen3.6-27B-4bit", "ggml-org/Qwen3.6-27B-GGUF", "Qwen/Qwen3.6-27B",
+    ),
+    "mlx-community/gpt-oss-20b-MXFP4-Q8": _gguf_routes(
+        "mlx-community/gpt-oss-20b-MXFP4-Q8", "ggml-org/gpt-oss-20b-GGUF", "openai/gpt-oss-20b",
+    ),
+    # No community GGUF build verified for these two, so they offer the MLX
+    # weights and the upstream repo only rather than a route that would 404.
+    "mlx-community/Qwen3.5-9B-MLX-4bit": {
+        "local_mlx": "mlx-community/Qwen3.5-9B-MLX-4bit",
+        "vllm": "Qwen/Qwen3.5-9B",
     },
-    "mlx-community/gemma-4-12b-it-4bit": {
-        "local_mlx": "mlx-community/gemma-4-12b-it-4bit",
-        "ollama": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
-        "vllm": "google/gemma-4-12b-it",
-        "lmstudio": "ggml-org/gemma-4-12B-it-GGUF",
-        "llamacpp": "ggml-org/gemma-4-12B-it-GGUF",
+    "mlx-community/Qwen3.6-35B-A3B-4bit": {
+        "local_mlx": "mlx-community/Qwen3.6-35B-A3B-4bit",
+        "vllm": "Qwen/Qwen3.6-35B-A3B",
     },
-    "gemma-4-26b-it-4bit": {
-        "local_mlx": "mlx-community/gemma-4-26b-a4b-it-4bit",
+}
+
+# Names people actually type that are not the repo's own short name. Kept
+# because a user who asks for "gemma-4-26b-it-4bit" means the A4B build — there
+# is no other Gemma 4 26B — and resolving that to nothing would be pedantry.
+_COMMON_MISNAMES: Dict[str, str] = {
+    "gemma-4-26b-it-4bit": "mlx-community/gemma-4-26b-a4b-it-4bit",
+}
+
+# Keyed by both the lowercase short name ("gemma-4-12b-it-4bit") and the
+# lowercase full repo id, because callers reach this map from both directions.
+MODEL_ENGINE_ALIASES: Dict[str, Dict[str, str]] = {
+    **{
+        key: routes
+        for repo, routes in _ENGINE_ROUTES.items()
+        for key in (repo.split("/")[-1].lower(), repo.lower())
     },
-    "mlx-community/gemma-4-26b-a4b-it-4bit": {
-        "local_mlx": "mlx-community/gemma-4-26b-a4b-it-4bit",
-    },
-    "gemma-4-31b-it-4bit": {
-        "local_mlx": "mlx-community/gemma-4-31b-it-4bit",
-        "ollama": "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M",
-        "vllm": "suitch/gemma-4-31B-it-4bit",
-        "lmstudio": "ggml-org/gemma-4-31B-it-GGUF",
-        "llamacpp": "ggml-org/gemma-4-31B-it-GGUF",
-    },
-    "suitch/gemma-4-31b-it-4bit": {
-        "local_mlx": "mlx-community/gemma-4-31b-it-4bit",
-        "ollama": "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M",
-        "vllm": "suitch/gemma-4-31B-it-4bit",
-        "lmstudio": "ggml-org/gemma-4-31B-it-GGUF",
-        "llamacpp": "ggml-org/gemma-4-31B-it-GGUF",
-    },
-    "mlx-community/gemma-4-31b-it-4bit": {
-        "local_mlx": "mlx-community/gemma-4-31b-it-4bit",
-        "ollama": "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M",
-        "vllm": "suitch/gemma-4-31B-it-4bit",
-        "lmstudio": "ggml-org/gemma-4-31B-it-GGUF",
-        "llamacpp": "ggml-org/gemma-4-31B-it-GGUF",
-    },
-    "qwen3-vl-8b": {
-        "local_mlx": "mlx-community/Qwen3-VL-8B-Instruct-4bit",
-        "ollama": "qwen3-vl:8b",
-        "vllm": "Qwen/Qwen3-VL-8B-Instruct",
-        "lmstudio": "Qwen/Qwen3-VL-8B-Instruct",
-        "llamacpp": "Qwen/Qwen3-VL-8B-Instruct-GGUF",
-    },
-    "llama-4-scout": {
-        "local_mlx": "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
-        "ollama": "hf.co/ggml-org/Llama-4-Scout-17B-16E-Instruct-GGUF:Q4_K_M",
-        "vllm": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-        "lmstudio": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-        "llamacpp": "ggml-org/Llama-4-Scout-17B-16E-Instruct-GGUF",
-    },
+    **{alias: _ENGINE_ROUTES[repo] for alias, repo in _COMMON_MISNAMES.items()},
 }
 
 # Also expose registry helpers directly from here for consumers who want the rich objects
@@ -181,7 +200,14 @@ def _model_family_version(model: Dict[str, Any]) -> Optional[tuple[str, tuple[in
             # Every pattern captures at least one decimal digit and no other
             # character but ``.``, so the parsed tuple is never empty — the
             # old ``if version:`` guard could not fire and is gone.
-            return family, _version_tuple(match.group(1))
+            #
+            # Compared at *major* granularity only (``[:1]``). The filter exists
+            # to hide superseded generations — Qwen 2.5 behind Qwen 3, Gemma 3
+            # behind Gemma 4 — not to pick a winner inside one generation.
+            # Comparing minors made Qwen3.5 9B (the mid VLM) vanish the moment
+            # Qwen3.6 27B joined the catalog, even though they fill different
+            # RAM tiers and ship side by side.
+            return family, _version_tuple(match.group(1))[:1]
     return None
 
 
@@ -202,16 +228,24 @@ def filter_lower_family_versions(models: List[Dict[str, Any]]) -> List[Dict[str,
     ]
 
 
-# ── 5.2.0 user-facing catalog assembly ────────────────────────────────────────
-# Legacy/text-only generations stay in the capability registry (for transparency
-# and HF verification) but must never be surfaced in the model picker. Anything
-# whose id contains one of these fragments is dropped from ENGINE_MODEL_CATALOG.
+# ── User-facing catalog assembly ──────────────────────────────────────────────
+# The capability registry already keeps superseded generations out of the
+# catalog by lifecycle (they live in its LEGACY list, recognised but never
+# offered). This blocklist is the second lock: a regression guard so a retired
+# generation cannot creep back into the model picker through a hand-edited
+# entry. Anything whose id contains one of these fragments is dropped from
+# ENGINE_MODEL_CATALOG.
+#
+# 11.2.0 removed ``gpt-oss`` from this list — GPT-OSS 20B is now a recommended
+# entry, not a retired one — and added the generations retired this release.
 _BLOCKED_CATALOG_FRAGMENTS = (
     "gemma-3", "gemma3", "gemma-2", "gemma2",
     "qwen2.5", "qwen-2.5", "qwen2-5",
+    "qwen3-vl", "qwen3vl",
     "llama-3", "llama3.2", "llama-3.2",
+    "llama-4", "llama4",
     "pixtral", "mistral",
-    "smollm", "gpt-oss", "phi-",
+    "smollm", "phi-", "moondream",
 )
 
 

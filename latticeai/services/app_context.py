@@ -76,6 +76,14 @@ class AppContext:
     workspace_graph: Optional[Callable[[], Any]] = None
     graph_stats: Optional[Callable[[], dict]] = None
 
+    # ── review center ─────────────────────────────────────────────────────
+    # ``ReviewQueueService``, reached through a provider like
+    # ``workspace_graph`` above: the queue is built in a later runtime phase
+    # than this context, so a value captured here would be ``None`` forever.
+    # Call it per request; ``None`` means no Review Center is wired (tests,
+    # headless helpers) and the callers stage nothing rather than writing.
+    review_queue: Optional[Callable[[], Any]] = None
+
     # ── workspace payload providers / skills ──────────────────────────────
     workspace_models: Optional[Callable[[], dict]] = None
     workspace_settings: Optional[Callable[[], dict]] = None

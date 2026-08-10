@@ -14,7 +14,7 @@ every capability is honestly ``None``.
 from __future__ import annotations
 
 import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from lattice_brain.ingestion import ALLOW_MULTIMODAL_ENV
 from lattice_brain.multimodal import MODALITY_IMAGE, MultimodalPorts
@@ -65,9 +65,33 @@ def build_multimodal_ports(
         captioner=vision_caption_port(captioner),
         vision_embedder=resolved.as_port(),
         transcriber=transcriber,
+        text_to_image_embedder=text_to_image_port(provider),
         vision_model_id=provider.model_id if provider is not None else "",
         vision_space=resolved.space,
     )
+
+
+def text_to_image_port(
+    provider: Any,
+) -> Optional[Callable[[str], List[float]]]:
+    """A *query-text* → image-space vector port, only from a shared-space model.
+
+    This is what lets a typed question reach a picture through the image index
+    instead of only through its OCR text. It exists as its own port precisely
+    because most vision models cannot do it: a CLIP image vector and a BGE text
+    vector are not comparable, and `VisionEmbeddingProvider.embed_batch` refuses
+    outright unless the model declares a shared space. An image-space model
+    therefore yields ``None`` here — the honest answer, and the one the search
+    surface reports rather than silently ranking on a meaningless number.
+    """
+    if provider is None or not getattr(provider, "shares_text_space", False):
+        return None
+
+    def _embed(query: str) -> List[float]:
+        vectors = provider.embed_batch([str(query or "")])
+        return [float(value) for value in (vectors[0] if vectors else [])]
+
+    return _embed
 
 
 def describe_multimodal(ports: MultimodalPorts) -> Dict[str, Any]:
@@ -84,4 +108,5 @@ __all__ = [
     "build_multimodal_ports",
     "describe_multimodal",
     "multimodal_enabled",
+    "text_to_image_port",
 ]

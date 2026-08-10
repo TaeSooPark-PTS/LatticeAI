@@ -25,6 +25,11 @@ class HybridSearchRequest(SearchRequest):
     vector_limit: int = 30
     graph_limit: int = 30
     weights: Optional[Dict[str, float]] = None
+    #: Opt in to scoring this text query against the *image* index too
+    #: (v11.2.0). Only possible when a shared-space vision model is
+    #: configured; when it is not, the response says so instead of quietly
+    #: returning the text-only ranking as if fusion had happened.
+    image_fusion: bool = False
 
 
 class GraphNodeRequest(BaseModel):
@@ -106,16 +111,25 @@ def create_search_router(
                 vector_limit=req.vector_limit,
                 graph_limit=req.graph_limit,
                 weights=req.weights or DEFAULT_HYBRID_WEIGHTS,
+                image_fusion=req.image_fusion,
             )
         except ValueError as exc:
             _raise_graph_error(exc)
 
     @router.get("/api/search/hybrid")
-    async def hybrid_search_get(q: str, request: Request, limit: int = 30) -> Dict[str, Any]:
+    async def hybrid_search_get(
+        q: str, request: Request, limit: int = 30, image_fusion: bool = False,
+    ) -> Dict[str, Any]:
         try:
-            return _guarded(request).hybrid_search(q, limit=limit)
+            return _guarded(request).hybrid_search(q, limit=limit, image_fusion=image_fusion)
         except ValueError as exc:
             _raise_graph_error(exc)
+
+    @router.get("/api/search/image-query")
+    async def image_query_status(request: Request) -> Dict[str, Any]:
+        """Whether a typed question can reach the image index on this install."""
+        require_user(request)
+        return service.image_query_status()
 
     @router.post("/api/search/keyword")
     async def keyword_search(req: SearchRequest, request: Request) -> Dict[str, Any]:

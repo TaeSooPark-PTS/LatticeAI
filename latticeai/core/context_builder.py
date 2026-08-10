@@ -26,7 +26,7 @@ import re
 from typing import Any, Dict, List
 
 from lattice_brain.context import approx_tokens
-from lattice_brain.graph.retrieval import context_quality_signal
+from lattice_brain.graph.retrieval import context_quality_signal, multimodal_signal
 from lattice_brain.self_model import DEFAULT_SUMMARY_TOKENS, summary_for_prompt
 
 _CLEAN_RE = re.compile(r"\s+")
@@ -250,8 +250,11 @@ def retrieve_context_for_generation(
             "graph_edges": len(hop_data.get("edges", [])),
             "budget_trimmed": trimmed,
         },
-        # Same honest signal chat reports for the same Brain.
-        "context_quality": context_quality_signal("hybrid", len(results)),
+        # Same honest signal chat reports for the same Brain — including the
+        # multimodal key when the document's context really rests on pictures.
+        "context_quality": context_quality_signal(
+            "hybrid", len(results), multimodal=multimodal_signal(results)
+        ),
         "trace": {
             "budget_approx_tokens": budget,
             "used_approx_tokens": approx_tokens(assembled),

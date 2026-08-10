@@ -32,7 +32,11 @@ OPENAI_COMPATIBLE_PROVIDERS = {
     "xai": {
         "env_key": "XAI_API_KEY",
         "base_url": "https://api.x.ai/v1",
-        "default_model": "grok-beta",
+        # ``grok-beta`` was xAI's 2024 preview id and has been decommissioned;
+        # a request naming it now 404s at the provider. ``grok-4.5`` is the
+        # current flagship on api.x.ai and is multimodal, which is also why the
+        # separate ``grok-vision-beta`` row below is gone rather than renamed.
+        "default_model": "grok-4.5",
     },
     "ollama": {
         "env_key": "OLLAMA_API_KEY",
@@ -83,7 +87,7 @@ PROVIDER_MODEL_CATALOG = {
         {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
         {"id": "qwen/qwen3-vl-235b-a22b-instruct", "name": "Qwen3-VL 235B A22B via OpenRouter", "family": "Qwen"},
         {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B via OpenRouter", "family": "Gemma"},
-        {"id": "x-ai/grok-2", "name": "Grok 2 via OpenRouter", "family": "Grok"},
+        {"id": "x-ai/grok-4.5", "name": "Grok 4.5 via OpenRouter", "family": "Grok"},
         {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout via OpenRouter", "family": "Llama"},
         {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash via OpenRouter", "family": "Gemini"},
     ],
@@ -96,8 +100,12 @@ PROVIDER_MODEL_CATALOG = {
         {"id": "meta-llama/Llama-4-Scout-17B-16E-Instruct", "name": "Llama 4 Scout", "family": "Llama"},
     ],
     "xai": [
-        {"id": "grok-beta", "name": "Grok Beta", "family": "Grok"},
-        {"id": "grok-vision-beta", "name": "Grok Vision Beta", "family": "Grok"},
+        # One current generation only, per MODEL_POLICY's "do not keep old
+        # same-family generations" rule. The retired preview ids
+        # (grok-beta / grok-vision-beta) are not carried as fallbacks: a model
+        # the provider no longer serves is not compatibility, it is a 404 the
+        # user has to discover for themselves.
+        {"id": "grok-4.5", "name": "Grok 4.5", "family": "Grok"},
     ],
 }
 

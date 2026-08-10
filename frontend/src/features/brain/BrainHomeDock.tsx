@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { ChartSpline, History, Network, X } from "lucide-react";
+import { ChartSpline, History, Network, SlidersHorizontal, X } from "lucide-react";
 
 import type { BrainState } from "@/components/LivingBrain";
 import { t, type Language } from "@/i18n";
@@ -21,6 +21,7 @@ import type {
   MemoryFragment,
 } from "./types";
 import { BrainCarePanel } from "./BrainCarePanel";
+import { BrainFeaturesPanel } from "./BrainFeaturesPanel";
 import { BrainIntelligencePanel } from "./BrainIntelligencePanel";
 import { KnowledgeGardenPanel } from "./KnowledgeGarden";
 import { BrainMemoryAutomation } from "./BrainKnowledgeFlow";
@@ -35,18 +36,20 @@ import {
   PastConversationsPanel,
 } from "./HomePanels";
 
-export type DockTab = "conversations" | "stats" | "map";
+export type DockTab = "conversations" | "stats" | "map" | "features";
 
 const TAB_LABEL_KEY: Record<DockTab, string> = {
   conversations: "brain.dock.tab.conversations",
   stats: "brain.dock.tab.stats",
   map: "brain.dock.tab.map",
+  features: "brain.dock.tab.features",
 };
 
 const TAB_ICON: Record<DockTab, typeof History> = {
   conversations: History,
   stats: ChartSpline,
   map: Network,
+  features: SlidersHorizontal,
 };
 
 /**
@@ -122,11 +125,14 @@ export function BrainHomeDock({
   const openTab = (next: DockTab) => {
     // The stats and map panels read from queries the proof hook prefetches on
     // demand — same contract the old insights shelf honoured with onToggle.
-    if (next !== "conversations") onRequestDetails();
+    // 기능 is not one of them: the switchboard reads `/api/features` and
+    // nothing else, so prefetching the whole proof bundle for it would be work
+    // nobody asked for.
+    if (next !== "conversations" && next !== "features") onRequestDetails();
     setTab((current) => (current === next && open ? null : next));
   };
 
-  const tabs: DockTab[] = ["conversations", "stats", "map"];
+  const tabs: DockTab[] = ["conversations", "stats", "map", "features"];
 
   return (
     <div className="brain-home-dock" data-testid="brain-home-dock">
@@ -264,6 +270,8 @@ export function BrainHomeDock({
                   </button>
                 </>
               ) : null}
+
+              {tab === "features" ? <BrainFeaturesPanel language={language} /> : null}
             </div>
           </aside>
         </div>,

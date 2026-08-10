@@ -50,19 +50,25 @@ def _clean_env(monkeypatch):
 
 
 # ── the default install ──────────────────────────────────────────────────────
-def test_by_default_nothing_is_enabled_and_nothing_is_claimed():
+def test_by_default_nothing_is_enabled_and_nothing_is_claimed(monkeypatch):
+    # ffmpeg belongs to the machine, not the config, so it is pinned absent —
+    # otherwise this assertion would read differently on a host that has it.
+    monkeypatch.setattr("lattice_brain.multimodal._which_ffmpeg", lambda: None)
     ports = build_multimodal_ports()
 
     assert multimodal_enabled() is False
     assert ports.captioner is None
     assert ports.vision_embedder is None
     assert ports.transcriber is None
+    assert ports.text_to_image_embedder is None
     assert ports.vision_model_id == ""
     assert describe_multimodal(ports) == {
         "enabled": False,
         "caption": False,
         "vision_embedding": False,
         "transcription": False,
+        "keyframes": False,
+        "text_to_image_query": False,
         "vision_model_id": "",
         "vision_space": "image",
     }

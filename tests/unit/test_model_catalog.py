@@ -34,7 +34,11 @@ def test_catalog_entries_have_required_keys():
                 assert key in model, f"{engine} entry missing {key}: {model}"
             for key in ("source_country", "source_company", "execution_method", "internet_requirement", "modality"):
                 assert model.get(key), f"{engine} entry missing source policy {key}: {model}"
-            assert model["modality"] == "multimodal"
+            # Text-only entries are catalogued too (the ultralight and
+            # general-purpose tiers), so each row must state which it is.
+            assert model["modality"] in {"multimodal", "text"}
+            assert model["architecture"], f"{engine} entry missing architecture: {model}"
+            assert model["lifecycle"] == "recommended"
 
 
 def test_catalog_ids_unique_per_engine():
@@ -52,23 +56,22 @@ def test_filter_lower_family_versions_never_grows_and_is_idempotent():
         assert [m["id"] for m in fn(once)] == [m["id"] for m in once]
 
 
-def test_catalog_omits_text_only_and_legacy_generation_models():
+def test_catalog_omits_superseded_generation_models():
+    """Retired generations must not reach the picker through any engine.
+
+    ``gpt-oss`` is deliberately *not* in this list any more: GPT-OSS 20B is a
+    current recommended entry, and the old list banned it as "text-only".
+    """
     all_ids = {
         str(model["id"]).lower()
         for models in model_catalog.ENGINE_MODEL_CATALOG.values()
         for model in models
     }
     blocked_fragments = (
-        "gemma-3",
-        "gemma3",
-        "gemma-2",
-        "smollm",
-        "qwen2.5",
-        "gpt-oss",
-        "phi-",
-        "mistral",
-        "deepseek",
-        "llama-3",
+        "gemma-3", "gemma3", "gemma-2",
+        "qwen2.5", "qwen3-vl",
+        "llama-3", "llama-4", "llama4",
+        "smollm", "phi-", "mistral", "pixtral", "moondream", "deepseek",
     )
     for fragment in blocked_fragments:
         assert not any(fragment in model_id for model_id in all_ids), fragment

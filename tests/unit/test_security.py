@@ -85,11 +85,12 @@ def test_model_catalog_hides_lower_family_versions_when_newer_exists():
     ollama_models = filter_lower_family_versions(ENGINE_MODEL_CATALOG["ollama"])
     ollama_ids = {item["id"] for item in ollama_models}
     assert "ollama:hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M" in ollama_ids
-    assert not any("gemma3" in item.lower() or "gpt-oss" in item.lower() for item in ollama_ids)
+    assert not any("gemma3" in item.lower() or "qwen3-vl" in item.lower() for item in ollama_ids)
 
 
 def test_model_aliases_resolve_to_engine_loadable_ids():
-    assert normalize_local_model_request("gemma-4-12b-it-4bit", "local_mlx") == "mlx-community/gemma-4-12b-it-4bit"
+    # Lookup folds case; the resolved id is the Hub's canonical one.
+    assert normalize_local_model_request("gemma-4-12b-it-4bit", "local_mlx") == "mlx-community/gemma-4-12B-it-4bit"
     assert normalize_local_model_request("gemma-4-12b-it-4bit", "ollama") == "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
     assert normalize_local_model_request("gemma-4-31b-it-4bit", "llamacpp") == "llamacpp:ggml-org/gemma-4-31B-it-GGUF"
 

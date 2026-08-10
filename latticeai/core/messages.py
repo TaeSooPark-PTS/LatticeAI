@@ -307,6 +307,31 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "'{status}' 상태의 검토 항목은 승인할 수 없습니다.",
         "en": "A review item in status '{status}' cannot be approved.",
     },
+    "review.bulk_ids_required": {
+        "ko": "한꺼번에 처리할 검토 항목을 하나 이상 골라 주세요.",
+        "en": "Choose at least one review item to act on.",
+    },
+    "review.bulk_too_many": {
+        "ko": "한 번에 최대 {cap}개까지 처리할 수 있습니다.",
+        "en": "At most {cap} items can be handled in one request.",
+    },
+    # ── interop bridges (Notion export / git / mail / calendar) ──────────
+    "ingestion.interop_path_required": {
+        "ko": "불러올 파일이나 폴더 경로가 필요합니다.",
+        "en": "A file or folder path to read is required.",
+    },
+    "ingestion.interop_unknown_source": {
+        "ko": "알 수 없는 연동 종류입니다: {source}",
+        "en": "Unknown interop source: {source}",
+    },
+    "ingestion.vault_watch_unavailable": {
+        "ko": "보관함 자동 확인 기능을 사용할 수 없습니다.",
+        "en": "Vault watch is unavailable.",
+    },
+    "ingestion.vault_watch_disabled": {
+        "ko": "보관함 자동 확인은 기본으로 꺼져 있습니다. 설정에서 켜야 사용할 수 있습니다.",
+        "en": "Vault watch is off by default; turn it on in settings to use it.",
+    },
     # ── projects ────────────────────────────────────────────────────────
     "project.not_found": {
         "ko": "프로젝트를 찾을 수 없습니다.",
@@ -316,6 +341,124 @@ MESSAGES: Dict[str, Dict[str, str]] = {
     "boundary.policy_not_configured": {
         "ko": "혼합 검색 정책 서비스가 설정되지 않았습니다.",
         "en": "The hybrid policy service is not configured.",
+    },
+    # ── feature toggles ─────────────────────────────────────────────────
+    # The switchboard renders from the server (see
+    # ``latticeai/services/feature_toggles.py``), so every label and one-line
+    # explanation a person reads lives here. The rule for the summaries: say
+    # what turning it *on* does, in the words someone who never read the
+    # environment-variable docs would use.
+    "features.note": {
+        "ko": "모두 지금 바로 적용됩니다. 다시 시작하지 않아도 됩니다.",
+        "en": "Every switch here takes effect right away — no restart needed.",
+    },
+    "features.unknown": {
+        "ko": "그런 기능은 없습니다: {feature}",
+        "en": "There is no such feature: {feature}",
+    },
+    "features.invalid_value": {
+        "ko": "이 기능에 쓸 수 없는 값입니다: {value}",
+        "en": "That is not a value this feature can take: {value}",
+    },
+    "features.choice.install_required": {
+        "ko": "설치 필요 — {reason}",
+        "en": "Install required — {reason}",
+    },
+    "features.allow_multimodal.label": {
+        "ko": "사진·녹음도 기억하기",
+        "en": "Remember pictures and recordings",
+    },
+    "features.allow_multimodal.summary": {
+        "ko": "폴더를 읽을 때 글뿐 아니라 사진과 녹음도 함께 저장합니다.",
+        "en": "A folder scan stores pictures and recordings too, not just text.",
+    },
+    "features.video_ingest.label": {
+        "ko": "영상도 함께",
+        "en": "Include videos",
+    },
+    "features.video_ingest.summary": {
+        "ko": "사진·녹음을 켠 상태에서, 영상은 장면과 자막으로 저장합니다.",
+        "en": "With the switch above on, videos are stored as keyframes and subtitles.",
+    },
+    "features.vault_watch.label": {
+        "ko": "노트 보관함 지켜보기",
+        "en": "Watch my notes vault",
+    },
+    "features.vault_watch.summary": {
+        "ko": "밖에 있는 노트 보관함이 바뀌면 알아서 다시 읽어옵니다.",
+        "en": "When an outside notes vault changes, it is re-read on its own.",
+    },
+    "features.brain_network.label": {
+        "ko": "골라서 나누기",
+        "en": "Share selected knowledge",
+    },
+    "features.brain_network.summary": {
+        "ko": "내가 고른 기억 묶음만 다른 기기로 내보내고 받아올 수 있습니다.",
+        "en": "Lets you export a hand-picked slice of memory to another device, and receive one.",
+    },
+    "features.brain_network.caution": {
+        "ko": "이 기능만 기억을 이 컴퓨터 밖으로 내보냅니다. 받은 내용은 바로 합쳐지지 않고 검토함으로 갑니다.",
+        "en": "This is the one switch that sends memory off this computer. Anything received waits in the review inbox instead of merging.",
+    },
+    "features.synthesis.label": {
+        "ko": "스스로 정리하기",
+        "en": "Tidy up on its own",
+    },
+    "features.synthesis.summary": {
+        "ko": "자료가 쌓이면 알아서 훑어보고, 고칠 거리를 검토함에 제안합니다.",
+        "en": "As material piles up, the Brain reviews it and proposes tidy-ups in the review inbox.",
+    },
+    "features.auto_vector_index.label": {
+        "ko": "넣자마자 검색 준비",
+        "en": "Make new material searchable at once",
+    },
+    "features.auto_vector_index.summary": {
+        "ko": "새 자료를 넣으면 바로 의미 검색까지 준비합니다. 끄면 나중에 한 번에 만듭니다.",
+        "en": "New material is prepared for meaning-based search immediately; off means you rebuild later.",
+    },
+    "features.auto_late_fusion.label": {
+        "ko": "글로 사진 찾기",
+        "en": "Find pictures by typing",
+    },
+    "features.auto_late_fusion.summary": {
+        "ko": "글로 물어봐도 사진까지 함께 찾습니다. 사진을 읽는 모델이 있어야 켜집니다.",
+        "en": "A typed question also searches pictures — needs a vision model that shares the same space.",
+    },
+    "features.fusion_rrf.label": {
+        "ko": "검색 결과 합치는 방식 바꾸기",
+        "en": "Blend search results by rank",
+    },
+    "features.fusion_rrf.summary": {
+        "ko": "점수 대신 순위로 합칩니다. 검색 채널마다 점수 크기가 달라도 흔들리지 않습니다.",
+        "en": "Combines channels by position instead of score, so mismatched score scales stop skewing results.",
+    },
+    "features.graph_expansion.label": {
+        "ko": "옆에 있는 기억까지 보기",
+        "en": "Look at neighbouring memories",
+    },
+    "features.graph_expansion.summary": {
+        "ko": "찾은 기억과 바로 이어진 기억도 후보로 넣습니다. 답은 넓어지고 조금 흐려집니다.",
+        "en": "Adds memories one link away from a hit as candidates — wider answers, slightly less focused.",
+    },
+    "features.vector_backend.label": {
+        "ko": "의미 검색 방식",
+        "en": "Meaning-search engine",
+    },
+    "features.vector_backend.summary": {
+        "ko": "빠르기와 정확함 사이에서 고릅니다. 기본값은 전부 훑어보는 정확한 방식입니다.",
+        "en": "Trade speed against exactness. The default compares everything and is exact.",
+    },
+    "features.vector_backend.choice.brute": {
+        "ko": "전부 비교 (정확)",
+        "en": "Compare everything (exact)",
+    },
+    "features.vector_backend.choice.quantized": {
+        "ko": "간추려 비교 (빠름)",
+        "en": "Compare compressed (faster)",
+    },
+    "features.vector_backend.choice.hnsw": {
+        "ko": "근사 검색 (가장 빠름)",
+        "en": "Approximate search (fastest)",
     },
     # ── models ──────────────────────────────────────────────────────────
     "models.other_user_credentials": {

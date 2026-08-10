@@ -138,7 +138,7 @@ class ModelRuntimeState:
     ALLOW_PLAINTEXT_API_KEYS: bool = False
     CORS_ALLOW_NETWORK: bool = False
     PUBLIC_MODEL: str = "openai:gpt-4o-mini"
-    LOCAL_MODEL: str = "mlx-community/gemma-4-12b-it-4bit"
+    LOCAL_MODEL: str = "mlx-community/gemma-4-12B-it-4bit"
     IS_PUBLIC_MODE: bool = False
     keyring: Any = None
     get_current_user: Callable[[Any], Optional[str]] = _missing_current_user

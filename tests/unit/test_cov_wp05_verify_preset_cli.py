@@ -46,7 +46,7 @@ def _rec(runtime: str = "ollama", backend: str = "cpu") -> auto_setup.Recommenda
     return auto_setup.Recommendation(
         runtime=runtime,
         backend=backend,
-        model_id="Qwen/Qwen3-VL-4B-Instruct",
+        model_id="mlx-community/LFM2.5-2.6B-4bit",
         quantization="q4_K_M",
         rationale=["fixture"],
     )
@@ -196,10 +196,10 @@ def test_run_all_returns_every_stage(monkeypatch: pytest.MonkeyPatch) -> None:
     assert out["install"] is None
     assert out["probe"]["score"] == prof.score()
     assert out["recommend"]["runtime"] == "ollama"
-    assert out["plan"]["steps"][0]["name"] == "weights:mlx-community/gemma-4-12b-it-4bit"
+    assert out["plan"]["steps"][0]["name"] == "weights:mlx-community/gemma-4-12B-it-4bit"
     assert out["plan"]["confirmation_token"]
     assert out["verify"]["checks"][0]["label"] == "Python 3.11+"
-    assert out["preset"]["model"]["id"] == "mlx-community/gemma-4-12b-it-4bit"
+    assert out["preset"]["model"]["id"] == "mlx-community/gemma-4-12B-it-4bit"
 
 
 def test_run_all_applies_install_with_matching_token(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -271,7 +271,7 @@ def test_main_plan_dry_run_and_apply(monkeypatch: pytest.MonkeyPatch, capsys) ->
     applied = json.loads(capsys.readouterr().out)
     assert applied["install"] == [{"name": "weights", "returncode": 0}]
     assert seen == {
-        "steps": ["weights:mlx-community/gemma-4-12b-it-4bit"],
+        "steps": ["weights:mlx-community/gemma-4-12B-it-4bit"],
         "confirm": True,
         "token": "tok-123",
     }

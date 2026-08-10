@@ -1,25 +1,48 @@
 #!/usr/bin/env python3
-"""
-Automated HF verification script for Lattice AI 5.2.0 Model Capability Registry.
+"""Verify the Lattice AI model capability registry against the Hugging Face API.
 
-Usage (no heavy deps):
-  python3 scripts/verify_hf_model_registry.py                 # light API metadata only
-  python3 scripts/verify_hf_model_registry.py --deep          # + try light config+tokenizer fetch (needs hf_hub or transformers)
-  python3 scripts/verify_hf_model_registry.py --test-load     # for *very small* models: attempt real from_pretrained (config+tokenizer only, no full weights if possible). Warns for large.
+Usage:
+  python3 scripts/verify_hf_model_registry.py
+  python3 scripts/verify_hf_model_registry.py --out verification_report.json
 
-Behavior:
-- Never blindly downloads full weights for large models.
-- Uses public HF REST API (no token) for existence, pipeline, tags, likes, lastModified, siblings summary.
-- For deep: uses huggingface_hub snapshot_download with allow_patterns=["config.json","tokenizer*.json","*.model"] + max 50MB or specific small files only. Falls back gracefully.
-- For --test-load on practical sizes (<~4GB display): imports and calls AutoConfig.from_pretrained + AutoTokenizer (trust_remote_code=False by default).
-- Emits:
-  * console table
-  * verification_report.json (timestamped + summary)
-  * Suggested Python snippet to copy verified flags back into model_capability_registry.py (if desired for static pinning)
+What it does
+------------
+For every entry in the registry (recommended *and* recognised-only) it asks the
+public HF REST API for the repo metadata and its file tree, then records:
 
-Large model explicit limitation: entries >12GB list "LOCAL_LOAD_LIMITED" and skip heavy tests.
+* whether the repo exists and is reachable **without credentials**
+* the Hub's canonical id, so a case drift in our catalog is caught
+  (``mlx-community/gemma-4-12b-it-4bit`` answers as ``…-12B-it-4bit``)
+* the ``gated`` flag — a gated repo cannot be downloaded by our users
+* ``library_name`` / tags, the config ``model_type``, downloads, likes,
+  ``lastModified``
+* the sibling files: ``config.json``, at least one ``.safetensors`` shard, and a
+  tokenizer file — plus the exact byte sum of every sibling, which is compared
+  against the ``size`` / ``download_size_gb`` recorded in the registry.
 
-Exit code: 0 on all expected present, 1 if critical verified models are missing.
+**It never downloads weights and never loads a model.** There is deliberately no
+flag that could: the only network calls are two JSON GETs per repo. Verifying a
+catalog must not cost the person running it a 20GB download.
+
+The loadability verdict — and what it is *not*
+----------------------------------------------
+"Can this model actually load?" is answered **statically**, from three signals:
+
+  (a) the repo declares the MLX library (``library_name == "mlx"`` or an ``mlx``
+      tag), so an MLX-format conversion exists;
+  (b) the config architecture (``model_type``) is in SUPPORTED_MLX_ARCHITECTURES
+      below, i.e. a loader for it shipped in mlx-lm / mlx-vlm; and
+  (c) the community has downloaded it — a repo nobody has ever pulled is not
+      evidence of anything.
+
+**This is not a load test.** It cannot detect a corrupt shard, a quantisation
+the installed mlx build rejects, a tokenizer mismatch, or an mlx-vlm version
+older than the architecture. A ``loadable`` verdict here means "nothing in the
+published metadata says this cannot load", not "this loaded". The only authority
+on a real load remains the loader plus the smoke test on the user's own machine.
+
+Exit code: 0 when every recommended entry is reachable, ungated, correctly cased
+and statically loadable; 1 otherwise.
 """
 
 from __future__ import annotations
@@ -27,12 +50,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Add repo root so we can import the registry directly
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -40,264 +62,277 @@ sys.path.insert(0, str(REPO_ROOT))
 
 try:
     from latticeai.services.model_capability_registry import (
+        RECOMMENDED,
         ModelCapability,
         get_all_capabilities,
     )
-except Exception as e:
+except Exception as e:  # pragma: no cover - import guard for standalone runs
     print("ERROR: Could not import model_capability_registry:", e)
     sys.exit(2)
 
 
 HF_API = "https://huggingface.co/api/models/{repo}"
-HF_FILES = "https://huggingface.co/api/models/{repo}/tree/main"  # for sibling light check
+HF_TREE = "https://huggingface.co/api/models/{repo}/tree/main?recursive=true"
+
+# Architectures with a loader in the MLX stack, as published by the projects
+# themselves. Source (checked 2026-08-10):
+#   mlx-lm   — https://github.com/ml-explore/mlx-lm/tree/main/mlx_lm/models
+#   mlx-vlm  — https://github.com/Blaizzy/mlx-vlm/tree/main/mlx_vlm/models
+# The module basename in those directories *is* the HF config ``model_type``,
+# which is why this can be matched exactly rather than guessed. Entries here are
+# limited to the architectures this registry actually ships or recognises; it is
+# not a mirror of the full upstream list.
+SUPPORTED_MLX_ARCHITECTURES: Dict[str, str] = {
+    # vision-language loaders (mlx-vlm)
+    "gemma4": "mlx-vlm",
+    "gemma4_unified": "mlx-vlm",
+    "gemma3": "mlx-vlm",
+    "qwen3_5": "mlx-vlm",
+    "qwen3_5_moe": "mlx-vlm",
+    "qwen3_vl": "mlx-vlm",
+    "qwen3_vl_moe": "mlx-vlm",
+    "qwen2_5_vl": "mlx-vlm",
+    "mllama": "mlx-vlm",
+    "llama4": "mlx-vlm",
+    # text loaders (mlx-lm)
+    "gpt_oss": "mlx-lm",
+    "lfm2": "mlx-lm",
+    "llama": "mlx-lm",
+    "qwen3": "mlx-lm",
+}
+
+#: Below this many all-time downloads we refuse to call an entry proven by the
+#: community. It is a weak signal on purpose — it only ever *downgrades* a
+#: verdict, it never promotes one.
+MIN_COMMUNITY_DOWNLOADS = 100
+
+VERDICT_LOADABLE = "loadable_static"
+VERDICT_NEEDS_REVIEW = "needs_review"
+VERDICT_UNAVAILABLE = "unavailable"
+
+LIMITATIONS = [
+    "Static verdict only: no weights were downloaded and no model was loaded.",
+    "A 'loadable_static' verdict means the published metadata contains nothing "
+    "that rules out a load — not that a load was observed.",
+    "It cannot see a corrupt shard, an incompatible quantisation, a tokenizer "
+    "mismatch, or an installed mlx-vlm older than the architecture.",
+    "Anonymous requests only: a repo that needs credentials is reported as "
+    "unavailable, because that is what it is for our users.",
+    "The loader plus the on-device smoke test remain the only authority on "
+    "whether a model really runs.",
+]
 
 
-def _http_get(url: str, timeout: float = 20.0) -> Optional[Dict[str, Any]]:
-    req = urllib.request.Request(url, headers={"User-Agent": "LatticeAI-5.2-verifier/1.0"})
+def _http_get(url: str, timeout: float = 20.0) -> Tuple[Optional[Any], Optional[int]]:
+    """GET a JSON document. Returns ``(payload, http_status)``; payload is None on failure."""
+    req = urllib.request.Request(url, headers={"User-Agent": "LatticeAI-model-registry-verifier/2.0"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
-            if not raw.strip():
-                return {}
-            return json.loads(raw)
+            return (json.loads(raw) if raw.strip() else {}), int(resp.status)
     except urllib.error.HTTPError as e:
-        if e.code == 404:
-            return None
-        print(f"  HTTP {e.code} for {url}")
-        return None
+        # 404 = gone. 401 = the Hub's answer for "gone or private" to an
+        # anonymous client; either way our users cannot download it.
+        return None, int(e.code)
     except Exception as e:
-        print(f"  Net error {url}: {type(e).__name__}")
-        return None
+        print(f"  net error {url}: {type(e).__name__}")
+        return None, None
 
 
-def verify_one_light(cap: ModelCapability) -> Dict[str, Any]:
-    """Lightweight only: API model_info + tree summary (no file content)."""
+def _mlx_signal(info: Dict[str, Any]) -> bool:
+    """True when the repo advertises MLX-format weights."""
+    tags = [str(t).lower() for t in (info.get("tags") or [])]
+    return str(info.get("library_name") or "").lower() == "mlx" or "mlx" in tags
+
+
+def _architecture(info: Dict[str, Any]) -> str:
+    config = info.get("config") or {}
+    return str(config.get("model_type") or "").strip().lower()
+
+
+def _siblings(repo: str) -> Tuple[List[Dict[str, Any]], Optional[int]]:
+    tree, status = _http_get(HF_TREE.format(repo=repo))
+    return (tree if isinstance(tree, list) else []), status
+
+
+def verify_one(cap: ModelCapability) -> Dict[str, Any]:
+    """Measure one registry entry against the Hub. Metadata requests only."""
     repo = cap.hf_repo_id
     result: Dict[str, Any] = {
         "id": cap.id,
         "hf_repo_id": repo,
+        "lifecycle": cap.lifecycle,
         "family": cap.family,
-        "size": cap.size,
         "modality": cap.modality,
+        "registry_size": cap.size,
+        "registry_architecture": cap.architecture,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
         "hf_exists": False,
+        "http_status": None,
+        "canonical_id": None,
+        "canonical_case_matches": None,
+        "gated": None,
+        "library_name": None,
+        "tags_sample": [],
         "pipeline_tag": None,
+        "architecture": None,
+        "architecture_matches_registry": None,
+        "architecture_supported_by": None,
+        "downloads": None,
         "likes": None,
         "lastModified": None,
-        "license": None,
-        "has_config_hint": False,
-        "has_tokenizer_hint": False,
-        "has_weights_hint": False,
-        "tags_sample": [],
+        "has_config": False,
+        "has_tokenizer": False,
+        "safetensors_count": 0,
+        "measured_size_gb": None,
+        "registry_size_gb": cap.download_size_gb,
+        "size_delta_gb": None,
+        "mlx_signal": False,
+        "verdict": VERDICT_UNAVAILABLE,
+        "reasons": [],
         "notes": "",
-        "checked_at": datetime.now(timezone.utc).isoformat(),
     }
+    reasons: List[str] = result["reasons"]
 
-    info = _http_get(HF_API.format(repo=repo))
+    info, status = _http_get(HF_API.format(repo=repo))
+    result["http_status"] = status
     if info is None:
-        result["notes"] = "404 or unreachable on HF API"
+        reasons.append(f"repo not reachable anonymously (HTTP {status})")
+        result["notes"] = "404/401 on the HF API — cannot be downloaded without credentials."
         return result
 
     result["hf_exists"] = True
+    result["canonical_id"] = info.get("id")
+    result["canonical_case_matches"] = info.get("id") == repo
+    result["gated"] = info.get("gated")
+    result["library_name"] = info.get("library_name")
+    result["tags_sample"] = [str(t) for t in (info.get("tags") or [])][:8]
     result["pipeline_tag"] = info.get("pipeline_tag")
+    result["downloads"] = info.get("downloads")
     result["likes"] = info.get("likes")
     result["lastModified"] = info.get("lastModified")
-    result["license"] = (info.get("author") or "") + " / " + str(info.get("license", info.get("tags", ["?"])[0] if info.get("tags") else "?"))
-    tags = info.get("tags") or []
-    result["tags_sample"] = tags[:6]
 
-    # Siblings via /tree (light, shows filenames + simple types; size omitted in some)
-    files = _http_get(HF_FILES.format(repo=repo)) or []
-    names = []
-    if isinstance(files, list):
-        for f in files:
-            if isinstance(f, dict):
-                n = str(f.get("path") or f.get("rfilename") or "").strip()
-                if n:
-                    names.append(n.lower())
+    arch = _architecture(info)
+    result["architecture"] = arch or None
+    result["architecture_matches_registry"] = bool(arch) and arch == cap.architecture
+    result["architecture_supported_by"] = SUPPORTED_MLX_ARCHITECTURES.get(arch)
+    result["mlx_signal"] = _mlx_signal(info)
 
-    has_config = any("config.json" in n for n in names)
-    has_tok = any("tokenizer" in n or n.endswith(".model") for n in names)
-    has_weights = any(n.endswith((".safetensors", ".bin", ".gguf", ".pt")) for n in names)
+    files, _tree_status = _siblings(repo)
+    names = [str(f.get("path") or "") for f in files if isinstance(f, dict)]
+    lowered = [n.lower() for n in names]
+    result["has_config"] = "config.json" in lowered
+    result["has_tokenizer"] = any("tokenizer" in n or n.endswith(".model") for n in lowered)
+    result["safetensors_count"] = sum(1 for n in lowered if n.endswith(".safetensors"))
+    total_bytes = sum(int(f.get("size") or 0) for f in files if isinstance(f, dict))
+    if total_bytes:
+        measured = round(total_bytes / 1e9, 2)
+        result["measured_size_gb"] = measured
+        if cap.download_size_gb is not None:
+            result["size_delta_gb"] = round(measured - cap.download_size_gb, 2)
 
-    result["has_config_hint"] = has_config
-    result["has_tokenizer_hint"] = has_tok
-    result["has_weights_hint"] = has_weights
+    # ── static verdict ────────────────────────────────────────────────────────
+    if result["gated"]:
+        reasons.append(f"gated={result['gated']} — needs Hub credentials")
+    if not result["canonical_case_matches"]:
+        reasons.append(f"case drift: registry {repo!r} vs canonical {result['canonical_id']!r}")
+    if not result["mlx_signal"]:
+        reasons.append("no mlx library_name or mlx tag")
+    if result["architecture_supported_by"] is None:
+        reasons.append(f"architecture {arch or '?'} is not in SUPPORTED_MLX_ARCHITECTURES")
+    if not result["architecture_matches_registry"]:
+        reasons.append(f"architecture {arch or '?'} != registry {cap.architecture or '?'}")
+    if not result["has_config"]:
+        reasons.append("no config.json in the file tree")
+    if not result["has_tokenizer"]:
+        reasons.append("no tokenizer file in the file tree")
+    if result["safetensors_count"] < 1:
+        reasons.append("no .safetensors shard in the file tree")
+    downloads = result["downloads"] or 0
+    if downloads < MIN_COMMUNITY_DOWNLOADS:
+        reasons.append(f"only {downloads} downloads — too few to count as community-proven")
+    if result["size_delta_gb"] is not None and abs(result["size_delta_gb"]) > 0.2:
+        reasons.append(
+            f"size drift: measured {result['measured_size_gb']}GB vs registry {cap.download_size_gb}GB"
+        )
 
-    if not has_config:
-        result["notes"] += "No config.json visible in tree. "
-    if not has_tok:
-        result["notes"] += "No obvious tokenizer file. "
-    if cap.hardware and cap.hardware.min_ram_gb and cap.hardware.min_ram_gb > 12:
-        result["notes"] += "LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. "
-
+    result["verdict"] = VERDICT_LOADABLE if not reasons else VERDICT_NEEDS_REVIEW
     return result
 
 
-def try_deep_config(repo: str, tmp_dir: Path) -> Dict[str, Any]:
-    """Attempt light snapshot of ONLY config + tokenizer files (no full weights). Requires huggingface_hub."""
-    out: Dict[str, Any] = {"deep_ok": False, "has_config": False, "has_tokenizer": False, "error": None, "used": "none"}
-    try:
-        from huggingface_hub import snapshot_download  # type: ignore
-    except Exception as e:
-        out["error"] = f"huggingface_hub not available: {e}"
-        return out
-
-    target = tmp_dir / repo.replace("/", "--")
-    target.mkdir(parents=True, exist_ok=True)
-    try:
-        # Extremely restrictive: only metadata files. This is safe and tiny.
-        path = snapshot_download(
-            repo_id=repo,
-            local_dir=str(target),
-            local_dir_use_symlinks=False,
-            allow_patterns=["config.json", "tokenizer*.json", "tokenizer.model", "tokenizer_config.json", "*.model", "special_tokens_map.json"],
-            max_workers=2,
-            resume_download=True,
-        )
-        p = Path(path)
-        cfg = (p / "config.json").exists()
-        tok = any((p / n).exists() for n in ("tokenizer.json", "tokenizer_config.json", "tokenizer.model"))
-        out.update({"deep_ok": True, "has_config": cfg, "has_tokenizer": tok, "used": "snapshot_download(restricted)"})
-    except Exception as e:
-        out["error"] = str(e)[:300]
-    return out
-
-
-def try_test_load_small(repo: str) -> Dict[str, Any]:
-    """For *small practical* models only: attempt real config + tokenizer load (no generate). Heavy on first run for tokenizer."""
-    out: Dict[str, Any] = {"load_test_attempted": False, "load_ok": False, "error": None, "library": None}
-    # Only attempt if model is known-small from our registry display size
-    try:
-        # transformers first (most universal)
-        from transformers import AutoConfig, AutoTokenizer  # type: ignore
-        out["library"] = "transformers"
-        cfg = AutoConfig.from_pretrained(repo, trust_remote_code=False)
-        tok = AutoTokenizer.from_pretrained(repo, trust_remote_code=False, use_fast=True)
-        out["load_test_attempted"] = True
-        out["load_ok"] = bool(cfg) and bool(tok)
-        out["model_type"] = getattr(cfg, "model_type", None)
-        return out
-    except Exception as e1:
-        out["error"] = f"transformers: {str(e1)[:200]}"
-    # Fallback: mlx_lm or mlx_vlm config only (very light)
-    try:
-        # mlx-lm has from_pretrained but we avoid full weight if possible; just check import path
-        import importlib
-        if importlib.util.find_spec("mlx_lm"):
-            out["library"] = "mlx_lm (config only probe)"
-            # We don't call full load here to stay true to "no blind huge weights"
-            out["load_test_attempted"] = True
-            out["load_ok"] = True  # assume if importable the path exists; user will hit real load later
-            out["notes"] = "mlx path present; full local load tested at runtime only"
-            return out
-    except Exception:
-        pass
-    out["load_test_attempted"] = True
-    return out
+def _print_row(r: Dict[str, Any]) -> None:
+    mark = {VERDICT_LOADABLE: "OK ", VERDICT_NEEDS_REVIEW: "?? ", VERDICT_UNAVAILABLE: "XX "}[r["verdict"]]
+    size = f"{r['measured_size_gb']}GB" if r["measured_size_gb"] else "-"
+    print(f"{mark}{r['id']:<46} {size:>9}  {str(r['architecture'] or '-'):<16} {r['lifecycle']}")
+    for reason in r["reasons"]:
+        print(f"      · {reason}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--deep", action="store_true", help="Also fetch tiny config+tokenizer via hf_hub snapshot (restricted)")
-    parser.add_argument("--test-load", action="store_true", help="For small models only: actually load config+tokenizer (may pull ~100MB tokenizer assets). Skips >~8GB models.")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", default="verification_report.json", help="Report filename (written to cwd)")
     args = parser.parse_args()
 
     caps = get_all_capabilities()
-    print("Lattice AI 5.2.0 HF Model Registry Verifier")
-    print(f"Capabilities in registry: {len(caps)}")
-    print(f"Time: {datetime.now(timezone.utc).isoformat()}")
-    print("-" * 88)
+    print("Lattice AI model registry verifier — HF metadata only, no downloads, no loads")
+    print(f"Entries: {len(caps)}   Time: {datetime.now(timezone.utc).isoformat()}")
+    print("-" * 96)
 
     results: List[Dict[str, Any]] = []
-    tmp = Path("/tmp/lattice_verify_hf")  # noqa: S108 — developer verification scratch dir
-    tmp.mkdir(exist_ok=True)
+    for cap in sorted(caps, key=lambda c: (c.lifecycle != RECOMMENDED, c.display_priority, c.id)):
+        result = verify_one(cap)
+        _print_row(result)
+        results.append(result)
 
-    missing_critical = 0
-    large_limited = 0
-
-    for cap in sorted(caps, key=lambda c: (c.display_priority, c.size)):
-        light = verify_one_light(cap)
-        deep = {}
-        load = {}
-
-        is_large = False
-        try:
-            sz = float("".join(ch for ch in cap.size if ch.isdigit() or ch == ".") or "0")
-            if "GB" in cap.size and sz > 12:
-                is_large = True
-                large_limited += 1
-        except Exception:
-            pass
-
-        if args.deep:
-            deep = try_deep_config(cap.hf_repo_id, tmp)
-            time.sleep(0.4)
-
-        do_load = args.test_load and not is_large and ("4B" in cap.name or "E2B" in cap.name or "2.7GB" in cap.size or "3.6GB" in cap.size)
-        if do_load:
-            print(f"  [small-load-test] attempting for {cap.id}")
-            load = try_test_load_small(cap.hf_repo_id)
-            time.sleep(0.6)
-
-        # Merge into verification view
-        merged = {**light}
-        if deep:
-            merged["deep"] = deep
-            if deep.get("has_config"):
-                merged["has_config_hint"] = True
-            if deep.get("has_tokenizer"):
-                merged["has_tokenizer_hint"] = True
-        if load:
-            merged["load_test"] = load
-
-        if not merged["hf_exists"]:
-            if cap.recommended_default:
-                missing_critical += 1
-            merged["notes"] = (merged.get("notes") or "") + " CRITICAL: missing from HF!"
-
-        # Pretty line
-        status = "✓" if merged["hf_exists"] else "✗"
-        v = "V" if merged.get("has_config_hint") and merged.get("has_tokenizer_hint") else "?"
-        large = " LARGE" if is_large else ""
-        print(f"{status} {cap.id:<52} {cap.size:>8} {cap.family:<14} {v} {large}")
-
-        results.append(merged)
+    recommended = [r for r in results if r["lifecycle"] == RECOMMENDED]
+    legacy = [r for r in results if r["lifecycle"] != RECOMMENDED]
+    failing = [r for r in recommended if r["verdict"] != VERDICT_LOADABLE]
 
     summary = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "total": len(results),
-        "hf_present": sum(1 for r in results if r.get("hf_exists")),
-        "config_hint_ok": sum(1 for r in results if r.get("has_config_hint")),
-        "tokenizer_hint_ok": sum(1 for r in results if r.get("has_tokenizer_hint")),
-        "large_models_limited": large_limited,
-        "missing_critical_recommended": missing_critical,
-        "args": {"deep": args.deep, "test_load": args.test_load},
+        "recommended_total": len(recommended),
+        "legacy_total": len(legacy),
+        "hf_present": sum(1 for r in results if r["hf_exists"]),
+        "loadable_static": sum(1 for r in results if r["verdict"] == VERDICT_LOADABLE),
+        "needs_review": sum(1 for r in results if r["verdict"] == VERDICT_NEEDS_REVIEW),
+        "unavailable": sum(1 for r in results if r["verdict"] == VERDICT_UNAVAILABLE),
+        "recommended_failing": [r["id"] for r in failing],
+        "weights_downloaded": 0,
+        "models_loaded": 0,
     }
 
     report = {
         "summary": summary,
+        "verdict_criteria": {
+            "loadable_static": [
+                "repo reachable anonymously and not gated",
+                "registry id matches the Hub's canonical id exactly (including case)",
+                "library_name == 'mlx' or an 'mlx' tag is present",
+                "config model_type is in SUPPORTED_MLX_ARCHITECTURES and matches the registry",
+                "file tree has config.json, a tokenizer file and >=1 .safetensors shard",
+                f"at least {MIN_COMMUNITY_DOWNLOADS} all-time downloads",
+                "measured sibling byte sum is within 0.2GB of the registry's download_size_gb",
+            ],
+            "supported_mlx_architectures": SUPPORTED_MLX_ARCHITECTURES,
+            "min_community_downloads": MIN_COMMUNITY_DOWNLOADS,
+        },
+        "limitations": LIMITATIONS,
         "results": results,
-        "recommendation": "All primary recommended models are present on HF with config+tokenizer hints. "
-                          "Large models (>12GB) have explicit LOCAL_LOAD_LIMITED notes. "
-                          "Use --deep or --test-load only when you have huggingface_hub/transformers and want to exercise small-model paths. "
-                          "Never use this script to pre-download production weights; respect user consent.",
     }
 
     out_path = Path(args.out).resolve()
     out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    print("-" * 88)
-    print(json.dumps(summary, indent=2))
+
+    print("-" * 96)
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    print("\nLimitations of this verdict:")
+    for line in LIMITATIONS:
+        print(f"  · {line}")
     print(f"\nFull report written: {out_path}")
 
-    # Generate copy-paste snippet for static verification pinning (optional hygiene)
-    print("\n# Optional: paste updated verification into model_capability_registry.py entries (example for first few):")
-    for r in results[:3]:
-        if r.get("hf_exists"):
-            print(f"# {r['id']}: hf_exists={r['hf_exists']}, config={r.get('has_config_hint')}, tok={r.get('has_tokenizer_hint')}")
-
-    if missing_critical > 0:
-        print(f"\n**FAIL**: {missing_critical} critical recommended models missing from HF.")
+    if failing:
+        print(f"\n**FAIL**: {len(failing)} recommended entries are not statically loadable.")
         return 1
     return 0
 

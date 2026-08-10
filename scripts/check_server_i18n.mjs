@@ -34,6 +34,7 @@ const LOCALIZED = [
   "chat",
   "chat_history",
   "chat_intents",
+  "features",
   "knowledge_graph",
   "local_files",
   "mcp",

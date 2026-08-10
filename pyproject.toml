@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "11.1.0"
+version = "11.2.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -274,6 +274,7 @@ files = [
   "lattice_brain/conversations.py",
   "lattice_brain/core.py",
   "lattice_brain/embeddings.py",
+  "lattice_brain/gates.py",
   "lattice_brain/graph/__init__.py",
   "lattice_brain/graph/_kg_common.py",
   "lattice_brain/graph/_kg_constants.py",
@@ -323,6 +324,7 @@ files = [
   "lattice_brain/runtime/hooks.py",
   "lattice_brain/runtime/multi_agent.py",
   "lattice_brain/runtime/statuses.py",
+  "lattice_brain/sealed_box.py",
   "lattice_brain/self_model.py",
   "lattice_brain/sensitivity.py",
   "lattice_brain/storage/__init__.py",
@@ -357,6 +359,7 @@ files = [
   "latticeai/api/command_center.py",
   "latticeai/api/computer_use.py",
   "latticeai/api/evidence_actions.py",
+  "latticeai/api/features.py",
   "latticeai/api/funnel_metrics.py",
   "latticeai/api/garden.py",
   "latticeai/api/health.py",
@@ -477,6 +480,7 @@ files = [
   "latticeai/runtime/history_writer.py",
   "latticeai/runtime/hooks_runtime.py",
   "latticeai/runtime/lifespan_runtime.py",
+  "latticeai/runtime/feature_toggle_wiring.py",
   "latticeai/runtime/model_wiring.py",
   "latticeai/runtime/namespace_runtime.py",
   "latticeai/runtime/network_boundary_wiring.py",
@@ -509,12 +513,14 @@ files = [
   "latticeai/services/cloud_token_guard.py",
   "latticeai/services/command_center.py",
   "latticeai/services/evidence_actions.py",
+  "latticeai/services/feature_toggles.py",
   "latticeai/services/folder_watch.py",
   "latticeai/services/funnel_metrics.py",
   "latticeai/services/hybrid_chat.py",
   "latticeai/services/hybrid_context.py",
   "latticeai/services/hybrid_policy.py",
   "latticeai/services/ingestion.py",
+  "latticeai/services/interop_bridges.py",
   "latticeai/services/kg_portability.py",
   "latticeai/services/local_knowledge.py",
   "latticeai/services/memory_service.py",

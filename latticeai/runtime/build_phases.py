@@ -621,6 +621,29 @@ def phase_domain(ctx: RuntimeContext) -> None:
     )
 
 
+def self_model_port(workspace_graph: Any) -> Any:
+    """The agent loop's Self-Model port (v11.2.0).
+
+    11.1.0 built ``executor_prompt_for(self_model_summary=…)`` and had nothing
+    to pass it; this is what the composition root passes. ``summary_for_prompt``
+    never raises and answers ``""`` for a Brain that knows nothing about its
+    owner — which produces exactly the pre-11.2.0 prompt bytes.
+
+    A module-level factory rather than a closure inside ``phase_services``
+    because a port that cannot be called on its own cannot be tested on its own.
+    """
+
+    def _summary(*, user_email: Any = None, workspace_id: Any = None) -> str:
+        from lattice_brain.self_model import summary_for_prompt
+
+        graph = workspace_graph()
+        if graph is None:
+            return ""
+        return summary_for_prompt(graph, workspace_id=workspace_id)
+
+    return _summary
+
+
 # ── phase 6b: retrieval, agent runtime, and the typed AppContext ─────────────
 def phase_services(ctx: RuntimeContext) -> None:
     """Retrieval/context assembly, the chat agent runtime, and the AppContext.
@@ -756,6 +779,9 @@ def phase_services(ctx: RuntimeContext) -> None:
             audit=ctx.append_audit_event,
             hooks=ctx.HOOKS_REGISTRY,
             brain_memory=ctx.BRAIN_MEMORY,
+            self_model_summary=self_model_port(
+                lambda: ctx.KNOWLEDGE_GRAPH if ctx.ENABLE_GRAPH else None
+            ),
         )
     )
 
@@ -803,6 +829,8 @@ def phase_services(ctx: RuntimeContext) -> None:
             require_graph=ctx._require_graph,
             workspace_graph=ctx._workspace_graph,
             graph_stats=ctx._graph_stats_safe,
+            # Provider, not a value: REVIEW_QUEUE lands two phases later.
+            review_queue=lambda: ctx.REVIEW_QUEUE,
             workspace_models=_workspace_models_payload,
             workspace_settings=_workspace_settings_payload,
             scan_environment=scan_environment,

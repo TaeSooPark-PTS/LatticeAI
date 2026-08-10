@@ -46,22 +46,30 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from .gates import FeatureGate
 from .graph.vector_index import DEFAULT_TICK_LIMIT as VECTOR_TICK_LIMIT
 from .multimodal import (
     AUDIO_EXTENSIONS,
+    DEFAULT_KEYFRAMES,
     IMAGE_EXTENSIONS,
     MODALITY_AUDIO,
     MODALITY_IMAGE,
     MODALITY_VIDEO,
-    VIDEO_OUT_OF_SCOPE,
+    VIDEO_EXTENSIONS,
+    VIDEO_UNAVAILABLE_DETAIL,
     ImageFacts,
     MultimodalPorts,
     audio_quality_score,
     detect_modality,
     extract_image_facts,
+    ffmpeg_available,
     image_quality_score,
+    read_video_facts,
     transcribe_audio,
+    video_frame_dir,
+    video_quality_score,
     write_image_memory,
+    write_video_memory,
 )
 from .runtime.hooks import dispatch_tool
 from .utils import utc_now_iso
@@ -127,6 +135,17 @@ DEFAULT_MAX_FILE_BYTES = 4_000_000  # matches the local-index text/code budget
 LATTICEIGNORE_FILENAME = ".latticeignore"
 # Opt-out escape hatch for the post-ingest incremental vector sync.
 AUTO_VECTOR_INDEX_ENV = "LATTICEAI_AUTO_VECTOR_INDEX"
+#: Default *on*, unlike every other gate here: new material has always been made
+#: searchable straight away, and this exists so a settings surface can turn that
+#: off (batch reindex later) without a restart. ``FeatureGate`` parses the env
+#: var with the same words the hand-written opt-out check used, so an untouched
+#: install — including one with a nonsense value — answers exactly as before.
+AUTO_VECTOR_INDEX_GATE = FeatureGate(
+    AUTO_VECTOR_INDEX_ENV,
+    default=True,
+    name="auto_vector_index",
+    detail="New material is prepared for semantic search as soon as it lands.",
+)
 
 # ── Multi-modal ingestion (v11.1.0 Track 3) ──────────────────────────────────
 # Opt-in, default off, on purpose. Turning it on changes what a folder scan
@@ -135,11 +154,36 @@ AUTO_VECTOR_INDEX_ENV = "LATTICEAI_AUTO_VECTOR_INDEX"
 # flag off every routing decision below is skipped and behaviour is byte-for-
 # byte what it was before this release.
 ALLOW_MULTIMODAL_ENV = "LATTICEAI_ALLOW_MULTIMODAL"
+#: The multi-modal switch, resolved when it is asked rather than frozen into
+#: ``self`` at construction (v11.2.0). The environment variable is still the
+#: answer for an untouched install — same var, same words, same default off —
+#: but a settings surface can bind a resolver and move it without a restart.
+MULTIMODAL_GATE = FeatureGate(
+    ALLOW_MULTIMODAL_ENV,
+    default=False,
+    name="allow_multimodal",
+    detail="Pictures and recordings are only ingested when this is turned on.",
+)
+#: Video is a *sub-switch* of the one above: with multi-modal off nothing about
+#: video happens at all, and with it on video is included unless this is
+#: explicitly turned off. The effective default is therefore still "no video",
+#: and the seam exists so a settings screen can offer pictures without films.
+ALLOW_VIDEO_ENV = "LATTICEAI_ALLOW_VIDEO"
+VIDEO_GATE = FeatureGate(
+    ALLOW_VIDEO_ENV,
+    default=True,
+    name="allow_video",
+    detail="Videos are ingested as keyframes plus subtitles when multi-modal is on.",
+)
 #: Source types that name a modality outright (a caller who already knows).
 IMAGE_SOURCE_TYPES = frozenset({"image", "screenshot", "photo"})
 AUDIO_SOURCE_TYPES = frozenset({"audio", "voice_memo", "recording"})
+VIDEO_SOURCE_TYPES = frozenset({"video", "screen_recording", "movie"})
 #: Added to the folder-scan allow-list only while multimodal is enabled.
 FOLDER_MULTIMODAL_EXTENSIONS = IMAGE_EXTENSIONS | AUDIO_EXTENSIONS
+#: Videos join the folder allow-list only when this machine can decode one —
+#: scanning a folder into a pile of refusals is not a feature.
+FOLDER_VIDEO_EXTENSIONS = VIDEO_EXTENSIONS
 #: Graph node type for a recording. ``NodeType.AUDIO`` normalizes this on the
 #: KG v2 write side; the legacy tables keep the label verbatim, which is what
 #: every type-aware read (graph view, context sections, doc-gen) matches on.
@@ -499,19 +543,38 @@ class IngestionPipeline:
             db_path=getattr(knowledge_graph, "db_path", None)
         )
         # Incremental vector sync after each successful non-duplicate ingest.
-        # Constructor opt-out AND env opt-out (LATTICEAI_AUTO_VECTOR_INDEX=0)
-        # both disable it; a vector failure never fails the ingest.
-        env_flag = os.getenv(AUTO_VECTOR_INDEX_ENV, "1").strip().lower() not in {
-            "0", "false", "no", "off",
-        }
-        self._auto_vector_index = bool(auto_vector_index) and env_flag
-        # Multi-modal routing. Off unless the caller asks for it *or* the env
-        # flag is set — the env is the escape hatch for an install that has no
-        # code path to the constructor (CLI, background worker).
-        self._allow_multimodal = bool(allow_multimodal) or os.getenv(
-            ALLOW_MULTIMODAL_ENV, "0"
-        ).strip().lower() in {"1", "true", "yes", "on"}
+        # Constructor opt-out AND gate opt-out (LATTICEAI_AUTO_VECTOR_INDEX=0,
+        # or the settings toggle bound to it) both disable it; a vector failure
+        # never fails the ingest. The gate half is asked per ingest rather than
+        # frozen here, so turning it off takes effect on the next item.
+        self._auto_vector_index_opt_in = bool(auto_vector_index)
+        # Multi-modal routing. Off unless the caller asks for it *or* the gate
+        # says yes — the env behind that gate is the escape hatch for an
+        # install with no code path to the constructor (CLI, background
+        # worker), and the gate is now asked per call so a runtime toggle can
+        # reach it. A constructor ``True`` is still a permanent yes.
+        self._multimodal_opt_in = bool(allow_multimodal)
         self._multimodal = multimodal or MultimodalPorts()
+        self._keyframes = DEFAULT_KEYFRAMES
+
+    @property
+    def _auto_vector_index(self) -> bool:
+        """Whether a landed ingest also syncs its vector, asked *now*."""
+        return self._auto_vector_index_opt_in and AUTO_VECTOR_INDEX_GATE.enabled()
+
+    @property
+    def _allow_multimodal(self) -> bool:
+        """Whether pictures and recordings route by modality, asked *now*."""
+        return self._multimodal_opt_in or MULTIMODAL_GATE.enabled()
+
+    @property
+    def _allow_video(self) -> bool:
+        """Video needs multi-modal on, its own sub-switch on, and a decoder."""
+        return self._allow_multimodal and VIDEO_GATE.enabled() and self._can_decode_video()
+
+    def _can_decode_video(self) -> bool:
+        """An injected keyframe port counts as a decoder; otherwise, ffmpeg."""
+        return self._multimodal.keyframe_extractor is not None or ffmpeg_available()
 
     def available(self) -> bool:
         return self._enable and self._kg is not None
@@ -520,17 +583,38 @@ class IngestionPipeline:
         """What this pipeline will do with a picture or a recording, honestly.
 
         ``enabled`` is the flag; the rest is which model-backed capabilities
-        were actually injected. Video is listed as unsupported rather than
-        omitted, so the surface can say *why* a ``.mov`` was refused.
+        were actually injected. Video reports whether it can really run — the
+        answer is no on a machine with no ffmpeg, and it says which of the two
+        reasons applies rather than leaving the surface to guess.
         """
+        allowed = self._allow_multimodal
+        video = self._allow_video
         return {
-            "enabled": self._allow_multimodal,
-            "image": self._allow_multimodal,
-            "audio": self._allow_multimodal,
-            "video": False,
-            "video_detail": VIDEO_OUT_OF_SCOPE,
+            "enabled": allowed,
+            "image": allowed,
+            "audio": allowed,
+            "video": video,
+            "video_detail": None if video else self._video_refusal(),
+            "gates": {
+                "multimodal": MULTIMODAL_GATE.describe(),
+                "video": VIDEO_GATE.describe(),
+            },
             **self._multimodal.describe(),
         }
+
+    def _video_refusal(self) -> str:
+        """Why a video would be refused right now — never a stale reason."""
+        if not self._allow_multimodal:
+            return (
+                "multi-modal ingestion is off; pictures, recordings and videos "
+                f"are only stored when {ALLOW_MULTIMODAL_ENV} is on"
+            )
+        if not VIDEO_GATE.enabled():
+            return (
+                "video ingestion is turned off for this install "
+                f"({ALLOW_VIDEO_ENV}); pictures and recordings are unaffected"
+            )
+        return VIDEO_UNAVAILABLE_DETAIL
 
     # ── public API ───────────────────────────────────────────────────────────
     def ingest(self, item: IngestionItem, *, user_email: Optional[str] = None) -> IngestionResult:
@@ -546,10 +630,13 @@ class IngestionPipeline:
         # Modality routing is a no-op while the flag is off: ``modality`` stays
         # "text" and every branch below behaves exactly as it did before.
         modality = self._modality_for(item, source_type)
-        if modality == MODALITY_VIDEO:
+        if modality == MODALITY_VIDEO and not self._allow_video:
+            # Recognized and refused, with the reason that actually applies
+            # right now — a missing decoder is not the same answer as a
+            # switched-off feature, and the caller can act on the difference.
             return IngestionResult(
                 status="unavailable", source_type=source_type,
-                indexing_status="skipped", detail=VIDEO_OUT_OF_SCOPE,
+                indexing_status="skipped", detail=self._video_refusal(),
             )
 
         captured_at = item.captured_at or utc_now_iso()
@@ -572,6 +659,8 @@ class IngestionPipeline:
                 return self._ingest_image(item, source_type=source_type, owner=owner, captured_at=captured_at)
             if modality == MODALITY_AUDIO:
                 return self._ingest_audio(item, source_type=source_type, owner=owner, captured_at=captured_at)
+            if modality == MODALITY_VIDEO:
+                return self._ingest_video(item, source_type=source_type, owner=owner, captured_at=captured_at)
             if source_type in FILE_SOURCE_TYPES or (item.path and not item.text):
                 return self._ingest_file(item, source_type=source_type, owner=owner, captured_at=captured_at)
             return self._ingest_text(item, source_type=source_type, owner=owner, captured_at=captured_at)
@@ -1111,7 +1200,7 @@ class IngestionPipeline:
                     summary["truncated"] = True
                     break
                 item_metadata: Dict[str, Any] = {"relative_path": rel}
-                if ext in FOLDER_MULTIMODAL_EXTENSIONS and self._allow_multimodal:
+                if ext in (FOLDER_MULTIMODAL_EXTENSIONS | FOLDER_VIDEO_EXTENSIONS) and self._allow_multimodal:
                     # Routed by modality inside ``ingest``; reading the bytes as
                     # UTF-8 here would only produce mojibake.
                     source_type = "file"
@@ -1160,10 +1249,17 @@ class IngestionPipeline:
         return summary
 
     def _folder_extensions(self) -> frozenset:
-        """Folder-scan allow-list — pictures and recordings only when enabled."""
-        if self._allow_multimodal:
-            return DEFAULT_FOLDER_EXTENSIONS | FOLDER_MULTIMODAL_EXTENSIONS
-        return DEFAULT_FOLDER_EXTENSIONS
+        """Folder-scan allow-list — pictures, recordings and films when enabled.
+
+        Video joins only when this machine can actually decode one, so a scan
+        never fills the error list with files it was always going to refuse.
+        """
+        if not self._allow_multimodal:
+            return DEFAULT_FOLDER_EXTENSIONS
+        allowed = DEFAULT_FOLDER_EXTENSIONS | FOLDER_MULTIMODAL_EXTENSIONS
+        if self._allow_video:
+            return allowed | FOLDER_VIDEO_EXTENSIONS
+        return allowed
 
     # ── routing helpers ──────────────────────────────────────────────────────
     def _ingest_text(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
@@ -1240,6 +1336,8 @@ class IngestionPipeline:
             return MODALITY_IMAGE
         if source_type in AUDIO_SOURCE_TYPES:
             return MODALITY_AUDIO
+        if source_type in VIDEO_SOURCE_TYPES:
+            return MODALITY_VIDEO
         if not item.path:
             return "text"
         return detect_modality(item.path, item.mime_type)
@@ -1353,6 +1451,47 @@ class IngestionPipeline:
         }
         return result
 
+    def _ingest_video(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
+        """Store one video as keyframes through the image door plus subtitles.
+
+        Nothing here is a new retrieval path: the stills become ordinary
+        ``Image`` nodes (OCR, caption, vector, thumbnail) joined by
+        ``CONTAINS_IMAGE``, and the subtitle text becomes ordinary chunks. What
+        the ``Video`` node adds is the thing they belong to — and an honest
+        body when there were no subtitles to read.
+        """
+        path = self._resolve_file_path(item)
+        facts = read_video_facts(
+            str(path),
+            video_frame_dir(getattr(self._kg, "blob_dir", path.parent), _file_digest(path)),
+            count=self._keyframes,
+            ports=self._multimodal,
+            subtitle_text=item.text,
+        )
+        result = write_video_memory(
+            self._kg,
+            path=path,
+            facts=facts,
+            title=item.title or path.stem,
+            source_type=source_type if source_type in VIDEO_SOURCE_TYPES else MODALITY_VIDEO,
+            source_uri=item.source_uri,
+            owner=owner,
+            workspace_id=item.workspace_id,
+            conversation_id=item.conversation_id,
+            captured_at=captured_at,
+            modified_at=item.modified_at,
+            permissions=item.permissions,
+            extra_metadata={"mime_type": item.mime_type, **(item.metadata or {})},
+            ports=self._multimodal,
+        )
+        quality = video_quality_score(facts)
+        result["extraction_quality"] = {
+            "score": quality["score"],
+            "level": _quality_level(quality["score"]),
+            "reasons": quality["reasons"],
+        }
+        return result
+
     def _ingest_file(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
         path = self._resolve_file_path(item)
         return self._kg.ingest_document(
@@ -1375,3 +1514,12 @@ class IngestionPipeline:
 def content_hash_text(text: str) -> str:
     """Canonical content hash for a text payload (matches store hashing scheme)."""
     return hashlib.sha256((text or "").encode("utf-8", "ignore")).hexdigest()
+
+
+def _file_digest(path: Path) -> str:
+    """Streaming sha256 of a file — the key a video's frame folder is named by."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()

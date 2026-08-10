@@ -111,6 +111,16 @@ def create_chat_router(context: AppContext) -> APIRouter:
         get_history_user=context.require("get_history_user"),
     )
 
+    def review_sink() -> object:
+        """The Review Center queue, resolved per request (may be absent).
+
+        Cloud-derived knowledge is staged here rather than written, so the
+        hybrid turn needs the live queue — which is wired after this router's
+        context is built, hence a provider rather than a captured value.
+        """
+        provider = context.review_queue
+        return None if provider is None else provider()
+
     def notify_chat_message(role: str, text: str, source: Optional[str]) -> None:
         """Mirror persisted web exchanges to an injected bridge, never echoing it."""
         if context.on_chat_message is None or source == "telegram":
@@ -445,6 +455,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             chat_service=chat_service,
             notify=notify_chat_message,
             model_id=selected_model_id,
+            review_queue=review_sink(),
         )
         if hybrid_response is not None:
             return hybrid_response

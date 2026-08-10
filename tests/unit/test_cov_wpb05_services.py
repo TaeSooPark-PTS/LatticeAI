@@ -403,7 +403,10 @@ def test_engine_catalog_backfill_skips_capabilities_with_no_mlx_hint(monkeypatch
 
 def test_family_version_reads_the_first_pattern_that_matches():
     assert _model_family_version({"name": "Qwen 3 Instruct"}) == ("qwen", (3,))
-    assert _model_family_version({"id": "mlx/gemma-3.1-it"}) == ("gemma", (3, 1))
+    # Minor versions are truncated: the filter hides older *generations*, and
+    # 3.1 vs 3.6 within one generation are siblings, not a winner and a loser.
+    assert _model_family_version({"id": "mlx/gemma-3.1-it"}) == ("gemma", (3,))
+    assert _model_family_version({"id": "mlx/Qwen3.6-27B"}) == ("qwen", (3,))
     assert _model_family_version({"name": "phi-4"}) is None
 
 

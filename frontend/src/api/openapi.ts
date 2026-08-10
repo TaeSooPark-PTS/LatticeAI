@@ -1396,6 +1396,10 @@ export interface paths {
          *     Fixed contract consumed by the frontend:
          *     ``{"status": "ready"|"pending"|"unavailable", "pending_items": int,
          *     "total_items": int, "detail": str}``.
+         *
+         *     Additive since v11.2.0: ``breakdown`` splits the backlog into
+         *     ``embedded``/``missing``/``stale``/``queued`` when the store can. The
+         *     four keys above are unchanged, so existing readers see no difference.
          */
         get: operations["brain_vector_freshness_api_brain_vector_freshness_get"];
         put?: never;
@@ -1559,6 +1563,46 @@ export interface paths {
         put?: never;
         /** Evidence Actions */
         post: operations["evidence_actions_api_evidence_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Features
+         * @description Every opt-in feature, its live value, and where that value came from.
+         */
+        get: operations["list_features_api_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/features/{feature_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Feature
+         * @description Persist one person's choice; the answer is the feature as it now reads.
+         */
+        post: operations["set_feature_api_features__feature_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1831,6 +1875,34 @@ export interface paths {
          *     (summary includes ``job_id``) and executes it after the response.
          */
         post: operations["ingestion_folder_api_ingestion_folder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingestion/interop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interop Status
+         * @description Which interop bridges this machine can actually run, and why not.
+         */
+        get: operations["interop_status_api_ingestion_interop_get"];
+        put?: never;
+        /**
+         * Interop Ingest
+         * @description Read an approved local interop source through the one gate.
+         *
+         *     Same approval dance and the same ``IngestionPipeline`` door as the
+         *     vault bridge: no vendor API, no credentials, nothing leaves the
+         *     machine. ``dry_run`` writes nothing and reports what a real run would.
+         */
+        post: operations["interop_ingest_api_ingestion_interop_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2281,6 +2353,31 @@ export interface paths {
          * @description Merge one reviewed proposal into this Brain and approve the item.
          */
         post: operations["share_accept_api_knowledge_graph_share_proposals__item_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/share/recipient-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Share Recipient Key
+         * @description This Brain's X25519 receiving key, for a sender to seal a bundle to.
+         *
+         *     Public by construction — a public key encrypts, it does not decrypt —
+         *     so handing it out is the whole point. Still admin-gated and still
+         *     behind the share flag, because minting the key is a decision to
+         *     participate in sharing at all.
+         */
+        get: operations["share_recipient_key_api_knowledge_graph_share_recipient_key_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2891,6 +2988,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/search/image-query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Image Query Status
+         * @description Whether a typed question can reach the image index on this install.
+         */
+        get: operations["image_query_status_api_search_image_query_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/search/keyword": {
         parameters: {
             query?: never;
@@ -3043,6 +3160,46 @@ export interface paths {
         put?: never;
         /** Create Item */
         post: operations["create_item_automation_reviews_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/bulk/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Approve
+         * @description Approve several items, reporting each one's outcome individually.
+         */
+        post: operations["bulk_approve_automation_reviews_bulk_approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/bulk/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Dismiss
+         * @description Dismiss several items, reporting each one's outcome individually.
+         */
+        post: operations["bulk_dismiss_automation_reviews_bulk_dismiss_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7454,6 +7611,49 @@ export interface components {
              */
             transcript: string;
         };
+        /**
+         * BulkActionOutcome
+         * @description Per-item verdict, so a partial success is legible rather than a total.
+         */
+        BulkActionOutcome: {
+            /** Detail */
+            detail?: string | null;
+            /** Id */
+            id: string;
+            /** Item Status */
+            item_status?: string | null;
+            /** Status */
+            status: string;
+        };
+        /**
+         * BulkActionRequest
+         * @description Decide several review items at once, named explicitly.
+         *
+         *     ``ids`` is required and never defaults to "everything pending": a bulk
+         *     action whose scope is implicit is how an inbox gets emptied by accident.
+         */
+        BulkActionRequest: {
+            /** Ids */
+            ids?: string[];
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** BulkActionResult */
+        BulkActionResult: {
+            /** Action */
+            action: string;
+            /** Failed */
+            failed: number;
+            /** Requested */
+            requested: number;
+            /** Results */
+            results?: components["schemas"]["BulkActionOutcome"][];
+            /** Succeeded */
+            succeeded: number;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -7837,6 +8037,11 @@ export interface components {
              * @default false
              */
             approved: boolean;
+            /**
+             * Kind
+             * @default folder
+             */
+            kind: string;
             /** Path */
             path: string;
             /**
@@ -7950,6 +8155,11 @@ export interface components {
              */
             graph_limit: number;
             /**
+             * Image Fusion
+             * @default false
+             */
+            image_fusion: boolean;
+            /**
              * Keyword Limit
              * @default 30
              */
@@ -8029,6 +8239,38 @@ export interface components {
             confirmation_token?: string | null;
             /** Engine */
             engine: string;
+        };
+        /**
+         * InteropIngestRequest
+         * @description Read one local interop source through the one ingestion gate (v11.2.0).
+         *
+         *     ``source`` picks the bridge — ``notion`` (an export directory or ``.zip``),
+         *     ``git`` (a local repository), ``mail`` (``.eml``/``.ics`` files or a folder
+         *     of them). Every one of them reads a path the user approves through the same
+         *     local-read dance as ``/api/ingestion/folder``, and ``dry_run`` reports what
+         *     a real run would touch without writing anything.
+         */
+        InteropIngestRequest: {
+            /** Approval Token */
+            approval_token?: string | null;
+            /**
+             * Approved
+             * @default false
+             */
+            approved: boolean;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Max Commits */
+            max_commits?: number | null;
+            /** Path */
+            path: string;
+            /** Source */
+            source: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /** InvitationCreateRequest */
         InvitationCreateRequest: {
@@ -8636,6 +8878,17 @@ export interface components {
             /** User Email */
             user_email?: string | null;
         };
+        /**
+         * SetFeatureRequest
+         * @description One switch move. ``value`` is a bool for a toggle, a string for a choice.
+         */
+        SetFeatureRequest: {
+            /**
+             * Value
+             * @description true/false for a toggle, or the option id for a choice
+             */
+            value: boolean | string;
+        };
         /** SetHybridPolicyRequest */
         SetHybridPolicyRequest: {
             /** Allow Multimodal */
@@ -8738,7 +8991,13 @@ export interface components {
             /** Workspace Id */
             workspace_id?: string | null;
         };
-        /** SubgraphArchiveRequest */
+        /**
+         * SubgraphArchiveRequest
+         * @description Exactly one recipient mechanism — a passphrase, or a public key.
+         *
+         *     Both optional at the schema level and validated in the service, so the
+         *     error a caller gets names the rule ("choose one") instead of a field.
+         */
         SubgraphArchiveRequest: {
             /**
              * Include Legacy Global
@@ -8761,9 +9020,11 @@ export interface components {
              */
             node_types: string[];
             /** Passphrase */
-            passphrase: string;
+            passphrase?: string | null;
             /** Path */
             path?: string | null;
+            /** Recipient Public Key */
+            recipient_public_key?: string | null;
             /**
              * Redact Provenance
              * @default true
@@ -12115,6 +12376,61 @@ export interface operations {
             };
         };
     };
+    list_features_api_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    set_feature_api_features__feature_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feature_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFeatureRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     graph_api_graph_get: {
         parameters: {
             query?: {
@@ -12680,6 +12996,59 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["FolderIngestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    interop_status_api_ingestion_interop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    interop_ingest_api_ingestion_interop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InteropIngestRequest"];
             };
         };
         responses: {
@@ -13440,6 +13809,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_recipient_key_api_knowledge_graph_share_recipient_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -14589,6 +14978,7 @@ export interface operations {
             query: {
                 q: string;
                 limit?: number;
+                image_fusion?: boolean;
             };
             header?: never;
             path?: never;
@@ -14649,6 +15039,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_query_status_api_search_image_query_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -15021,6 +15433,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_approve_automation_reviews_bulk_approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_dismiss_automation_reviews_bulk_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResult"];
                 };
             };
             /** @description Validation Error */

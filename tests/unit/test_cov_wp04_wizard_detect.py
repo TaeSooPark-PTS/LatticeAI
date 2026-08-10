@@ -957,12 +957,16 @@ def test_version_tuple_ignores_non_numeric_parts():
 
 
 def test_best_model_for_engine_falls_back_to_the_first_row():
+    small = "ollama:hf.co/LiquidAI/LFM2.5-2.6B-GGUF:Q4_K_M"
+    mid = "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
     rows = [
-        ("ollama:qwen3-vl:4b", "Qwen3-VL 4B", 2.7, "VLM", "d", 4),
-        ("ollama:qwen3-vl:8b", "Qwen3-VL 8B", 4.8, "VLM", "d", 16),
+        (small, "LFM2.5 2.6B", 1.7, "LLM", "d", 4),
+        (mid, "Gemma 4 12B", 7.9, "VLM", "d", 16),
     ]
 
-    assert setup._best_model_for_engine("ollama", 32, rows) == "ollama:qwen3-vl:8b"
-    assert setup._best_model_for_engine("engine-with-no-tiers", 32, rows) == "ollama:qwen3-vl:4b"
-    assert setup._best_model_for_engine("ollama", 2, rows) == "ollama:qwen3-vl:4b"
+    # 32GB clears the 24GB tier, and that tier's model is on offer here.
+    assert setup._best_model_for_engine("ollama", 32, rows) == mid
+    # No tier table for the engine, or no tier this machine clears: first row.
+    assert setup._best_model_for_engine("engine-with-no-tiers", 32, rows) == small
+    assert setup._best_model_for_engine("ollama", 2, rows) == small
     assert setup._best_model_for_engine("ollama", 32, []) == ""

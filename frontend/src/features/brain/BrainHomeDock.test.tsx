@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { t } from "@/i18n";
-import { renderPage } from "@/test/renderPage";
+import { ok, renderPage } from "@/test/renderPage";
 import { makeBrief, makeConversations, makeGraph, makeProof, makeReadiness } from "@/test/brainFixtures";
 import type { MemoryFragment } from "./types";
 import { BrainHomeDock } from "./BrainHomeDock";
@@ -11,6 +11,29 @@ const memories: MemoryFragment[] = [
   { id: "m1", title: "지금 나눈 대화", kind: "Conversation", tags: [], agentGenerated: false },
   { id: "m2", title: "회의 메모", kind: "Note", tags: [], agentGenerated: false },
 ];
+
+/** A minimal server-rendered switchboard, so the 기능 drawer has content. */
+const FEATURES = {
+  note: "모두 지금 바로 적용됩니다.",
+  features: [
+    {
+      id: "allow_multimodal", kind: "toggle", label: "사진·녹음도 기억하기",
+      summary: "폴더를 읽을 때 사진과 녹음도 함께 저장합니다.", default: false,
+      current: false, source: "default", env_var: "LATTICEAI_ALLOW_MULTIMODAL",
+      live: true, restart_required: false, caution: null, parent: null, choices: [],
+    },
+    {
+      id: "vector_backend", kind: "choice", label: "의미 검색 방식",
+      summary: "빠르기와 정확함 사이에서 고릅니다.", default: "brute",
+      current: "brute", source: "default", env_var: "LATTICEAI_VECTOR_INDEX",
+      live: true, restart_required: false, caution: null, parent: null,
+      choices: [
+        { id: "brute", label: "전부 비교", available: true, detail: null },
+        { id: "hnsw", label: "근사 검색", available: false, detail: "설치 필요 — hnswlib 없음" },
+      ],
+    },
+  ],
+};
 
 function renderDock(
   overrides: Partial<React.ComponentProps<typeof BrainHomeDock>> = {},
@@ -41,7 +64,10 @@ function renderDock(
     onRequestDetails: vi.fn(),
     ...overrides,
   };
-  const view = renderPage(<BrainHomeDock {...props} />, pageOptions);
+  const view = renderPage(<BrainHomeDock {...props} />, {
+    ...pageOptions,
+    api: { features: () => Promise.resolve(ok(FEATURES)), ...(pageOptions.api || {}) },
+  });
   return { ...view, props };
 }
 
@@ -49,9 +75,9 @@ const drawer = () => screen.queryByTestId("brain-home-drawer");
 const rail = (id: string) => screen.getByTestId(`brain-dock-${id}`);
 
 describe("BrainHomeDock rail", () => {
-  it("shows the three tabs closed, with a count only when history exists", () => {
+  it("shows the four tabs closed, with a count only when history exists", () => {
     const { unmount } = renderDock();
-    for (const id of ["conversations", "stats", "map"]) {
+    for (const id of ["conversations", "stats", "map", "features"]) {
       expect(rail(id)).toHaveAttribute("aria-expanded", "false");
     }
     expect(rail("conversations").querySelector(".brain-dock-count")?.textContent).toBe("2");
@@ -87,7 +113,7 @@ describe("BrainHomeDock rail", () => {
     expect(await screen.findByTestId("brain-home-drawer")).toBeTruthy();
   });
 
-  it("prefetches details for stats and map", async () => {
+  it("prefetches details for stats and map, and not for the switchboard", async () => {
     const { props } = renderDock();
     fireEvent.click(rail("stats"));
     await screen.findByTestId("brain-home-drawer");
@@ -95,6 +121,25 @@ describe("BrainHomeDock rail", () => {
 
     fireEvent.click(rail("map"));
     await waitFor(() => expect(props.onRequestDetails).toHaveBeenCalledTimes(2));
+
+    // 기능 reads /api/features and nothing else: pulling the whole proof
+    // bundle for it would be work nobody asked for.
+    fireEvent.click(rail("features"));
+    await screen.findByTestId("feature-row-allow_multimodal");
+    expect(props.onRequestDetails).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens the switchboard drawer with the server's switches in it", async () => {
+    renderDock();
+    fireEvent.click(rail("features"));
+
+    await screen.findByTestId("brain-home-drawer");
+    expect(screen.getByLabelText(t("ko", "brain.features.aria"))).toBeTruthy();
+    expect(await screen.findByTestId("feature-switch-allow_multimodal")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByTestId("feature-choice-vector_backend-hnsw")).toBeDisabled();
   });
 });
 

@@ -52,16 +52,29 @@ class KnowledgeGraphProjectionMixin(_Core):
         END;
         """
 
-    # The temporal columns pass through *raw* (v11.1.0). ``type`` is COALESCEd
-    # because ``legacy_type`` carries the label a reader expects; validity is
-    # not a label — a COALESCE there would turn "still valid" (NULL) into a
-    # value, which is exactly the ``kgv2_edges`` trap noted in the 11.0.1
-    # review. NULL in, NULL out; the fallback to ``created_at`` belongs to the
-    # read predicate (``schema.TEMPORAL_PREDICATE_SQL``), not to the view.
+    # ``type`` is reconstructed from ``legacy_type`` when there is one, because
+    # that column carries the label a reader expects. The trap the 11.0.1
+    # review recorded — and which 11.2.0 fixes — is that ``edges_v2.legacy_type``
+    # is ``NOT NULL DEFAULT ''``: a natively-canonical edge is written with
+    # ``legacy_type=''`` so its identity is effectively (source, target, type),
+    # and ``COALESCE('', type)`` returns ``''`` because COALESCE only skips
+    # NULL. Every canonical edge therefore read back with an **empty type**.
+    # ``NULLIF(legacy_type, '')`` is the fix: empty means "no legacy label",
+    # which is precisely what the write side meant by it.
+    #
+    # The empty string stays the write-side sentinel on purpose. SQLite treats
+    # NULLs as distinct in a UNIQUE index, so moving to NULL would silently
+    # disable the (source, target, type, legacy_type) dedupe and let the same
+    # relation land twice.
+    #
+    # The temporal columns pass through *raw* (v11.1.0): validity is not a
+    # label, and a COALESCE there would turn "still valid" (NULL) into a value.
+    # NULL in, NULL out; the fallback to ``created_at`` belongs to the read
+    # predicate (``schema.TEMPORAL_PREDICATE_SQL``), not to the view.
     _V2_VIEWS_SQL = """
         CREATE VIEW IF NOT EXISTS kgv2_nodes AS
           SELECT id,
-                 COALESCE(legacy_type, type) AS type,
+                 COALESCE(NULLIF(legacy_type, ''), type) AS type,
                  label AS title,
                  summary,
                  attrs AS metadata_json,
@@ -70,7 +83,7 @@ class KnowledgeGraphProjectionMixin(_Core):
           FROM nodes_v2;
         CREATE VIEW IF NOT EXISTS kgv2_edges AS
           SELECT id, source AS from_node, target AS to_node,
-                 COALESCE(legacy_type, type) AS type,
+                 COALESCE(NULLIF(legacy_type, ''), type) AS type,
                  weight,
                  metadata AS metadata_json,
                  created_at,
@@ -156,6 +169,7 @@ class KnowledgeGraphProjectionMixin(_Core):
                 KGStoreV2(self.db_path).init_schema(conn=conn)
                 _exec_script(conn, self._V2_VIEWS_SQL)
                 self._backfill_v2_on(conn, force=stale)
+                self._normalize_v2_legacy_types(conn)
                 # version stamp commits together with the backfill — never stranded
                 conn.execute(
                     "INSERT OR REPLACE INTO kg_meta(key, value) VALUES ('projection_version', ?)",
@@ -176,6 +190,50 @@ class KnowledgeGraphProjectionMixin(_Core):
             self._v2_projection_available = True
         except Exception as e:
             logging.warning("knowledge_graph: v2 schema init/backfill skipped: %s", e)
+
+    def _normalize_v2_legacy_types(self, conn: sqlite3.Connection) -> Dict[str, int]:
+        """Bring pre-11.2.0 rows onto the current ``legacy_type`` convention.
+
+        The convention is: ``legacy_type`` holds the *raw* label only when it
+        differs from the canonical type, and ``''`` (edges) / ``NULL`` (nodes)
+        otherwise. Rows written by older builds could carry the canonical value
+        in both columns, which is redundant and — because the dedupe key
+        includes ``legacy_type`` — splits one relation across two rows.
+
+        Idempotent by construction: a second run matches nothing. ``UPDATE OR
+        IGNORE`` is used because collapsing a redundant row can collide with
+        the canonical one that already exists; those survivors are counted and
+        reported rather than deleted, since the fixed view reads both
+        identically and deleting an edge is not a migration's business.
+        """
+        report = {"edges": 0, "nodes": 0, "collisions": 0}
+        try:
+            before = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM edges_v2 WHERE legacy_type = type"
+                ).fetchone()[0]
+                or 0
+            )
+            conn.execute(
+                "UPDATE OR IGNORE edges_v2 SET legacy_type='' WHERE legacy_type = type"
+            )
+            after = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM edges_v2 WHERE legacy_type = type"
+                ).fetchone()[0]
+                or 0
+            )
+            report["edges"] = before - after
+            report["collisions"] = after
+            cursor = conn.execute(
+                "UPDATE nodes_v2 SET legacy_type=NULL WHERE legacy_type = ''"
+            )
+            report["nodes"] = int(cursor.rowcount or 0)
+        except sqlite3.Error as exc:
+            # The projection is derived; a migration that cannot run leaves the
+            # data exactly as it was and the fixed view still reads it right.
+            logging.debug("knowledge_graph: legacy_type normalization skipped: %s", exc)
+        return report
 
     def _backup_before_v2_flip(self) -> Optional[str]:
         """Create one local SQLite backup before the v2 write-master flip."""

@@ -14,7 +14,10 @@ from latticeai.core.network_boundary import (
     NetworkBoundaryMode,
     normalize_network_mode,
 )
-from latticeai.runtime.network_boundary_wiring import resolve_active_network_mode
+from latticeai.runtime.network_boundary_wiring import (
+    get_hybrid_policy_service,
+    resolve_active_network_mode,
+)
 from latticeai.services.hybrid_chat import stream_hybrid_cloud_turn
 
 
@@ -32,6 +35,28 @@ def resolve_request_network_mode(
     )
 
 
+def resolve_hybrid_auto_commit(
+    *,
+    user_email: Optional[str],
+    workspace_id: Optional[str],
+) -> bool:
+    """The scoped hybrid policy's ``auto_commit`` decision for this turn.
+
+    Sibling of :func:`resolve_request_network_mode`: the dial says whether the
+    turn may reach the cloud, this says what may happen to what comes back.
+    Default is ``False`` — cloud-derived knowledge waits in the Review Center
+    — and a policy that cannot be read is treated as the default rather than
+    as permission.
+    """
+    try:
+        policy = get_hybrid_policy_service().resolve(
+            user_email=user_email, workspace_id=workspace_id
+        )
+    except Exception:  # noqa: BLE001 — an unreadable policy never grants a write
+        return False
+    return bool(policy.get("auto_commit", False))
+
+
 def maybe_hybrid_stream_response(
     *,
     req: Any,
@@ -45,6 +70,7 @@ def maybe_hybrid_stream_response(
     chat_service: Any,
     notify: Any,
     model_id: Optional[str],
+    review_queue: Any = None,
 ) -> Optional[StreamingResponse]:
     """Return a StreamingResponse when cloud path should run; else None."""
     if mode != NetworkBoundaryMode.CLOUD_ALLOWED:
@@ -66,6 +92,10 @@ def maybe_hybrid_stream_response(
             history_user=history_user,
             notify=notify,
             source=req.source,
+            review_queue=review_queue,
+            auto_commit=resolve_hybrid_auto_commit(
+                user_email=effective_email, workspace_id=workspace_id
+            ),
         ),
         media_type="text/event-stream",
         headers={
@@ -78,5 +108,6 @@ def maybe_hybrid_stream_response(
 
 __all__ = [
     "resolve_request_network_mode",
+    "resolve_hybrid_auto_commit",
     "maybe_hybrid_stream_response",
 ]

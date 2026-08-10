@@ -3,8 +3,8 @@
 Given a detected system profile (from :func:`auto_setup.probe`) this module
 classifies every model in :data:`model_catalog.ENGINE_MODEL_CATALOG` into one of
 three states — **recommended**, **compatible**, or **not_recommended** — and
-groups the result by current multimodal model family (Gemma 4, Qwen3-VL,
-Llama 4).
+groups the result by current model family (Gemma 4, Qwen3.6, Qwen3.5, GPT-OSS,
+LFM2.5).
 
 It is intentionally pure and dependency-light: the only input is a plain dict
 describing the machine, so it is fully unit-testable without touching real
@@ -30,17 +30,24 @@ NOT_RECOMMENDED = "not_recommended"
 # Apple-Silicon only.  Used to decide platform availability before sizing.
 _APPLE_ONLY_ENGINES = {"local_mlx"}
 
-# Family display order for the grouped view (newest multimodal generations first).
+# Family display order for the grouped view (current generations, largest
+# lineup first). Superseded families are not listed because the capability
+# registry never lets them reach the catalog — they are recognised for loading
+# only. A family missing from this list still renders, it just sorts last.
 _FAMILY_ORDER = [
     "Gemma 4",
-    "Qwen3-VL",
-    "Qwen2.5-VL",
-    "Llama 4",
-    "Llama 3.2 Vision",
-    "Phi Vision",
-    "Moondream",
-    "Pixtral",
+    "Qwen3.6",
+    "Qwen3.5",
+    "GPT-OSS",
+    "LFM2.5",
 ]
+
+# Modalities the recommender will surface. Text-only models earn their place —
+# LFM2.5 is the only thing that runs comfortably on 8GB, and GPT-OSS 20B is the
+# most-downloaded entry in the catalog — so filtering to `multimodal` would have
+# hidden two of the tiers. Each row still reports its own `modality`, so a UI
+# that wants to badge "reads pictures" can, honestly.
+_RECOMMENDABLE_MODALITIES = {"multimodal", "text"}
 
 _SIZE_RE = re.compile(r"([\d.]+)\s*(TB|GB|MB)", re.IGNORECASE)
 _UNIT_GB = {"TB": 1024.0, "GB": 1.0, "MB": 1.0 / 1024.0}
@@ -165,7 +172,7 @@ def recommend_catalog(profile: Dict[str, Any], *, engine: str = "local_mlx") -> 
     """
     models = [
         model for model in ENGINE_MODEL_CATALOG.get(engine, [])
-        if str(model.get("modality") or "").lower() == "multimodal"
+        if str(model.get("modality") or "").lower() in _RECOMMENDABLE_MODALITIES
     ]
     engine_available = _engine_available(engine, profile)
     ram_gb = _ram_gb(profile)

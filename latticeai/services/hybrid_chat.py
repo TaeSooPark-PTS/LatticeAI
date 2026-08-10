@@ -2,6 +2,13 @@
 
 Phase 1–2 entry point used by the chat path when NetworkBoundaryMode is
 CLOUD_ALLOWED. Local-only sessions never enter this module's cloud path.
+
+Both turn functions take the Review Center sink and the hybrid policy's
+``auto_commit`` decision as arguments rather than reaching for them: the
+caller that knows *whose* turn this is is the only one that can resolve a
+per-user policy, and a service that reads a process singleton cannot be
+tested against both branches. Defaults are the safe ones — no sink, no
+auto-commit — so a headless caller stages nothing rather than writing.
 """
 
 from __future__ import annotations
@@ -36,6 +43,35 @@ def _scope_key(user_email: Optional[str], workspace_id: Optional[str]) -> str:
     return f"{user_email or 'anon'}|{workspace_id or 'global'}"
 
 
+def _ingest_cloud_expansion(
+    result: CloudTurnResult,
+    *,
+    knowledge_graph: Any,
+    review_queue: Any,
+    auto_commit: bool,
+    user_email: Optional[str],
+    workspace_id: Optional[str],
+) -> Dict[str, Any]:
+    """Stage what the cloud answer taught the Brain (v11.2.0 wiring).
+
+    ``plan_kg_expansion_rich`` builds every plan with ``auto_commit=False``
+    because extraction has no idea what the user consented to; the policy dial
+    does, and this is where the two meet. With the sink bound the plan lands in
+    the Review Center as a ``change_proposal``, which is what makes
+    cloud-derived memory growth a thing the user approves rather than a thing
+    that happens to them.
+    """
+    plan = plan_kg_expansion_rich(result)
+    plan.auto_commit = bool(auto_commit)
+    ingestor = CloudResponseIngestor(
+        store=knowledge_graph,
+        review_queue=review_queue,
+        user_email=user_email,
+        workspace_id=workspace_id,
+    )
+    return ingestor.ingest(plan)
+
+
 async def run_hybrid_cloud_turn(
     *,
     user_message: str,
@@ -46,6 +82,8 @@ async def run_hybrid_cloud_turn(
     model: Optional[str] = None,
     top_k: int = 6,
     adapter: Optional[Any] = None,
+    review_queue: Any = None,
+    auto_commit: bool = False,
 ) -> CloudTurnResult:
     """Non-streaming helper: full answer + expansion plan."""
     mode = normalize_network_mode(mode)
@@ -85,9 +123,14 @@ async def run_hybrid_cloud_turn(
         mode=mode,
         model=model,
     )
-    plan = plan_kg_expansion_rich(result)
-    ingestor = CloudResponseIngestor(store=knowledge_graph)
-    ingest_status = ingestor.ingest(plan)
+    ingest_status = _ingest_cloud_expansion(
+        result,
+        knowledge_graph=knowledge_graph,
+        review_queue=review_queue,
+        auto_commit=auto_commit,
+        user_email=user_email,
+        workspace_id=workspace_id,
+    )
     used = minimal.token_estimate + max(1, len(result.answer_text) // 4)
     budget.record(used)
     result.usage = {
@@ -116,6 +159,8 @@ async def stream_hybrid_cloud_turn(
     history_user: Optional[Dict[str, Any]] = None,
     notify: Any = None,
     source: Optional[str] = None,
+    review_queue: Any = None,
+    auto_commit: bool = False,
 ) -> AsyncIterator[str]:
     """SSE generator for a hybrid cloud turn (Phase 2 chat path).
 
@@ -220,8 +265,14 @@ async def stream_hybrid_cloud_turn(
                 }
             )
 
-        plan = plan_kg_expansion_rich(result)
-        ingest_status = CloudResponseIngestor(store=knowledge_graph).ingest(plan)
+        ingest_status = _ingest_cloud_expansion(
+            result,
+            knowledge_graph=knowledge_graph,
+            review_queue=review_queue,
+            auto_commit=auto_commit,
+            user_email=user_email,
+            workspace_id=workspace_id,
+        )
         used = minimal.token_estimate + max(1, len(result.answer_text) // 4)
         budget.record(used)
 

@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v11.1.0 Living Brain walkthrough](output/release/v11.1.0/gifs/v11.1.0-living-brain-walkthrough.gif)
+![v11.2.0 Living Brain walkthrough](output/release/v11.2.0/gifs/v11.2.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.1.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.1.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.1.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.1.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.1.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v11.1.0/screenshots/10-admin-console.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.1.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.1.0/screenshots/08-system.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.2.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.2.0/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.2.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.2.0/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.2.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v11.2.0/screenshots/10-admin-console.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.2.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.2.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,64 +58,63 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v11.1.0/screenshots/01-login.png) | ![Model install](output/release/v11.1.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.1.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v11.2.0/screenshots/01-login.png) | ![Model install](output/release/v11.2.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.2.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v11.1.0/SCREENSHOT_INDEX.md](output/release/v11.1.0/SCREENSHOT_INDEX.md)
+[output/release/v11.2.0/SCREENSHOT_INDEX.md](output/release/v11.2.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **11.1.0 — Product Intelligence**:
+The current release is **11.2.0 — All Systems On**:
 
-The v9–v11.0 line hardened the foundation — proposal-first trust, honest
-signals, a 100% line-and-branch test floor. 11.1.0 builds the intelligence
-layer on top of it: **the Brain gets fast at scale, notices things on its
-own, remembers pictures and recordings, learns who you are, and connects to
-the tools you already use.**
+11.1.0 built the intelligence layer; 11.2.0 makes sure **every part of it
+actually works, ships today's models, and puts the switches in your hand.**
 
-- **Fast at scale.** A pluggable vector-index layer (brute-force default,
-  int8 quantized and HNSW opt-in via the `hnsw` extra) plus a durable
-  background embed queue. Measured on Apple Silicon: hybrid search p50 at
-  10k vectors went from 299 ms to **10.1 ms**, and stays at 43.9 ms at 50k
-  (recall@10 0.987) — the plan's <50 ms target met at 5× the target corpus.
-  Approximate results say `approx: true`; quantized's honest verdict (no RAM
-  win here, ~2.2× slower) is printed, not hidden.
-- **Alive, not just searchable.** Contradiction detection now files
-  review-queue proposals with plain-language resolutions; approving one
-  stamps the temporal model (`valid_from`/`valid_to`/`superseded_by`, with
-  `as_of(timestamp)` slicing). Event-driven synthesis proposes parent
-  concepts, missing links and a proactive Brain Brief after every 25th
-  ingest — every write goes through the proposal path, asserted by tests.
-- **Pictures and recordings are memories.** Behind `allow_multimodal`
-  (default off, off ⇒ byte-identical): images become first-class `Image`
-  nodes with OCR text, real captions only when a vision model produced one
-  (the caption-fabricating stub was deleted), separate image vectors with
-  late fusion, and inline thumbnails in the Evidence panel that never bypass
-  the local-file approval gate. Recordings are first-class `Audio` nodes
-  with honest transcription degradation.
-- **It knows you — transparently.** A Self-Model subgraph (Self /
-  Preference / Decision / Habit / Relationship) built only from proposals
-  you approve, injected into answer context under a strict token budget,
-  fully listable and deletable. Agents can propose whole-folder
-  reorganizations — structurally incapable of proposing deletions.
-- **Connected, selectively.** An approval-gated Obsidian vault bridge
-  (wikilinks become edges, idempotent re-runs) and a signed, encrypted
-  subgraph-share prototype where received knowledge arrives as proposals —
-  off by default behind `LATTICEAI_BRAIN_NETWORK`.
+- **The model catalog is current and verified.** Every recommended model
+  was checked against the live Hugging Face API — no weights downloaded, no
+  model loaded, nothing run on your machine. Two models that had vanished
+  from the Hub (phi-3.5-vision, moondream2), four gated repos and three
+  obsolete generations left the catalog; the ten recommendations are all
+  2025–2026 builds (Gemma 4 line, Qwen3.5/3.6, gpt-oss-20b, LFM2.5 with
+  Korean support), RAM-tiered, with exact-case ids, real byte sizes (one
+  entry claimed 11.8 GB for a 61 GB repo) and a static-loadability verdict
+  whose limits are stated, not hidden. Already-downloaded older models stay
+  recognised so nobody's local weights become orphans.
+- **Every switch is yours now.** A new 기능 drawer on the Brain home's dock
+  lists every opt-in capability — multimodal memories, video, brain
+  network sharing, vault watch, photo semantic search, RRF fusion, graph
+  expansion, automatic synthesis, background indexing, and the vector
+  backend choice — each with a plain-language line, its current source
+  (default / env / you), and a live switch. Toggles apply at runtime
+  through injected gate seams; an uninstalled backend says "install
+  needed" instead of pretending.
+- **The scope-outs are in.** Notion-export, Git-history and mail/calendar
+  bridges (all through the single ingestion gate with approval and
+  dry-run), recipient public-key encryption for subgraph shares (X25519
+  sealed box; passphrase mode stays), video ingestion via guarded ffmpeg
+  keyframes with subtitle companions, vault watch mode, bulk review
+  approval, the Self-Model summary reaching the agent loop, and text→image
+  semantic photo search.
+- **A 58-row evidence audit** verified every documented feature against
+  the running app: 51 worked as documented; the rest were fixed (a
+  permanently blank briefing health section, cloud memory write-back that
+  never reached the Review Center, an empty Brain scoring 100/excellent)
+  or the docs were lowered to the truth. The audit ships as
+  [docs/FEATURE_AUDIT_v11.2.0.md](docs/FEATURE_AUDIT_v11.2.0.md).
 
-All of it lands with the floor intact: **6,261 tests, 100.00% of 37,590
-statements and 10,658 branches**, verified on macOS 3.14, a fresh-resolve
+All of it lands with the floor intact: **6,490 tests, 100.00% of 39,054
+statements and 11,014 branches**, verified on macOS 3.14, a fresh-resolve
 python 3.11 environment, and a clean linux python:3.14 container.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 11.1.0 release must use exact filenames:
+Expected artifacts for 11.2.0 release must use exact filenames:
 
-- `dist/ltcai-11.1.0-py3-none-any.whl`
-- `dist/ltcai-11.1.0.tar.gz`
-- `ltcai-11.1.0.tgz`
-- `dist/ltcai-11.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.1.0_aarch64.dmg`
+- `dist/ltcai-11.2.0-py3-none-any.whl`
+- `dist/ltcai-11.2.0.tar.gz`
+- `ltcai-11.2.0.tgz`
+- `dist/ltcai-11.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.2.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -150,6 +149,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 11.2.0 | All Systems On |
 | 11.1.0 | Product Intelligence |
 | 11.0.1 | Both Branches |
 | 11.0.0 | Full Measure |

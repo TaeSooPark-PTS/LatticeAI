@@ -305,6 +305,35 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith("/invitations/") && pathname.endsWith("/accept") && req.method === "POST") return json(res, { invitation: { id: "invite-demo", status: "accepted" } });
   if (pathname === "/realtime/feed") return json(res, { events: [{ id: "evt-1", area: "workflow", event_type: "workflow_started", timestamp: "2026-06-01T12:00:00", payload: { run_id: "wf-run-approval" } }], stats: { events: 1 } });
   if (pathname === "/realtime/presence") return json(res, { presence: [{ client_id: "visual-client", user: "admin@example.com", workspace_id: "personal", last_seen: "2026-06-01T12:00:00" }], stats: { subscribers: 1 } });
+  // The opt-in switchboard (v11.2.0). Same reason as the two dials below: the
+  // 기능 drawer is captured for the release evidence, and a mock without this
+  // route would photograph an empty panel for a feature that works (10.6.0).
+  // The shape is the server's — `source`, `caution`, and an `available: false`
+  // option with its reason all have to be real here or the capture would not
+  // show the honesty this panel exists for.
+  if (pathname === "/api/features" || pathname.startsWith("/api/features/")) {
+    const features = [
+      { id: "allow_multimodal", kind: "toggle", label: "사진·녹음도 기억하기", summary: "폴더를 읽을 때 글뿐 아니라 사진과 녹음도 함께 저장합니다.", default: false, current: true, source: "user", env_var: "LATTICEAI_ALLOW_MULTIMODAL", live: true, restart_required: false, caution: null, parent: null, choices: [] },
+      { id: "video_ingest", kind: "toggle", label: "영상도 함께", summary: "사진·녹음을 켠 상태에서, 영상은 장면과 자막으로 저장합니다.", default: true, current: true, source: "default", env_var: "LATTICEAI_ALLOW_VIDEO", live: true, restart_required: false, caution: null, parent: "allow_multimodal", choices: [] },
+      { id: "vault_watch", kind: "toggle", label: "노트 보관함 지켜보기", summary: "밖에 있는 노트 보관함이 바뀌면 알아서 다시 읽어옵니다.", default: false, current: true, source: "env", env_var: "LATTICEAI_VAULT_WATCH", live: true, restart_required: false, caution: null, parent: null, choices: [] },
+      { id: "brain_network", kind: "toggle", label: "골라서 나누기", summary: "내가 고른 기억 묶음만 다른 기기로 내보내고 받아올 수 있습니다.", default: false, current: false, source: "default", env_var: "LATTICEAI_BRAIN_NETWORK", live: true, restart_required: false, caution: "이 기능만 기억을 이 컴퓨터 밖으로 내보냅니다. 받은 내용은 바로 합쳐지지 않고 검토함으로 갑니다.", parent: null, choices: [] },
+      { id: "synthesis", kind: "toggle", label: "스스로 정리하기", summary: "자료가 쌓이면 알아서 훑어보고, 고칠 거리를 검토함에 제안합니다.", default: true, current: true, source: "default", env_var: "LATTICEAI_SYNTHESIS", live: true, restart_required: false, caution: null, parent: null, choices: [] },
+      { id: "auto_vector_index", kind: "toggle", label: "넣자마자 검색 준비", summary: "새 자료를 넣으면 바로 의미 검색까지 준비합니다.", default: true, current: true, source: "default", env_var: "LATTICEAI_AUTO_VECTOR_INDEX", live: true, restart_required: false, caution: null, parent: null, choices: [] },
+      { id: "auto_late_fusion", kind: "toggle", label: "글로 사진 찾기", summary: "글로 물어봐도 사진까지 함께 찾습니다.", default: false, current: false, source: "default", env_var: "LATTICEAI_TEXT_IMAGE_FUSION", live: true, restart_required: false, caution: null, parent: null, choices: [] },
+      { id: "graph_expansion", kind: "toggle", label: "옆에 있는 기억까지 보기", summary: "찾은 기억과 바로 이어진 기억도 후보로 넣습니다.", default: false, current: false, source: "default", env_var: "LATTICEAI_GRAPH_EXPANSION", live: true, restart_required: false, caution: null, parent: null, choices: [] },
+      { id: "vector_backend", kind: "choice", label: "의미 검색 방식", summary: "빠르기와 정확함 사이에서 고릅니다. 기본값은 전부 훑어보는 정확한 방식입니다.", default: "brute", current: "brute", source: "default", env_var: "LATTICEAI_VECTOR_INDEX", live: true, restart_required: false, caution: null, parent: null, choices: [
+        { id: "brute", label: "전부 비교 (정확)", available: true, detail: null },
+        { id: "quantized", label: "간추려 비교 (빠름)", available: true, detail: null },
+        { id: "hnsw", label: "근사 검색 (가장 빠름)", available: false, detail: "설치 필요 — hnswlib is not available" },
+      ] },
+    ];
+    if (req.method === "POST") {
+      const id = decodeURIComponent(pathname.split("/")[3] || "");
+      const entry = features.find((feature) => feature.id === id) || features[0];
+      return json(res, { ...entry, current: entry.kind === "choice" ? entry.current : !entry.current, source: "user" });
+    }
+    return json(res, { features, note: "모두 지금 바로 적용됩니다. 다시 시작하지 않아도 됩니다." });
+  }
   // Autonomy dial (v9.9.8). The settings screenshot renders this panel, so the
   // mock must serve the same catalog shape the real API does — otherwise the
   // release evidence would show an "unavailable" state for a working feature.

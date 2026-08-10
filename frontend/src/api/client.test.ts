@@ -374,6 +374,10 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "runAutomationNow", invoke: () => api.runAutomationNow("w1"), method: "POST", path: "/api/automation/run-now", body: { workflow_id: "w1", dry_run: true } },
   { name: "runAutomationNow", invoke: () => api.runAutomationNow("w1", false), method: "POST", path: "/api/automation/run-now", body: { workflow_id: "w1", dry_run: false } },
   { name: "commandBriefing", invoke: () => api.commandBriefing(), method: "GET", path: "/api/command/briefing" },
+  { name: "features", invoke: () => api.features(), method: "GET", path: "/api/features" },
+  { name: "setFeature", invoke: () => api.setFeature("vector_backend", "quantized"), method: "POST", path: "/api/features/vector_backend", body: { value: "quantized" } },
+  // The id rides in the path, so it is encoded — a feature id is server data.
+  { name: "setFeature", invoke: () => api.setFeature("a/b", true), method: "POST", path: "/api/features/a%2Fb", body: { value: true } },
   { name: "permissionMode", invoke: () => api.permissionMode(), method: "GET", path: "/api/permission-mode" },
   { name: "setPermissionMode", invoke: () => api.setPermissionMode("trusted"), method: "POST", path: "/api/permission-mode", body: { mode: "trusted", acknowledge_risk: false } },
   { name: "setPermissionMode", invoke: () => api.setPermissionMode("bypass", true), method: "POST", path: "/api/permission-mode", body: { mode: "bypass", acknowledge_risk: true } },
