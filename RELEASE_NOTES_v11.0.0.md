@@ -129,6 +129,27 @@ Python 라인이 테스트 아래에서 실행되고, 단 한 줄이라도 빠�
   있던 스위트 동작). 커버리지가 더는 거기에 의존하지 않지만, 그 임포트
   자체는 다음 정리 후보입니다.
 
+## 릴리스 커밋 직후의 수정 (같은 릴리스에 포함)
+
+첫 main 푸시의 CI가 신선한 의존성 해석(fastapi 0.141 / starlette 1.6,
+python 3.11/3.12 레그)에서 8개 테스트 실패를 드러냈고, 그중 하나는 실제
+제품 호환성 결함이었습니다:
+
+- **fastapi ≥ 0.140에서 라우터 멱등 가드가 무력화** —
+  `register_permission_mode_router` / `register_network_boundary_router`가
+  평면 `route.path` 스캔으로 재등록을 감지했는데, 0.140부터
+  `include_router`가 라우터를 `path=None`인 불투명 엔트리로 감싸 스캔이
+  마운트를 보지 못하고 재진입 호출이 라우트를 중복 마운트했습니다.
+  가드를 `app.state` 플래그로 교체했습니다(이 함수들이 유일한 마운트
+  지점임을 확인).
+- 테스트 2건: 3.11/3.12의 `Path.is_symlink()`가 `stat(follow_symlinks=False)`
+  를 경유해 주입 오류가 새던 문제(페이크에 is_symlink 명시), fastapi 0.140+
+  라우트 열거(테스트 헬퍼가 `original_router`를 평탄화).
+
+수정은 구/신 스택 양쪽에서 검증됐습니다: python 3.11 + fastapi 0.141로
+5,423개, python 3.14 + fastapi 0.137로 5,426개 전부 통과, 커버리지 100.00%
+유지.
+
 ## Artifacts (exact filenames)
 
 - `dist/ltcai-11.0.0-py3-none-any.whl`

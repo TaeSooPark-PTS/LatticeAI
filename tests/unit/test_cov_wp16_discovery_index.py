@@ -76,6 +76,17 @@ def _install_path_faults(monkeypatch, *, stat_fail=None, read_bytes_fail=None) -
             raise exc
         return real_read_bytes(self, *args, **kwargs)
 
+    def fake_is_symlink(self, *args, **kwargs):
+        # 3.11/3.12 route is_symlink() through Path.stat(follow_symlinks=False),
+        # so the injected fault would leak out of the product's own stat() call;
+        # 3.13+ swallow every OSError here. Answer False for faulted names on
+        # every version so only the explicit stat() the product makes raises.
+        if self.name in stat_fail:
+            return False
+        return real_is_symlink(self, *args, **kwargs)
+
+    real_is_symlink = Path.is_symlink
+    monkeypatch.setattr(Path, "is_symlink", fake_is_symlink)
     monkeypatch.setattr(Path, "stat", fake_stat)
     monkeypatch.setattr(Path, "is_dir", fake_is_dir)
     monkeypatch.setattr(Path, "is_file", fake_is_file)

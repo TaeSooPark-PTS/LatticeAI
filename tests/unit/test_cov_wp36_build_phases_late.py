@@ -223,19 +223,33 @@ def _through_interaction(ctx: RuntimeContext) -> RuntimeContext:
     return ctx
 
 
+def _flat_routes(routes: Any) -> list:
+    # fastapi >= 0.140 wraps an included router in an opaque entry whose flat
+    # ``path`` is None but which keeps the real APIRouter on ``original_router``
+    # (this repo's routers bake their full paths, so no prefix re-joining is
+    # needed). Older fastapi returns the APIRoutes directly; handle both.
+    out = []
+    for route in routes:
+        out.append(route)
+        original = getattr(route, "original_router", None)
+        if original is not None:
+            out.extend(_flat_routes(original.routes))
+    return out
+
+
 def _paths(ctx: RuntimeContext) -> set:
-    return {getattr(route, "path", "") for route in ctx.app.routes}
+    return {getattr(route, "path", "") for route in _flat_routes(ctx.app.routes)}
 
 
 def _router_paths(router: Any) -> set:
-    return {getattr(route, "path", "") for route in router.routes}
+    return {getattr(route, "path", "") for route in _flat_routes(router.routes)}
 
 
 def _has_route(ctx: RuntimeContext, path: str, method: str) -> bool:
     return any(
         getattr(route, "path", "") == path
         and method in (getattr(route, "methods", None) or set())
-        for route in ctx.app.routes
+        for route in _flat_routes(ctx.app.routes)
     )
 
 

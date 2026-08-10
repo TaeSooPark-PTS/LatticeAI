@@ -99,11 +99,13 @@ def register_network_boundary_router(
     # The dial's own changes were audited from 10.1.0; the sends were not.
     # Bind the same sink so egress lands in the same log.
     bind_egress_audit(append_audit_event)
-    existing = {
-        getattr(route, "path", None)
-        for route in getattr(app, "routes", ())
-    }
-    if "/api/network-boundary" in existing:
+    # Skip if already mounted (re-entrant factory / tests). Flag on app.state
+    # rather than a route-path scan: fastapi >= 0.140 wraps an included router
+    # in an opaque entry whose flat ``path`` is None, so path introspection
+    # stopped seeing the mount and a re-entrant call duplicated the routes.
+    # This function is the only in-tree mount site for this router.
+    state = getattr(app, "state", None)
+    if state is not None and getattr(state, "_ltcai_network_boundary_mounted", False):
         return svc
     app.include_router(
         create_network_boundary_router(
@@ -113,6 +115,8 @@ def register_network_boundary_router(
             policy_service=policy,
         )
     )
+    if state is not None:
+        state._ltcai_network_boundary_mounted = True
     return svc
 
 

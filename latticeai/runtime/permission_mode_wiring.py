@@ -95,16 +95,19 @@ def register_permission_mode_router(
 
     svc = get_permission_mode_service(data_dir=data_dir, audit=append_audit_event)
     bind_dispatch_permission_mode()
-    # Skip if already mounted (re-entrant factory / tests).
-    existing = {
-        getattr(route, "path", None)
-        for route in getattr(app, "routes", ())
-    }
-    if "/api/permission-mode" in existing:
+    # Skip if already mounted (re-entrant factory / tests). The guard is a flag
+    # on app.state rather than a scan of route paths: fastapi >= 0.140 wraps an
+    # included router in an opaque entry whose flat ``path`` is None, so path
+    # introspection stopped seeing the mount and a re-entrant call duplicated
+    # the routes. This function is the only in-tree mount site for this router.
+    state = getattr(app, "state", None)
+    if state is not None and getattr(state, "_ltcai_permission_mode_mounted", False):
         return svc
     app.include_router(
         create_permission_mode_router(service=svc, require_user=require_user)
     )
+    if state is not None:
+        state._ltcai_permission_mode_mounted = True
     return svc
 
 
