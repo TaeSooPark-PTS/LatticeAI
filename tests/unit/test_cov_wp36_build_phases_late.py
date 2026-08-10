@@ -24,6 +24,7 @@ evidence that the phase wired anything.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List
@@ -109,6 +110,26 @@ def _config(root: Path, **overrides: str) -> Config:
     return Config.from_env(env)
 
 
+def _empty_prefix(monkeypatch, root: Path) -> Path:
+    """Point ``sys.prefix`` at a real directory that ships no ``static``.
+
+    ``Config.from_env`` resolves a *missing* static dir to ``sys.prefix/static``
+    when that exists, and on a machine that pip-installed the package it
+    genuinely does — the wheel's data files land in the interpreter prefix.
+    ``root/static`` is never created here, so without this ``ctx.STATIC_DIR``
+    would be the installed package's static directory on a release runner, and
+    the test below that writes ``index.html`` into it would write there.
+
+    Deliberately duplicated from ``test_cov_wp19_build_phases.py`` rather than
+    shared through a conftest: this suite keeps its fixtures in the file that
+    reads them.
+    """
+    prefix = root / "prefix"
+    prefix.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(sys, "prefix", str(prefix))
+    return prefix
+
+
 def _base_context(root: Path, monkeypatch, **overrides: str) -> RuntimeContext:
     """Everything the late phases read, built the way the real build builds it.
 
@@ -123,6 +144,9 @@ def _base_context(root: Path, monkeypatch, **overrides: str) -> RuntimeContext:
     # The agent workspace is a process-global path resolved at import time;
     # without this the phase's ensure_agent_root() would write into the repo.
     monkeypatch.setattr(latticeai_tools, "AGENT_ROOT", root / "agent_workspace")
+    # Same hazard one layer down: an installed package's prefix static would
+    # otherwise become ctx.STATIC_DIR, and the web phase writes into it.
+    _empty_prefix(monkeypatch, root)
 
     ctx = RuntimeContext(_config(root, **overrides))
     phase_config(ctx)

@@ -134,19 +134,58 @@ def test_config_phase_lays_out_a_private_data_directory(tmp_path):
         assert ctx.DATA_DIR.stat().st_mode & 0o777 == 0o700
 
 
+def _empty_prefix(monkeypatch, tmp_path: Path) -> Path:
+    """Point ``sys.prefix`` at a real directory that ships no ``static``.
+
+    ``Config.from_env`` resolves a *missing* static dir to ``sys.prefix/static``
+    when that exists — which on a machine that pip-installed the package it
+    genuinely does, because the wheel's data files land in the interpreter
+    prefix. Without this the two tests below assert a property of the runner
+    (a release runner has a prefix ``static``; a checkout's venv does not)
+    rather than a property of the resolver.
+    """
+    prefix = tmp_path / "prefix"
+    prefix.mkdir()
+    monkeypatch.setattr(sys, "prefix", str(prefix))
+    return prefix
+
+
 def test_config_phase_survives_a_filesystem_that_refuses_chmod(monkeypatch, tmp_path):
     """A mounted volume that ignores POSIX modes must not stop the build."""
 
     def refuse(self, mode, **kwargs):
         raise OSError("operation not permitted")
 
+    _empty_prefix(monkeypatch, tmp_path)
     monkeypatch.setattr(Path, "chmod", refuse)
     ctx = RuntimeContext(_config(tmp_path))
 
     phase_config(ctx)
 
     assert ctx.DATA_DIR.is_dir()
+    # Nothing to fall back to, so the configured path stands even though it
+    # does not exist yet — the web phase is what creates it.
     assert ctx.STATIC_DIR == tmp_path / "static"
+
+
+def test_config_phase_prefers_the_packaged_static_dir_when_the_prefix_has_one(
+    monkeypatch, tmp_path
+):
+    """The other direction, pinned: an install's prefix static wins.
+
+    This is the branch a release runner takes and a checkout never does. Both
+    directions are now facts about ``Config.from_env``'s candidate order rather
+    than about which machine happened to run the suite.
+    """
+    prefix = _empty_prefix(monkeypatch, tmp_path)
+    (prefix / "static").mkdir()
+
+    ctx = RuntimeContext(_config(tmp_path))
+
+    phase_config(ctx)
+
+    assert ctx.STATIC_DIR == prefix / "static"
+    assert not (tmp_path / "static").exists()
 
 
 def test_config_phase_runs_with_no_keyring_installed(monkeypatch, tmp_path):
