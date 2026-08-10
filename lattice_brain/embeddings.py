@@ -8,7 +8,7 @@ import os
 import re
 import struct
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Iterable, List
 
 DEFAULT_EMBEDDING_DIM = int(os.getenv("LATTICEAI_VECTOR_DIM", "384"))
 EMBEDDING_MODEL_ID = f"lattice-local-hash-v1:{DEFAULT_EMBEDDING_DIM}"
@@ -97,40 +97,15 @@ class LocalEmbeddingModel:
         return list(struct.unpack(f"<{count}f", payload[: count * 4]))
 
 
-# --- Large candidate #2 slice: multimodal (vision) stubs ---
-# Schema already defines IMAGE / IMAGE_TEXT / CONTAINS_IMAGE.
-# These stubs allow ingestion + retrieval paths to carry image signals without
-# requiring heavy deps at core. Real impl can swap in local vision (e.g. via
-# ollama vision or onnx CLIP) behind the same interface.
-@dataclass(frozen=True)
-class VisionStub:
-    """Offline vision describe + embed stubs for multimodal Brain.
+# Removed in v11.1.0: ``VisionStub`` / ``get_vision_embedder``.
+#
+# They produced a "caption" (``Image pic.png (PNG 12x8)``) and an "image
+# embedding" (a hash of the filename and pixel dimensions) with no model
+# involved, and ``discovery_index`` stored both. Once in the graph neither was
+# distinguishable from something a vision model had actually said, which is the
+# one property a caption must have. The honest seam is now
+# :class:`lattice_brain.multimodal.MultimodalPorts`: a caption exists only when
+# a vision-language model produced it, an image vector only when a vision model
+# produced it, and their absence is recorded as an absence.
 
-    describe: returns a short textual caption derived from metadata/filename.
-    embed: produces a vector from image meta (size+format) + optional caption hash.
-    Later: replace with real embedding model that accepts image bytes/path.
-    """
-    dim: int = DEFAULT_EMBEDDING_DIM
-
-    def describe(self, path: str | None = None, meta: Optional[Dict[str, Any]] = None) -> str:
-        meta = meta or {}
-        w = meta.get("width") or meta.get("w") or "?"
-        h = meta.get("height") or meta.get("h") or "?"
-        fmt = meta.get("format") or meta.get("ext") or "img"
-        name = (path or "").split("/")[-1] or "image"
-        # deterministic caption stub (no external call)
-        return f"Image {name} ({fmt} {w}x{h})"
-
-    def embed_image(self, path: str | None = None, meta: Optional[Dict[str, Any]] = None, caption: str = "") -> List[float]:
-        meta = meta or {}
-        basis = f"{path or ''}|{meta.get('width',0)}x{meta.get('height',0)}|{meta.get('format','')}|{caption[:120]}"
-        # reuse text embedder for determinism (image content hash would be better with real vision)
-        model = LocalEmbeddingModel(dim=self.dim)
-        return model.embed(basis)
-
-
-def get_vision_embedder(dim: int | None = None) -> VisionStub:
-    return VisionStub(dim=dim or DEFAULT_EMBEDDING_DIM)
-
-
-__all__ = ["DEFAULT_EMBEDDING_DIM", "EMBEDDING_MODEL_ID", "LocalEmbeddingModel", "embedding_model_id", "VisionStub", "get_vision_embedder"]
+__all__ = ["DEFAULT_EMBEDDING_DIM", "EMBEDDING_MODEL_ID", "LocalEmbeddingModel", "embedding_model_id"]

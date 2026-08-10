@@ -636,14 +636,20 @@ class KnowledgeGraphIngestMixin(_Core):
         modified_at: Optional[str] = None,
         conversation_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        node_type: str = "Document",
     ) -> Dict[str, Any]:
         """Unified text/web ingestion: one shape for URL, browser tab, note, text.
 
-        Creates a content ``Document`` node (idempotent by content hash), a
-        ``Source`` node linked via ``indexed_from``, RAG chunks, and extracted
+        Creates a content node (idempotent by content hash), a ``Source`` node
+        linked via ``indexed_from``, RAG chunks, and extracted
         Concept/Task/Decision nodes — mirroring ingest_document for non-file
         sources. Returns the full set of ids the caller needs to record
         provenance, including ``duplicate`` (was the content already indexed).
+
+        ``node_type`` names the content node. It defaults to ``Document``, so
+        every historical caller is unchanged; a door that knows its material is
+        something else (``Audio`` for a recording) says so here rather than
+        writing a second ingest path to say it.
         """
         source_type = str(source_type or "text")
         text = str(text or "")
@@ -674,11 +680,11 @@ class KnowledgeGraphIngestMixin(_Core):
 
         with self._connect() as conn:
             duplicate = self._node_exists(conn, content_id)
-            # ── 콘텐츠 노드 (점: 명사 — 문서) ────────────────────────────────
+            # ── 콘텐츠 노드 (점: 명사 — 기본은 문서) ─────────────────────────
             self._upsert_node(
                 conn,
                 content_id,
-                "Document",
+                node_type,
                 title,
                 summary=(text or title)[:500],
                 metadata=node_meta,
@@ -813,7 +819,7 @@ class KnowledgeGraphIngestMixin(_Core):
 
         return {
             "node_id": content_id,
-            "type": "Document",
+            "type": node_type,
             "source_node_id": source_node_id,
             "content_hash": content_hash,
             "chunk_ids": chunk_ids,

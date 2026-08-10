@@ -28,13 +28,33 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ..quiet import quiet
 
 QUERY_CLASSES = ("fact", "code", "person", "recency")
 
 FUSION_WEIGHTS_ENV = "LATTICEAI_FUSION_WEIGHTS"
+
+# ── fusion strategy (v11.1.0) ────────────────────────────────────────────────
+# Linear alpha fusion needs the two channels' scores to be comparable. They
+# are not: the lexical channel scores 1/rank while the vector channel scores a
+# max-normalized cosine, so a query where every cosine lands near 0.9 flattens
+# the vector channel to noise. Reciprocal Rank Fusion ignores score magnitudes
+# entirely and fuses *positions*, which is exactly the property that survives
+# incomparable scales.
+#
+# It is opt-in, per query class, and off everywhere by default: alpha fusion
+# is what every existing ranking assertion in this repo describes, and a
+# ranking change dressed up as a bug fix is how retrieval quality regressions
+# get shipped. Turn it on with LATTICEAI_FUSION_STRATEGY=rrf (all classes) or
+# a JSON object like {"code": "rrf"} (per class).
+FUSION_STRATEGY_ENV = "LATTICEAI_FUSION_STRATEGY"
+FUSION_STRATEGIES = ("alpha", "rrf")
+DEFAULT_FUSION_STRATEGY: Dict[str, str] = dict.fromkeys(QUERY_CLASSES, "alpha")
+#: The smoothing constant from the original RRF paper (Cormack et al., 2009).
+#: Larger k flattens the curve, so rank 1 wins by less.
+DEFAULT_RRF_K = 60
 
 # Per-class fusion weights. "fact" mirrors the pre-fusion-gate defaults
 # (SearchService DEFAULT_HYBRID_WEIGHTS + graph-layer alpha=0.6) so the
@@ -145,16 +165,163 @@ def fusion_weight_table(
     return table
 
 
+def _env_strategy_overrides() -> Dict[str, str]:
+    """Parse ``LATTICEAI_FUSION_STRATEGY`` → per-class strategy overrides.
+
+    Two accepted forms: a bare strategy name (``rrf``) applies to every class,
+    a JSON object (``{"code": "rrf"}``) applies per class. Anything else —
+    a typo, malformed JSON, an unknown strategy — is ignored rather than
+    raising, so a bad env var degrades to the default fusion instead of
+    taking every search down.
+    """
+    raw = os.getenv(FUSION_STRATEGY_ENV, "").strip()
+    if not raw:
+        return {}
+    if raw.lower() in FUSION_STRATEGIES:
+        return dict.fromkeys(QUERY_CLASSES, raw.lower())
+    try:
+        payload = json.loads(raw)
+    except (ValueError, TypeError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        str(cls): str(value).lower()
+        for cls, value in payload.items()
+        if cls in DEFAULT_FUSION_STRATEGY and str(value).lower() in FUSION_STRATEGIES
+    }
+
+
+def fusion_strategy_table(
+    overrides: Optional[Mapping[str, str]] = None,
+) -> Dict[str, str]:
+    """Full per-class strategy table: defaults ← env override ← caller."""
+    table = dict(DEFAULT_FUSION_STRATEGY)
+    for source in (_env_strategy_overrides(), overrides or {}):
+        for cls, value in source.items():
+            if cls in table and str(value).lower() in FUSION_STRATEGIES:
+                table[cls] = str(value).lower()
+    return table
+
+
+def rrf_score(rank: int, *, k: int = DEFAULT_RRF_K) -> float:
+    """One channel's contribution for an item it ranked at ``rank`` (1-based)."""
+    return 1.0 / (int(k) + max(1, int(rank)))
+
+
+def rrf_fuse(
+    rankings: Mapping[str, Sequence[str]],
+    *,
+    k: int = DEFAULT_RRF_K,
+    weights: Optional[Mapping[str, float]] = None,
+) -> Dict[str, float]:
+    """Reciprocal Rank Fusion over per-channel id rankings.
+
+    ``rankings`` maps a channel name to its ids in rank order (best first).
+    An id absent from a channel simply contributes nothing from it — RRF has
+    no notion of a "missing score" to guess at, which is the other reason it
+    survives channels that fail independently.
+
+    ``weights`` optionally scales a channel's contribution (a channel missing
+    from the mapping weighs 1.0). Deterministic and pure.
+    """
+    fused: Dict[str, float] = {}
+    for channel, ordered in rankings.items():
+        weight = 1.0 if weights is None else float(weights.get(channel, 1.0))
+        for rank, item_id in enumerate(ordered, start=1):
+            fused[item_id] = fused.get(item_id, 0.0) + weight * rrf_score(rank, k=k)
+    return fused
+
+
+# ── graph traversal candidate expansion (v11.1.0) ────────────────────────────
+# Both retrieval channels can only return what they matched. A note that
+# never says "postgres" but is one CONTAINS edge away from the one that does
+# is unreachable by either — and it is often the answer. Expansion walks one
+# hop out from the top hits and offers those neighbours as candidates.
+#
+# It is capped, off by default, and reports its own counts, because the
+# failure mode is dilution: an unbounded expansion turns a precise answer into
+# a tour of the graph.
+GRAPH_EXPANSION_ENV = "LATTICEAI_GRAPH_EXPANSION"
+DEFAULT_EXPANSION_SEEDS = 3
+DEFAULT_EXPANSION_CAP = 5
+#: Expanded candidates inherit a damped share of their seed's score: they are
+#: related to a hit, they are not themselves a hit.
+EXPANSION_DECAY = 0.5
+
+
+def graph_expansion_enabled() -> bool:
+    """True when ``LATTICEAI_GRAPH_EXPANSION`` opts in (default: off)."""
+    raw = os.getenv(GRAPH_EXPANSION_ENV, "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def expand_with_neighbors(
+    seeds: Sequence[Tuple[str, float]],
+    neighbors_fn: Callable[[str], Any],
+    *,
+    exclude: Optional[Sequence[str]] = None,
+    cap: int = DEFAULT_EXPANSION_CAP,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """One-hop neighbours of ``seeds`` as extra candidates + an honest report.
+
+    ``seeds`` is ``[(node_id, score)]`` best first; ``neighbors_fn`` is the
+    store's ``neighbors``. Returns ``(candidates, report)`` where each
+    candidate carries its originating seed and a decayed score, and the report
+    states how many seeds were walked, how many candidates were kept, and
+    whether the cap bit. A neighbour lookup that fails is skipped and counted,
+    never raised: expansion is an optimization, not a dependency.
+    """
+    known = {str(item) for item in (exclude or ())}
+    cap = max(0, int(cap))
+    candidates: List[Dict[str, Any]] = []
+    failures = 0
+    for seed_id, seed_score in seeds:
+        if len(candidates) >= cap:
+            break
+        try:
+            payload = neighbors_fn(seed_id) or {}
+        except Exception:  # noqa: BLE001 — a bad seed must not fail the search
+            failures += 1
+            continue
+        for node in payload.get("neighbors") or []:
+            node_id = str(node.get("id") or "")
+            if not node_id or node_id in known:
+                continue
+            known.add(node_id)
+            candidates.append(
+                {
+                    "node": node,
+                    "seed": str(seed_id),
+                    "score": round(float(seed_score) * EXPANSION_DECAY, 6),
+                }
+            )
+            if len(candidates) >= cap:
+                break
+    report = {
+        "enabled": True,
+        "seeds": len(seeds),
+        "added": len(candidates),
+        "cap": cap,
+        "truncated": len(candidates) >= cap,
+        "failed_seeds": failures,
+    }
+    return candidates, report
+
+
 def fusion_profile(
     query: Any,
     *,
     overrides: Optional[Mapping[str, Mapping[str, float]]] = None,
+    strategies: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, Any]:
     """Classify ``query`` and return its resolved fusion weights.
 
     Returns ``{"query_class": str, "weights": {keyword, vector, graph},
-    "alpha": float}``. ``weights`` feeds the three-channel service fusion;
-    ``alpha`` feeds the two-channel graph-layer fusion.
+    "alpha": float, "strategy": "alpha"|"rrf"}``. ``weights`` feeds the
+    three-channel service fusion; ``alpha`` feeds the two-channel graph-layer
+    fusion; ``strategy`` selects *how* those channels combine and is
+    ``"alpha"`` for every class unless configured otherwise.
     """
     query_class = classify_query(query)
     table = fusion_weight_table(overrides)
@@ -170,14 +337,28 @@ def fusion_profile(
             "graph": resolved["graph"],
         },
         "alpha": resolved["alpha"],
+        "strategy": fusion_strategy_table(strategies)[query_class],
     }
 
 
 __all__ = [
+    "DEFAULT_EXPANSION_CAP",
+    "DEFAULT_EXPANSION_SEEDS",
+    "DEFAULT_FUSION_STRATEGY",
     "DEFAULT_FUSION_WEIGHTS",
+    "DEFAULT_RRF_K",
+    "EXPANSION_DECAY",
+    "FUSION_STRATEGIES",
+    "FUSION_STRATEGY_ENV",
     "FUSION_WEIGHTS_ENV",
+    "GRAPH_EXPANSION_ENV",
     "QUERY_CLASSES",
     "classify_query",
+    "expand_with_neighbors",
     "fusion_profile",
+    "fusion_strategy_table",
     "fusion_weight_table",
+    "graph_expansion_enabled",
+    "rrf_fuse",
+    "rrf_score",
 ]

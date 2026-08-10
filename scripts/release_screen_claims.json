@@ -21,6 +21,15 @@
     "specific, not less."
   ],
 
+  "11.1.0": {
+    "_why": [
+      "Feature release with no intentional change to the twelve captured",
+      "screens: the new surfaces (proposals, thumbnails) render inside",
+      "existing panels and the capture corpus carries no image citations.",
+      "All twelve measured but not gated."
+    ]
+  },
+
   "11.0.1": {
     "_why": [
       "Defect-fix and branch-coverage release: no intentional UI change.",

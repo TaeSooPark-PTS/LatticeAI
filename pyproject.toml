@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "11.0.1"
+version = "11.1.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -53,10 +53,14 @@ dependencies = [
 
 [project.optional-dependencies]
 ann = ["sqlite-vec>=0.1,<1"]
+# Approximate nearest-neighbour vector index (LATTICEAI_VECTOR_INDEX=hnsw).
+# Compiled extension, deliberately optional: without it the exact scan is
+# used and index_status() reports why.
+hnsw = ["hnswlib>=0.8,<1"]
 postgres = ["psycopg[binary]>=3.2,<4"]
 local = ["mlx-vlm>=0.6.3", "mlx-lm"]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
-all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub", "sqlite-vec>=0.1,<1", "psycopg[binary]>=3.2,<4"]
+all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub", "sqlite-vec>=0.1,<1", "psycopg[binary]>=3.2,<4", "hnswlib>=0.8,<1"]
 # Development-only checkers. Coverage became measurable in 10.2.0: before the
 # connection-leak fix, running under a tracer exhausted file descriptors and
 # ~400 tests failed, so the real number was unknown.
@@ -76,7 +80,7 @@ Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELO
 py-modules = [
   "server",
 ]
-packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.runtime", "lattice_brain.storage", "latticeai", "latticeai.core", "latticeai.api", "latticeai.cli", "latticeai.integrations", "latticeai.models", "latticeai.runtime", "latticeai.services", "latticeai.setup", "latticeai.tools"]
+packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.graph.vector_index", "lattice_brain.runtime", "lattice_brain.storage", "latticeai", "latticeai.core", "latticeai.api", "latticeai.cli", "latticeai.integrations", "latticeai.models", "latticeai.runtime", "latticeai.services", "latticeai.setup", "latticeai.tools"]
 include-package-data = true
 
 [tool.setuptools.package-data]
@@ -281,6 +285,7 @@ files = [
   "lattice_brain/graph/documents.py",
   "lattice_brain/graph/fusion.py",
   "lattice_brain/graph/identity.py",
+  "lattice_brain/graph/image_vectors.py",
   "lattice_brain/graph/ingest.py",
   "lattice_brain/graph/json_utils.py",
   "lattice_brain/graph/network.py",
@@ -296,10 +301,18 @@ files = [
   "lattice_brain/graph/runtime.py",
   "lattice_brain/graph/schema.py",
   "lattice_brain/graph/store.py",
+  "lattice_brain/graph/vector_index/__init__.py",
+  "lattice_brain/graph/vector_index/base.py",
+  "lattice_brain/graph/vector_index/brute_force.py",
+  "lattice_brain/graph/vector_index/hnsw.py",
+  "lattice_brain/graph/vector_index/jobs.py",
+  "lattice_brain/graph/vector_index/quantized.py",
+  "lattice_brain/graph/vector_index/selector.py",
   "lattice_brain/graph/write_master.py",
   "lattice_brain/ingestion.py",
   "lattice_brain/ingestion_jobs.py",
   "lattice_brain/memory.py",
+  "lattice_brain/multimodal.py",
   "lattice_brain/portability.py",
   "lattice_brain/quality.py",
   "lattice_brain/quiet.py",
@@ -310,6 +323,7 @@ files = [
   "lattice_brain/runtime/hooks.py",
   "lattice_brain/runtime/multi_agent.py",
   "lattice_brain/runtime/statuses.py",
+  "lattice_brain/self_model.py",
   "lattice_brain/sensitivity.py",
   "lattice_brain/storage/__init__.py",
   "lattice_brain/storage/base.py",
@@ -318,6 +332,7 @@ files = [
   "lattice_brain/storage/migration.py",
   "lattice_brain/storage/postgres.py",
   "lattice_brain/storage/sqlite.py",
+  "lattice_brain/synthesis.py",
   "lattice_brain/utils.py",
   "lattice_brain/workflow.py",
   "latticeai/__init__.py",
@@ -432,6 +447,7 @@ files = [
   "latticeai/core/workspace_graph_trace.py",
   "latticeai/core/workspace_memory.py",
   "latticeai/core/workspace_os.py",
+  "latticeai/core/workspace_reorganization.py",
   "latticeai/core/workspace_os_constants.py",
   "latticeai/core/workspace_os_state.py",
   "latticeai/core/workspace_os_utils.py",
@@ -510,8 +526,10 @@ files = [
   "latticeai/services/model_recommendation.py",
   "latticeai/services/model_runtime.py",
   "latticeai/services/model_service.py",
+  "latticeai/services/multimodal_ports.py",
   "latticeai/services/multimodal_streaming.py",
   "latticeai/services/network_boundary_service.py",
+  "latticeai/services/obsidian_bridge.py",
   "latticeai/services/openai_compatible_adapter.py",
   "latticeai/services/p_reinforce.py",
   "latticeai/services/permission_mode_service.py",
@@ -522,6 +540,7 @@ files = [
   "latticeai/services/router_context.py",
   "latticeai/services/run_executor.py",
   "latticeai/services/search_service.py",
+  "latticeai/services/self_model_service.py",
   "latticeai/services/setup_detection.py",
   "latticeai/services/tool_dispatch.py",
   "latticeai/services/triggers.py",

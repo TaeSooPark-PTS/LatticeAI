@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Optional
+
 from latticeai.core.tool_registry import TOOL_CATALOG_BRIEF
 
 PLANNER_PROMPT = """You are the PLANNER role in Lattice AI's multi-role agent harness.
@@ -103,3 +105,67 @@ Rules:
 
 
 AGENT_SYSTEM_PROMPT = EXECUTOR_PROMPT
+
+
+# ── file-writing hints (v11.1.0) ────────────────────────────────────────────
+#
+# A 1–4B local model does not fail at *writing a file*; it fails at deciding
+# it is allowed to write one yet. The compact profile already gives that model
+# a shorter transcript and an earlier escalation; these hints give it the two
+# things the transcripts showed it missing most: a concrete order of
+# operations, and permission to write the file on the very next turn.
+#
+# The strings are deliberately additive — ``EXECUTOR_PROMPT`` is untouched, so
+# every caller that wants today's prompt keeps getting exactly today's prompt.
+
+FILE_TASK_HINTS = """
+FILE TASKS — how to actually finish one:
+- If the request names a file to create, your FIRST action is write_file with
+  the complete content. Do not read, list, or plan around it first.
+- args.path is a workspace-relative path (e.g. "report.md"), never absolute.
+- args.content is the WHOLE file, not a fragment and not a description of it.
+- After the write result appears in the transcript, verify once (read_file),
+  then finish with {"action": "final", ...}.
+"""
+
+COMPACT_FILE_TASK_HINTS = """
+FILE TASKS (short form):
+1. write_file {"path": "<name>", "content": "<the whole file>"}
+2. read_file to confirm it exists
+3. {"action": "final", "message": "..."}
+Write the file on your next turn. Do not explain first.
+"""
+
+
+def file_task_hints(profile: Any = None) -> str:
+    """The file-writing hints for a loop profile.
+
+    ``profile`` is an :class:`~latticeai.core.agent_profiles.AgentProfile`, its
+    name, or ``None``. The compact profile gets the numbered short form (small
+    models follow a list better than prose); everything else gets the standard
+    hints, so a strong model's prompt grows by four sentences and no rules.
+    """
+    name = getattr(profile, "name", profile)
+    if str(name or "").strip().lower() == "compact":
+        return COMPACT_FILE_TASK_HINTS.strip()
+    return FILE_TASK_HINTS.strip()
+
+
+def executor_prompt_for(
+    base: str = EXECUTOR_PROMPT,
+    *,
+    profile: Any = None,
+    self_model_summary: Optional[str] = None,
+) -> str:
+    """``base`` plus the file hints, and the Self-Model summary when there is one.
+
+    The injection rule is the same one the context builder follows: an empty
+    (or missing) Self-Model adds nothing at all — no header, no placeholder —
+    so a Brain that knows nothing about its owner produces the prompt it
+    always produced.
+    """
+    parts = [str(base or "").rstrip(), file_task_hints(profile)]
+    summary = str(self_model_summary or "").strip()
+    if summary:
+        parts.append(f"ABOUT THE USER (from their Brain — honour it, do not restate it):\n{summary}")
+    return "\n\n".join(parts)

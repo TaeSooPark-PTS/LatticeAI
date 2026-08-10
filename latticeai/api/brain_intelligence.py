@@ -10,10 +10,23 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from latticeai.services.brain_intelligence import BrainIntelligenceService
+
+
+class ResolveContradictionRequest(BaseModel):
+    """Settle one contradiction proposal (v11.1.0).
+
+    ``item_id`` is a Review Center item raised by synthesis; ``resolution`` is
+    one of ``keep_old`` / ``replace`` / ``keep_both_temporal``. Approval and
+    the temporal stamping happen together — there is no way to stamp the graph
+    without approving the proposal first.
+    """
+
+    item_id: str
+    resolution: str = "keep_both_temporal"
 
 
 class ConsolidateRequest(BaseModel):
@@ -91,6 +104,75 @@ def create_brain_intelligence_router(
         user = require_user(request)
         scope = gate_read(request)
         return service.quality_report(user_email=user, workspace_id=scope)
+
+    @router.get("/api/brain/proactive-brief")
+    async def brain_proactive_brief(request: Request):
+        """Brain Brief proactive section (v11.1.0): what the Brain noticed.
+
+        Read-only — it reports the proposals already waiting in the Review
+        Center and never raises new ones.
+        """
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.proactive_brief(user_email=user, workspace_id=scope)
+
+    @router.get("/api/brain/importance")
+    async def brain_importance(request: Request):
+        """Importance + decay report (read-only): what has gone quiet."""
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.importance_report(user_email=user, workspace_id=scope)
+
+    @router.post("/api/brain/synthesize")
+    async def brain_synthesize(request: Request):
+        """Run one synthesis pass. Output is review proposals, never writes."""
+        user = require_user(request)
+        scope = gate_write(request)
+        result = service.synthesize(user_email=user, workspace_id=scope)
+        append_audit_event(
+            "brain_synthesize",
+            user_email=user,
+            proposed=result.get("proposed_total", 0),
+            suppressed=result.get("suppressed", 0),
+        )
+        return result
+
+    @router.post("/api/brain/contradictions/propose")
+    async def brain_propose_contradictions(request: Request):
+        """Raise a review proposal for each contradicting pair of memories."""
+        user = require_user(request)
+        scope = gate_write(request)
+        result = service.propose_contradictions(user_email=user, workspace_id=scope)
+        append_audit_event(
+            "brain_contradiction_proposals",
+            user_email=user,
+            proposed=result.get("proposed_count", 0),
+            suppressed=result.get("suppressed", 0),
+        )
+        return result
+
+    @router.post("/api/brain/contradictions/resolve")
+    async def brain_resolve_contradiction(
+        req: ResolveContradictionRequest, request: Request
+    ):
+        """Approve a contradiction proposal and stamp the graph accordingly."""
+        user = require_user(request)
+        scope = gate_write(request)
+        try:
+            result = service.resolve_contradiction(
+                req.item_id, resolution=req.resolution, workspace_id=scope
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=req.item_id)
+        append_audit_event(
+            "brain_contradiction_resolved",
+            user_email=user,
+            item_id=req.item_id,
+            resolution=req.resolution,
+        )
+        return result
 
     @router.post("/api/brain/consolidate")
     async def brain_consolidate(req: ConsolidateRequest, request: Request):

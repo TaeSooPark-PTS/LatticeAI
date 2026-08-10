@@ -3224,6 +3224,55 @@ body {
   font-weight: 700;
 }
 
+/* 멀티모달 근거 (v11.1.0) — 이미지 노드는 썸네일 + 캡션으로 보여준다.
+   썸네일은 노드에 저장된 인라인 data: URI라 외부 요청이 없다. */
+.brain-answer-proof li span.brain-citation-visual,
+.brain-citation-visual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  text-transform: none;
+}
+
+.brain-citation-thumb {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--surface) / 0.6);
+}
+
+.brain-citation-thumb.is-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: hsl(var(--fg-muted));
+}
+
+.brain-citation-visual-text {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.brain-citation-visual-text em {
+  display: block;
+  font-style: normal;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-citation-visual-text em.is-muted {
+  color: hsl(var(--fg-muted));
+}
+
 .brain-citation-confidence {
   font-style: normal;
   font-size: 0.6rem;

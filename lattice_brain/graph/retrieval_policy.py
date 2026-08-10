@@ -139,11 +139,16 @@ def resolve_policy(
           "query_class": "fact" | "code" | "person" | "recency",
           "weights": {"keyword", "vector", "graph"},   # service fusion
           "alpha": float,                              # graph-layer fusion
+          "fusion_strategy": "alpha" | "rrf",          # how they combine
           "original_query": str,
           "search_query": str,       # the rewritten form to search with
           "rewrite_rules": [str],
           "recency_half_life_days": float | None,      # 14.0 only for recency
         }
+
+    ``fusion_strategy`` is ``"alpha"`` for every class unless
+    ``LATTICEAI_FUSION_STRATEGY`` says otherwise, so the default policy is
+    byte-identical to the pre-11.1.0 one.
 
     ``recency_half_life_days`` is non-``None`` only for the ``recency``
     class — the honest contract that age decay applies exactly where the
@@ -157,6 +162,7 @@ def resolve_policy(
         "query_class": query_class,
         "weights": dict(profile["weights"]),
         "alpha": float(profile["alpha"]),
+        "fusion_strategy": str(profile["strategy"]),
         "original_query": rewrite["original"],
         "search_query": search_query,
         "rewrite_rules": list(rewrite["rules"]),

@@ -52,6 +52,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..quiet import quiet
+from ..utils import now_iso as _stamp_now
 
 # ── Schema version ──────────────────────────────────────────────────────────
 KG_SCHEMA_V2_VERSION = 2
@@ -117,6 +118,22 @@ class NodeType(str, Enum):
     ORGANIZATION = "ORGANIZATION"  # 조직 / 회사 / 팀
     WORKFLOW = "WORKFLOW"  # 워크플로우 정의/실행
     AGENT = "AGENT"  # 에이전트(역할/실행 주체)
+    # v11.1.0 Personal Ontology (Track 4) — the Self-Model subgraph. These are
+    # not "another kind of document": they are what the Brain has been told
+    # about *its owner*, so they are read, edited and deleted as a unit
+    # (``lattice_brain.self_model``). DECISION already exists above and is
+    # reused rather than duplicated — a decision is a decision whether it came
+    # from a meeting note or from "결정: 로컬 모델을 기본값으로 쓴다".
+    SELF = "SELF"  # 사용자 자신(Self-Model 루트)
+    PREFERENCE = "PREFERENCE"  # 선호 (좋아함/싫어함/선호 방식)
+    HABIT = "HABIT"  # 습관 (반복되는 행동)
+    RELATIONSHIP = "RELATIONSHIP"  # 관계 (동료/친구/멘토 등)
+    # v11.1.0 Multi-modal (Track 3) — a recording is its own noun. It used to
+    # enter through the text door as a DOCUMENT because "a transcript *is*
+    # text"; that is true of the transcript and false of the recording, which
+    # exists whether or not anyone could hear it. IMAGE has been first-class
+    # since 3.6.0 for the same reason, and AUDIO now sits beside it.
+    AUDIO = "AUDIO"  # 녹음 / 음성 메모
 
     @classmethod
     def from_legacy(cls, label: str) -> "NodeType":
@@ -252,6 +269,22 @@ _LEGACY_NODE_MAP: Dict[str, NodeType] = {
     "team": NodeType.ORGANIZATION,
     "workflow": NodeType.WORKFLOW,
     "agent": NodeType.AGENT,
+    # v11.1.0 Personal Ontology — the Self-Model vocabulary, including the
+    # Korean labels a person actually types.
+    "self": NodeType.SELF,
+    "selfmodel": NodeType.SELF,
+    "me": NodeType.SELF,
+    "나": NodeType.SELF,
+    "preference": NodeType.PREFERENCE,
+    "선호": NodeType.PREFERENCE,
+    "habit": NodeType.HABIT,
+    "습관": NodeType.HABIT,
+    "relationship": NodeType.RELATIONSHIP,
+    "관계": NodeType.RELATIONSHIP,
+    "결정": NodeType.DECISION,
+    # v11.1.0 Multi-modal — recordings as a first-class noun.
+    "audio": NodeType.AUDIO,
+    "오디오": NodeType.AUDIO,
 }
 
 _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
@@ -346,6 +379,13 @@ CREATE TABLE IF NOT EXISTS nodes_v2 (
   visibility       TEXT NOT NULL DEFAULT 'private',
   -- Revision chain: a node replaced by a newer one points at its successor.
   superseded_by    TEXT,
+  -- Bitemporal validity (v11.1.0). NULL is the convention, not '':
+  --   valid_from IS NULL  → the row has been valid since created_at
+  --   valid_to   IS NULL  → the row is still valid now
+  -- An empty string would read as "valid since the beginning of time" in a
+  -- string comparison, which is why the columns are nullable with no default.
+  valid_from       TEXT,
+  valid_to         TEXT,
   created_at       TEXT NOT NULL,
   updated_at       TEXT NOT NULL,
   style            TEXT,
@@ -366,6 +406,12 @@ CREATE TABLE IF NOT EXISTS edges_v2 (
   metadata     TEXT NOT NULL DEFAULT '{}',
   created_by   TEXT NOT NULL DEFAULT 'user',
   created_at   TEXT NOT NULL,
+  -- Bitemporal validity + revision chain (v11.1.0), same NULL convention as
+  -- nodes_v2: NULL valid_from falls back to created_at, NULL valid_to means
+  -- "still holds". Relationships go stale exactly like facts do.
+  valid_from   TEXT,
+  valid_to     TEXT,
+  superseded_by TEXT,
   -- Edge identity (v4): the normalized type AND the raw legacy type.
   -- Migrated rows keep their legacy_type discriminator, so two distinct
   -- legacy strings between one pair (e.g. "mentions" / "관련됨") stay
@@ -401,6 +447,20 @@ CREATE INDEX IF NOT EXISTS idx_edges_v2_target   ON edges_v2(target);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_type     ON edges_v2(type);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_legacy   ON edges_v2(legacy_type);
 """
+
+
+# ── Temporal read convention (v11.1.0) ──────────────────────────────────────
+# One predicate, shared by every ``as_of`` read so the fallback rule cannot
+# drift between call sites:
+#   * ``valid_from IS NULL``  → the row has been valid since ``created_at``
+#     (plan §10 mitigation: existing Brains keep working with no backfill)
+#   * ``valid_to IS NULL``    → the row is still valid
+# The window is half-open ``[valid_from, valid_to)``: the instant a fact is
+# superseded belongs to its successor, so an ``as_of`` at exactly that instant
+# returns exactly one of the two.
+TEMPORAL_PREDICATE_SQL = (
+    "COALESCE(valid_from, created_at) <= ? AND (valid_to IS NULL OR valid_to > ?)"
+)
 
 
 def _exec_script(conn: sqlite3.Connection, script: str) -> None:
@@ -456,6 +516,9 @@ class KGStoreV2:
             "metadata",
             "created_by",
             "created_at",
+            "valid_from",
+            "valid_to",
+            "superseded_by",
         },
         "nodes_v2": {
             "id",
@@ -469,6 +532,8 @@ class KGStoreV2:
             "workspace_id",
             "visibility",
             "superseded_by",
+            "valid_from",
+            "valid_to",
             "created_at",
             "updated_at",
             "style",
@@ -481,8 +546,17 @@ class KGStoreV2:
     # Columns added after a table's first release that can be healed in place
     # with ALTER TABLE ADD COLUMN (nullable / defaulted only).
     _V2_ADDABLE_COLUMNS = {
-        "nodes_v2": {"workspace_id": "TEXT", "superseded_by": "TEXT"},
-        "edges_v2": {},
+        "nodes_v2": {
+            "workspace_id": "TEXT",
+            "superseded_by": "TEXT",
+            "valid_from": "TEXT",
+            "valid_to": "TEXT",
+        },
+        "edges_v2": {
+            "valid_from": "TEXT",
+            "valid_to": "TEXT",
+            "superseded_by": "TEXT",
+        },
     }
 
     def _drop_stale_empty_v2_tables(self, conn: sqlite3.Connection) -> None:
@@ -585,6 +659,64 @@ class KGStoreV2:
             "INSERT OR REPLACE INTO kg_meta(key, value) VALUES (?, ?)",
             ("embed_dim", str(EMBED_DIM)),
         )
+
+    # ── Temporal stamping (v11.1.0) ──────────────────────────
+    #
+    # These are *primitives*, not a policy: the only caller in the product is
+    # the review-approval path in :mod:`lattice_brain.synthesis`. Background
+    # jobs and agents never call them directly — they raise a proposal and the
+    # user approves it. See ``ARCHITECTURE.md`` → "Temporal knowledge".
+    def stamp_node_validity(
+        self,
+        node_id: str,
+        *,
+        valid_from: Optional[str] = None,
+        valid_to: Optional[str] = None,
+        superseded_by: Optional[str] = None,
+    ) -> bool:
+        """Stamp a node's validity window. ``True`` when a row was updated.
+
+        Only the arguments actually supplied are written; ``None`` leaves the
+        stored value alone (it never clears a column back to NULL, so a second
+        resolution cannot silently un-supersede an earlier one).
+        """
+        return self._stamp_row(
+            "nodes_v2",
+            node_id,
+            {
+                "valid_from": valid_from,
+                "valid_to": valid_to,
+                "superseded_by": superseded_by,
+            },
+        )
+
+    def touch_node(self, node_id: str, *, at: Optional[str] = None) -> bool:
+        """Record one access: bump ``importance_score`` and set ``last_used``.
+
+        Read-path bookkeeping for the importance/decay report. Returns whether
+        a row existed; callers treat a ``False``/failure as harmless.
+        """
+        with self._conn() as conn:
+            cursor = conn.execute(
+                "UPDATE nodes_v2 SET importance_score = importance_score + 1.0, "
+                "last_used = ? WHERE id = ?",
+                (at or _stamp_now(), str(node_id)),
+            )
+            return int(cursor.rowcount or 0) > 0
+
+    def _stamp_row(
+        self, table: str, row_id: str, updates: Dict[str, Optional[str]]
+    ) -> bool:
+        fields = {key: value for key, value in updates.items() if value is not None}
+        if not fields:
+            return False
+        assignments = ", ".join(f"{key}=?" for key in fields)
+        with self._conn() as conn:
+            cursor = conn.execute(
+                f"UPDATE {table} SET {assignments} WHERE id=?",
+                (*fields.values(), str(row_id)),
+            )
+            return int(cursor.rowcount or 0) > 0
 
     # ── Maintenance ──────────────────────────────────────────
     def stats(self) -> Dict[str, Any]:

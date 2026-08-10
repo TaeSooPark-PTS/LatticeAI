@@ -42,6 +42,10 @@ def build_persistence_runtime(
     from latticeai.services.brain_intelligence import BrainIntelligenceService
     from latticeai.services.funnel_metrics import FunnelMetricsService
     from latticeai.services.memory_service import MemoryService
+    from latticeai.services.multimodal_ports import (
+        build_multimodal_ports,
+        multimodal_enabled,
+    )
     from latticeai.services.workspace_service import WorkspaceService
 
     realtime_bus = RealtimeBus()
@@ -80,21 +84,53 @@ def build_persistence_runtime(
     funnel_metrics = FunnelMetricsService(Path(data_dir) / "funnel_metrics.json")
 
     def _funnel_audit(action, detail, user):
-        try:
-            if action == "kg_ingest":
+        """Best-effort sinks for a landed ingest, then the real audit.
+
+        Both sinks are isolated separately: one failing must not cost the
+        other, and neither may cost the ingest that is already persisted.
+        """
+        if action == "kg_ingest":
+            try:
                 funnel_metrics.record_ingest(
                     duplicate=bool((detail or {}).get("duplicate"))
                 )
-        except Exception:  # noqa: BLE001 — metrics must never break ingestion
-            quiet()
+            except Exception:  # noqa: BLE001 — metrics must never break ingestion
+                quiet()
+            # v11.1.0: the same seam drives synthesis. The pipeline audits an
+            # ingest only after the graph write landed, so ``status: "ok"`` is
+            # a fact about this call site rather than a guess; ``duplicate``
+            # travels in the detail and is what keeps a re-import from pushing
+            # the Brain toward a pass it has nothing new to say in.
+            try:
+                brain_intelligence.note_ingest(
+                    {"status": "ok", **(detail or {})}, user_email=user
+                )
+            except Exception:  # noqa: BLE001 — synthesis must never break ingestion
+                quiet()
         audit(action, detail, user)
 
+    # Multi-modal capture (v11.1.0): off unless the user turned it on, and
+    # even then only as capable as the models actually present. With nothing
+    # configured this resolves to an empty bundle without importing or loading
+    # anything.
+    multimodal_ports = build_multimodal_ports()
     ingestion_pipeline = IngestionPipeline(
         knowledge_graph,
         hooks=hooks_registry,
         enable_graph=enable_graph,
         audit=_funnel_audit,
+        allow_multimodal=multimodal_enabled(),
+        multimodal=multimodal_ports,
     )
+    # The local folder scanner reads images through the same ports, so a
+    # caption in the Evidence panel and a caption on a scanned screenshot come
+    # from one model or from none. A disabled/absent graph has nothing to
+    # attach them to, and a store that refuses new attributes is not a reason
+    # to fail startup.
+    try:
+        knowledge_graph.multimodal_ports = multimodal_ports
+    except AttributeError:
+        quiet()
     device_identity = DeviceIdentity(data_dir)
     kg_portability = KGPortabilityService(
         knowledge_graph=knowledge_graph,
@@ -116,6 +152,7 @@ def build_persistence_runtime(
         "BRAIN_INTELLIGENCE": brain_intelligence,
         "AUTOMATION_INTELLIGENCE": automation_intelligence,
         "INGESTION_PIPELINE": ingestion_pipeline,
+        "MULTIMODAL_PORTS": multimodal_ports,
         "DEVICE_IDENTITY": device_identity,
         "KG_PORTABILITY": kg_portability,
         "FUNNEL_METRICS": funnel_metrics,

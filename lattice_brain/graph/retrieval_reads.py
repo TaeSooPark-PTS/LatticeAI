@@ -13,8 +13,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..quiet import quiet
+
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
+from .schema import TEMPORAL_PREDICATE_SQL
 
 # The cross-mixin surface (`_connect`, `_upsert_node`, …) is declared in
 # `_kg_contract.KnowledgeGraphCore`. It is a typing-only base: at runtime this
@@ -24,6 +27,39 @@ if TYPE_CHECKING:
 else:
     _Core = object
 
+
+def _as_of_stamp(value: Any) -> str:
+    """Normalize an ``as_of`` argument into the store's own timestamp format.
+
+    The store writes naive local ISO-8601 seconds (``lattice_brain.utils.now_iso``),
+    so validity comparisons are plain lexicographic string comparisons against
+    that one format. An aware datetime is converted to local time first rather
+    than compared with an offset suffix the stored rows never carry.
+    """
+    if isinstance(value, datetime):
+        moment = value.astimezone().replace(tzinfo=None) if value.tzinfo else value
+        return moment.isoformat(timespec="seconds")
+    text = str(value or "").strip()
+    if not text:
+        raise ValueError("as_of requires a timestamp")
+    return text
+
+
+def _record_access(db_path: Any, node_id: str) -> None:
+    """Record one access on a node (the importance/decay input).
+
+    Runs on its own short transaction, deliberately *outside* the read that
+    triggered it: promoting every node read to a writer would let a concurrent
+    ingest's write lock fail an otherwise perfectly good read. The counter is a
+    nice-to-have, so every sqlite failure — a missing row, a missing column, a
+    busy database — is swallowed.
+    """
+    if KGStoreV2 is None:
+        return
+    try:
+        KGStoreV2(db_path).touch_node(node_id)
+    except sqlite3.Error:
+        quiet()
 
 
 class KnowledgeGraphReadsMixin(_Core):
@@ -173,14 +209,22 @@ class KnowledgeGraphReadsMixin(_Core):
         *,
         allowed_workspaces=None,
         include_legacy_global: bool = False,
+        as_of=None,
     ) -> Dict[str, Any]:
-        """Return direct neighbors (1-hop) of a node."""
+        """Return direct neighbors (1-hop) of a node.
+
+        ``as_of`` is additive and defaults to ``None`` — the historical call
+        keeps its exact behaviour. With a timestamp, neighbors whose validity
+        window does not cover that instant are dropped (and with them the edges
+        that would dangle).
+        """
         if allowed_workspaces is not None and not self.filter_scoped_nodes(
             [{"id": node_id}],
             allowed_workspaces,
             include_legacy_global=include_legacy_global,
         ):
             raise ValueError(f"graph node not found: {node_id}")
+        stamp = None if as_of is None else _as_of_stamp(as_of)
         nt, et = self._read_tables()
         with self._connect() as conn:
             edge_rows = conn.execute(
@@ -216,6 +260,14 @@ class KnowledgeGraphReadsMixin(_Core):
                         f"SELECT id, type, title, summary, metadata_json FROM {nt} WHERE id IN ({placeholders}) ORDER BY id ASC",
                         list(neighbor_ids),
                     )
+                ]
+            if stamp is not None:
+                valid = self._valid_node_ids_at(conn, stamp)
+                nodes = [node for node in nodes if str(node.get("id")) in valid]
+                kept = {str(node.get("id")) for node in nodes} | {node_id}
+                edges = [
+                    edge for edge in edges
+                    if edge.get("from") in kept and edge.get("to") in kept
                 ]
         if allowed_workspaces is not None:
             nodes = self.filter_scoped_nodes(
@@ -257,6 +309,10 @@ class KnowledgeGraphReadsMixin(_Core):
                 f"SELECT COUNT(*) AS c FROM {et} WHERE from_node=? OR to_node=?",
                 (node_id, node_id),
             ).fetchone()["c"]
+        # Fetching a node by id is the one unambiguous "this memory was used"
+        # signal the read path has; it feeds importance_report(). Recorded
+        # after the read transaction closes so it can never fail the read.
+        _record_access(self.db_path, node_id)
         node = {
             "id": row["id"],
             "type": row["type"],
@@ -273,6 +329,137 @@ class KnowledgeGraphReadsMixin(_Core):
         ):
             raise ValueError(f"graph node not found: {node_id}")
         return node
+
+    # ── temporal reads (v11.1.0) ─────────────────────────────────────────
+    #
+    # Validity lives on ``nodes_v2``/``edges_v2``, the authoritative v2
+    # projection — the same table ``workspaces_of`` already reads for scoping,
+    # and the only one that carries the columns whichever read mode
+    # ``_read_tables()`` is in. The legacy compatibility tables have no
+    # temporal dimension, so slicing them would silently answer "everything".
+
+    def _valid_node_ids_at(self, conn: sqlite3.Connection, stamp: str) -> set:
+        """Ids of nodes whose validity window covers ``stamp``."""
+        return {
+            row["id"]
+            for row in conn.execute(
+                f"SELECT id FROM nodes_v2 WHERE {TEMPORAL_PREDICATE_SQL}",
+                (stamp, stamp),
+            ).fetchall()
+        }
+
+    def access_stats(self, node_ids=None) -> Dict[str, Dict[str, Any]]:
+        """Per-node access bookkeeping read from the authoritative projection.
+
+        ``{node_id: {"accesses": float, "last_used": str | None}}`` for the ids
+        requested (all nodes when ``node_ids`` is ``None``). Counts come from
+        ``_touch_node``; a node never opened simply reports ``0.0``.
+        """
+        query = "SELECT id, importance_score, last_used FROM nodes_v2"
+        params: List[Any] = []
+        if node_ids is not None:
+            ids = sorted({str(node_id) for node_id in node_ids if node_id})
+            if not ids:
+                return {}
+            query += f" WHERE id IN ({','.join('?' * len(ids))})"
+            params = list(ids)
+        with self._connect() as conn:
+            return {
+                row["id"]: {
+                    "accesses": float(row["importance_score"] or 0.0),
+                    "last_used": row["last_used"],
+                }
+                for row in conn.execute(query, params).fetchall()
+            }
+
+    def as_of(
+        self,
+        timestamp,
+        *,
+        limit: int = 300,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
+        """The graph slice that was valid at ``timestamp``.
+
+        Answers "what did I know in June 2025?": nodes and edges whose
+        ``[valid_from, valid_to)`` window covers the instant, with
+        ``valid_from`` falling back to ``created_at`` so a Brain that predates
+        the temporal columns reads as "always was true" rather than as empty.
+        Edges are returned only when *both* endpoints are in the slice.
+        """
+        stamp = _as_of_stamp(timestamp)
+        # An explicit 0 clamps to 1 rather than re-expanding to the default:
+        # `limit or 300` would quietly return 300 rows to a caller who asked
+        # for none.
+        try:
+            limit = max(1, min(int(limit), 2000))
+        except (TypeError, ValueError):
+            limit = 300
+        scope_sql, scope_params = self._workspace_scope_sql(
+            allowed_workspaces, include_legacy_global
+        )
+        where = [TEMPORAL_PREDICATE_SQL]
+        params: List[Any] = [stamp, stamp]
+        if scope_sql is not None:
+            where.append(f"({scope_sql})")
+            params.extend(scope_params)
+        with self._connect() as conn:
+            node_rows = conn.execute(
+                "SELECT id, COALESCE(legacy_type, type) AS type, label AS title, "
+                "summary, attrs AS metadata_json, updated_at, "
+                "valid_from, valid_to, superseded_by "
+                f"FROM nodes_v2 WHERE {' AND '.join(where)} "
+                "ORDER BY updated_at DESC, id ASC LIMIT ?",
+                (*params, limit),
+            ).fetchall()
+            nodes = [
+                {
+                    "id": row["id"],
+                    "type": row["type"],
+                    "title": row["title"],
+                    "summary": row["summary"],
+                    "metadata": _safe_loads(row["metadata_json"]),
+                    "updated_at": row["updated_at"],
+                    "valid_from": row["valid_from"],
+                    "valid_to": row["valid_to"],
+                    "superseded_by": row["superseded_by"],
+                }
+                for row in node_rows
+            ]
+            edges: List[Dict[str, Any]] = []
+            visible = sorted(str(node["id"]) for node in nodes)
+            if visible:
+                placeholders = ",".join("?" * len(visible))
+                edges = [
+                    {
+                        "id": row["id"],
+                        "from": row["from_node"],
+                        "to": row["to_node"],
+                        "type": row["type"],
+                        "weight": row["weight"],
+                        "metadata": _safe_loads(row["metadata_json"]),
+                        "valid_from": row["valid_from"],
+                        "valid_to": row["valid_to"],
+                        "superseded_by": row["superseded_by"],
+                    }
+                    for row in conn.execute(
+                        "SELECT id, source AS from_node, target AS to_node, "
+                        "COALESCE(legacy_type, type) AS type, weight, "
+                        "metadata AS metadata_json, valid_from, valid_to, superseded_by "
+                        f"FROM edges_v2 WHERE {TEMPORAL_PREDICATE_SQL} "
+                        f"AND source IN ({placeholders}) AND target IN ({placeholders}) "
+                        "ORDER BY weight DESC, created_at DESC, id ASC",
+                        (stamp, stamp, *visible, *visible),
+                    ).fetchall()
+                ]
+        return {
+            "as_of": stamp,
+            "nodes": nodes,
+            "edges": edges,
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+        }
 
     def relationship_search(
         self,

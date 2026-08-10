@@ -31,6 +31,11 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from latticeai.core.quiet import quiet
 from latticeai.core.tool_governor import classify_tool_call
+from latticeai.core.workspace_reorganization import (
+    REORG_KIND,
+    apply_reorganization,
+    propose_reorganization,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -301,6 +306,33 @@ class ChangeProposalService:
         )
         return item
 
+    def propose_reorganization(
+        self,
+        *,
+        root: str = "",
+        graph: Any = None,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        max_moves: int = 20,
+    ) -> Dict[str, Any]:
+        """Stage a whole-folder reorganization as one reviewable proposal.
+
+        Moves only — see :mod:`latticeai.core.workspace_reorganization`. It
+        goes through this service (rather than the review queue directly) so
+        approving it from the Review Center applies it the same way every
+        other staged change is applied.
+        """
+        return propose_reorganization(
+            root=root,
+            resolve_path=self._resolve_path,
+            review_queue=self._review_queue,
+            graph=graph,
+            user_email=user_email,
+            workspace_id=workspace_id,
+            max_moves=max_moves,
+            audit=self._audit,
+        )
+
     # ── listing / apply / reject ─────────────────────────────────────────
 
     def pending(
@@ -362,8 +394,8 @@ class ChangeProposalService:
                 raise KeyError(f"not a change proposal: {item_id}")
             payload = item.get("payload") or {}
             kind = str(item.get("kind") or "")
-            path = str(payload.get("path") or "")
-            if kind not in ("file_update", "file_delete"):
+            path = str(payload.get("path") or payload.get("root") or "")
+            if kind not in ("file_update", "file_delete", REORG_KIND):
                 raise ValueError(f"unknown change proposal kind: {kind}")
 
             # Duplicate/concurrent approval guard: a resolved proposal must
@@ -375,20 +407,28 @@ class ChangeProposalService:
                     rebase_hint="이미 처리된 제안입니다. 다시 적용할 수 없습니다.",
                 )
 
-            self._check_base_unchanged(payload, path=path, kind=kind)
-
-            target = self._resolve_path(path)
-            if kind == "file_update":
-                self._atomic_write(target, str(payload.get("new_content") or ""))
-            else:  # file_delete — existence re-verified inside the lock
-                if target.is_file():
+            moves: Optional[Dict[str, Any]] = None
+            if kind == REORG_KIND:
+                # A reorganization has no single base file to hash: each move
+                # is re-checked at apply time and a drifted one is skipped,
+                # never forced (see workspace_reorganization.apply_*).
+                moves = apply_reorganization(payload, resolve_path=self._resolve_path)
+            else:
+                self._check_base_unchanged(payload, path=path, kind=kind)
+                target = self._resolve_path(path)
+                if kind == "file_update":
+                    self._atomic_write(target, str(payload.get("new_content") or ""))
+                elif target.is_file():  # file_delete — re-verified inside the lock
                     target.unlink()
             approved = self._review_queue.approve(item_id, workspace_id=workspace_id)
         self._audit(
             "change_proposal_applied", user_email=user_email,
             proposal_id=item_id, path=path, kind=kind,
         )
-        return {"item": approved, "applied": True, "path": path, "kind": kind}
+        result = {"item": approved, "applied": True, "path": path, "kind": kind}
+        if moves is not None:
+            result["moves"] = moves
+        return result
 
     def _check_base_unchanged(
         self, payload: Dict[str, Any], *, path: str, kind: str

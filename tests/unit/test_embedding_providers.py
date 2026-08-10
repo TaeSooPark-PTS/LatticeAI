@@ -174,17 +174,16 @@ def test_search_router_embeddings_endpoints(tmp_path):
     assert {"local:bge-m3", "ollama:mxbai-embed-large", "openai:text-embedding-3-small"} <= profile_ids
 
 
-# --- Large candidate #2: multimodal vision stub test ---
-def test_vision_stub_describe_and_embed_offline():
-    from lattice_brain.embeddings import VisionStub, get_vision_embedder
-    v = get_vision_embedder(dim=64)
-    assert isinstance(v, VisionStub)
-    cap = v.describe("/tmp/photo.png", {"width": 640, "height": 480, "format": "PNG"})
-    assert "photo.png" in cap and "640x480" in cap
-    vec = v.embed_image("/tmp/photo.png", {"width": 640, "height": 480}, cap)
-    assert len(vec) == 64
-    assert any(abs(x) > 0 for x in vec)  # not zero vector
-    # similarity to self high
-    vec2 = v.embed_image("/tmp/photo.png", {"width": 640, "height": 480}, cap)
-    sim = sum(a*b for a,b in zip(vec, vec2))
-    assert sim > 0.99
+def test_brain_core_ships_no_offline_vision_stub():
+    """v11.1.0 removed the fabricating vision stub — see the module comment.
+
+    ``VisionStub.describe`` returned ``Image photo.png (PNG 640x480)`` and
+    ``embed_image`` hashed that string, and both were stored as if a model had
+    produced them. The replacement is an injected port that is simply absent
+    when no model is loaded.
+    """
+    import lattice_brain.embeddings as embeddings
+
+    assert not hasattr(embeddings, "VisionStub")
+    assert not hasattr(embeddings, "get_vision_embedder")
+    assert "VisionStub" not in embeddings.__all__

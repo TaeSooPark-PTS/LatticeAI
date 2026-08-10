@@ -173,6 +173,17 @@ class KnowledgeGraphCore:
         """``{status, pending_items, total_items, detail}`` — never raises."""
         raise NotImplementedError
 
+    # ── retrieval_reads.py: 1-hop walk (hybrid candidate expansion) ──────────
+    def neighbors(
+        self,
+        node_id: str,
+        *,
+        allowed_workspaces: Any = None,
+        include_legacy_global: bool = False,
+        as_of: Any = None,
+    ) -> Dict[str, Any]:
+        raise NotImplementedError
+
     # ── retrieval_reads.py: workspace scoping ────────────────────────────────
     def filter_scoped_nodes(
         self,

@@ -156,6 +156,14 @@ export type MessageProof = {
     // Where inside the document this chunk came from ("Guide > Setup · p.4").
     // Empty when the chunk carries no such provenance — never guessed.
     locator: string;
+    // v11.1.0 multi-modal evidence. `kind` is the graph node type ("Image"),
+    // `caption` is what a vision model said about the picture (empty when no
+    // model was loaded — never filled in from the filename), and `thumbnail`
+    // is the inline data: URI stored on the node. All three are empty for the
+    // ordinary text citation.
+    kind?: string;
+    caption?: string;
+    thumbnail?: string;
   }>;
 };
 
@@ -247,6 +255,11 @@ export type BrainProof = {
       matchedTerms: string[];
       confidence: EvidenceConfidence;
       locator: string;
+      // v11.1.0: present for a multi-modal memory (see MessageProof above);
+      // absent everywhere else, including in older payloads.
+      kind?: string;
+      caption?: string;
+      thumbnail?: string;
     }>;
   };
   claims: {

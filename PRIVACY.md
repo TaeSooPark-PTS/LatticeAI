@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **11.0.1 — Both Branches**.
+Current release: **11.1.0 — Product Intelligence**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

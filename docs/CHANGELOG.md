@@ -4,6 +4,34 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.1.0] - 2026-08-10 — Product Intelligence Layer
+
+### Added
+- 플러그형 벡터 인덱스 레이어(`lattice_brain/graph/vector_index/`):
+  BruteForce 기본, int8 Quantized·HNSW(`ltcai[hnsw]`) 옵트인, 영속 배경
+  임베딩 큐(`vector_jobs`), `vector_freshness_breakdown()`, RRF 융합·이웃
+  후보 확장 옵션. 하이브리드 p50 10k 299ms → 10.1ms, 50k 43.9ms
+  (recall@10 0.987, docs/PERFORMANCE.md).
+- Temporal 지식 모델: `valid_from`/`valid_to`/`superseded_by`(멱등 제자리
+  승급, NULL 규약) + `as_of(timestamp)` 슬라이스. 모순 감지 → 리뷰 제안
+  → 승인 시 temporal 스탬프. 이벤트 기반 합성(상위 개념·누락 엣지·
+  proactive Brief 제안, 25개 인제스트마다, 격리 배선) + 중요도/정리 제안.
+  새 API: `/api/brain/proactive-brief|importance|synthesize|contradictions/*`.
+- 멀티모달 1등 시민(`allow_multimodal`, 기본 꺼짐 — 꺼짐=바이트 동일):
+  Image/Audio 1등 노드, OCR·실캡션만(`caption_status`), 별도 이미지 벡터
+  공간+late fusion, Evidence 인라인 썸네일(승인 게이트 비우회), 비디오는
+  정직 거부.
+- Self-Model 서브그래프(제안-우선 생성, 사용자 직접 소유), 컨텍스트
+  예산 주입, 삭제 불가능 구조의 폴더 재구성 제안,
+  `/api/memory/self-model*` 5종.
+- Obsidian vault 브릿지(`POST /api/ingestion/obsidian`, 승인 게이트,
+  위키링크→엣지, 멱등) + 서명·암호화 선택적 서브그래프 공유 프로토타입
+  (`LATTICEAI_BRAIN_NETWORK` 기본 꺼짐, 수신=리뷰 제안).
+
+### Removed
+- `VisionStub`/`get_vision_embedder` — 파일명으로 캡션을 합성하고 그
+  문자열의 해시를 이미지 임베딩으로 저장하던 경로(정직성 위반) 삭제.
+
 ## [11.0.1] - 2026-08-10
 
 ### Fixed

@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **11.0.1 — Both Branches**.
+Current release: **11.1.0 — Product Intelligence**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

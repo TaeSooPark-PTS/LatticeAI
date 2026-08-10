@@ -389,6 +389,7 @@ def _patch_brain_builders(
                 "BRAIN_INTELLIGENCE",
                 "AUTOMATION_INTELLIGENCE",
                 "INGESTION_PIPELINE",
+                "MULTIMODAL_PORTS",
                 "DEVICE_IDENTITY",
                 "KG_PORTABILITY",
                 "FUNNEL_METRICS",

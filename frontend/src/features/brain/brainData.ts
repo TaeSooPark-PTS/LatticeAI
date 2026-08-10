@@ -573,6 +573,12 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
         matchedTerms: stringArrayValue(item, ["matched_terms", "matchedTerms"]),
         confidence: confidenceValue(item, numberValue(item, ["score"])),
         locator: textValue(item, ["locator"]),
+        kind: textValue(item, ["kind"]),
+        caption: textValue(item, ["caption"]),
+        // Only an inline data: URI is accepted. A remote src would turn an
+        // evidence card into an outbound request, which is not what a
+        // local-first Brain does when it shows you your own photo.
+        thumbnail: dataImageValue(item),
       })),
     },
     claims: {
@@ -792,6 +798,14 @@ function stringArrayValue(record: ApiRecord, keys: string[]): string[] {
     }
   }
   return [];
+}
+
+// An evidence thumbnail must be self-contained. Anything that is not an
+// inline `data:image/...` URI is dropped rather than rendered, so a payload
+// can never turn a citation card into an outbound fetch.
+function dataImageValue(record: ApiRecord): string {
+  const value = record["thumbnail"];
+  return typeof value === "string" && value.startsWith("data:image/") ? value : "";
 }
 
 // Prefer the backend's confidence band; fall back to the same score bands the

@@ -111,40 +111,38 @@ class KnowledgeGraphLocalIndexMixin(_Core):
             meta["text_slides"] = len(slides_text)
             text = "\n\n".join(slides_text)
         elif category == "image":
-            from PIL import Image
-
-            with Image.open(str(path)) as image:
-                meta.update(
-                    {
-                        "width": image.width,
-                        "height": image.height,
-                        "format": image.format,
-                        "mode": image.mode,
-                        "ocr_enabled": bool(include_ocr),
-                    }
-                )
-                if include_ocr:
-                    try:
-                        import pytesseract
-
-                        text = pytesseract.image_to_string(image)
-                        meta["ocr_chars"] = len(text)
-                    except (
-                        Exception
-                    ) as exc:  # pragma: no cover - depends on local OCR runtime
-                        meta["ocr_error"] = str(exc)
-                        text = ""
-                # Large candidate #2 slice: always attach vision stub describe for IMAGE node evidence
-                try:
-                    from ..embeddings import get_vision_embedder
-                    v = get_vision_embedder()
-                    cap = v.describe(str(path), meta)
-                    meta["vision_caption"] = cap
-                    if not text:
-                        text = cap  # fallback text signal for retrieval
-                except Exception:
-                    meta["vision_caption"] = meta.get("vision_caption") or f"image:{path}"
+            text = self._extract_image_signals(path, meta, include_ocr=include_ocr)
         return text[:200_000], meta
+
+    def _extract_image_signals(
+        self, path: Path, meta: Dict[str, Any], *, include_ocr: bool
+    ) -> str:
+        """Dimensions, OCR text, and — only if a VLM exists — a caption.
+
+        Until v11.1.0 this path always attached a ``vision_caption`` built out
+        of the filename and the pixel dimensions (``Image pic.png (PNG 12x8)``)
+        and used it as the retrieval text. Nothing downstream could tell that
+        string apart from something a vision model had actually said about the
+        picture, so every screenshot in the graph carried a fake description.
+
+        Now the caption comes from the injected port and from nowhere else. A
+        picture with no OCR text and no model still gets indexed — under its
+        filename, which is a fact — and ``caption_status`` says why there is no
+        caption.
+        """
+        from ..multimodal import MultimodalPorts, extract_image_facts
+
+        ports = getattr(self, "multimodal_ports", None) or MultimodalPorts()
+        facts = extract_image_facts(str(path), ports=ports, ocr=include_ocr)
+        meta.update(facts.as_metadata())
+        meta["ocr_enabled"] = bool(include_ocr)
+        if facts.ocr_text:
+            meta["ocr_chars"] = len(facts.ocr_text)
+        if facts.ocr_status == "failed":
+            meta["ocr_error"] = facts.ocr_detail
+        if not facts.readable:
+            return ""
+        return facts.index_text() or path.name
 
     def _ensure_local_hierarchy(
         self,

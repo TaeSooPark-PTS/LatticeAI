@@ -1,3 +1,13 @@
+# [v11.1.0 - Product Intelligence] (2026-08-10)
+
+기초 위의 지능 레이어 — 5개 트랙 완성: 플러그형 벡터 인덱스로 하이브리드
+p50 299ms → 10.1ms(10k), 모순→제안→temporal 스탬프(`as_of` 지원), 이미지·
+녹음의 1등 노드화(기본 꺼짐, 캡션 조작 스텁 삭제), Self-Model 서브그래프
+(제안-우선, 투명 소유), Obsidian 브릿지 + 서명된 서브그래프 공유 프로토
+타입(기본 꺼짐). 플로어 유지: 6,261 테스트 · 37,590문·10,658분기 100.00%.
+
+See [RELEASE_NOTES_v11.1.0.md](RELEASE_NOTES_v11.1.0.md).
+
 # [v11.0.1 - Both Branches] (2026-08-10)
 
 11.0.0이 기록한 결함 11건을 전부 수정하고(고정 테스트 반전 + 회귀 테스트),
@@ -388,7 +398,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.0.1**.
+This repository keeps public release history from **9.0.0 through 11.1.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

@@ -46,6 +46,23 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from .graph.vector_index import DEFAULT_TICK_LIMIT as VECTOR_TICK_LIMIT
+from .multimodal import (
+    AUDIO_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+    MODALITY_AUDIO,
+    MODALITY_IMAGE,
+    MODALITY_VIDEO,
+    VIDEO_OUT_OF_SCOPE,
+    ImageFacts,
+    MultimodalPorts,
+    audio_quality_score,
+    detect_modality,
+    extract_image_facts,
+    image_quality_score,
+    transcribe_audio,
+    write_image_memory,
+)
 from .runtime.hooks import dispatch_tool
 from .utils import utc_now_iso
 
@@ -110,6 +127,23 @@ DEFAULT_MAX_FILE_BYTES = 4_000_000  # matches the local-index text/code budget
 LATTICEIGNORE_FILENAME = ".latticeignore"
 # Opt-out escape hatch for the post-ingest incremental vector sync.
 AUTO_VECTOR_INDEX_ENV = "LATTICEAI_AUTO_VECTOR_INDEX"
+
+# ── Multi-modal ingestion (v11.1.0 Track 3) ──────────────────────────────────
+# Opt-in, default off, on purpose. Turning it on changes what a folder scan
+# *stores* (pictures and recordings, with OCR and — if a model is loaded —
+# captions and vectors), and that is the user's call, not a default. With the
+# flag off every routing decision below is skipped and behaviour is byte-for-
+# byte what it was before this release.
+ALLOW_MULTIMODAL_ENV = "LATTICEAI_ALLOW_MULTIMODAL"
+#: Source types that name a modality outright (a caller who already knows).
+IMAGE_SOURCE_TYPES = frozenset({"image", "screenshot", "photo"})
+AUDIO_SOURCE_TYPES = frozenset({"audio", "voice_memo", "recording"})
+#: Added to the folder-scan allow-list only while multimodal is enabled.
+FOLDER_MULTIMODAL_EXTENSIONS = IMAGE_EXTENSIONS | AUDIO_EXTENSIONS
+#: Graph node type for a recording. ``NodeType.AUDIO`` normalizes this on the
+#: KG v2 write side; the legacy tables keep the label verbatim, which is what
+#: every type-aware read (graph view, context sections, doc-gen) matches on.
+AUDIO_NODE_TYPE = "Audio"
 
 # ── Extraction quality heuristics (v9.8.0 A1) ────────────────────────────────
 # Pure heuristics over the extracted text — no model calls, no network. The
@@ -447,6 +481,8 @@ class IngestionPipeline:
         pipeline_name: str = "unified-ingestion",
         bg_queue: Optional[BackgroundIngestionQueue] = None,
         auto_vector_index: bool = True,
+        allow_multimodal: bool = False,
+        multimodal: Optional[MultimodalPorts] = None,
     ) -> None:
         self._kg = knowledge_graph
         self._hooks = hooks
@@ -469,9 +505,32 @@ class IngestionPipeline:
             "0", "false", "no", "off",
         }
         self._auto_vector_index = bool(auto_vector_index) and env_flag
+        # Multi-modal routing. Off unless the caller asks for it *or* the env
+        # flag is set — the env is the escape hatch for an install that has no
+        # code path to the constructor (CLI, background worker).
+        self._allow_multimodal = bool(allow_multimodal) or os.getenv(
+            ALLOW_MULTIMODAL_ENV, "0"
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        self._multimodal = multimodal or MultimodalPorts()
 
     def available(self) -> bool:
         return self._enable and self._kg is not None
+
+    def multimodal_status(self) -> Dict[str, Any]:
+        """What this pipeline will do with a picture or a recording, honestly.
+
+        ``enabled`` is the flag; the rest is which model-backed capabilities
+        were actually injected. Video is listed as unsupported rather than
+        omitted, so the surface can say *why* a ``.mov`` was refused.
+        """
+        return {
+            "enabled": self._allow_multimodal,
+            "image": self._allow_multimodal,
+            "audio": self._allow_multimodal,
+            "video": False,
+            "video_detail": VIDEO_OUT_OF_SCOPE,
+            **self._multimodal.describe(),
+        }
 
     # ── public API ───────────────────────────────────────────────────────────
     def ingest(self, item: IngestionItem, *, user_email: Optional[str] = None) -> IngestionResult:
@@ -482,6 +541,15 @@ class IngestionPipeline:
                 status="unavailable", source_type=source_type,
                 indexing_status="skipped",
                 detail="Knowledge Graph is disabled (LATTICEAI_ENABLE_GRAPH).",
+            )
+
+        # Modality routing is a no-op while the flag is off: ``modality`` stays
+        # "text" and every branch below behaves exactly as it did before.
+        modality = self._modality_for(item, source_type)
+        if modality == MODALITY_VIDEO:
+            return IngestionResult(
+                status="unavailable", source_type=source_type,
+                indexing_status="skipped", detail=VIDEO_OUT_OF_SCOPE,
             )
 
         captured_at = item.captured_at or utc_now_iso()
@@ -500,6 +568,10 @@ class IngestionPipeline:
                 return self._ingest_chat(item, source_type=source_type, owner=owner)
             if source_type in MEMORY_SOURCE_TYPES:
                 return self._ingest_memory_record(item, source_type=source_type, owner=owner)
+            if modality == MODALITY_IMAGE:
+                return self._ingest_image(item, source_type=source_type, owner=owner, captured_at=captured_at)
+            if modality == MODALITY_AUDIO:
+                return self._ingest_audio(item, source_type=source_type, owner=owner, captured_at=captured_at)
             if source_type in FILE_SOURCE_TYPES or (item.path and not item.text):
                 return self._ingest_file(item, source_type=source_type, owner=owner, captured_at=captured_at)
             return self._ingest_text(item, source_type=source_type, owner=owner, captured_at=captured_at)
@@ -589,7 +661,11 @@ class IngestionPipeline:
             except Exception:  # noqa: BLE001 — audit must never break ingestion
                 quiet()
 
-        extraction_quality = self._assess_item_quality(
+        # A modality-aware door scores its own extraction (a picture's quality
+        # is "how much of it can be retrieved", not "does the text read well"),
+        # so its verdict wins. Text/file doors never set the key and keep the
+        # historical scoring untouched.
+        extraction_quality = raw.get("extraction_quality") or self._assess_item_quality(
             item, source_type=source_type, text=quality_text, chunk_ids=chunk_ids,
         )
         warnings: List[str] = []
@@ -715,12 +791,32 @@ class IngestionPipeline:
             "detail": "; ".join(p for p in parts if p),
         }
 
+    def _queue_pending_embed(self, node_id: str, detail: str) -> bool:
+        """Hand a node the inline sync could not embed to the background queue.
+
+        Before v11.1.0 ``indexing_status="pending"`` was the end of the story:
+        honest, but nobody was coming back for it, so the node stayed
+        unsearchable until a human ran a rebuild. The durable queue is who
+        comes back. A store without one (older stores, mocks) just keeps the
+        old behaviour — the node is still visible as ``index_status`` backlog.
+        """
+        queue = getattr(self._kg, "vector_queue", None)
+        if queue is None:
+            return False
+        try:
+            return bool(queue.schedule(node_id, detail=detail))
+        except Exception:  # noqa: BLE001 — queueing must never fail an ingest
+            quiet()
+            return False
+
     def _sync_vector_index(self, node_id: str) -> Tuple[str, Optional[str]]:
         """Best-effort incremental vector sync → (indexing_status, detail).
 
         Any failure — missing method on older stores, embedding provider down,
         storage error — yields ``("pending", detail)`` so a later
-        ``rebuild_vector_index`` run picks the node up from the backlog.
+        ``rebuild_vector_index`` run picks the node up from the backlog, and
+        the node is queued for background embedding so that pickup happens on
+        its own.
         """
         sync = getattr(self._kg, "index_node_incremental", None)
         if not callable(sync):
@@ -730,11 +826,37 @@ class IngestionPipeline:
         try:
             outcome = sync(node_id) or {}
         except Exception as exc:  # noqa: BLE001 — vector sync must never fail the ingest
-            return "pending", f"vector index sync failed: {exc}"
+            return "pending", self._pending_detail(node_id, f"vector index sync failed: {exc}")
         if str(outcome.get("status") or "") == "failed":
             reason = outcome.get("detail") or "unknown error"
-            return "pending", f"vector index sync failed: {reason}"
+            return "pending", self._pending_detail(
+                node_id, f"vector index sync failed: {reason}"
+            )
         return "indexed", None
+
+    def _pending_detail(self, node_id: str, reason: str) -> str:
+        """``reason``, plus whether a background retry was actually scheduled."""
+        if self._queue_pending_embed(node_id, reason):
+            return f"{reason}; queued for background embedding"
+        return reason
+
+    def drain_vector_queue(self, limit: int = VECTOR_TICK_LIMIT) -> Dict[str, Any]:
+        """Run one background-embedding tick over the store's pending backlog.
+
+        Deliberately caller-driven (a scheduler, a CLI, a test) rather than a
+        thread this pipeline owns: the queue is durable, so "who runs it" is a
+        deployment decision, not a property of having ingested something.
+        """
+        queue = getattr(self._kg, "vector_queue", None)
+        if queue is None:
+            return {
+                "claimed": 0,
+                "indexed": 0,
+                "retried": 0,
+                "failed": 0,
+                "detail": "this store has no background vector queue",
+            }
+        return dict(queue.tick(limit))
 
     # --- Large candidate #1: background / incremental scheduling (slice) ---
     def schedule_background(
@@ -933,7 +1055,7 @@ class IngestionPipeline:
         allowed_exts = (
             frozenset(str(e).lower() if str(e).startswith(".") else f".{str(e).lower()}" for e in extensions)
             if extensions
-            else DEFAULT_FOLDER_EXTENSIONS
+            else self._folder_extensions()
         )
         patterns = _load_latticeignore(root)
         errors: List[Dict[str, Any]] = summary["errors"]
@@ -989,7 +1111,11 @@ class IngestionPipeline:
                     summary["truncated"] = True
                     break
                 item_metadata: Dict[str, Any] = {"relative_path": rel}
-                if ext in FOLDER_DOCUMENT_EXTENSIONS:
+                if ext in FOLDER_MULTIMODAL_EXTENSIONS and self._allow_multimodal:
+                    # Routed by modality inside ``ingest``; reading the bytes as
+                    # UTF-8 here would only produce mojibake.
+                    source_type = "file"
+                elif ext in FOLDER_DOCUMENT_EXTENSIONS:
                     source_type = "pdf"
                 else:
                     source_type = "file"
@@ -1032,6 +1158,12 @@ class IngestionPipeline:
                 _record_error(Path(item.path or ""), result.detail or result.status, result.status)
         summary["status"] = "ok" if summary["failed"] == 0 else "partial"
         return summary
+
+    def _folder_extensions(self) -> frozenset:
+        """Folder-scan allow-list — pictures and recordings only when enabled."""
+        if self._allow_multimodal:
+            return DEFAULT_FOLDER_EXTENSIONS | FOLDER_MULTIMODAL_EXTENSIONS
+        return DEFAULT_FOLDER_EXTENSIONS
 
     # ── routing helpers ──────────────────────────────────────────────────────
     def _ingest_text(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
@@ -1095,7 +1227,24 @@ class IngestionPipeline:
         result.setdefault("title", item.title)
         return result
 
-    def _ingest_file(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
+    # ── multi-modal routing (v11.1.0 Track 3) ────────────────────────────────
+    def _modality_for(self, item: IngestionItem, source_type: str) -> str:
+        """``image`` / ``audio`` / ``video`` / ``text`` for this item.
+
+        Always ``"text"`` while the flag is off, which is what makes "off" mean
+        *unchanged* rather than *slightly different*.
+        """
+        if not self._allow_multimodal:
+            return "text"
+        if source_type in IMAGE_SOURCE_TYPES:
+            return MODALITY_IMAGE
+        if source_type in AUDIO_SOURCE_TYPES:
+            return MODALITY_AUDIO
+        if not item.path:
+            return "text"
+        return detect_modality(item.path, item.mime_type)
+
+    def _resolve_file_path(self, item: IngestionItem) -> Path:
         if not item.path:
             raise ValueError("File ingestion requires a path.")
         path = Path(item.path)
@@ -1103,6 +1252,109 @@ class IngestionPipeline:
             raise FileNotFoundError(f"File not found: {path}")
         if path.is_dir():
             raise ValueError(f"File ingestion requires a file, got a directory: {path}")
+        return path
+
+    def _ingest_image(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
+        """Store one picture as an ``Image`` node — OCR, caption, vector.
+
+        The image vector (when a vision model produced one) goes to its own
+        index; the OCR/caption text rides the ordinary text index. That split
+        is what lets a typed question find a screenshot without ever comparing
+        a text vector to an image vector.
+        """
+        path = self._resolve_file_path(item)
+        facts = extract_image_facts(str(path), ports=self._multimodal)
+        result = write_image_memory(
+            self._kg,
+            path=path,
+            facts=facts,
+            title=item.title or path.name,
+            source_type=source_type if source_type in IMAGE_SOURCE_TYPES else MODALITY_IMAGE,
+            source_uri=item.source_uri,
+            owner=owner,
+            workspace_id=item.workspace_id,
+            conversation_id=item.conversation_id,
+            captured_at=captured_at,
+            modified_at=item.modified_at,
+            permissions=item.permissions,
+            extra_metadata={"mime_type": item.mime_type, **(item.metadata or {})},
+        )
+        self._record_image_vector(result["node_id"], facts)
+        quality = image_quality_score(facts)
+        result["extraction_quality"] = {
+            "score": quality["score"],
+            "level": _quality_level(quality["score"]),
+            "reasons": quality["reasons"],
+        }
+        return result
+
+    def _record_image_vector(self, node_id: str, facts: ImageFacts) -> None:
+        """File the image-space vector, if a vision model actually made one."""
+        if facts.embedding is None:
+            return
+        from .graph.image_vectors import record_image_vector
+
+        record_image_vector(
+            self._kg,
+            node_id=node_id,
+            vector=facts.embedding,
+            model_id=self._multimodal.vision_model_id or "vision:unnamed",
+            space=self._multimodal.vision_space,
+            updated_at=utc_now_iso(),
+        )
+
+    def _ingest_audio(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
+        """Store one recording as an ``Audio`` node, transcribed when possible.
+
+        The transcript is text and rides the ordinary text index — chunks,
+        concepts, provenance, dedupe all unchanged — but the node itself is a
+        recording, because that is what it is whether or not anyone could hear
+        it. The recording's own facts stay in the metadata (``modality``,
+        ``audio_path``, ``transcription``, ``searchable``). Without a
+        transcriber the memory is still kept, and its body says plainly that
+        the words were never recognized instead of leaving a blank note.
+        """
+        path = self._resolve_file_path(item)
+        facts = transcribe_audio(str(path), ports=self._multimodal, transcript=item.text)
+        title = item.title or path.stem
+        body = facts.transcript or (
+            f"[{MODALITY_AUDIO}] {title}\n"
+            "이 녹음은 아직 글로 바뀌지 않았습니다 — 음성 인식기가 없어 내용 검색은 되지 않습니다."
+        )
+        result = self._kg.ingest_source(
+            source_type=source_type,
+            title=title,
+            text=body,
+            source_uri=item.source_uri or str(path),
+            owner=owner,
+            workspace_id=item.workspace_id,
+            permissions=item.permissions,
+            captured_at=captured_at,
+            modified_at=item.modified_at,
+            conversation_id=item.conversation_id,
+            node_type=AUDIO_NODE_TYPE,
+            metadata={
+                "mime_type": item.mime_type,
+                "modality": MODALITY_AUDIO,
+                "audio_path": str(path),
+                "audio_bytes": path.stat().st_size,
+                "transcription": facts.transcription_status,
+                "searchable": facts.searchable,
+                **({"transcription_detail": facts.detail} if facts.detail else {}),
+                **(item.metadata or {}),
+            },
+        )
+        result.setdefault("title", title)
+        quality = audio_quality_score(facts)
+        result["extraction_quality"] = {
+            "score": quality["score"],
+            "level": _quality_level(quality["score"]),
+            "reasons": quality["reasons"],
+        }
+        return result
+
+    def _ingest_file(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
+        path = self._resolve_file_path(item)
         return self._kg.ingest_document(
             path,
             original_filename=item.title or path.name,

@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **11.0.1 — Both Branches**.
+Current release: **11.1.0 — Product Intelligence**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

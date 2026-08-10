@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v10.10.0)
+# Lattice AI Feature Status (v11.1.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **11.0.1 — Both Branches**.
+Current release: **11.1.0 — Product Intelligence**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 9.0.0 and later in `RELEASE.md` and
@@ -102,12 +102,21 @@ work off the loop.
 | Brain Home | Current | Living Brain, composer, and Brain Brief are visible in the first viewport on desktop and mobile. |
 | Automation Intelligence | Current | /api/automation mines recurring user questions (deterministic local clustering, literal-question evidence) and connected knowledge folders into one-click suggestions; installs are idempotent, disabled-draft, review-queue-gated workflows. |
 | Brain Intelligence | Current | The Brain diagnoses itself: /api/brain health scoring (freshness, connectivity, search readiness, consistency), proactive insights digest, contradiction surfacing, and consent-first duplicate consolidation, wired from the lattice_brain quality layer and covered by unit + live-boot tests. |
+| Temporal Knowledge | Current | Nodes and edges carry `valid_from` / `valid_to` / `superseded_by`, added by an idempotent additive migration on an existing Brain (NULL means "since `created_at`" / "still true" — never an empty string, and no backfill). `store.as_of(timestamp)` returns the graph slice that was valid at that instant, and `neighbors(..., as_of=…)` takes the same slice; both default to today's behaviour when the argument is omitted. |
+| Proactive Synthesis | Current | The Brain notices on its own and asks rather than acts: contradicting memories, recurring-but-unnamed topics, always-together-never-linked pairs, and decayed episodic fragments all arrive as Review Center proposals (`kg_change_digest`) with a plain-language explanation. Deterministic — token overlap and clock arithmetic, no model needed; a model may only reword the weekly brief. Runs event-driven: the ingestion pipeline's audit seam hands every landed ingest to `BrainIntelligenceService.note_ingest`, and a pass fires every `LATTICEAI_SYNTHESIS_THRESHOLD` (25) genuinely new nodes — duplicates do not count, and a trigger that fails never fails the ingest. **Every write goes through approval**: `POST /api/brain/contradictions/resolve` approves the proposal first and only then stamps the pair's validity windows (keep / replace / keep both with time ranges), and the same pair is never proposed twice while it is still waiting. |
+| Memory Decay | Current | `GET /api/brain/importance` scores each memory by use (ingested access counts, else the store's own read counter) plus recency decay, and names the weakest *episodic* fragments only — a decayed Decision or Document is reported as stale knowledge, never folded away. `/api/brain/quality-report` carries the same numbers plus a `tidying` flag so "the Brain is tidying up" is visible rather than a background surprise. |
 | Hybrid Recall | Current | /api/memory/recall and the graph-layer `hybrid_search` blend lexical evidence with vector similarity (hybrid-evidence/v2 gate) with workspace-scoped vector hits and honest lexical fallback when the vector tier fails. Chat consumes a `context_quality` signal so grounding reflects how strong the retrieved context actually is. |
 | Folder Ingestion | Current | `ingest_folder` indexes a chosen local folder with `.latticeignore` filtering; long runs execute as resumable background jobs surfaced through `/api/ingestion/jobs` rather than a single blocking request. |
 | Extraction Quality | Current | Ingestion scores per-source `extraction_quality` and runs an observe-mode `quality_gate` that flags low-quality extractions instead of silently accepting them. |
-| Vector Freshness | Current | `/api/brain/vector-freshness` reports embedded-vs-total content so stale embeddings are visible and reindexing can be triggered on demand. |
+| Vector Freshness | Current | `/api/brain/vector-freshness` reports embedded-vs-total content so stale embeddings are visible and reindexing can be triggered on demand. The store adds `vector_freshness_breakdown()` — embedded / missing / stale / queued — because "12 pending" hides the difference between twelve never-embedded imports and twelve edits whose current answers are quietly wrong. |
+| Vector Index Backends | Current | `LATTICEAI_VECTOR_INDEX` selects `brute` (default, exact, byte-compatible with every previous release), `quantized` (int8 storage, exhaustive, approximate scores) or `hnsw` (approximate nearest neighbour, needs `pip install "ltcai[hnsw]"`). An unknown name or a missing extra falls back to the exact scan **and says why** — in `index_status().storage.vector_index` and in each search result's `index` block. Approximate backends set `approx: true`, which reaches `context_quality`. Measured at 10k and 50k vectors in `docs/PERFORMANCE.md` with `scripts/bench_vector_index.py`, which reports recall@10 against the exact scan next to every latency number: hybrid p50 **10.1 ms at 10k / 43.9 ms at 50k** with HNSW (target was < 50 ms at 10k) against 299 ms / 1515 ms for the exact scan, at 0.95–0.99 recall. |
+| Background Embedding | Current | A failed inline vector sync now queues durable work (`vector_jobs` in the brain database) instead of leaving `indexing_status: "pending"` for a human to notice. `IngestionPipeline.drain_vector_queue()` runs one tick, retries are bounded, and a node that exhausts its budget stays visibly `failed` with its last reason. Caller-driven by design: the queue survives restarts, so *who* runs the worker is a deployment decision, not a side effect of ingesting. |
+| Fusion Strategy | Opt-in (default off) | `LATTICEAI_FUSION_STRATEGY=rrf` fuses channel *positions* (Reciprocal Rank Fusion) instead of the lexical channel's `1/rank` and the vector channel's normalized cosine, which are not on comparable scales. Per query class via a JSON object. Off everywhere by default: alpha fusion is the ranking this release's assertions describe. |
+| Graph Candidate Expansion | Opt-in (default off) | `LATTICEAI_GRAPH_EXPANSION=1` adds the one-hop neighbours of the strongest hits to the candidate pool, so a node one edge away from the match is reachable at all. Capped at 5 candidates from 3 seeds, scored at half its seed's score, and reported in the result's `graph_expansion` block (seeds walked, candidates added, whether the cap bit, seeds that failed). |
+| Self-Model (Personal Ontology) | Current (API only) | The Brain keeps a small, separately-governed subgraph about *its owner*: `Self` / `Preference` / `Habit` / `Relationship` node types (plus the existing `Decision`), rooted at `self:root` with `PART_OF` edges. Extraction is deterministic — first-person Korean and English phrasings, no model required — and **only ever proposes**: `POST /api/memory/self-model/propose` files each candidate in the Review Center, and `POST /api/memory/self-model/apply` writes it *after* the approval returns. The user owns it: `GET /api/memory/self-model` shows every fact and the exact summary that gets injected, `POST` corrects one, `DELETE /api/memory/self-model/{id}` forgets it — both direct, because it is their own profile. A summary rides along with document-generation context (empty profile → nothing injected, never more than half the context budget). |
+| Workspace Reorganization | Current (proposal-first) | "이 프로젝트를 정리해줘" produces a plan, not a tidy-up: `WorkspaceOSStore.propose_reorganization` asks the graph what each file is about and stages **one** `change_proposal` (kind `folder_reorganization`) describing every move into `topics/<주제>/`. Files the Brain cannot justify are reported as `unplaced` with a reason instead of being swept somewhere plausible, and **no deletion is ever proposed** — the planner has no delete path at all. Approving from the Review Center applies it through the same `ChangeProposalService` door every other staged change uses; a move whose source vanished or whose target now exists is skipped and reported, never forced. |
 | Change Governance | Current | `core/tool_governor.py` `MUTATING_TOOL_INVENTORY` requires every mutating tool to be governed or explicitly exempt (release-checked). File edits/deletions flow through change proposals that record a base content hash and re-check it for conflicts before applying atomically. `core/agent_eval.py` verifier fails closed to `NEEDS_REVIEW` on unverifiable or failing outcomes. |
-| Brain Brief | Current | MemoryService turns real workspace, conversation, graph, vector, and source-health signals into focus, evidence, and next actions. |
+| Brain Brief | Current | MemoryService turns real workspace, conversation, graph, vector, and source-health signals into focus, evidence, and next actions. `GET /api/brain/proactive-brief` adds the proactive section — what the Brain noticed and what is waiting for a decision — read-only, counting the proposals already in the Review Center rather than raising new ones. |
 | Conversation | Current | Chat is the primary action. It refuses to fake model output when no model is loaded, surfaces memory proof when context exists, and routes explicit file actions into the governed workspace file tool. |
 | Knowledge Graph | Current | Memory graph exploration, graph read compatibility, provenance-aware retrieval, fail-closed workspace reads/traversal, explicit legacy-global compatibility, workspace-safe duplicate content, and KG v2 equivalence gates remain active. |
 | Source Capture | Current | Files, folders, notes, and web/source capture paths feed Brain memory and graph context through explicit user actions and the unified ingestion pipeline when available. |
@@ -122,9 +131,15 @@ work off the loop.
 | Browser Extension | Current | Capture, recall, and approval visibility (9.9.7). Asking the Brain shows the server's own grounding verdict — an absent verdict reads "근거 확인 불가", never "근거 있음". Approval *decisions* stay off this surface by design (they need a signed short-TTL token); the extension shows that runs are waiting. Posts only to `127.0.0.1`. |
 | Telegram Review | Current | `/review` lists staged change proposals from the same `/api/proposals` surface with inline approve/reject; a 409 reports that nothing was written. Answers carry the server's grounding verdict. |
 | Knowledge Garden | Current | `GET /api/brain/garden` answers four gardener questions from one scoped read: recent, contradictions, stale, and most-relied-on (real graph degree; Chunk nodes excluded). An unavailable graph yields empty beds, never invented ones. |
+| Agent File Tasks | Current | The executor prompt carries profile-aware file-writing hints (`core/agent_prompts.executor_prompt_for`): the order of operations, that `write_file` comes *first* on a file request, and — for the `compact` profile — the same thing as a three-step numbered list, because the weak-model failure the loop could not repair was writing nothing at all. `EXECUTOR_PROMPT` itself is unchanged, and a Self-Model summary is injected only when a caller passes one — the agent runtime does not yet (see Known Limitations). |
 | Agent Profiles | Current | `standard` / `compact` profiles selected from the model id (or `LATTICEAI_AGENT_PROFILE`). Under ~4B the loop shortens its transcript window, escalates corrections sooner, and falls back to writing the plan's files directly when JSON tool calls keep failing. A failed or staged write is reported as *not* written. |
 | Folder Memory State | Current | `GET /knowledge-graph/local/health` reports per-folder indexing coverage, failures with their stored reasons, and watch state. An unscanned folder reports unknown, never "0% indexed"; vector freshness is reported once and explicitly labelled global. |
-| Voice Capture | Current (transcriber optional) | `POST /api/capture/voice` ingests a memo through the unified pipeline. Transcription is an injected local port: without one the memo is still stored and reported `transcription: "unavailable"` / `searchable: false` — never an invented transcript, never a silent drop. |
+| Voice Capture | Current (transcriber optional) | `POST /api/capture/voice` ingests a memo through the unified pipeline. Transcription is an injected local port: without one the memo is still stored and reported `transcription: "unavailable"` / `searchable: false` — never an invented transcript, never a silent drop. 11.1.0 shares that one port with multi-modal ingestion, so a memo and a scanned `.m4a` can never disagree about whether this machine can hear. The memo itself is still stored through the text door (`source_type: note`) and is unaffected by `allow_multimodal`; the first-class `Audio` node type below applies to recordings the multi-modal router picks up. |
+| Multi-modal Memories | Opt-in (default off) | `allow_multimodal` (`LATTICEAI_ALLOW_MULTIMODAL`) routes files by MIME/extension: images become first-class `Image` nodes (content-addressed, idempotent) with `ImageText` OCR children and chunks; recordings become first-class `Audio` nodes (`NodeType.AUDIO`) whose transcript still rides the ordinary text index — chunks, concepts, provenance and dedupe unchanged — carrying `modality`/`audio_path`/`transcription`/`searchable` metadata, and kept with an honest "nobody heard this" body when no transcriber exists. **With the flag off, behaviour is byte-identical to 11.0.x** — the folder-scan allow-list, node ids, and node types are unchanged, and both modes are asserted in `tests/unit/test_t3_ingest_routing.py`. Extraction quality scores what can actually be *retrieved* from a picture (OCR text, caption, vector). |
+| Vision OCR / Caption / Embedding | Current (models optional, none bundled) | OCR uses `pytesseract` when installed (absent ⇒ `ocr_status: "unavailable"`, no text). A **caption exists only when a vision-language model wrote one** — 11.1.0 removed `VisionStub`, which synthesized `Image pic.png (PNG 12x8)` from the filename and stored it where a real description would go. Image embeddings come from `VisionEmbeddingProvider` (MLX/CLIP-family or a dotted callable) and have **no hash fallback**: a hashed file path is not a picture, so an unavailable model is reported unavailable. Configure with `LATTICEAI_VISION_PROVIDER` / `_MODEL` / `_SPACE` and `LATTICEAI_VISION_CAPTION_PROVIDER` / `_MODEL`. |
+| Image Retrieval | Current (behind the same flag) | Text queries find pictures through their OCR text and captions, which live in the ordinary text index. Image vectors live in a **separate** table and search (`graph/image_vectors.py`) keyed by the vision model, with mismatched widths skipped rather than truncated, and enter `hybrid_search` only by **late fusion** (`image_vector=`, `image_fusion_weight`, default 0.5) — reported in the result's `multimodal` block. `context_quality` gains a `multimodal` key only when image nodes are really in the context, so all-text answers keep the four-key shape. |
+| Evidence Thumbnails | Current (minimal) | An `Image` citation in the Evidence panel shows the 96px inline `data:` thumbnail stored on the node at ingest, plus the caption when a model wrote one and an explicit "비전 모델이 없어 설명은 없습니다" line when none did. No new static route and no bypass of the `/local/serve` approval gate: only `data:image/…` is accepted, so an evidence card can never become an outbound request. Thumbnails over 24 KB are dropped rather than shipped. |
+| Video Ingestion | **Out of scope in 11.1.0** | Video is *recognized and refused*: an ingest returns `status: "unavailable"` with the reason (`VIDEO_OUT_OF_SCOPE`) rather than storing a file it cannot read. Keyframe extraction and subtitle/transcript alignment (plan §5.2) need a decoder this project does not ship; nothing about video is claimed elsewhere in the product. |
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
 | Trusted Agent Loop | Current | LoopTrace observability + `loop` API payload, python-literal weak-model repair with escalating corrections, deterministic agent-eval CI gate, and proposal-first change governance (`/api/proposals`, 변경 제안 panel) where edits/deletions of existing files are reviewed before applying. |
 | Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. |
@@ -139,7 +154,9 @@ work off the loop.
 | Network Boundary | Current | `NetworkBoundaryMode` (`local_only` default / `cloud_allowed`) decides whether any knowledge may leave the host, orthogonal to PermissionMode. Set it in **설정 → 내 지식이 나가는 범위** (`NetworkBoundaryPanel`) or through `POST /api/network-boundary`. The selector renders the server's own catalog and refuses to send a `cloud_allowed` switch until the risk acknowledgement the server requires is ticked. A built-in **preview** names the actual memories a given question would send, with its token estimate and whether the token guard would refuse the turn — and works in `local_only` too, labelled as hypothetical. Only the minimal extracted node slice is ever sent, never the graph. Nodes flagged `sensitive` / `private` / `do_not_share` / `local_only` are filtered in **both** modes (mode-invariant, like the agent circuit breakers). |
 | Hybrid Cloud Chat | Current (requires cloud key) | When the boundary is `cloud_allowed`, `/chat` branches through `api/chat_hybrid.py` → `services/hybrid_chat.py`: minimal KG context is assembled (`hybrid_context.py`), checked against per-turn and per-session token budgets (`cloud_token_guard.py`), and streamed from an OpenAI-compatible provider (`openai_compatible_adapter.py`, `cloud_streaming.py`). Inert without `LATTICEAI_CLOUD_API_KEY`; the local path is untouched. |
 | Cloud Memory Write-Back | Current (proposal-first) | Knowledge extracted from a cloud answer (`cloud_extraction.py`) is enqueued as a Review Center `change_proposal` with provenance. It is written to the graph only when `auto_commit` is explicitly enabled in the hybrid policy (default **false**) and a store write API exists. Multimodal streaming needs both `cloud_allowed` and a separate `allow_multimodal` flag (default **false**). |
-| Release Assets | Current | 10.10.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Obsidian Vault Bridge | Current (manual sync) | `POST /api/ingestion/obsidian` reads an *external* Obsidian vault the user approves through the standard local-read approval dance and pushes every `.md` note through the one `IngestionPipeline` gate (`source_type: obsidian`). In-vault `[[wikilinks]]`, `![[embeds]]`, and relative markdown links become `REFERENCES` edges between the note nodes; frontmatter `tags` become workspace-scoped `Topic` nodes joined by `TAGGED_AS`. A link whose target is missing or ambiguous is reported in `links.unresolved`, never guessed. Re-running is idempotent (content-hash dedup plus deterministic edge/topic ids). `dry_run` reports note/link/tag counts without writing. Distinct from the `obsidian_save`/`obsidian_search` tools, which write Lattice's own mirror vault. |
+| Selective Brain Network | Opt-in prototype (off by default) | `GET/POST /api/knowledge-graph/share*` export a *chosen* subgraph — node ids, node types, or source types, optionally one hop out — as a bundle signed by this device's Ed25519 identity, with a payload digest pinned inside the signed header. The receiving Brain verifies fail-closed and files every node as a **review proposal** carrying the sender's fingerprint; the graph changes only when a person accepts one item, and an edge into a node the receiver does not have is deferred and reported rather than written dangling. Everything is behind `LATTICEAI_BRAIN_NETWORK` (default off); while off the mutating routes answer 403 with the reason and `GET /api/knowledge-graph/share` still answers `enabled: false`. |
+| Release Assets | Current | 11.1.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -152,6 +169,95 @@ work off the loop.
 - **A long download no longer freezes the server, but it is still not
   cancellable.** Closing the tab mid-pull leaves the pull running to completion
   on its worker thread.
+- **Nothing in the server drives the background embed queue yet.** The queue is
+  durable and drains correctly, but the only caller is
+  `IngestionPipeline.drain_vector_queue()`. In the normal case this changes
+  nothing — the inline sync embeds during the ingest, so new content is
+  searchable immediately — and the queue exists for the case where that sync
+  fails. Until a scheduler calls it, a failed embedding is retried when someone
+  asks for a tick, not on a timer.
+- **The HNSW index is rebuilt whole, never appended to.** The `.hnsw` sidecar is
+  fingerprinted on the row count and the newest `indexed_at`, so *any* write to
+  `vector_embeddings` invalidates it and the next search pays a full rebuild
+  (measured in `docs/PERFORMANCE.md` as the "first query" column). That is the
+  right trade for a brain that is read far more often than written, and the
+  wrong one for a continuous ingest — which is why `brute` remains the default.
+- **The quantized backend's memory advantage is not realized in this release.**
+  int8 codes are 8x smaller than boxed floats, but the measurement says peak
+  memory barely moves (38.4 MB vs 39.7 MB at 10k): the exact scan already feeds
+  the index in bounded batches, so resident vectors were never the dominant
+  term — the fetched SQLite rows are. What the measurement does show is ~2.2x
+  the latency of the exact scan (641 ms vs 293 ms at 10k) for 0.987 recall. It is
+  shipped as a working, exhaustive backend and as the representation a held
+  index would need; on today's numbers there is no reason to prefer it.
+- **Video ingestion is out of scope in 11.1.0.** A video file is *recognized
+  and refused* — `status: "unavailable"` with the reason — rather than stored
+  as an opaque blob. Keyframe extraction plus subtitle/transcript alignment
+  (plan §5.2) needs a decoder this project does not ship, and half of it
+  (frames with no audio, or audio with no frames) would be a worse memory than
+  none. Images and audio are the whole of this release's multi-modal claim.
+- **No vision or speech model ships with the product.** OCR needs a local
+  `pytesseract` + tesseract install; captions need a loaded VLM
+  (`pip install "ltcai[local]"` plus `LATTICEAI_VISION_CAPTION_*`); image
+  embeddings need `mlx_clip` or a dotted callable; transcription needs a
+  transcriber port that the default build does not wire. With none of them the
+  feature still works and still says what it could not do — an image is stored,
+  findable by filename, and its metadata reads `ocr_status: "unavailable"` /
+  no caption / `vision_embedding: "unavailable"`. Nothing is fabricated to fill
+  those fields.
+- **Image evidence is shown from a 96px thumbnail, not the original file.**
+  Serving the real image would need either a new static route over the user's
+  disk or a reuse of `/local/serve`, which exists so every read passes an
+  explicit approval. The inline `data:` URI avoids both and is capped at 24 KB,
+  so a noisy or very large picture falls back to a labelled badge plus the
+  filename rather than shipping a heavier payload inside every recall.
+- **Text queries do not search the image vector space.** A typed question finds
+  pictures through their OCR text and captions. The image index answers
+  image-to-image similarity and joins `hybrid_search` only when the caller
+  supplies a query vector (`image_vector=`), because the two spaces are not
+  comparable unless a shared-space model is configured — and no UI supplies one
+  yet, so that path is API-only in this release.
+- **Obsidian is the only interop bridge in this release.** Notion, email,
+  calendar, and Git ingestion were scoped out of 11.1.0 rather than stubbed:
+  nothing in the product claims them. They remain on the roadmap and would
+  each enter through the same `IngestionPipeline` door the vault bridge uses.
+- **The vault bridge is a manual one-shot sync.** There is no watch mode and no
+  background scheduling for external vaults: link edges need the node ids only
+  a completed inline ingest has, so a "scheduled" run would report edges it
+  never wrote. A large vault is capped at 2,000 notes per run and reports
+  `truncated: true` when it hits the cap. Only frontmatter `tags` become
+  topics; inline `#tags` in note bodies are not parsed.
+- **Subgraph sharing is a prototype, and its encryption is a shared
+  passphrase.** The bundle is signed by the sending device (Ed25519) and
+  encrypted with the same PBKDF2 + AES-GCM mechanism as `.latticebrain`
+  archives. Encrypting *to a recipient's public key* is not implemented —
+  `GET /api/knowledge-graph/share` reports
+  `recipient_public_key_encryption: false` rather than implying otherwise.
+  Accepting a proposal merges one node at a time; there is no bulk accept, and
+  the receiving UI is the existing Review Center rather than a dedicated
+  share screen.
+- **The Self-Model has no screen yet.** Everything is reachable through
+  `/api/memory/self-model*` and the Review Center renders its proposals like any
+  other, but the `/app` UI has no dedicated profile view, so "see everything the
+  Brain thinks about me" is an API call today.
+- **Self-Model extraction is a phrase table, not comprehension.** It matches
+  first-person Korean and English patterns (`저는 …를 선호합니다`, `결정:`,
+  `매일 …`, `I prefer …`, `my colleague …`). A fact stated any other way is
+  missed, and a matched phrase can over-capture the rest of its clause — which is
+  survivable precisely because every candidate is a proposal a person reads before
+  it is stored. The optional `refiner` hook can hand a model the wording, but no
+  model is wired to it in this release.
+- **The Self-Model summary reaches document generation, not the agent loop.**
+  `context_builder` injects it (opt-in per call, on by default), and
+  `executor_prompt_for(self_model_summary=…)` accepts it — but the agent runtime
+  holds its executor prompt as a fixed string, so wiring the profile into a run
+  needs a new port on `AgentDeps` that this release does not add.
+- **Reorganization proposes one level of topic folders and cannot be undone in
+  one click.** Targets are always `topics/<주제>/<file>`; nested schemes, renames,
+  and merges are out of scope. Applying leaves no reverse proposal — the moved
+  files are still in the workspace, but putting them back is a new proposal. Only
+  files the graph links to a topic move at all, so a Brain that has not indexed a
+  folder proposes nothing for it.
 - **The browser extension resolves its language from the browser**, not from the
   web app's setting. The popup is a separate origin and cannot read
   `lattice.language`; closing this needs a server-side preference, which does
