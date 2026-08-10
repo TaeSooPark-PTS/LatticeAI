@@ -281,7 +281,7 @@ class RuntimeBoundaryProtocol(Protocol):
     surface that DI, readiness gates, and tests can depend on safely.
     """
 
-    def boundary(self) -> Dict[str, Any]: ...
+    def boundary(self) -> Dict[str, Any]: ...  # pragma: no branch — class-body arc CPython never emits: the def shares its line with its own body
 
     def config(self) -> Dict[str, Any]: ...
 

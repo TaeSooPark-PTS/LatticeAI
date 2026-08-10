@@ -10,7 +10,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-MARKETPLACE_VERSION = "11.0.0"
+MARKETPLACE_VERSION = "11.0.1"
 TEMPLATE_KINDS = ("plugin", "workflow", "agent", "ingestion_bridge")
 
 

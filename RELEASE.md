@@ -13,6 +13,29 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.0.1 — Both Branches (2026-08-10)
+
+11.0.0이 기록만 하고 고치지 않은 결함 11건의 정산 릴리스입니다.
+
+- **결함 11건 전부 수정** — Telegram 인증 헤더 유출·언로드 성공 조작,
+  inspect_html 죽은 수집, 리뷰 id 초 충돌, vLLM 좀비 오판(→409),
+  보안 대시보드 마스킹 갭·invalid JSON 내보내기(+상세 라우트 후속),
+  임베딩 model_id 차원 동결, fast-path 모델 표기 불일치, 워크스페이스
+  죽은 리터럴·미도달 404. 고정 테스트 반전 + 회귀 테스트
+  (`test_fix_v1101_*`).
+- **분기 커버리지 100% 게이트** — `branch = true`, 9,828아크 전부 실행,
+  테스트 5,426 → 5,798개. `pragma: no branch`는 사유 명시 2줄뿐.
+- **죽은 코드 제거** — `_wa()`, 스냅샷 정규화기, 404 arm, 증명된 죽은
+  조건 3곳(전 유니코드 스캔 포함) 등 전부 참조-0 증명 후 삭제.
+- 검증: 로컬 3연속 + fresh 3.11 venv + linux 3.14 컨테이너 모두 그린.
+
+빌드 산출물은 `dist/ltcai-11.0.1-py3-none-any.whl`,
+`dist/ltcai-11.0.1.tar.gz`, `ltcai-11.0.1.tgz`, `dist/ltcai-11.0.1.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.0.1_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.0.1.md](RELEASE_NOTES_v11.0.1.md)
+
 ## v11.0.0 — Full Measure (2026-08-10)
 
 기능이 아니라 바닥을 출하한 메이저 릴리스입니다. **Python 커버리지 72.80% →

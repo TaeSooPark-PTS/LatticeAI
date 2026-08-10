@@ -156,13 +156,6 @@ def _w(
     return policy
 
 
-def _wa(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
-    return ToolPolicy(
-        risk="write", destructive=False, shell=False, network=False,
-        auto_approve=True, sandbox=sandbox, rollback=rollback,
-    )
-
-
 def _e(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
         risk="exec", destructive=False, shell=True, network=False,

@@ -68,7 +68,10 @@ def create_voice_capture_router(
             LOGGER.exception("voice capture failed")
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         finally:
-            if tmp_path is not None:
+            # tmp_path is None only when the upload failed before the temp file
+            # existed — and that path is always re-raising, so the false side of
+            # this guard can never reach the statement after the try block.
+            if tmp_path is not None:  # pragma: no branch — see comment above
                 try:
                     tmp_path.unlink(missing_ok=True)
                 except OSError:

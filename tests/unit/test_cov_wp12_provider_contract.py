@@ -126,7 +126,10 @@ def test_every_hash_alias_builds_the_offline_fallback():
 def test_the_factory_maps_each_provider_name_to_its_class_without_touching_the_network():
     mlx = build_embedding_provider("mlx", model="bge-m3")
     assert isinstance(mlx, MLXEmbeddingProvider)
-    assert mlx.model_id == "mlx:bge-m3:384"
+    # an unpinned dimension is guessed from the model name, as it is for every
+    # other model-backed provider — bge-m3 is 1024-wide, not the 384 default
+    assert mlx.dim == 1024
+    assert mlx.model_id == "mlx:bge-m3:1024"
 
     ollama = build_embedding_provider("ollama", model="nomic-embed-text")
     assert isinstance(ollama, OllamaEmbeddingProvider)

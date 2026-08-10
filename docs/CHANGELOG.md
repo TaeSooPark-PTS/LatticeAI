@@ -4,6 +4,29 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.0.1] - 2026-08-10
+
+### Fixed
+- 11.0.0 릴리스 노트가 기록한 결함 11건 전부: Telegram `send_web_link`의
+  서버 토큰 유출과 전체 언로드 성공 조작, `inspect_html` 스타일시트 데드
+  수집, 리뷰 아이템 id 초 단위 충돌, vLLM 좀비 재확인(침묵 성공 → 409),
+  보안 대시보드 목록/상세 마스킹 갭과 invalid-JSON 내보내기, 임베딩
+  `model_id` 차원 동결, fast-path `X-Model`/SSE 본문 불일치, 워크스페이스
+  응답의 죽은 `"ok"` 리터럴과 미도달 404 arm. 각 수정은 결함을 고정하던
+  테스트를 반전하고 회귀 테스트를 추가했습니다.
+
+### Changed
+- 커버리지 게이트가 분기까지 잡습니다: `[tool.coverage.run] branch = true`,
+  9,828아크 전부 실행, `fail_under = 100`은 이제 라인+분기 합산.
+  테스트 5,426 → 5,798개. `pragma: no branch`는 사유 명시 2줄.
+
+### Removed
+- 참조-0 증명 후 죽은 코드 삭제: `tool_registry._wa()`,
+  `workspace_os_utils._snapshot_graph_import_payload`, 워크스페이스 404
+  arm 2개, vLLM 침묵 성공 분기, 증명된 죽은 조건 3곳
+  (model_catalog 버전 가드 · model_compat MLX 조건 · retrieval_docgen
+  blank-query 가드).
+
 ## [11.0.0] - 2026-08-10
 
 ### Changed

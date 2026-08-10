@@ -14,8 +14,11 @@ from latticeai.api.chat_helpers import assess_answer_grounding, single_text_stre
 
 def single_answer_response(req: Any, answer: str, *, model: str):
     if req.stream:
+        # The answering surface is reported once: the same ``model`` goes in
+        # the X-Model header and in every SSE frame body, so a client reading
+        # the stream never disagrees with a client reading the headers.
         return StreamingResponse(
-            single_text_stream(answer),
+            single_text_stream(answer, model=model),
             media_type="text/event-stream",
             headers={"X-Model": model},
         )

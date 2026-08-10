@@ -147,28 +147,29 @@ def test_inspect_html_summarises_a_page(workspace: Path) -> None:
     ]
 
 
-def test_inspect_html_does_not_collect_stylesheets_from_a_real_page(workspace: Path) -> None:
-    """Known defect, pinned so a fix is a deliberate change.
+def test_inspect_html_collects_stylesheets_from_a_real_page(workspace: Path) -> None:
+    """v11.0.1 D3 — the rel attribute is a string, and is matched as one.
 
-    ``handle_starttag`` tests the rel attribute with
+    ``handle_starttag`` used to test the attribute with
     ``"stylesheet" in " ".join(attr.get("rel", []))``. ``HTMLParser`` hands
-    every attribute value over as a *string*, so joining it inserts a space
-    between each character ("s t y l e s h e e t") and the membership test can
-    never succeed. The collector below shows the branch does work — but only
-    for a list-valued rel, which no parsed page produces.
+    every attribute value over as a *string*, so joining it inserted a space
+    between each character ("s t y l e s h e e t") and the membership test
+    could never succeed: no parsed page ever reported a stylesheet. The value
+    is split on whitespace now, so a real page's ``<link rel="stylesheet">``
+    is collected.
     """
     (workspace / "index.html").write_text(_PAGE, encoding="utf-8")
 
-    assert inspect_html("index.html")["stylesheets"] == []
+    assert inspect_html("index.html")["stylesheets"] == ["/styles.css"]
 
     inspector = _HTMLInspector()
-    inspector.handle_starttag("link", [("rel", ["stylesheet"]), ("href", "/styles.css")])
+    inspector.handle_starttag("link", [("rel", "stylesheet"), ("href", "/styles.css")])
     assert inspector.stylesheets == ["/styles.css"]
 
 
 def test_html_inspector_ignores_a_stylesheet_link_without_an_href() -> None:
     inspector = _HTMLInspector()
-    inspector.handle_starttag("link", [("rel", ["stylesheet"])])
+    inspector.handle_starttag("link", [("rel", "stylesheet")])
 
     assert inspector.stylesheets == []
 

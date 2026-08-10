@@ -221,6 +221,20 @@ class EmbeddingProvider:
         raise NotImplementedError
 
     # ── derived (shared) ──────────────────────────────────────────────────
+    def _model_id_with_dim(self, dim: int) -> str:
+        """This provider's ``model_id`` restated at ``dim``.
+
+        Every provider spells its identity ``<kind>:<model>:<dim>``, so the
+        numeric tail is what moves when a live call reveals the model's true
+        width. An id without such a tail does not encode a dimension and is
+        returned unchanged — the index keys on ``model_id`` *and* ``dim``, so
+        nothing becomes ambiguous.
+        """
+        head, sep, tail = self.model_id.rpartition(":")
+        if sep and tail.isdigit():
+            return f"{head}:{dim}"
+        return self.model_id
+
     def embed(self, text: str) -> List[float]:
         result = self.embed_batch([text])
         return result[0] if result else [0.0] * self.dim
@@ -330,8 +344,11 @@ class _NetworkEmbeddingProvider(EmbeddingProvider):
         for vec in vectors:
             vec = [float(x) for x in (vec or [])]
             if vec:
-                # lock the index identity to the true model dimensionality
+                # lock the index identity to the true model dimensionality —
+                # the id carries that dimension, so it moves with it or the
+                # vectors end up filed under a width they do not have
                 self.dim = len(vec)
+                self.model_id = self._model_id_with_dim(self.dim)
             out.append(_l2_normalize(vec) if vec else [0.0] * self.dim)
         return out
 
@@ -342,6 +359,8 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
 
     def __init__(self, cfg: _RemoteConfig):
         super().__init__(cfg)
+        if not cfg.dim:
+            self.dim = _guess_dim(cfg.model, DEFAULT_EMBEDDING_DIM)
         self.model_id = f"mlx:{cfg.model}:{self.dim}"
         self._encoder: Optional[Tuple[str, Any, Any]] = None
 

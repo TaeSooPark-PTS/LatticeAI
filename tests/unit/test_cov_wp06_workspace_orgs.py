@@ -1,23 +1,20 @@
 """wp06: organization workspaces, activation, and membership roles.
 
-Every one of these handlers is a three-way error map (404 / 403 / 400) around
-one service call, and none of the three arms had ever run. The tests drive the
-real ``WorkspaceService`` + ``WorkspaceOSStore`` so the role→permission table
-is what decides, not a stub.
+Most of these handlers are a three-way error map (404 / 403 / 400) around one
+service call, and none of the three arms had ever run. The tests drive the real
+``WorkspaceService`` + ``WorkspaceOSStore`` so the role→permission table is what
+decides, not a stub.
 
-Two arms cannot be produced through the real service: ``get_workspace`` and
-``workspace_summary`` both check ``read`` permission *before* they look the
-workspace up, so a missing workspace surfaces as ``PermissionError``, never
-``FileNotFoundError``. Those two 404 mappings are reached by patching the
-service seam — the router's translation is what is under test there.
+``get_workspace`` and ``workspace_summary`` are the exception: both check
+``read`` permission *before* they look the workspace up, and an unknown id has
+no members, so it can never grant read. Those two routes therefore answer 403
+for an unknown workspace — the anti-enumeration design — and carry no 404 arm
+at all.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
-
-import pytest
 
 from tests.unit.test_cov_wp06_workspace_router import (
     OWNER,
@@ -25,11 +22,6 @@ from tests.unit.test_cov_wp06_workspace_router import (
     VIEWER,
     WorkspaceHarness,
 )
-
-
-def _raise_missing(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
-    raise FileNotFoundError("org-ghost")
-
 
 # ── registry, editions, activation ──────────────────────────────────────────
 
@@ -91,27 +83,26 @@ def test_creating_an_organization_needs_a_name_and_is_audited(tmp_path: Path):
     assert harness.audit == [("workspace_created", {"user_email": OWNER, "workspace_id": "org-Acme"})]
 
 
-def test_reading_one_organization_is_gated_and_reports_missing_records(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_reading_one_organization_is_gated_and_hides_unknown_ids_behind_403(tmp_path: Path):
     harness = WorkspaceHarness(tmp_path)
     workspace_id = harness.org()
 
     visible = harness.client.get("/workspace/orgs/" + workspace_id)
+    unknown = harness.client.get("/workspace/orgs/org-ghost")
     harness.user = STRANGER
     forbidden = harness.client.get("/workspace/orgs/" + workspace_id)
-
-    harness.user = OWNER
-    monkeypatch.setattr(harness.service, "get_workspace", _raise_missing)
-    missing = harness.client.get("/workspace/orgs/" + workspace_id)
 
     assert visible.status_code == 200
     assert visible.json()["workspace"]["name"] == "Acme"
     assert forbidden.status_code == 403
     assert "lacks 'read'" in forbidden.json()["detail"]
-    assert missing.status_code == 404
-    assert "Workspace not found" in missing.json()["detail"]
+    # A workspace that does not exist is indistinguishable from one the caller
+    # simply cannot read — that is the anti-enumeration design, not an oversight.
+    assert unknown.status_code == 403
+    assert "lacks 'read'" in unknown.json()["detail"]
 
 
-def test_organization_summary_counts_scoped_records_for_members_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_organization_summary_counts_scoped_records_for_members_only(tmp_path: Path):
     harness = WorkspaceHarness(tmp_path)
     workspace_id = harness.org(viewer=True)
     harness.store.upsert_memory(
@@ -120,18 +111,16 @@ def test_organization_summary_counts_scoped_records_for_members_only(tmp_path: P
 
     harness.user = VIEWER
     summary = harness.client.get("/workspace/orgs/%s/summary" % workspace_id)
+    unknown = harness.client.get("/workspace/orgs/org-ghost/summary")
     harness.user = STRANGER
     forbidden = harness.client.get("/workspace/orgs/%s/summary" % workspace_id)
-
-    harness.user = OWNER
-    monkeypatch.setattr(harness.service, "workspace_summary", _raise_missing)
-    missing = harness.client.get("/workspace/orgs/%s/summary" % workspace_id)
 
     assert summary.status_code == 200
     assert summary.json()["counts"]["memories"] == 1
     assert summary.json()["your_role"] == "viewer"
     assert forbidden.status_code == 403
-    assert missing.status_code == 404
+    assert unknown.status_code == 403
+    assert "lacks 'read'" in unknown.json()["detail"]
 
 
 # ── update / archive ────────────────────────────────────────────────────────

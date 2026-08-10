@@ -466,7 +466,14 @@ def test_vllm_module_fallback_runs_the_openai_api_server(monkeypatch, hf_stubs):
     ]
 
 
-def test_a_stuck_vllm_process_is_terminated_then_killed(monkeypatch, hf_stubs):
+def test_an_unkillable_vllm_process_is_a_409_rather_than_a_silent_success(monkeypatch, hf_stubs):
+    """v11.0.1 D5 — a process that survives terminate *and* kill is reported.
+
+    The old code killed without reaping, so ``poll()`` kept returning ``None``
+    for the zombie, a recheck read that as "already running", and the caller
+    got ``None`` back with no server started. The kill is followed by a second
+    ``wait`` now, and a process that is still there afterwards is a 409.
+    """
     stuck = _FakeProcess(poll_result=None, wait_raises=True)
     monkeypatch.setattr(model_engines, "get_openai_compatible_server_models", lambda provider: [])
     monkeypatch.setattr(model_engines, "vllm_executable", lambda: "/bin/vllm")
@@ -474,7 +481,11 @@ def test_a_stuck_vllm_process_is_terminated_then_killed(monkeypatch, hf_stubs):
     monkeypatch.setattr(model_engines, "LOCAL_SERVER_PROCESSES", {"vllm": stuck})
     calls = _install_subprocess(monkeypatch)
 
-    assert model_engines.ensure_vllm_server("org/model") is None
+    with pytest.raises(ModelRuntimeError) as err:
+        model_engines.ensure_vllm_server("org/model")
+
+    assert err.value.status_code == 409
+    assert "이전 vLLM 프로세스" in err.value.detail
     assert stuck.terminated is True
     assert stuck.killed is True
     assert calls["popen"] == []  # the old process still holds the port
@@ -588,7 +599,12 @@ def test_llamacpp_falls_back_to_the_first_gguf_and_reports_a_load_failure(monkey
     assert calls["popen"][0][0][2].endswith("a-f16.gguf")
 
 
-def test_a_stuck_llamacpp_process_is_terminated_then_killed(monkeypatch, hf_stubs):
+def test_an_unkillable_llamacpp_process_is_a_409_like_vllm(monkeypatch, hf_stubs):
+    """v11.0.1 D5 — llama.cpp reaps and reports on the same rule as vLLM.
+
+    This path used to start a second ``llama-server`` on top of a process that
+    had survived both signals and still held port 8080.
+    """
     stuck = _FakeProcess(poll_result=None, wait_raises=True)
     (hf_stubs["dir"] / "a-f16.gguf").write_bytes(b"")
     monkeypatch.setattr(model_engines, "get_openai_compatible_server_models", lambda provider: [])
@@ -601,7 +617,11 @@ def test_a_stuck_llamacpp_process_is_terminated_then_killed(monkeypatch, hf_stub
     )
     calls = _install_subprocess(monkeypatch)
 
-    assert model_engines.ensure_llamacpp_server("org/model") is None
+    with pytest.raises(ModelRuntimeError) as err:
+        model_engines.ensure_llamacpp_server("org/model")
+
+    assert err.value.status_code == 409
+    assert "이전 llama.cpp 프로세스" in err.value.detail
     assert stuck.terminated is True
     assert stuck.killed is True
-    assert calls["popen"][0][0][0] == "llama-server"
+    assert calls["popen"] == []

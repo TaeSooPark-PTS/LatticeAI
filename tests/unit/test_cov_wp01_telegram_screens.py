@@ -1,9 +1,10 @@
 """wp01 coverage: the Telegram screens that read the local server.
 
-Every one of these renders a reply from a ``/status``-style endpoint, so each
-is exercised through an injected ``_server_client`` double across its success,
-error-status and transport-failure paths. No socket is opened and no
-screenshot subprocess is spawned.
+Almost every one of these renders a reply from a ``/status``-style endpoint, so
+it is exercised through an injected ``_server_client`` double across its
+success, error-status and transport-failure paths. ``send_web_link`` is the
+exception: it reads nothing from the server and talks to Telegram on the
+Telegram client. No socket is opened and no screenshot subprocess is spawned.
 """
 
 from __future__ import annotations
@@ -426,12 +427,17 @@ def test_an_unreachable_server_is_reported_as_a_clear_error(monkeypatch):
 # ── /web ──────────────────────────────────────────────────────────────────
 
 
-def test_the_web_link_carries_both_deep_links(monkeypatch):
+def test_the_web_link_carries_both_deep_links_on_the_telegram_client(monkeypatch):
     monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "https://tunnel.example")
     server = _server(monkeypatch, _Client())
-    asyncio.run(bot.send_web_link(_Client(), 42))
+    client = _Client()
+    asyncio.run(bot.send_web_link(client, 42))
 
-    payload = server.calls[0][2]["json"]
+    # Telegram is reached with the Telegram client; the server's bearer
+    # capability never leaves the machine.
+    assert server.calls == []
+    assert client.calls[0][1].endswith("/sendMessage")
+    payload = client.calls[0][2]["json"]
     assert payload["chat_id"] == 42
     assert "https://tunnel.example" in payload["text"]
     buttons = payload["reply_markup"]["inline_keyboard"][0]
@@ -442,10 +448,9 @@ def test_the_web_link_carries_both_deep_links(monkeypatch):
 
 def test_a_failed_web_link_send_is_logged_not_raised(monkeypatch, caplog):
     monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "https://tunnel.example")
-    _server(monkeypatch, _Client(error=OSError("refused")))
 
     with caplog.at_level("ERROR"):
-        asyncio.run(bot.send_web_link(_Client(), 42))
+        asyncio.run(bot.send_web_link(_Client(error=OSError("refused")), 42))
 
     assert any("웹 링크 전송 실패" in record.getMessage() for record in caplog.records)
 

@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **11.0.0 — Full Measure**.
+Current release: **11.0.1 — Both Branches**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

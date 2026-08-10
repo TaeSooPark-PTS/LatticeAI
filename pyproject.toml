@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "11.0.0"
+version = "11.0.1"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -547,14 +547,18 @@ files = [
 # repo-relative `tests/...` paths coverage records — so the suite counted
 # itself, and since test files run ~100% by construction that inflated the
 # figure by ten points. Measure what ships.
+# 11.0.1 turned branch measurement on: both directions of every conditional
+# count, and the 100 floor below now holds over lines AND branch arcs.
+branch = true
 source = ["latticeai", "lattice_brain"]
 omit = ["tests/*", "scripts/*", "*/__main__.py", "*/conftest.py"]
 
 [tool.coverage.report]
-# 11.0.0: every line ships tested. The measured figure is 100.00% across
-# 5,400+ tests; the floor pins it there so a single uncovered line fails CI.
-# The only exclusions are 8 reasoned `pragma: no cover` lines (each names why
-# its branch is unreachable) plus the generic patterns below.
+# 11.0.0: every line ships tested; 11.0.1: every branch arc too. The measured
+# figure is 100.00% (lines and branches) across 5,700+ tests; the floor pins
+# it there so a single uncovered line or arc fails CI. The only exclusions are
+# 8 reasoned `pragma: no cover` lines and 2 reasoned `pragma: no branch` lines
+# (each names why) plus the generic patterns below.
 fail_under = 100
 skip_covered = true
 exclude_lines = [

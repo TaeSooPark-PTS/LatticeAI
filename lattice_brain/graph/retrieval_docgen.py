@@ -46,26 +46,26 @@ class KnowledgeGraphDocGenMixin(_Core):
             candidate_rows = []
             seen_ids = set()
 
-            if query:
-                q = f"%{query}%"
-                rows = conn.execute(
-                    f"""
-                        SELECT id, type, title, summary, metadata_json, updated_at
-                        FROM {nt}
-                        WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
-                          AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
-                                       'Spreadsheet', 'Image', 'ImageText', 'Chat',
-                                       'Decision', 'Task', 'Concept', 'Feature',
-                                       'Page', 'Slide')
-                        ORDER BY updated_at DESC, id ASC
-                        LIMIT ?
-                        """,
-                    (q, q, q, limit * 5),
-                ).fetchall()
-                for row in rows:
-                    if row["id"] not in seen_ids:
-                        seen_ids.add(row["id"])
-                        candidate_rows.append(row)
+            # `query` is non-empty here — the early return above took the blank case.
+            q = f"%{query}%"
+            rows = conn.execute(
+                f"""
+                    SELECT id, type, title, summary, metadata_json, updated_at
+                    FROM {nt}
+                    WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
+                      AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
+                                   'Spreadsheet', 'Image', 'ImageText', 'Chat',
+                                   'Decision', 'Task', 'Concept', 'Feature',
+                                   'Page', 'Slide')
+                    ORDER BY updated_at DESC, id ASC
+                    LIMIT ?
+                    """,
+                (q, q, q, limit * 5),
+            ).fetchall()
+            for row in rows:
+                if row["id"] not in seen_ids:
+                    seen_ids.add(row["id"])
+                    candidate_rows.append(row)
 
             for term in terms:
                 t = f"%{term}%"

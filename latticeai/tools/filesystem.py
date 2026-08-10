@@ -372,7 +372,10 @@ class _HTMLInspector(HTMLParser):
             self.links.append(attr["href"])
         elif tag == "script" and attr.get("src"):
             self.scripts.append(attr["src"])
-        elif tag == "link" and attr.get("rel") and "stylesheet" in " ".join(attr.get("rel", [])):
+        # ``HTMLParser`` hands every attribute value over as a string, so rel is
+        # split on whitespace (rel="stylesheet preload" is two tokens) rather
+        # than joined, and matched case-insensitively.
+        elif tag == "link" and "stylesheet" in str(attr.get("rel") or "").lower().split():
             if attr.get("href"):
                 self.stylesheets.append(attr["href"])
         elif tag == "img" and attr.get("src"):

@@ -3,7 +3,7 @@
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **11.0.0 — Full Measure**.
+Current release: **11.0.1 — Both Branches**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 9.0.0 and later in `RELEASE.md` and
