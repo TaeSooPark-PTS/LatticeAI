@@ -27,6 +27,7 @@ from typing import Any, Dict, List
 
 from lattice_brain.context import approx_tokens
 from lattice_brain.graph.retrieval import context_quality_signal
+from lattice_brain.self_model import DEFAULT_SUMMARY_TOKENS, summary_for_prompt
 
 _CLEAN_RE = re.compile(r"\s+")
 
@@ -34,6 +35,20 @@ _CLEAN_RE = re.compile(r"\s+")
 # the chat assembler's default budget so neither path can silently outgrow the
 # other on the same Brain.
 DEFAULT_DOCUMENT_CONTEXT_BUDGET = 2000
+
+# ── Self-Model injection (v11.1.0) ──────────────────────────────────────────
+# What the Brain knows about its owner rides along with the knowledge, so a
+# generated document sounds like the person who asked for it. Three rules keep
+# it from becoming another thing that can go wrong:
+#   1. an empty Self-Model injects *nothing* — no header, no blank section;
+#   2. the block never takes more than half the context budget, so the profile
+#      can never crowd out the knowledge the request is actually about;
+#   3. the returned contract is unchanged — same keys, same
+#      ``context_quality`` shape, one extra trace section only when a block
+#      was really injected.
+SELF_MODEL_SECTION_TITLE = "사용자 프로필"
+SELF_MODEL_TRACE_SOURCE = "self_model"
+SELF_MODEL_SECTION_HEADER = f"### 🙋 {SELF_MODEL_SECTION_TITLE}\n\n"
 
 
 def _clean(text: str, max_len: int = 700) -> str:
@@ -72,6 +87,55 @@ def _fit_to_budget(context_md: str, budget: int) -> tuple:
     return head.rstrip(), True
 
 
+def _self_model_budget(budget: int, limit_tokens: int) -> int:
+    """Tokens the profile block may use — never more than half the budget."""
+    if budget <= 0:
+        return limit_tokens
+    return min(limit_tokens, budget // 2)
+
+
+def _self_model_block(
+    kg_store,
+    *,
+    enabled: bool,
+    budget: int,
+    limit_tokens: int,
+    allowed_workspaces,
+) -> str:
+    """Rendered profile section, or ``""`` when there is nothing to inject.
+
+    The section header is charged to the same allowance as the summary, so the
+    *rendered block* — not just its text — honours the ceiling.
+    """
+    allowance = _self_model_budget(budget, limit_tokens) - approx_tokens(
+        SELF_MODEL_SECTION_HEADER
+    )
+    if not enabled or allowance <= 0:
+        return ""
+    summary = summary_for_prompt(
+        kg_store, limit_tokens=allowance, allowed_workspaces=allowed_workspaces
+    )
+    if not summary:
+        return ""
+    return f"{SELF_MODEL_SECTION_HEADER}{summary}"
+
+
+def _with_self_model(block: str, context_md: str) -> str:
+    """Prepend the profile block to rendered knowledge (either may be empty)."""
+    return "\n\n".join(part for part in (block, context_md) if part)
+
+
+def _self_model_trace(block: str) -> List[Dict[str, Any]]:
+    if not block:
+        return []
+    return [{
+        "name": SELF_MODEL_SECTION_TITLE,
+        "source": SELF_MODEL_TRACE_SOURCE,
+        "approx_tokens": approx_tokens(block),
+        "provenance": [],
+    }]
+
+
 def retrieve_context_for_generation(
     kg_store,
     query: str,
@@ -81,6 +145,8 @@ def retrieve_context_for_generation(
     allowed_workspaces=None,
     include_legacy_global: bool = False,
     budget: int = DEFAULT_DOCUMENT_CONTEXT_BUDGET,
+    include_self_model: bool = True,
+    self_model_tokens: int = DEFAULT_SUMMARY_TOKENS,
 ) -> Dict[str, Any]:
     """Knowledge Graph에서 문서 생성에 필요한 컨텍스트를 검색·조합한다.
 
@@ -106,6 +172,21 @@ def retrieve_context_for_generation(
         if allowed_workspaces is not None
         else {}
     )
+    self_model_md = _self_model_block(
+        kg_store,
+        enabled=include_self_model,
+        budget=budget,
+        limit_tokens=self_model_tokens,
+        allowed_workspaces=allowed_workspaces,
+    )
+    # The profile's tokens come out of the same budget, so injecting it can
+    # never push the assembled context over the ceiling the caller asked for.
+    # The blank line that joins the two blocks is counted too — otherwise the
+    # assembled total lands one token over a tight budget.
+    knowledge_budget = budget
+    if self_model_md:
+        knowledge_budget -= approx_tokens(f"{self_model_md}\n\n")
+
     results = kg_store.search_for_document_generation(query, limit=max_results, **scope_kwargs)
     if not results:
         fallback_ctx = kg_store.context_for_query(
@@ -113,7 +194,7 @@ def retrieve_context_for_generation(
             limit=max_results,
             **scope_kwargs,
         )
-        fallback_ctx, trimmed = _fit_to_budget(fallback_ctx or "", budget)
+        fallback_ctx, trimmed = _fit_to_budget(fallback_ctx or "", knowledge_budget)
         # Lexical fallback: the hybrid document search found nothing, so the
         # signal says lexical_only — exactly what chat reports in the same
         # situation, never a quiet downgrade.
@@ -121,16 +202,17 @@ def retrieve_context_for_generation(
             "lexical_only" if fallback_ctx else "none",
             1 if fallback_ctx else 0,
         )
+        assembled = _with_self_model(self_model_md, fallback_ctx)
         return {
             "query": query,
-            "context_markdown": fallback_ctx,
+            "context_markdown": assembled,
             "sources": [],
             "stats": {"method": "fallback", "matches": 0, "budget_trimmed": trimmed},
             "context_quality": quality,
             "trace": {
                 "budget_approx_tokens": budget,
-                "used_approx_tokens": approx_tokens(fallback_ctx),
-                "sections": [{
+                "used_approx_tokens": approx_tokens(assembled),
+                "sections": _self_model_trace(self_model_md) + [{
                     "name": "Knowledge (fallback)",
                     "source": "knowledge",
                     "approx_tokens": approx_tokens(fallback_ctx),
@@ -154,11 +236,12 @@ def retrieve_context_for_generation(
     sections = _build_context_sections(results, extra_nodes_by_id, hop_data.get("edges", []))
     context_md = _render_markdown(query, sections)
     sources = _extract_sources(results)
-    context_md, trimmed = _fit_to_budget(context_md, budget)
+    context_md, trimmed = _fit_to_budget(context_md, knowledge_budget)
+    assembled = _with_self_model(self_model_md, context_md)
 
     return {
         "query": query,
-        "context_markdown": context_md,
+        "context_markdown": assembled,
         "sources": sources,
         "stats": {
             "method": "hybrid",
@@ -171,8 +254,8 @@ def retrieve_context_for_generation(
         "context_quality": context_quality_signal("hybrid", len(results)),
         "trace": {
             "budget_approx_tokens": budget,
-            "used_approx_tokens": approx_tokens(context_md),
-            "sections": [
+            "used_approx_tokens": approx_tokens(assembled),
+            "sections": _self_model_trace(self_model_md) + [
                 {
                     "name": section["title"],
                     "source": "knowledge",
@@ -199,6 +282,7 @@ def _build_context_sections(
 
     docs = [r for r in primary_results if r["type"] in (
         "Document", "File", "SlideDeck", "Spreadsheet", "CodeFile", "Image", "ImageText",
+        "Audio",
     )]
     if docs:
         sections.append({

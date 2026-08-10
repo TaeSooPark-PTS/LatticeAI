@@ -629,6 +629,9 @@ def register_review_and_brain_tail_routers(
             service=kg_portability,
             require_user=require_user,
             require_admin=require_admin,
+            # A received subgraph lands as review proposals, never as a merge,
+            # so the share routes need the same inbox the automation path uses.
+            review_queue=review_queue,
         ),
     )
     brain_network = build_brain_network(

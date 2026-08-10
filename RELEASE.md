@@ -13,6 +13,34 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.1.0 — Product Intelligence (2026-08-10)
+
+기초 위에 지능 레이어를 올린 기능 릴리스입니다 — 계획 문서
+(docs/v11.1.0_PRODUCT_INTELLIGENCE_PLAN.md)의 5개 트랙 전부.
+
+- **빠르다**: 플러그형 벡터 인덱스(HNSW 옵트인) — 하이브리드 p50
+  10k에서 299ms → **10.1ms**, 50k에서도 43.9ms(recall 0.987). 영속 배경
+  임베딩 큐, RRF 융합 옵션.
+- **살아있다**: 모순 감지 → 리뷰 제안 → 승인 시 temporal 스탬프
+  (`valid_from/to/superseded_by`, `as_of` 슬라이스), 25개 인제스트마다
+  상위 개념·누락 엣지·proactive Brief 합성 제안 — 전부 제안-우선.
+- **모든 것을 기억한다**: `allow_multimodal`(기본 꺼짐) 뒤에서 이미지·
+  녹음이 1등 노드(Image/Audio) — 캡션 조작 스텁 삭제, 별도 이미지 벡터
+  공간+late fusion, 승인 게이트를 우회하지 않는 인라인 썸네일.
+- **나를 안다**: Self-Model 서브그래프(제안으로만 생성, 예산 규율 주입,
+  투명 조회·삭제), 삭제가 구조적으로 불가능한 폴더 재구성 제안.
+- **연결된다**: 승인 게이트 Obsidian vault 브릿지(위키링크→엣지, 멱등),
+  서명·암호화 서브그래프 공유 프로토타입(수신=제안, 기본 꺼짐).
+- 플로어 유지: **6,261 테스트, 37,590문·10,658분기 100.00%**, 3환경
+  (macOS 3.14 · fresh 3.11 · linux 컨테이너) 검증.
+
+빌드 산출물은 `dist/ltcai-11.1.0-py3-none-any.whl`,
+`dist/ltcai-11.1.0.tar.gz`, `ltcai-11.1.0.tgz`, `dist/ltcai-11.1.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.1.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.1.0.md](RELEASE_NOTES_v11.1.0.md)
+
 ## v11.0.1 — Both Branches (2026-08-10)
 
 11.0.0이 기록만 하고 고치지 않은 결함 11건의 정산 릴리스입니다.

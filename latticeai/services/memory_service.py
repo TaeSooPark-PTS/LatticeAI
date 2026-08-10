@@ -44,6 +44,33 @@ TIERS = ("workspace", "project", "agent", "conversation", "graph", "vector")
 LOGGER = logging.getLogger(__name__)
 
 
+#: Longest inline thumbnail a recall row will carry (see ``_visual_fields``).
+MAX_RECALL_THUMBNAIL_CHARS = 24_000
+
+
+def _visual_fields(hit: Dict[str, Any]) -> Dict[str, Any]:
+    """Caption + inline thumbnail for a recall row, when the node has them.
+
+    v11.1.0: an ``Image`` node stores a 96px ``data:`` thumbnail and — only if
+    a vision-language model produced one — a caption. Passing them through here
+    is what lets the Evidence panel show the picture it is citing without a new
+    static route over the user's disk and without going around the local-file
+    approval gate: the bytes are already inside the graph payload the user
+    asked for. Absent keys stay absent, so every non-image row is unchanged.
+    """
+    metadata = hit.get("metadata")
+    if not isinstance(metadata, dict):
+        return {}
+    fields: Dict[str, Any] = {}
+    caption = str(metadata.get("caption") or "").strip()
+    if caption:
+        fields["caption"] = caption[:400]
+    thumbnail = str(metadata.get("thumbnail") or "")
+    if thumbnail.startswith("data:image/") and len(thumbnail) <= MAX_RECALL_THUMBNAIL_CHARS:
+        fields["thumbnail"] = thumbnail
+    return fields
+
+
 class MemoryServiceError(RuntimeError):
     """Raised when a configured memory backend cannot be read reliably."""
 
@@ -763,6 +790,11 @@ class MemoryService:
                 # citation UI can show the matched terms instead of a bare score.
                 "matched_terms": item.get("matched_terms") or [],
                 "confidence": item.get("confidence") or "low",
+                # v11.1.0: what kind of memory this is, and — for a picture —
+                # the caption and inline thumbnail the Evidence panel renders.
+                "kind": item.get("kind") or "",
+                **({"caption": item["caption"]} if item.get("caption") else {}),
+                **({"thumbnail": item["thumbnail"]} if item.get("thumbnail") else {}),
             }
             for item in list(recall.get("results", []))[: max(1, min(limit, 8))]
         ]
@@ -903,6 +935,7 @@ class MemoryService:
                     "kind": hit.get("type") or "node",
                     "score": _lexical_score(matched),
                     "matched_terms": matched,
+                    **_visual_fields(hit),
                 })
 
         # v9.3.0 hybrid recall: blend semantic similarity from the vector
@@ -964,6 +997,7 @@ class MemoryService:
                         "matched_terms": matched,
                         "vector_score": similarity,
                         **({"locator": locator} if locator else {}),
+                        **_visual_fields(hit),
                     }
                     results.append(row)
                     if node_id:

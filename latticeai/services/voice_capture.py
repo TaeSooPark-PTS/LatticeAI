@@ -18,13 +18,23 @@ to become text. So transcription is an **injected, optional port**:
 Nothing here reaches for a cloud speech API, and nothing here installs a model
 behind the user's back — an absent transcriber is a reported state, not a
 prompt to download something.
+
+v11.1.0: that same injected port is now the *only* transcription seam in the
+product. When multi-modal ingestion is enabled, a ``.m4a`` found by a folder
+scan is transcribed by whatever this service was given — see
+:meth:`VoiceCaptureService.multimodal_ports`. One transcriber, one honesty
+story: if a voice memo cannot become text here, a scanned recording cannot
+either, and both say so the same way.
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+
+if TYPE_CHECKING:  # import-time isolation: the port is a callable, not a class
+    from lattice_brain.multimodal import MultimodalPorts
 
 LOGGER = logging.getLogger(__name__)
 
@@ -74,6 +84,19 @@ class VoiceCaptureService:
                 else "이 컴퓨터에는 음성 인식기가 없어서, 메모는 저장되지만 글로 바뀌지는 않습니다."
             ),
         }
+
+    def multimodal_ports(self) -> "MultimodalPorts":
+        """This service's transcriber, shaped for the ingestion pipeline.
+
+        The pipeline lives in Brain Core and must not import ``latticeai``, so
+        the capability travels as a plain callable rather than as this class.
+        Handing over ``None`` when no transcriber is configured is the point:
+        the pipeline then degrades exactly as :meth:`capture` does instead of
+        inventing a transcript of its own.
+        """
+        from lattice_brain.multimodal import MultimodalPorts
+
+        return MultimodalPorts(transcriber=self._transcriber)
 
     # ── transcription ────────────────────────────────────────────────────
     def _transcribe(self, path: Path) -> str:
@@ -163,6 +186,9 @@ class VoiceCaptureService:
             conversation_id=conversation_id,
             metadata={
                 "capture": "voice",
+                # Same key the multi-modal ingest door writes, so a memo and a
+                # scanned recording are one kind of thing in the graph.
+                "modality": "audio",
                 "audio_path": str(path),
                 "audio_bytes": size,
                 "transcription": transcription_state,

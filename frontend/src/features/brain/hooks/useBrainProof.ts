@@ -101,6 +101,9 @@ function toMessageProof(proof: BrainProof, query: string, fallbackModelName: str
       confidence: item.confidence,
       score: item.score,
       locator: item.locator,
+      kind: item.kind,
+      caption: item.caption,
+      thumbnail: item.thumbnail,
     })),
   };
 }

@@ -22,7 +22,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import lattice_brain.embeddings as embeddings_module
 from lattice_brain.graph import _kg_fsutil as fsutil
 from lattice_brain.graph.store import KnowledgeGraphStore
 
@@ -155,9 +154,15 @@ def test_extract_text_from_xlsx_skips_empty_rows_and_stops_at_the_budget(
     assert "unreachable" not in text  # the second sheet is never reached
 
 
-def test_extract_text_from_image_uses_the_vision_caption(
+def test_extract_text_from_image_never_invents_a_caption(
     store, tmp_path: Path
 ) -> None:
+    """No model loaded ⇒ no caption. The filename is the only honest text.
+
+    Through v11.0.x this path stored ``Image pic.png (PNG 12x8)`` as
+    ``vision_caption`` and used it as the retrieval signal, which made metadata
+    indistinguishable from a vision model's description.
+    """
     path = _png(tmp_path / "pic.png")
 
     text, meta = store._extract_local_file_text(path, "image", include_ocr=False)
@@ -167,8 +172,27 @@ def test_extract_text_from_image_uses_the_vision_caption(
     assert meta["format"] == "PNG"
     assert meta["mode"] == "RGB"
     assert meta["ocr_enabled"] is False
-    assert meta["vision_caption"] == "Image pic.png (PNG 12x8)"
-    assert text == meta["vision_caption"]  # caption is the retrieval signal
+    assert "vision_caption" not in meta
+    assert "caption" not in meta
+    assert meta["caption_status"] == "unavailable"
+    assert text == "pic.png"
+
+
+def test_extract_text_from_image_uses_an_injected_caption(
+    store, tmp_path: Path
+) -> None:
+    from lattice_brain.multimodal import MultimodalPorts
+
+    store.multimodal_ports = MultimodalPorts(
+        captioner=lambda _path: "A blue rectangle on a white background"
+    )
+    path = _png(tmp_path / "pic.png")
+
+    text, meta = store._extract_local_file_text(path, "image", include_ocr=False)
+
+    assert meta["caption"] == "A blue rectangle on a white background"
+    assert meta["caption_status"] == "ok"
+    assert text == "A blue rectangle on a white background"
 
 
 def test_extract_text_from_image_runs_ocr_when_requested(
@@ -183,23 +207,38 @@ def test_extract_text_from_image_runs_ocr_when_requested(
 
     assert text == "OCR: Lattice AI roadmap"
     assert meta["ocr_enabled"] is True
+    assert meta["ocr_status"] == "ok"
     assert meta["ocr_chars"] == len("OCR: Lattice AI roadmap")
-    assert meta["vision_caption"]  # caption still recorded alongside the OCR
 
 
-def test_extract_text_from_image_survives_a_broken_vision_embedder(
+def test_extract_text_from_image_reports_a_broken_ocr_runtime(
     monkeypatch, store, tmp_path: Path
 ) -> None:
-    def explode(*args, **kwargs):
-        raise RuntimeError("vision backend unavailable")
+    def explode(image):
+        raise RuntimeError("tesseract binary missing")
 
-    monkeypatch.setattr(embeddings_module, "get_vision_embedder", explode)
+    fake = types.ModuleType("pytesseract")
+    fake.image_to_string = explode
+    monkeypatch.setitem(sys.modules, "pytesseract", fake)
     path = _png(tmp_path / "pic.png")
+
+    text, meta = store._extract_local_file_text(path, "image", include_ocr=True)
+
+    assert meta["ocr_status"] == "failed"
+    assert "tesseract binary missing" in meta["ocr_error"]
+    assert text == "pic.png"  # still indexed, just not by its contents
+
+
+def test_extract_text_from_an_unreadable_image_yields_no_text(
+    store, tmp_path: Path
+) -> None:
+    path = tmp_path / "broken.png"
+    path.write_bytes(b"not a png")
 
     text, meta = store._extract_local_file_text(path, "image", include_ocr=False)
 
     assert text == ""
-    assert meta["vision_caption"] == f"image:{path}"
+    assert meta["image_error"]
 
 
 # ── hierarchy / index-row helpers ────────────────────────────────────────────

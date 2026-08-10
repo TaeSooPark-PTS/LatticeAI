@@ -48,6 +48,21 @@ _DEFAULT_CONTRADICTION_NODES = 300
 _DEFAULT_NEAR_THRESHOLD = 0.75
 _DEFAULT_MAX_PAIRS = 200
 _DEFAULT_STALE_DAYS = 90  # mirrors MemoryQualityManager.apply_retention
+_DEFAULT_HALF_LIFE_DAYS = 30.0
+# Node types that record *what happened* rather than *what is known*. Only
+# these are offered for consolidation: folding a Decision or a Document into a
+# summary would lose the thing the user actually keeps a Brain for.
+_EPISODIC_TYPES = frozenset(
+    {
+        "chat",
+        "conversation",
+        "message",
+        "airesponse",
+        "ai_response",
+        "event",
+        "chunk",
+    }
+)
 
 
 def _parse_ts(value: Any) -> Optional[datetime]:
@@ -76,6 +91,28 @@ def _node_text(node: Dict[str, Any]) -> str:
     title = str(node.get("title") or "").strip()
     summary = str(node.get("summary") or "").strip()
     return f"{title} {summary}".strip()
+
+
+def _is_episodic(node: Dict[str, Any]) -> bool:
+    return str(node.get("type") or "").strip().lower() in _EPISODIC_TYPES
+
+
+def _access_count(node: Dict[str, Any], stored: Optional[Dict[str, Any]]) -> float:
+    """Access count for a node: ingested metadata first, then the store counter.
+
+    A surface that already tracks reads (``metadata.access_count``) is more
+    accurate than our own read-path counter, so it wins; ``0`` from metadata is
+    a real answer and is not treated as "missing".
+    """
+    metadata = node.get("metadata")
+    if isinstance(metadata, dict):
+        for key in ("access_count", "accesses", "access"):
+            value = metadata.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                return float(value)
+    if stored is None:
+        return 0.0
+    return float(stored.get("accesses") or 0.0)
 
 
 def _slim(node: Dict[str, Any]) -> Dict[str, Any]:
@@ -128,6 +165,17 @@ class ProactiveBrain:
                 )
             edges.append(normalized)
         return {"nodes": nodes, "edges": edges}
+
+    def sample(
+        self, *, workspace_id: Optional[str] = None, limit: Optional[int] = None
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """One normalized graph sample (``source``/``target`` edge keys).
+
+        Public seam for :mod:`lattice_brain.synthesis`, which needs the *same*
+        sample for several passes; taking it once keeps a synthesis run to one
+        graph read and keeps every pass looking at identical data.
+        """
+        return self._sample(workspace_id=workspace_id, limit=limit)
 
     # ── duplicates ───────────────────────────────────────────────────────
 
@@ -245,6 +293,16 @@ class ProactiveBrain:
         return self._detect_contradictions_in(
             sample["nodes"], sample["edges"], max_nodes=max_nodes
         )
+
+    def contradictions_in(
+        self,
+        nodes: List[Dict[str, Any]],
+        edges: List[Dict[str, Any]],
+        *,
+        max_nodes: int = _DEFAULT_CONTRADICTION_NODES,
+    ) -> Dict[str, Any]:
+        """Contradiction signals over an already-taken :meth:`sample`."""
+        return self._detect_contradictions_in(nodes, edges, max_nodes=max_nodes)
 
     def _detect_contradictions_in(
         self,
@@ -400,6 +458,85 @@ class ProactiveBrain:
                 "contradiction_signals": contradictions["count"],
                 "stale_nodes": stale_report["count"],
             },
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    # ── importance & decay (v11.1.0) ─────────────────────────────────────
+
+    def importance_report(
+        self,
+        *,
+        workspace_id: Optional[str] = None,
+        limit: Optional[int] = None,
+        half_life_days: float = _DEFAULT_HALF_LIFE_DAYS,
+        max_candidates: int = 20,
+        sample: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+    ) -> Dict[str, Any]:
+        """Score every sampled node by use, then name the weakest episodic ones.
+
+        The score is deliberately boring and reproducible — no model, no
+        randomness::
+
+            score = (1 + accesses + degree) * 0.5 ** (age_days / half_life)
+
+        *accesses* prefers a real counter: ``metadata.access_count`` when the
+        ingesting surface recorded one, otherwise the store's own read-path
+        counter (``access_stats``), otherwise zero. *Episodic* types (chats,
+        messages, events, chunks) are the only consolidation candidates —
+        a decayed Document or Decision is stale knowledge to review, not
+        noise to fold away.
+        """
+        data = sample if sample is not None else self._sample(
+            workspace_id=workspace_id, limit=limit
+        )
+        nodes, edges = data["nodes"], data["edges"]
+        degree: Dict[str, int] = {}
+        for edge in edges:
+            for key in ("source", "target"):
+                node_id = str(edge.get(key) or "")
+                if node_id:
+                    degree[node_id] = degree.get(node_id, 0) + 1
+
+        stats_fn = getattr(self._store, "access_stats", None)
+        stored: Dict[str, Any] = {}
+        if callable(stats_fn):
+            try:
+                stored = dict(stats_fn([n.get("id") for n in nodes]) or {})
+            except Exception:  # noqa: BLE001 — the report degrades, never fails
+                logger.exception("access stats read failed")
+
+        now = datetime.now(timezone.utc)
+        half_life = max(0.5, float(half_life_days))
+        scored: List[Dict[str, Any]] = []
+        for node in nodes:
+            node_id = str(node.get("id") or "")
+            accesses = _access_count(node, stored.get(node_id))
+            ts = _parse_ts(node.get("updated_at"))
+            age_days = 0.0 if ts is None else max(
+                0.0, (now - ts).total_seconds() / 86400.0
+            )
+            decay = 0.5 ** (age_days / half_life)
+            scored.append(
+                {
+                    **_slim(node),
+                    "accesses": accesses,
+                    "degree": degree.get(node_id, 0),
+                    "age_days": round(age_days, 2),
+                    "score": round((1.0 + accesses + degree.get(node_id, 0)) * decay, 4),
+                    "episodic": _is_episodic(node),
+                }
+            )
+        scored.sort(key=lambda item: (item["score"], str(item.get("id") or "")))
+        candidates = [item for item in scored if item["episodic"]][
+            : max(1, int(max_candidates))
+        ]
+        return {
+            "nodes_scanned": len(nodes),
+            "half_life_days": half_life,
+            "access_source": "store" if stored else "metadata",
+            "candidates": candidates,
+            "candidate_count": len(candidates),
+            "strongest": list(reversed(scored[-5:])),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 

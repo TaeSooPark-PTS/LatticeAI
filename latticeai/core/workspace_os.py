@@ -53,6 +53,7 @@ from .workspace_permissions import (  # type: ignore
 from .workspace_plugins import WorkspacePluginManager
 from .workspace_relationships import WorkspaceRelationships
 from .workspace_relationships import shortest_path as _shortest_path
+from .workspace_reorganization import plan_reorganization
 from .workspace_review_items import WorkspaceReviewItems
 from .workspace_runs import WorkspaceRuns
 from .workspace_skills import WorkspaceSkills
@@ -838,6 +839,48 @@ class WorkspaceOSStore:
 
     def update_review_item(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         return self.review_items.update_review_item(*args, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Agent-native workspace: folder reorganization (v11.1.0)
+    # ------------------------------------------------------------------
+
+    def preview_reorganization(
+        self, *, root: str = "", resolve_path: Callable[[str], Any], graph: Any = None,
+        max_moves: int = 20,
+    ) -> Dict[str, Any]:
+        """What a reorganization would do — read-only, nothing is staged."""
+        return plan_reorganization(
+            root=root, resolve_path=resolve_path, graph=graph, max_moves=max_moves
+        )
+
+    def propose_reorganization(
+        self, *, root: str = "", change_proposals: Any, graph: Any = None,
+        user_email: Optional[str] = None, workspace_id: Optional[str] = None,
+        max_moves: int = 20,
+    ) -> Dict[str, Any]:
+        """Stage a folder reorganization for review and record it on the timeline.
+
+        The staging itself belongs to ``ChangeProposalService`` (one apply path
+        for every staged change); this seam exists so a long-running agent
+        session asking the Workspace OS to tidy a project leaves a trace of
+        having asked, whether or not there was anything to propose.
+        """
+        result = change_proposals.propose_reorganization(
+            root=root, graph=graph, user_email=user_email,
+            workspace_id=workspace_id, max_moves=max_moves,
+        )
+        proposed = result.get("proposed") or {}
+        self.record_timeline_event(
+            "workspace",
+            "workspace_reorg_proposed",
+            {
+                "root": root,
+                "moves": (result.get("plan") or {}).get("move_count", 0),
+                "proposal_id": proposed.get("id"),
+            },
+            workspace_id=workspace_id,
+        )
+        return result
 
     # ------------------------------------------------------------------
     # Relationship explorer

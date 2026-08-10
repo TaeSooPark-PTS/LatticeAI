@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import platform
 import time
@@ -61,6 +62,21 @@ class FolderWatchEnableRequest(BaseModel):
     workspace_id: Optional[str] = None
     # Watching continuously reads local disk → same approval dance as
     # /api/ingestion/folder. This is the explicit opt-in the review requires.
+    approved: bool = False
+    approval_token: Optional[str] = None
+
+
+class ObsidianSyncRequest(BaseModel):
+    """One-shot sync of an *external* Obsidian vault (v11.1.0).
+
+    ``path`` is the user's own vault folder, so it takes the same local-read
+    approval dance as ``/api/ingestion/folder``. ``dry_run`` reports the note,
+    link, and tag counts a real run would touch without writing anything.
+    """
+
+    path: str
+    workspace_id: Optional[str] = None
+    dry_run: bool = False
     approved: bool = False
     approval_token: Optional[str] = None
 
@@ -344,6 +360,51 @@ def create_local_files_router(
             )
         return summary
 
+    # ── Obsidian vault bridge: manual one-shot sync (v11.1.0) ────────────────
+    @router.post("/api/ingestion/obsidian")
+    async def ingestion_obsidian(req: ObsidianSyncRequest, request: Request):
+        """Ingest an approved external Obsidian vault through the one gate.
+
+        Every ``.md`` note goes through the same pipeline door as files and
+        folders; on top of that, in-vault links become ``REFERENCES`` edges
+        between the note nodes and frontmatter tags become ``Topic`` links. A
+        link whose target is missing or ambiguous is reported in
+        ``links.unresolved`` rather than guessed at. Re-running is idempotent.
+
+        Reads local disk, so it follows the standard approval dance: without
+        ``approved`` + ``approval_token`` the answer is a ``permission_required``
+        payload.
+        """
+        current_user = permission_gateway.require_local_user(request)
+        _require_pipeline()
+        workspace_id = _ingestion_write_workspace(request, req.workspace_id, current_user)
+        path = (req.path or "").strip()
+        if not path:
+            raise http_error(400, "ingestion.vault_path_required", resolve_language(request))
+        if not req.approved:
+            return permission_gateway.local_permission_response(path, "read", current_user)
+        permission_gateway.require_local_approval(
+            token=req.approval_token,
+            path=path,
+            action="read",
+            user_email=current_user,
+        )
+        from latticeai.services.obsidian_bridge import ObsidianVaultBridge
+
+        bridge = ObsidianVaultBridge(
+            pipeline=ingestion_pipeline, knowledge_graph=knowledge_graph,
+        )
+        # Walking a vault and embedding its notes is blocking work; the server
+        # owns one event loop and it may not sit here (10.9.0 ASYNC gate).
+        return await asyncio.to_thread(
+            bridge.sync,
+            path,
+            owner=current_user or None,
+            workspace_id=workspace_id,
+            user_email=current_user or None,
+            dry_run=req.dry_run,
+        )
+
     # ── folder watch mode: opt-in, off by default (backlog #8) ────────────────
     def _require_folder_watch(request: Request):
         _require_pipeline()
@@ -459,5 +520,6 @@ __all__ = [
     "FolderWatchEnableRequest",
     "LocalAccessRequest",
     "LocalWriteRequest",
+    "ObsidianSyncRequest",
     "create_local_files_router",
 ]

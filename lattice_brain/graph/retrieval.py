@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 # ruff: noqa: F403,F405
 from ._kg_common import *  # noqa: F403,F401
@@ -20,7 +20,38 @@ else:
 # traverse / stats) moved byte-identically to .retrieval_reads as
 # KnowledgeGraphReadsMixin. Re-exported here so any legacy
 # ``from lattice_brain.graph.retrieval import ...`` site keeps resolving.
+from .fusion import (
+    DEFAULT_EXPANSION_CAP,
+    DEFAULT_EXPANSION_SEEDS,
+    expand_with_neighbors,
+    graph_expansion_enabled,
+    rrf_fuse,
+)
 from .retrieval_reads import KnowledgeGraphReadsMixin  # noqa: F401
+
+#: Node types that are a *thing you can look at or listen to*, not prose. A
+#: match of one of these means the answer rests on more than text.
+MULTIMODAL_NODE_TYPES = ("Image", "ImageText")
+
+
+def multimodal_signal(matches: Iterable[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """``{"images": n, "types": [...]}`` when a result set includes pictures.
+
+    ``None`` when it does not: the context-quality contract stays four keys
+    wide for the ordinary all-text case, and a caller that sees the key knows
+    it means something rather than having to compare a zero.
+    """
+    images = 0
+    seen: List[str] = []
+    for match in matches:
+        node_type = str(match.get("type") or "")
+        if node_type in MULTIMODAL_NODE_TYPES:
+            images += 1
+            if node_type not in seen:
+                seen.append(node_type)
+    if not images:
+        return None
+    return {"images": images, "types": seen}
 
 
 def context_quality_signal(
@@ -28,6 +59,8 @@ def context_quality_signal(
     nodes: int,
     *,
     reason: Optional[str] = None,
+    vector: Optional[Dict[str, Any]] = None,
+    multimodal: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Honest RAG context-quality signal (v9.8.0, additive contract).
 
@@ -37,6 +70,20 @@ def context_quality_signal(
     ``"none"``; ``limited`` is true whenever the context is thin (0–1 nodes)
     or the vector side fell back to lexical-only retrieval. ``reason`` is a
     short human-readable Korean phrase, only present when limited.
+
+    ``vector`` (v11.1.0) carries the vector channel's own honesty block —
+    which backend scored, whether it was approximate, whether the candidate
+    scan was truncated. "hybrid, 6 nodes" describes two different answers
+    depending on those bits, and the caller that has to say "I did not find
+    it" deserves to know which one it got. The key is present **only when
+    there is a caveat to report**: an exact, complete vector scan is the
+    contract's baseline assumption, so annotating it would be noise, and the
+    four-key shape stays exactly what existing consumers pin.
+
+    ``multimodal`` (v11.1.0) follows the same present-only-when-true rule and
+    says that part of this context is a picture. "6 nodes" reads differently
+    when two of them are screenshots whose text came out of OCR, and the
+    surface that has to explain the answer deserves to know.
     """
     nodes = max(0, int(nodes or 0))
     mode = str(mode or "none")
@@ -54,7 +101,17 @@ def context_quality_signal(
             reason = "그래프 기반 컨텍스트가 제한적입니다"
     if not limited:
         reason = None
-    return {"mode": mode, "nodes": nodes, "limited": limited, "reason": reason}
+    signal: Dict[str, Any] = {
+        "mode": mode,
+        "nodes": nodes,
+        "limited": limited,
+        "reason": reason,
+    }
+    if vector is not None:
+        signal["vector"] = dict(vector)
+    if multimodal is not None:
+        signal["multimodal"] = dict(multimodal)
+    return signal
 
 
 class KnowledgeGraphRetrievalMixin(_Core):
@@ -70,6 +127,7 @@ class KnowledgeGraphRetrievalMixin(_Core):
         "SlideDeck",  # 프레젠테이션
         "Image",  # 이미지
         "ImageText",  # OCR 텍스트
+        "Audio",  # 녹음 / 음성 메모 (11.1.0)
         "Concept",  # 개념 / 아이디어 / 기술 용어
         "Person",  # 사람
         "Error",  # 오류 / 버그
@@ -319,6 +377,7 @@ class KnowledgeGraphRetrievalMixin(_Core):
                         "SlideDeck",
                         "Image",
                         "ImageText",
+                        "Audio",
                         "Page",
                         "Slide",
                     }
@@ -362,6 +421,8 @@ class KnowledgeGraphRetrievalMixin(_Core):
         lexical_limit: Optional[int] = None,
         vector_limit: Optional[int] = None,
         min_vector_score: float = 0.0,
+        image_vector: Optional[Sequence[float]] = None,
+        image_fusion_weight: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Unified lexical + vector retrieval with alpha-weighted linear fusion.
 
@@ -393,6 +454,15 @@ class KnowledgeGraphRetrievalMixin(_Core):
         fused score into the ``[0.5, 1.0]`` band (``scores.age_decay``).
         Passing an explicit ``alpha`` pins it exactly as before and disables
         rewrite + decay.
+
+        ``image_vector`` (v11.1.0) is the *late fusion* seam for the separate
+        image space: the caller supplies a query vector from the same vision
+        model that embedded the pictures, its own index is ranked
+        independently, and only then are the two rankings blended
+        (``image_fusion_weight``, default 0.5). A text query never produces
+        one — it reaches images through their OCR text and captions — which is
+        exactly why the image channel has to enter at the end rather than
+        pretending to share the text index.
         """
         query = str(query or "").strip()
         try:
@@ -404,6 +474,10 @@ class KnowledgeGraphRetrievalMixin(_Core):
         search_query = query
         rewrite_rules: List[str] = []
         recency_half_life_days: Optional[float] = None
+        # "alpha" is the historical linear fusion; the policy may select RRF
+        # per query class. An explicitly pinned ``alpha`` argument means the
+        # caller is asking for linear fusion by name, so it stays linear.
+        fusion_strategy = "alpha"
         if alpha is None:
             try:
                 from .retrieval_policy import resolve_policy
@@ -411,6 +485,7 @@ class KnowledgeGraphRetrievalMixin(_Core):
                 policy = resolve_policy(query)
                 query_class = policy["query_class"]
                 alpha = float(policy["alpha"])
+                fusion_strategy = str(policy.get("fusion_strategy") or "alpha")
                 rewrite_rules = list(policy.get("rewrite_rules") or [])
                 rewritten = str(policy.get("search_query") or "")
                 if rewritten and rewritten != query:
@@ -438,6 +513,7 @@ class KnowledgeGraphRetrievalMixin(_Core):
                 "sources": {"lexical": 0, "vector": 0},
                 "matches": [],
                 "policy": {"search_query": search_query, "rewrite_rules": rewrite_rules},
+                "fusion_strategy": fusion_strategy,
                 "detail": None,
             }
 
@@ -455,6 +531,16 @@ class KnowledgeGraphRetrievalMixin(_Core):
         detail: Optional[str] = None
         vector_matches: List[Dict[str, Any]] = []
         vector_recall: Optional[Dict[str, Any]] = None
+        # The vector channel's own honesty block, echoed additively so a
+        # caller can tell an exact "not found" from an approximate one.
+        vector_meta: Dict[str, Any] = {
+            "backend": None,
+            "approx": None,
+            "exhaustive": None,
+            "truncated": None,
+            "embedded_rows": None,
+            "degraded": None,
+        }
         vector_fn = getattr(self, "vector_search", None)
         if not callable(vector_fn):
             mode = "lexical_only"
@@ -471,8 +557,16 @@ class KnowledgeGraphRetrievalMixin(_Core):
                 # retrieval_vector.vector_search), and a fused answer built on
                 # a truncated scan is not the same claim as a complete one.
                 recall = vector_payload.get("recall")
-                if isinstance(recall, dict) and recall.get("truncated"):
-                    vector_recall = dict(recall)
+                if isinstance(recall, dict):
+                    vector_meta["backend"] = recall.get("backend")
+                    vector_meta["truncated"] = bool(recall.get("truncated"))
+                    vector_meta["embedded_rows"] = recall.get("candidates_total")
+                    if recall.get("truncated"):
+                        vector_recall = dict(recall)
+                index_block = vector_payload.get("index")
+                if isinstance(index_block, dict):
+                    vector_meta["approx"] = bool(index_block.get("approx"))
+                    vector_meta["exhaustive"] = bool(index_block.get("exhaustive"))
             except Exception as exc:  # noqa: BLE001 — degrade, never fail the search
                 mode = "lexical_only"
                 detail = f"vector index unavailable: {exc}"
@@ -525,6 +619,11 @@ class KnowledgeGraphRetrievalMixin(_Core):
                 entries[node_id] = entry
             return entry
 
+        # Per-channel id order (best first) — the only input RRF needs, and
+        # the one thing a normalized score cannot reconstruct.
+        lexical_order: List[str] = []
+        vector_order: List[str] = []
+
         for rank, match in enumerate(lexical_matches, start=1):
             node_id = _parent_node_id(match)
             if not node_id:
@@ -534,6 +633,7 @@ class KnowledgeGraphRetrievalMixin(_Core):
                 entry["scores"]["lexical"], round(1.0 / rank, 6)
             )
             entry["_lexical"] = True
+            lexical_order.append(node_id)
 
         # Max-normalize cosine scores into [0, 1] (guard the score-0 falsy trap
         # by comparing explicitly, never with truthiness).
@@ -551,9 +651,60 @@ class KnowledgeGraphRetrievalMixin(_Core):
             entry = _entry_for(node_id, match)
             entry["scores"]["vector"] = max(entry["scores"]["vector"], round(vec_norm, 6))
             entry["_vector"] = True
+            vector_order.append(node_id)
             # Prefer a real snippet when the lexical row had no summary.
             if not entry.get("summary") and match.get("summary"):
                 entry["summary"] = match.get("summary")
+
+        # Graph traversal candidate expansion (opt-in, capped, counted): pull
+        # the one-hop neighbours of the strongest hits into the candidate pool
+        # so an answer that is adjacent to the match — not in it — is
+        # reachable at all. Off by default; see fusion.GRAPH_EXPANSION_ENV.
+        expansion_report: Dict[str, Any] = {
+            "enabled": False,
+            "seeds": 0,
+            "added": 0,
+            "cap": DEFAULT_EXPANSION_CAP,
+            "truncated": False,
+            "failed_seeds": 0,
+        }
+        if entries and graph_expansion_enabled():
+            seeds = sorted(
+                (
+                    (node_id, float(entry["scores"]["vector"]))
+                    for node_id, entry in entries.items()
+                ),
+                key=lambda pair: -pair[1],
+            )[:DEFAULT_EXPANSION_SEEDS]
+            expanded, expansion_report = expand_with_neighbors(
+                seeds,
+                self.neighbors,
+                exclude=list(entries),
+                cap=DEFAULT_EXPANSION_CAP,
+            )
+            for candidate in expanded:
+                node = candidate["node"]
+                entry = _entry_for(str(node.get("id")), dict(node))
+                entry["scores"]["graph"] = candidate["score"]
+                entry["metadata"] = {
+                    **(entry.get("metadata") or {}),
+                    "expanded_from": candidate["seed"],
+                }
+                entry["_graph"] = True
+
+        rrf_normalized: Dict[str, float] = {}
+        if fusion_strategy == "rrf":
+            raw_rrf = rrf_fuse(
+                {
+                    "lexical": list(dict.fromkeys(lexical_order)),
+                    "vector": list(dict.fromkeys(vector_order)),
+                }
+            )
+            peak = max(raw_rrf.values(), default=0.0)
+            if peak > 0:
+                # Rescale to [0, 1] so the score column keeps the same meaning
+                # across strategies; RRF's raw values live around 1/60.
+                rrf_normalized = {key: value / peak for key, value in raw_rrf.items()}
 
         matches: List[Dict[str, Any]] = []
         for entry in entries.values():
@@ -561,17 +712,25 @@ class KnowledgeGraphRetrievalMixin(_Core):
             vec_score = float(entry["scores"]["vector"])
             if mode == "lexical_only":
                 fused = lex_score
+            elif fusion_strategy == "rrf":
+                fused = float(rrf_normalized.get(entry["node_id"], 0.0))
+                entry["scores"]["rrf"] = round(fused, 6)
             else:
                 fused = alpha * vec_score + (1.0 - alpha) * lex_score
-            entry["score"] = round(fused, 6)
             from_lexical = bool(entry.pop("_lexical", False))
             from_vector = bool(entry.pop("_vector", False))
-            if from_lexical and from_vector:
+            if entry.pop("_graph", False):
+                # A one-hop neighbour of a hit: related to the answer, never
+                # itself a match, so it carries only its damped seed score.
+                fused = float(entry["scores"]["graph"])
+                entry["fusion"] = "graph"
+            elif from_lexical and from_vector:
                 entry["fusion"] = "both"
             elif from_vector:
                 entry["fusion"] = "vector"
             else:
                 entry["fusion"] = "lexical"
+            entry["score"] = round(fused, 6)
             matches.append(entry)
 
         # Recency-class age decay (retrieval_policy): dampen each fused score
@@ -590,6 +749,16 @@ class KnowledgeGraphRetrievalMixin(_Core):
                     multiplier = 1.0
                 match["scores"]["age_decay"] = round(multiplier, 6)
                 match["score"] = round(float(match["score"]) * multiplier, 6)
+
+        # Late fusion of the image space (v11.1.0). Runs after the text
+        # channels have produced a ranking and before the cut, so image
+        # evidence can lift a picture into the answer without ever having been
+        # compared against a text vector.
+        image_fusion: Optional[Dict[str, Any]] = None
+        if image_vector is not None:
+            image_fusion = self._fuse_image_channel(
+                matches, image_vector, top_k=top_k, weight=image_fusion_weight
+            )
 
         matches.sort(key=lambda item: (-item["score"], item["node_id"]))
         # Optional cross-encoder rerank (v9.9.5). Off by default; when the
@@ -622,6 +791,8 @@ class KnowledgeGraphRetrievalMixin(_Core):
             "sources": {"lexical": len(lexical_matches), "vector": len(vector_matches)},
             "matches": matches,
             "policy": {"search_query": search_query, "rewrite_rules": rewrite_rules},
+            "fusion_strategy": fusion_strategy,
+            "graph_expansion": expansion_report,
             "rerank": rerank_meta,
             "detail": detail,
         }
@@ -631,7 +802,58 @@ class KnowledgeGraphRetrievalMixin(_Core):
             result["vector_recall"] = vector_recall
             if vector_degraded is None:
                 result["vector_degraded"] = "partial_recall"
+        vector_meta["degraded"] = result.get("vector_degraded")
+        result["vector"] = vector_meta
+        multimodal = multimodal_signal(matches)
+        if multimodal is not None or image_fusion is not None:
+            result["multimodal"] = {
+                **(multimodal or {"images": 0, "types": []}),
+                **({"image_fusion": image_fusion} if image_fusion is not None else {}),
+            }
         return result
+
+    def _fuse_image_channel(
+        self,
+        matches: List[Dict[str, Any]],
+        image_vector: Sequence[float],
+        *,
+        top_k: int,
+        weight: Optional[float],
+    ) -> Dict[str, Any]:
+        """Rank the image index separately, then blend it into ``matches``.
+
+        Any failure degrades to "the image channel contributed nothing" with
+        the reason attached — an image index that cannot be read is not a
+        reason to lose the text answer.
+        """
+        from .image_vectors import (
+            DEFAULT_IMAGE_FUSION_WEIGHT,
+            fuse_image_scores,
+            image_similarity_search,
+        )
+
+        share = DEFAULT_IMAGE_FUSION_WEIGHT if weight is None else float(weight)
+        report: Dict[str, Any] = {
+            "weight": round(max(0.0, min(1.0, share)), 4),
+            "candidates": 0,
+            "fused": 0,
+            "detail": None,
+        }
+        try:
+            found = image_similarity_search(
+                self, image_vector, top_k=max(1, int(top_k) * 2)
+            )
+        except Exception as exc:  # noqa: BLE001 — never fail the text answer
+            report["detail"] = f"image index unavailable: {exc}"
+            return report
+        report["candidates"] = int(found.get("candidates") or 0)
+        report["detail"] = found.get("detail")
+        scores = {
+            str(row.get("node_id")): float(row.get("score") or 0.0)
+            for row in found.get("matches") or []
+        }
+        report["fused"] = fuse_image_scores(matches, scores, weight=share)
+        return report
 
     def context_for_query(
         self,
@@ -669,6 +891,8 @@ class KnowledgeGraphRetrievalMixin(_Core):
             return ""
         matches: List[Dict[str, Any]] = []
         retrieval_mode = "none"
+        vector_meta: Optional[Dict[str, Any]] = None
+        multimodal_meta: Optional[Dict[str, Any]] = None
         if use_hybrid:
             try:
                 hybrid = self.hybrid_search(
@@ -678,6 +902,15 @@ class KnowledgeGraphRetrievalMixin(_Core):
                     include_legacy_global=include_legacy_global,
                 )
                 matches = hybrid.get("matches", [])
+                vector_block = hybrid.get("vector") or {}
+                # Only a caveat is worth carrying: approximate scoring, a
+                # truncated candidate scan, or an already-flagged degradation.
+                if (
+                    vector_block.get("approx")
+                    or vector_block.get("truncated")
+                    or vector_block.get("degraded")
+                ):
+                    vector_meta = dict(vector_block)
                 if matches:
                     retrieval_mode = str(hybrid.get("mode") or "hybrid")
             except Exception:  # noqa: BLE001 — context building must never fail
@@ -752,9 +985,17 @@ class KnowledgeGraphRetrievalMixin(_Core):
         context = "\n".join(lines)
         if not with_meta:
             return context
+        # Only the context that actually reached the model counts as
+        # multimodal — matches trimmed by ``limit`` are not in the answer.
+        multimodal_meta = multimodal_signal(matches[:limit])
         return {
             "context": context,
-            "quality": context_quality_signal(retrieval_mode, len(matches[:limit])),
+            "quality": context_quality_signal(
+                retrieval_mode,
+                len(matches[:limit]),
+                vector=vector_meta,
+                multimodal=multimodal_meta,
+            ),
         }
 
     def context_for_query_with_meta(

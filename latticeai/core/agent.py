@@ -62,6 +62,7 @@ from latticeai.core.agent_permission import (
     resolve_deps_mode,
 )
 from latticeai.core.agent_profiles import AgentProfile, profile_for_model
+from latticeai.core.agent_prompts import executor_prompt_for
 
 # The state vocabulary and the pure helpers live in sibling modules so this one
 # holds only the loop. They are re-exported (see ``__all__``) because callers —
@@ -646,7 +647,10 @@ class SingleAgentRuntime:
             + "\n".join(f"- {path}" for path in written)
         ) if written else ""
         return (
-            f"{d.executor_prompt}\n\n"
+            # v11.1.0: the executor prompt carries profile-aware file-writing
+            # hints, because "wrote nothing at all" was the weak-model failure
+            # mode the loop could not repair after the fact.
+            f"{executor_prompt_for(d.executor_prompt, profile=profile)}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n"
             f"Workspace root: {d.agent_root}{self._project_block(ctx)}\n\n"
             f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}{written_hint}\n\n"

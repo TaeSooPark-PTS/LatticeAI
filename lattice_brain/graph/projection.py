@@ -52,6 +52,12 @@ class KnowledgeGraphProjectionMixin(_Core):
         END;
         """
 
+    # The temporal columns pass through *raw* (v11.1.0). ``type`` is COALESCEd
+    # because ``legacy_type`` carries the label a reader expects; validity is
+    # not a label — a COALESCE there would turn "still valid" (NULL) into a
+    # value, which is exactly the ``kgv2_edges`` trap noted in the 11.0.1
+    # review. NULL in, NULL out; the fallback to ``created_at`` belongs to the
+    # read predicate (``schema.TEMPORAL_PREDICATE_SQL``), not to the view.
     _V2_VIEWS_SQL = """
         CREATE VIEW IF NOT EXISTS kgv2_nodes AS
           SELECT id,
@@ -59,14 +65,16 @@ class KnowledgeGraphProjectionMixin(_Core):
                  label AS title,
                  summary,
                  attrs AS metadata_json,
-                 created_at, updated_at
+                 created_at, updated_at,
+                 valid_from, valid_to, superseded_by
           FROM nodes_v2;
         CREATE VIEW IF NOT EXISTS kgv2_edges AS
           SELECT id, source AS from_node, target AS to_node,
                  COALESCE(legacy_type, type) AS type,
                  weight,
                  metadata AS metadata_json,
-                 created_at
+                 created_at,
+                 valid_from, valid_to, superseded_by
           FROM edges_v2;
         """
 

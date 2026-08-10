@@ -49,7 +49,7 @@ from typing import Any, Callable, Dict, List, Optional
 from ..utils import now_iso as _now
 from .contracts import multi_agent_contract
 
-MULTI_AGENT_VERSION = "11.0.1"
+MULTI_AGENT_VERSION = "11.1.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")

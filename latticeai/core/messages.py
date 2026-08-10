@@ -210,6 +210,43 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "'{source}'는 알 수 없는 기억 출처입니다.",
         "en": "Unknown memory source: {source}.",
     },
+    # ── self-model (personal ontology) ──────────────────────────────────
+    "self_model.invalid_kind": {
+        "ko": "나 / 선호 / 습관 / 결정 / 관계 중 하나를 골라주세요.",
+        "en": "Choose one of: trait, preference, habit, decision, relationship.",
+    },
+    "self_model.text_required": {
+        "ko": "저장할 내용을 적어주세요.",
+        "en": "Please write what should be remembered.",
+    },
+    "self_model.not_found": {
+        "ko": "그 항목은 이미 없습니다.",
+        "en": "That entry is already gone.",
+    },
+    "self_model.not_self_model": {
+        "ko": "내 프로필 항목이 아니라서 지울 수 없습니다.",
+        "en": "That is not a profile entry, so it cannot be removed here.",
+    },
+    "self_model.not_a_proposal": {
+        "ko": "그 검토 항목은 내 프로필 제안이 아닙니다.",
+        "en": "That review item is not a profile proposal.",
+    },
+    "self_model.empty_proposal": {
+        "ko": "그 제안에는 저장할 내용이 없습니다.",
+        "en": "That proposal carries nothing to save.",
+    },
+    "self_model.graph_unavailable": {
+        "ko": "지식 그래프가 꺼져 있어 내 프로필을 쓸 수 없습니다.",
+        "en": "The knowledge graph is off, so the profile cannot be written.",
+    },
+    "self_model.queue_unavailable": {
+        "ko": "검토함이 연결되어 있지 않아 제안을 처리할 수 없습니다.",
+        "en": "The review queue is not connected, so proposals cannot be handled.",
+    },
+    "self_model.invalid": {
+        "ko": "내 프로필을 바꾸지 못했습니다.",
+        "en": "The profile could not be changed.",
+    },
     "graph.node_id_required": {
         "ko": "노드 식별자가 필요합니다.",
         "en": "A node id is required.",
@@ -246,6 +283,20 @@ MESSAGES: Dict[str, Dict[str, str]] = {
     "portability.verification_failed": {
         "ko": "보관 파일 검증에 실패했습니다.",
         "en": "Archive verification failed.",
+    },
+    "portability.brain_network_disabled": {
+        "ko": "다른 Brain과의 공유 기능이 꺼져 있습니다. 기본값이 꺼짐이며, "
+              "LATTICEAI_BRAIN_NETWORK=1 로 직접 켜야 사용할 수 있습니다.",
+        "en": "Sharing with another Brain is off. It is off by default; set "
+              "LATTICEAI_BRAIN_NETWORK=1 to turn it on.",
+    },
+    "portability.review_queue_unavailable": {
+        "ko": "검토함이 연결되어 있지 않아 받은 지식을 제안으로 쌓을 수 없습니다.",
+        "en": "The review queue is not connected, so received knowledge cannot be queued as proposals.",
+    },
+    "ingestion.vault_path_required": {
+        "ko": "Obsidian 보관함 폴더 경로가 필요합니다.",
+        "en": "An Obsidian vault folder path is required.",
     },
     # ── review queue ────────────────────────────────────────────────────
     "review.item_not_found": {

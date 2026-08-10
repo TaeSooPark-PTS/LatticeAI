@@ -54,9 +54,9 @@ class KnowledgeGraphDocGenMixin(_Core):
                     FROM {nt}
                     WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
                       AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
-                                   'Spreadsheet', 'Image', 'ImageText', 'Chat',
-                                   'Decision', 'Task', 'Concept', 'Feature',
-                                   'Page', 'Slide')
+                                   'Spreadsheet', 'Image', 'ImageText', 'Audio',
+                                   'Chat', 'Decision', 'Task', 'Concept',
+                                   'Feature', 'Page', 'Slide')
                     ORDER BY updated_at DESC, id ASC
                     LIMIT ?
                     """,
@@ -75,9 +75,9 @@ class KnowledgeGraphDocGenMixin(_Core):
                         FROM {nt}
                         WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
                           AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
-                                       'Spreadsheet', 'Image', 'ImageText', 'Chat',
-                                       'Decision', 'Task', 'Concept', 'Feature',
-                                       'Page', 'Slide')
+                                       'Spreadsheet', 'Image', 'ImageText', 'Audio',
+                                       'Chat', 'Decision', 'Task', 'Concept',
+                                       'Feature', 'Page', 'Slide')
                         ORDER BY updated_at DESC, id ASC
                         LIMIT ?
                         """,

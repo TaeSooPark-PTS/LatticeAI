@@ -304,7 +304,7 @@ def _brain_ctx(monkeypatch, tmp_path: Path) -> RuntimeContext:
                 "REALTIME_BUS", "WORKSPACE_OS", "WORKSPACE_SERVICE", "INVITATION_STORE",
                 "PLUGIN_REGISTRY", "TEMPLATE_CATALOG", "AGENT_REGISTRY", "MEMORY_SERVICE",
                 "BRAIN_INTELLIGENCE", "AUTOMATION_INTELLIGENCE", "INGESTION_PIPELINE",
-                "DEVICE_IDENTITY", "KG_PORTABILITY", "FUNNEL_METRICS",
+                "MULTIMODAL_PORTS", "DEVICE_IDENTITY", "KG_PORTABILITY", "FUNNEL_METRICS",
             )
         },
     )

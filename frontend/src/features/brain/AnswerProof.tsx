@@ -91,6 +91,7 @@ export function AnswerProofCard({
                 <span className="brain-answer-proof-index" aria-hidden="true">{index + 1}</span>
                 <span>{citation.source}</span>
                 <strong>{citation.title}</strong>
+                <CitationVisual language={language} citation={citation} />
                 {/* Where inside the document — only when the chunk proves it. */}
                 {citation.locator ? (
                   <em className="brain-citation-locator" data-testid="citation-locator">
@@ -125,6 +126,53 @@ export function AnswerProofCard({
         />
       ) : null}
     </section>
+  );
+}
+
+// Multi-modal evidence (v11.1.0): when the citation is a picture, show the
+// picture. The thumbnail is the inline data: URI stored on the Image node at
+// ingest — never a path served back out of the user's disk, which would mean
+// either a new static route or going around the local-file approval gate.
+//
+// The caption is shown only when a vision-language model actually wrote one.
+// With no model there is no caption line, because "photo.png (PNG 3024x4032)"
+// dressed up as a description is exactly the thing this release removed.
+export function CitationVisual({
+  language,
+  citation,
+}: {
+  language: Language;
+  citation: Citation;
+}) {
+  const isImage = citation.kind === "Image" || citation.kind === "ImageText";
+  if (!isImage) return null;
+  const hasThumbnail = Boolean(citation.thumbnail);
+  return (
+    <span className="brain-citation-visual" data-testid="citation-visual">
+      {hasThumbnail ? (
+        <img
+          className="brain-citation-thumb"
+          src={citation.thumbnail}
+          alt={citation.caption || t(language, "brain.answerProof.imageAlt", { title: citation.title })}
+          width={48}
+          height={48}
+          loading="lazy"
+        />
+      ) : (
+        <span className="brain-citation-thumb is-missing" aria-hidden="true">
+          {t(language, "brain.answerProof.imageBadge")}
+        </span>
+      )}
+      <span className="brain-citation-visual-text">
+        {citation.caption ? (
+          <em data-testid="citation-caption">{citation.caption}</em>
+        ) : (
+          <em className="is-muted" data-testid="citation-caption-absent">
+            {t(language, "brain.answerProof.noCaption")}
+          </em>
+        )}
+      </span>
+    </span>
   );
 }
 

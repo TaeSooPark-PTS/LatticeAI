@@ -542,6 +542,7 @@ def phase_brain(ctx: RuntimeContext) -> None:
         "BRAIN_INTELLIGENCE",
         "AUTOMATION_INTELLIGENCE",
         "INGESTION_PIPELINE",
+        "MULTIMODAL_PORTS",
         "DEVICE_IDENTITY",
         "KG_PORTABILITY",
         "FUNNEL_METRICS",
@@ -1197,11 +1198,13 @@ def phase_platform_features(ctx: RuntimeContext) -> None:
 
     # Voice memo capture (v9.9.7): the shortest path from a thought to the
     # Brain. Transcription is an optional local port — absent, the memo is
-    # still stored and the response says it is not searchable.
+    # still stored and the response says it is not searchable. v11.1.0 shares
+    # that one port with multi-modal ingestion, so a memo and a scanned
+    # recording can never disagree about whether this machine can hear.
     ctx.set(
         VOICE_CAPTURE=VoiceCaptureService(
             pipeline=ctx.INGESTION_PIPELINE if ctx.ENABLE_GRAPH else None,
-            transcriber=None,
+            transcriber=ctx.MULTIMODAL_PORTS.transcriber,
         )
     )
     ctx.app.include_router(

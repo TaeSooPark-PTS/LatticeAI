@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**11.0.1 — Both Branches** fixes all eleven defects the 11.0.0 coverage work documented, removes the dead code it proved dead, and raises the CI floor to 100% of BOTH lines and branch arcs (9,828 arcs, 5,798 tests). The extension surface is unchanged.
+**11.1.0 — Product Intelligence** builds the intelligence layer on the hardened foundation: a pluggable vector index (hybrid p50 10.1 ms at 10k), contradiction-to-proposal loops with a temporal model, first-class image and audio memories behind an off-by-default flag, a proposal-first Self-Model, and an Obsidian bridge with signed selective sharing. The extension surface is unchanged; the sidecar it talks to simply got smarter.
 The memory stats moved into a hover badge with a small summary graph, the six
 capture chips folded behind one + on the composer, the model banner became a
 status pill with the single accented CTA, and past conversations / stats / the

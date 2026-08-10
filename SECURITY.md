@@ -3,16 +3,17 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.0.1 — Both Branches**.
+Current release: **11.1.0 — Product Intelligence**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 9.0.0 through 11.0.1. Security
+The public Git tree keeps release history from 9.0.0 through 11.1.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 11.0.x (latest) | Supported |
+| 11.1.x (latest) | Supported |
+| 11.0.x | Supported |
 | 10.10.x | Supported |
 | 10.8.x | Supported |
 | 10.6.x | Supported |

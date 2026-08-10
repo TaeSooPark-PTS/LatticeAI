@@ -1132,6 +1132,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/brain/contradictions/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Brain Propose Contradictions
+         * @description Raise a review proposal for each contradicting pair of memories.
+         */
+        post: operations["brain_propose_contradictions_api_brain_contradictions_propose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brain/contradictions/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Brain Resolve Contradiction
+         * @description Approve a contradiction proposal and stamp the graph accordingly.
+         */
+        post: operations["brain_resolve_contradiction_api_brain_contradictions_resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/brain/duplicates": {
         parameters: {
             query?: never;
@@ -1190,6 +1230,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/brain/importance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brain Importance
+         * @description Importance + decay report (read-only): what has gone quiet.
+         */
+        get: operations["brain_importance_api_brain_importance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/brain/insights": {
         parameters: {
             query?: never;
@@ -1199,6 +1259,29 @@ export interface paths {
         };
         /** Brain Insights */
         get: operations["brain_insights_api_brain_insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brain/proactive-brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brain Proactive Brief
+         * @description Brain Brief proactive section (v11.1.0): what the Brain noticed.
+         *
+         *     Read-only — it reports the proposals already waiting in the Review
+         *     Center and never raises new ones.
+         */
+        get: operations["brain_proactive_brief_api_brain_proactive_brief_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1273,6 +1356,26 @@ export interface paths {
         put?: never;
         /** Setup Postgres Docker */
         post: operations["setup_postgres_docker_api_brain_storage_postgres_docker_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brain/synthesize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Brain Synthesize
+         * @description Run one synthesis pass. Output is review proposals, never writes.
+         */
+        post: operations["brain_synthesize_api_brain_synthesize_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1794,6 +1897,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ingestion/obsidian": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingestion Obsidian
+         * @description Ingest an approved external Obsidian vault through the one gate.
+         *
+         *     Every ``.md`` note goes through the same pipeline door as files and
+         *     folders; on top of that, in-vault links become ``REFERENCES`` edges
+         *     between the note nodes and frontmatter tags become ``Topic`` links. A
+         *     link whose target is missing or ambiguous is reported in
+         *     ``links.unresolved`` rather than guessed at. Re-running is idempotent.
+         *
+         *     Reads local disk, so it follows the standard approval dance: without
+         *     ``approved`` + ``approval_token`` the answer is a ``permission_required``
+         *     payload.
+         */
+        post: operations["ingestion_obsidian_api_ingestion_obsidian_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ingestion/watch": {
         parameters: {
             query?: never;
@@ -2054,6 +2187,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge-graph/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Share Status
+         * @description Reports whether sharing is on, and names the flag when it is not.
+         */
+        get: operations["share_status_api_knowledge_graph_share_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/share/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Archive
+         * @description Same bundle, written as an encrypted ``.latticebrain`` file.
+         */
+        post: operations["share_archive_api_knowledge_graph_share_archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/share/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Export
+         * @description Signed JSON bundle of the selected subgraph (no file written).
+         */
+        post: operations["share_export_api_knowledge_graph_share_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/share/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Import
+         * @description Receive a bundle as review proposals. Never merges on its own.
+         */
+        post: operations["share_import_api_knowledge_graph_share_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/share/proposals/{item_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Accept
+         * @description Merge one reviewed proposal into this Brain and approve the item.
+         */
+        post: operations["share_accept_api_knowledge_graph_share_proposals__item_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/local-agent/status": {
         parameters: {
             query?: never;
@@ -2245,6 +2478,90 @@ export interface paths {
         /** Memory Recall */
         post: operations["memory_recall_api_memory_recall_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/memory/self-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Self Model Profile
+         * @description What the Brain believes about its owner, and the injected summary.
+         */
+        get: operations["self_model_profile_api_memory_self_model_get"];
+        put?: never;
+        /**
+         * Self Model Upsert
+         * @description Add or correct one fact directly — the user owns their profile.
+         */
+        post: operations["self_model_upsert_api_memory_self_model_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/memory/self-model/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Self Model Apply
+         * @description Approve a proposal and write the fact it carries into the graph.
+         */
+        post: operations["self_model_apply_api_memory_self_model_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/memory/self-model/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Self Model Propose
+         * @description Read text for candidate facts; every hit becomes a review proposal.
+         */
+        post: operations["self_model_propose_api_memory_self_model_propose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/memory/self-model/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Self Model Delete
+         * @description Forget one fact about the user, permanently.
+         */
+        delete: operations["self_model_delete_api_memory_self_model__node_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -7949,6 +8266,32 @@ export interface components {
              */
             reason: string;
         };
+        /**
+         * ObsidianSyncRequest
+         * @description One-shot sync of an *external* Obsidian vault (v11.1.0).
+         *
+         *     ``path`` is the user's own vault folder, so it takes the same local-read
+         *     approval dance as ``/api/ingestion/folder``. ``dry_run`` reports the note,
+         *     link, and tag counts a real run would touch without writing anything.
+         */
+        ObsidianSyncRequest: {
+            /** Approval Token */
+            approval_token?: string | null;
+            /**
+             * Approved
+             * @default false
+             */
+            approved: boolean;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Path */
+            path: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
         /** PeerPairRequest */
         PeerPairRequest: {
             /** Base Url */
@@ -8116,6 +8459,24 @@ export interface components {
              */
             relationship_type: string;
         };
+        /**
+         * ResolveContradictionRequest
+         * @description Settle one contradiction proposal (v11.1.0).
+         *
+         *     ``item_id`` is a Review Center item raised by synthesis; ``resolution`` is
+         *     one of ``keep_old`` / ``replace`` / ``keep_both_temporal``. Approval and
+         *     the temporal stamping happen together — there is no way to stamp the graph
+         *     without approving the proposal first.
+         */
+        ResolveContradictionRequest: {
+            /** Item Id */
+            item_id: string;
+            /**
+             * Resolution
+             * @default keep_both_temporal
+             */
+            resolution: string;
+        };
         /** RestoreRequest */
         RestoreRequest: {
             /**
@@ -8227,6 +8588,45 @@ export interface components {
             /** Query */
             query: string;
         };
+        /**
+         * SelfModelApplyRequest
+         * @description Approve one Self-Model proposal and write the fact it carries.
+         */
+        SelfModelApplyRequest: {
+            /** Item Id */
+            item_id: string;
+        };
+        /**
+         * SelfModelFactRequest
+         * @description A fact the user states about themselves (user-initiated direct write).
+         */
+        SelfModelFactRequest: {
+            /** Kind */
+            kind: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * SelfModelProposeRequest
+         * @description Text to read for candidate facts. Output is proposals, never writes.
+         */
+        SelfModelProposeRequest: {
+            /**
+             * Max Proposals
+             * @default 5
+             */
+            max_proposals: number;
+            /**
+             * Source
+             * @default
+             */
+            source: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+        };
         /** SetApiKeyRequest */
         SetApiKeyRequest: {
             /** Key */
@@ -8332,6 +8732,109 @@ export interface components {
             redirect_uri?: string | null;
             /** Scopes */
             scopes?: string | null;
+        };
+        /** SubgraphAcceptRequest */
+        SubgraphAcceptRequest: {
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /** SubgraphArchiveRequest */
+        SubgraphArchiveRequest: {
+            /**
+             * Include Legacy Global
+             * @default false
+             */
+            include_legacy_global: boolean;
+            /**
+             * Include Neighbors
+             * @default false
+             */
+            include_neighbors: boolean;
+            /**
+             * Node Ids
+             * @default []
+             */
+            node_ids: string[];
+            /**
+             * Node Types
+             * @default []
+             */
+            node_types: string[];
+            /** Passphrase */
+            passphrase: string;
+            /** Path */
+            path?: string | null;
+            /**
+             * Redact Provenance
+             * @default true
+             */
+            redact_provenance: boolean;
+            /**
+             * Source Types
+             * @default []
+             */
+            source_types: string[];
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /**
+         * SubgraphImportRequest
+         * @description Either an inline ``artifact`` or a ``path`` (+ passphrase) on disk.
+         */
+        SubgraphImportRequest: {
+            /** Artifact */
+            artifact?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Passphrase */
+            passphrase?: string | null;
+            /** Path */
+            path?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /**
+         * SubgraphSelection
+         * @description What to share. At least one selector is required by the service.
+         */
+        SubgraphSelection: {
+            /**
+             * Include Legacy Global
+             * @default false
+             */
+            include_legacy_global: boolean;
+            /**
+             * Include Neighbors
+             * @default false
+             */
+            include_neighbors: boolean;
+            /**
+             * Node Ids
+             * @default []
+             */
+            node_ids: string[];
+            /**
+             * Node Types
+             * @default []
+             */
+            node_types: string[];
+            /**
+             * Redact Provenance
+             * @default true
+             */
+            redact_provenance: boolean;
+            /**
+             * Source Types
+             * @default []
+             */
+            source_types: string[];
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /** SuggestionInstallRequest */
         SuggestionInstallRequest: {
@@ -11023,6 +11526,59 @@ export interface operations {
             };
         };
     };
+    brain_propose_contradictions_api_brain_contradictions_propose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    brain_resolve_contradiction_api_brain_contradictions_resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveContradictionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     brain_duplicates_api_brain_duplicates_get: {
         parameters: {
             query?: never;
@@ -11094,7 +11650,47 @@ export interface operations {
             };
         };
     };
+    brain_importance_api_brain_importance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     brain_insights_api_brain_insights_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    brain_proactive_brief_api_brain_proactive_brief_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11216,6 +11812,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    brain_synthesize_api_brain_synthesize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -12180,6 +12796,39 @@ export interface operations {
             };
         };
     };
+    ingestion_obsidian_api_ingestion_obsidian_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObsidianSyncRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     folder_watch_status_api_ingestion_watch_get: {
         parameters: {
             query?: never;
@@ -12641,6 +13290,160 @@ export interface operations {
             };
         };
     };
+    share_status_api_knowledge_graph_share_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    share_archive_api_knowledge_graph_share_archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubgraphArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_export_api_knowledge_graph_share_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubgraphSelection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_import_api_knowledge_graph_share_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubgraphImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_accept_api_knowledge_graph_share_proposals__item_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubgraphAcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     local_agent_status_api_local_agent_status_get: {
         parameters: {
             query?: never;
@@ -12928,6 +13731,156 @@ export interface operations {
                 "application/json": components["schemas"]["RecallRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    self_model_profile_api_memory_self_model_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    self_model_upsert_api_memory_self_model_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfModelFactRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    self_model_apply_api_memory_self_model_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfModelApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    self_model_propose_api_memory_self_model_propose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfModelProposeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    self_model_delete_api_memory_self_model__node_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
