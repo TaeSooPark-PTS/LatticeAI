@@ -37,9 +37,34 @@ class KnowledgeGraphProvenanceMixin(_Core):
         permissions: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Append a provenance record for an ingested node (audit trail)."""
+        """Record where an ingested node came from (upsert by origin).
+
+        Row identity is ``(node, content, source_type, source_uri, pipeline)``
+        — deliberately *not* the wall clock. Through 11.0.x the basis included
+        a second-resolution timestamp, which made the record's identity depend
+        on when it happened: re-ingesting unchanged content twice inside the
+        same second collapsed onto one row, and one second later appended a
+        duplicate. That is not an audit trail, it is a race — the same class of
+        defect as the 11.0.0 review-item ids — and it grew this table (and the
+        "recent ingestions" list built from it) without bound on every re-scan
+        of an unchanged folder or vault.
+
+        With the clock out of the basis, re-ingesting the same content from the
+        same origin *updates* one record (``created_at`` moves to the latest
+        sighting, so "recently seen" stays true), while genuinely new content or
+        a genuinely different origin — another source URI, another pipeline —
+        still appends its own record. The timestamp is data on the row, never
+        part of its identity. Every individual ingest event remains visible in
+        the audit log (``kg_ingest``), which is where per-event history belongs.
+        """
         now = _now()
-        prov_basis = f"{node_id}|{content_hash or ''}|{now}"
+        prov_basis = "|".join([
+            node_id,
+            content_hash or "",
+            source_type,
+            source_uri or "",
+            pipeline,
+        ])
         prov_id = f"prov:{_sha256_text(prov_basis)[:24]}"
         with self._connect() as conn:
             conn.execute(

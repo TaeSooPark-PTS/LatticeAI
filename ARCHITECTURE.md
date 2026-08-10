@@ -338,6 +338,16 @@ The Honest Knowledge Pipeline hardens retrieval and ingestion:
   (`/api/ingestion/jobs`), plus per-source `extraction_quality` scoring and an
   observe-mode `quality_gate` that flags low-quality extractions instead of
   silently accepting them.
+- `graph/provenance.py` identifies a provenance row by its **origin** —
+  `(node, content hash, source type, source URI, pipeline)` — and never by when
+  it was written. Through 11.0.x the id also hashed a second-resolution
+  timestamp, so re-ingesting unchanged content deduplicated or duplicated
+  depending on which side of a second the second run landed on; a repeated
+  folder or vault scan grew the table (and the ingestion-sources list built from
+  it) without bound. Re-ingesting the same origin now updates one row and moves
+  its `created_at`, while new content or a genuinely different origin still
+  appends. Per-event history stays in the `kg_ingest` audit log, which is what
+  an event log is for.
 
 ### Vector index backends (11.1.0)
 

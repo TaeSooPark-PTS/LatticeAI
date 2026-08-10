@@ -12,6 +12,7 @@ only fakes can reach.
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
@@ -22,6 +23,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+import lattice_brain.utils as brain_utils
 from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionPipeline, IngestionResult
 from latticeai.api.local_files import create_local_files_router
@@ -321,6 +323,39 @@ def test_sync_is_idempotent(tmp_path):
     assert again["duplicate"] == 3
     assert again["links"]["written"] == 2
     assert store.export_graph_data()["counts"] == before
+
+
+def test_sync_is_idempotent_across_a_second_boundary(tmp_path, monkeypatch):
+    """The re-sync above must not owe its result to both runs sharing a second.
+
+    Through 11.0.x provenance row identity included a second-resolution
+    timestamp, so a fast re-sync collapsed onto the same rows and a slow one
+    appended a duplicate per note — green locally, red on a loaded CI runner.
+    The clock is advanced here so the property is tested, not the machine.
+    """
+    clock = {"offset": timedelta(0)}
+    base = datetime(2026, 8, 10, 12, 0, 0)
+    monkeypatch.setattr(brain_utils, "local_now", lambda: base + clock["offset"])
+
+    vault = _vault(tmp_path / "vault")
+    bridge, store = _real_bridge(tmp_path)
+    bridge.sync(vault, workspace_id="ws-1")
+    before = store.export_graph_data()["counts"]
+    provenance_before = {
+        (row["node_id"], row["source_uri"], row["id"])
+        for row in store.export_graph_data()["provenance"]
+    }
+
+    clock["offset"] = timedelta(seconds=90)
+    again = bridge.sync(vault, workspace_id="ws-1")
+
+    after = store.export_graph_data()
+    assert again["duplicate"] == 3
+    assert after["counts"] == before
+    # Same rows, not merely the same number of them.
+    assert {
+        (row["node_id"], row["source_uri"], row["id"]) for row in after["provenance"]
+    } == provenance_before
 
 
 def test_sync_dry_run_writes_nothing(tmp_path):
