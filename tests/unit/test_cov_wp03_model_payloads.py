@@ -157,7 +157,10 @@ def test_a_family_the_display_order_does_not_know_sorts_last(runtime_supported, 
     result = mr.recommend_catalog(profile, engine="local_mlx")
 
     assert [f["family"] for f in result["families"]] == ["Gemma 4", "Brand New"]
-    assert [m["id"] for m in result["models"]] == ["fake/brand-new-9b", "fake/gemma-4-12b"]
+    # Text-only rows are classified too, they just carry their own modality.
+    assert [m["id"] for m in result["models"]] == [
+        "fake/brand-new-9b", "fake/gemma-4-12b", "fake/text-only",
+    ]
     assert result["top_pick"]["id"] == "fake/gemma-4-12b"
 
 
@@ -175,54 +178,15 @@ def test_capability_lookup_accepts_either_the_id_or_the_repo_id():
     assert registry.get_capability(known.hf_repo_id) is known
 
 
-class _LateLocalMlxHints:
-    """Provider hints whose ``local_mlx`` entry appears only after projection.
-
-    The catalog builder backfills local_mlx from the registry when its own
-    projection pass produced no local_mlx entries; this container is the
-    registry shape that makes that fallback the only thing standing between a
-    user and an empty MLX catalog.
-    """
-
-    def __init__(self) -> None:
-        self._items = {"ollama"}
-
-    def __contains__(self, item: object) -> bool:
-        return item in self._items
-
-    def __iter__(self):
-        return iter(sorted(self._items))
-
-    def reveal_local_mlx(self) -> None:
-        self._items.add("local_mlx")
-
-
-class _LateCapability:
-    tag = "local-vlm"
-    quantization = "4bit"
-    family = "Fake Family"
-    hf_repo_id = "fake-org/Fake-Model"
-
-    def __init__(self) -> None:
-        self.provider_hints = _LateLocalMlxHints()
-
-    def to_legacy_dict(self) -> dict:
-        self.provider_hints.reveal_local_mlx()
-        return {"id": "fake-org/Fake-Model", "name": "Fake Model"}
-
-
-def test_the_mlx_catalog_is_backfilled_when_projection_produced_none(monkeypatch):
-    monkeypatch.setattr(registry, "_REGISTRY", [_LateCapability()])
-
-    catalog = registry.build_engine_model_catalog()
-
-    # the ollama projection rewrote the id; the backfilled MLX entry is verbatim
-    assert catalog["ollama"] == [{"id": "ollama:fake-model", "name": "Fake Model"}]
-    assert catalog["local_mlx"] == [{"id": "fake-org/Fake-Model", "name": "Fake Model"}]
-
-
 def test_the_real_registry_projects_an_mlx_catalog_without_the_fallback():
+    """Every recommended entry hints local_mlx, so the projection is enough.
+
+    11.2.0 deleted the "backfill local_mlx when the projection produced none"
+    guard: no entry can reach the registry without a provider hint, so the
+    branch was unreachable and only made the builder harder to read.
+    """
     catalog = registry.build_engine_model_catalog()
 
     assert catalog["local_mlx"]
     assert all(entry.get("id") for entry in catalog["local_mlx"])
+    assert len(catalog["local_mlx"]) == len(registry.get_recommended_capabilities())

@@ -134,6 +134,11 @@ class NodeType(str, Enum):
     # exists whether or not anyone could hear it. IMAGE has been first-class
     # since 3.6.0 for the same reason, and AUDIO now sits beside it.
     AUDIO = "AUDIO"  # 녹음 / 음성 메모
+    # v11.2.0 — a video is its own noun for the same reason a recording is:
+    # keyframes and subtitles are *derived* from it (IMAGE children, text
+    # chunks), and calling the thing they came from a DOCUMENT would make the
+    # source of a memory indistinguishable from one of its pieces.
+    VIDEO = "VIDEO"  # 영상 / 화면 녹화
 
     @classmethod
     def from_legacy(cls, label: str) -> "NodeType":
@@ -285,6 +290,10 @@ _LEGACY_NODE_MAP: Dict[str, NodeType] = {
     # v11.1.0 Multi-modal — recordings as a first-class noun.
     "audio": NodeType.AUDIO,
     "오디오": NodeType.AUDIO,
+    # v11.2.0 — videos likewise.
+    "video": NodeType.VIDEO,
+    "영상": NodeType.VIDEO,
+    "동영상": NodeType.VIDEO,
 }
 
 _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {

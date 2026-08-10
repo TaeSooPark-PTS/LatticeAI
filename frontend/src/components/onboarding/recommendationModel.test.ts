@@ -316,6 +316,8 @@ describe("naming helpers", () => {
     const model = fallbackModel();
     expect(model.supported).toBe(true);
     expect(model.role).toBe("best");
-    expect(model.loadId).toContain("Qwen3");
+    // The smallest current catalog entry, so it runs on the widest range
+    // of machines when the probes told us nothing about this one.
+    expect(model.loadId).toBe("mlx-community/gemma-4-e2b-it-4bit");
   });
 });

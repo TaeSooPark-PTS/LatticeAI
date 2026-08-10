@@ -154,9 +154,10 @@ def test_sharing_is_off_until_the_operator_opts_in(tmp_path, monkeypatch):
     assert status["enabled"] is False
     assert status["flag"] == BRAIN_NETWORK_ENV
     assert BRAIN_NETWORK_ENV in status["detail"]
-    # Honest about what the encryption is and is not.
-    assert status["encryption"] == "passphrase"
-    assert status["recipient_public_key_encryption"] is False
+    # Honest about what the encryption is. 11.2.0 added the sealed box, so
+    # both mechanisms are named rather than one being implied.
+    assert status["encryption"] == ["passphrase", "recipient_public_key"]
+    assert status["recipient_public_key_encryption"] is True
 
     for call in (
         lambda: service.export_subgraph(node_ids=node_ids),

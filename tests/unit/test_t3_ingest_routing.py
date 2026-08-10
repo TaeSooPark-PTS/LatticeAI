@@ -202,8 +202,11 @@ def test_the_env_flag_can_turn_multimodal_on_without_a_constructor(
     assert result.node_id.startswith("image:")
 
 
-# ── video is refused, out loud ───────────────────────────────────────────────
-def test_video_is_recognized_and_refused_with_a_reason(store, tmp_path):
+# ── video is refused, out loud, when this machine cannot decode one ──────────
+def test_video_is_recognized_and_refused_with_a_reason(store, tmp_path, monkeypatch):
+    # 11.2.0 implements video; the refusal below is now a *runtime* answer, so
+    # the decoder probe is pinned absent instead of trusting the test host.
+    monkeypatch.setattr("lattice_brain.multimodal._which_ffmpeg", lambda: None)
     path = tmp_path / "standup.mov"
     path.write_bytes(b"fake movie bytes")
 
@@ -215,7 +218,9 @@ def test_video_is_recognized_and_refused_with_a_reason(store, tmp_path):
     assert result.indexing_status == "skipped"
     assert result.detail == VIDEO_OUT_OF_SCOPE
     assert result.node_id is None
-    assert IngestionPipeline(store, allow_multimodal=True).multimodal_status()["video"] is False
+    status = IngestionPipeline(store, allow_multimodal=True).multimodal_status()
+    assert status["video"] is False
+    assert status["video_detail"] == VIDEO_OUT_OF_SCOPE
 
 
 # ── audio ────────────────────────────────────────────────────────────────────

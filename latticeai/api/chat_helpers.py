@@ -212,8 +212,17 @@ def build_context_quality(
     lexical-only, or when retrieval failed entirely — so the frontend can
     tell the user the answer is weakly grounded instead of implying rich
     graph context. Never raises.
+
+    A fifth key, ``multimodal``, appears only when the matches really include
+    picture nodes (v11.2.0). "6 nodes" reads differently when two of them are
+    screenshots whose text came out of OCR, and until this call site passed
+    ``multimodal=`` the shipped chat surface could not tell the difference the
+    signal was built to report.
     """
-    from lattice_brain.graph.retrieval import context_quality_signal
+    from lattice_brain.graph.retrieval import (
+        context_quality_signal,
+        multimodal_signal,
+    )
 
     query = str(query or "").strip()
     if knowledge_graph is None or not query:
@@ -233,7 +242,9 @@ def build_context_quality(
             return context_quality_signal("none", 0, reason="그래프 검색에 실패했습니다")
         matches = result.get("matches") or []
         return context_quality_signal(
-            str(result.get("mode") or "hybrid"), len(matches)
+            str(result.get("mode") or "hybrid"),
+            len(matches),
+            multimodal=multimodal_signal(matches),
         )
     # Lexical-only stores without the hybrid mixin.
     try:
@@ -242,7 +253,9 @@ def build_context_quality(
         ).get("matches") or []
     except Exception:  # noqa: BLE001 — signal building must never fail chat
         return context_quality_signal("none", 0, reason="그래프 검색에 실패했습니다")
-    return context_quality_signal("lexical_only", len(matches))
+    return context_quality_signal(
+        "lexical_only", len(matches), multimodal=multimodal_signal(matches)
+    )
 
 
 # ── answer-citation binding (backlog #11, review §7.2 E #4) ──────────────────

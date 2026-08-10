@@ -26,7 +26,7 @@ def _which_stub(found: Dict[str, str]) -> Callable[[str], Optional[str]]:
 def _rec(
     runtime: str = "llama.cpp",
     backend: str = "cpu",
-    model_id: str = "Qwen/Qwen3-VL-4B-Instruct",
+    model_id: str = "mlx-community/LFM2.5-2.6B-4bit",
     quantization: str = "q4_K_M",
 ) -> auto_setup.Recommendation:
     return auto_setup.Recommendation(
@@ -77,7 +77,9 @@ def test_recommend_linux_cuda_uses_vllm_and_f16(monkeypatch: pytest.MonkeyPatch)
 
     assert (rec.backend, rec.runtime) == ("cuda", "vllm")
     assert rec.quantization == "f16"
-    assert rec.model_id == "mlx-community/gemma-4-31b-it-4bit"
+    # 64GB RAM but 24GB VRAM: the 32GB-VRAM tier is out of reach, so the pick
+    # drops to the 24GB one.
+    assert rec.model_id == "mlx-community/Qwen3.6-27B-4bit"
     assert rec.estimated_tokens_per_sec == pytest.approx(24 * 1024 / 800)
 
 
@@ -95,7 +97,7 @@ def test_recommend_wsl_small_cuda_gpu_uses_llama_cpp(monkeypatch: pytest.MonkeyP
     rec = auto_setup.recommend(prof)
 
     assert (rec.backend, rec.runtime) == ("cuda", "llama.cpp")
-    assert rec.model_id == "mlx-community/gemma-4-12b-it-4bit"
+    assert rec.model_id == "mlx-community/gemma-4-12B-it-4bit"
 
 
 @pytest.mark.parametrize(
@@ -221,7 +223,7 @@ def test_plan_maps_missing_dependencies_to_apt_commands(monkeypatch: pytest.Monk
         "node20",
         "ollama",
         "huggingface-cli",
-        "weights:Qwen/Qwen3-VL-4B-Instruct",
+        "weights:mlx-community/LFM2.5-2.6B-4bit",
     ]
     assert result.steps[0].command == ["apt-get", "install", "-y", "nodejs"]
     assert result.steps[0].requires_admin is True
@@ -229,7 +231,7 @@ def test_plan_maps_missing_dependencies_to_apt_commands(monkeypatch: pytest.Monk
     assert result.steps[-1].command == [
         "huggingface-cli",
         "download",
-        "Qwen/Qwen3-VL-4B-Instruct",
+        "mlx-community/LFM2.5-2.6B-4bit",
         "--quiet",
     ]
     assert any("CUDA/nvidia-smi" in note for note in result.notes)
@@ -246,9 +248,11 @@ def test_plan_without_package_manager_only_leaves_notes(monkeypatch: pytest.Monk
 
     result = auto_setup.plan(prof, _rec(runtime="ollama"))
 
-    assert [step.name for step in result.steps] == ["weights:Qwen/Qwen3-VL-4B-Instruct"]
+    assert [step.name for step in result.steps] == ["weights:mlx-community/LFM2.5-2.6B-4bit"]
     assert len([note for note in result.notes if "수동 설치 필요" in note]) == 3
-    assert result.steps[0].command == ["ollama", "pull", "qwen3-vl:4b"]
+    assert result.steps[0].command == [
+        "ollama", "pull", "hf.co/LiquidAI/LFM2.5-2.6B-GGUF:Q4_K_M",
+    ]
 
 
 def test_plan_is_empty_when_everything_is_already_installed(
@@ -317,12 +321,12 @@ def test_plan_lmstudio_notes_missing_cli_and_uses_lms_get(monkeypatch: pytest.Mo
     )
 
     result = auto_setup.plan(
-        prof, _rec(runtime="lmstudio", model_id="Qwen/Qwen3-VL-8B-Instruct")
+        prof, _rec(runtime="lmstudio", model_id="mlx-community/Qwen3.5-9B-MLX-4bit")
     )
 
     assert any("lmstudio.ai/download" in note for note in result.notes)
     assert any("WSL2/Linux" in note for note in result.notes)
-    assert result.steps[-1].command == ["lms", "get", "Qwen/Qwen3-VL-8B-Instruct"]
+    assert result.steps[-1].command == ["lms", "get", "mlx-community/Qwen3.5-9B-MLX-4bit"]
 
 
 def test_plan_requires_python_upgrade_on_old_interpreters(
@@ -348,15 +352,20 @@ def test_plan_requires_python_upgrade_on_old_interpreters(
             ["ollama", "pull", "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M"],
         ),
         (
-            "mlx-community/gemma-4-12b-it-4bit",
+            "mlx-community/gemma-4-12B-it-4bit",
             ["ollama", "pull", "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"],
         ),
         (
-            "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
-            ["ollama", "pull", "hf.co/ggml-org/Llama-4-Scout-17B-16E-Instruct-GGUF:Q4_K_M"],
+            "mlx-community/gpt-oss-20b-MXFP4-Q8",
+            ["ollama", "pull", "hf.co/ggml-org/gpt-oss-20b-GGUF:Q4_K_M"],
         ),
-        ("Qwen/Qwen3-VL-8B-Instruct", ["ollama", "pull", "qwen3-vl:8b"]),
-        ("Qwen/Qwen3-VL-4B-Instruct", ["ollama", "pull", "qwen3-vl:4b"]),
+        ("mlx-community/LFM2.5-2.6B-4bit", ["ollama", "pull", "hf.co/LiquidAI/LFM2.5-2.6B-GGUF:Q4_K_M"]),
+        # Aliased, but with no verified GGUF build — no ollama route, so the
+        # plan falls back to a direct Hub download rather than inventing one.
+        (
+            "mlx-community/Qwen3.5-9B-MLX-4bit",
+            ["huggingface-cli", "download", "mlx-community/Qwen3.5-9B-MLX-4bit", "--quiet"],
+        ),
         (
             "some/unmapped-model",
             ["huggingface-cli", "download", "some/unmapped-model", "--quiet"],

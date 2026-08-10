@@ -130,8 +130,12 @@ hardware scan
   -> download/install/load/verify
 ```
 
-The current default recommendation family is Gemma 4. Qwen3-VL and Llama 4
-remain current multimodal alternatives.
+The current default recommendation family is Gemma 4. Qwen3.6 and Qwen3.5 are
+the current multimodal alternatives; GPT-OSS 20B and LFM2.5 2.6B fill the
+general-purpose and ultralight tiers as text-only models. Superseded families
+(Qwen3-VL, Llama 4, Qwen2.5-VL, Llama 3.2 Vision) stay in the capability
+registry as *recognised* entries so already-downloaded weights keep working,
+but they never appear in the catalog or a download path. See MODEL_POLICY.md.
 
 ## Modes
 

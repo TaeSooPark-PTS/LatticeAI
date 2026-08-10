@@ -106,7 +106,9 @@ def test_nvidia_linux_with_cuda_prefers_vllm():
     assert engines["engine_cuda"]["badge"] == "12.4"
     assert engines["engine_lmstudio"]["status"] == "available"
     checked = [model["model_id"] for model in recs["models"] if model["checked"]]
-    assert checked == ["vllm:suitch/gemma-4-31B-it-4bit"]
+    # 64GB RAM but only 24GB VRAM: the 96GB tier (Qwen3.6-27B, 54GB bf16) is
+    # out of reach, so the pick drops to the 32GB tier that actually fits.
+    assert checked == ["vllm:google/gemma-4-12B-it"]
     assert recs["models"][0]["badge"].endswith("vllm")
 
 

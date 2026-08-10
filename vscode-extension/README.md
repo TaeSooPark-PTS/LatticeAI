@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**11.1.0 — Product Intelligence** builds the intelligence layer on the hardened foundation: a pluggable vector index (hybrid p50 10.1 ms at 10k), contradiction-to-proposal loops with a temporal model, first-class image and audio memories behind an off-by-default flag, a proposal-first Self-Model, and an Obsidian bridge with signed selective sharing. The extension surface is unchanged; the sidecar it talks to simply got smarter.
+**11.2.0 — All Systems On** refreshes the model catalog to verified 2025–2026 builds (no weights were downloaded to check them), adds a feature-toggle drawer on the Brain home so every opt-in capability is a live switch, completes the interop bridges (Notion export, Git history, mail/calendar), recipient public-key sharing and video ingestion, and ships a 58-row evidence audit of every documented feature. The extension surface is unchanged.
 The memory stats moved into a hover badge with a small summary graph, the six
 capture chips folded behind one + on the composer, the model banner became a
 status pill with the single accented CTA, and past conversations / stats / the

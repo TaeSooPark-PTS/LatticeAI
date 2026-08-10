@@ -241,6 +241,15 @@ class KnowledgeGraphStore(
                     CREATE INDEX IF NOT EXISTS idx_vector_embeddings_type ON vector_embeddings(item_type);
                     CREATE INDEX IF NOT EXISTS idx_vector_embeddings_source ON vector_embeddings(source_node);
                     CREATE INDEX IF NOT EXISTS idx_vector_embeddings_model ON vector_embeddings(embedding_model);
+                    -- v11.2.0: the ANN sidecar's freshness fingerprint is
+                    -- COUNT(*) + MAX(indexed_at) filtered by (embedding_model,
+                    -- embedding_dim), and it runs on *every* approximate
+                    -- search. Against the single-column model index that was a
+                    -- table scan of every row for the current model; this
+                    -- covering index answers both aggregates from the index
+                    -- alone. Additive and idempotent — no data is rewritten.
+                    CREATE INDEX IF NOT EXISTS idx_vector_embeddings_model_dim_indexed
+                      ON vector_embeddings(embedding_model, embedding_dim, indexed_at);
                     CREATE INDEX IF NOT EXISTS idx_vector_index_operations_requested ON vector_index_operations(requested_at);
                     CREATE INDEX IF NOT EXISTS idx_provenance_node ON ingestion_provenance(node_id);
                     CREATE INDEX IF NOT EXISTS idx_provenance_source_type ON ingestion_provenance(source_type);

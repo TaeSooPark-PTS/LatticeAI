@@ -38,7 +38,14 @@ from .archive import (
     EncryptedBrainArchive,
     _derive_key,
 )
+from .gates import FeatureGate
 from .quiet import quiet
+from .sealed_box import (
+    SEALED_BOX_ALGORITHM,
+    load_recipient_identity,
+    public_key_fingerprint,
+    seal,
+)
 from .storage import (
     DockerPostgresWizard,
     PostgresEngine,
@@ -64,6 +71,9 @@ SUBGRAPH_ARCHIVE_FORMAT = "latticebrain.subgraph"
 #: Brain is a network act, and local-first means those are never on by default.
 BRAIN_NETWORK_ENV = "LATTICEAI_BRAIN_NETWORK"
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
+#: How a bundle can be encrypted. ``passphrase`` needs a secret agreed out of
+#: band; ``recipient_public_key`` needs nothing secret to travel at all.
+ENCRYPTION_MODES = ("passphrase", "recipient_public_key")
 #: A received bundle becomes review items, never a merge. The cap keeps one
 #: peer from flooding the inbox; what it dropped is reported, not hidden.
 SUBGRAPH_PROPOSAL_CAP = 200
@@ -82,6 +92,17 @@ BRAIN_NETWORK_DISABLED_DETAIL = (
 )
 
 
+#: The share gate, resolved when it is asked. The environment variable is still
+#: the default answer — an untouched install behaves exactly as it did — but a
+#: settings surface can now bind a resolver and move it without a restart.
+BRAIN_NETWORK_GATE = FeatureGate(
+    BRAIN_NETWORK_ENV,
+    default=False,
+    name="brain_network",
+    detail=BRAIN_NETWORK_DISABLED_DETAIL,
+)
+
+
 class BrainNetworkDisabled(PermissionError):
     """Raised when a share surface is used while the opt-in flag is off."""
 
@@ -91,7 +112,7 @@ class BrainNetworkDisabled(PermissionError):
 
 def brain_network_enabled() -> bool:
     """True only when the operator explicitly opted in (default: off)."""
-    return os.getenv(BRAIN_NETWORK_ENV, "").strip().lower() in _TRUTHY
+    return BRAIN_NETWORK_GATE.enabled()
 
 
 def require_brain_network() -> None:
@@ -365,6 +386,41 @@ class KGPortabilityService:
         # importable locally (origin='unsigned-legacy') — signatures are
         # mandatory only on the Brain Network peer path.
         self._identity = device_identity
+        # The receiving X25519 key is created lazily: a Brain that never asks
+        # anyone to seal anything to it should not be minting key material on
+        # every startup (v11.2.0).
+        self._recipient: Any = None
+        self._recipient_loaded = False
+
+    # ── recipient key (v11.2.0 sealed-box receipt) ───────────────────────────
+    def _recipient_identity(self) -> Any:
+        """This Brain's X25519 receiving key, created on first use.
+
+        ``None`` when the data directory cannot hold one — reported as a state
+        by :meth:`recipient_key`, never raised into a status read.
+        """
+        if not self._recipient_loaded:
+            self._recipient = load_recipient_identity(self._data_dir)
+            self._recipient_loaded = True
+        return self._recipient
+
+    def recipient_key(self) -> Dict[str, Any]:
+        """The public half to hand a sender, so they can seal a bundle to us.
+
+        Publishing this is safe by construction: a public key encrypts, it does
+        not decrypt, and it says nothing about what this Brain contains.
+        """
+        require_brain_network()
+        identity = self._recipient_identity()
+        if identity is None:
+            return {
+                "available": False,
+                "detail": (
+                    "a receiving key could not be created in the data directory; "
+                    "sealed bundles cannot be opened on this machine"
+                ),
+            }
+        return {"available": True, **identity.describe()}
 
     def available(self) -> bool:
         return self._enable and self._kg is not None
@@ -469,11 +525,14 @@ class KGPortabilityService:
             "signing": self._identity is not None,
             "device": self._share_device(),
             "proposal_cap": SUBGRAPH_PROPOSAL_CAP,
-            # Stated rather than implied: the bundle is signed by this device
-            # and encrypted with a shared passphrase. Encrypting *to a
-            # recipient's public key* is not implemented in this release.
-            "encryption": "passphrase",
-            "recipient_public_key_encryption": False,
+            # Stated rather than implied: a bundle is always signed by this
+            # device, and encrypted either with a shared passphrase or — since
+            # 11.2.0 — to the recipient's own public key, so nothing secret has
+            # to travel ahead of it.
+            "encryption": list(ENCRYPTION_MODES),
+            "recipient_public_key_encryption": True,
+            "sealed_box_algorithm": SEALED_BOX_ALGORITHM,
+            "gate": BRAIN_NETWORK_GATE.describe(),
             "detail": None if enabled else BRAIN_NETWORK_DISABLED_DETAIL,
         }
 
@@ -607,17 +666,28 @@ class KGPortabilityService:
         self,
         dest_path=None,
         *,
-        passphrase: str,
+        passphrase: Optional[str] = None,
+        recipient_public_key: Optional[str] = None,
         **selection: Any,
     ) -> Dict[str, Any]:
         """Write the signed subgraph as an encrypted ``.latticebrain`` file.
 
-        Same passphrase mechanism as the whole-Brain archive (PBKDF2-SHA256 →
-        AES-256-GCM), a different ``format`` so the two can never be confused.
-        The header and signature stay outside the ciphertext on purpose: a
-        recipient can see *who* sent a bundle, and how big it is, before typing
-        a passphrase into it.
+        Exactly one recipient mechanism, named explicitly:
+
+        * ``passphrase`` — the 11.1.0 mechanism, identical to the whole-Brain
+          archive (PBKDF2-SHA256 → AES-256-GCM). Simple, and it means a secret
+          has to reach the receiver through some other channel first.
+        * ``recipient_public_key`` — an X25519 sealed box (11.2.0). The
+          receiver publishes a public key; nothing secret travels at all.
+
+        Supplying both is refused rather than silently preferring one: which
+        key opens a bundle is not a detail to guess at. A different ``format``
+        from the whole-Brain archive keeps the two from ever being confused,
+        and the header and signature stay *outside* the ciphertext on purpose —
+        a recipient can see who sent a bundle, and how big it is, before
+        deciding to open it.
         """
+        mode = self._encryption_mode(passphrase, recipient_public_key)
         artifact = self.export_subgraph(**selection)
         self._exports_dir.mkdir(parents=True, exist_ok=True)
         dest = Path(dest_path) if dest_path else self._exports_dir / f"subgraph-{_stamp()}.latticebrain"
@@ -625,36 +695,77 @@ class KGPortabilityService:
             dest = dest.with_suffix(".latticebrain")
         body = {key: value for key, value in artifact.items() if key not in {"header", "signature"}}
         plaintext = json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")
-        salt = os.urandom(16)
-        nonce = os.urandom(12)
-        ciphertext = AESGCM(_derive_key(passphrase, salt)).encrypt(nonce, plaintext, None)
-        envelope = {
+        envelope: Dict[str, Any] = {
             "format": SUBGRAPH_ARCHIVE_FORMAT,
             "format_version": SUBGRAPH_FORMAT_VERSION,
             "created_at": utc_now_iso(),
-            "kdf": {
+            "encryption": mode,
+            "header": artifact["header"],
+            "signature": artifact["signature"],
+        }
+        recipient: Optional[str] = None
+        if mode == "recipient_public_key":
+            sealed = seal(plaintext, recipient_public_key=str(recipient_public_key))
+            recipient = str(sealed["recipient_fingerprint"])
+            envelope["sealed_box"] = sealed
+        else:
+            salt = os.urandom(16)
+            nonce = os.urandom(12)
+            ciphertext = AESGCM(_derive_key(str(passphrase), salt)).encrypt(nonce, plaintext, None)
+            envelope["kdf"] = {
                 "name": "PBKDF2HMAC-SHA256",
                 "iterations": KDF_ITERATIONS,
                 "salt": base64.b64encode(salt).decode("ascii"),
-            },
-            "cipher": {"name": "AES-256-GCM", "nonce": base64.b64encode(nonce).decode("ascii")},
-            "header": artifact["header"],
-            "signature": artifact["signature"],
-            "payload": base64.b64encode(ciphertext).decode("ascii"),
-        }
+            }
+            envelope["cipher"] = {
+                "name": "AES-256-GCM",
+                "nonce": base64.b64encode(nonce).decode("ascii"),
+            }
+            envelope["payload"] = base64.b64encode(ciphertext).decode("ascii")
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(envelope, ensure_ascii=False, indent=2), encoding="utf-8")
         return {
             "path": str(dest),
             "bytes": dest.stat().st_size,
             "encrypted": True,
+            "encryption": mode,
+            "recipient_fingerprint": recipient,
             "format": SUBGRAPH_ARCHIVE_FORMAT,
             "header": artifact["header"],
             "counts": artifact["header"]["counts"],
         }
 
-    def read_subgraph_archive(self, path, *, passphrase: str) -> Dict[str, Any]:
-        """Decrypt an encrypted subgraph bundle back into a signed artifact."""
+    @staticmethod
+    def _encryption_mode(
+        passphrase: Optional[str], recipient_public_key: Optional[str]
+    ) -> str:
+        """``passphrase`` | ``recipient_public_key`` — exactly one, validated."""
+        has_passphrase = bool(str(passphrase or "").strip())
+        wanted_key = str(recipient_public_key or "").strip()
+        if has_passphrase and wanted_key:
+            raise ValueError(
+                "Choose one: a passphrase, or a recipient public key. "
+                "A bundle sealed both ways would hide which key really opens it."
+            )
+        if wanted_key:
+            public_key_fingerprint(wanted_key)  # validates; raises on garbage
+            return "recipient_public_key"
+        if has_passphrase:
+            return "passphrase"
+        raise ValueError(
+            "A subgraph bundle must be encrypted: supply a passphrase or the "
+            "recipient's public key."
+        )
+
+    def read_subgraph_archive(
+        self, path, *, passphrase: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Decrypt an encrypted subgraph bundle back into a signed artifact.
+
+        The envelope says how it was sealed, so the reader never has to guess:
+        a passphrase bundle needs the passphrase, a sealed-box bundle needs
+        this Brain's own receiving key and no passphrase at all.
+        """
         require_brain_network()
         source = Path(path)
         if not source.exists():
@@ -665,6 +776,36 @@ class KGPortabilityService:
             raise ValueError("Subgraph bundle is not valid JSON.") from exc
         if envelope.get("format") != SUBGRAPH_ARCHIVE_FORMAT:
             raise ValueError("Not a .latticebrain subgraph bundle.")
+        if envelope.get("encryption") == "recipient_public_key":
+            plaintext = self._unseal_bundle(envelope)
+        else:
+            plaintext = self._decrypt_with_passphrase(envelope, passphrase)
+        body = json.loads(plaintext.decode("utf-8"))
+        return {
+            "header": envelope.get("header") or {},
+            **body,
+            "signature": envelope.get("signature") or {},
+        }
+
+    def _unseal_bundle(self, envelope: Dict[str, Any]) -> bytes:
+        """Open a sealed box with this Brain's receiving key, or say why not."""
+        identity = self._recipient_identity()
+        if identity is None:
+            raise ValueError(
+                "This bundle is sealed to a public key, but no receiving key "
+                "could be loaded on this machine."
+            )
+        block = envelope.get("sealed_box")
+        if not isinstance(block, dict):
+            raise ValueError("Subgraph bundle is missing encryption metadata.")
+        return bytes(identity.unseal(block))
+
+    @staticmethod
+    def _decrypt_with_passphrase(
+        envelope: Dict[str, Any], passphrase: Optional[str]
+    ) -> bytes:
+        if not str(passphrase or "").strip():
+            raise ValueError("This bundle is passphrase-encrypted; a passphrase is required.")
         try:
             salt = base64.b64decode(envelope["kdf"]["salt"])
             nonce = base64.b64decode(envelope["cipher"]["nonce"])
@@ -672,17 +813,13 @@ class KGPortabilityService:
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("Subgraph bundle is missing encryption metadata.") from exc
         try:
-            plaintext = AESGCM(_derive_key(passphrase, salt)).decrypt(nonce, ciphertext, None)
+            return bytes(
+                AESGCM(_derive_key(str(passphrase), salt)).decrypt(nonce, ciphertext, None)
+            )
         except InvalidTag as exc:
             raise ValueError(
                 "Subgraph decryption failed; the passphrase or the bundle is invalid."
             ) from exc
-        body = json.loads(plaintext.decode("utf-8"))
-        return {
-            "header": envelope.get("header") or {},
-            **body,
-            "signature": envelope.get("signature") or {},
-        }
 
     def verify_subgraph(self, artifact: Dict[str, Any]) -> Dict[str, Any]:
         """Signature + payload-digest verdict for a received bundle.

@@ -114,7 +114,8 @@ class AgentRunContext:
     __slots__ = ("state", "plan", "transcript", "retry_count",
                  "state_history", "corrections", "final_message", "rollback_log",
                  "executing_model", "reviewing_model", "approved_by_human", "trace",
-                 "on_step", "project_context", "permission_mode")
+                 "on_step", "project_context", "permission_mode",
+                 "self_model_summary")
 
     def __init__(self) -> None:
         self.state:           AgentState   = AgentState.IDLE
@@ -143,6 +144,12 @@ class AgentRunContext:
         # per-tool gate in the same run agree; ``None`` falls back to the
         # process-wide resolver on ``deps``.
         self.permission_mode: Optional[str] = None
+        # Self-Model summary resolved once per run (v11.2.0). The executor
+        # prompt is rebuilt on every turn of the loop; reading the profile
+        # once and reusing it keeps a graph query off that hot path — and
+        # keeps every turn of one run describing the same person. ``None``
+        # means "not resolved yet"; ``""`` is a resolved, empty profile.
+        self.self_model_summary: Optional[str] = None
 
 
 @dataclass
@@ -241,6 +248,17 @@ class AgentDeps:
     # arguments at all — see ``call_mode_source``. ``None`` means strict,
     # which is exactly the pre-9.9.8 behaviour.
     permission_mode: Any = None
+
+    # ── Self-Model port (optional, v11.2.0) ──────────────────────────
+    # What the Brain has learned about its owner, injected into the executor
+    # prompt. Either a fixed string or a resolver callable taking
+    # ``user_email``/``workspace_id`` scope kwargs (or none at all). 11.1.0
+    # built ``executor_prompt_for(self_model_summary=…)`` and then had nothing
+    # to pass it, because the runtime held its executor prompt as a fixed
+    # string; this is the port that was missing. ``None`` — and an empty
+    # summary — produce exactly the prompt bytes the loop produced before it
+    # existed.
+    self_model_summary: Any = None
 
 
 class SingleAgentRuntime:
@@ -608,6 +626,41 @@ class SingleAgentRuntime:
 
         ctx.state = AgentState.VERIFYING
 
+    def _self_model_summary(
+        self, ctx: AgentRunContext, current_user: str, request_workspace: Optional[str]
+    ) -> str:
+        """What this Brain knows about its owner, resolved once per run.
+
+        The port may be a plain string or a resolver taking scope kwargs — the
+        same two shapes ``permission_mode`` accepts, so there is one convention
+        for "a value or a way to get one". Anything that goes wrong yields an
+        empty summary: prompt assembly must not fail because a profile could
+        not be read, and an empty summary is byte-identical to having no port
+        at all.
+        """
+        if ctx.self_model_summary is not None:
+            return ctx.self_model_summary
+        source = self.deps.self_model_summary
+        summary = ""
+        if source is not None:
+            try:
+                if callable(source):
+                    try:
+                        summary = source(
+                            user_email=current_user or None,
+                            workspace_id=request_workspace,
+                        )
+                    except TypeError:
+                        # A resolver that takes no scope arguments is allowed.
+                        summary = source()
+                else:
+                    summary = source
+            except Exception:  # noqa: BLE001 — a profile is never worth a failed run
+                logging.debug("agent: self-model summary unavailable", exc_info=True)
+                summary = ""
+        ctx.self_model_summary = str(summary or "").strip()
+        return ctx.self_model_summary
+
     def _executor_context(
         self, ctx: AgentRunContext, req: Any, lang_hint: str,
         current_user: str, request_workspace: Optional[str],
@@ -650,7 +703,7 @@ class SingleAgentRuntime:
             # v11.1.0: the executor prompt carries profile-aware file-writing
             # hints, because "wrote nothing at all" was the weak-model failure
             # mode the loop could not repair after the fact.
-            f"{executor_prompt_for(d.executor_prompt, profile=profile)}\n\n"
+            f"{executor_prompt_for(d.executor_prompt, profile=profile, self_model_summary=self._self_model_summary(ctx, current_user, request_workspace))}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n"
             f"Workspace root: {d.agent_root}{self._project_block(ctx)}\n\n"
             f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}{written_hint}\n\n"

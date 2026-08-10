@@ -21,6 +21,19 @@
     "specific, not less."
   ],
 
+  "11.2.0": {
+    "04-brain-chat-home.png": {
+      "_why": [
+        "The dock rail gained a fourth item (기능) opening the feature-toggle",
+        "drawer. The rail change itself is small; the LivingBrain animation",
+        "noise threshold (8%) may exceed it, so the screen is claimed with the",
+        "rail region only."
+      ],
+      "region": [0.0, 0.25, 0.12, 0.85],
+      "min_pct": 0.5
+    }
+  },
+
   "11.1.0": {
     "_why": [
       "Feature release with no intentional change to the twelve captured",

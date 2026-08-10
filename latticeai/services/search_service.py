@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from lattice_brain.gates import FeatureGate
 from lattice_brain.graph._kg_fsutil import _parse_iso, _recency_score
+from lattice_brain.graph.image_vectors import DEFAULT_IMAGE_FUSION_WEIGHT
 from lattice_brain.graph.retrieval_policy import resolve_policy
 
 DEFAULT_HYBRID_WEIGHTS = {
@@ -18,6 +20,33 @@ DEFAULT_HYBRID_WEIGHTS = {
     "vector": 0.40,
     "graph": 0.25,
 }
+
+# ── text query → image space (v11.2.0) ───────────────────────────────────────
+# 11.1.0 shipped image late fusion as API-only, because the two vector spaces
+# are not comparable and nothing produced a query vector for the image index.
+# A *shared-space* vision model can produce one, and this is the switch that
+# lets the search API do it automatically. Off by default and resolved when
+# asked, so a settings toggle can move it without a restart; with it off the
+# hybrid response is byte-identical to 11.1.0's.
+TEXT_IMAGE_FUSION_ENV = "LATTICEAI_TEXT_IMAGE_FUSION"
+IMAGE_QUERY_FUSION_GATE = FeatureGate(
+    TEXT_IMAGE_FUSION_ENV,
+    default=False,
+    name="text_image_fusion",
+    detail=(
+        "Typed questions can also be scored against the image index when a "
+        "shared-space vision model is configured."
+    ),
+)
+IMAGE_FUSION_UNAVAILABLE = (
+    "no shared-space vision model is configured, so a typed question cannot be "
+    "scored against image vectors; pictures are still found through their OCR "
+    "text and captions"
+)
+IMAGE_FUSION_DISABLED = (
+    "automatic image fusion is off for this install "
+    f"({TEXT_IMAGE_FUSION_ENV}); the caller may still supply an image vector"
+)
 
 
 def _clean(text: Any, limit: int = 1000) -> str:
@@ -31,6 +60,115 @@ def _result_key(result: Mapping[str, Any]) -> str:
 @dataclass
 class SearchService:
     graph_store: Any
+    #: ``(query_text) -> image-space vector``. Defaults to the port the store
+    #: already carries (``multimodal_ports.text_to_image_embedder``), so no new
+    #: wiring is needed; the field exists so a test — or an install with its
+    #: own encoder — can supply one directly.
+    image_query_embedder: Any = None
+
+    # ── image-space query channel (v11.2.0) ──────────────────────────────
+    def image_query_status(self) -> Dict[str, Any]:
+        """Whether a typed question can reach the image index here, and why not."""
+        port, detail = self._image_query_port()
+        return {
+            "available": port is not None,
+            "gate": IMAGE_QUERY_FUSION_GATE.describe(),
+            "detail": detail,
+        }
+
+    def _image_query_port(self) -> Tuple[Any, Optional[str]]:
+        """The text→image port and, when there is none, the honest reason."""
+        if self.image_query_embedder is not None:
+            return self.image_query_embedder, None
+        ports = getattr(self.graph_store, "multimodal_ports", None)
+        port = getattr(ports, "text_to_image_embedder", None)
+        return (port, None) if port is not None else (None, IMAGE_FUSION_UNAVAILABLE)
+
+    def _image_query_vector(self, query: str) -> Tuple[Optional[List[float]], Optional[str]]:
+        port, detail = self._image_query_port()
+        if port is None:
+            return None, detail
+        try:
+            vector = [float(value) for value in (port(query) or [])]
+        except Exception as exc:  # noqa: BLE001 — a broken encoder never fails a search
+            return None, f"the vision model could not embed the query: {exc}"
+        if not vector:
+            return None, "the vision model returned an empty query vector"
+        return vector, None
+
+    def _image_channel(
+        self, query: str, matches: List[Dict[str, Any]], *, requested: bool, limit: int
+    ) -> Optional[Dict[str, Any]]:
+        """Late-fuse the image index into an already-ranked match list.
+
+        Returns ``None`` when the caller did not ask, which is what keeps the
+        response byte-identical for everyone who did not opt in. When it *was*
+        asked for and could not run, it returns the reason rather than silently
+        producing the same answer as before.
+        """
+        if not requested:
+            return None
+        report: Dict[str, Any] = {
+            "requested": True,
+            "applied": False,
+            "weight": DEFAULT_IMAGE_FUSION_WEIGHT,
+            "candidates": 0,
+            "fused": 0,
+            "detail": None,
+        }
+        if not IMAGE_QUERY_FUSION_GATE.enabled():
+            report["detail"] = IMAGE_FUSION_DISABLED
+            return {"image_fusion": report}
+        vector, detail = self._image_query_vector(query)
+        if vector is None:
+            report["detail"] = detail
+            return {"image_fusion": report}
+        from lattice_brain.graph.image_vectors import image_similarity_search
+
+        try:
+            found = image_similarity_search(
+                self.graph_store, vector, top_k=max(1, int(limit) * 2)
+            )
+        except Exception as exc:  # noqa: BLE001 — the text answer must survive
+            report["detail"] = f"image index unavailable: {exc}"
+            return {"image_fusion": report}
+        report["candidates"] = int(found.get("candidates") or 0)
+        scores = {
+            str(match["node_id"]): float(match["score"])
+            for match in found.get("matches") or []
+        }
+        report["fused"] = self._blend_image_scores(matches, scores)
+        report["applied"] = True
+        report["detail"] = found.get("detail")
+        return {"image_fusion": report}
+
+    @staticmethod
+    def _blend_image_scores(
+        matches: List[Dict[str, Any]],
+        scores: Dict[str, float],
+        *,
+        weight: float = DEFAULT_IMAGE_FUSION_WEIGHT,
+    ) -> int:
+        """The graph layer's blend, over this layer's ``source_scores`` shape.
+
+        Late fusion by construction: the two rankings were produced
+        independently and only the final numbers meet, so neither space is ever
+        asked to interpret the other's.
+        """
+        touched = 0
+        for match in matches:
+            raw = scores.get(_result_key(match))
+            if raw is None:
+                continue
+            touched += 1
+            match.setdefault("source_scores", {})["image"] = round(raw, 6)
+            blended = (1.0 - weight) * float(match.get("score") or 0.0) + weight * raw
+            match["score"] = round(blended, 6)
+        if touched:
+            matches.sort(key=lambda item: float(item.get("score") or 0.0), reverse=True)
+            for rank, match in enumerate(matches, start=1):
+                match["rank"] = rank
+        return touched
 
     def _require_graph(self) -> Any:
         if self.graph_store is None:
@@ -410,6 +548,7 @@ class SearchService:
         weights: Optional[Mapping[str, float]] = None,
         allowed_workspaces=None,
         include_legacy_global: bool = False,
+        image_fusion: bool = False,
     ) -> Dict[str, Any]:
         # Single retrieval policy (review Wave 0.2): when the caller does not
         # pin explicit weights, resolve the query class + per-class channel
@@ -513,7 +652,10 @@ class SearchService:
             }
             if query_class is not None:
                 match["fusion"]["query_class"] = query_class
-        return {
+        multimodal = self._image_channel(
+            query, matches, requested=image_fusion, limit=limit,
+        )
+        report: Dict[str, Any] = {
             "query": query,
             "mode": "hybrid",
             "query_class": query_class,
@@ -529,6 +671,11 @@ class SearchService:
             },
             "matches": matches,
         }
+        # Additive key only when the caller asked, so an untouched response is
+        # the one 11.1.0 returned.
+        if multimodal is not None:
+            report["multimodal"] = multimodal
+        return report
 
     def graph(
         self,

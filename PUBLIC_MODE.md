@@ -19,7 +19,7 @@ Defaults:
 
 - Telegram bridge: off
 - Local MLX-VLM models: on
-- Default model: `mlx-community/gemma-4-12b-it-4bit`
+- Default model: `mlx-community/gemma-4-12B-it-4bit`
 - Port: `4825`
 
 ## Public Mode

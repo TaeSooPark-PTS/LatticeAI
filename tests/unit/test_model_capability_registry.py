@@ -1,4 +1,4 @@
-"""5.2.0 tests for structured model capability registry + verification artifacts."""
+"""Tests for the structured model capability registry + verification artifacts."""
 
 from __future__ import annotations
 
@@ -8,11 +8,14 @@ from pathlib import Path
 import pytest
 
 from latticeai.services.model_capability_registry import (
+    RECOMMENDED,
     ModelCapability,
     VerificationStatus,
     build_engine_model_catalog,
     get_all_capabilities,
     get_capability,
+    get_legacy_capabilities,
+    get_recommended_capabilities,
     get_verified_models,
 )
 from latticeai.services.model_catalog import (
@@ -25,22 +28,25 @@ from latticeai.services.model_catalog import (
 
 
 def test_registry_has_core_models_and_verification():
-    caps = get_all_capabilities()
-    assert len(caps) >= 12
-    ids = {c.id for c in caps}
-    # core current
-    assert "mlx-community/Qwen3-VL-4B-Instruct-4bit" in ids
-    assert "mlx-community/gemma-4-12b-it-4bit" in ids
-    assert "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit" in ids
-    # modern 5.2 additions
-    assert "Qwen/Qwen2.5-VL-7B-Instruct" in ids
-    assert "meta-llama/Llama-3.2-11B-Vision-Instruct" in ids
+    ids = {c.id for c in get_recommended_capabilities()}
+    # one entry per RAM tier, newest generation only
+    assert "mlx-community/LFM2.5-2.6B-4bit" in ids            # ultralight, text
+    assert "mlx-community/gemma-4-e2b-it-4bit" in ids         # ultralight, vision
+    assert "mlx-community/gemma-4-e4b-it-4bit" in ids         # light
+    assert "mlx-community/gemma-4-12B-it-4bit" in ids         # mid — note the capital B
+    assert "mlx-community/Qwen3.5-9B-MLX-4bit" in ids         # mid, vision
+    assert "mlx-community/gpt-oss-20b-MXFP4-Q8" in ids        # general purpose
+    assert "mlx-community/gemma-4-26b-a4b-it-4bit" in ids     # MoE
+    assert "mlx-community/Qwen3.6-35B-A3B-4bit" in ids        # MoE
+    assert "mlx-community/Qwen3.6-27B-4bit" in ids            # large dense
+    assert "mlx-community/gemma-4-31b-it-4bit" in ids         # large
 
     verified = get_verified_models()
-    assert len(verified) >= 12
-    for v in verified[:3]:
+    assert len(verified) == len(ids)
+    for v in verified:
         assert v.get("verification", {}).get("hf_exists") is True
         assert v.get("hf_repo_id")
+        assert v["lifecycle"] == RECOMMENDED
 
 
 def test_legacy_catalog_shape_preserved_and_enriched():
@@ -84,10 +90,17 @@ def test_verification_report_exists_and_valid():
     if not report.exists():
         pytest.skip("verification_report.json not present (run the script first in CI)")
     data = json.loads(report.read_text(encoding="utf-8"))
-    assert "summary" in data
-    assert data["summary"]["hf_present"] >= 12
-    assert data["summary"]["missing_critical_recommended"] == 0
-    assert any(r.get("hf_exists") for r in data.get("results", []))
+    summary = data["summary"]
+    assert summary["total"] == len(get_all_capabilities())
+    assert summary["hf_present"] == summary["total"]
+    assert summary["recommended_failing"] == []
+    # The protocol is the point: metadata only, on the user's machine.
+    assert summary["weights_downloaded"] == 0
+    assert summary["models_loaded"] == 0
+    # The verdict must ship with its own criteria and its own limits.
+    assert data["verdict_criteria"]["supported_mlx_architectures"]
+    assert any("no model was loaded" in line for line in data["limitations"])
+    assert all(r["verdict"] == "loadable_static" for r in data["results"])
 
 
 def test_verified_badge_requires_config_and_tokenizer():
@@ -126,22 +139,25 @@ def test_registry_only_models_do_not_enter_user_facing_catalog():
         for models in ENGINE_MODEL_CATALOG.values()
         for model in models
     }
-    registry_only = get_capability("mistralai/Pixtral-12B-2409")
+    verified_ids = {m["id"] for m in catalog_get_verified()}
 
-    assert registry_only is not None
-    assert registry_only.verification.hf_exists is True
-    assert registry_only.verification.has_config is False
-    assert registry_only.verification.has_tokenizer is False
-    assert "mistralai/Pixtral-12B-2409" not in {m["id"] for m in catalog_get_verified()}
-    assert not any("pixtral" in model_id or "mistral" in model_id for model_id in all_catalog_ids)
+    for cap in get_legacy_capabilities():
+        # Known well enough to name — the Hub check passed for all of them …
+        assert get_capability(cap.id) is cap
+        assert cap.verification.hf_exists is True
+        # … and still absent from everything a user can click.
+        assert cap.id not in verified_ids
+        assert cap.id.lower() not in all_catalog_ids
 
 
 def test_get_capability_and_build_catalog_roundtrip():
-    cap = get_capability("mlx-community/gemma-4-12b-it-4bit")
+    cap = get_capability("mlx-community/gemma-4-12B-it-4bit")
     assert cap is not None
     assert cap.family == "Gemma 4"
+    assert cap.architecture == "gemma4_unified"
     assert cap.verification.hf_exists is True
 
     catalog = build_engine_model_catalog()
     assert "local_mlx" in catalog
-    assert any(m["id"] == "mlx-community/gemma-4-12b-it-4bit" for m in catalog["local_mlx"])
+    assert any(m["id"] == "mlx-community/gemma-4-12B-it-4bit" for m in catalog["local_mlx"])
+    assert all(m["lifecycle"] == RECOMMENDED for m in catalog["local_mlx"])

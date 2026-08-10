@@ -112,7 +112,7 @@ export class ModelPicker {
     if (pick.modelId === "__custom__") {
       return vscode.window.showInputBox({
         prompt: "Enter HuggingFace model ID",
-        placeHolder: "e.g. mlx-community/gemma-4-12b-it-4bit",
+        placeHolder: "e.g. mlx-community/gemma-4-12B-it-4bit",
         validateInput: (v) => (v.includes("/") ? null : "Format: org/model-name"),
       });
     }

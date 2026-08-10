@@ -67,6 +67,44 @@ export type PermissionModeState = {
   catalog: PermissionModeOption[];
 };
 
+/** One option of a `choice` feature, as described by `/api/features`. */
+export type FeatureChoice = {
+  id: string;
+  label: string;
+  /** False when the option's optional dependency is not installed here. */
+  available: boolean;
+  /** Why it is unavailable — already localized, already actionable. */
+  detail: string | null;
+};
+
+/**
+ * One row of the feature switchboard.
+ *
+ * Everything renderable is server-supplied (10.1.1): the panel never holds a
+ * feature list, a label, or a default of its own, so a feature added to
+ * `latticeai/services/feature_toggles.CATALOG` appears here with no client
+ * change at all. `source` is the honest part — `env` means an environment
+ * variable is answering and nobody has touched the switch.
+ */
+export type FeatureToggle = {
+  id: string;
+  kind: "toggle" | "choice" | string;
+  label: string;
+  summary: string;
+  default: boolean | string;
+  current: boolean | string;
+  source: "default" | "env" | "user" | string;
+  env_var: string;
+  live: boolean;
+  restart_required: boolean;
+  caution: string | null;
+  /** Set when this switch only matters while another one is on. */
+  parent: string | null;
+  choices: FeatureChoice[];
+};
+
+export type FeatureCatalog = { features: FeatureToggle[]; note: string };
+
 /** One selectable network boundary, as described by `/api/network-boundary`. */
 export type NetworkBoundaryOption = {
   id: string;
@@ -703,6 +741,16 @@ export const latticeApi = {
       "/api/network-boundary/node-sensitivity",
       { node_id: nodeId, local_only: localOnly, reason },
       { ok: false, node_id: nodeId, local_only: localOnly },
+    ),
+  // The opt-in switchboard (v11.2.0). The empty fallback matters: a failed read
+  // must render "nothing to show" rather than a panel of switches that look off
+  // — a person would flip one and it would already have been on.
+  features: () => get<FeatureCatalog>("/api/features", { features: [], note: "" }),
+  setFeature: (featureId: string, value: boolean | string) =>
+    post<FeatureToggle>(
+      `/api/features/${encodeURIComponent(featureId)}`,
+      { value },
+      {} as FeatureToggle,
     ),
   setHybridPolicy: (patch: Partial<HybridPolicy>) =>
     post<HybridPolicy>("/api/network-boundary/policy", patch, {} as HybridPolicy),

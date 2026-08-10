@@ -11,13 +11,21 @@ exactly like "search is a bit worse today":
 
 Both resolve to the exact brute-force scan and carry a ``detail`` string
 naming the cause, which ``index_status()`` and the search result surface.
+
+The backend is a *choice*, not a switch, so it cannot ride a
+:class:`~lattice_brain.gates.FeatureGate` (which answers booleans). It gets the
+same shape of seam instead: :func:`bind_vector_index_resolver` installs a
+caller-supplied resolver that is consulted ahead of the environment, which is
+what lets the settings panel change the backend without a restart. With nothing
+bound — the default — the environment variable is still the whole control
+surface, exactly as before.
 """
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from .base import Similarity, VectorIndex
 from .brute_force import BRUTE_FORCE_BACKEND, BruteForceIndex
@@ -36,6 +44,23 @@ _BACKEND_LABELS = {
 }
 _APPROX = {"brute": False, "quantized": True, "hnsw": True}
 _EXHAUSTIVE = {"brute": True, "quantized": True, "hnsw": False}
+
+#: App-layer resolver, consulted before the environment. ``None`` (the default)
+#: leaves this module reading exactly the env var it always read.
+_RESOLVER: Optional[Callable[[], Optional[str]]] = None
+
+
+def bind_vector_index_resolver(
+    resolver: Optional[Callable[[], Optional[str]]],
+) -> None:
+    """Delegate backend selection to a callable (``None`` hands it back to env).
+
+    A resolver that returns ``None`` also falls through to the environment, so
+    "the settings service has no opinion" and "there is no settings service"
+    reach the same answer instead of two.
+    """
+    global _RESOLVER
+    _RESOLVER = resolver
 
 
 @dataclass(frozen=True)
@@ -79,7 +104,11 @@ def _selection(name: str, *, requested: str, detail: Optional[str]) -> BackendSe
 
 def resolve_vector_index(requested: Optional[str] = None) -> BackendSelection:
     """Resolve the configured backend (never raises, always falls back safe)."""
-    raw = requested if requested is not None else os.getenv(VECTOR_INDEX_ENV, "")
+    raw = requested
+    if raw is None and _RESOLVER is not None:
+        raw = _RESOLVER()
+    if raw is None:
+        raw = os.getenv(VECTOR_INDEX_ENV, "")
     name = str(raw or "").strip().lower() or DEFAULT_VECTOR_INDEX
     if name not in VECTOR_INDEX_CHOICES:
         return _selection(
@@ -126,6 +155,7 @@ __all__ = [
     "VECTOR_INDEX_CHOICES",
     "VECTOR_INDEX_ENV",
     "BackendSelection",
+    "bind_vector_index_resolver",
     "build_index",
     "resolve_vector_index",
 ]

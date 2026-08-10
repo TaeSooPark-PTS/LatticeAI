@@ -132,14 +132,25 @@ export function evaluateAnalysis(input: {
   return { status: "ready", recommendations: supported, reason: null, failedEndpoints };
 }
 
+/**
+ * The model to offer when the probes told us nothing about this machine.
+ *
+ * It is deliberately the *smallest* current entry rather than the best one: we
+ * know nothing about the RAM here, and a model that runs everywhere is a better
+ * guess than one that runs well on the machines it fits. Gemma 4 E2B still
+ * reads pictures, so the fallback is not a downgrade in kind.
+ *
+ * (Through 11.1.x this named Qwen3-VL 8B, which 11.2.0 retired from the
+ * catalog — the fallback was offering a model the picker no longer lists.)
+ */
 export function fallbackModel(): RecommendedModel {
   return {
-    id: "mlx-community/Qwen3-VL-8B-Instruct-4bit",
-    loadId: "mlx-community/Qwen3-VL-8B-Instruct-4bit",
+    id: "mlx-community/gemma-4-e2b-it-4bit",
+    loadId: "mlx-community/gemma-4-e2b-it-4bit",
     engine: "local_mlx",
-    name: "Qwen3-VL 8B",
-    shortName: "Qwen 3",
-    family: "Qwen 3",
+    name: "Gemma 4 E2B",
+    shortName: "Gemma 4",
+    family: "Gemma 4",
     size: "",
     role: "best",
     reason: "best",
@@ -150,7 +161,7 @@ export function fallbackModel(): RecommendedModel {
     externalHost: "",
     estimatedDownloadMinutes: 0,
     estimatedFirstResponseSeconds: 5,
-    parameterBillions: 8,
+    parameterBillions: 2,
   };
 }
 

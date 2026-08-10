@@ -430,15 +430,15 @@ def test_install_stream_loads_a_model_through_the_router():
         [
             {
                 "id": "model_demo",
-                "name": "Qwen3-VL 4B",
-                "action": {"type": "load_model", "model_id": "mlx-community/Qwen3-VL-4B-Instruct-4bit"},
+                "name": "Gemma 4 E2B",
+                "action": {"type": "load_model", "model_id": "mlx-community/gemma-4-e2b-it-4bit"},
             }
         ],
         router=_Router(),
     )
 
     assert _statuses(events) == ["starting", "running", "done", "complete"]
-    assert loaded == ["mlx-community/Qwen3-VL-4B-Instruct-4bit"]
+    assert loaded == ["mlx-community/gemma-4-e2b-it-4bit"]
 
 
 def test_install_stream_reports_a_model_load_failure():
@@ -447,7 +447,7 @@ def test_install_stream_reports_a_model_load_failure():
             raise RuntimeError("out of memory")
 
     events = _events(
-        [{"id": "model_demo", "name": "Qwen3-VL 4B", "action": {"type": "load_model", "model_id": "demo"}}],
+        [{"id": "model_demo", "name": "Gemma 4 E2B", "action": {"type": "load_model", "model_id": "demo"}}],
         router=_Router(),
     )
 

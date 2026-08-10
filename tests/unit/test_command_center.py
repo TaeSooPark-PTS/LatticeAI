@@ -63,8 +63,14 @@ class FakeBrain:
         self.grade = grade
 
     def health_report(self, **kwargs):
+        # The same shape BrainIntelligenceService.health_report() returns:
+        # score and grade at the top level. An earlier fake nested them under
+        # "overall", which no producer writes — the briefing read that nested
+        # block, so the health stat was dead in production while this test
+        # stayed green.
         return {
-            "overall": {"score": self.score, "grade": self.grade},
+            "overall_score": self.score,
+            "grade": self.grade,
             "recommended_actions": ["review_orphans"],
         }
 

@@ -550,12 +550,17 @@ def test_audio_quality_follows_whether_there_are_words_at_all():
 
 
 # ── the port bundle ──────────────────────────────────────────────────────────
-def test_the_port_bundle_describes_exactly_what_is_wired():
+def test_the_port_bundle_describes_exactly_what_is_wired(monkeypatch):
+    # ffmpeg's presence is a property of the machine, not of the bundle, so it
+    # is pinned here rather than left to whatever the test host happens to have.
+    monkeypatch.setattr("lattice_brain.multimodal._which_ffmpeg", lambda: None)
     empty = MultimodalPorts().describe()
     full = MultimodalPorts(
         captioner=lambda _p: "x",
         vision_embedder=lambda _p: [1.0],
         transcriber=lambda _p: "x",
+        keyframe_extractor=lambda *_a: ["frame.jpg"],
+        text_to_image_embedder=lambda _q: [1.0],
         vision_model_id="clip:512",
         vision_space="shared",
     ).describe()
@@ -564,8 +569,11 @@ def test_the_port_bundle_describes_exactly_what_is_wired():
         "caption": False,
         "vision_embedding": False,
         "transcription": False,
+        "keyframes": False,
+        "text_to_image_query": False,
         "vision_model_id": "",
         "vision_space": MODALITY_IMAGE,
     }
     assert full["caption"] and full["vision_embedding"] and full["transcription"]
+    assert full["keyframes"] and full["text_to_image_query"]
     assert full["vision_space"] == "shared"

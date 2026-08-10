@@ -52,6 +52,21 @@ def _parse_ts(value: Any) -> Optional[datetime]:
     return parsed
 
 
+def _no_graph_reason(graph_available: bool) -> str:
+    """Why a graph-derived health dimension has nothing to say.
+
+    Two different situations that both end in ``status: "unavailable"``: the
+    graph could not be read at all, and the graph read fine but holds nothing
+    yet. Telling them apart is the difference between "something is broken"
+    and "you have not saved anything yet".
+    """
+    return (
+        "no knowledge saved yet"
+        if graph_available
+        else "the knowledge graph could not be read"
+    )
+
+
 class BrainIntelligenceService:
     def __init__(
         self,
@@ -395,7 +410,11 @@ class BrainIntelligenceService:
                 "stale_threshold_days": _STALE_DAYS,
             }
         else:
-            dimensions["freshness"] = {"status": "unavailable", "score": None}
+            dimensions["freshness"] = {
+                "status": "unavailable",
+                "score": None,
+                "reason": _no_graph_reason(sample["available"]),
+            }
 
         # Connectivity — orphan nodes are knowledge the Brain cannot reason
         # across; a well-tended graph keeps them rare.
@@ -414,7 +433,11 @@ class BrainIntelligenceService:
                 "edges": len(edges),
             }
         else:
-            dimensions["connectivity"] = {"status": "unavailable", "score": None}
+            dimensions["connectivity"] = {
+                "status": "unavailable",
+                "score": None,
+                "reason": _no_graph_reason(sample["available"]),
+            }
 
         # Embedding coverage — semantic recall only works for indexed items.
         index_status: Dict[str, Any] = {}
@@ -425,7 +448,23 @@ class BrainIntelligenceService:
                 LOGGER.exception("brain intelligence index status failed")
                 index_status = {"error": str(exc)}
         scale = index_status.get("scale") or {}
-        if "coverage_ratio" in scale:
+        indexable = scale.get("source_items", index_status.get("source_items"))
+        if "coverage_ratio" not in scale:
+            dimensions["embedding_coverage"] = {
+                "status": "unavailable",
+                "score": None,
+                "reason": "this knowledge store does not report vector index coverage",
+            }
+        elif indexable == 0:
+            # An empty index covers 100% of nothing. Scoring that as a perfect
+            # 100 is how a brand-new Brain used to grade itself "excellent"
+            # off its only measurable dimension (audit v11.2.0, Finding 3).
+            dimensions["embedding_coverage"] = {
+                "status": "unavailable",
+                "score": None,
+                "reason": "no indexable items yet",
+            }
+        else:
             dimensions["embedding_coverage"] = {
                 "status": "ok",
                 "score": round(float(scale["coverage_ratio"]) * 100),
@@ -433,8 +472,6 @@ class BrainIntelligenceService:
                 "pending_items": scale.get("pending_items"),
                 "needs_reindex": index_status.get("status") == "needs_reindex",
             }
-        else:
-            dimensions["embedding_coverage"] = {"status": "unavailable", "score": None}
 
         # Edge quality + contradiction pressure — reuses the quality layer.
         if sample["available"] and edges:
@@ -450,7 +487,15 @@ class BrainIntelligenceService:
                 "contradiction_edges": len(contradiction_edges),
             }
         else:
-            dimensions["consistency"] = {"status": "unavailable", "score": None}
+            dimensions["consistency"] = {
+                "status": "unavailable",
+                "score": None,
+                "reason": (
+                    _no_graph_reason(sample["available"])
+                    if not (sample["available"] and nodes)
+                    else "no relationships recorded yet"
+                ),
+            }
 
         scores = [d["score"] for d in dimensions.values() if d.get("score") is not None]
         overall = round(sum(scores) / len(scores)) if scores else None
@@ -461,6 +506,29 @@ class BrainIntelligenceService:
             else "attention" if overall >= 50
             else "critical"
         )
+        # What the verdict rests on. A composite averages only what could be
+        # measured, so the count of measured dimensions is part of the answer
+        # rather than a footnote — and when nothing could be measured the
+        # report says so instead of leaving a bare null (the 9.9.7 rule: a
+        # "—" always states why).
+        unmeasured = sorted(
+            name for name, dim in dimensions.items() if dim.get("score") is None
+        )
+        coverage: Dict[str, Any] = {
+            "measured": len(scores),
+            "total": len(dimensions),
+            "unavailable": unmeasured,
+            "partial": bool(unmeasured),
+        }
+        reason: Optional[str] = None
+        if overall is None:
+            reason = (
+                "no health dimension could be measured yet — "
+                + "; ".join(
+                    f"{name}: {dimensions[name].get('reason') or 'unavailable'}"
+                    for name in unmeasured
+                )
+            )
 
         actions: List[Dict[str, str]] = []
         emb = dimensions["embedding_coverage"]
@@ -490,14 +558,18 @@ class BrainIntelligenceService:
                 "reason": f"{cons_dim['contradiction_edges']} contradiction edges recorded in the graph.",
             })
 
-        return {
+        report: Dict[str, Any] = {
             "overall_score": overall,
             "grade": grade,
             "dimensions": dimensions,
+            "coverage": coverage,
             "recommended_actions": actions,
             "graph_available": sample["available"],
             "generated_at": _now(),
         }
+        if reason is not None:
+            report["reason"] = reason
+        return report
 
     # ── vector freshness (v9.8.0) ────────────────────────────────────────
 
@@ -511,7 +583,51 @@ class BrainIntelligenceService:
         raises. The vector index is store-global (not workspace-partitioned);
         scope arguments are accepted for router symmetry but do not narrow
         the report.
+
+        Since v11.2.0 a store that can split its backlog also gets a
+        ``breakdown`` key (see :meth:`_freshness_breakdown`). It is additive:
+        the four keys above keep their meaning and their types, so the
+        freshness chip that reads ``pending_items`` is untouched, and a store
+        without the split simply has no ``breakdown``.
         """
+        payload = self._vector_freshness_contract()
+        breakdown = self._freshness_breakdown()
+        if breakdown is not None:
+            payload["breakdown"] = breakdown
+        return payload
+
+    def _freshness_breakdown(self) -> Optional[Dict[str, Any]]:
+        """``vector_freshness_breakdown()`` from the store, or ``None``.
+
+        "12 pending" hides two different situations — twelve items never
+        embedded (a new import) and twelve whose text changed under an
+        existing embedding (edits, where current answers are quietly wrong).
+        The store has always known the difference; until now nothing asked it.
+
+        ``None`` covers every reason the split is not available (graph off,
+        an older store, an unreadable index), because a caller can only act on
+        numbers that were really measured — never on zeros standing in for
+        them.
+        """
+        if not self._enable_graph or self._kg is None:
+            return None
+        breakdown_fn = getattr(self._kg, "vector_freshness_breakdown", None)
+        if not callable(breakdown_fn):
+            return None
+        try:
+            raw = breakdown_fn()
+        except Exception:
+            LOGGER.exception("vector freshness breakdown read failed")
+            return None
+        # An empty or unrecognisable answer is "not measured", which is what
+        # ``None`` already means here — publishing an empty block would claim
+        # a split nobody computed.
+        if not isinstance(raw, dict) or not raw:
+            return None
+        return dict(raw)
+
+    def _vector_freshness_contract(self) -> Dict[str, Any]:
+        """The four-key freshness payload, unchanged since v9.8.0."""
 
         def _unavailable(detail: str) -> Dict[str, Any]:
             return {

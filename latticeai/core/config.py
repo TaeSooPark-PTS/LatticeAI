@@ -172,7 +172,10 @@ class Config:
         trusted_proxies = [item.strip() for item in _value(env, "LATTICEAI_TRUSTED_PROXIES", "").split(",") if item.strip()]
 
         public_model = _value(env, "LATTICEAI_PUBLIC_MODEL", _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
-        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12b-it-4bit")
+        # Canonical HF casing (the Hub answers `gemma-4-12b-it-4bit` with
+        # `gemma-4-12B-it-4bit`); keeping it identical everywhere means the
+        # download path, the on-disk cache dir and the catalog key all agree.
+        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12B-it-4bit")
 
         data_dir = Path(_value(env, "LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
         static_dir = Path(_value(env, "LATTICEAI_STATIC_DIR", str(base_dir / "static")))

@@ -120,10 +120,13 @@ test("the Brain home is one screen: Brain, composer, add material, quiet setting
   await expect(toolbar.getByTestId("brain-ingestion-dock")).toHaveCount(0);
   await expect(stage.locator("> .brain-home-station")).toHaveCount(1);
 
-  // The dock rail is on the canvas edge with its three drawers closed.
-  for (const dockButton of ["brain-dock-conversations", "brain-dock-stats", "brain-dock-map"]) {
+  // The dock rail is on the canvas edge with its four drawers closed. 11.2.0
+  // added 기능 (the opt-in switchboard) as a fourth rail item and *not* as a
+  // card: the canvas keeps exactly the station and the deck.
+  for (const dockButton of ["brain-dock-conversations", "brain-dock-stats", "brain-dock-map", "brain-dock-features"]) {
     await expect(page.getByTestId(dockButton)).toBeVisible();
   }
+  await expect(page.locator(".brain-home-dock-rail > button")).toHaveCount(4);
   await expect(page.getByTestId("brain-home-drawer")).toHaveCount(0);
   // 10.6.2: the suggestions left the station for a deck of their own below it,
   // so the station is the first move and nothing else.
@@ -892,6 +895,93 @@ test("past conversations resume with markdown rendering and delete inline", asyn
 });
 
 // The network boundary contracts shipped in 10.1.0 with no way to reach them
+// 11.2.0: every opt-in feature used to be an environment variable and a
+// restart. The switchboard is the reachable half — a dock drawer, not a card,
+// because the home canvas is a one-viewport contract. What this asserts is the
+// part a screenshot cannot: that the panel renders *the server's* catalog,
+// including the honesty that catalog carries (where a value came from, which
+// option is not installed here, which switch sends knowledge off the machine).
+test("the 기능 drawer turns opt-in features on without leaving home", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+
+  await page.getByTestId("brain-dock-features").click();
+  const drawer = page.getByTestId("brain-home-drawer");
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toHaveAttribute("aria-modal", "true");
+  const panel = page.locator("section.brain-features-panel");
+  await expect(panel).toBeVisible();
+
+  // Rendered from /api/features: labels, order, and kinds are all the server's.
+  await expect(page.getByTestId("feature-row-allow_multimodal")).toContainText("사진·녹음도 기억하기");
+  await expect(page.locator(".brain-feature-row")).toHaveCount(9);
+  const multimodal = page.getByTestId("feature-switch-allow_multimodal");
+  await expect(multimodal).toHaveAttribute("role", "switch");
+  await expect(multimodal).toHaveAttribute("aria-checked", "true");
+
+  // The three honesty affordances, each on the row it belongs to.
+  await expect(page.getByTestId("feature-row-vault_watch")).toContainText("설정으로 켜짐");
+  await expect(page.getByTestId("feature-row-brain_network")).toContainText("이 컴퓨터 밖으로");
+  await expect(page.getByTestId("feature-row-video_ingest")).toHaveClass(/is-child/);
+  const hnsw = page.getByTestId("feature-choice-vector_backend-hnsw");
+  await expect(hnsw).toBeDisabled();
+  await expect(hnsw).toContainText("설치 필요");
+
+  // Jade marks state and nothing else: only the switches that are on carry it.
+  const litTracks = await page.evaluate(() => Array.from(
+    document.querySelectorAll(".brain-feature-switch"),
+  ).map((node) => ({
+    on: node.getAttribute("aria-checked") === "true",
+    background: getComputedStyle(node.querySelector(".brain-feature-switch-track")).backgroundColor,
+  })));
+  const onColours = new Set(litTracks.filter((row) => row.on).map((row) => row.background));
+  const offColours = new Set(litTracks.filter((row) => !row.on).map((row) => row.background));
+  expect(onColours.size).toBe(1);
+  expect([...onColours].some((colour) => offColours.has(colour))).toBe(false);
+
+  // A switch moves under the finger and the panel says so out loud.
+  await page.getByTestId("feature-switch-brain_network").click();
+  await expect(page.getByTestId("feature-switch-brain_network")).toHaveAttribute("aria-checked", "true");
+  await expect(panel.locator(".brain-features-notice")).toHaveText("바뀌었습니다.");
+
+  // Focus-trapped modal: Escape returns to the home it never left.
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("brain-home-drawer")).toHaveCount(0);
+  await expect(page.getByTestId("brain-home-station")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("the 기능 drawer stays usable on a phone", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await openBrain(page, { mode: "basic" });
+
+  await page.getByTestId("brain-dock-features").click();
+  await expect(page.getByTestId("brain-home-drawer")).toBeVisible();
+  await expect(page.getByTestId("feature-switch-allow_multimodal")).toBeVisible();
+
+  // No sideways scroll anywhere, and the switch is a real touch target rather
+  // than a decoration squeezed off the edge by the sentence next to it.
+  const overflow = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    drawer: (() => {
+      const body = document.querySelector(".brain-home-drawer-body");
+      return body.scrollWidth - body.clientWidth;
+    })(),
+  }));
+  expect(overflow.page).toBeLessThanOrEqual(1);
+  expect(overflow.drawer).toBeLessThanOrEqual(1);
+
+  const box = await page.getByTestId("feature-switch-allow_multimodal").boundingBox();
+  expect(box.width).toBeGreaterThan(44);
+  expect(box.height).toBeGreaterThanOrEqual(24);
+  // The choice pills wrap under their sentence instead of crushing it.
+  const pills = await page.getByTestId("feature-choices-vector_backend").boundingBox();
+  const row = await page.getByTestId("feature-row-vector_backend").boundingBox();
+  expect(pills.x + pills.width).toBeLessThanOrEqual(row.x + row.width + 1);
+  expect(errors).toEqual([]);
+});
+
 // from the app — the dial existed only for whoever called the API by hand.
 // This asserts the control is actually on the settings screen and that it
 // refuses to send a cloud switch the server would reject.

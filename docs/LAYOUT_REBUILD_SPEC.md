@@ -5,6 +5,13 @@
 이 문서의 모든 파일 경로와 줄 번호는 실제로 열어서 확인한 것이다.
 추측한 경로는 한 줄도 없다.
 
+> **증거 기준선 안내 (v11.2.0 기준).** 이 설계서가 인용하는
+> `output/release/v10.6.3/screenshots/` 는 **더 이상 리포에 없다** — 릴리스 증거는
+> v11.0.0 부터만 보관한다(`output/release/v11.0.0` · `v11.0.1` · `v11.1.0`).
+> 따라서 아래의 "이전 캡처와 해시 대조" 절차는 그대로는 재현할 수 없다.
+> 문서는 당시 측정값을 기록한 사료로 남기고, 지금 다시 채점한다면 기준선은
+> **가장 최근 릴리스의 `output/release/<버전>/screenshots/`** 로 바꿔서 읽는다.
+
 ---
 
 ## 0. 이 재구성이 존재하는 이유
@@ -706,7 +713,8 @@ npm run frontend:openapi:check            # OpenAPI drift 게이트
 
 ### 7.1 릴리스 캡처 12개 화면 전부 변경 — **24점** (화면당 2점)
 
-**확인 명령:**
+**확인 명령:** (기준선 경로는 문서 상단 안내대로 최신 릴리스 디렉터리로 바꿔 읽는다 —
+`output/release/v10.6.3/` 는 리포에서 사라졌다.)
 ```
 npm run build:assets
 LTCAI_RELEASE_EVIDENCE_DIR=/tmp/lattice-after npm run release:evidence

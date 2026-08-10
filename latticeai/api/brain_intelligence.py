@@ -85,6 +85,10 @@ def create_brain_intelligence_router(
         Fixed contract consumed by the frontend:
         ``{"status": "ready"|"pending"|"unavailable", "pending_items": int,
         "total_items": int, "detail": str}``.
+
+        Additive since v11.2.0: ``breakdown`` splits the backlog into
+        ``embedded``/``missing``/``stale``/``queued`` when the store can. The
+        four keys above are unchanged, so existing readers see no difference.
         """
         user = require_user(request)
         scope = gate_read(request)

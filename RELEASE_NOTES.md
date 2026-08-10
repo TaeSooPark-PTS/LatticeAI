@@ -1,3 +1,14 @@
+# [v11.2.0 - All Systems On] (2026-08-11)
+
+모델 카탈로그 전수 최신화(HF API 무부하 검증 — 가중치 다운로드 0·실로드 0,
+사라진/게이트/구세대 제거, 추천 10종 전부 2025–2026 세대), 홈 dock "기능"
+서랍의 opt-in 10종 라이브 토글(사용자>env>기본), 스코프 아웃 전면 해소
+(Notion/Git/메일·캘린더 브릿지 · X25519 수신자 암호화 · 비디오 · 볼트 감시
+· 일괄 승인 등), 58행 증거 감사로 죽은 기능·미배선 7건 수정. 플로어 유지:
+6,490 테스트 · 39,054문·11,014분기 100.00%.
+
+See [RELEASE_NOTES_v11.2.0.md](RELEASE_NOTES_v11.2.0.md).
+
 # [v11.1.0 - Product Intelligence] (2026-08-10)
 
 기초 위의 지능 레이어 — 5개 트랙 완성: 플러그형 벡터 인덱스로 하이브리드
@@ -398,7 +409,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.1.0**.
+This repository keeps public release history from **9.0.0 through 11.2.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

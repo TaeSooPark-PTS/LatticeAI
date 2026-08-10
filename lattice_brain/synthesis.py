@@ -35,6 +35,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
+from .gates import FeatureGate
 from .graph.proactive import ProactiveBrain
 from .graph.schema import KGStoreV2
 from .quality import content_signature
@@ -59,6 +60,19 @@ CONTRADICTION_RESOLUTIONS = ("keep_old", "replace", "keep_both_temporal")
 
 SYNTHESIS_THRESHOLD_ENV = "LATTICEAI_SYNTHESIS_THRESHOLD"
 DEFAULT_SYNTHESIS_THRESHOLD = 25
+
+#: Whether the Brain is allowed to start a pass *by itself*. Default on — this
+#: is the behaviour 11.1.0 shipped — and it governs only the automatic path
+#: (:meth:`BrainSynthesizer.run_if_due`). An explicit run a person asked for is
+#: never gated: turning "tidy up on its own" off means the Brain stops deciding
+#: when, not that the button stops working.
+SYNTHESIS_ENV = "LATTICEAI_SYNTHESIS"
+SYNTHESIS_GATE = FeatureGate(
+    SYNTHESIS_ENV,
+    default=True,
+    name="synthesis",
+    detail="The Brain reviews accumulated material on its own and proposes tidy-ups.",
+)
 
 _MIN_SHARED_TOKENS = 3
 _MIN_CLUSTER_MEMBERS = 3
@@ -516,7 +530,14 @@ class BrainSynthesizer:
         self, result: Any, *, workspace_id: Optional[str] = None,
         user_email: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Run synthesis only when this ingest pushed the counter over."""
+        """Run synthesis only when this ingest pushed the counter over.
+
+        The gate is checked *before* the counter moves, so "off" means off: a
+        long import while the switch is down does not bank a pass that fires the
+        instant someone turns it back on.
+        """
+        if not SYNTHESIS_GATE.enabled():
+            return None
         if not self.observe_ingest(result):
             return None
         return self.run(workspace_id=workspace_id, user_email=user_email)
@@ -792,6 +813,8 @@ __all__ = [
     "ContradictionResolutionError",
     "EDGE_KIND",
     "ProposalDesk",
+    "SYNTHESIS_ENV",
+    "SYNTHESIS_GATE",
     "SYNTHESIS_REVIEW_SOURCE",
     "SYNTHESIS_THRESHOLD_ENV",
     "SynthesisTrigger",

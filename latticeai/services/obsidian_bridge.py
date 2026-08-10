@@ -35,7 +35,6 @@ be a lie in the summary.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 from dataclasses import dataclass, field
@@ -48,6 +47,7 @@ from urllib.parse import unquote
 # store-extracted topic the same node instead of two nodes with one label.
 from lattice_brain.graph.ingest import _scoped_slug_id
 from lattice_brain.ingestion import IngestionItem
+from latticeai.services.interop_bridges import edge_row, topic_row
 
 SOURCE_TYPE = "obsidian"
 NOTE_EXTENSIONS = frozenset({".md", ".markdown"})
@@ -567,15 +567,9 @@ class ObsidianVaultBridge:
             "index": outcome.get("index"),
         }
 
-    @staticmethod
-    def _edge_row(from_id: str, to_id: str, relation: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            "from_node": from_id,
-            "to_node": to_id,
-            "type": relation,
-            "weight": 1.0,
-            "metadata_json": json.dumps(metadata, ensure_ascii=False),
-        }
+    # Row shapes are shared with every other bridge (v11.2.0): two copies of
+    # "what an edge row looks like" is two places to forget an encoding.
+    _edge_row = staticmethod(edge_row)
 
     @staticmethod
     def _topic_row(
@@ -586,21 +580,18 @@ class ObsidianVaultBridge:
         owner: Optional[str],
         workspace_id: Optional[str],
     ) -> Dict[str, Any]:
-        metadata = {
-            "topic": tag,
-            "source": SOURCE_TYPE,
-            "vault": vault,
-            "owner": owner,
-            "workspace_id": workspace_id,
-        }
-        return {
-            "id": topic_id,
-            "type": TOPIC_NODE_TYPE,
-            "title": tag,
-            "summary": f"Obsidian tag #{tag}",
-            "metadata_json": json.dumps(metadata, ensure_ascii=False),
-            "raw_json": "{}",
-        }
+        return topic_row(
+            topic_id,
+            tag,
+            summary=f"Obsidian tag #{tag}",
+            metadata={
+                "topic": tag,
+                "source": SOURCE_TYPE,
+                "vault": vault,
+                "owner": owner,
+                "workspace_id": workspace_id,
+            },
+        )
 
 
 __all__ = [

@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.1.0 — Product Intelligence**.
+Current release: **11.2.0 — All Systems On**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -94,7 +94,8 @@ Key boundaries:
   chunk: `i18n/registry.ts` holds one shared table, `shell` registers eagerly
   (app frame, language switcher, generic `ui.*`), and `brain` / `workspace` /
   `onboarding` register themselves when the lazy chunk that needs them is
-  imported. That keeps the first-paint closure near 99 KiB gzip instead of
+  imported. That keeps the first-paint closure at 103 KiB gzip — measured by
+  `scripts/check_bundle_budget.mjs` against a 150 KiB budget — instead of
   carrying ~3,000 lines of copy for routes the user has not opened.
   `scripts/check_i18n_namespace_coverage.mjs` fails the build when a chunk
   reads a key whose namespace it never imports — otherwise `t()` silently
@@ -332,7 +333,11 @@ The Honest Knowledge Pipeline hardens retrieval and ingestion:
   `vector_freshness_breakdown()` splits that backlog into
   embedded / missing / stale / queued, because "12 pending" hides the
   difference between twelve never-embedded imports and twelve edits whose
-  current answers are quietly wrong.
+  current answers are quietly wrong. `BrainIntelligenceService.vector_freshness`
+  attaches that split to `GET /api/brain/vector-freshness` as an additive
+  `breakdown` key — omitted entirely when the store cannot compute it, so a
+  reader never mistakes an unmeasured split for a measured zero, and the four
+  keys the freshness chip pins are untouched.
 - `ingestion.py` supports folder ingestion (`ingest_folder`) with
   `.latticeignore` filtering and resumable background jobs
   (`/api/ingestion/jobs`), plus per-source `extraction_quality` scoring and an
@@ -404,6 +409,11 @@ Pictures and recordings are ordinary graph citizens behind one flag:
 `"text"` for everything and no routing decision is reached — the folder-scan
 allow-list, node ids, and node types are what they were before this release.
 
+Since 11.2.0 that flag is read through a :class:`lattice_brain.gates.FeatureGate`
+rather than copied into `self` at construction, so a settings surface can move
+it at runtime; the environment variable is still the answer for an untouched
+install, and a constructor `True` is still a permanent yes.
+
 With it on, `lattice_brain/multimodal.py` decides the modality (declared MIME
 first, this module's extension tables second, `mimetypes` last) and the
 pipeline routes:
@@ -422,9 +432,20 @@ pipeline routes:
   that says the words were never recognized. `Audio` is listed everywhere
   `Image` is (graph view, context sections, doc-gen sources) so a first-class
   type is not a type that disappeared from the surfaces.
-- **video** → recognized and refused, `status: "unavailable"` with
-  `VIDEO_OUT_OF_SCOPE` as the reason. Keyframe extraction is not implemented
-  in this release.
+- **video** (11.2.0) → a `Video` node (`NodeType.VIDEO`, additive) plus, for
+  each extracted keyframe, an ordinary `Image` node joined by `CONTAINS_IMAGE`.
+  The stills go through the **existing image door** — `extract_image_facts` +
+  `write_image_memory`, so OCR, caption, vector and thumbnail are the ones a
+  photograph already gets — and a companion `.srt`/`.vtt` with the same
+  basename becomes ordinary text chunks. Video adds a node type, not a
+  retrieval path. Extraction needs `ffmpeg` on PATH (`shutil.which`, seamed as
+  `multimodal._which_ffmpeg`) or an injected `MultimodalPorts.
+  keyframe_extractor`; with neither, the ingest still answers
+  `status: "unavailable"` and `IngestionPipeline._video_refusal()` names which
+  of the three reasons applies (multi-modal off, `LATTICEAI_ALLOW_VIDEO` off,
+  no decoder). Frames are written under `blob_dir/video_frames/<hash>/` so a
+  cited still is still there next time, and a backup that copies blobs copies
+  them.
 
 Brain Core ships **no models**. Every model-backed capability arrives as an
 injected callable in `MultimodalPorts`, built by
@@ -456,6 +477,16 @@ and live in the text index — unless a genuinely shared-space model is
 configured (`LATTICEAI_VISION_SPACE=shared`), which is the only case where
 `VisionEmbeddingProvider.embed_batch` will embed a query at all.
 
+11.2.0 turns that last case into a supplied capability rather than an
+API-only one: `multimodal_ports.text_to_image_port` builds a
+`text_to_image_embedder` **only** for a shared-space provider, and
+`SearchService.hybrid_search(image_fusion=True)` uses it to produce the query
+vector itself. It is opt-in twice over — the per-request parameter and the
+`LATTICEAI_TEXT_IMAGE_FUSION` gate — and when either is missing the response
+carries the reason in `multimodal.image_fusion.detail` instead of returning the
+text-only ranking as though fusion had run. `GET /api/search/image-query`
+reports the same verdict before a query is spent.
+
 Retrieval honesty follows the existing present-only-when-true rule:
 `multimodal_signal` adds a `multimodal` key to `context_quality` only when
 `Image`/`ImageText` nodes are actually in the context, so all-text answers keep
@@ -463,7 +494,11 @@ the four-key shape existing consumers pin. It counts pictures, so an `Audio`
 node does not set it — a transcript is retrieved as text and the signal would
 be claiming an image that is not there. Extraction quality for a picture scores
 *what can be retrieved later* (OCR text, caption, vector) rather than the
-photograph.
+photograph. Both shipped producers of `context_quality` pass it:
+`api/chat_helpers.build_context_quality` on the chat path (hybrid *and* lexical
+arms) and `core/context_builder.retrieve_context_for_generation` on the
+document path. A signal only the retrieval layer can raise is a signal the
+product does not have.
 
 The Evidence panel renders the thumbnail stored on the node — a 96px inline
 `data:` URI written at ingest and capped at 24 KB. That is deliberate: serving
@@ -622,18 +657,18 @@ estimates with figures.
 
 ```mermaid
 flowchart LR
-  subgraph py["Python — 37,590 statements · 10,658 branches"]
+  subgraph py["Python — 39,054 statements · 11,014 branches"]
     direction TB
-    pyt["pytest<br/>6,261 tests"]
+    pyt["pytest<br/>6,490 tests"]
     pycov["coverage<br/><b>100.00%</b> lines+branches · floor 100"]
-    pymypy["mypy<br/><b>291 / 291</b> modules"]
+    pymypy["mypy<br/><b>297 / 297</b> modules"]
     pyruff["ruff<br/>16 rule groups"]
     pyt --> pycov
   end
 
   subgraph fe["Frontend"]
     direction TB
-    fet["vitest<br/>1,653 tests"]
+    fet["vitest<br/>1,671 tests"]
     fecov["coverage<br/><b>100%</b> · thresholds gated"]
     fets["tsc --noEmit<br/>strict"]
     fet --> fecov
@@ -746,11 +781,15 @@ Three properties are structural rather than configured:
 The other half of "an agent that finishes the job" is the prompt:
 `core/agent_prompts.executor_prompt_for` appends profile-aware file-writing
 hints to the executor turn (the `compact` profile gets a three-step numbered
-form) and injects a Self-Model summary only when a caller passes one — the
-agent runtime does not, so today that argument is used by document generation
-rather than by a run (FEATURE_STATUS.md records it as a limitation).
-`EXECUTOR_PROMPT` itself is unchanged, so every caller that wants the
-historical prompt still gets it.
+form) and injects a Self-Model summary only when a caller passes one. Since
+11.2.0 the agent runtime is such a caller: `AgentDeps.self_model_summary` takes
+a fixed string or a scoped resolver (the same "value or a way to get one" shape
+`permission_mode` uses), `_executor_context` resolves it **once per run** —
+the prompt is rebuilt on every turn, and one run should describe one person —
+and `build_phases.self_model_port` supplies it from the workspace graph via
+`summary_for_prompt`, which never raises. An empty or unreadable profile
+injects nothing, so `EXECUTOR_PROMPT` and the prompt bytes for a Brain that
+knows nothing about its owner are exactly what they were.
 
 ## Storage And Portability
 
@@ -784,8 +823,37 @@ second sync updates instead of duplicating. Direct edge writes are legitimate
 here because a vault sync is *user-initiated ingestion*; agent-side graph
 changes still go through the review queue.
 
-The bridge is a manual one-shot sync by design (see FEATURE_STATUS.md): link
-edges need node ids that only a completed inline ingest has.
+The bridge stays a *whole-vault* sync by design: link edges need node ids that
+only a completed inline ingest has, so there is no per-note incremental pass.
+11.2.0 adds a **watch** on top of that rather than around it —
+`FolderWatchService` gains `kind="vault"`, keeps its mtime snapshot only to
+decide *whether* anything moved, and then runs the entire bridge sync (which is
+idempotent by content hash). The bridge is injected (`vault_bridge=`) so the
+watcher never learns how a vault is parsed, and the mode is gated by
+`VAULT_WATCH_GATE` (`LATTICEAI_VAULT_WATCH`, default off) — re-checked on every
+scan, so turning it off stops the background work immediately rather than at
+the next restart.
+
+### Interop bridges (11.2.0)
+
+`services/interop_bridges.py` generalizes the vault bridge's skeleton — scan →
+`dry_run`? → ingest → wire structure → report — so that Notion, Git, email and
+calendar enter through the *same* `IngestionPipeline` door and share the same
+row builders (`edge_row` / `topic_row`, which `obsidian_bridge` now calls too).
+`InteropBridge` subclasses own exactly one thing: turning a local path into
+`BridgeItem` values.
+
+| bridge | reads | structure it contributes |
+| --- | --- | --- |
+| `NotionExportBridge` | an export directory or `.zip` (`.md` / `.csv`) | id-suffix stripped from titles (kept in metadata), relative page links → `REFERENCES` |
+| `GitHistoryBridge` | a local repo via `git log` (argv list, never a shell) | one node per commit (idempotent on the hash), changed paths → `Topic` + `TAGGED_AS` |
+| `MailCalendarBridge` | `.eml` (stdlib `email`) and `.ics` (a five-rule VEVENT parser) | event locations → `Topic`; an HTML-only mail is stored and marked unsearchable rather than tag-stripped into fake prose |
+
+None of them calls a vendor API. That boundary is the design, not a gap: an
+API bridge needs a token and a background sync, both of which contradict
+"reads only what it was pointed at". Runtime prerequisites are reported, not
+discovered — `GET /api/ingestion/interop` says whether `git` exists on this
+machine before a caller spends an approval on it.
 
 ### Selective subgraph share (11.1.0, opt-in)
 
@@ -816,11 +884,84 @@ than advisory:
    `LATTICEAI_BRAIN_NETWORK`; while it is unset they answer 403 with the flag
    name, and the status route still answers so a UI can say why.
 
-The encrypted `.latticebrain` bundle reuses the archive's PBKDF2-SHA256 →
-AES-256-GCM mechanism under its own `latticebrain.subgraph` format, keeping the
-signed header outside the ciphertext so a recipient can identify the sender
-before typing a passphrase. Encrypting to a recipient public key is out of
-scope for this release and is reported as such.
+The encrypted `.latticebrain` bundle keeps the signed header outside the
+ciphertext so a recipient can identify the sender before deciding to open it,
+and offers two mechanisms under its own `latticebrain.subgraph` format:
+
+- **passphrase** — the archive's PBKDF2-SHA256 → AES-256-GCM, unchanged from
+  11.1.0. Simple, and it means a secret has to reach the receiver first.
+- **recipient public key** (11.2.0, `lattice_brain/sealed_box.py`) — a standard
+  X25519 sealed box assembled from primitives `cryptography` already ships: a
+  single-use ephemeral keypair, `ephemeral × recipient` as the shared secret,
+  HKDF-SHA256 (both public keys mixed into `info`) to a 256-bit key, then
+  AES-256-GCM. Nothing secret travels, and forward secrecy is free — the
+  ephemeral private key is discarded at seal time, so a later compromise of the
+  recipient's long-term key does not open an already-sent bundle.
+
+Choosing both mechanisms, or neither, is refused rather than resolved by
+precedence. The receiving key is a **separate** X25519 pair
+(`RecipientIdentity`, 0600 under the data dir) from the device's Ed25519
+identity: signing says who wrote a bundle, sealing says who may read it, and a
+key that does both costs twice when it leaks. The Ed25519 signature path is
+untouched by any of this.
+
+### Opt-in gates are answered at runtime (11.2.0)
+
+Every opt-in switch used to be decided once, in a constructor
+(`self._on = os.getenv(...)`). That is correct for a process that reads its
+environment at boot and a dead end for a settings screen: a UI toggle cannot
+move a boolean that was already copied into `self`.
+
+`lattice_brain/gates.FeatureGate` is the seam. It answers at *call* time in a
+fixed order — a **bound resolver**, an explicit **override**, the **environment
+variable** (parsed exactly as the hand-written check it replaces did), then the
+declared **default** — so an untouched install behaves identically while a
+bound resolver wins without a single change at any construction site.
+`describe()` reports both the state and which layer produced it, so a status
+surface can say *why* something is off.
+
+| gate | module | environment variable | default |
+| --- | --- | --- | --- |
+| `MULTIMODAL_GATE` | `lattice_brain/ingestion.py` | `LATTICEAI_ALLOW_MULTIMODAL` | off |
+| `VIDEO_GATE` | `lattice_brain/ingestion.py` | `LATTICEAI_ALLOW_VIDEO` | on *within* multi-modal (so the effective default is still off) |
+| `BRAIN_NETWORK_GATE` | `lattice_brain/portability.py` | `LATTICEAI_BRAIN_NETWORK` | off |
+| `VAULT_WATCH_GATE` | `latticeai/services/folder_watch.py` | `LATTICEAI_VAULT_WATCH` | off |
+| `IMAGE_QUERY_FUSION_GATE` | `latticeai/services/search_service.py` | `LATTICEAI_TEXT_IMAGE_FUSION` | off |
+| `AUTO_VECTOR_INDEX_GATE` | `lattice_brain/ingestion.py` | `LATTICEAI_AUTO_VECTOR_INDEX` | **on** |
+| `SYNTHESIS_GATE` | `lattice_brain/synthesis.py` | `LATTICEAI_SYNTHESIS` | **on** (governs the automatic pass only) |
+| `FUSION_RRF_GATE` | `lattice_brain/graph/fusion.py` | `LATTICEAI_FUSION_RRF` | off |
+| `GRAPH_EXPANSION_GATE` | `lattice_brain/graph/fusion.py` | `LATTICEAI_GRAPH_EXPANSION` | off |
+
+Brain Core owns the module because Brain Core owns the gates that matter most,
+and it may not import `latticeai`.
+
+One setting is not a boolean and therefore cannot ride a gate: the vector index
+backend is a pick-one-of-three. It gets the same *shape* of seam —
+`vector_index/selector.bind_vector_index_resolver` installs a resolver consulted
+ahead of `LATTICEAI_VECTOR_INDEX` — and a resolver that returns `None` falls
+through to the environment, so "the settings service has no opinion" and "there
+is no settings service" reach the same answer instead of two.
+
+### The switchboard those gates are bound to (11.2.0)
+
+Making the gates movable did not make them *reachable*: a person still had to
+know a variable's name and restart the server. `FeatureToggleService`
+(`latticeai/services/feature_toggles.py`) is the reachable half, mounted at
+`GET/POST /api/features` and rendered as the home dock's **기능** drawer.
+
+* **The server renders the catalog.** Ids, labels, one-line explanations,
+  defaults, and which choices are installable all come from `CATALOG`, so the
+  panel cannot offer a switch the server would refuse (the 10.1.1 rule).
+* **Precedence is user → env → default**, and the catalog reports which layer
+  answered. Persistence is one atomic JSON file under the data dir.
+* **The panel speaks only for switches a person moved.** `bind_feature_gates`
+  binds `service.resolver(id, gate.local)`: with no stored choice the gate
+  answers from its own override → env → default, so binding the switchboard
+  changes *nothing* for an install that never opened it — including the
+  diagnostics that hang off the environment, like an unknown backend name being
+  reported instead of quietly resolving to the default.
+* **Uninstallable options are shown, disabled, with the import's own reason.**
+  A hidden option is a mystery; a live one that silently falls back is a lie.
 
 ## Local-First Boundary
 
@@ -858,6 +999,15 @@ Four properties hold regardless of the mode:
    (default `false`) *and* a store write API is bound. Multimodal requires a
    second, separate `allow_multimodal` flag (also default `false`).
 
+   Both halves are arguments to the turn, not globals it reaches for:
+   `POST /chat` resolves the live Review Center through `AppContext.review_queue`
+   (a provider, because the queue is wired two build phases after the context)
+   and the scoped `auto_commit` through `chat_hybrid.resolve_hybrid_auto_commit`,
+   then hands both to `stream_hybrid_cloud_turn`. Through 11.1.x neither was
+   passed, so every cloud answer's extracted knowledge was discarded after the
+   `hybrid_done` frame while the unit tests — which built the ingestor
+   directly — stayed green.
+
 Token budgets (`cloud_token_guard.py`) cap per-turn and per-session spend, so
 an opted-in session has a ceiling rather than an open tap.
 
@@ -883,13 +1033,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.1.0 exact artifact names:
+11.2.0 exact artifact names:
 
-- `dist/ltcai-11.1.0-py3-none-any.whl`
-- `dist/ltcai-11.1.0.tar.gz`
-- `ltcai-11.1.0.tgz`
-- `dist/ltcai-11.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.1.0_aarch64.dmg`
+- `dist/ltcai-11.2.0-py3-none-any.whl`
+- `dist/ltcai-11.2.0.tar.gz`
+- `ltcai-11.2.0.tgz`
+- `dist/ltcai-11.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.2.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

@@ -399,36 +399,36 @@ class Recommendation:
         return asdict(self)
 
 
-# 모델 카탈로그. PPT 슬라이드 16 의 "추천 모델" 열과 동기화.
+# 모델 카탈로그 — RAM/VRAM 내림차순. 첫 번째로 조건을 만족하는 항목이 선택된다.
+# 모든 repo id 는 2026-08-10 Hugging Face API 로 확인했다(존재·비gated·정확한 대소문자).
+# OS 오버헤드(~4-6 GB) + KV 캐시 여유를 감안한 보수적 RAM 임계값.
 _MODEL_CATALOG: List[Dict[str, Any]] = [
-    # (min_ram_mb, min_vram_mb, model_id, quant, runtime_preference)
-    # OS 오버헤드(~4-6 GB) + KV 캐시 여유를 감안한 보수적 RAM 임계값
+    # 대형 (48GB+): 최상위 dense / Gemma 4 최대 모델
     {"ram": 64 * 1024, "vram": 32 * 1024,
      "id": "mlx-community/gemma-4-31b-it-4bit", "q": "4bit", "multimodal": True},
-    {"ram": 64 * 1024, "vram": 32 * 1024,
-     "id": "Qwen/Qwen3-VL-30B-A3B-Instruct", "q": "q4_K_M", "multimodal": True},
     {"ram": 48 * 1024, "vram": 24 * 1024,
-     "id": "mlx-community/gemma-4-31b-it-4bit", "q": "4bit", "multimodal": True},
+     "id": "mlx-community/Qwen3.6-27B-4bit", "q": "4bit", "multimodal": True},
+    # MoE (32GB+)
+    {"ram": 40 * 1024, "vram": 24 * 1024,
+     "id": "mlx-community/Qwen3.6-35B-A3B-4bit", "q": "4bit", "multimodal": True},
     {"ram": 32 * 1024, "vram": 16 * 1024,
      "id": "mlx-community/gemma-4-26b-a4b-it-4bit", "q": "4bit", "multimodal": True},
-    {"ram": 48 * 1024, "vram": 24 * 1024,
-     "id": "Qwen/Qwen3-VL-30B-A3B-Instruct", "q": "q4_K_M", "multimodal": True},
+    # 범용 (24GB)
     {"ram": 24 * 1024, "vram": 12 * 1024,
-     "id": "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit", "q": "4bit", "multimodal": True},
+     "id": "mlx-community/gpt-oss-20b-MXFP4-Q8", "q": "MXFP4-Q8", "multimodal": False},
+    # 중형 (16GB)
     {"ram": 16 * 1024, "vram": 8 * 1024,
-     "id": "mlx-community/gemma-4-12b-it-4bit", "q": "4bit", "multimodal": True},
-    {"ram": 32 * 1024, "vram": 16 * 1024,
-     "id": "Qwen/Qwen3-VL-8B-Instruct", "q": "q5_K_M", "multimodal": True},
-    {"ram": 24 * 1024, "vram": 12 * 1024,
-     "id": "Qwen/Qwen3-VL-8B-Instruct", "q": "q4_K_M", "multimodal": True},
-    {"ram": 16 * 1024, "vram": 8 * 1024,
-     "id": "Qwen/Qwen3-VL-8B-Instruct", "q": "q4_K_M", "multimodal": True},
+     "id": "mlx-community/gemma-4-12B-it-4bit", "q": "4bit", "multimodal": True},
     {"ram": 12 * 1024, "vram": 6 * 1024,
-     "id": "Qwen/Qwen3-VL-4B-Instruct", "q": "q4_K_M", "multimodal": True},
+     "id": "mlx-community/Qwen3.5-9B-MLX-4bit", "q": "4bit", "multimodal": True},
+    # 경량 (10GB) / 초경량 (8GB 이하)
+    {"ram": 10 * 1024, "vram": 6 * 1024,
+     "id": "mlx-community/gemma-4-e4b-it-4bit", "q": "4bit", "multimodal": True},
     {"ram":  8 * 1024, "vram": 4 * 1024,
-     "id": "Qwen/Qwen3-VL-4B-Instruct", "q": "q4_K_M", "multimodal": True},
+     "id": "mlx-community/gemma-4-e2b-it-4bit", "q": "4bit", "multimodal": True},
+    # 최소 사양: 사진은 못 읽지만 한국어로 대답은 한다.
     {"ram":  4 * 1024, "vram": 0,
-     "id": "Qwen/Qwen3-VL-4B-Instruct", "q": "q4_K_M", "multimodal": True},
+     "id": "mlx-community/LFM2.5-2.6B-4bit", "q": "4bit", "multimodal": False},
 ]
 
 
@@ -622,17 +622,14 @@ def plan(profile: SystemProfile, rec: Recommendation) -> InstallPlan:
     # 모델 가중치 풀
     model_command = ["huggingface-cli", "download", rec.model_id, "--quiet"]
     if rec.runtime == "ollama":
-        lower = rec.model_id.lower()
-        if "gemma-4-31b" in lower:
-            model_command = ["ollama", "pull", "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M"]
-        elif "gemma-4-12b" in lower:
-            model_command = ["ollama", "pull", "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"]
-        elif "llama-4-scout" in lower:
-            model_command = ["ollama", "pull", "hf.co/ggml-org/Llama-4-Scout-17B-16E-Instruct-GGUF:Q4_K_M"]
-        elif "qwen3-vl-8b" in lower:
-            model_command = ["ollama", "pull", "qwen3-vl:8b"]
-        elif "qwen3-vl-4b" in lower:
-            model_command = ["ollama", "pull", "qwen3-vl:4b"]
+        # Local import: this module keeps a stdlib-only import graph so it can be
+        # run before the app is wired. The alias table is the single source of
+        # truth for per-engine repo ids — the old hardcoded if/elif chain here
+        # drifted from it and still named Llama 4 Scout and Qwen3-VL.
+        from latticeai.services.model_catalog import MODEL_ENGINE_ALIASES
+        ollama_target = (MODEL_ENGINE_ALIASES.get(rec.model_id.lower()) or {}).get("ollama")
+        if ollama_target:
+            model_command = ["ollama", "pull", ollama_target]
     elif rec.runtime == "lmstudio":
         model_command = ["lms", "get", rec.model_id]
     steps.append(InstallStep(

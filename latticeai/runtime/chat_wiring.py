@@ -25,6 +25,7 @@ def build_chat_agent_runtime_from_context(
     audit: Any,
     hooks: Any,
     brain_memory: Any,
+    self_model_summary: Any = None,
 ) -> Any:
     # Ensure dispatch + agent share the same autonomy dial before the runtime
     # is constructed (process-wide service; data_dir refined later at router mount).
@@ -39,6 +40,9 @@ def build_chat_agent_runtime_from_context(
         hooks=hooks,
         brain_memory=brain_memory,
         permission_mode=resolve_active_permission_mode,
+        # v11.2.0: a scoped resolver, not a snapshot — the profile a run sees is
+        # the one the Brain holds when the run starts, per user and workspace.
+        self_model_summary=self_model_summary,
     )
 
 

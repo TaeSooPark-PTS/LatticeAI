@@ -87,8 +87,16 @@ class SubgraphSelection(BaseModel):
 
 
 class SubgraphArchiveRequest(SubgraphSelection):
+    """Exactly one recipient mechanism — a passphrase, or a public key.
+
+    Both optional at the schema level and validated in the service, so the
+    error a caller gets names the rule ("choose one") instead of a field.
+    """
+
     path: Optional[str] = None
-    passphrase: str
+    passphrase: Optional[str] = None
+    #: The recipient's X25519 public key, from their ``/share/recipient-key``.
+    recipient_public_key: Optional[str] = None
 
 
 class SubgraphImportRequest(BaseModel):
@@ -269,6 +277,22 @@ def create_portability_router(
         except (ValueError, RuntimeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
+    @router.get("/api/knowledge-graph/share/recipient-key")
+    async def share_recipient_key(request: Request):
+        """This Brain's X25519 receiving key, for a sender to seal a bundle to.
+
+        Public by construction — a public key encrypts, it does not decrypt —
+        so handing it out is the whole point. Still admin-gated and still
+        behind the share flag, because minting the key is a decision to
+        participate in sharing at all.
+        """
+        require_admin(request)
+        _require_service(request)
+        try:
+            return service.recipient_key()
+        except PermissionError:
+            raise http_error(403, "portability.brain_network_disabled", resolve_language(request))
+
     @router.post("/api/knowledge-graph/share/archive")
     async def share_archive(req: SubgraphArchiveRequest, request: Request):
         """Same bundle, written as an encrypted ``.latticebrain`` file."""
@@ -277,8 +301,14 @@ def create_portability_router(
         body = req.model_dump()
         path = body.pop("path")
         passphrase = body.pop("passphrase")
+        recipient_public_key = body.pop("recipient_public_key")
         try:
-            return service.export_subgraph_archive(path, passphrase=passphrase, **body)
+            return service.export_subgraph_archive(
+                path,
+                passphrase=passphrase,
+                recipient_public_key=recipient_public_key,
+                **body,
+            )
         except PermissionError:
             raise http_error(403, "portability.brain_network_disabled", resolve_language(request))
         except (ValueError, RuntimeError) as exc:
@@ -294,8 +324,13 @@ def create_portability_router(
         try:
             artifact = req.artifact
             if artifact is None:
-                if not req.path or not req.passphrase:
-                    raise ValueError("Provide an artifact, or a path with its passphrase.")
+                if not req.path:
+                    raise ValueError(
+                        "Provide an artifact, or the path of a bundle on disk."
+                    )
+                # A sealed bundle needs no passphrase — the envelope says which
+                # mechanism it used and the service refuses if the wrong one is
+                # supplied, so the route does not have to guess here.
                 artifact = service.read_subgraph_archive(req.path, passphrase=req.passphrase)
             return service.import_subgraph_proposals(
                 artifact,

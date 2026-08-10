@@ -42,7 +42,12 @@ ai_server.log
 sessions.json
 audit_log.json
 sso_config.json
-verification_report.json
+# verification_report.json is tracked from 11.2.0: it is the model registry's
+# evidence, not a local scratch file. Committing it is what lets
+# test_verification_report_exists_and_valid actually run in CI (it used to skip
+# on a fresh clone) and lets a reviewer see what was measured, when, and that
+# zero weights were downloaded. Refresh it with
+# `python scripts/verify_hf_model_registry.py`.
 
 # wheel smoke build artifacts
 dist-smoke/
