@@ -250,11 +250,12 @@ def test_the_uploaded_file_source_is_preferred_over_audit_inference():
 
     assert body["total"] == 2
     assert [f.get("filename") for f in body["files"]] == ["payroll.xlsx", "notes.txt"]
-    # The listing masks the preview it renders. NOTE: `extracted_text` is passed
-    # through untouched here, unlike /files/{id}/content which redacts it — see
-    # the wp07 report. Asserted as-is so the gap is visible rather than implied.
-    assert LEAKED not in body["files"][0]["content_preview"]
+    # The listing masks every string field it carries, not only the rendered
+    # preview: `extracted_text` is the same document body /files/{id}/content
+    # redacts, so a listing that passed it through would be the easier way in.
+    assert LEAKED not in json.dumps(body, ensure_ascii=False)
     assert "[REDACTED_SECRET]" in body["files"][0]["content_preview"]
+    assert "[REDACTED_SECRET]" in body["files"][0]["extracted_text"]
 
 
 def test_an_empty_upload_source_falls_back_to_the_audit_document_events():
@@ -286,7 +287,9 @@ def test_a_file_detail_and_its_extracted_text_are_masked_and_audited():
 
     detail = client.get("/admin/security/files/f1").json()
     assert detail["file"]["filename"] == "payroll.xlsx"
-    assert LEAKED not in detail["file"]["content_preview"]
+    assert LEAKED not in json.dumps(detail, ensure_ascii=False)
+    assert "[REDACTED_SECRET]" in detail["file"]["content_preview"]
+    assert "[REDACTED_SECRET]" in detail["file"]["extracted_text"]
 
     content = client.get("/admin/security/files/f1/content").json()
     assert content["file_id"] == "f1"
@@ -336,13 +339,18 @@ def test_the_raw_explorer_refuses_an_unknown_scope():
     assert response.status_code == 400
 
 
-def test_the_raw_explorer_masks_secrets_in_the_dumped_payload():
+def test_the_raw_explorer_masks_secrets_and_still_answers_with_valid_json():
     client, _ = _raw_client(
         get_audit_events=lambda: [{"event_type": "chat_message", "note": "api_key=" + LEAKED}]
     )
-    text = client.get("/admin/security/raw").text
-    assert LEAKED not in text
-    assert "[REDACTED_SECRET]" in text
+    response = client.get("/admin/security/raw")
+
+    # parsed, not string-matched: masking the serialized JSON used to eat the
+    # closing quote of the value it landed in and the explorer served a
+    # document no client could read.
+    payload = response.json()
+    assert payload == [{"event_type": "chat_message", "note": "api_key=[REDACTED_SECRET]"}]
+    assert LEAKED not in response.text
 
 
 def test_the_raw_explorer_works_when_no_audit_sink_is_wired():
@@ -385,13 +393,18 @@ def test_a_json_export_is_a_download_and_is_recorded():
     assert recorded[0]["reason"] == "export"
 
 
-def test_a_json_export_masks_secrets_before_they_reach_the_file():
+def test_a_json_export_masks_secrets_and_the_download_is_still_json():
     client, _ = _export_client(
         get_audit_events=lambda: [{"event_type": "chat_message", "note": "api_key=" + LEAKED}]
     )
-    body = client.post("/admin/security/export", json={"scope": "events", "format": "json"}).text
-    assert LEAKED not in body
-    assert "[REDACTED_SECRET]" in body
+    response = client.post("/admin/security/export", json={"scope": "events", "format": "json"})
+
+    # the downloaded file is parsed, not searched: masking after json.dumps
+    # consumed the closing quote and shipped a file that would not load.
+    assert response.json() == [
+        {"event_type": "chat_message", "note": "api_key=[REDACTED_SECRET]"}
+    ]
+    assert LEAKED not in response.text
 
 
 def test_a_csv_export_carries_the_rows_as_text():

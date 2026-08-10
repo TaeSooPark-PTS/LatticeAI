@@ -41,8 +41,19 @@ class WorkspaceReviewItems:
         state = self.load_state()
         resolved_workspace = self._resolve_scope(workspace_id, state)
         now = _now()
+        # ``now`` has second resolution, so two identical drafts written inside
+        # the same second would hash to the same id and the second one would be
+        # unreachable — ``get``/``update`` both return the first match. Rehash
+        # with a sequence suffix until the candidate is unique. The no-collision
+        # path is unchanged, so existing ids keep their bytes.
+        existing_ids = {it.get("id") for it in _listify(state.get("review_items"))}
+        item_id = f"review-{_json_hash([title, source, kind, user_email, now])[:16]}"
+        seq = 0
+        while item_id in existing_ids:
+            seq += 1
+            item_id = f"review-{_json_hash([title, source, kind, user_email, now, seq])[:16]}"
         item = {
-            "id": f"review-{_json_hash([title, source, kind, user_email, now])[:16]}",
+            "id": item_id,
             "status": "pending",
             "title": title,
             "summary": summary or "",

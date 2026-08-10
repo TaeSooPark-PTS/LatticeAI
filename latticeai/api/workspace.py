@@ -671,7 +671,9 @@ def create_workspace_router(context: AppContext) -> APIRouter:
             "last_seen_ms": now_ms,
             "user_email": current_user,
         })
-        return {"status": "ok", **_VSCODE_STATUS}
+        # The response is the stored presence record verbatim: ``status`` is
+        # the state the extension just reported, not an envelope ack.
+        return dict(_VSCODE_STATUS)
 
     @router.post("/workspace/vscode/send")
     async def workspace_vscode_send(req: WorkspaceVSCodeRequest, request: Request):
@@ -757,13 +759,19 @@ def create_workspace_router(context: AppContext) -> APIRouter:
         append_audit_event("workspace_created", user_email=user, workspace_id=workspace["workspace_id"])
         return {"workspace": workspace}
 
+    # The next two routes answer 403 for an unknown workspace id, not 404, and
+    # that is the design: a 404/403 split would let anyone enumerate which
+    # organization workspaces exist on this install. ``get_workspace`` and
+    # ``workspace_summary`` check read permission *before* they look the
+    # workspace up, and an unknown id has no members, so it can never grant
+    # read — which is also why neither route carries a FileNotFoundError arm:
+    # the service cannot reach one.
+
     @router.get("/workspace/orgs/{workspace_id}")
     async def workspace_org_get(workspace_id: str, request: Request):
         user = require_user(request)
         try:
             return {"workspace": svc.get_workspace(workspace_id, user or None)}
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
@@ -772,8 +780,6 @@ def create_workspace_router(context: AppContext) -> APIRouter:
         user = require_user(request)
         try:
             return svc.workspace_summary(workspace_id, user or None)
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 

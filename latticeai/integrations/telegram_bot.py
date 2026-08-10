@@ -400,22 +400,38 @@ async def show_model_info(client, chat_id):
         }
     await send_message(client, chat_id, text, reply_markup=markup)
 
+def _unload_all_report(results: list[tuple[str, int]]) -> str:
+    """Report an unload-all run from the statuses the server actually returned."""
+    failed = [(mid, code) for mid, code in results if code != 200]
+    if not failed:
+        return "✅ 모든 모델 언로드 완료. RAM이 해제되었습니다."
+    detail = ", ".join(f"{mid} ({code})" for mid, code in failed)
+    return (
+        f"일부 모델 언로드 실패: {detail}\n"
+        f"성공 {len(results) - len(failed)}개 / 실패 {len(failed)}개"
+    )
+
 async def do_unload_model(client, chat_id, model_id: str = ""):
     await send_chat_action(client, chat_id, "typing")
     try:
+        results: list[tuple[str, int]] | None = None
         async with _server_client() as lc:
             if model_id:
                 res = await lc.delete(f"{BASE_URL}/models/unload/{model_id}", timeout=15.0)
             else:
-                # Unload all
+                # Unload all: keep every delete's real status. Discarding them
+                # for a synthesized 200 reported "모든 모델 언로드 완료" even
+                # when a model refused to unload.
                 res = await lc.get(MODELS_URL, timeout=5.0)
-                mdata = res.json() if res.status_code == 200 else {}
-                for mid in mdata.get("loaded") or []:
-                    await lc.delete(f"{BASE_URL}/models/unload/{mid}", timeout=15.0)
-                res = type("R", (), {"status_code": 200})()
-        if res.status_code == 200:
-            label = model_id or "모든 모델"
-            await send_message(client, chat_id, f"✅ {label} 언로드 완료. RAM이 해제되었습니다.")
+                if res.status_code == 200:
+                    results = []
+                    for mid in res.json().get("loaded") or []:
+                        deleted = await lc.delete(f"{BASE_URL}/models/unload/{mid}", timeout=15.0)
+                        results.append((mid, deleted.status_code))
+        if results is not None:
+            await send_message(client, chat_id, _unload_all_report(results))
+        elif res.status_code == 200:
+            await send_message(client, chat_id, f"✅ {model_id} 언로드 완료. RAM이 해제되었습니다.")
         else:
             await send_message(client, chat_id, f"언로드 실패 ({res.status_code})")
     except Exception as e:
@@ -544,8 +560,10 @@ async def send_web_link(client, chat_id):
         },
     }
     try:
-        async with _server_client() as lc:
-            await lc.post(f"{API_URL}/sendMessage", json=payload)
+        # The Telegram client, like every other helper here. Sending this on the
+        # server client shipped the local bearer capability to api.telegram.org
+        # and failed outright whenever that token was unset.
+        await client.post(f"{API_URL}/sendMessage", json=payload)
     except Exception as e:
         logger.error("웹 링크 전송 실패: %s", safe_log_text(e))
 

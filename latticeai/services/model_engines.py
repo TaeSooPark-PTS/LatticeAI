@@ -258,6 +258,32 @@ def wait_for_openai_compatible_server(provider: str, model_name: Optional[str] =
     return False
 
 
+def _reap_local_server(process: subprocess.Popen, label: str) -> None:
+    """Stop a previous local engine server and prove it is actually gone.
+
+    ``kill()`` only delivers the signal; without a following ``wait()`` the
+    child is never reaped and stays a zombie whose ``poll()`` keeps returning
+    ``None``. That used to read back as "the old server is still up", and the
+    caller returned without ever spawning the server it was asked for — a
+    silent success for a request that did nothing. If the process survives the
+    kill *and* the reap, the caller is told so with a 409 instead.
+    """
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            quiet(f"{label} 프로세스가 kill 이후에도 회수되지 않음")
+        if process.poll() is None:
+            raise ModelRuntimeError(
+                status_code=409,
+                detail=f"이전 {label} 프로세스가 종료되지 않아 새 서버를 시작할 수 없습니다.",
+            )
+
+
 def ensure_vllm_server(model_name: str) -> None:
     from latticeai.services.model_runtime import (
         download_hf_model,
@@ -279,17 +305,9 @@ def ensure_vllm_server(model_name: str) -> None:
 
     running = LOCAL_SERVER_PROCESSES.get("vllm")
     if running and running.poll() is None:
-        running.terminate()
-        try:
-            running.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            running.kill()
+        _reap_local_server(running, "vLLM")
     elif served_models:
         raise ModelRuntimeError(status_code=409, detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
-
-    running = LOCAL_SERVER_PROCESSES.get("vllm")
-    if running and running.poll() is None:
-        return
 
     host_args = ["--host", "127.0.0.1", "--port", "8000"]
     if vllm_metal_py:
@@ -320,11 +338,7 @@ def ensure_llamacpp_server(model_name: str) -> None:
         return
     running = LOCAL_SERVER_PROCESSES.get("llamacpp")
     if running and running.poll() is None:
-        running.terminate()
-        try:
-            running.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            running.kill()
+        _reap_local_server(running, "llama.cpp")
     elif served_models:
         raise ModelRuntimeError(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
     if not shutil.which("llama-server"):

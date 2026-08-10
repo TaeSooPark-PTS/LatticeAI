@@ -320,8 +320,8 @@ def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> 
             if candidate.get("role") != "v3_primary"
         ],
     })
-    if mlx_lm_available:
-        payload["preferred_runtime"] = "MLX-LM fallback"
+    # MLX-VLM is absent and the guard above already returned when MLX-LM was too.
+    payload["preferred_runtime"] = "MLX-LM fallback"
     return payload
 
 

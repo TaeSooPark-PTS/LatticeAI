@@ -59,6 +59,32 @@ def soft_mask(text: str, *, keep: int = 4) -> str:
     return raw[:keep] + "*" * min(len(raw) - keep * 2, 30) + raw[-keep:]
 
 
+def _redact_structure(value: Any) -> Any:
+    """A copy of ``value`` with every string leaf redacted.
+
+    Redacting the *serialized* JSON instead only appeared to work: the secret
+    patterns end in an optional quote, so a secret that ran up to the closing
+    ``"`` of a JSON string swallowed it and the response stopped being
+    parseable JSON. Walking the structure first keeps the document valid.
+
+    The walk copies rather than edits in place — the rows come straight from
+    the audit/upload seams and must not be masked in the caller's store.
+
+    Only *values* are redacted. Keys are field names the console renders by,
+    and blanking a whole field by its name (``core.security.redact_secrets``)
+    would drop honest data such as ``token_count`` from an export.
+    """
+    if isinstance(value, str):
+        return redact_hard_secrets(value)
+    if isinstance(value, dict):
+        return {key: _redact_structure(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_structure(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact_structure(item) for item in value)
+    return value
+
+
 # ── Export models ─────────────────────────────────────────────────────────────
 
 
@@ -157,7 +183,10 @@ def _csv_dump(rows: List[Dict[str, Any]]) -> bytes:
     writer = csv.DictWriter(buf, fieldnames=keys, extrasaction="ignore")
     writer.writeheader()
     for r in rows:
-        sanitized = {k: redact_hard_secrets(str(v)) if isinstance(v, str) else v for k, v in r.items()}
+        # per value, not per rendered line — and through the structure, because
+        # csv stringifies a list/dict cell after this point, which used to carry
+        # a nested secret into the file untouched.
+        sanitized = {k: _redact_structure(v) for k, v in r.items()}
         writer.writerow(sanitized)
     return buf.getvalue().encode("utf-8")
 
@@ -440,10 +469,11 @@ def create_security_router(
     @router.get("/admin/security/files")
     async def security_files(request: Request):
         require_admin(request)
-        files = _file_events()
-        for f in files:
-            if "content_preview" in f:
-                f["content_preview"] = redact_hard_secrets(str(f.get("content_preview") or ""))
+        # Every string field is masked, not only the rendered preview:
+        # `extracted_text` carries the same document body the content route
+        # redacts, and a listing that leaked it would be the easier way in.
+        # Masking a copy leaves the upload/audit rows behind the seam intact.
+        files = [_redact_structure(f) for f in _file_events()]
         return {"files": files, "total": len(files)}
 
     @router.get("/admin/security/files/{file_id}")
@@ -457,9 +487,13 @@ def create_security_router(
         if not target:
             raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
         _log_view(admin_email, "file", file_id)
-        cleaned = dict(target)
+        # Same rule as the listing: every string field of the record is masked
+        # on a copy, so the detail view can never be the looser way to read
+        # `extracted_text`. The preview keeps its text coercion — the console
+        # renders it as a string and a missing one stays "".
+        cleaned = _redact_structure(target)
         if "content_preview" in cleaned:
-            cleaned["content_preview"] = redact_hard_secrets(str(cleaned.get("content_preview") or ""))
+            cleaned["content_preview"] = redact_hard_secrets(str(target.get("content_preview") or ""))
         return {"file": cleaned}
 
     @router.get("/admin/security/files/{file_id}/content")
@@ -491,9 +525,9 @@ def create_security_router(
             payload = _file_events()
         else:
             raise HTTPException(status_code=400, detail="지원하지 않는 scope입니다.")
-        # JSON 전체에서 hard secret redact
-        text = json.dumps(payload, ensure_ascii=False)
-        text = redact_hard_secrets(text)
+        # JSON 전체에서 hard secret redact — 값을 먼저 마스킹한 뒤 직렬화해야
+        # 유효한 JSON이 나온다(직렬화 후 마스킹은 닫는 따옴표를 먹는다).
+        text = json.dumps(_redact_structure(payload), ensure_ascii=False)
         return Response(content=text, media_type="application/json; charset=utf-8")
 
     # ── 7. Export ─────────────────────────────────────────────────────────
@@ -519,8 +553,8 @@ def create_security_router(
         _log_view(admin_email, "export", f"{scope}:{fmt}", reason="export")
 
         if fmt == "json":
-            body = json.dumps(rows, ensure_ascii=False, indent=2)
-            body = redact_hard_secrets(body)
+            # 마스킹은 직렬화 전에 — 다운로드된 파일은 언제나 파싱 가능해야 한다.
+            body = json.dumps(_redact_structure(rows), ensure_ascii=False, indent=2)
             filename = f"security_{scope}.json"
             return Response(
                 content=body,
@@ -553,8 +587,9 @@ def create_security_router(
                 headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
         if fmt == "txt":
+            # 한 줄 = 한 행의 JSON. 여기서도 값 마스킹이 직렬화보다 앞선다.
             body = "\n".join(
-                redact_hard_secrets(json.dumps(r, ensure_ascii=False)) for r in rows
+                json.dumps(_redact_structure(r), ensure_ascii=False) for r in rows
             )
             return Response(
                 content=body,

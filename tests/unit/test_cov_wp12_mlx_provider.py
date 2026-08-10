@@ -130,6 +130,7 @@ def test_a_three_dimensional_encoder_output_is_mean_pooled_over_the_tokens(monke
     # the model is loaded once and then cached for the life of the provider
     assert calls == ["bge-m3"]
     assert prov.dim == 2
+    assert prov.model_id == "mlx:bge-m3:2"
 
 
 def test_a_tuple_encoder_output_uses_its_first_element_and_a_flat_row(monkeypatch):
@@ -139,11 +140,15 @@ def test_a_tuple_encoder_output_uses_its_first_element_and_a_flat_row(monkeypatc
     _install_mlx(monkeypatch, _loader(_model, _FakeTokenizer(), []))
     prov = _provider(model="e5-large")
 
+    assert prov.model_id == "mlx:e5-large:384", "the configured width names the index"
     vectors = prov.embed_batch(["already pooled"])
 
     assert [round(x, 6) for x in vectors[0]] == [0.6, 0.8]
     assert math.isclose(sum(x * x for x in vectors[0]), 1.0, rel_tol=1e-9)
-    assert prov.model_id == "mlx:e5-large:384"
+    # the encoder answered in 2 dimensions, so the index identity follows it
+    # instead of staying frozen at the width nobody measured
+    assert prov.dim == 2
+    assert prov.model_id == "mlx:e5-large:2"
 
 
 def test_a_pooled_row_that_is_a_scalar_is_reported_as_unavailable(monkeypatch):

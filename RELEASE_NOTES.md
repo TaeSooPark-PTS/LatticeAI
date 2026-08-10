@@ -1,3 +1,12 @@
+# [v11.0.1 - Both Branches] (2026-08-10)
+
+11.0.0이 기록한 결함 11건을 전부 수정하고(고정 테스트 반전 + 회귀 테스트),
+증명된 죽은 코드를 제거하고, CI 플로어를 **라인 + 분기 100%**로 올렸습니다
+(`branch = true`, 9,828아크, 테스트 5,798개). linux 컨테이너 검증이 드러낸
+개발 머신 우연 커버 3아크도 밀폐 테스트로 교체. 화면 변경 없음.
+
+See [RELEASE_NOTES_v11.0.1.md](RELEASE_NOTES_v11.0.1.md).
+
 # [v11.0.0 - Full Measure] (2026-08-10)
 
 출하되는 모든 Python 라인이 테스트 아래에서 실행됩니다 — 커버리지 72.80% →
@@ -379,7 +388,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.0.0**.
+This repository keeps public release history from **9.0.0 through 11.0.1**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.0.0 — Full Measure**.
+Current release: **11.0.1 — Both Branches**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

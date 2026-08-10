@@ -178,9 +178,10 @@ def _model_family_version(model: Dict[str, Any]) -> Optional[tuple[str, tuple[in
     for family, pattern in _VERSIONED_MODEL_PATTERNS:
         match = pattern.search(text)
         if match:
-            version = _version_tuple(match.group(1))
-            if version:
-                return family, version
+            # Every pattern captures at least one decimal digit and no other
+            # character but ``.``, so the parsed tuple is never empty — the
+            # old ``if version:`` guard could not fire and is gone.
+            return family, _version_tuple(match.group(1))
     return None
 
 

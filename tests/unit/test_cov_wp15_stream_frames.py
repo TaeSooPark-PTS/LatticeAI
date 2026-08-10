@@ -127,11 +127,11 @@ def test_single_answer_response_streams_when_the_client_asked_for_sse():
     assert response.headers["x-model"] == "network_status"
     frames = _drain(response.body_iterator)
     assert frames[-1] == "data: [DONE]\n\n"
-    # The answering surface is named in the header; the frame body keeps
-    # ``single_text_stream``'s "system" default, which is what fast-path
-    # intents (network/history/client_url) have always emitted.
+    # One answering surface, reported once: the frame body names the same
+    # model as the X-Model header instead of falling back to the helper's
+    # "system" default.
     assert _payloads(frames) == [
-        {"chunk": "네트워크는 오프라인입니다.", "model": "system"}
+        {"chunk": "네트워크는 오프라인입니다.", "model": "network_status"}
     ]
 
 

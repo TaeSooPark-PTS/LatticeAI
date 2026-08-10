@@ -20,10 +20,7 @@ from latticeai.core.workspace_os_state import (
     migrate_workspaces,
     new_workspace_record,
 )
-from latticeai.core.workspace_os_utils import (
-    _snapshot_graph_import_payload,
-    remove_skill_directory,
-)
+from latticeai.core.workspace_os_utils import remove_skill_directory
 
 
 def _fresh_dir(tmp_path: Path, name: str) -> Path:
@@ -178,32 +175,6 @@ def test_migrate_workspaces_skips_junk_entries_and_backfills_personal():
     assert state["workspaces"][DEFAULT_WORKSPACE_ID]["type"] == "personal"
     assert state["active_workspace"] == DEFAULT_WORKSPACE_ID
     assert default_state()["workspaces"][DEFAULT_WORKSPACE_ID]["type"] == "personal"
-
-
-def test_snapshot_graph_import_payload_normalizes_nodes_and_edges():
-    payload = _snapshot_graph_import_payload(
-        {
-            "nodes": [
-                {"label": "no id"},
-                {"id": "n1", "metadata": {"kept": True}, "raw": {"body": "text"}},
-                {"id": "n2", "type": "Decision", "title": "T", "metadata": "not-a-dict"},
-            ],
-            "edges": [
-                {"from": "n1"},
-                {"from_node": "n1", "to_node": "n2", "type": "leads_to", "weight": 0.5},
-                {"source": "n2", "target": "n1"},
-            ],
-        },
-        workspace_id="org-acme",
-    )
-
-    assert payload["counts"] == {"nodes": 2, "edges": 2}
-    assert payload["header"]["workspace_id"] == "org-acme"
-    first = json.loads(payload["nodes"][0]["metadata_json"])
-    assert first == {"kept": True, "workspace_id": "org-acme"}
-    assert payload["nodes"][1]["title"] == "T"
-    assert payload["edges"][0]["type"] == "leads_to"
-    assert payload["edges"][1]["type"] == "related_to"
 
 
 def test_remove_skill_directory_deletes_only_paths_inside_the_skills_root(tmp_path: Path):

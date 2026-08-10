@@ -21,6 +21,14 @@
     "specific, not less."
   ],
 
+  "11.0.1": {
+    "_why": [
+      "Defect-fix and branch-coverage release: no intentional UI change.",
+      "No screen claims layout movement; all twelve are measured but not",
+      "gated. Visible pixels may drift only where the version renders."
+    ]
+  },
+
   "11.0.0": {
     "_why": [
       "A verification-and-docs release: Python coverage 72.80% -> 100.00%",

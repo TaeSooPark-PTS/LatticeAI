@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**11.0.0 — Full Measure** puts the whole Python surface under test: coverage 72.80% → 100.00% with a fail-under-100 CI floor, 5,426 tests, and every platform-locked branch executed on CI through injected fakes. The extension surface is unchanged.
+**11.0.1 — Both Branches** fixes all eleven defects the 11.0.0 coverage work documented, removes the dead code it proved dead, and raises the CI floor to 100% of BOTH lines and branch arcs (9,828 arcs, 5,798 tests). The extension surface is unchanged.
 The memory stats moved into a hover badge with a small summary graph, the six
 capture chips folded behind one + on the composer, the model banner became a
 status pill with the single accented CTA, and past conversations / stats / the

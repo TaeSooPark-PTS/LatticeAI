@@ -301,6 +301,7 @@ def test_vscode_presence_expires_when_the_extension_stops_reporting(tmp_path: Pa
         "status": "connected", "index_status": "ready", "workspace_folder": "/repo",
         "extension_version": "1.2.3", "active_file": "main.py", "detail": "ok",
     }).json()
+    stored = dict(status)
     online = harness.client.get("/workspace/vscode/status").json()
 
     status["last_seen_ms"] = 1
@@ -308,8 +309,9 @@ def test_vscode_presence_expires_when_the_extension_stops_reporting(tmp_path: Pa
 
     assert offline["connected"] is False
     assert offline["status"] == "offline"
-    # The handler returns ``{"status": "ok", **_VSCODE_STATUS}`` — the spread
-    # wins, so the reported extension status is what comes back, not "ok".
+    # The POST answers with the stored presence record verbatim, so ``status``
+    # is the state the extension just reported — never an "ok" envelope ack.
+    assert posted == stored
     assert posted["status"] == "connected"
     assert posted["connected"] is True
     assert posted["user_email"] == OWNER

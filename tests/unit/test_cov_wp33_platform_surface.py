@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from latticeai.core import context_builder, tool_registry
+from latticeai.core import context_builder
 from latticeai.core.artifact_ledger import ArtifactLedger
 from latticeai.core.config import Config
 from latticeai.core.document_generator import DocumentGenerationSession
@@ -392,21 +392,6 @@ def test_first_document_request_uses_the_plain_generation_prompt():
 
     session.clear()
     assert session.get_system_prompt("graph context here") == first
-
-
-# ── tool_registry ──────────────────────────────────────────────────────────
-
-
-def test_auto_approved_write_policy_differs_only_in_the_approval_flag():
-    auto = tool_registry._wa()
-    gated = tool_registry._w()
-
-    assert auto["auto_approve"] is True
-    assert gated["auto_approve"] is False
-    assert {k: v for k, v in auto.items() if k != "auto_approve"} == {
-        k: v for k, v in gated.items() if k != "auto_approve"
-    }
-    assert tool_registry._wa(sandbox="system", rollback="git")["sandbox"] == "system"
 
 
 # ── moved-module compatibility shims ───────────────────────────────────────
