@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { FeatureCatalog, FeatureToggle } from "@/api/client";
@@ -70,6 +70,8 @@ function renderPanel(
 
 const row = (id: string) => screen.getByTestId(`feature-row-${id}`);
 const sw = (id: string) => screen.getByTestId(`feature-switch-${id}`);
+/** The panel itself, whose `aria-busy` is the in-flight guard made observable. */
+const panel = () => screen.getByRole("region", { name: t("ko", "brain.features.aria") });
 
 describe("BrainFeaturesPanel rendering", () => {
   it("renders exactly the switches the server sent, in the server's order", async () => {
@@ -252,6 +254,12 @@ describe("BrainFeaturesPanel writes", () => {
     // The guard is a click check, not `disabled`: disabling the button blurs
     // it, and the drawer's Escape handler lives on the drawer node — a blurred
     // switch means Escape stops closing the panel.
+    //
+    // Both halves wait on `aria-busy`, never on a call count or a bare await.
+    // `aria-busy` *is* the guard's own state rendered, so "armed" and
+    // "disarmed" are observable facts here rather than assumptions about when
+    // a resolved promise has flushed through React — which is exactly the
+    // timing this test used to guess at, and lose on a loaded CI box.
     let settle = (_result: unknown) => {};
     const setFeature = vi.fn(
       () =>
@@ -263,15 +271,34 @@ describe("BrainFeaturesPanel writes", () => {
     await screen.findByTestId("feature-switch-allow_multimodal");
 
     fireEvent.click(sw("allow_multimodal"));
-    await waitFor(() => expect(setFeature).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(panel()).toHaveAttribute("aria-busy", "true"));
+    expect(setFeature).toHaveBeenCalledTimes(1);
 
+    // Armed: a second move — on either kind of control — is dropped. The
+    // `act` flush is what makes the *negative* assertion real: react-query
+    // reaches `mutationFn` a few microtasks after the click, so draining them
+    // is the difference between "was ignored" and "had not started yet".
     fireEvent.click(sw("brain_network"));
     fireEvent.click(screen.getByTestId("feature-choice-vector_backend-quantized"));
+    await act(async () => {});
     expect(setFeature).toHaveBeenCalledTimes(1);
+    // Not even optimistically: `onMutate` runs before the request, so a switch
+    // that moved here would prove the click got through.
+    expect(sw("brain_network")).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByTestId("feature-choice-vector_backend-brute")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    // …but nothing went numb: the switch is still enabled and still focusable,
+    // which is what keeps Escape closing the drawer it lives in.
     expect(sw("allow_multimodal")).not.toBeDisabled();
+    sw("allow_multimodal").focus();
+    expect(document.activeElement).toBe(sw("allow_multimodal"));
 
     settle(ok(toggle({ current: true })));
-    await waitFor(() => expect(setFeature).toHaveBeenCalledTimes(1));
+
+    // Disarmed: the next move is accepted.
+    await waitFor(() => expect(panel()).toHaveAttribute("aria-busy", "false"));
     fireEvent.click(sw("brain_network"));
     await waitFor(() => expect(setFeature).toHaveBeenCalledTimes(2));
   });
