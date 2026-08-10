@@ -73,7 +73,9 @@ def test_uninspectable_seams_receive_every_context_field():
     import inspect
 
     seam = _Uninspectable()
-    with pytest.raises(TypeError):
+    # 3.11/3.14 raise TypeError for a garbage __signature__; 3.12 raises
+    # ValueError — the product seam catches both (context.py), so accept both.
+    with pytest.raises((TypeError, ValueError)):
         inspect.signature(seam)
 
     _call_context_seam(seam, "query", limit=5, user_email="u@x", workspace_id="w1")

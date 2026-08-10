@@ -90,10 +90,15 @@ jobs:
           python -m pytest tests/unit/ -v --tb=short
 
       - name: Coverage floor
-        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
+        if: matrix.python-version == '3.14' && matrix.os == 'ubuntu-latest'
         # Measurable for the first time in 10.2.0: the connection leak fixed in
         # this release exhausted file descriptors under a tracer, so any
         # coverage run failed ~400 tests and the real number was unknown.
+        # 11.0.0 moved the floor to 100 and this step to the 3.14 leg: 3.11's
+        # settrace folds some jump-only lines (a bare `break` after an `if`)
+        # into the preceding line, so an executed line can go unreported and
+        # fail a 100% floor spuriously; 3.12+ measure via sys.monitoring,
+        # which reports them. The 3.11 legs still run the full suite above.
         run: python -m pytest tests/ -q --cov --cov-report=term:skip-covered
 
       - name: Brain recall/KG quality eval
