@@ -1,0 +1,33 @@
+{
+  "schema": "agent-kernel-parity/v1",
+  "cases": [
+    {"input": "strict", "mode": "strict"},
+    {"input": "default", "mode": "strict"},
+    {"input": "manual", "mode": "strict"},
+    {"input": "trusted", "mode": "trusted"},
+    {"input": "acceptedits", "mode": "trusted"},
+    {"input": "accept_edits", "mode": "trusted"},
+    {"input": "workspace", "mode": "trusted"},
+    {"input": "bypass", "mode": "bypass"},
+    {"input": "bypasspermissions", "mode": "bypass"},
+    {"input": "bypass_permissions", "mode": "bypass"},
+    {"input": "yolo", "mode": "bypass"},
+    {"input": "dangerously-skip-permissions", "mode": "bypass"},
+    {"input": "acceptEdits", "mode": "trusted"},
+    {"input": "  TRUSTED  ", "mode": "trusted"},
+    {"input": "BYPASS", "mode": "bypass"},
+    {"input": "Dangerously-Skip-Permissions", "mode": "bypass"},
+    {"input": "", "mode": "strict"},
+    {"input": "   ", "mode": "strict"},
+    {"input": "junk", "mode": "strict"},
+    {"input": "strictly", "mode": "strict"},
+    {"input": "read-only", "mode": "strict"},
+    {"input": null, "mode": "strict"},
+    {"input": false, "mode": "strict"},
+    {"input": true, "mode": "strict"},
+    {"input": 0, "mode": "strict"},
+    {"input": 1, "mode": "strict"},
+    {"input": [], "mode": "strict"},
+    {"input": {}, "mode": "strict"}
+  ]
+}

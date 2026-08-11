@@ -17,6 +17,15 @@
 //!   read-only store, and reverse-proxies everything else to the worker with
 //!   the response body streamed (so SSE keeps flowing).
 //!
+//! v11.5.0 (`docs/v11.5.0_RUST_COMPLETE_PLAN.md`) makes the gateway the front
+//! door rather than a side door. It now mounts four crates' router factories
+//! ahead of that proxy fallthrough — `lattice-retrieval`'s graph/history/
+//! context reads, `lattice-ingest`'s dry-run plan/chunk routes,
+//! `lattice-agent`'s permission kernel, and `lattice-jobs`' scheduler status —
+//! and the supervisor tells the worker to trust the gateway's origin so
+//! cookie-authenticated writes work through it. See [`gateway::mounts`] for the
+//! mount map.
+//!
 //! Nothing in this crate depends on `tauri`, so the whole thing builds and
 //! tests on a bare CI runner.
 
@@ -30,8 +39,9 @@ pub use gateway::{
     bind_loopback, build_router, serve_gateway, GatewayError, GatewayState, StatusProvider,
 };
 pub use supervisor::{
-    resolve_worker_command, BackoffPolicy, CommandOrigin, HostProbe, ResolveError, StaticProbe,
-    Supervisor, SupervisorConfig, SupervisorError, SystemProbe, WorkerCommand, WorkerStatus,
+    csrf_trusted_origins, resolve_worker_command, BackoffPolicy, CommandOrigin, HostProbe,
+    ResolveError, StaticProbe, Supervisor, SupervisorConfig, SupervisorError, SystemProbe,
+    WorkerCommand, WorkerStatus,
 };
 
 /// Version of this crate, kept in lockstep with the product version by

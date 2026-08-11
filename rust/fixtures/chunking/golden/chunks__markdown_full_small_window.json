@@ -1,0 +1,282 @@
+{
+  "chunk_count": 16,
+  "chunks": [
+    {
+      "chunk_id": "chunk:1d9c415ba3718573f05ab0e6",
+      "index": 0,
+      "len_bytes": 278,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "text": "안내서 서문입니다. 이 문단은 첫 제목 앞에 옵니다.\n\n# 안내서\n짧다.\n## 설치\n설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법"
+    },
+    {
+      "chunk_id": "chunk:54ee7a1a8ab62aadb42ff74c",
+      "index": 1,
+      "len_bytes": 290,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": null,
+        "start_char": 90,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "start_char": 90,
+        "strategy": "markdown"
+      },
+      "text": "과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과"
+    },
+    {
+      "chunk_id": "chunk:73495cf9f65fd943e2ce3694",
+      "index": 2,
+      "len_bytes": 170,
+      "len_chars": 72,
+      "meta": {
+        "heading_path": null,
+        "start_char": 180,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "start_char": 180,
+        "strategy": "markdown"
+      },
+      "text": "다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. \n"
+    },
+    {
+      "chunk_id": "chunk:9d772643c5d23c39b307ac83",
+      "index": 3,
+      "len_bytes": 258,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 252,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 252,
+        "strategy": "markdown"
+      },
+      "text": "### 사전 준비\n준비물.\n### 실행\n실행 방법.\n## 사용\n근거 문단 0: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 1: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 2: 검색 품질은 청크 경계에 좌우"
+    },
+    {
+      "chunk_id": "chunk:e64ff1c7f95aab1f85d148ae",
+      "index": 4,
+      "len_bytes": 272,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 342,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 342,
+        "strategy": "markdown"
+      },
+      "text": "됩니다. 근거 문단 2: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 3: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 4: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 5: 검색 품질은 청크 경계에 좌우"
+    },
+    {
+      "chunk_id": "chunk:b77f0e29d5ce9f3bcf773da5",
+      "index": 5,
+      "len_bytes": 272,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 432,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 432,
+        "strategy": "markdown"
+      },
+      "text": "됩니다. 근거 문단 5: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 6: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 7: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 8: 검색 품질은 청크 경계에 좌우"
+    },
+    {
+      "chunk_id": "chunk:3903eed668a8898ff6ab2fec",
+      "index": 6,
+      "len_bytes": 268,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 522,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 522,
+        "strategy": "markdown"
+      },
+      "text": "됩니다. 근거 문단 8: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 9: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 10: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 11: 검색 품질은 청크 경계에 "
+    },
+    {
+      "chunk_id": "chunk:abd62c5bfa40db3741d8d50c",
+      "index": 7,
+      "len_bytes": 266,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 612,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 612,
+        "strategy": "markdown"
+      },
+      "text": "우됩니다. 근거 문단 11: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 12: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 13: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 14: 검색 품질은 청크 경"
+    },
+    {
+      "chunk_id": "chunk:1d7bc034634abecdb6e9cc28",
+      "index": 8,
+      "len_bytes": 266,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 702,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 702,
+        "strategy": "markdown"
+      },
+      "text": "에 좌우됩니다. 근거 문단 14: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 15: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 16: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 17: 검색 품질은 청"
+    },
+    {
+      "chunk_id": "chunk:d7cbedddbe272007887535ac",
+      "index": 9,
+      "len_bytes": 97,
+      "len_chars": 43,
+      "meta": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 792,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "안내서 > 설치 > 사전 준비",
+        "start_char": 792,
+        "strategy": "markdown"
+      },
+      "text": " 경계에 좌우됩니다. 근거 문단 17: 검색 품질은 청크 경계에 좌우됩니다.\n"
+    },
+    {
+      "chunk_id": "chunk:78ffe5fd76412bc75e6387a2",
+      "index": 10,
+      "len_bytes": 278,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": null,
+        "start_char": 835,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "start_char": 835,
+        "strategy": "markdown"
+      },
+      "text": "# \n빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니"
+    },
+    {
+      "chunk_id": "chunk:501b665a732f3ff4fa3c1b4e",
+      "index": 11,
+      "len_bytes": 280,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": null,
+        "start_char": 925,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "start_char": 925,
+        "strategy": "markdown"
+      },
+      "text": "다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니"
+    },
+    {
+      "chunk_id": "chunk:4bd71d92a788e4498edb636b",
+      "index": 12,
+      "len_bytes": 216,
+      "len_chars": 94,
+      "meta": {
+        "heading_path": null,
+        "start_char": 1015,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "start_char": 1015,
+        "strategy": "markdown"
+      },
+      "text": "다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. \n"
+    },
+    {
+      "chunk_id": "chunk:55b553417d79474a5cf3690b",
+      "index": 13,
+      "len_bytes": 276,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": " > 여섯 단계",
+        "start_char": 1109,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": " > 여섯 단계",
+        "start_char": 1109,
+        "strategy": "markdown"
+      },
+      "text": "###### 여섯 단계\n가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 "
+    },
+    {
+      "chunk_id": "chunk:7faec9b152de0c584c005bb0",
+      "index": 14,
+      "len_bytes": 286,
+      "len_chars": 120,
+      "meta": {
+        "heading_path": " > 여섯 단계",
+        "start_char": 1199,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": " > 여섯 단계",
+        "start_char": 1199,
+        "strategy": "markdown"
+      },
+      "text": " 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장"
+    },
+    {
+      "chunk_id": "chunk:170626512a71b5d02f1dc960",
+      "index": 15,
+      "len_bytes": 175,
+      "len_chars": 77,
+      "meta": {
+        "heading_path": " > 여섯 단계",
+        "start_char": 1289,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": " > 여섯 단계",
+        "start_char": 1289,
+        "strategy": "markdown"
+      },
+      "text": ". 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. \n## 마무리\n끝."
+    }
+  ],
+  "cleaned_len_bytes": 3122,
+  "cleaned_len_chars": 1366,
+  "content_type": "",
+  "filename": "guide.md",
+  "key": "markdown_full_small_window",
+  "overlap": 30,
+  "requested_strategy": null,
+  "size": 120,
+  "source_node_id": "file:markdown_full_small_window",
+  "strategy": "markdown",
+  "text": "안내서 서문입니다. 이 문단은 첫 제목 앞에 옵니다.\n\n# 안내서\n짧다.\n## 설치\n설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. 설치 방법은 다음과 같습니다. \n### 사전 준비\n준비물.\n### 실행\n실행 방법.\n## 사용\n근거 문단 0: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 1: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 2: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 3: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 4: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 5: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 6: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 7: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 8: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 9: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 10: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 11: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 12: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 13: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 14: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 15: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 16: 검색 품질은 청크 경계에 좌우됩니다. 근거 문단 17: 검색 품질은 청크 경계에 좌우됩니다.\n# \n빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. 빈 제목 아래 본문입니다. \n###### 여섯 단계\n가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. 가장 깊은 제목입니다. \n## 마무리\n끝."
+}

@@ -1,0 +1,24 @@
+[package]
+name = "lattice-jobs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+# The scheduler's only outbound traffic is loopback HTTP to the worker; the
+# workspace pins reqwest without TLS or the `json` feature, so bodies are
+# serialized and parsed with serde_json here the way lattice-host does it.
+reqwest = { workspace = true }
+# Read-only SQLite for the queue counts: the same `open_read_only` handle the
+# native search lanes use, so this crate cannot migrate or write a store whose
+# schema Python owns.
+lattice-core = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+# Tests build their own `vector_jobs` fixture with the Python DDL verbatim.
+rusqlite = { workspace = true }

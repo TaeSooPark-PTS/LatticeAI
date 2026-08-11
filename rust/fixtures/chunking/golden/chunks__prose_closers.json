@@ -1,0 +1,96 @@
+{
+  "chunk_count": 5,
+  "chunks": [
+    {
+      "chunk_id": "chunk:a2b4771c3a2ba5ba68a425b4",
+      "index": 0,
+      "len_bytes": 76,
+      "len_chars": 36,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "그는 \"끝났다.\" 라고 했다. 그녀는 '정말?' 이라고 물었다. "
+    },
+    {
+      "chunk_id": "chunk:d065d112622dc0174688aedb",
+      "index": 1,
+      "len_bytes": 94,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 26,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 26,
+        "strategy": "prose"
+      },
+      "text": " 이라고 물었다. 안내문은 “확인했다.” 였다. 메모는 ‘완료’ 였다. "
+    },
+    {
+      "chunk_id": "chunk:3f7cdba716574a2df07779ec",
+      "index": 2,
+      "len_bytes": 95,
+      "len_chars": 41,
+      "meta": {
+        "heading_path": null,
+        "start_char": 56,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 56,
+        "strategy": "prose"
+      },
+      "text": " ‘완료’ 였다. 인용은 「검토함.」 이었다. 출처는 『보고서.』 이다. "
+    },
+    {
+      "chunk_id": "chunk:cc2b10b8939e91e1a9de0d76",
+      "index": 3,
+      "len_bytes": 81,
+      "len_chars": 39,
+      "meta": {
+        "heading_path": null,
+        "start_char": 87,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 87,
+        "strategy": "prose"
+      },
+      "text": "보고서.』 이다. 각주는 (참고함.) 이다. 표는 [완료됨.] 이다. "
+    },
+    {
+      "chunk_id": "chunk:b49549b53b94c2b9a0b1d7d2",
+      "index": 4,
+      "len_bytes": 43,
+      "len_chars": 19,
+      "meta": {
+        "heading_path": null,
+        "start_char": 116,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 116,
+        "strategy": "prose"
+      },
+      "text": "완료됨.] 이다. 마지막 문장이다."
+    }
+  ],
+  "cleaned_len_bytes": 303,
+  "cleaned_len_chars": 135,
+  "content_type": "",
+  "filename": "quotes.txt",
+  "key": "prose_closers",
+  "overlap": 10,
+  "requested_strategy": null,
+  "size": 45,
+  "source_node_id": "file:prose_closers",
+  "strategy": "prose",
+  "text": "그는 \"끝났다.\" 라고 했다. 그녀는 '정말?' 이라고 물었다. 안내문은 “확인했다.” 였다. 메모는 ‘완료’ 였다. 인용은 「검토함.」 이었다. 출처는 『보고서.』 이다. 각주는 (참고함.) 이다. 표는 [완료됨.] 이다. 마지막 문장이다."
+}

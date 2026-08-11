@@ -1,6 +1,6 @@
 [package]
 name = "lattice-ai-desktop"
-version = "11.4.0"
+version = "11.5.0"
 description = "Lattice AI Digital Brain desktop shell"
 authors = ["TaeSoo Park"]
 edition = "2021"
@@ -15,7 +15,14 @@ time = "=0.3.36"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # The supervisor (command resolution, spawn, HTTP health gate, backoff restart,
-# graceful stop) shared with the `lattice-host` binary. A path dependency, not a
-# workspace member: `rust/` must stay buildable on a CI runner with no tauri
-# system libraries, so this crate deliberately sits outside that workspace.
+# graceful stop) and, since 11.5.0, the gateway this shell serves as its front
+# door. A path dependency, not a workspace member: `rust/` must stay buildable
+# on a CI runner with no tauri system libraries, so this crate deliberately sits
+# outside that workspace.
 lattice-host = { path = "../rust/lattice-host" }
+# The jobs scheduler type the shell holds while the gateway exposes it on
+# `/host/jobs`. Same reason for the path form.
+lattice-jobs = { path = "../rust/lattice-jobs" }
+# The gateway is an axum server and the shell drives it on tokio's runtime,
+# which tauri already embeds.
+tokio = { version = "1", features = ["sync", "time", "rt"] }

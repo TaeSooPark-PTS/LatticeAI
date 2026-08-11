@@ -531,6 +531,11 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "시점을 읽을 수 없습니다. 2026-08-11T09:00:00 처럼 적어 주세요.",
         "en": "That moment could not be read. Write it like 2026-08-11T09:00:00.",
     },
+    # ── index jobs ──────────────────────────────────────────────────────
+    "index.limit_out_of_range": {
+        "ko": "한 번에 처리할 개수는 {min}에서 {max} 사이여야 합니다.",
+        "en": "Ask for between {min} and {max} items in one pass.",
+    },
     # ── MCP / setup ─────────────────────────────────────────────────────
     "mcp.connector_not_found": {
         "ko": "커넥터를 찾을 수 없습니다.",

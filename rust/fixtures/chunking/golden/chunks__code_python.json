@@ -1,0 +1,32 @@
+{
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "chunk_id": "chunk:296bd19ba5dc4ce8173fa558",
+      "index": 0,
+      "len_bytes": 269,
+      "len_chars": 235,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "import os\n\n\ndef alpha(value):\n    return value + 1\n\n\nclass Beta:\n    \"\"\"도움말 문자열입니다.\"\"\"\n\n    def gamma(self):\n        return 2\n\n\nconst_value = 3\nconst = 4\n\npublic = 5\nprivate = 6\n\n\ndef omega(value):\n    # 마지막 함수입니다.\n    return value * 2"
+    }
+  ],
+  "cleaned_len_bytes": 269,
+  "cleaned_len_chars": 235,
+  "content_type": "",
+  "filename": "module.py",
+  "key": "code_python",
+  "overlap": 160,
+  "requested_strategy": null,
+  "size": 1200,
+  "source_node_id": "file:code_python",
+  "strategy": "code",
+  "text": "import os\n\n\ndef alpha(value):\n    return value + 1\n\n\nclass Beta:\n    \"\"\"도움말 문자열입니다.\"\"\"\n\n    def gamma(self):\n        return 2\n\n\nconst_value = 3\nconst = 4\n\npublic = 5\nprivate = 6\n\n\ndef omega(value):\n    # 마지막 함수입니다.\n    return value * 2"
+}

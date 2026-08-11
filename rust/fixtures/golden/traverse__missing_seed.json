@@ -1,0 +1,14 @@
+{
+  "key": "missing_seed",
+  "result": {
+    "depth": 1,
+    "edges": [],
+    "nodes": [],
+    "root": "nope:missing"
+  },
+  "spec": {
+    "key": "missing_seed",
+    "node_id": "nope:missing"
+  },
+  "suite": "traverse"
+}

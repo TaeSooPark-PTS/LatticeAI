@@ -9,7 +9,7 @@ use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use lattice_host::gateway::{bind_loopback, serve_gateway, GatewayState};
+use lattice_host::gateway::{bind_loopback, mounts, serve_gateway, GatewayState};
 use lattice_host::supervisor::{
     find_free_port, preferred_port, HostProbe, Supervisor, SupervisorConfig, SystemProbe,
     DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS,
@@ -26,6 +26,8 @@ OPTIONS:
                            LATTICEAI_PORT, then 4825; scans upward if busy)
     --worker-port <PORT>   Pin the worker port instead of scanning
     --no-spawn             Do not start a worker; front an existing one
+    --no-jobs              Mount /host/jobs but never run the timer
+                           (same as LATTICEAI_JOBS=0)
     -h, --help             Print this help
     -V, --version          Print the version
 ";
@@ -35,6 +37,7 @@ struct Options {
     port: Option<u16>,
     worker_port: Option<u16>,
     no_spawn: bool,
+    no_jobs: bool,
     help: bool,
     version: bool,
 }
@@ -62,6 +65,7 @@ fn parse_args<I: IntoIterator<Item = String>>(args: I) -> Result<Options, ParseE
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "--no-spawn" => options.no_spawn = true,
+            "--no-jobs" => options.no_jobs = true,
             "-h" | "--help" => options.help = true,
             "-V" | "--version" => options.version = true,
             "--port" | "--worker-port" => {
@@ -136,6 +140,15 @@ async fn shutdown_signal() {
     log("shutdown signal received");
 }
 
+/// Whether the jobs timer runs: the flag wins, then the environment.
+///
+/// A worker this process did not start is not this process's to drive, so
+/// `--no-spawn` also means "no timer" — the routes still mount and still say
+/// `enabled: false`, which is the honest reading of "manual only".
+fn jobs_should_run(options: &Options, env_value: Option<&str>) -> bool {
+    !options.no_jobs && !options.no_spawn && mounts::jobs_enabled(env_value)
+}
+
 async fn run(options: Options) -> Result<(), String> {
     let probe = SystemProbe;
     let gateway_port = choose_gateway_port(&options, &probe)?;
@@ -143,6 +156,10 @@ async fn run(options: Options) -> Result<(), String> {
 
     let mut config = SupervisorConfig::new(worker_port).with_system_dirs(&probe);
     config.supervise = !options.no_spawn;
+    // The worker sits behind this gateway, so it is told to trust the gateway's
+    // origin for cookie-authenticated writes (plan §2a).
+    config.gateway_port = Some(gateway_port);
+    let agent_root = config.agent_root();
     let supervisor = Supervisor::with_probe(config, Arc::new(SystemProbe))
         .map_err(|err| format!("cannot create the supervisor: {err}"))?;
 
@@ -160,10 +177,37 @@ async fn run(options: Options) -> Result<(), String> {
         log("--no-spawn: fronting an existing worker, nothing will be started");
     }
 
-    let state = Arc::new(GatewayState::with_client(
-        Arc::new(supervisor.clone()),
-        supervisor.client(),
-    ));
+    // The scheduler is built either way so `/host/jobs` always answers; only
+    // the timer is conditional, and `enabled` in that payload *is* "the timer
+    // is running".
+    let scheduler = mounts::scheduler(&supervisor.worker_origin(), supervisor.client());
+    let mut state = GatewayState::with_client(Arc::new(supervisor.clone()), supervisor.client())
+        .with_jobs(Arc::clone(&scheduler));
+    if let Some(root) = agent_root {
+        state = state.with_agent_root(root);
+    }
+    let state = Arc::new(state);
+
+    let run_jobs = jobs_should_run(&options, std::env::var(mounts::JOBS_ENV).ok().as_deref());
+    let (jobs_stop_tx, jobs_stop_rx) = tokio::sync::oneshot::channel::<()>();
+    let jobs_task = run_jobs.then(|| {
+        log(&format!(
+            "jobs scheduler every {}s against {} (autoresume {})",
+            scheduler.config().interval.as_secs(),
+            scheduler.config().worker_origin,
+            if scheduler.config().autoresume {
+                "on"
+            } else {
+                "off"
+            },
+        ));
+        Arc::clone(&scheduler).spawn(async move {
+            let _ = jobs_stop_rx.await;
+        })
+    });
+    if !run_jobs {
+        log("jobs scheduler not started; /host/jobs is manual only");
+    }
 
     let starter = supervisor.clone();
     let start_task = tokio::spawn(async move {
@@ -183,6 +227,10 @@ async fn run(options: Options) -> Result<(), String> {
 
     let result = serve_gateway(listener, state, shutdown_signal()).await;
     let _ = start_task.await;
+    let _ = jobs_stop_tx.send(());
+    if let Some(handle) = jobs_task {
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), handle).await;
+    }
     let final_status = supervisor.stop().await;
     log(&format!(
         "stopped (restarts: {}, last error: {})",
@@ -240,11 +288,44 @@ mod tests {
             "--worker-port",
             "5001",
             "--no-spawn",
+            "--no-jobs",
         ]))
         .expect("parse");
         assert_eq!(options.port, Some(5000));
         assert_eq!(options.worker_port, Some(5001));
         assert!(options.no_spawn);
+        assert!(options.no_jobs);
+    }
+
+    #[test]
+    fn the_jobs_timer_needs_a_worker_of_our_own_and_no_veto() {
+        let default = Options::default();
+        assert!(jobs_should_run(&default, None));
+        assert!(jobs_should_run(&default, Some("1")));
+        assert!(
+            !jobs_should_run(&default, Some("0")),
+            "LATTICEAI_JOBS=0 switches the timer off"
+        );
+        assert!(
+            !jobs_should_run(
+                &Options {
+                    no_jobs: true,
+                    ..Options::default()
+                },
+                Some("1")
+            ),
+            "--no-jobs wins over the environment"
+        );
+        assert!(
+            !jobs_should_run(
+                &Options {
+                    no_spawn: true,
+                    ..Options::default()
+                },
+                None
+            ),
+            "a worker we did not start is not ours to drive"
+        );
     }
 
     #[test]
@@ -337,6 +418,7 @@ mod tests {
             "--port",
             "--worker-port",
             "--no-spawn",
+            "--no-jobs",
             "--help",
             "--version",
         ] {

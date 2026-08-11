@@ -1,0 +1,122 @@
+{
+  "key": "by_query_meta",
+  "result": {
+    "node_id": "",
+    "query": "lattice",
+    "relationship_type": "",
+    "relationships": [
+      {
+        "created_at": "2026-07-04T00:00:00",
+        "id": "edge:d4d6bd991115ef527ce4fa3b",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "source": {
+          "id": "doc:handbook",
+          "metadata": {
+            "ext": ".pdf",
+            "filename": "handbook.pdf",
+            "source_node": "doc:handbook"
+          },
+          "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+          "title": "Lattice AI 사용 안내서",
+          "type": "Document"
+        },
+        "target": {
+          "id": "page:onboarding",
+          "metadata": {},
+          "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+          "title": "온보딩 첫 다섯 걸음",
+          "type": "Page"
+        },
+        "type": "CONTAINS",
+        "weight": 0.7
+      },
+      {
+        "created_at": "2026-06-07T00:00:00",
+        "id": "edge:5037613da3bd384666bffa0d",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "source": {
+          "id": "org:lattice",
+          "metadata": {},
+          "summary": "The organization.",
+          "title": "Lattice",
+          "type": "Organization"
+        },
+        "target": {
+          "id": "person:minseo",
+          "metadata": {
+            "role": "reviewer"
+          },
+          "summary": "빌드 파이프라인 담당자입니다.",
+          "title": "박민서 님",
+          "type": "Person"
+        },
+        "type": "CONTAINS",
+        "weight": 0.25
+      },
+      {
+        "created_at": "2026-06-06T00:00:00",
+        "id": "edge:0b57b59e7e8a8f090382c90f",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "source": {
+          "id": "org:lattice",
+          "metadata": {},
+          "summary": "The organization.",
+          "title": "Lattice",
+          "type": "Organization"
+        },
+        "target": {
+          "id": "person:jiwon",
+          "metadata": {
+            "role": "owner"
+          },
+          "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+          "title": "김지원 님",
+          "type": "Person"
+        },
+        "type": "CONTAINS",
+        "weight": 0.25
+      },
+      {
+        "created_at": "2026-05-02T00:00:00",
+        "id": "edge:925238c39c45c82b73435a65",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "doc:handbook",
+          "metadata": {
+            "ext": ".pdf",
+            "filename": "handbook.pdf",
+            "source_node": "doc:handbook"
+          },
+          "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+          "title": "Lattice AI 사용 안내서",
+          "type": "Document"
+        },
+        "target": {
+          "id": "doc:retrieval-spec",
+          "metadata": {
+            "ext": ".pdf",
+            "filename": "retrieval-spec.pdf"
+          },
+          "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+          "title": "Retrieval specification",
+          "type": "Document"
+        },
+        "type": "MENTIONS",
+        "weight": 0.1
+      }
+    ]
+  },
+  "spec": {
+    "key": "by_query_meta",
+    "query": "lattice"
+  },
+  "suite": "relationship"
+}

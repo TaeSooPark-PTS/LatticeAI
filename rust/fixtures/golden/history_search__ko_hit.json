@@ -1,0 +1,47 @@
+{
+  "key": "ko_hit",
+  "result": [
+    {
+      "conversation_id": "conv-c",
+      "messages": [
+        {
+          "content": "지난주 회의 기록 보여줘",
+          "conversation_id": "conv-c",
+          "role": "user",
+          "timestamp": "2026-07-22T08:01:00"
+        }
+      ],
+      "title": "지난주 회의 기록 보여줘"
+    },
+    {
+      "conversation_id": "conv-f",
+      "messages": [
+        {
+          "content": "검색 품질을 어떻게 측정하나요? 재현율과 정밀도를 모두 보고 싶고 주간 회의에서 공유할 예정입니다.",
+          "conversation_id": "conv-f",
+          "role": "user",
+          "source": "web",
+          "timestamp": "2026-07-25T13:00:00"
+        }
+      ],
+      "title": "검색 품질을 어떻게 측정하나요? 재현율과 정밀도를 모두 보고 싶고 주간 회의에서 공유할"
+    },
+    {
+      "conversation_id": "conv-h",
+      "messages": [
+        {
+          "content": "회의 결정 사항을 정리했습니다.",
+          "conversation_id": "conv-h",
+          "role": "assistant",
+          "timestamp": "2026-07-27T15:00:06"
+        }
+      ],
+      "title": "회의 결정 사항을 정리했습니다."
+    }
+  ],
+  "spec": {
+    "key": "ko_hit",
+    "query": "회의"
+  },
+  "suite": "history_search"
+}

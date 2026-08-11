@@ -169,6 +169,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
+name = "cpufeatures"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -569,8 +578,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "lattice-core"
+name = "lattice-agent"
 version = "11.4.0"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "lattice-core"
+version = "11.5.0"
 dependencies = [
  "blake2",
  "rusqlite",
@@ -581,10 +601,13 @@ dependencies = [
 
 [[package]]
 name = "lattice-host"
-version = "11.4.0"
+version = "11.5.0"
 dependencies = [
  "axum",
+ "lattice-agent",
  "lattice-core",
+ "lattice-ingest",
+ "lattice-jobs",
  "lattice-retrieval",
  "libc",
  "reqwest",
@@ -595,15 +618,46 @@ dependencies = [
 ]
 
 [[package]]
-name = "lattice-retrieval"
+name = "lattice-ingest"
 version = "11.4.0"
 dependencies = [
- "fancy-regex",
+ "axum",
  "lattice-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "lattice-jobs"
+version = "11.4.0"
+dependencies = [
+ "axum",
+ "lattice-core",
+ "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "lattice-retrieval"
+version = "11.5.0"
+dependencies = [
+ "axum",
+ "fancy-regex",
+ "lattice-core",
+ "libc",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -882,6 +936,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
 ]
 
 [[package]]

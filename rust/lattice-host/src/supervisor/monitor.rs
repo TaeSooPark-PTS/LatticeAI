@@ -160,6 +160,7 @@ pub(crate) async fn run_monitor(
         let child = spawn_worker(
             &command,
             shared.config.port,
+            shared.config.gateway_port,
             shared.config.runtime_dir.as_deref(),
             shared.config.log_dir.as_deref(),
             shared.probe.as_ref(),

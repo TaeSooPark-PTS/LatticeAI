@@ -1,0 +1,80 @@
+{
+  "chunk_count": 4,
+  "chunks": [
+    {
+      "chunk_id": "chunk:7909a9087f0063dff5144441",
+      "index": 0,
+      "len_bytes": 138,
+      "len_chars": 54,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "회의에서 결정한 사항을 정리합니다。 근거는 문서에 남겨 두었습니다！ 다음 주에 다시 검토할까요？ "
+    },
+    {
+      "chunk_id": "chunk:c186d0f8bb07da1b540a895b",
+      "index": 1,
+      "len_bytes": 83,
+      "len_chars": 33,
+      "meta": {
+        "heading_path": null,
+        "start_char": 39,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 39,
+        "strategy": "prose"
+      },
+      "text": "음 주에 다시 검토할까요？ 검토 결과는 여기에 덧붙입니다… "
+    },
+    {
+      "chunk_id": "chunk:7993269edc75428002391964",
+      "index": 2,
+      "len_bytes": 130,
+      "len_chars": 52,
+      "meta": {
+        "heading_path": null,
+        "start_char": 57,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 57,
+        "strategy": "prose"
+      },
+      "text": "결과는 여기에 덧붙입니다… 한국어는 문장 끝에 서술어가 오기 때문에 경계가 특히 중요합니다. "
+    },
+    {
+      "chunk_id": "chunk:fa1c8b3ed9b1eb736a73e383",
+      "index": 3,
+      "len_bytes": 89,
+      "len_chars": 37,
+      "meta": {
+        "heading_path": null,
+        "start_char": 94,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 94,
+        "strategy": "prose"
+      },
+      "text": " 경계가 특히 중요합니다. 그래서 청크 경계를 문장 끝에 맞춥니다."
+    }
+  ],
+  "cleaned_len_bytes": 329,
+  "cleaned_len_chars": 131,
+  "content_type": "",
+  "filename": "essay.txt",
+  "key": "prose_korean",
+  "overlap": 15,
+  "requested_strategy": null,
+  "size": 60,
+  "source_node_id": "file:prose_korean",
+  "strategy": "prose",
+  "text": "회의에서 결정한 사항을 정리합니다。 근거는 문서에 남겨 두었습니다！ 다음 주에 다시 검토할까요？ 검토 결과는 여기에 덧붙입니다… 한국어는 문장 끝에 서술어가 오기 때문에 경계가 특히 중요합니다. 그래서 청크 경계를 문장 끝에 맞춥니다."
+}

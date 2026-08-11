@@ -1,0 +1,14 @@
+{
+  "key": "by_type_unknown",
+  "result": {
+    "node_id": "",
+    "query": "",
+    "relationship_type": "relates_to",
+    "relationships": []
+  },
+  "spec": {
+    "key": "by_type_unknown",
+    "relationship_type": "relates_to"
+  },
+  "suite": "relationship"
+}

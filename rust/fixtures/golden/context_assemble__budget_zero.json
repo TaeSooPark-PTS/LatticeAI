@@ -1,0 +1,140 @@
+{
+  "key": "budget_zero",
+  "result": {
+    "approx_tokens": 1,
+    "text": "[User memories]\n- (p",
+    "trace": {
+      "budget_approx_tokens": 0,
+      "sections": [
+        {
+          "approx_tokens": 1,
+          "name": "User memories",
+          "provenance": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0
+            },
+            {
+              "id": "mem-4",
+              "kind": "fact",
+              "score": 0.3
+            }
+          ],
+          "source": "memory",
+          "truncated": true
+        },
+        {
+          "approx_tokens": 0,
+          "name": "Knowledge",
+          "provenance": [
+            {
+              "id": "img:ocr-notes",
+              "score": 1.0,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "chunk:handbook:2",
+              "score": 0.5,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "dec:rust-foundation",
+              "score": 0.333333,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "meeting:weekly",
+              "score": 0.22,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "doc:handbook",
+              "score": 0.180769,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            }
+          ],
+          "source": "knowledge",
+          "truncated": true
+        },
+        {
+          "approx_tokens": 0,
+          "name": "Garden notes",
+          "provenance": [
+            {
+              "included": true,
+              "source": "garden"
+            }
+          ],
+          "source": "notes",
+          "truncated": true
+        }
+      ],
+      "used_approx_tokens": 1
+    }
+  },
+  "spec": {
+    "budget": 0,
+    "key": "budget_zero",
+    "memories": {
+      "results": [
+        {
+          "id": "mem-1",
+          "kind": "preference",
+          "score": 0.91,
+          "snippet": "답변은 한국어로",
+          "source": "workspace"
+        },
+        {
+          "id": "mem-2",
+          "kind": null,
+          "score": 0.0,
+          "snippet": "",
+          "source": "workspace"
+        },
+        {
+          "id": "mem-3",
+          "kind": "decision",
+          "score": 0.4,
+          "snippet": "ranking keeps alpha fusion",
+          "source": "personal"
+        },
+        {
+          "id": "mem-4",
+          "kind": "fact",
+          "score": 0.3,
+          "snippet": "온보딩은 다섯 걸음",
+          "source": "workspace"
+        }
+      ]
+    },
+    "notes": "노트",
+    "query": "회의 결정 사항"
+  },
+  "suite": "context_assemble"
+}

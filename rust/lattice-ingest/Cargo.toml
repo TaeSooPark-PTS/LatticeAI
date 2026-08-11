@@ -1,0 +1,24 @@
+[package]
+name = "lattice-ingest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# `clean_text` and `citation_locator` are already ported (and golden-pinned) in
+# lattice-core; re-porting them here would be a second copy of the same
+# contract, which is exactly the drift this crate exists to prevent.
+lattice-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+# Chunk ids and content hashes are sha256 over UTF-8 bytes; the digest *is* the
+# contract, so it comes from a maintained implementation rather than a local one.
+sha2 = "0.10"
+# The poll loop (timer) and the dry-run routes.
+tokio = { workspace = true }
+axum = { workspace = true }
+# Delegation to the Python worker: this crate never writes the graph itself.
+reqwest = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

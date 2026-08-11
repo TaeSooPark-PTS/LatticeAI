@@ -20,10 +20,15 @@ serde_json = { workspace = true }
 tokio = { workspace = true }
 axum = { workspace = true }
 reqwest = { workspace = true }
-# The native /rust/search/* lanes: the gateway answers them itself out of the
-# read-only store instead of proxying them to the Python worker.
+# The native lanes: the gateway answers them itself out of the read-only store
+# instead of proxying them to the Python worker.
 lattice-core = { workspace = true }
 lattice-retrieval = { workspace = true }
+# Mounted router factories (v11.5.0): ingestion dry runs, the background jobs
+# scheduler, and the agent safety kernel.
+lattice-ingest = { workspace = true }
+lattice-jobs = { workspace = true }
+lattice-agent = { workspace = true }
 # Only for kill(2)/SIGTERM on unix; every other platform falls back to the
 # std `Child::kill` path.
 libc = { workspace = true }

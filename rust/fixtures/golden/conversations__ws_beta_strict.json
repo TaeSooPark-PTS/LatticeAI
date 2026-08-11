@@ -1,0 +1,31 @@
+{
+  "key": "ws_beta_strict",
+  "result": [
+    {
+      "created_at": "2026-07-24T12:00:00",
+      "id": "conv-e",
+      "last_message": "Yes — id ascending keeps it stable.",
+      "message_count": 2,
+      "source": "web",
+      "title": "Ranking ties are broken by node id",
+      "updated_at": "2026-07-24T12:00:05"
+    },
+    {
+      "created_at": "2026-07-21T10:00:00",
+      "id": "conv-b",
+      "last_message": "The lexical channel scores one over rank.",
+      "message_count": 2,
+      "source": "telegram",
+      "title": "How does hybrid retrieval ranking work?",
+      "updated_at": "2026-07-21T10:00:07"
+    }
+  ],
+  "spec": {
+    "allowed": [
+      "ws-beta"
+    ],
+    "key": "ws_beta_strict",
+    "legacy": false
+  },
+  "suite": "conversations"
+}

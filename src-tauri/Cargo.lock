@@ -1729,21 +1729,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "lattice-agent"
+version = "11.5.0"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "lattice-ai-desktop"
-version = "11.4.0"
+version = "11.5.0"
 dependencies = [
  "lattice-host",
+ "lattice-jobs",
  "plist",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "time",
+ "tokio",
 ]
 
 [[package]]
 name = "lattice-core"
-version = "11.4.0"
+version = "11.5.0"
 dependencies = [
  "blake2",
  "rusqlite",
@@ -1753,10 +1765,13 @@ dependencies = [
 
 [[package]]
 name = "lattice-host"
-version = "11.4.0"
+version = "11.5.0"
 dependencies = [
  "axum",
+ "lattice-agent",
  "lattice-core",
+ "lattice-ingest",
+ "lattice-jobs",
  "lattice-retrieval",
  "libc",
  "reqwest 0.12.28",
@@ -1766,14 +1781,42 @@ dependencies = [
 ]
 
 [[package]]
-name = "lattice-retrieval"
-version = "11.4.0"
+name = "lattice-ingest"
+version = "11.5.0"
 dependencies = [
+ "axum",
+ "lattice-core",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+]
+
+[[package]]
+name = "lattice-jobs"
+version = "11.5.0"
+dependencies = [
+ "axum",
+ "lattice-core",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "lattice-retrieval"
+version = "11.5.0"
+dependencies = [
+ "axum",
  "fancy-regex",
  "lattice-core",
+ "libc",
  "rusqlite",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

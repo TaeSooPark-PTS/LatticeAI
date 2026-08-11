@@ -1,0 +1,18 @@
+{
+  "key": "no_seams",
+  "result": {
+    "approx_tokens": 0,
+    "text": "",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [],
+      "used_approx_tokens": 0
+    }
+  },
+  "spec": {
+    "key": "no_seams",
+    "knowledge": false,
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "context_assemble"
+}

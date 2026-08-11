@@ -1,0 +1,48 @@
+{
+  "chunk_count": 2,
+  "chunks": [
+    {
+      "chunk_id": "chunk:862d0fca55be6522202d4826",
+      "index": 0,
+      "len_bytes": 72,
+      "len_chars": 72,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "export const alpha = 1;\n\nfunction beta(value) {\n  return value + 1;\n}\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:c160a33e7c2667866f950f9d",
+      "index": 1,
+      "len_bytes": 78,
+      "len_chars": 74,
+      "meta": {
+        "heading_path": null,
+        "start_char": 72,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 72,
+        "strategy": "code"
+      },
+      "text": "export default function gamma() {\n  return '결과';\n}\n\nconst delta = () => 4;"
+    }
+  ],
+  "cleaned_len_bytes": 150,
+  "cleaned_len_chars": 146,
+  "content_type": "",
+  "filename": "app.tsx",
+  "key": "code_javascript",
+  "overlap": 16,
+  "requested_strategy": null,
+  "size": 80,
+  "source_node_id": "file:code_javascript",
+  "strategy": "code",
+  "text": "export const alpha = 1;\n\nfunction beta(value) {\n  return value + 1;\n}\n\n\nexport default function gamma() {\n  return '결과';\n}\n\nconst delta = () => 4;"
+}

@@ -1,0 +1,12 @@
+{
+  "key": "ws_blank_only",
+  "result": [],
+  "spec": {
+    "allowed": [
+      ""
+    ],
+    "key": "ws_blank_only",
+    "legacy": false
+  },
+  "suite": "history"
+}

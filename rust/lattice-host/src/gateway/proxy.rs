@@ -10,11 +10,23 @@ use std::sync::Arc;
 
 use axum::body::Body;
 use axum::extract::{Request, State};
-use axum::http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
+use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING};
 use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 
 use super::GatewayState;
+
+/// The nginx/ingress hint that a response must not be buffered.
+///
+/// The gateway itself never buffers — the body is a stream — but a desktop
+/// front door is exactly the sort of thing someone eventually puts another
+/// proxy in front of, and a buffered SSE stream is a chat that appears to hang
+/// and then arrives all at once. Stating "do not buffer this" on the way out
+/// costs one header and removes a whole class of report.
+pub const ACCEL_BUFFERING: &str = "x-accel-buffering";
+
+/// Content type of a server-sent event stream.
+pub const EVENT_STREAM: &str = "text/event-stream";
 
 /// Headers that describe a single hop and must never be forwarded.
 pub const HOP_BY_HOP: [&str; 9] = [
@@ -104,6 +116,31 @@ pub fn body_plan(headers: &HeaderMap) -> BodyPlan {
     }
 }
 
+/// Whether this response is an event stream that has not already said "do not
+/// buffer me".
+///
+/// The content type is matched on its media type only: `text/event-stream` and
+/// `text/event-stream; charset=utf-8` are the same answer, and an upstream that
+/// already set `X-Accel-Buffering` (to `no` or to anything else) is left alone,
+/// because it knows something this hop does not.
+pub fn needs_buffering_hint(headers: &HeaderMap) -> bool {
+    if headers.contains_key(ACCEL_BUFFERING) {
+        return false;
+    }
+    headers
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(|value| {
+            value
+                .split(';')
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .eq_ignore_ascii_case(EVENT_STREAM)
+        })
+        .unwrap_or(false)
+}
+
 /// A 502 with an honest JSON body describing why the worker could not answer.
 pub fn worker_unavailable(state: &GatewayState, detail: String) -> Response {
     let payload = serde_json::json!({
@@ -173,6 +210,9 @@ pub async fn proxy_handler(State(state): State<Arc<GatewayState>>, request: Requ
             continue;
         }
         builder = builder.header(name.clone(), value.clone());
+    }
+    if needs_buffering_hint(response.headers()) {
+        builder = builder.header(ACCEL_BUFFERING, HeaderValue::from_static("no"));
     }
     match builder.body(Body::from_stream(response.bytes_stream())) {
         Ok(response) => response,
@@ -265,6 +305,33 @@ mod tests {
     fn target_url_rejects_a_broken_origin() {
         let uri: Uri = "/health".parse().expect("uri");
         assert!(target_url("not-a-url", &uri).is_err());
+    }
+
+    #[test]
+    fn only_unmarked_event_streams_get_the_no_buffering_hint() {
+        assert!(needs_buffering_hint(&headers(&[(
+            "content-type",
+            "text/event-stream"
+        )])));
+        assert!(needs_buffering_hint(&headers(&[(
+            "content-type",
+            "text/event-stream; charset=utf-8"
+        )])));
+        assert!(needs_buffering_hint(&headers(&[(
+            "content-type",
+            "TEXT/Event-Stream"
+        )])));
+        // Already stated by the worker: not this hop's call to change.
+        assert!(!needs_buffering_hint(&headers(&[
+            ("content-type", "text/event-stream"),
+            ("x-accel-buffering", "yes"),
+        ])));
+        // Not a stream.
+        assert!(!needs_buffering_hint(&headers(&[(
+            "content-type",
+            "application/json"
+        )])));
+        assert!(!needs_buffering_hint(&HeaderMap::new()));
     }
 
     #[test]

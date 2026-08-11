@@ -1,0 +1,14 @@
+{
+  "key": "person",
+  "result": {
+    "expand_depth": 1,
+    "matches": [],
+    "mode": "graph",
+    "query": "who owns the onboarding checklist"
+  },
+  "spec": {
+    "key": "person",
+    "query": "who owns the onboarding checklist"
+  },
+  "suite": "graph_search"
+}

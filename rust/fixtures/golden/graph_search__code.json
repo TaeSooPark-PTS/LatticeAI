@@ -1,0 +1,136 @@
+{
+  "key": "code",
+  "result": {
+    "expand_depth": 1,
+    "matches": [
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "person:minseo",
+              "id": "edge:f8b0ac918a0ee351673dcdb6",
+              "to": "code:build-failure",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "person:minseo",
+              "id": "edge:f8b0ac918a0ee351673dcdb6",
+              "to": "code:build-failure",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          }
+        ],
+        "id": "code:build-failure",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".py",
+          "filename": "build_pipeline.py"
+        },
+        "node_id": "code:build-failure",
+        "rank": 1,
+        "score": 1.0,
+        "source_scores": {
+          "graph": 1.0
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
+        "title": "build_pipeline.py",
+        "type": "CodeFile",
+        "updated_at": "2026-04-22T18:05:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "person:minseo",
+              "id": "edge:f8b0ac918a0ee351673dcdb6",
+              "to": "code:build-failure",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          },
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "person:minseo",
+              "id": "edge:f8b0ac918a0ee351673dcdb6",
+              "to": "code:build-failure",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          }
+        ],
+        "id": "person:minseo",
+        "item_type": "node",
+        "metadata": {
+          "role": "reviewer"
+        },
+        "node_id": "person:minseo",
+        "rank": 2,
+        "score": 0.75,
+        "source_scores": {
+          "graph": 0.75
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "빌드 파이프라인 담당자입니다.",
+        "title": "박민서 님",
+        "type": "Person",
+        "updated_at": "2026-04-12T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "org:lattice",
+              "id": "edge:5037613da3bd384666bffa0d",
+              "to": "person:minseo",
+              "type": "CONTAINS",
+              "weight": 0.25
+            }
+          }
+        ],
+        "id": "org:lattice",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "org:lattice",
+        "rank": 3,
+        "score": 0.225,
+        "source_scores": {
+          "graph": 0.225
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "The organization.",
+        "title": "Lattice",
+        "type": "Organization",
+        "updated_at": "2026-02-22T10:00:00"
+      }
+    ],
+    "mode": "graph",
+    "query": "빌드 실패 원인"
+  },
+  "spec": {
+    "key": "code",
+    "query": "빌드 실패 원인"
+  },
+  "suite": "graph_search"
+}

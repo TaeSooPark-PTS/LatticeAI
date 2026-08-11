@@ -1,3 +1,14 @@
+# [v11.5.0 - Rust Complete] (2026-08-11)
+
+Rust 로드맵 Phase 2·3·4 완결: 데스크톱 front-door 기본화(CSRF env 주입
+라이브 증명), lattice-ingest(청킹 골든 332·뮤테이션 26/26)·lattice-jobs
+(드레인 스케줄러, 문서화된 갭 해소)·lattice-agent(판정 2,452 완전 일치
++ 읽기 전용 네이티브 실행)·retrieval 확장(패리티 191/191). Python은 AI
+Worker로 수렴(파서·임베딩 생산·LLM·변이·그래프 쓰기 소유). 플로어:
+6,861+1,761 테스트 · 100.00% · Rust 534.
+
+See [RELEASE_NOTES_v11.5.0.md](RELEASE_NOTES_v11.5.0.md).
+
 # [v11.4.0 - Rust Foundation] (2026-08-11)
 
 Rust 전환 Phase 1: `rust/` workspace 3크레이트 — 같은 SQLite를 읽는
@@ -430,7 +441,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.4.0**.
+This repository keeps public release history from **9.0.0 through 11.5.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

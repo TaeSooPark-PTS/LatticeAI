@@ -36,6 +36,7 @@ const LOCALIZED = [
   "chat_intents",
   "chronicle",
   "features",
+  "index_jobs",
   "knowledge_graph",
   "local_files",
   "mcp",

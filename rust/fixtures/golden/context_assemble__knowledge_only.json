@@ -1,0 +1,71 @@
+{
+  "key": "knowledge_only",
+  "result": {
+    "approx_tokens": 134,
+    "text": "[Knowledge]\n- Hybrid retrieval fusion stays alpha weighted: We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.\n- retrieval-metrics.xlsx: Recall and precision per query class for the ranking experiments.\n- Build the retrieval parity harness: Generate a golden fixture so the Rust ranking can be compared against the Python ranking.\n- hybrid.py: def hybrid_search(query): the ranking pipeline lives here and calls vector_search().\n- Retrieval: Retrieval is the act of finding the right memory for a question.",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [
+        {
+          "approx_tokens": 134,
+          "name": "Knowledge",
+          "provenance": [
+            {
+              "id": "dec:fusion-alpha",
+              "score": 0.811925,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "sheet:metrics",
+              "score": 0.55,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "task:parity-harness",
+              "score": 0.484582,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "code:hybrid-search",
+              "score": 0.374471,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "concept:retrieval",
+              "score": 0.335164,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            }
+          ],
+          "source": "knowledge",
+          "truncated": false
+        }
+      ],
+      "used_approx_tokens": 134
+    }
+  },
+  "spec": {
+    "key": "knowledge_only",
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "context_assemble"
+}

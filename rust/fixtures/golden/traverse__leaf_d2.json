@@ -1,0 +1,70 @@
+{
+  "key": "leaf_d2",
+  "result": {
+    "depth": 2,
+    "edges": [
+      {
+        "from": "code:hybrid-search",
+        "id": "edge:17137d757ca2934c0c9f13ac",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "file:ranking-notes",
+        "type": "MENTIONS",
+        "weight": 0.3
+      },
+      {
+        "from": "file:ranking-notes",
+        "id": "edge:7f22f14e6b87e9087ad6cfcf",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "dec:fusion-alpha",
+        "type": "MENTIONS",
+        "weight": 0.35
+      }
+    ],
+    "nodes": [
+      {
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "id": "file:ranking-notes",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "id": "code:hybrid-search",
+        "metadata": {
+          "ext": ".py",
+          "filename": "hybrid.py"
+        },
+        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+        "title": "hybrid.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-08T09:30:00"
+      }
+    ],
+    "root": "code:hybrid-search"
+  },
+  "spec": {
+    "depth": 2,
+    "key": "leaf_d2",
+    "node_id": "code:hybrid-search"
+  },
+  "suite": "traverse"
+}

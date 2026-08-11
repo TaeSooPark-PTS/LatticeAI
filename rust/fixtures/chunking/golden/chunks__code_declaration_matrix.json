@@ -1,0 +1,160 @@
+{
+  "chunk_count": 9,
+  "chunks": [
+    {
+      "chunk_id": "chunk:c2da88643de0ae5c180e25d2",
+      "index": 0,
+      "len_bytes": 11,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "def a(): 1\n"
+    },
+    {
+      "chunk_id": "chunk:dd4e6b896698a7c8913e7fa5",
+      "index": 1,
+      "len_bytes": 11,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 11,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 11,
+        "strategy": "code"
+      },
+      "text": "class b: 2\n"
+    },
+    {
+      "chunk_id": "chunk:12bf8e261011f7dd0dad292b",
+      "index": 2,
+      "len_bytes": 16,
+      "len_chars": 16,
+      "meta": {
+        "heading_path": null,
+        "start_char": 22,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 22,
+        "strategy": "code"
+      },
+      "text": "function c() {}\n"
+    },
+    {
+      "chunk_id": "chunk:ffaa183c705245e9882dca68",
+      "index": 3,
+      "len_bytes": 13,
+      "len_chars": 13,
+      "meta": {
+        "heading_path": null,
+        "start_char": 38,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 38,
+        "strategy": "code"
+      },
+      "text": "export d = 4\n"
+    },
+    {
+      "chunk_id": "chunk:5bb45b5d33af94458bd1a73d",
+      "index": 4,
+      "len_bytes": 12,
+      "len_chars": 12,
+      "meta": {
+        "heading_path": null,
+        "start_char": 51,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 51,
+        "strategy": "code"
+      },
+      "text": "const e = 5\n"
+    },
+    {
+      "chunk_id": "chunk:cd1b12727fb966f9a540d5fb",
+      "index": 5,
+      "len_bytes": 13,
+      "len_chars": 13,
+      "meta": {
+        "heading_path": null,
+        "start_char": 63,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 63,
+        "strategy": "code"
+      },
+      "text": "public f = 6\n"
+    },
+    {
+      "chunk_id": "chunk:54fdb04ab4562c6b723043fa",
+      "index": 6,
+      "len_bytes": 14,
+      "len_chars": 14,
+      "meta": {
+        "heading_path": null,
+        "start_char": 76,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 76,
+        "strategy": "code"
+      },
+      "text": "private g = 7\n"
+    },
+    {
+      "chunk_id": "chunk:0ff331d8f88eaaf39cc99173",
+      "index": 7,
+      "len_bytes": 12,
+      "len_chars": 12,
+      "meta": {
+        "heading_path": null,
+        "start_char": 90,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 90,
+        "strategy": "code"
+      },
+      "text": "def h(): 8\nt"
+    },
+    {
+      "chunk_id": "chunk:e19892060abbef0fff863f3a",
+      "index": 8,
+      "len_bytes": 10,
+      "len_chars": 10,
+      "meta": {
+        "heading_path": null,
+        "start_char": 99,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 99,
+        "strategy": "code"
+      },
+      "text": "8\ntail = 9"
+    }
+  ],
+  "cleaned_len_bytes": 109,
+  "cleaned_len_chars": 109,
+  "content_type": "",
+  "filename": "matrix.py",
+  "key": "code_declaration_matrix",
+  "overlap": 3,
+  "requested_strategy": null,
+  "size": 12,
+  "source_node_id": "file:code_declaration_matrix",
+  "strategy": "code",
+  "text": "def a(): 1\nclass b: 2\nfunction c() {}\nexport d = 4\nconst e = 5\npublic f = 6\nprivate g = 7\ndef h(): 8\ntail = 9"
+}

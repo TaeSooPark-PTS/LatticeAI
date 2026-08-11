@@ -21,6 +21,17 @@
     "specific, not less."
   ],
 
+  "11.5.0": {
+    "_why": [
+      "Rust Complete release: backend/desktop-topology architecture only",
+      "(router mounts, front-door default, scheduler, safety kernel). The",
+      "frontend bundle is untouched; no captured screen changes on purpose.",
+      "All thirteen measured but not gated. Known jitter: 05-memory-graph",
+      "moves ~2-3% between captures from the cytoscape layout (observed at",
+      "11.3.0 and 11.4.0 with zero source change)."
+    ]
+  },
+
   "11.4.0": {
     "_why": [
       "Rust Foundation release: backend architecture only (rust/ workspace,",

@@ -1,0 +1,96 @@
+{
+  "chunk_count": 5,
+  "chunks": [
+    {
+      "chunk_id": "chunk:62c03d84dcafddc741046d4b",
+      "index": 0,
+      "len_bytes": 27,
+      "len_chars": 27,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "def head():\n    return 1\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:d86a3be6d44e545a18ede656",
+      "index": 1,
+      "len_bytes": 100,
+      "len_chars": 100,
+      "meta": {
+        "heading_path": null,
+        "start_char": 27,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 27,
+        "strategy": "code"
+      },
+      "text": "x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 2"
+    },
+    {
+      "chunk_id": "chunk:c395bd4c12123872cb2f4232",
+      "index": 2,
+      "len_bytes": 100,
+      "len_chars": 100,
+      "meta": {
+        "heading_path": null,
+        "start_char": 107,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 107,
+        "strategy": "code"
+      },
+      "text": "1, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 4"
+    },
+    {
+      "chunk_id": "chunk:862af43fe699adae2aac2479",
+      "index": 3,
+      "len_bytes": 77,
+      "len_chars": 77,
+      "meta": {
+        "heading_path": null,
+        "start_char": 187,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 187,
+        "strategy": "code"
+      },
+      "text": "1, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:1eeff7e8cbcceff475368b92",
+      "index": 4,
+      "len_bytes": 24,
+      "len_chars": 24,
+      "meta": {
+        "heading_path": null,
+        "start_char": 264,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 264,
+        "strategy": "code"
+      },
+      "text": "def tail():\n    return 2"
+    }
+  ],
+  "cleaned_len_bytes": 288,
+  "cleaned_len_chars": 288,
+  "content_type": "",
+  "filename": "big.py",
+  "key": "code_monster_segment",
+  "overlap": 20,
+  "requested_strategy": null,
+  "size": 100,
+  "source_node_id": "file:code_monster_segment",
+  "strategy": "code",
+  "text": "def head():\n    return 1\n\n\nx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]\n\n\ndef tail():\n    return 2"
+}

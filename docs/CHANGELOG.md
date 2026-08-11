@@ -4,6 +4,32 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.5.0] - 2026-08-11 — Rust Complete
+
+### Added
+- **Phase 2–4 완결** (docs/v11.5.0_RUST_COMPLETE_PLAN.md): 신규 크레이트
+  `lattice-ingest`(typed chunking 4전략 1:1 포트 — 골든 332청크 완전
+  일치·뮤테이션 26/26, mtime 폴링 워처, 워커 위임 단일 작성자),
+  `lattice-jobs`(60s 드레인 스케줄러·백오프·`/host/jobs`·옵트인
+  autoresume), `lattice-agent`(권한 커널 — 모드 판정 2,358 + 명령 검증
+  59 + shlex 35 완전 일치, 읽기 전용 명령 네이티브 실행, `/rust/agent/*`).
+- `lattice-retrieval` 확장: 3채널 service-hybrid·graph_search·
+  relationship_search·traverse·히스토리 전 읽기·Context Assembler —
+  신규 패리티 116(총 191/191, 엡실론 0), 계약 pytest 199.
+- Python additive: `POST /api/index/drain` + `GET /api/index/queue`
+  (문·분기 100%, ko/en 로컬라이즈 21번째 라우터) — "배경 임베드 큐를
+  아무도 몰지 않는다" 한계 해소.
+- 게이트웨이 마운트 맵: `/rust/{search,graph,history,context,ingest,agent}`
+  + `/host/jobs*`; `/host`·`/rust` 네임스페이스는 프록시로 새지 않음.
+
+### Changed
+- **데스크톱 front-door 기본화**: Tauri가 게이트웨이 토폴로지로 기동
+  (웹뷰=게이트웨이 origin), CSRF는 `LATTICEAI_CSRF_TRUSTED_ORIGINS`
+  주입으로 해소(실워커 라이브 검증), 안전 밸브
+  `LATTICEAI_DESKTOP_DIRECT=1`/`BACKEND_ORIGIN`/`NO_BACKEND` 유지,
+  `backend_status`에 topology/worker_origin/gateway_origin/jobs_running
+  추가(기존 6필드 보존). SSE 프록시 `X-Accel-Buffering: no` 보강.
+
 ## [11.4.0] - 2026-08-11 — Rust Foundation
 
 ### Added

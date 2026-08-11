@@ -1,0 +1,112 @@
+{
+  "chunk_count": 6,
+  "chunks": [
+    {
+      "chunk_id": "chunk:57d4f3b6d656ba9fcf79dd5f",
+      "index": 0,
+      "len_bytes": 120,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타"
+    },
+    {
+      "chunk_id": "chunk:4688f767986f68fb27336522",
+      "index": 1,
+      "len_bytes": 120,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 31,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 31,
+        "strategy": "prose"
+      },
+      "text": "라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가"
+    },
+    {
+      "chunk_id": "chunk:39cb892b3efedcb8305c87f9",
+      "index": 2,
+      "len_bytes": 120,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 62,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 62,
+        "strategy": "prose"
+      },
+      "text": "사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라"
+    },
+    {
+      "chunk_id": "chunk:0f8fa1c7e2e43397f87c6681",
+      "index": 3,
+      "len_bytes": 120,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 93,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 93,
+        "strategy": "prose"
+      },
+      "text": "차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사"
+    },
+    {
+      "chunk_id": "chunk:535cc72f12faa372898304e0",
+      "index": 4,
+      "len_bytes": 120,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 124,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 124,
+        "strategy": "prose"
+      },
+      "text": "파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차"
+    },
+    {
+      "chunk_id": "chunk:f049009a3aadff686bf76ed5",
+      "index": 5,
+      "len_bytes": 39,
+      "len_chars": 13,
+      "meta": {
+        "heading_path": null,
+        "start_char": 155,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 155,
+        "strategy": "prose"
+      },
+      "text": "나다라마바사아자차카타파하"
+    }
+  ],
+  "cleaned_len_bytes": 504,
+  "cleaned_len_chars": 168,
+  "content_type": "",
+  "filename": "essay.txt",
+  "key": "prose_no_boundary",
+  "overlap": 9,
+  "requested_strategy": null,
+  "size": 40,
+  "source_node_id": "file:prose_no_boundary",
+  "strategy": "prose",
+  "text": "가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하"
+}

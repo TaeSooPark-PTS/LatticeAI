@@ -1,0 +1,432 @@
+{
+  "chunk_count": 26,
+  "chunks": [
+    {
+      "chunk_id": "chunk:7271af0ede6927993e842260",
+      "index": 0,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "abcde"
+    },
+    {
+      "chunk_id": "chunk:ad67481592e8f6569f6eb9fd",
+      "index": 1,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 1,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 1,
+        "strategy": "plain"
+      },
+      "text": "bcdef"
+    },
+    {
+      "chunk_id": "chunk:5c28aec8277a1ac013b097ce",
+      "index": 2,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 2,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 2,
+        "strategy": "plain"
+      },
+      "text": "cdefg"
+    },
+    {
+      "chunk_id": "chunk:31969a2875df1ac255a951ad",
+      "index": 3,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 3,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 3,
+        "strategy": "plain"
+      },
+      "text": "defgh"
+    },
+    {
+      "chunk_id": "chunk:f40044acb9d3c646062c8871",
+      "index": 4,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 4,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 4,
+        "strategy": "plain"
+      },
+      "text": "efghi"
+    },
+    {
+      "chunk_id": "chunk:16e458f896b8228b9a5be0fc",
+      "index": 5,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 5,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 5,
+        "strategy": "plain"
+      },
+      "text": "fghij"
+    },
+    {
+      "chunk_id": "chunk:8017e4f9f1fa8ede583e5604",
+      "index": 6,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 6,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 6,
+        "strategy": "plain"
+      },
+      "text": "ghijk"
+    },
+    {
+      "chunk_id": "chunk:592bbb45e3a132d353ece3ad",
+      "index": 7,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "text": "hijkl"
+    },
+    {
+      "chunk_id": "chunk:775785229d71491a057682f3",
+      "index": 8,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 8,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 8,
+        "strategy": "plain"
+      },
+      "text": "ijklm"
+    },
+    {
+      "chunk_id": "chunk:8931adf95221120e3c2a8518",
+      "index": 9,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 9,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 9,
+        "strategy": "plain"
+      },
+      "text": "jklmn"
+    },
+    {
+      "chunk_id": "chunk:86c937a9113631d7c7a13c16",
+      "index": 10,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 10,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 10,
+        "strategy": "plain"
+      },
+      "text": "klmno"
+    },
+    {
+      "chunk_id": "chunk:063f65cb256711b5023ed017",
+      "index": 11,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 11,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 11,
+        "strategy": "plain"
+      },
+      "text": "lmnop"
+    },
+    {
+      "chunk_id": "chunk:1c1fc8d7cb55157dcc220d3b",
+      "index": 12,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 12,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 12,
+        "strategy": "plain"
+      },
+      "text": "mnopq"
+    },
+    {
+      "chunk_id": "chunk:8a700712a1101e5fdd8a261e",
+      "index": 13,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 13,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 13,
+        "strategy": "plain"
+      },
+      "text": "nopqr"
+    },
+    {
+      "chunk_id": "chunk:2b8684288e9f59253e202341",
+      "index": 14,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "text": "opqrs"
+    },
+    {
+      "chunk_id": "chunk:74169238605106f26e2f064f",
+      "index": 15,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 15,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 15,
+        "strategy": "plain"
+      },
+      "text": "pqrst"
+    },
+    {
+      "chunk_id": "chunk:7a50629dc11140c13cdf96a5",
+      "index": 16,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 16,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 16,
+        "strategy": "plain"
+      },
+      "text": "qrstu"
+    },
+    {
+      "chunk_id": "chunk:fbb29a5a772b86a41de0be4f",
+      "index": 17,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 17,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 17,
+        "strategy": "plain"
+      },
+      "text": "rstuv"
+    },
+    {
+      "chunk_id": "chunk:22ed446071274fee84e98cdd",
+      "index": 18,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 18,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 18,
+        "strategy": "plain"
+      },
+      "text": "stuvw"
+    },
+    {
+      "chunk_id": "chunk:d9a8045a4b114cdf8a4ac39e",
+      "index": 19,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 19,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 19,
+        "strategy": "plain"
+      },
+      "text": "tuvwx"
+    },
+    {
+      "chunk_id": "chunk:0c2209285cc16e74b133631e",
+      "index": 20,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 20,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 20,
+        "strategy": "plain"
+      },
+      "text": "uvwxy"
+    },
+    {
+      "chunk_id": "chunk:d7d70293505e5debad1ebdfa",
+      "index": 21,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "text": "vwxyz"
+    },
+    {
+      "chunk_id": "chunk:70e524e573d564fed2d09739",
+      "index": 22,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 22,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 22,
+        "strategy": "plain"
+      },
+      "text": "wxyz0"
+    },
+    {
+      "chunk_id": "chunk:7a5dc51571cd2f1e95a14fe5",
+      "index": 23,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 23,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 23,
+        "strategy": "plain"
+      },
+      "text": "xyz01"
+    },
+    {
+      "chunk_id": "chunk:32eca960995d5e00d2c8dbcf",
+      "index": 24,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 24,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 24,
+        "strategy": "plain"
+      },
+      "text": "yz012"
+    },
+    {
+      "chunk_id": "chunk:229caec4cdf4bc1b89205646",
+      "index": 25,
+      "len_bytes": 5,
+      "len_chars": 5,
+      "meta": {
+        "heading_path": null,
+        "start_char": 25,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 25,
+        "strategy": "plain"
+      },
+      "text": "z0123"
+    }
+  ],
+  "cleaned_len_bytes": 30,
+  "cleaned_len_chars": 30,
+  "content_type": "",
+  "filename": "n",
+  "key": "plain_overlap_clamped",
+  "overlap": 100,
+  "requested_strategy": null,
+  "size": 5,
+  "source_node_id": "file:plain_overlap_clamped",
+  "strategy": "plain",
+  "text": "abcdefghijklmnopqrstuvwxyz0123"
+}

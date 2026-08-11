@@ -1,0 +1,9 @@
+{
+  "key": "blank",
+  "result": [],
+  "spec": {
+    "key": "blank",
+    "query": "   "
+  },
+  "suite": "history_search"
+}

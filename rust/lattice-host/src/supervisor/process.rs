@@ -71,9 +71,14 @@ pub fn is_alive(_pid: u32) -> bool {
 }
 
 /// Spawn the worker with the pinned environment and log redirection.
+///
+/// `gateway_port` is passed straight through to
+/// [`worker_env`](super::worker_env::worker_env): `Some` when this worker sits
+/// behind the gateway, `None` for the direct topology.
 pub fn spawn_worker(
     command: &WorkerCommand,
     port: u16,
+    gateway_port: Option<u16>,
     runtime_dir: Option<&Path>,
     log_dir: Option<&Path>,
     probe: &dyn HostProbe,
@@ -81,7 +86,7 @@ pub fn spawn_worker(
 ) -> std::io::Result<Child> {
     let mut cmd = Command::new(&command.program);
     cmd.args(&command.args);
-    for (key, value) in worker_env(command, port, runtime_dir, probe) {
+    for (key, value) in worker_env(command, port, gateway_port, runtime_dir, probe) {
         cmd.env(key, value);
     }
     for (key, value) in extra_env {
@@ -156,6 +161,7 @@ mod tests {
             4899,
             None,
             None,
+            None,
             &StaticProbe::new(),
             &[],
         )
@@ -168,12 +174,41 @@ mod tests {
         );
     }
 
+    /// The front-door unblocker, observed in the *spawned process* rather than
+    /// only in the environment vector: the worker binds its own port and is
+    /// told to trust the gateway's origin.
+    #[tokio::test]
+    async fn a_fronted_worker_process_receives_the_gateway_trusted_origins() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let out = dir.path().join("env.txt");
+        let script = format!(
+            "printf '%s|%s' \"$LATTICEAI_PORT\" \"$LATTICEAI_CSRF_TRUSTED_ORIGINS\" > {}",
+            out.display()
+        );
+        let mut child = spawn_worker(
+            &sh_command(&script),
+            4899,
+            Some(4825),
+            None,
+            None,
+            &StaticProbe::new(),
+            &[],
+        )
+        .expect("spawn");
+        child.wait().await.expect("wait");
+        assert_eq!(
+            std::fs::read_to_string(&out).expect("read"),
+            "4899|http://127.0.0.1:4825,http://localhost:4825"
+        );
+    }
+
     #[tokio::test]
     async fn stdout_and_stderr_land_in_the_sidecar_logs() {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut child = spawn_worker(
             &sh_command("echo out; echo err 1>&2"),
             4899,
+            None,
             None,
             Some(dir.path()),
             &StaticProbe::new(),
@@ -196,6 +231,7 @@ mod tests {
             4899,
             None,
             None,
+            None,
             &StaticProbe::new(),
             &[("LATTICEAI_EXTRA".to_string(), "yes".to_string())],
         )
@@ -209,6 +245,7 @@ mod tests {
         let mut child = spawn_worker(
             &sh_command("while true; do sleep 0.05; done"),
             4899,
+            None,
             None,
             None,
             &StaticProbe::new(),
@@ -251,6 +288,7 @@ mod tests {
             4899,
             None,
             None,
+            None,
             &StaticProbe::new(),
             &[],
         )
@@ -285,8 +323,8 @@ mod tests {
             python_root: None,
             origin: CommandOrigin::PythonModule,
         };
-        let err =
-            spawn_worker(&cmd, 4825, None, None, &StaticProbe::new(), &[]).expect_err("must fail");
+        let err = spawn_worker(&cmd, 4825, None, None, None, &StaticProbe::new(), &[])
+            .expect_err("must fail");
         assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
     }
 }

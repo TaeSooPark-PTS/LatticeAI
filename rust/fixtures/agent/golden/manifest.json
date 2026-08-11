@@ -1,0 +1,440 @@
+{
+  "arg_variants": {
+    "benign_path": {
+      "path": "notes/todo.md"
+    },
+    "blocked_prefix": {
+      "path": "/etc/hosts"
+    },
+    "existing_path": {
+      "path": "notes/existing.md"
+    },
+    "filename_doc": {
+      "filename": "report.docx"
+    },
+    "home_tilde_slash": {
+      "path": "~/"
+    },
+    "long_path": {
+      "path": "deep/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md"
+    },
+    "none": {},
+    "rm_rf_home_upper": {
+      "cmd": "RM -RF $HOME"
+    },
+    "rm_rf_root": {
+      "command": "rm -rf /"
+    },
+    "root_path": {
+      "path": "/"
+    },
+    "traversal": {
+      "path": "../../etc/passwd"
+    },
+    "users_root": {
+      "path": "/Users"
+    },
+    "windows_home": {
+      "path": "\\home"
+    }
+  },
+  "change_classes": [
+    null,
+    "read",
+    "additive",
+    "mutation",
+    "destructive",
+    "exec"
+  ],
+  "constants": {
+    "allowed_commands": [
+      "cat",
+      "find",
+      "git",
+      "head",
+      "ls",
+      "pwd",
+      "rg",
+      "tail",
+      "wc"
+    ],
+    "allowed_git_subcommands": [
+      "diff",
+      "log",
+      "show",
+      "status"
+    ],
+    "blocked_commands": [
+      "chmod",
+      "chown",
+      "curl",
+      "dd",
+      "diskutil",
+      "launchctl",
+      "mkfs",
+      "rm",
+      "rmdir",
+      "rsync",
+      "scp",
+      "ssh",
+      "su",
+      "sudo",
+      "wget"
+    ],
+    "blocked_find_flags": [
+      "-delete",
+      "-exec",
+      "-execdir",
+      "-fls",
+      "-fprint",
+      "-fprintf",
+      "-ok",
+      "-okdir"
+    ],
+    "blocked_rg_flags": [
+      "--pre",
+      "--pre-glob"
+    ],
+    "computer_control_tools": [
+      "computer_click",
+      "computer_drag",
+      "computer_key",
+      "computer_move",
+      "computer_open_app",
+      "computer_open_url",
+      "computer_scroll",
+      "computer_type"
+    ],
+    "computer_observation_tools": [
+      "chrome_status",
+      "computer_screenshot",
+      "computer_status",
+      "computer_use_status",
+      "vision_analyze"
+    ],
+    "hard_block_sandboxes": [
+      "system"
+    ],
+    "knowledge_read_tools": [
+      "knowledge_graph_context",
+      "knowledge_graph_graph",
+      "knowledge_graph_search",
+      "knowledge_search",
+      "knowledge_tree",
+      "obsidian_search",
+      "obsidian_tree"
+    ],
+    "max_command_output": 12000,
+    "max_command_seconds": 30,
+    "max_file_bytes": 512000,
+    "mutating_tool_inventory": {
+      "build_project": "external_side_effect",
+      "clear_history": "delete",
+      "computer_click": "external_side_effect",
+      "computer_drag": "external_side_effect",
+      "computer_key": "external_side_effect",
+      "computer_move": "external_side_effect",
+      "computer_open_app": "external_side_effect",
+      "computer_open_url": "external_side_effect",
+      "computer_scroll": "external_side_effect",
+      "computer_type": "external_side_effect",
+      "create_docx": "existing_content_update",
+      "create_pdf": "existing_content_update",
+      "create_pptx": "existing_content_update",
+      "create_web_project": "new_artifact",
+      "create_xlsx": "existing_content_update",
+      "delete_file": "delete",
+      "deploy_project": "external_side_effect",
+      "edit_file": "existing_content_update",
+      "knowledge_graph_ingest": "new_artifact",
+      "knowledge_save": "new_artifact",
+      "local_write": "existing_content_update",
+      "obsidian_save": "new_artifact",
+      "remove_file": "delete",
+      "run_command": "external_side_effect",
+      "todo_write": "internal_state",
+      "write_file": "existing_content_update"
+    },
+    "proposal_capable_tools": [
+      "edit_file",
+      "write_file"
+    ],
+    "safe_executable_path": "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin",
+    "shell_operators": [
+      "|",
+      "&&",
+      "||",
+      ";",
+      ">",
+      "<",
+      "$(",
+      "`"
+    ],
+    "workspace_write_tools": [
+      "create_docx",
+      "create_pdf",
+      "create_pptx",
+      "create_web_project",
+      "create_xlsx",
+      "edit_file",
+      "knowledge_graph_ingest",
+      "knowledge_save",
+      "obsidian_save",
+      "todo_write",
+      "write_file"
+    ]
+  },
+  "existing_paths": [
+    "/etc/hosts",
+    "notes/existing.md",
+    "report.docx"
+  ],
+  "modes": [
+    "strict",
+    "trusted",
+    "bypass"
+  ],
+  "pinned_env": {
+    "LANG": "C.UTF-8",
+    "LC_ALL": "C.UTF-8"
+  },
+  "plans": [
+    {
+      "governed": [],
+      "key": "empty",
+      "plan_flag": false,
+      "steps": []
+    },
+    {
+      "governed": [],
+      "key": "reads_only",
+      "plan_flag": false,
+      "steps": [
+        {
+          "action": "read_file"
+        },
+        {
+          "action": "list_dir"
+        }
+      ]
+    },
+    {
+      "governed": [],
+      "key": "reads_plan_flag",
+      "plan_flag": true,
+      "steps": [
+        {
+          "action": "read_file"
+        }
+      ]
+    },
+    {
+      "governed": [],
+      "key": "workspace_writes",
+      "plan_flag": false,
+      "steps": [
+        {
+          "action": "write_file"
+        },
+        {
+          "action": "edit_file"
+        },
+        {
+          "action": "todo_write"
+        }
+      ]
+    },
+    {
+      "governed": [
+        "write_file",
+        "edit_file"
+      ],
+      "key": "governed_writes",
+      "plan_flag": false,
+      "steps": [
+        {
+          "action": "write_file"
+        },
+        {
+          "action": "edit_file"
+        },
+        {
+          "action": "run_command"
+        }
+      ]
+    },
+    {
+      "governed": [],
+      "key": "exec_and_desktop",
+      "plan_flag": false,
+      "steps": [
+        {
+          "action": "run_command"
+        },
+        {
+          "action": "computer_click"
+        },
+        {
+          "action": "computer_screenshot"
+        }
+      ]
+    },
+    {
+      "governed": [],
+      "key": "unknown_tool",
+      "plan_flag": false,
+      "steps": [
+        {
+          "action": "not_a_tool"
+        },
+        {
+          "action": "knowledge_search"
+        }
+      ]
+    },
+    {
+      "governed": [],
+      "key": "missing_action",
+      "plan_flag": false,
+      "steps": [
+        {
+          "description": "no action key"
+        },
+        {
+          "action": ""
+        },
+        {
+          "action": "local_read"
+        }
+      ]
+    }
+  ],
+  "schema": "agent-kernel-parity/v1",
+  "tools": [
+    "build_project",
+    "chrome_status",
+    "clear_history",
+    "computer_click",
+    "computer_drag",
+    "computer_key",
+    "computer_move",
+    "computer_open_app",
+    "computer_open_url",
+    "computer_screenshot",
+    "computer_scroll",
+    "computer_status",
+    "computer_type",
+    "computer_use_status",
+    "create_docx",
+    "create_pdf",
+    "create_pptx",
+    "create_web_project",
+    "create_xlsx",
+    "delete_file",
+    "deploy_project",
+    "edit_file",
+    "git_diff",
+    "git_log",
+    "git_show",
+    "git_status",
+    "grep",
+    "inspect_html",
+    "knowledge_graph_context",
+    "knowledge_graph_graph",
+    "knowledge_graph_ingest",
+    "knowledge_graph_search",
+    "knowledge_save",
+    "knowledge_search",
+    "knowledge_tree",
+    "list_dir",
+    "local_list",
+    "local_read",
+    "local_write",
+    "network_status",
+    "obsidian_save",
+    "obsidian_search",
+    "obsidian_tree",
+    "preview_url",
+    "read_document",
+    "read_file",
+    "remove_file",
+    "run_command",
+    "search_files",
+    "todo_read",
+    "todo_write",
+    "vision_analyze",
+    "workspace_tree",
+    "write_file"
+  ],
+  "tree": [
+    {
+      "content": "top secret\n",
+      "kind": "outside",
+      "path": "outside_secret.txt"
+    },
+    {
+      "kind": "dir",
+      "path": "notes"
+    },
+    {
+      "content": "alpha\nbeta\ngamma\n",
+      "kind": "file",
+      "path": "notes/a.txt"
+    },
+    {
+      "kind": "dir",
+      "path": "a b"
+    },
+    {
+      "content": "spaced\n",
+      "kind": "file",
+      "path": "a b/c.txt"
+    },
+    {
+      "content": "quoted\n",
+      "kind": "file",
+      "path": "quoted name.txt"
+    },
+    {
+      "kind": "dir",
+      "path": "노트"
+    },
+    {
+      "content": "한글\n",
+      "kind": "file",
+      "path": "노트/메모.txt"
+    },
+    {
+      "kind": "dir",
+      "path": "sub"
+    },
+    {
+      "content": "inner\n",
+      "kind": "file",
+      "path": "sub/inner.txt"
+    },
+    {
+      "content": "backslash\n",
+      "kind": "file",
+      "path": "a\\b"
+    },
+    {
+      "kind": "symlink",
+      "path": "inside_link",
+      "target": "notes/a.txt"
+    },
+    {
+      "kind": "symlink",
+      "path": "escape_link",
+      "target": "../outside_secret.txt"
+    },
+    {
+      "count": 3000,
+      "kind": "lines",
+      "path": "big.txt"
+    }
+  ],
+  "which_paths": [
+    "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin"
+  ]
+}

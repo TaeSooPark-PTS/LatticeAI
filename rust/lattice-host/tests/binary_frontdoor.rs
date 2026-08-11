@@ -21,6 +21,11 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     let worker = FakeWorker::start().await;
     let gateway_port = free_port();
 
+    // The binary creates its agent workspace on start; point it at this
+    // suite's own directory rather than the home of whoever runs the tests.
+    let agent_root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join("binary_frontdoor")
+        .join("agent_workspace");
     let mut child = Command::new(env!("CARGO_BIN_EXE_lattice-host"))
         .args([
             "--no-spawn",
@@ -29,6 +34,7 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
             "--worker-port",
             &worker.port().to_string(),
         ])
+        .env("LATTICEAI_AGENT_ROOT", &agent_root)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .kill_on_drop(true)
@@ -79,6 +85,39 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     assert_eq!(
         proxied.text().await.expect("body"),
         "worker saw /api/memory"
+    );
+
+    // The mounted namespaces are the binary's, not only the library's: the
+    // agent kernel answers from this process …
+    let contract = json(
+        http.get(format!("{base}/rust/agent/contract"))
+            .send()
+            .await
+            .expect("contract"),
+    )
+    .await;
+    assert!(contract["modes"].is_object(), "{contract}");
+
+    // … and so does the jobs schedule, which with `--no-spawn` is honest about
+    // being manual only: a worker this process did not start is not its to
+    // drive on a timer.
+    let jobs = json(
+        http.get(format!("{base}/host/jobs"))
+            .send()
+            .await
+            .expect("jobs"),
+    )
+    .await;
+    assert_eq!(jobs["enabled"], false, "{jobs}");
+    assert_eq!(jobs["worker_origin"], worker.origin());
+    assert_eq!(
+        worker
+            .requests()
+            .iter()
+            .filter(|request| request.path() == "/api/index/drain")
+            .count(),
+        0,
+        "no timer means no drain"
     );
 
     // SIGTERM must end the process, not wedge it.

@@ -8,9 +8,33 @@
 
 use std::collections::{BTreeSet, HashMap};
 
+use rusqlite::types::ValueRef;
 use rusqlite::Connection;
+use serde_json::Value;
 
 use crate::db::CoreError;
+
+/// One column of one row, as the JSON `json.dumps` would have produced for it.
+///
+/// `sqlite3` hands Python an `int` for INTEGER and a `float` for REAL, and those
+/// two serialize differently (`1` vs `1.0`). A port that read every numeric
+/// column as `f64` would answer `1.0` where Python answers `1` — indistinguishable
+/// in a diff you skim, and a hard failure in an exact-equality golden. BLOBs
+/// have no JSON form and no reader here needs one, so they become null.
+pub fn sql_json(value: ValueRef<'_>) -> Value {
+    match value {
+        ValueRef::Null => Value::Null,
+        ValueRef::Integer(number) => Value::from(number),
+        ValueRef::Real(number) => Value::from(number),
+        ValueRef::Text(bytes) => Value::String(String::from_utf8_lossy(bytes).into_owned()),
+        ValueRef::Blob(_) => Value::Null,
+    }
+}
+
+/// `sql_json` for a named column of a query row.
+pub fn column_json(row: &rusqlite::Row<'_>, name: &str) -> rusqlite::Result<Value> {
+    Ok(sql_json(row.get_ref(name)?))
+}
 
 /// `LATTICEAI_KG_READ_V2=0` forces the legacy tables, as in `_kg_common`.
 pub const READ_V2_ENV: &str = "LATTICEAI_KG_READ_V2";
@@ -280,6 +304,33 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn sql_json_keeps_pythons_int_float_distinction() {
+        let (_dir, conn) = scoped_db();
+        conn.execute_batch(
+            "CREATE TABLE mixed(i INT, r REAL, t TEXT, n TEXT, b BLOB);
+             INSERT INTO mixed VALUES (1, 1.0, 'x', NULL, x'00ff');",
+        )
+        .unwrap();
+        let row = conn
+            .query_row("SELECT i, r, t, n, b FROM mixed", [], |row| {
+                Ok((
+                    column_json(row, "i")?,
+                    column_json(row, "r")?,
+                    column_json(row, "t")?,
+                    column_json(row, "n")?,
+                    column_json(row, "b")?,
+                ))
+            })
+            .unwrap();
+        assert_eq!(row.0, serde_json::json!(1));
+        assert_eq!(row.1, serde_json::json!(1.0));
+        assert_ne!(row.0, row.1, "an int must not compare equal to a float");
+        assert_eq!(row.2, serde_json::json!("x"));
+        assert_eq!(row.3, Value::Null);
+        assert_eq!(row.4, Value::Null);
     }
 
     #[test]

@@ -1,0 +1,80 @@
+{
+  "chunk_count": 4,
+  "chunks": [
+    {
+      "chunk_id": "chunk:aad14e3df6c39c04dd85808a",
+      "index": 0,
+      "len_bytes": 11,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "def a():\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:d22ee88bf4ee3b4d73f4b310",
+      "index": 1,
+      "len_bytes": 25,
+      "len_chars": 25,
+      "meta": {
+        "heading_path": null,
+        "start_char": 11,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 11,
+        "strategy": "code"
+      },
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "chunk_id": "chunk:189b64aa17ad4d81f844bd6a",
+      "index": 2,
+      "len_bytes": 18,
+      "len_chars": 18,
+      "meta": {
+        "heading_path": null,
+        "start_char": 31,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 31,
+        "strategy": "code"
+      },
+      "text": "aaaaaaaaaaaaaaa\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:bb1f8e5bc1318556ae47a8fd",
+      "index": 3,
+      "len_bytes": 14,
+      "len_chars": 14,
+      "meta": {
+        "heading_path": null,
+        "start_char": 49,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 49,
+        "strategy": "code"
+      },
+      "text": "def b():\n    2"
+    }
+  ],
+  "cleaned_len_bytes": 63,
+  "cleaned_len_chars": 63,
+  "content_type": "",
+  "filename": "edge.py",
+  "key": "code_hard_limit_boundary",
+  "overlap": 5,
+  "requested_strategy": null,
+  "size": 25,
+  "source_node_id": "file:code_hard_limit_boundary",
+  "strategy": "code",
+  "text": "def a():\n\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\n\ndef b():\n    2"
+}

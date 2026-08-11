@@ -1,0 +1,126 @@
+{
+  "file_content_hash": [
+    {
+      "bytes_hex": "",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes_hex": "68656c6c6f20776f726c640a",
+      "sha256": "a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447"
+    },
+    {
+      "bytes_hex": "ed9a8cec9d98eba19d0a",
+      "sha256": "0c60110478e55a12d9ba3cd68c37d909f4fe6f309376fa89f5ab07ff16c11135"
+    },
+    {
+      "bytes_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+    }
+  ],
+  "sha256_text": [
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "text": ""
+    },
+    {
+      "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "text": "a"
+    },
+    {
+      "sha256": "55cdbea4f076f84c9492451b7013626fc4bcc59e6deeaa654cb72040d051b4ed",
+      "text": "회의 결정 사항"
+    },
+    {
+      "sha256": "8109d17b8237a1a9c2dbb4c4b44105872c74ff01ec9483b9801f22f82635e8e1",
+      "text": "a👨‍👩‍👧‍👦b🇰🇷cée"
+    },
+    {
+      "sha256": "44f8354494a5ba03ba1792a8d3e9c534c47a9181980fde7a3f44b06ef2ae7c7f",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  ],
+  "text_content_hash": [
+    {
+      "content_hash": "bc8c12ff3285f14c6294cbdcb3d0ac11431ace6cb37e5758f70ae0b387520105",
+      "content_id": "webdoc:895a8942f6a851d6ca40c0c6",
+      "identity_hash": "895a8942f6a851d6ca40c0c6475b1d46317634ea71c6b5ba9d391ddf39a09cd4",
+      "source_type": "note",
+      "source_uri": null,
+      "text": "회의 결정 사항",
+      "workspace_id": null
+    },
+    {
+      "content_hash": "bc8c12ff3285f14c6294cbdcb3d0ac11431ace6cb37e5758f70ae0b387520105",
+      "content_id": "webdoc:790133ad3273c3d08a93c438",
+      "identity_hash": "790133ad3273c3d08a93c43879132267f5b4f1051a70000122bae25924af35cb",
+      "source_type": "note",
+      "source_uri": "",
+      "text": "회의 결정 사항",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content_hash": "89c66ff6b516ce7ca881bcde779a02b64c9b8f6416213740aaa2692e1fcf6292",
+      "content_id": "webdoc:591b2456e7a05e8728a719b7",
+      "identity_hash": "591b2456e7a05e8728a719b77ef8459bcc2f82f8cc4290e5cd0acf6f36f88950",
+      "source_type": "web_url",
+      "source_uri": "https://example.com/a",
+      "text": "hello",
+      "workspace_id": "ws-beta"
+    },
+    {
+      "content_hash": "72e5124d88aff5b2a27f4410c5000494f4ee04f86b4ccac45ba775a4b30ee939",
+      "content_id": "webdoc:cd926e25ba5dab6e468d6260",
+      "identity_hash": "cd926e25ba5dab6e468d62607d106b8d4e2843c1372d6a8b85553e253a3695cc",
+      "source_type": "text",
+      "source_uri": "file:///tmp/x.txt",
+      "text": "",
+      "workspace_id": null
+    },
+    {
+      "content_hash": "bad425d3a569d1d6d628257557c93e6e75406e91050fff417a43fc212607bd94",
+      "content_id": "webdoc:5e8f0f1999b9afc44a66519f",
+      "identity_hash": "5e8f0f1999b9afc44a66519f10b6e9995193ec700f9172e000b31f732bde1009",
+      "source_type": "markdown",
+      "source_uri": "s3://b/k",
+      "text": "a👨‍👩‍👧‍👦b🇰🇷cée",
+      "workspace_id": "ws-∅"
+    }
+  ],
+  "vector_text_hash": [
+    {
+      "cleaned": "",
+      "text": "",
+      "text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "cleaned": "",
+      "text": "   ",
+      "text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "cleaned": "a",
+      "text": "a",
+      "text_hash": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+    },
+    {
+      "cleaned": "회의 결정 사항",
+      "text": "  회의   결정\t사항  ",
+      "text_hash": "55cdbea4f076f84c9492451b7013626fc4bcc59e6deeaa654cb72040d051b4ed"
+    },
+    {
+      "cleaned": "line one line two line three",
+      "text": "line one\nline two\r\nline three",
+      "text_hash": "8a115870185ad8163e11668ffdbb8e0348852842f654d84ed578e7ca561d6134"
+    },
+    {
+      "cleaned": "회의 록",
+      "text": "회의\u001c록",
+      "text_hash": "e467d49b610f3223db133538f5d4dff319faf7c49fa73c8269c8f6e2bf753e7a"
+    },
+    {
+      "cleaned": "a👨‍👩‍👧‍👦b🇰🇷cée",
+      "text": "a👨‍👩‍👧‍👦b🇰🇷cée",
+      "text_hash": "8109d17b8237a1a9c2dbb4c4b44105872c74ff01ec9483b9801f22f82635e8e1"
+    }
+  ]
+}

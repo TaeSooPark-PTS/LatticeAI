@@ -1,0 +1,32 @@
+{
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "chunk_id": "chunk:9486b746ff7561ad727daae2",
+      "index": 0,
+      "len_bytes": 631,
+      "len_chars": 407,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "00. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 0번에 있습니다.\n01. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 1번에 있습니다.\n02. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 2번에 있습니다.\n03. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 3번에 있습니다."
+    }
+  ],
+  "cleaned_len_bytes": 631,
+  "cleaned_len_chars": 407,
+  "content_type": "",
+  "filename": "x.md",
+  "key": "unknown_strategy_falls_back",
+  "overlap": 160,
+  "requested_strategy": "sideways",
+  "size": 1200,
+  "source_node_id": "file:unknown_strategy_falls_back",
+  "strategy": "sideways",
+  "text": "00. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 0번에 있습니다.\n01. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 1번에 있습니다.\n02. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 2번에 있습니다.\n03. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 3번에 있습니다."
+}

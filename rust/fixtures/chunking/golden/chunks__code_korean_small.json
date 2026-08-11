@@ -1,0 +1,208 @@
+{
+  "chunk_count": 12,
+  "chunks": [
+    {
+      "chunk_id": "chunk:52d20cb7b58117cbf97ee523",
+      "index": 0,
+      "len_bytes": 12,
+      "len_chars": 12,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "import os\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:846c72f436514a03fc2953c1",
+      "index": 1,
+      "len_bytes": 24,
+      "len_chars": 24,
+      "meta": {
+        "heading_path": null,
+        "start_char": 12,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 12,
+        "strategy": "code"
+      },
+      "text": "def alpha(value):\n    re"
+    },
+    {
+      "chunk_id": "chunk:b451ffba4b107d6badc40f16",
+      "index": 2,
+      "len_bytes": 22,
+      "len_chars": 22,
+      "meta": {
+        "heading_path": null,
+        "start_char": 31,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 31,
+        "strategy": "code"
+      },
+      "text": "   return value + 1\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:2229336b9b13c59b9b4ed710",
+      "index": 3,
+      "len_bytes": 53,
+      "len_chars": 35,
+      "meta": {
+        "heading_path": null,
+        "start_char": 53,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 53,
+        "strategy": "code"
+      },
+      "text": "class Beta:\n    \"\"\"도움말 문자열입니다.\"\"\"\n\n"
+    },
+    {
+      "chunk_id": "chunk:2a34b8178528829d25d9b18a",
+      "index": 4,
+      "len_bytes": 24,
+      "len_chars": 24,
+      "meta": {
+        "heading_path": null,
+        "start_char": 88,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 88,
+        "strategy": "code"
+      },
+      "text": "    def gamma(self):\n   "
+    },
+    {
+      "chunk_id": "chunk:9bdc988196c34f14c27df86e",
+      "index": 5,
+      "len_bytes": 21,
+      "len_chars": 21,
+      "meta": {
+        "heading_path": null,
+        "start_char": 107,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 107,
+        "strategy": "code"
+      },
+      "text": ":\n        return 2\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:3e0817a86b21d4758ca380dc",
+      "index": 6,
+      "len_bytes": 16,
+      "len_chars": 16,
+      "meta": {
+        "heading_path": null,
+        "start_char": 128,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 128,
+        "strategy": "code"
+      },
+      "text": "const_value = 3\n"
+    },
+    {
+      "chunk_id": "chunk:dd4aee6f074aafea712cb278",
+      "index": 7,
+      "len_bytes": 22,
+      "len_chars": 22,
+      "meta": {
+        "heading_path": null,
+        "start_char": 144,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 144,
+        "strategy": "code"
+      },
+      "text": "const = 4\n\npublic = 5\n"
+    },
+    {
+      "chunk_id": "chunk:338706f3146ed1d180f5025c",
+      "index": 8,
+      "len_bytes": 14,
+      "len_chars": 14,
+      "meta": {
+        "heading_path": null,
+        "start_char": 166,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 166,
+        "strategy": "code"
+      },
+      "text": "private = 6\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:6ad56fe8881ae2c2e4aff31e",
+      "index": 9,
+      "len_bytes": 24,
+      "len_chars": 24,
+      "meta": {
+        "heading_path": null,
+        "start_char": 180,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 180,
+        "strategy": "code"
+      },
+      "text": "def omega(value):\n    # "
+    },
+    {
+      "chunk_id": "chunk:fe530df661f6a35edc71a779",
+      "index": 10,
+      "len_bytes": 40,
+      "len_chars": 24,
+      "meta": {
+        "heading_path": null,
+        "start_char": 199,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 199,
+        "strategy": "code"
+      },
+      "text": "   # 마지막 함수입니다.\n    retu"
+    },
+    {
+      "chunk_id": "chunk:1fbc6556835e33be5eb531a1",
+      "index": 11,
+      "len_bytes": 17,
+      "len_chars": 17,
+      "meta": {
+        "heading_path": null,
+        "start_char": 218,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 218,
+        "strategy": "code"
+      },
+      "text": " return value * 2"
+    }
+  ],
+  "cleaned_len_bytes": 269,
+  "cleaned_len_chars": 235,
+  "content_type": "",
+  "filename": "module.py",
+  "key": "code_korean_small",
+  "overlap": 5,
+  "requested_strategy": null,
+  "size": 24,
+  "source_node_id": "file:code_korean_small",
+  "strategy": "code",
+  "text": "import os\n\n\ndef alpha(value):\n    return value + 1\n\n\nclass Beta:\n    \"\"\"도움말 문자열입니다.\"\"\"\n\n    def gamma(self):\n        return 2\n\n\nconst_value = 3\nconst = 4\n\npublic = 5\nprivate = 6\n\n\ndef omega(value):\n    # 마지막 함수입니다.\n    return value * 2"
+}

@@ -1,0 +1,147 @@
+[
+  {
+    "content_type": "",
+    "expected": "markdown",
+    "filename": "guide.md"
+  },
+  {
+    "content_type": "",
+    "expected": "markdown",
+    "filename": "GUIDE.MARKDOWN"
+  },
+  {
+    "content_type": "",
+    "expected": "code",
+    "filename": "module.py"
+  },
+  {
+    "content_type": "",
+    "expected": "code",
+    "filename": "app.TSX"
+  },
+  {
+    "content_type": "",
+    "expected": "code",
+    "filename": "data.json"
+  },
+  {
+    "content_type": "",
+    "expected": "code",
+    "filename": "conf.toml"
+  },
+  {
+    "content_type": "",
+    "expected": "prose",
+    "filename": "notes.txt"
+  },
+  {
+    "content_type": "",
+    "expected": "prose",
+    "filename": "report.pdf"
+  },
+  {
+    "content_type": "",
+    "expected": "prose",
+    "filename": "page.HTM"
+  },
+  {
+    "content_type": "",
+    "expected": "prose",
+    "filename": "book.epub"
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": "archive.tar.gz"
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": "noextension"
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": ".hidden"
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": "trailing."
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": ""
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": "   "
+  },
+  {
+    "content_type": "",
+    "expected": "markdown",
+    "filename": "https://example.com/docs/guide.md?v=2#top"
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": "https://example.com/docs/guide?v=2#top"
+  },
+  {
+    "content_type": "",
+    "expected": "code",
+    "filename": "C:\\projects\\lattice\\module.py"
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": "/var/data/notes/"
+  },
+  {
+    "content_type": "",
+    "expected": "plain",
+    "filename": "/var/data/notes//"
+  },
+  {
+    "content_type": "text/markdown",
+    "expected": "markdown",
+    "filename": "noextension"
+  },
+  {
+    "content_type": "TEXT/HTML; charset=utf-8",
+    "expected": "prose",
+    "filename": "noextension"
+  },
+  {
+    "content_type": "text/plain",
+    "expected": "prose",
+    "filename": "noextension"
+  },
+  {
+    "content_type": "application/octet-stream",
+    "expected": "plain",
+    "filename": "noextension"
+  },
+  {
+    "content_type": "  application/x-markdown  ",
+    "expected": "markdown",
+    "filename": "noextension"
+  },
+  {
+    "content_type": "text/markdown",
+    "expected": "prose",
+    "filename": "report.pdf"
+  },
+  {
+    "content_type": "",
+    "expected": "markdown",
+    "filename": "한글 문서.md"
+  },
+  {
+    "content_type": "text/plain",
+    "expected": "prose",
+    "filename": "한글 문서"
+  }
+]

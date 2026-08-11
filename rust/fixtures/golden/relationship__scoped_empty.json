@@ -1,0 +1,14 @@
+{
+  "key": "scoped_empty",
+  "result": {
+    "node_id": "",
+    "query": "",
+    "relationship_type": "",
+    "relationships": []
+  },
+  "spec": {
+    "allowed": [],
+    "key": "scoped_empty"
+  },
+  "suite": "relationship"
+}

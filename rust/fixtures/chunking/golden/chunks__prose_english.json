@@ -1,0 +1,96 @@
+{
+  "chunk_count": 5,
+  "chunks": [
+    {
+      "chunk_id": "chunk:93cceac81802f1d87bd4f280",
+      "index": 0,
+      "len_bytes": 58,
+      "len_chars": 58,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "The retrieval pipeline chunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:05160d10f0097ae5e425bd50",
+      "index": 1,
+      "len_bytes": 85,
+      "len_chars": 85,
+      "meta": {
+        "heading_path": null,
+        "start_char": 38,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 38,
+        "strategy": "prose"
+      },
+      "text": "ore it is embedded. Each chunk carries a start offset so a citation can point at it! "
+    },
+    {
+      "chunk_id": "chunk:efcaef852fac18056939a31c",
+      "index": 2,
+      "len_bytes": 89,
+      "len_chars": 89,
+      "meta": {
+        "heading_path": null,
+        "start_char": 103,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 103,
+        "strategy": "prose"
+      },
+      "text": "on can point at it! Does the boundary land on a sentence? It does, when one is in range. "
+    },
+    {
+      "chunk_id": "chunk:b007f1494d6363f94f48b139",
+      "index": 3,
+      "len_bytes": 83,
+      "len_chars": 83,
+      "meta": {
+        "heading_path": null,
+        "start_char": 172,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 172,
+        "strategy": "prose"
+      },
+      "text": "en one is in range. She said \"the boundary matters\" (twice), and nobody disagreed. "
+    },
+    {
+      "chunk_id": "chunk:9240902c8ba2ac10b619c5d2",
+      "index": 4,
+      "len_bytes": 80,
+      "len_chars": 80,
+      "meta": {
+        "heading_path": null,
+        "start_char": 235,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 235,
+        "strategy": "prose"
+      },
+      "text": "d nobody disagreed. A final sentence closes the paragraph without any surprises."
+    }
+  ],
+  "cleaned_len_bytes": 315,
+  "cleaned_len_chars": 315,
+  "content_type": "",
+  "filename": "essay.txt",
+  "key": "prose_english",
+  "overlap": 20,
+  "requested_strategy": null,
+  "size": 90,
+  "source_node_id": "file:prose_english",
+  "strategy": "prose",
+  "text": "The retrieval pipeline chunks text before it is embedded. Each chunk carries a start offset so a citation can point at it! Does the boundary land on a sentence? It does, when one is in range. She said \"the boundary matters\" (twice), and nobody disagreed. A final sentence closes the paragraph without any surprises."
+}

@@ -1,0 +1,14 @@
+{
+  "key": "scoped_seed_hidden",
+  "result": {
+    "error": "graph node not found: dec:fusion-alpha"
+  },
+  "spec": {
+    "allowed": [
+      "ws-beta"
+    ],
+    "key": "scoped_seed_hidden",
+    "node_id": "dec:fusion-alpha"
+  },
+  "suite": "traverse"
+}

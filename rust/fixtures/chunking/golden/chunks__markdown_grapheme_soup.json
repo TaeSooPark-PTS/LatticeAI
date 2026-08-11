@@ -1,0 +1,390 @@
+{
+  "chunk_count": 22,
+  "chunks": [
+    {
+      "chunk_id": "chunk:21e0d712d4a9855992f1e7ba",
+      "index": 0,
+      "len_bytes": 21,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "text": "# 제목\na👨‍👩"
+    },
+    {
+      "chunk_id": "chunk:063091dcb797f97bf90adbeb",
+      "index": 1,
+      "len_bytes": 30,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 6,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 6,
+        "strategy": "markdown"
+      },
+      "text": "👨‍👩‍👧‍👦b🇰"
+    },
+    {
+      "chunk_id": "chunk:065f359dc0ffa44b11579f9f",
+      "index": 2,
+      "len_bytes": 23,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 12,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 12,
+        "strategy": "markdown"
+      },
+      "text": "👦b🇰🇷cée한글"
+    },
+    {
+      "chunk_id": "chunk:0cbbc47d55dcb19ad2410dde",
+      "index": 3,
+      "len_bytes": 26,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 18,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 18,
+        "strategy": "markdown"
+      },
+      "text": "e한글a👨‍👩‍👧"
+    },
+    {
+      "chunk_id": "chunk:5a4729ad50df82c6502f00ba",
+      "index": 4,
+      "len_bytes": 28,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 24,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 24,
+        "strategy": "markdown"
+      },
+      "text": "👩‍👧‍👦b🇰🇷c"
+    },
+    {
+      "chunk_id": "chunk:643c32b18b93f3821ee38528",
+      "index": 5,
+      "len_bytes": 23,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 30,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 30,
+        "strategy": "markdown"
+      },
+      "text": "🇰🇷cée한글a👨"
+    },
+    {
+      "chunk_id": "chunk:13894ca148501af5b7cdb800",
+      "index": 6,
+      "len_bytes": 29,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 36,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 36,
+        "strategy": "markdown"
+      },
+      "text": "글a👨‍👩‍👧‍👦"
+    },
+    {
+      "chunk_id": "chunk:5666777a2597063c926d8902",
+      "index": 7,
+      "len_bytes": 24,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 42,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 42,
+        "strategy": "markdown"
+      },
+      "text": "👧‍👦b🇰🇷cée"
+    },
+    {
+      "chunk_id": "chunk:a96ef27555661346819119dc",
+      "index": 8,
+      "len_bytes": 22,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 48,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 48,
+        "strategy": "markdown"
+      },
+      "text": "cée한글a👨‍👩"
+    },
+    {
+      "chunk_id": "chunk:6116f01cbc2322b8f50741a9",
+      "index": 9,
+      "len_bytes": 30,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 54,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 54,
+        "strategy": "markdown"
+      },
+      "text": "👨‍👩‍👧‍👦b🇰"
+    },
+    {
+      "chunk_id": "chunk:bd2f90ab433cdafa19ecb7d5",
+      "index": 10,
+      "len_bytes": 23,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 60,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 60,
+        "strategy": "markdown"
+      },
+      "text": "👦b🇰🇷cée한글"
+    },
+    {
+      "chunk_id": "chunk:c5eac42ba78e8eba1d3df3b1",
+      "index": 11,
+      "len_bytes": 26,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 66,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 66,
+        "strategy": "markdown"
+      },
+      "text": "e한글a👨‍👩‍👧"
+    },
+    {
+      "chunk_id": "chunk:aef16423e73f4069a0b07c79",
+      "index": 12,
+      "len_bytes": 28,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 72,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 72,
+        "strategy": "markdown"
+      },
+      "text": "👩‍👧‍👦b🇰🇷c"
+    },
+    {
+      "chunk_id": "chunk:636069595c8c0c054c7c3113",
+      "index": 13,
+      "len_bytes": 23,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 78,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 78,
+        "strategy": "markdown"
+      },
+      "text": "🇰🇷cée한글a👨"
+    },
+    {
+      "chunk_id": "chunk:356993c27406eda5ca0b22c3",
+      "index": 14,
+      "len_bytes": 29,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 84,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 84,
+        "strategy": "markdown"
+      },
+      "text": "글a👨‍👩‍👧‍👦"
+    },
+    {
+      "chunk_id": "chunk:f1fc3261d8e5427ddfc6ac96",
+      "index": 15,
+      "len_bytes": 24,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 90,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 90,
+        "strategy": "markdown"
+      },
+      "text": "👧‍👦b🇰🇷cée"
+    },
+    {
+      "chunk_id": "chunk:eeea711f10918955a23a10fb",
+      "index": 16,
+      "len_bytes": 22,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 96,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 96,
+        "strategy": "markdown"
+      },
+      "text": "cée한글a👨‍👩"
+    },
+    {
+      "chunk_id": "chunk:f34c539646546d059f804dfd",
+      "index": 17,
+      "len_bytes": 30,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 102,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 102,
+        "strategy": "markdown"
+      },
+      "text": "👨‍👩‍👧‍👦b🇰"
+    },
+    {
+      "chunk_id": "chunk:dd0bbf1c25e02b506f279ca3",
+      "index": 18,
+      "len_bytes": 23,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 108,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 108,
+        "strategy": "markdown"
+      },
+      "text": "👦b🇰🇷cée한글"
+    },
+    {
+      "chunk_id": "chunk:c8fb27cccae8995d4752cfc7",
+      "index": 19,
+      "len_bytes": 26,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 114,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 114,
+        "strategy": "markdown"
+      },
+      "text": "e한글a👨‍👩‍👧"
+    },
+    {
+      "chunk_id": "chunk:65cf156186edb38cb899c7d6",
+      "index": 20,
+      "len_bytes": 28,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 120,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 120,
+        "strategy": "markdown"
+      },
+      "text": "👩‍👧‍👦b🇰🇷c"
+    },
+    {
+      "chunk_id": "chunk:e7d25104c71d92748e518879",
+      "index": 21,
+      "len_bytes": 18,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": "제목",
+        "start_char": 126,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "제목",
+        "start_char": 126,
+        "strategy": "markdown"
+      },
+      "text": "🇰🇷cée한글"
+    }
+  ],
+  "cleaned_len_bytes": 369,
+  "cleaned_len_chars": 133,
+  "content_type": "",
+  "filename": "u.md",
+  "key": "markdown_grapheme_soup",
+  "overlap": 3,
+  "requested_strategy": null,
+  "size": 9,
+  "source_node_id": "file:markdown_grapheme_soup",
+  "strategy": "markdown",
+  "text": "# 제목\na👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글"
+}

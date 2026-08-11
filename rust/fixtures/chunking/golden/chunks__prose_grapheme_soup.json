@@ -1,0 +1,304 @@
+{
+  "chunk_count": 18,
+  "chunks": [
+    {
+      "chunk_id": "chunk:c59a60bd8b5a733a6956f392",
+      "index": 0,
+      "len_bytes": 35,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "a👨‍👩‍👧‍👦b🇰🇷"
+    },
+    {
+      "chunk_id": "chunk:bb6adebedeac7ffc0a73ef91",
+      "index": 1,
+      "len_bytes": 28,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 7,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 7,
+        "strategy": "prose"
+      },
+      "text": "👦b🇰🇷cée한글a👨"
+    },
+    {
+      "chunk_id": "chunk:292ff9e45efa9feadeffd2f2",
+      "index": 2,
+      "len_bytes": 33,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 14,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 14,
+        "strategy": "prose"
+      },
+      "text": "한글a👨‍👩‍👧‍👦b"
+    },
+    {
+      "chunk_id": "chunk:f7fd09edf9d90dfce87b750a",
+      "index": 3,
+      "len_bytes": 30,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 21,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 21,
+        "strategy": "prose"
+      },
+      "text": "👧‍👦b🇰🇷cée한글"
+    },
+    {
+      "chunk_id": "chunk:c705b5aeb87c668cf0529401",
+      "index": 4,
+      "len_bytes": 31,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 28,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 28,
+        "strategy": "prose"
+      },
+      "text": "ée한글a👨‍👩‍👧‍"
+    },
+    {
+      "chunk_id": "chunk:260b18a2c31e51cb6145f061",
+      "index": 5,
+      "len_bytes": 31,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 35,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 35,
+        "strategy": "prose"
+      },
+      "text": "👩‍👧‍👦b🇰🇷cée"
+    },
+    {
+      "chunk_id": "chunk:53728b8987e1c606edd847ec",
+      "index": 6,
+      "len_bytes": 29,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 42,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 42,
+        "strategy": "prose"
+      },
+      "text": "🇷cée한글a👨‍👩‍"
+    },
+    {
+      "chunk_id": "chunk:3c96d44a22be75198d536872",
+      "index": 7,
+      "len_bytes": 35,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 49,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 49,
+        "strategy": "prose"
+      },
+      "text": "👨‍👩‍👧‍👦b🇰🇷c"
+    },
+    {
+      "chunk_id": "chunk:3e22d7291e53499bd1ecfaf9",
+      "index": 8,
+      "len_bytes": 27,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 56,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 56,
+        "strategy": "prose"
+      },
+      "text": "b🇰🇷cée한글a👨‍"
+    },
+    {
+      "chunk_id": "chunk:ab8ae4d07e83ebad3cbb1e51",
+      "index": 9,
+      "len_bytes": 34,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 63,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 63,
+        "strategy": "prose"
+      },
+      "text": "글a👨‍👩‍👧‍👦b🇰"
+    },
+    {
+      "chunk_id": "chunk:8783ba4694dbab30c36f0013",
+      "index": 10,
+      "len_bytes": 27,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 70,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 70,
+        "strategy": "prose"
+      },
+      "text": "‍👦b🇰🇷cée한글a"
+    },
+    {
+      "chunk_id": "chunk:b0adb355ce497bf871ee58a0",
+      "index": 11,
+      "len_bytes": 33,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 77,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 77,
+        "strategy": "prose"
+      },
+      "text": "e한글a👨‍👩‍👧‍👦"
+    },
+    {
+      "chunk_id": "chunk:1ea9e8ce75b7f6cc24dcd9ba",
+      "index": 12,
+      "len_bytes": 30,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 84,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 84,
+        "strategy": "prose"
+      },
+      "text": "‍👧‍👦b🇰🇷cée한"
+    },
+    {
+      "chunk_id": "chunk:ea02d3d0796396c79d195497",
+      "index": 13,
+      "len_bytes": 29,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 91,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 91,
+        "strategy": "prose"
+      },
+      "text": "cée한글a👨‍👩‍👧"
+    },
+    {
+      "chunk_id": "chunk:43719f823f14c164badd4429",
+      "index": 14,
+      "len_bytes": 33,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 98,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 98,
+        "strategy": "prose"
+      },
+      "text": "‍👩‍👧‍👦b🇰🇷cé"
+    },
+    {
+      "chunk_id": "chunk:c6290b4b4f8b3eb136ff517c",
+      "index": 15,
+      "len_bytes": 30,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 105,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 105,
+        "strategy": "prose"
+      },
+      "text": "🇰🇷cée한글a👨‍👩"
+    },
+    {
+      "chunk_id": "chunk:399ed871746c143874e0d26c",
+      "index": 16,
+      "len_bytes": 35,
+      "len_chars": 11,
+      "meta": {
+        "heading_path": null,
+        "start_char": 112,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 112,
+        "strategy": "prose"
+      },
+      "text": "a👨‍👩‍👧‍👦b🇰🇷"
+    },
+    {
+      "chunk_id": "chunk:4c05e20d6c326c8345362261",
+      "index": 17,
+      "len_bytes": 23,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": null,
+        "start_char": 119,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 119,
+        "strategy": "prose"
+      },
+      "text": "👦b🇰🇷cée한글"
+    }
+  ],
+  "cleaned_len_bytes": 360,
+  "cleaned_len_chars": 128,
+  "content_type": "",
+  "filename": "u.html",
+  "key": "prose_grapheme_soup",
+  "overlap": 4,
+  "requested_strategy": null,
+  "size": 11,
+  "source_node_id": "file:prose_grapheme_soup",
+  "strategy": "prose",
+  "text": "a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글a👨‍👩‍👧‍👦b🇰🇷cée한글"
+}

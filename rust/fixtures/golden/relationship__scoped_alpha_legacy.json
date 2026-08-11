@@ -1,0 +1,332 @@
+{
+  "key": "scoped_alpha_legacy",
+  "result": {
+    "node_id": "",
+    "query": "",
+    "relationship_type": "",
+    "relationships": [
+      {
+        "created_at": "2026-07-03T00:00:00",
+        "id": "edge:114efd07a566c6c3774cf8c6",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "task:parity-harness",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        },
+        "target": {
+          "id": "dec:rust-foundation",
+          "metadata": {
+            "category": "platform"
+          },
+          "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+          "title": "Rust 기반 검색 이관 결정",
+          "type": "Decision"
+        },
+        "type": "MENTIONS",
+        "weight": 1.0
+      },
+      {
+        "created_at": "2026-07-03T00:00:00",
+        "id": "edge:2f9901e8589ab38040fdf5de",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "tie:a",
+          "metadata": {},
+          "summary": "",
+          "title": "Tie candidate A",
+          "type": "Concept"
+        },
+        "target": {
+          "id": "tie:b",
+          "metadata": {},
+          "summary": "",
+          "title": "Tie candidate B",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 1.0
+      },
+      {
+        "created_at": "2026-07-05T00:00:00",
+        "id": "edge:805dbdc114935dd71cf9bb89",
+        "metadata": {
+          "legacy_label": "discusses"
+        },
+        "source": {
+          "id": "meeting:weekly",
+          "metadata": {},
+          "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+          "title": "주간 회의 2026-07-14",
+          "type": "Meeting"
+        },
+        "target": {
+          "id": "dec:fusion-alpha",
+          "metadata": {
+            "category": "retrieval",
+            "owner": "jiwon"
+          },
+          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        "type": "DISCUSSES",
+        "weight": 0.95
+      },
+      {
+        "created_at": "2026-07-01T00:00:00",
+        "id": "edge:56adf9267d30650da146f7da",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "dec:fusion-alpha",
+          "metadata": {
+            "category": "retrieval",
+            "owner": "jiwon"
+          },
+          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        "target": {
+          "id": "concept:retrieval",
+          "metadata": {},
+          "summary": "Retrieval is the act of finding the right memory for a question.",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "created_at": "2026-07-04T00:00:00",
+        "id": "edge:d4d6bd991115ef527ce4fa3b",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "source": {
+          "id": "doc:handbook",
+          "metadata": {
+            "ext": ".pdf",
+            "filename": "handbook.pdf",
+            "source_node": "doc:handbook"
+          },
+          "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+          "title": "Lattice AI 사용 안내서",
+          "type": "Document"
+        },
+        "target": {
+          "id": "page:onboarding",
+          "metadata": {},
+          "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+          "title": "온보딩 첫 다섯 걸음",
+          "type": "Page"
+        },
+        "type": "CONTAINS",
+        "weight": 0.7
+      },
+      {
+        "created_at": "2026-07-06T00:00:00",
+        "id": "edge:22fe3b50b2c1aeaec62c9510",
+        "metadata": {
+          "legacy_label": "owns"
+        },
+        "source": {
+          "id": "person:jiwon",
+          "metadata": {
+            "role": "owner"
+          },
+          "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+          "title": "김지원 님",
+          "type": "Person"
+        },
+        "target": {
+          "id": "task:parity-harness",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        },
+        "type": "MENTIONS",
+        "weight": 0.6
+      },
+      {
+        "created_at": "2026-06-04T00:00:00",
+        "id": "edge:7f22f14e6b87e9087ad6cfcf",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "file:ranking-notes",
+          "metadata": {
+            "ext": ".md",
+            "filename": "ranking-notes.md"
+          },
+          "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+          "title": "ranking-notes.md",
+          "type": "File"
+        },
+        "target": {
+          "id": "dec:fusion-alpha",
+          "metadata": {
+            "category": "retrieval",
+            "owner": "jiwon"
+          },
+          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        "type": "MENTIONS",
+        "weight": 0.35
+      },
+      {
+        "created_at": "2026-06-05T00:00:00",
+        "id": "edge:17137d757ca2934c0c9f13ac",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "code:hybrid-search",
+          "metadata": {
+            "ext": ".py",
+            "filename": "hybrid.py"
+          },
+          "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+          "title": "hybrid.py",
+          "type": "CodeFile"
+        },
+        "target": {
+          "id": "file:ranking-notes",
+          "metadata": {
+            "ext": ".md",
+            "filename": "ranking-notes.md"
+          },
+          "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+          "title": "ranking-notes.md",
+          "type": "File"
+        },
+        "type": "MENTIONS",
+        "weight": 0.3
+      },
+      {
+        "created_at": "2026-06-08T00:00:00",
+        "id": "edge:26a7d16bbb4827c42215ad72",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "slide:fusion",
+          "metadata": {},
+          "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+          "title": "Fusion slide",
+          "type": "Slide"
+        },
+        "target": {
+          "id": "concept:retrieval",
+          "metadata": {},
+          "summary": "Retrieval is the act of finding the right memory for a question.",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.25
+      },
+      {
+        "created_at": "2026-06-06T00:00:00",
+        "id": "edge:0b57b59e7e8a8f090382c90f",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "source": {
+          "id": "org:lattice",
+          "metadata": {},
+          "summary": "The organization.",
+          "title": "Lattice",
+          "type": "Organization"
+        },
+        "target": {
+          "id": "person:jiwon",
+          "metadata": {
+            "role": "owner"
+          },
+          "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+          "title": "김지원 님",
+          "type": "Person"
+        },
+        "type": "CONTAINS",
+        "weight": 0.25
+      },
+      {
+        "created_at": "2026-06-09T00:00:00",
+        "id": "edge:777c7fccc069fb9d2ddf3a0a",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "topic:quality",
+          "metadata": {},
+          "summary": "검색 품질에 대한 주제입니다.",
+          "title": "검색 품질",
+          "type": "Topic"
+        },
+        "target": {
+          "id": "deck:review",
+          "metadata": {
+            "ext": ".pptx",
+            "filename": "quarterly-review.pptx"
+          },
+          "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
+          "title": "분기 리뷰 발표자료",
+          "type": "SlideDeck"
+        },
+        "type": "MENTIONS",
+        "weight": 0.2
+      },
+      {
+        "created_at": "2026-06-09T00:00:00",
+        "id": "edge:d41ef88ab120a38e991f0338",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "deck:review",
+          "metadata": {
+            "ext": ".pptx",
+            "filename": "quarterly-review.pptx"
+          },
+          "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
+          "title": "분기 리뷰 발표자료",
+          "type": "SlideDeck"
+        },
+        "target": {
+          "id": "meeting:weekly",
+          "metadata": {},
+          "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+          "title": "주간 회의 2026-07-14",
+          "type": "Meeting"
+        },
+        "type": "MENTIONS",
+        "weight": 0.2
+      }
+    ]
+  },
+  "spec": {
+    "allowed": [
+      "ws-alpha"
+    ],
+    "key": "scoped_alpha_legacy",
+    "legacy": true
+  },
+  "suite": "relationship"
+}

@@ -21,6 +21,13 @@ pub enum CoreError {
     /// Two vectors of different lengths were compared — see
     /// [`crate::embeddings::LocalEmbeddingModel::similarity`].
     DimensionMismatch { left: usize, right: usize },
+    /// The caller asked for something the ported Python raises `ValueError`
+    /// for: a blank node id, or a seed the caller's workspace scope cannot see.
+    ///
+    /// Separate from [`CoreError::Sqlite`] because it is not a failure of the
+    /// store — it is the answer, and the routes turn it into a 4xx rather than
+    /// a 500.
+    InvalidRequest(String),
 }
 
 impl std::fmt::Display for CoreError {
@@ -32,6 +39,7 @@ impl std::fmt::Display for CoreError {
                 "embedding dimension mismatch: {left} vs {right}; \
                  the vector index was built with a different model"
             ),
+            CoreError::InvalidRequest(message) => f.write_str(message),
         }
     }
 }
@@ -96,6 +104,13 @@ mod tests {
         let err = open_read_only(&dir.path().join("nope.sqlite")).unwrap_err();
         assert!(matches!(err, CoreError::Sqlite(_)));
         assert!(!format!("{err}").is_empty());
+    }
+
+    #[test]
+    fn an_invalid_request_carries_its_own_message() {
+        let err = CoreError::InvalidRequest("graph node not found: x".into());
+        assert_eq!(format!("{err}"), "graph node not found: x");
+        assert!(format!("{err:?}").contains("InvalidRequest"));
     }
 
     #[test]

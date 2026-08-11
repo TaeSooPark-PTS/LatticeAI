@@ -1,0 +1,32 @@
+{
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "chunk_id": "chunk:b7a3ad16203f05006f4e74d6",
+      "index": 0,
+      "len_bytes": 44,
+      "len_chars": 22,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "두   칸  사이  간격은   유지된다."
+    }
+  ],
+  "cleaned_len_bytes": 44,
+  "cleaned_len_chars": 22,
+  "content_type": "",
+  "filename": "note",
+  "key": "plain_strip_not_collapse",
+  "overlap": 160,
+  "requested_strategy": null,
+  "size": 1200,
+  "source_node_id": "file:plain_strip_not_collapse",
+  "strategy": "plain",
+  "text": "  \n 두   칸  사이  간격은   유지된다.  \n "
+}

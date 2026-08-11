@@ -102,6 +102,26 @@ pub fn class_alpha(query_class: &str) -> f64 {
     }
 }
 
+/// The three-channel weights for a class — the `keyword`/`vector`/`graph`
+/// columns of `fusion.DEFAULT_FUSION_WEIGHTS`, in that fixed order.
+///
+/// `alpha` above and these are the same table read by two different fusion
+/// layers: the graph-layer hybrid blends two channels with `alpha`, the service
+/// layer sums three with these. The `fact` row is deliberately identical to
+/// `search_service.DEFAULT_HYBRID_WEIGHTS`, which is why a fact-class query and
+/// a pinned-default caller get the same answer.
+pub fn class_weights(query_class: &str) -> [(&'static str, f64); 3] {
+    match query_class {
+        // Code recall lives on exact identifiers → lexical dominates.
+        "code" => [("keyword", 0.55), ("vector", 0.25), ("graph", 0.20)],
+        // Person questions are relationship questions → the graph leads.
+        "person" => [("keyword", 0.30), ("vector", 0.30), ("graph", 0.40)],
+        // Recency wants fresh literal hits over semantic neighbours.
+        "recency" => [("keyword", 0.45), ("vector", 0.35), ("graph", 0.20)],
+        _ => [("keyword", 0.35), ("vector", 0.40), ("graph", 0.25)],
+    }
+}
+
 fn rewrite_enabled() -> bool {
     let raw = std::env::var(QUERY_REWRITE_ENV)
         .unwrap_or_default()
@@ -205,6 +225,19 @@ mod tests {
         assert_eq!(class_alpha("person"), 0.45);
         assert_eq!(class_alpha("recency"), 0.50);
         assert_eq!(class_alpha("nonsense"), 0.60);
+        // The three-channel row for `fact` IS `DEFAULT_HYBRID_WEIGHTS`.
+        assert_eq!(
+            class_weights("fact"),
+            [("keyword", 0.35), ("vector", 0.40), ("graph", 0.25)]
+        );
+        assert_eq!(class_weights("nonsense"), class_weights("fact"));
+        assert_eq!(class_weights("code")[0].1, 0.55);
+        assert_eq!(class_weights("person")[2].1, 0.40);
+        assert_eq!(class_weights("recency")[1].1, 0.35);
+        for class in ["fact", "code", "person", "recency"] {
+            let total: f64 = class_weights(class).iter().map(|(_, w)| w).sum();
+            assert!((total - 1.0).abs() < 1e-12, "{class} weights must sum to 1");
+        }
     }
 
     #[test]

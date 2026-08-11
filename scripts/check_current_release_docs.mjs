@@ -6,7 +6,7 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const releaseDir = `output/release/v${version}`;
-const releaseTheme = "Rust Foundation";
+const releaseTheme = "Rust Complete";
 const title = `${version} — ${releaseTheme}`;
 const escapedVersion = version.replaceAll(".", "\\.");
 

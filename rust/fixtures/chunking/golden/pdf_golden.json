@@ -1,0 +1,490 @@
+{
+  "citation_locator": [
+    {
+      "expected": "",
+      "metadata": {}
+    },
+    {
+      "expected": "안내서 > 온보딩",
+      "metadata": {
+        "heading_path": "안내서 > 온보딩"
+      }
+    },
+    {
+      "expected": "spaced",
+      "metadata": {
+        "heading_path": "  spaced  "
+      }
+    },
+    {
+      "expected": "",
+      "metadata": {
+        "heading_path": ""
+      }
+    },
+    {
+      "expected": "p.3",
+      "metadata": {
+        "page": 3
+      }
+    },
+    {
+      "expected": "p.3–5",
+      "metadata": {
+        "page": 3,
+        "page_end": 5
+      }
+    },
+    {
+      "expected": "p.3",
+      "metadata": {
+        "page": 3,
+        "page_end": 3
+      }
+    },
+    {
+      "expected": "p.3",
+      "metadata": {
+        "page": 3,
+        "page_end": 2
+      }
+    },
+    {
+      "expected": "",
+      "metadata": {
+        "page": 0
+      }
+    },
+    {
+      "expected": "",
+      "metadata": {
+        "page": -1
+      }
+    },
+    {
+      "expected": "p.4",
+      "metadata": {
+        "page": "4"
+      }
+    },
+    {
+      "expected": "",
+      "metadata": {
+        "page": "nope"
+      }
+    },
+    {
+      "expected": "",
+      "metadata": {
+        "page": null
+      }
+    },
+    {
+      "expected": "Retrieval > Fusion · p.2–4",
+      "metadata": {
+        "heading_path": "Retrieval > Fusion",
+        "page": 2,
+        "page_end": 4
+      }
+    }
+  ],
+  "page_for_offset": [
+    {
+      "offsets": [
+        0,
+        102,
+        354
+      ],
+      "offsets_key": "three_pages",
+      "probes": [
+        {
+          "offset": -5,
+          "page": null
+        },
+        {
+          "offset": -1,
+          "page": null
+        },
+        {
+          "offset": 0,
+          "page": 1
+        },
+        {
+          "offset": 1,
+          "page": 1
+        },
+        {
+          "offset": 99,
+          "page": 1
+        },
+        {
+          "offset": 100,
+          "page": 1
+        },
+        {
+          "offset": 101,
+          "page": 1
+        },
+        {
+          "offset": 102,
+          "page": 2
+        },
+        {
+          "offset": 351,
+          "page": 2
+        },
+        {
+          "offset": 352,
+          "page": 2
+        },
+        {
+          "offset": 353,
+          "page": 2
+        },
+        {
+          "offset": 10000,
+          "page": 3
+        }
+      ]
+    },
+    {
+      "offsets": [
+        0
+      ],
+      "offsets_key": "single_page",
+      "probes": [
+        {
+          "offset": -5,
+          "page": null
+        },
+        {
+          "offset": -1,
+          "page": null
+        },
+        {
+          "offset": 0,
+          "page": 1
+        },
+        {
+          "offset": 1,
+          "page": 1
+        },
+        {
+          "offset": 99,
+          "page": 1
+        },
+        {
+          "offset": 100,
+          "page": 1
+        },
+        {
+          "offset": 101,
+          "page": 1
+        },
+        {
+          "offset": 102,
+          "page": 1
+        },
+        {
+          "offset": 351,
+          "page": 1
+        },
+        {
+          "offset": 352,
+          "page": 1
+        },
+        {
+          "offset": 353,
+          "page": 1
+        },
+        {
+          "offset": 10000,
+          "page": 1
+        }
+      ]
+    },
+    {
+      "offsets": [
+        0,
+        2,
+        14
+      ],
+      "offsets_key": "zero_length_page",
+      "probes": [
+        {
+          "offset": -5,
+          "page": null
+        },
+        {
+          "offset": -1,
+          "page": null
+        },
+        {
+          "offset": 0,
+          "page": 1
+        },
+        {
+          "offset": 1,
+          "page": 1
+        },
+        {
+          "offset": 99,
+          "page": 3
+        },
+        {
+          "offset": 100,
+          "page": 3
+        },
+        {
+          "offset": 101,
+          "page": 3
+        },
+        {
+          "offset": 102,
+          "page": 3
+        },
+        {
+          "offset": 351,
+          "page": 3
+        },
+        {
+          "offset": 352,
+          "page": 3
+        },
+        {
+          "offset": 353,
+          "page": 3
+        },
+        {
+          "offset": 10000,
+          "page": 3
+        }
+      ]
+    },
+    {
+      "offsets": [],
+      "offsets_key": "pages_empty",
+      "probes": [
+        {
+          "offset": -5,
+          "page": null
+        },
+        {
+          "offset": -1,
+          "page": null
+        },
+        {
+          "offset": 0,
+          "page": null
+        },
+        {
+          "offset": 1,
+          "page": null
+        },
+        {
+          "offset": 99,
+          "page": null
+        },
+        {
+          "offset": 100,
+          "page": null
+        },
+        {
+          "offset": 101,
+          "page": null
+        },
+        {
+          "offset": 102,
+          "page": null
+        },
+        {
+          "offset": 351,
+          "page": null
+        },
+        {
+          "offset": 352,
+          "page": null
+        },
+        {
+          "offset": 353,
+          "page": null
+        },
+        {
+          "offset": 10000,
+          "page": null
+        }
+      ]
+    }
+  ],
+  "structures": [
+    {
+      "key": "three_pages",
+      "offsets": [
+        0,
+        102,
+        354
+      ],
+      "structure": {
+        "pages": [
+          {
+            "chars": 100
+          },
+          {
+            "chars": 250
+          },
+          {
+            "chars": 40
+          }
+        ]
+      }
+    },
+    {
+      "key": "single_page",
+      "offsets": [
+        0
+      ],
+      "structure": {
+        "pages": [
+          {
+            "chars": 1200
+          }
+        ]
+      }
+    },
+    {
+      "key": "zero_length_page",
+      "offsets": [
+        0,
+        2,
+        14
+      ],
+      "structure": {
+        "pages": [
+          {
+            "chars": 0
+          },
+          {
+            "chars": 10
+          },
+          {
+            "chars": 0
+          }
+        ]
+      }
+    },
+    {
+      "key": "float_chars",
+      "offsets": [
+        0,
+        12
+      ],
+      "structure": {
+        "pages": [
+          {
+            "chars": 10.9
+          },
+          {
+            "chars": 5.0
+          }
+        ]
+      }
+    },
+    {
+      "key": "no_pages_key",
+      "offsets": [],
+      "structure": {
+        "meta": 1
+      }
+    },
+    {
+      "key": "pages_not_list",
+      "offsets": [],
+      "structure": {
+        "pages": {
+          "chars": 5
+        }
+      }
+    },
+    {
+      "key": "pages_empty",
+      "offsets": [],
+      "structure": {
+        "pages": []
+      }
+    },
+    {
+      "key": "page_not_dict",
+      "offsets": [],
+      "structure": {
+        "pages": [
+          {
+            "chars": 5
+          },
+          7
+        ]
+      }
+    },
+    {
+      "key": "chars_missing",
+      "offsets": [],
+      "structure": {
+        "pages": [
+          {
+            "chars": 5
+          },
+          {}
+        ]
+      }
+    },
+    {
+      "key": "chars_negative",
+      "offsets": [],
+      "structure": {
+        "pages": [
+          {
+            "chars": 5
+          },
+          {
+            "chars": -1
+          }
+        ]
+      }
+    },
+    {
+      "key": "chars_bool",
+      "offsets": [],
+      "structure": {
+        "pages": [
+          {
+            "chars": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "chars_string",
+      "offsets": [],
+      "structure": {
+        "pages": [
+          {
+            "chars": "5"
+          }
+        ]
+      }
+    },
+    {
+      "key": "structure_not_dict",
+      "offsets": [],
+      "structure": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "key": "structure_null",
+      "offsets": [],
+      "structure": null
+    }
+  ]
+}

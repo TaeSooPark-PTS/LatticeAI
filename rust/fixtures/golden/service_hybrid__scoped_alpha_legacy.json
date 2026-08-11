@@ -1,0 +1,930 @@
+{
+  "key": "scoped_alpha_legacy",
+  "result": {
+    "channels": {
+      "graph": {
+        "expand_depth": 1,
+        "mode": "graph",
+        "query": "회의 결정 사항"
+      },
+      "keyword": {
+        "mode": "keyword",
+        "query": "회의 결정 사항"
+      },
+      "vector": {
+        "embedding_dim": 384,
+        "embedding_model": "lattice-local-hash-v1:384",
+        "mode": "vector",
+        "query": "회의 결정 사항",
+        "recall": {
+          "backend": "bruteforce-cosine",
+          "candidates_scanned": 44,
+          "candidates_total": 44,
+          "detail": null,
+          "max_candidates": 10000,
+          "truncated": false
+        }
+      }
+    },
+    "matches": [
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "chunk:handbook:2",
+        "item_type": "node",
+        "metadata": {
+          "heading_path": "안내서 > 검색",
+          "index": 1,
+          "page": 7,
+          "source_node": "doc:handbook",
+          "start_char": 1200
+        },
+        "node_id": "chunk:handbook:2",
+        "rank": 1,
+        "score": 1.0,
+        "source_scores": {
+          "graph": 1.0,
+          "keyword": 1.0,
+          "vector": 0.264906
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "검색 화면에서는 회의 결정 사항을 한 번에 찾을 수 있습니다.",
+        "title": "handbook.pdf chunk 2",
+        "type": "Chunk",
+        "updated_at": "2026-06-12T10:00:02"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "dec:rust-foundation",
+        "item_type": "node",
+        "metadata": {
+          "category": "platform"
+        },
+        "node_id": "dec:rust-foundation",
+        "rank": 2,
+        "score": 0.5,
+        "source_scores": {
+          "graph": 0.5,
+          "keyword": 0.5,
+          "vector": 0.237915
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+        "title": "Rust 기반 검색 이관 결정",
+        "type": "Decision",
+        "updated_at": "2026-07-18T14:30:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "meeting:weekly",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "meeting:weekly",
+        "rank": 3,
+        "score": 0.283333,
+        "source_scores": {
+          "graph": 0.25,
+          "keyword": 0.25,
+          "vector": 0.19518
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "doc:handbook",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "source_node": "doc:handbook"
+        },
+        "node_id": "doc:handbook",
+        "rank": 4,
+        "score": 0.244444,
+        "source_scores": {
+          "graph": 0.333333,
+          "keyword": 0.333333,
+          "vector": 0.073324
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "meeting:weekly",
+              "id": "edge:805dbdc114935dd71cf9bb89",
+              "to": "dec:fusion-alpha",
+              "type": "DISCUSSES",
+              "weight": 0.95
+            }
+          }
+        ],
+        "id": "dec:fusion-alpha",
+        "item_type": "node",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "category": "retrieval",
+            "node_type": "Decision",
+            "owner": "jiwon"
+          }
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 5,
+        "score": 0.102381,
+        "source_scores": {
+          "graph": 0.1125,
+          "vector": 0.095238
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "topic:quality",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Topic"
+          }
+        },
+        "node_id": "topic:quality",
+        "rank": 6,
+        "score": 0.1,
+        "source_scores": {
+          "vector": 0.154303
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "검색 품질에 대한 주제입니다.",
+        "title": "검색 품질",
+        "type": "Topic",
+        "updated_at": "2026-03-06T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "task:parity-harness",
+              "id": "edge:114efd07a566c6c3774cf8c6",
+              "to": "dec:rust-foundation",
+              "type": "MENTIONS",
+              "weight": 1.0
+            }
+          }
+        ],
+        "id": "task:parity-harness",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "status": "open",
+          "vector": {
+            "node_type": "Task",
+            "status": "open"
+          }
+        },
+        "node_id": "task:parity-harness",
+        "rank": 7,
+        "score": 0.092614,
+        "source_scores": {
+          "graph": 0.225,
+          "vector": 0.0553
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "concept:retrieval",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:retrieval",
+        "rank": 8,
+        "score": 0.08,
+        "source_scores": {
+          "vector": 0.143223
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "deck:review",
+              "id": "edge:d41ef88ab120a38e991f0338",
+              "to": "meeting:weekly",
+              "type": "MENTIONS",
+              "weight": 0.2
+            }
+          }
+        ],
+        "id": "deck:review",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "quarterly-review.pptx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".pptx",
+            "filename": "quarterly-review.pptx",
+            "node_type": "SlideDeck"
+          }
+        },
+        "node_id": "deck:review",
+        "rank": 9,
+        "score": 0.07125,
+        "source_scores": {
+          "graph": 0.1125,
+          "vector": 0.067574
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
+        "title": "분기 리뷰 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-02T15:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:handbook",
+              "id": "edge:d4d6bd991115ef527ce4fa3b",
+              "to": "page:onboarding",
+              "type": "CONTAINS",
+              "weight": 0.7
+            }
+          }
+        ],
+        "id": "page:onboarding",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Page"
+          }
+        },
+        "node_id": "page:onboarding",
+        "rank": 10,
+        "score": 0.063889,
+        "source_scores": {
+          "graph": 0.15,
+          "vector": 0.0
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+        "title": "온보딩 첫 다섯 걸음",
+        "type": "Page",
+        "updated_at": "2026-06-01T12:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "sheet:metrics",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".xlsx",
+            "filename": "retrieval-metrics.xlsx",
+            "node_type": "Spreadsheet"
+          }
+        },
+        "node_id": "sheet:metrics",
+        "rank": 11,
+        "score": 0.057143,
+        "source_scores": {
+          "vector": 0.090443
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "source:repo",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "git",
+          "vector": {
+            "node_type": "Source",
+            "source": "git"
+          }
+        },
+        "node_id": "source:repo",
+        "rank": 12,
+        "score": 0.05,
+        "source_scores": {
+          "vector": 0.078567
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Source repository for the product.",
+        "title": "github.com/lattice/ai",
+        "type": "Source",
+        "updated_at": "2026-02-20T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "code:hybrid-search",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".py",
+          "filename": "hybrid.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".py",
+            "filename": "hybrid.py",
+            "node_type": "CodeFile"
+          }
+        },
+        "node_id": "code:hybrid-search",
+        "rank": 13,
+        "score": 0.033333,
+        "source_scores": {
+          "vector": 0.052271
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+        "title": "hybrid.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-08T09:30:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "audio:standup",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "standup-2026-07-13.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "standup-2026-07-13.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:standup",
+        "rank": 14,
+        "score": 0.030769,
+        "source_scores": {
+          "vector": 0.045932
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Standup recording where the parity harness was assigned.",
+        "title": "standup-2026-07-13.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-13T09:05:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "file:ranking-notes",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".md",
+            "filename": "ranking-notes.md",
+            "node_type": "File"
+          }
+        },
+        "node_id": "file:ranking-notes",
+        "rank": 15,
+        "score": 0.028571,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "chat:ranking",
+        "item_type": "node",
+        "metadata": {
+          "conversation_id": "conv-1",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "conversation_id": "conv-1",
+            "node_type": "Chat"
+          }
+        },
+        "node_id": "chat:ranking",
+        "rank": 16,
+        "score": 0.026667,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
+        "title": "랭킹 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-05T21:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "legacy:global-note",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "legacy:global-note",
+        "rank": 17,
+        "score": 0.025,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
+        "title": "Legacy global note",
+        "type": "Document",
+        "updated_at": "2026-06-20T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "chunk:handbook:1",
+        "item_type": "chunk",
+        "metadata": {
+          "chunk": {
+            "heading_path": "안내서 > 온보딩",
+            "index": 0,
+            "page": 3,
+            "page_end": 4,
+            "source_node": "doc:handbook",
+            "start_char": 0
+          },
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "locator": "안내서 > 온보딩 · p.3–4",
+          "parent_node_id": "doc:handbook",
+          "parent_type": "Document",
+          "source_node": "doc:handbook",
+          "vector": {
+            "heading_path": "안내서 > 온보딩",
+            "index": 0,
+            "page": 3,
+            "page_end": 4,
+            "parent_source_node": "doc:handbook",
+            "source_node": "doc:handbook",
+            "start_char": 0
+          }
+        },
+        "node_id": "doc:handbook",
+        "rank": 18,
+        "score": 0.023529,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "온보딩 체크리스트: 첫째, 폴더를 연결합니다. 둘째, 질문을 합니다. 셋째, 근거를 확인합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Chunk",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "slide:fusion",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:fusion",
+        "rank": 19,
+        "score": 0.021053,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "person:jiwon",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "role": "owner",
+          "vector": {
+            "node_type": "Person",
+            "role": "owner"
+          }
+        },
+        "node_id": "person:jiwon",
+        "rank": 20,
+        "score": 0.02,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person",
+        "updated_at": "2026-04-11T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "feature:command-palette",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:command-palette",
+        "rank": 21,
+        "score": 0.019048,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "The palette that opens search from anywhere.",
+        "title": "Command palette",
+        "type": "Feature",
+        "updated_at": "2026-03-05T10:00:00"
+      }
+    ],
+    "mode": "hybrid",
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": "회의 결정 사항"
+    },
+    "query": "회의 결정 사항",
+    "query_class": "fact",
+    "weights": {
+      "graph": 0.25,
+      "keyword": 0.35,
+      "vector": 0.4
+    }
+  },
+  "spec": {
+    "allowed": [
+      "ws-alpha"
+    ],
+    "key": "scoped_alpha_legacy",
+    "legacy": true,
+    "query": "회의 결정 사항"
+  },
+  "suite": "service_hybrid"
+}

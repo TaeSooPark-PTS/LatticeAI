@@ -1,0 +1,80 @@
+{
+  "chunk_count": 4,
+  "chunks": [
+    {
+      "chunk_id": "chunk:3dd79c26034d79a6c23d6801",
+      "index": 0,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "x = 1\n\n"
+    },
+    {
+      "chunk_id": "chunk:d3e92ad91486c5377aa84bb0",
+      "index": 1,
+      "len_bytes": 8,
+      "len_chars": 8,
+      "meta": {
+        "heading_path": null,
+        "start_char": 7,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 7,
+        "strategy": "code"
+      },
+      "text": "y = 2\n\u001c\n"
+    },
+    {
+      "chunk_id": "chunk:153631d794d19945b0fd9482",
+      "index": 2,
+      "len_bytes": 10,
+      "len_chars": 10,
+      "meta": {
+        "heading_path": null,
+        "start_char": 15,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 15,
+        "strategy": "code"
+      },
+      "text": "z = 3\n\u001f \u001e\n"
+    },
+    {
+      "chunk_id": "chunk:d9bc7831ca7966680cd52c69",
+      "index": 3,
+      "len_bytes": 12,
+      "len_chars": 12,
+      "meta": {
+        "heading_path": null,
+        "start_char": 25,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 25,
+        "strategy": "code"
+      },
+      "text": "w = 4\n\nv = 5"
+    }
+  ],
+  "cleaned_len_bytes": 37,
+  "cleaned_len_chars": 37,
+  "content_type": "",
+  "filename": "c0.py",
+  "key": "code_c0_blank_run",
+  "overlap": 3,
+  "requested_strategy": null,
+  "size": 12,
+  "source_node_id": "file:code_c0_blank_run",
+  "strategy": "code",
+  "text": "x = 1\n\ny = 2\n\u001c\nz = 3\n\u001f \u001e\nw = 4\n\nv = 5"
+}

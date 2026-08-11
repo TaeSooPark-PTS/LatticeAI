@@ -1,0 +1,14 @@
+{
+  "key": "no_hit",
+  "result": {
+    "expand_depth": 1,
+    "matches": [],
+    "mode": "graph",
+    "query": "zzqq wumpus nonsense"
+  },
+  "spec": {
+    "key": "no_hit",
+    "query": "zzqq wumpus nonsense"
+  },
+  "suite": "graph_search"
+}

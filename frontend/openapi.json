@@ -1086,6 +1086,24 @@
         "title": "DockerPostgresRequest",
         "type": "object"
       },
+      "DrainRequest": {
+        "description": "How many queued nodes one drain may claim.\n\nOmitted (or a body-less POST) means the queue's own tick size, so a caller\nwith no opinion inherits the number the queue was designed around.",
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          }
+        },
+        "title": "DrainRequest",
+        "type": "object"
+      },
       "EncryptedArchiveRequest": {
         "properties": {
           "passphrase": {
@@ -5034,7 +5052,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "11.4.0"
+    "version": "11.5.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8601,6 +8619,67 @@
           }
         },
         "summary": "Inspect Hook"
+      }
+    },
+    "/api/index/drain": {
+      "post": {
+        "description": "Run one background-embedding tick and report what it did.\n\nOff the event loop: the tick opens SQLite and calls the embedder, and\nthis server has one loop for every user (10.9.0).",
+        "operationId": "drain_index_queue_api_index_drain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DrainRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Drain Index Queue"
+      }
+    },
+    "/api/index/queue": {
+      "get": {
+        "description": "The embed backlog, counted. Reads nothing else and writes nothing.",
+        "operationId": "index_queue_api_index_queue_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Index Queue"
       }
     },
     "/api/index/rebuild": {

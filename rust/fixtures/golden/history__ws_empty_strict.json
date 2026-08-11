@@ -1,0 +1,10 @@
+{
+  "key": "ws_empty_strict",
+  "result": [],
+  "spec": {
+    "allowed": [],
+    "key": "ws_empty_strict",
+    "legacy": false
+  },
+  "suite": "history"
+}

@@ -1,0 +1,107 @@
+{
+  "key": "limit_small",
+  "result": {
+    "expand_depth": 1,
+    "matches": [
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          }
+        ],
+        "id": "dec:fusion-alpha",
+        "item_type": "node",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 1,
+        "score": 1.0,
+        "source_scores": {
+          "graph": 1.0
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "task:parity-harness",
+        "item_type": "node",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 2,
+        "score": 0.5,
+        "source_scores": {
+          "graph": 0.5
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "meeting:weekly",
+              "id": "edge:805dbdc114935dd71cf9bb89",
+              "to": "dec:fusion-alpha",
+              "type": "DISCUSSES",
+              "weight": 0.95
+            }
+          }
+        ],
+        "id": "meeting:weekly",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "meeting:weekly",
+        "rank": 3,
+        "score": 0.45,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      }
+    ],
+    "mode": "graph",
+    "query": "hybrid retrieval ranking"
+  },
+  "spec": {
+    "key": "limit_small",
+    "limit": 3,
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "graph_search"
+}

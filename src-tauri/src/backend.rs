@@ -2,32 +2,33 @@
 //!
 //! Through 11.3.0 this file's job was done inline in `main.rs`: four hand-rolled
 //! command-resolution rules, a `Command::spawn`, a TCP-connect probe, and a
-//! restart that killed the child and spawned another one. All four now live in
-//! the `lattice-host` supervisor, which the `lattice-host` binary uses too — so
-//! the desktop and the CLI front door cannot drift apart, and the desktop
-//! inherits an HTTP `/health` gate, crash restart with backoff, graceful
-//! SIGTERM shutdown, and a port that is scanned rather than assumed.
+//! restart that killed the child and spawned another one. All four moved into
+//! the `lattice-host` supervisor in 11.4.0, which the `lattice-host` binary uses
+//! too — so the desktop and the CLI front door cannot drift apart.
 //!
-//! What this module adds on top is the two things only the desktop has: the
-//! `LATTICEAI_DESKTOP_BACKEND_ORIGIN` override (front an existing worker,
-//! spawn nothing) and the `LATTICEAI_DESKTOP_NO_BACKEND` kill switch.
+//! 11.5.0 finishes the job: the shell no longer only *supervises* a worker, it
+//! **is** the front door. In the default topology it serves `lattice-host`'s
+//! gateway on the public port — the `/host/*` status routes, the native
+//! `/rust/*` retrieval, ingest and agent-kernel surfaces, the `/host/jobs`
+//! scheduler — and the worker runs on an internal port behind it. The webview
+//! navigates to the gateway, and the worker is told to trust that origin so
+//! cookie-authenticated writes still work through the proxy hop.
+//!
+//! Which arrangement is chosen lives in [`crate::topology`]; what this module
+//! adds is the running of it, and the five IPC contracts on top (unchanged in
+//! name, type and meaning — the new status fields are additive).
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use lattice_host::gateway::{bind_loopback, mounts, serve_gateway, GatewayState};
 use lattice_host::supervisor::{
-    find_free_port, wait_for_health, HostProbe, Supervisor, SupervisorConfig, SupervisorError,
-    SystemProbe, WorkerStatus, DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS,
+    wait_for_health, HostProbe, Supervisor, SupervisorConfig, SupervisorError, SystemProbe,
+    WorkerStatus,
 };
 use serde::Serialize;
 
-/// Point the shell at an already-running worker. Nothing is spawned, and this
-/// exact string is what `backend_origin` returns and the webview navigates to.
-pub const ORIGIN_ENV: &str = "LATTICEAI_DESKTOP_BACKEND_ORIGIN";
-/// Kill switch: open the window with no worker at all.
-pub const NO_BACKEND_ENV: &str = "LATTICEAI_DESKTOP_NO_BACKEND";
-/// An explicit worker port, honoured verbatim.
-pub const PORT_ENV: &str = "LATTICEAI_PORT";
+use crate::topology::{self, Plan, Topology};
 
 /// The desktop shell's view of the worker.
 ///
@@ -59,49 +60,35 @@ pub struct BackendStatus {
     pub restarts: u32,
     /// Seconds since the current worker process started.
     pub uptime_seconds: Option<u64>,
+    /// Which arrangement this shell is running: `gateway`, `direct`,
+    /// `external` or `disabled` (11.5.0, additive).
+    pub topology: String,
+    /// Where the worker itself answers. Equal to `origin` unless a gateway is
+    /// in front of it (11.5.0, additive).
+    pub worker_origin: String,
+    /// The gateway's origin when one is served here, else `null`
+    /// (11.5.0, additive).
+    pub gateway_origin: Option<String>,
+    /// Whether the background jobs timer is running in this process
+    /// (11.5.0, additive).
+    pub jobs_running: bool,
 }
 
-/// The worker port: an explicit `LATTICEAI_PORT` verbatim, else 4825 scanning
-/// upward.
-///
-/// An explicit port is an instruction, not a preference — if it is busy the
-/// shell must fail loudly on it rather than quietly answer somewhere else,
-/// because the whole point of setting it is that something else knows the
-/// number.
-pub fn resolve_port(probe: &dyn HostProbe) -> u16 {
-    let pinned = probe
-        .env_var(PORT_ENV)
-        .and_then(|raw| raw.trim().parse::<u16>().ok())
-        .filter(|port| *port != 0);
-    match pinned {
-        Some(port) => port,
-        None => find_free_port(DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS, &[]).unwrap_or(DEFAULT_PORT),
-    }
+/// The gateway this shell is serving, and how to stop it.
+struct RunningGateway {
+    shutdown: Option<tokio::sync::oneshot::Sender<()>>,
 }
 
-/// The port named by an origin, when it names one.
-pub fn origin_port(origin: &str) -> Option<u16> {
-    let authority = origin
-        .split_once("://")
-        .map(|(_, rest)| rest)
-        .unwrap_or(origin)
-        .split('/')
-        .next()
-        .unwrap_or_default();
-    authority
-        .rsplit_once(':')
-        .and_then(|(_, port)| port.trim().parse::<u16>().ok())
-        .filter(|port| *port != 0)
-}
-
-/// The supervisor plus the origin every surface is told about.
+/// The supervisor, the front door, and the origin every surface is told about.
 pub struct DesktopBackend {
-    origin: String,
+    plan: Plan,
     supervisor: Supervisor,
-    supervised: bool,
-    /// The kill switch was set: there is deliberately no worker to wait for.
-    disabled: bool,
     health_deadline: Duration,
+    /// Present once the gateway is serving. `Mutex` because the Tauri commands
+    /// touch it from whichever thread the runtime hands them.
+    gateway: Mutex<Option<RunningGateway>>,
+    /// The jobs scheduler, mounted on `/host/jobs` in the gateway topology.
+    jobs: Option<Arc<lattice_jobs::Scheduler>>,
 }
 
 impl DesktopBackend {
@@ -112,53 +99,53 @@ impl DesktopBackend {
 
     /// Resolve against an injected probe.
     pub fn with_probe(probe: Arc<dyn HostProbe>) -> Result<Self, SupervisorError> {
-        let override_origin = probe
-            .env_var(ORIGIN_ENV)
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        let disabled = probe.env_var(NO_BACKEND_ENV).is_some();
-        let port = override_origin
-            .as_deref()
-            .and_then(origin_port)
-            .unwrap_or_else(|| resolve_port(&*probe));
-
-        // Either override means "do not start anything": one because a worker
-        // already exists, the other because the operator asked for none. Only
-        // the second means there is nothing to wait for, so an explicit origin
-        // wins over the kill switch when both are set.
-        let override_origin_absent = override_origin.is_none();
-        let supervised = override_origin_absent && !disabled;
-        let mut config = SupervisorConfig::new(port).with_system_dirs(&*probe);
-        config.supervise = supervised;
+        let plan = topology::resolve(&*probe);
+        let mut config = SupervisorConfig::new(plan.worker_port).with_system_dirs(&*probe);
+        config.supervise = plan.supervised();
+        // Behind a gateway the worker's own CSRF default knows only its
+        // internal port; naming the front door here is what makes a
+        // cookie-authenticated POST through the proxy work at all.
+        config.gateway_port = plan.gateway_port;
         let health_deadline = config.health_deadline;
         let supervisor = Supervisor::with_probe(config, Arc::clone(&probe))?;
-        let origin = override_origin.unwrap_or_else(|| supervisor.worker_origin());
+        let jobs = (plan.topology == Topology::Gateway)
+            .then(|| mounts::scheduler(&plan.worker_origin, supervisor.client()));
         Ok(Self {
-            origin,
+            plan,
             supervisor,
-            supervised,
-            disabled: disabled && override_origin_absent,
             health_deadline,
+            gateway: Mutex::new(None),
+            jobs,
         })
     }
 
     /// Where the frontend and the webview should go.
     pub fn origin(&self) -> &str {
-        &self.origin
+        &self.plan.origin
     }
 
-    /// `{origin}/app` — the URL the window navigates to once the worker answers.
+    /// `{origin}/app` — the URL the window navigates to once health answers.
     pub fn app_url(&self) -> String {
-        format!("{}/app", self.origin.trim_end_matches('/'))
+        self.plan.app_url()
     }
 
     /// Whether this shell owns the worker process.
     pub fn supervised(&self) -> bool {
-        self.supervised
+        self.plan.supervised()
     }
 
-    /// Start the worker (or, in override mode, adopt the one already running).
+    /// Which arrangement this shell resolved.
+    pub fn topology(&self) -> Topology {
+        self.plan.topology
+    }
+
+    /// Start the front door, then the worker.
+    ///
+    /// The gateway comes up first on purpose: it is what the webview polls, and
+    /// a front door that answers "worker not up yet" is more use than a
+    /// connection refused.
     pub async fn start(&self) -> BackendStatus {
+        self.start_gateway().await;
         let outcome = self.supervisor.start().await;
         if let Err(err) = &outcome {
             // Not fatal: the supervisor keeps retrying in the background, and
@@ -168,19 +155,97 @@ impl DesktopBackend {
         self.status().await
     }
 
+    /// Serve the gateway on the public port, once.
+    ///
+    /// A failure here is logged rather than fatal — the window still opens, and
+    /// the browser's own "cannot connect" plus this line is a better failure
+    /// than a shell that exits. `LATTICEAI_DESKTOP_DIRECT=1` is the way out.
+    async fn start_gateway(&self) {
+        let Some(port) = self.plan.gateway_port else {
+            return;
+        };
+        if self.gateway.lock().expect("gateway lock").is_some() {
+            return;
+        }
+        let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+        let listener = match bind_loopback(addr).await {
+            Ok(listener) => listener,
+            Err(err) => {
+                eprintln!(
+                    "lattice-ai-desktop: the gateway could not bind {addr}: {err} — \
+                     set LATTICEAI_DESKTOP_DIRECT=1 to run the worker as the front door"
+                );
+                return;
+            }
+        };
+
+        let mut state =
+            GatewayState::with_client(Arc::new(self.supervisor.clone()), self.supervisor.client());
+        if let Some(root) = self.agent_root() {
+            state = state.with_agent_root(root);
+        }
+        if let Some(scheduler) = &self.jobs {
+            state = state.with_jobs(Arc::clone(scheduler));
+        }
+
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        tauri::async_runtime::spawn(async move {
+            if let Err(err) = serve_gateway(listener, Arc::new(state), async {
+                let _ = rx.await;
+            })
+            .await
+            {
+                eprintln!("lattice-ai-desktop: the gateway stopped: {err}");
+            }
+        });
+        *self.gateway.lock().expect("gateway lock") = Some(RunningGateway { shutdown: Some(tx) });
+        eprintln!("lattice-ai-desktop: gateway listening on {}", self.origin());
+
+        self.start_jobs();
+    }
+
+    /// Start the background jobs timer, unless it is switched off.
+    ///
+    /// It keeps running across `shutdown_backend`/`restart_backend`: a tick
+    /// against a stopped worker fails, backs off, and is picked up again when
+    /// the worker returns — which is exactly what a scheduler should do, and
+    /// cheaper than a second lifecycle to keep in step.
+    fn start_jobs(&self) {
+        let Some(scheduler) = &self.jobs else {
+            return;
+        };
+        if !mounts::jobs_enabled_from_env() {
+            eprintln!("lattice-ai-desktop: jobs scheduler off (LATTICEAI_JOBS); /host/jobs is manual only");
+            return;
+        }
+        let interval = scheduler.config().interval.as_secs();
+        Arc::clone(scheduler).spawn(std::future::pending::<()>());
+        eprintln!("lattice-ai-desktop: jobs scheduler every {interval}s");
+    }
+
+    /// The agent workspace the worker will be given, so the host's native
+    /// kernel judges the same directory.
+    fn agent_root(&self) -> Option<std::path::PathBuf> {
+        SupervisorConfig::new(self.plan.worker_port)
+            .with_system_dirs(&SystemProbe)
+            .agent_root()
+    }
+
     /// Wait for `GET {origin}/health`, so the webview never lands on a page the
     /// worker has not started serving yet.
     ///
     /// Replaces the old TCP-connect probe, which proved only that *something*
-    /// had bound the port. With the kill switch on there is nothing to wait for
-    /// and this returns immediately.
+    /// had bound the port. In the gateway topology this probes through the
+    /// proxy, which is the honest question: can the page the window is about to
+    /// open reach a healthy worker? With the kill switch on there is nothing to
+    /// wait for and this returns immediately.
     pub async fn wait_until_serving(&self) -> bool {
-        if self.disabled {
+        if self.plan.disabled {
             return false;
         }
         wait_for_health(
             &self.supervisor.client(),
-            &self.origin,
+            &self.plan.origin,
             Duration::from_millis(250),
             self.health_deadline,
         )
@@ -196,7 +261,8 @@ impl DesktopBackend {
         status
     }
 
-    /// Stop the worker and suppress restarts.
+    /// Stop the worker and suppress restarts. The gateway keeps serving, so
+    /// `/host/status` still answers and the window can say what happened.
     pub async fn stop(&self) -> BackendStatus {
         let status = self.supervisor.stop().await;
         self.render(&status)
@@ -210,13 +276,22 @@ impl DesktopBackend {
         self.status().await
     }
 
+    /// Stop the gateway too. Called on the way out of the process.
+    pub fn stop_gateway(&self) {
+        if let Some(running) = self.gateway.lock().expect("gateway lock").as_mut() {
+            if let Some(tx) = running.shutdown.take() {
+                let _ = tx.send(());
+            }
+        }
+    }
+
     fn snapshot(&self) -> BackendStatus {
         self.render(&self.supervisor.status())
     }
 
     fn render(&self, status: &WorkerStatus) -> BackendStatus {
         BackendStatus {
-            origin: self.origin.clone(),
+            origin: self.plan.origin.clone(),
             command: self.command_text(status),
             cwd: status.cwd.clone(),
             running: status.running,
@@ -227,6 +302,14 @@ impl DesktopBackend {
             supervised: status.supervised,
             restarts: status.restarts,
             uptime_seconds: status.uptime_seconds,
+            topology: self.plan.topology.as_str().to_string(),
+            worker_origin: self.plan.worker_origin.clone(),
+            gateway_origin: self.plan.gateway_port.map(|_| self.plan.origin.clone()),
+            jobs_running: self
+                .jobs
+                .as_ref()
+                .map(|scheduler| scheduler.is_running())
+                .unwrap_or(false),
         }
     }
 
@@ -236,8 +319,11 @@ impl DesktopBackend {
         if let Some(command) = &status.command {
             return command.clone();
         }
-        if !self.supervised {
-            return format!("external worker at {} (not started here)", self.origin);
+        if !self.supervised() {
+            return format!(
+                "external worker at {} (not started here)",
+                self.plan.worker_origin
+            );
         }
         match &status.last_error {
             Some(error) => format!("unavailable: {error}"),
@@ -249,101 +335,126 @@ impl DesktopBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::topology::{DIRECT_ENV, NO_BACKEND_ENV, ORIGIN_ENV, PORT_ENV};
     use lattice_host::supervisor::StaticProbe;
 
-    #[test]
-    fn an_origin_names_its_port_or_admits_it_does_not() {
-        assert_eq!(origin_port("http://127.0.0.1:8765"), Some(8765));
-        assert_eq!(origin_port("http://127.0.0.1:8765/app"), Some(8765));
-        assert_eq!(origin_port("https://[::1]:4825"), Some(4825));
-        assert_eq!(origin_port("127.0.0.1:4899"), Some(4899));
-        assert_eq!(origin_port("http://localhost"), None);
-        assert_eq!(origin_port("http://[::1]"), None);
-        assert_eq!(origin_port("http://127.0.0.1:0"), None);
-        assert_eq!(origin_port(""), None);
+    fn backend(probe: StaticProbe) -> DesktopBackend {
+        DesktopBackend::with_probe(Arc::new(probe)).expect("backend")
     }
 
     #[test]
-    fn an_explicit_port_is_honoured_verbatim() {
-        let probe = StaticProbe::new().with_env(PORT_ENV, " 8765 ");
-        assert_eq!(resolve_port(&probe), 8765);
-    }
-
-    #[test]
-    fn without_a_pinned_port_the_scan_starts_at_the_unified_default() {
-        let port = resolve_port(&StaticProbe::new());
-        assert!(
-            (DEFAULT_PORT..DEFAULT_PORT + DEFAULT_SCAN_ATTEMPTS).contains(&port),
-            "expected a port scanned upward from {DEFAULT_PORT}, got {port}"
+    fn the_default_shell_is_the_gateway_front_door() {
+        let shell = backend(StaticProbe::new().with_env(PORT_ENV, "41840"));
+        assert_eq!(shell.topology(), Topology::Gateway);
+        assert_eq!(shell.origin(), "http://127.0.0.1:41840");
+        assert_eq!(shell.app_url(), "http://127.0.0.1:41840/app");
+        assert!(shell.supervised());
+        assert_ne!(
+            shell.plan.worker_origin, shell.plan.origin,
+            "the worker lives behind the front door"
         );
+    }
+
+    #[test]
+    fn the_direct_hatch_restores_the_previous_topology() {
+        let shell = backend(
+            StaticProbe::new()
+                .with_env(DIRECT_ENV, "1")
+                .with_env(PORT_ENV, "41841"),
+        );
+        assert_eq!(shell.topology(), Topology::Direct);
+        assert_eq!(shell.origin(), "http://127.0.0.1:41841");
+        assert_eq!(shell.plan.worker_origin, shell.plan.origin);
+        assert!(shell.jobs.is_none(), "no gateway, no /host/jobs to drive");
     }
 
     #[test]
     fn the_origin_override_pins_the_origin_and_spawns_nothing() {
-        let probe = StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100/");
-        let backend = DesktopBackend::with_probe(Arc::new(probe)).expect("backend");
-        assert_eq!(backend.origin(), "http://127.0.0.1:9100/");
-        assert_eq!(backend.app_url(), "http://127.0.0.1:9100/app");
-        assert!(!backend.supervised());
+        let shell = backend(StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100/"));
+        assert_eq!(shell.origin(), "http://127.0.0.1:9100/");
+        assert_eq!(shell.app_url(), "http://127.0.0.1:9100/app");
+        assert!(!shell.supervised());
+        assert_eq!(shell.topology(), Topology::External);
     }
 
     #[test]
     fn the_kill_switch_spawns_nothing_but_still_names_an_origin() {
-        let probe = StaticProbe::new().with_env(NO_BACKEND_ENV, "1");
-        let backend = DesktopBackend::with_probe(Arc::new(probe)).expect("backend");
-        assert!(!backend.supervised());
-        assert!(
-            backend.disabled,
-            "nothing will ever answer, so nothing waits"
-        );
-        assert!(backend.origin().starts_with("http://127.0.0.1:"));
+        let shell = backend(StaticProbe::new().with_env(NO_BACKEND_ENV, "1"));
+        assert!(!shell.supervised());
+        assert!(shell.plan.disabled, "nothing will answer, so nothing waits");
+        assert!(shell.origin().starts_with("http://127.0.0.1:"));
     }
 
     #[test]
     fn an_explicit_origin_outranks_the_kill_switch() {
-        let probe = StaticProbe::new()
-            .with_env(NO_BACKEND_ENV, "1")
-            .with_env(ORIGIN_ENV, "http://127.0.0.1:9100");
-        let backend = DesktopBackend::with_probe(Arc::new(probe)).expect("backend");
-        assert!(!backend.supervised(), "still nothing is spawned");
-        assert!(
-            !backend.disabled,
-            "a worker was named, so the shell waits for it"
+        let shell = backend(
+            StaticProbe::new()
+                .with_env(NO_BACKEND_ENV, "1")
+                .with_env(ORIGIN_ENV, "http://127.0.0.1:9100"),
         );
-    }
-
-    #[test]
-    fn the_default_shell_supervises_its_own_worker() {
-        let backend = DesktopBackend::with_probe(Arc::new(StaticProbe::new())).expect("backend");
-        assert!(backend.supervised());
-        assert!(backend.app_url().ends_with("/app"));
+        assert!(!shell.supervised(), "still nothing is spawned");
+        assert!(
+            !shell.plan.disabled,
+            "a worker was named, so the shell waits"
+        );
     }
 
     #[test]
     fn an_unresolved_command_says_why_instead_of_going_blank() {
-        let backend = DesktopBackend::with_probe(Arc::new(StaticProbe::new())).expect("backend");
+        let shell = backend(StaticProbe::new());
         let mut status = WorkerStatus::idle(4825, true);
-        assert_eq!(backend.command_text(&status), "not resolved yet");
+        assert_eq!(shell.command_text(&status), "not resolved yet");
         status.last_error = Some("worker unavailable".into());
         assert_eq!(
-            backend.command_text(&status),
+            shell.command_text(&status),
             "unavailable: worker unavailable"
         );
         status.command = Some("/usr/bin/python3 -m latticeai.cli.entrypoint".into());
         assert_eq!(
-            backend.command_text(&status),
+            shell.command_text(&status),
             "/usr/bin/python3 -m latticeai.cli.entrypoint"
         );
     }
 
     #[test]
+    fn an_external_worker_is_named_by_its_own_origin() {
+        let shell = backend(StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100"));
+        assert_eq!(
+            shell.command_text(&WorkerStatus::idle(9100, false)),
+            "external worker at http://127.0.0.1:9100 (not started here)"
+        );
+    }
+
+    #[test]
     fn the_status_keeps_every_field_the_frontend_has_ever_read() {
-        let backend = DesktopBackend::with_probe(Arc::new(StaticProbe::new())).expect("backend");
-        let rendered = backend.render(&WorkerStatus::idle(4825, true));
+        let shell = backend(StaticProbe::new().with_env(PORT_ENV, "41842"));
+        let rendered = shell.render(&WorkerStatus::idle(41843, true));
         let value = serde_json::to_value(&rendered).expect("serialise");
         for key in ["origin", "command", "cwd", "running", "pid", "last_error"] {
             assert!(value.get(key).is_some(), "missing legacy field {key}");
         }
         assert!(value["command"].is_string(), "command is never null");
+        // …and the additive ones describe the new arrangement honestly.
+        assert_eq!(value["topology"], "gateway");
+        assert_eq!(value["gateway_origin"], "http://127.0.0.1:41842");
+        assert_eq!(value["worker_origin"], shell.plan.worker_origin);
+        assert_eq!(value["jobs_running"], false, "mounted is not started");
+    }
+
+    #[test]
+    fn a_direct_shell_reports_no_gateway_origin() {
+        let shell = backend(StaticProbe::new().with_env(DIRECT_ENV, "1"));
+        let value =
+            serde_json::to_value(shell.render(&WorkerStatus::idle(4825, true))).expect("serialise");
+        assert_eq!(value["topology"], "direct");
+        assert!(value["gateway_origin"].is_null());
+        assert_eq!(value["worker_origin"], value["origin"]);
+    }
+
+    #[test]
+    fn stopping_a_gateway_that_never_started_is_a_no_op() {
+        let shell = backend(StaticProbe::new().with_env(DIRECT_ENV, "1"));
+        shell.stop_gateway();
+        shell.stop_gateway();
     }
 }

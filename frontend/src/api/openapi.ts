@@ -1872,6 +1872,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/index/drain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Drain Index Queue
+         * @description Run one background-embedding tick and report what it did.
+         *
+         *     Off the event loop: the tick opens SQLite and calls the embedder, and
+         *     this server has one loop for every user (10.9.0).
+         */
+        post: operations["drain_index_queue_api_index_drain_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/index/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Index Queue
+         * @description The embed backlog, counted. Reads nothing else and writes nothing.
+         */
+        get: operations["index_queue_api_index_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/index/rebuild": {
         parameters: {
             query?: never;
@@ -7982,6 +8025,17 @@ export interface components {
              */
             port: number;
         };
+        /**
+         * DrainRequest
+         * @description How many queued nodes one drain may claim.
+         *
+         *     Omitted (or a body-less POST) means the queue's own tick size, so a caller
+         *     with no opinion inherits the number the queue was designed around.
+         */
+        DrainRequest: {
+            /** Limit */
+            limit?: number | null;
+        };
         /** EncryptedArchiveRequest */
         EncryptedArchiveRequest: {
             /** Passphrase */
@@ -13058,6 +13112,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    drain_index_queue_api_index_drain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DrainRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    index_queue_api_index_queue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

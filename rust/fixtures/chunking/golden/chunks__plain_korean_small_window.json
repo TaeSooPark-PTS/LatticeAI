@@ -1,0 +1,96 @@
+{
+  "chunk_count": 5,
+  "chunks": [
+    {
+      "chunk_id": "chunk:0d801189423c5d220bdfb898",
+      "index": 0,
+      "len_bytes": 30,
+      "len_chars": 10,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "가나다라마바사아자차"
+    },
+    {
+      "chunk_id": "chunk:37141ecb406d6e4b9417a4a7",
+      "index": 1,
+      "len_bytes": 30,
+      "len_chars": 10,
+      "meta": {
+        "heading_path": null,
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "text": "아자차카타파하가나다"
+    },
+    {
+      "chunk_id": "chunk:ae206de8dda317347277cc1b",
+      "index": 2,
+      "len_bytes": 30,
+      "len_chars": 10,
+      "meta": {
+        "heading_path": null,
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "text": "가나다라마바사아자차"
+    },
+    {
+      "chunk_id": "chunk:704d79b722778c1ccd0a7264",
+      "index": 3,
+      "len_bytes": 30,
+      "len_chars": 10,
+      "meta": {
+        "heading_path": null,
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "text": "아자차카타파하가나다"
+    },
+    {
+      "chunk_id": "chunk:f90360daba54f33d24c9cea7",
+      "index": 4,
+      "len_bytes": 27,
+      "len_chars": 9,
+      "meta": {
+        "heading_path": null,
+        "start_char": 28,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 28,
+        "strategy": "plain"
+      },
+      "text": "가나다라마바사아자"
+    }
+  ],
+  "cleaned_len_bytes": 111,
+  "cleaned_len_chars": 37,
+  "content_type": "",
+  "filename": "n",
+  "key": "plain_korean_small_window",
+  "overlap": 3,
+  "requested_strategy": null,
+  "size": 10,
+  "source_node_id": "file:plain_korean_small_window",
+  "strategy": "plain",
+  "text": "가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자"
+}

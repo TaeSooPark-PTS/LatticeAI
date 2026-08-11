@@ -1,0 +1,71 @@
+{
+  "key": "scoped_beta",
+  "result": {
+    "node_id": "",
+    "query": "",
+    "relationship_type": "",
+    "relationships": [
+      {
+        "created_at": "2026-07-07T00:00:00",
+        "id": "edge:f8b0ac918a0ee351673dcdb6",
+        "metadata": {
+          "legacy_label": "owns"
+        },
+        "source": {
+          "id": "person:minseo",
+          "metadata": {
+            "role": "reviewer"
+          },
+          "summary": "빌드 파이프라인 담당자입니다.",
+          "title": "박민서 님",
+          "type": "Person"
+        },
+        "target": {
+          "id": "code:build-failure",
+          "metadata": {
+            "ext": ".py",
+            "filename": "build_pipeline.py"
+          },
+          "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
+          "title": "build_pipeline.py",
+          "type": "CodeFile"
+        },
+        "type": "MENTIONS",
+        "weight": 0.6
+      },
+      {
+        "created_at": "2026-06-02T00:00:00",
+        "id": "edge:ac803179d2934d2cf5aa254e",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "doc:retrieval-spec",
+          "metadata": {
+            "ext": ".pdf",
+            "filename": "retrieval-spec.pdf"
+          },
+          "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+          "title": "Retrieval specification",
+          "type": "Document"
+        },
+        "target": {
+          "id": "concept:ranking",
+          "metadata": {},
+          "summary": "Ranking orders candidates so the best answer is first.",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.45
+      }
+    ]
+  },
+  "spec": {
+    "allowed": [
+      "ws-beta"
+    ],
+    "key": "scoped_beta"
+  },
+  "suite": "relationship"
+}

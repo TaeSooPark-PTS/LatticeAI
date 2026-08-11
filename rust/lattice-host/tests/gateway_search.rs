@@ -337,10 +337,24 @@ async fn the_search_namespace_is_never_proxied() {
         assert_eq!(response.status(), 404, "{path}");
         let body = json(response).await;
         assert_eq!(body["error"], "unknown_search_route");
+        let available: Vec<&str> = body["available"]
+            .as_array()
+            .expect("the 404 lists the lanes that do exist")
+            .iter()
+            .map(|value| value.as_str().unwrap_or_default())
+            .collect();
         assert_eq!(
-            body["available"].as_array().map(Vec::len),
-            Some(3),
-            "the 404 lists the lanes that do exist"
+            available,
+            [
+                "/rust/search/hybrid",
+                "/rust/search/keyword",
+                "/rust/search/vector",
+                // Mounted from lattice-retrieval in 11.5.0: a different engine
+                // (three-channel service fusion), not a second spelling of the
+                // P1 lane above it.
+                "/rust/search/service-hybrid",
+            ],
+            "{path}"
         );
     }
     // A real lane with no store is a 404 too, but a *different* one — and still

@@ -1,0 +1,88 @@
+{
+  "key": "ws_empty_legacy",
+  "result": [
+    {
+      "content": "   \n  ",
+      "conversation_id": "conv-c",
+      "role": "user",
+      "timestamp": "2026-07-22T08:00:00"
+    },
+    {
+      "content": "무엇을 도와드릴까요?",
+      "conversation_id": "conv-c",
+      "role": "assistant",
+      "timestamp": "2026-07-22T08:00:05"
+    },
+    {
+      "content": "지난주 회의 기록 보여줘",
+      "conversation_id": "conv-c",
+      "role": "user",
+      "timestamp": "2026-07-22T08:01:00"
+    },
+    {
+      "content": "이전 대화 기록입니다",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-06-01T09:00:00",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원"
+    },
+    {
+      "content": "네, 확인했습니다.",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-06-01T09:00:03",
+      "user_email": "jiwon@lattice.ai"
+    },
+    {
+      "content": "legacy english message about ranking",
+      "role": "user",
+      "timestamp": ""
+    },
+    {
+      "content": "검색 품질을 어떻게 측정하나요? 재현율과 정밀도를 모두 보고 싶고 주간 회의에서 공유할 예정입니다.",
+      "conversation_id": "conv-f",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-25T13:00:00"
+    },
+    {
+      "content": "재현율/정밀도 지표는 분기 리뷰 발표자료에 있습니다.",
+      "conversation_id": "conv-f",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-07-25T13:00:05"
+    },
+    {
+      "content": "assistant-first conversation",
+      "conversation_id": "conv-g",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-07-26T14:00:00"
+    },
+    {
+      "content": "follow up question about ranking",
+      "conversation_id": "conv-g",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-26T14:00:10"
+    },
+    {
+      "content": "Empty user and empty workspace row",
+      "conversation_id": "conv-h",
+      "role": "user",
+      "timestamp": "2026-07-27T15:00:00"
+    },
+    {
+      "content": "회의 결정 사항을 정리했습니다.",
+      "conversation_id": "conv-h",
+      "role": "assistant",
+      "timestamp": "2026-07-27T15:00:06"
+    }
+  ],
+  "spec": {
+    "allowed": [],
+    "key": "ws_empty_legacy"
+  },
+  "suite": "history"
+}

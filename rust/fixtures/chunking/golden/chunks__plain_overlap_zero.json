@@ -1,0 +1,96 @@
+{
+  "chunk_count": 5,
+  "chunks": [
+    {
+      "chunk_id": "chunk:f526840fae9b9c710f89cc1f",
+      "index": 0,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "abcdefg"
+    },
+    {
+      "chunk_id": "chunk:2e4a95e4efa37abe8b1505a0",
+      "index": 1,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "text": "hijklmn"
+    },
+    {
+      "chunk_id": "chunk:a94a165a2faed5164aade2ce",
+      "index": 2,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "text": "opqrstu"
+    },
+    {
+      "chunk_id": "chunk:ca493e374b58355cdb26bb00",
+      "index": 3,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "text": "vwxyz01"
+    },
+    {
+      "chunk_id": "chunk:0e1293cce5a7ff4de8bafdaa",
+      "index": 4,
+      "len_bytes": 2,
+      "len_chars": 2,
+      "meta": {
+        "heading_path": null,
+        "start_char": 28,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 28,
+        "strategy": "plain"
+      },
+      "text": "23"
+    }
+  ],
+  "cleaned_len_bytes": 30,
+  "cleaned_len_chars": 30,
+  "content_type": "",
+  "filename": "n",
+  "key": "plain_overlap_zero",
+  "overlap": 0,
+  "requested_strategy": null,
+  "size": 7,
+  "source_node_id": "file:plain_overlap_zero",
+  "strategy": "plain",
+  "text": "abcdefghijklmnopqrstuvwxyz0123"
+}

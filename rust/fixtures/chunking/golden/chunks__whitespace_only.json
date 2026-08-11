@@ -1,0 +1,15 @@
+{
+  "chunk_count": 0,
+  "chunks": [],
+  "cleaned_len_bytes": 0,
+  "cleaned_len_chars": 0,
+  "content_type": "",
+  "filename": "blank.txt",
+  "key": "whitespace_only",
+  "overlap": 160,
+  "requested_strategy": null,
+  "size": 1200,
+  "source_node_id": "file:whitespace_only",
+  "strategy": "prose",
+  "text": "   \n\t\r\n  "
+}

@@ -1,0 +1,96 @@
+{
+  "chunk_count": 5,
+  "chunks": [
+    {
+      "chunk_id": "chunk:258014ae6cfdf9b556bb66cb",
+      "index": 0,
+      "len_bytes": 53,
+      "len_chars": 53,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "code"
+      },
+      "text": "import os\n\n\ndef alpha(value):\n    return value + 1\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:cb6025ce980d20c176b28312",
+      "index": 1,
+      "len_bytes": 53,
+      "len_chars": 35,
+      "meta": {
+        "heading_path": null,
+        "start_char": 53,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 53,
+        "strategy": "code"
+      },
+      "text": "class Beta:\n    \"\"\"도움말 문자열입니다.\"\"\"\n\n"
+    },
+    {
+      "chunk_id": "chunk:8d800817393e57302af24d0c",
+      "index": 2,
+      "len_bytes": 56,
+      "len_chars": 56,
+      "meta": {
+        "heading_path": null,
+        "start_char": 88,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 88,
+        "strategy": "code"
+      },
+      "text": "    def gamma(self):\n        return 2\n\n\nconst_value = 3\n"
+    },
+    {
+      "chunk_id": "chunk:abb55efc43aae8e4b76195b9",
+      "index": 3,
+      "len_bytes": 36,
+      "len_chars": 36,
+      "meta": {
+        "heading_path": null,
+        "start_char": 144,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 144,
+        "strategy": "code"
+      },
+      "text": "const = 4\n\npublic = 5\nprivate = 6\n\n\n"
+    },
+    {
+      "chunk_id": "chunk:540830b861a1cc8cb046a9aa",
+      "index": 4,
+      "len_bytes": 71,
+      "len_chars": 55,
+      "meta": {
+        "heading_path": null,
+        "start_char": 180,
+        "strategy": "code"
+      },
+      "meta_fields": {
+        "start_char": 180,
+        "strategy": "code"
+      },
+      "text": "def omega(value):\n    # 마지막 함수입니다.\n    return value * 2"
+    }
+  ],
+  "cleaned_len_bytes": 269,
+  "cleaned_len_chars": 235,
+  "content_type": "",
+  "filename": "module.py",
+  "key": "code_python_packed",
+  "overlap": 12,
+  "requested_strategy": null,
+  "size": 60,
+  "source_node_id": "file:code_python_packed",
+  "strategy": "code",
+  "text": "import os\n\n\ndef alpha(value):\n    return value + 1\n\n\nclass Beta:\n    \"\"\"도움말 문자열입니다.\"\"\"\n\n    def gamma(self):\n        return 2\n\n\nconst_value = 3\nconst = 4\n\npublic = 5\nprivate = 6\n\n\ndef omega(value):\n    # 마지막 함수입니다.\n    return value * 2"
+}

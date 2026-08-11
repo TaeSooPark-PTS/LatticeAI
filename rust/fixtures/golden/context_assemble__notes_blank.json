@@ -1,0 +1,19 @@
+{
+  "key": "notes_blank",
+  "result": {
+    "approx_tokens": 0,
+    "text": "",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [],
+      "used_approx_tokens": 0
+    }
+  },
+  "spec": {
+    "key": "notes_blank",
+    "knowledge": false,
+    "notes": "   ",
+    "query": "온보딩"
+  },
+  "suite": "context_assemble"
+}

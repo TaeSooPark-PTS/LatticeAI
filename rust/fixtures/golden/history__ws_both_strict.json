@@ -1,0 +1,114 @@
+{
+  "key": "ws_both_strict",
+  "result": [
+    {
+      "content": "온보딩 체크리스트 어떻게 시작해?",
+      "conversation_id": "conv-a",
+      "organization_id": "org-1",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-20T09:00:00",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "먼저 폴더를 연결하세요. 그다음 질문하면 됩니다.",
+      "conversation_id": "conv-a",
+      "organization_id": "org-1",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-07-20T09:00:05",
+      "user_email": "jiwon@lattice.ai",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "고마워",
+      "conversation_id": "conv-a",
+      "organization_id": "org-1",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-20T09:01:00",
+      "trace_id": "t-1",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "How does hybrid retrieval ranking work?",
+      "conversation_id": "conv-b",
+      "organization_id": "org-1",
+      "role": "user",
+      "source": "telegram",
+      "timestamp": "2026-07-21T10:00:00",
+      "user_email": "minseo@lattice.ai",
+      "user_nickname": "Minseo",
+      "workspace_id": "ws-beta"
+    },
+    {
+      "cited": [
+        "doc:retrieval-spec"
+      ],
+      "content": "The lexical channel scores one over rank.",
+      "conversation_id": "conv-b",
+      "organization_id": "org-1",
+      "role": "assistant",
+      "source": "telegram",
+      "timestamp": "2026-07-21T10:00:07",
+      "tokens": 42,
+      "user_email": "minseo@lattice.ai",
+      "workspace_id": "ws-beta"
+    },
+    {
+      "content": "빌드 실패 원인 알려줘",
+      "conversation_id": "conv-d",
+      "organization_id": "org-1",
+      "role": "user",
+      "source": "vscode",
+      "timestamp": "2026-07-23T11:00:00",
+      "user_email": "minseo@lattice.ai",
+      "user_nickname": "Minseo",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "컴파일 오류 로그를 확인하세요.",
+      "conversation_id": "conv-d",
+      "organization_id": "org-1",
+      "role": "assistant",
+      "source": "vscode",
+      "timestamp": "2026-07-23T11:00:04",
+      "user_email": "minseo@lattice.ai",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "Ranking ties are broken by node id",
+      "conversation_id": "conv-e",
+      "organization_id": "org-2",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-24T12:00:00",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원",
+      "workspace_id": "ws-beta"
+    },
+    {
+      "content": "Yes — id ascending keeps it stable.",
+      "conversation_id": "conv-e",
+      "organization_id": "org-2",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-07-24T12:00:05",
+      "user_email": "jiwon@lattice.ai",
+      "workspace_id": "ws-beta"
+    }
+  ],
+  "spec": {
+    "allowed": [
+      "ws-alpha",
+      "ws-beta"
+    ],
+    "key": "ws_both_strict",
+    "legacy": false
+  },
+  "suite": "history"
+}

@@ -32,7 +32,7 @@ pub use port::{
 };
 pub use process::SignalOutcome;
 pub use status::{origin_for, WorkerStatus};
-pub use worker_env::worker_env;
+pub use worker_env::{csrf_trusted_origins, worker_env, CSRF_TRUSTED_ORIGINS_ENV};
 
 use monitor::{run_health_poller, run_monitor, Shared};
 
@@ -42,6 +42,13 @@ pub struct SupervisorConfig {
     /// The chosen worker port. Authoritative — this is what the worker is told
     /// to bind and what every consumer reads back.
     pub port: u16,
+    /// The gateway port this worker sits behind, when it sits behind one.
+    ///
+    /// Set it and the worker is told to trust the gateway's origin for
+    /// cookie-authenticated writes (`worker_env::csrf_trusted_origins`); leave
+    /// it `None` for the direct topology, where the browser talks to the
+    /// worker's own port and no second origin exists.
+    pub gateway_port: Option<u16>,
     /// `false` fronts an already-running worker without spawning anything.
     pub supervise: bool,
     /// Worker working directory / agent root parent (`~/.ltcai/desktop-runtime`).
@@ -68,6 +75,7 @@ impl SupervisorConfig {
     pub fn new(port: u16) -> Self {
         Self {
             port,
+            gateway_port: None,
             supervise: true,
             runtime_dir: None,
             log_dir: None,
@@ -86,6 +94,22 @@ impl SupervisorConfig {
         self.log_dir = worker_env::ltcai_home(probe);
         self.runtime_dir = worker_env::desktop_runtime_dir(probe);
         self
+    }
+
+    /// Declare that this worker is fronted by a gateway on `port`.
+    pub fn behind_gateway(mut self, port: u16) -> Self {
+        self.gateway_port = Some(port);
+        self
+    }
+
+    /// The agent workspace the worker will be given, when a runtime dir is set.
+    ///
+    /// The host's native kernel routes judge paths against the same directory,
+    /// so a preflight verdict is about the files the worker would really touch.
+    pub fn agent_root(&self) -> Option<PathBuf> {
+        self.runtime_dir
+            .as_ref()
+            .map(|dir| dir.join("agent_workspace"))
     }
 }
 

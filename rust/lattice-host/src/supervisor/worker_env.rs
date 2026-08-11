@@ -24,6 +24,23 @@ pub const SAFETY_OFF_FLAGS: [&str; 6] = [
     "LATTICEAI_TUNNEL",
 ];
 
+/// Browser origins the worker will accept cookie-authenticated writes from
+/// (`latticeai/core/config.py`, parsed as a comma-separated list).
+pub const CSRF_TRUSTED_ORIGINS_ENV: &str = "LATTICEAI_CSRF_TRUSTED_ORIGINS";
+
+/// The origins a worker must trust to be usable through a front door.
+///
+/// The CSRF guard builds its default trust set from the **worker's own** host
+/// and port (`csrf.py::_default_origins`), and the gateway strips `Host` as a
+/// hop-by-hop header, so a page served on the gateway port posts an `Origin`
+/// the worker has never heard of and every cookie-authenticated write is
+/// rejected. That is the single blocker to running the gateway as the front
+/// door, and this is the whole fix: name the gateway's origin, in both
+/// spellings a browser can produce for loopback.
+pub fn csrf_trusted_origins(gateway_port: u16) -> String {
+    format!("http://127.0.0.1:{gateway_port},http://localhost:{gateway_port}")
+}
+
 /// `~/.ltcai`, the directory that holds logs and the desktop runtime.
 pub fn ltcai_home(probe: &dyn HostProbe) -> Option<PathBuf> {
     probe
@@ -91,9 +108,15 @@ pub fn worker_python_path(command: &WorkerCommand, probe: &dyn HostProbe) -> Opt
 ///
 /// `runtime_dir` is where `LATTICEAI_AGENT_ROOT` is rooted; when `None` the
 /// agent root is left untouched (the worker falls back to its own default).
+///
+/// `gateway_port` is the front door this worker sits behind, when it sits
+/// behind one. `None` — the direct topology, where the browser talks to the
+/// worker's own port — injects nothing, because there is no second origin to
+/// trust and inventing one would widen the CSRF policy for no reason.
 pub fn worker_env(
     command: &WorkerCommand,
     port: u16,
+    gateway_port: Option<u16>,
     runtime_dir: Option<&Path>,
     probe: &dyn HostProbe,
 ) -> Vec<(String, String)> {
@@ -103,6 +126,12 @@ pub fn worker_env(
     ];
     for flag in SAFETY_OFF_FLAGS {
         env.push((flag.into(), "false".into()));
+    }
+    if let Some(gateway_port) = gateway_port {
+        env.push((
+            CSRF_TRUSTED_ORIGINS_ENV.into(),
+            csrf_trusted_origins(gateway_port),
+        ));
     }
     env.push(("PATH".into(), worker_path(probe)));
     if let Some(dir) = runtime_dir {
@@ -141,7 +170,7 @@ mod tests {
     #[test]
     fn the_pinned_env_matches_the_desktop_shell() {
         let probe = StaticProbe::new().with_env("PATH", "/custom/bin");
-        let env = worker_env(&command(), 4825, Some(Path::new("/rt")), &probe);
+        let env = worker_env(&command(), 4825, None, Some(Path::new("/rt")), &probe);
         assert_eq!(lookup(&env, "LATTICEAI_HOST"), Some("127.0.0.1"));
         assert_eq!(lookup(&env, "LATTICEAI_PORT"), Some("4825"));
         for flag in SAFETY_OFF_FLAGS {
@@ -159,8 +188,44 @@ mod tests {
 
     #[test]
     fn no_runtime_dir_means_no_agent_root_override() {
-        let env = worker_env(&command(), 4825, None, &StaticProbe::new());
+        let env = worker_env(&command(), 4825, None, None, &StaticProbe::new());
         assert_eq!(lookup(&env, "LATTICEAI_AGENT_ROOT"), None);
+    }
+
+    /// The front-door unblocker (plan §2a): a worker fronted by the gateway is
+    /// told to trust the gateway's origin, because its own CSRF default only
+    /// knows the port it bound.
+    #[test]
+    fn a_fronted_worker_is_told_to_trust_the_gateway_origin() {
+        let env = worker_env(&command(), 4899, Some(4825), None, &StaticProbe::new());
+        assert_eq!(
+            lookup(&env, CSRF_TRUSTED_ORIGINS_ENV),
+            Some("http://127.0.0.1:4825,http://localhost:4825"),
+            "both spellings a browser can produce for the gateway port"
+        );
+        assert_eq!(
+            lookup(&env, "LATTICEAI_PORT"),
+            Some("4899"),
+            "the worker still binds its own internal port"
+        );
+    }
+
+    #[test]
+    fn an_unfronted_worker_gets_no_extra_trusted_origin() {
+        let env = worker_env(&command(), 4825, None, None, &StaticProbe::new());
+        assert_eq!(
+            lookup(&env, CSRF_TRUSTED_ORIGINS_ENV),
+            None,
+            "the direct topology has no second origin to trust"
+        );
+    }
+
+    #[test]
+    fn the_trusted_origin_list_is_the_comma_form_config_parses() {
+        assert_eq!(
+            csrf_trusted_origins(41234),
+            "http://127.0.0.1:41234,http://localhost:41234"
+        );
     }
 
     #[test]

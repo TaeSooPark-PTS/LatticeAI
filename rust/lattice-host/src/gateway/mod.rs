@@ -5,6 +5,7 @@
 //! the brain never leaves the machine.
 
 pub mod clock;
+pub mod mounts;
 pub mod params;
 pub mod proxy;
 pub mod routes;
@@ -16,8 +17,9 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use axum::routing::{any, get};
+use axum::routing::get;
 use axum::Router;
+use lattice_jobs::Scheduler;
 use tokio::net::TcpListener;
 
 use crate::supervisor::{check_health, http_client, Supervisor, WorkerStatus};
@@ -48,6 +50,8 @@ pub struct GatewayState {
     provider: Arc<dyn StatusProvider>,
     client: reqwest::Client,
     db_path: PathBuf,
+    agent_root: PathBuf,
+    jobs: Option<Arc<Scheduler>>,
 }
 
 impl GatewayState {
@@ -67,6 +71,8 @@ impl GatewayState {
             // is reading; whether that file exists is re-checked per request,
             // because a brain can appear at any time.
             db_path: lattice_core::graph_db_path(),
+            agent_root: mounts::default_agent_root(),
+            jobs: None,
         }
     }
 
@@ -78,6 +84,36 @@ impl GatewayState {
     pub fn with_db_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.db_path = path.into();
         self
+    }
+
+    /// Point the agent kernel routes at a specific workspace root.
+    ///
+    /// The default is the root the supervisor hands the worker
+    /// (`LATTICEAI_AGENT_ROOT`, else `~/.ltcai/desktop-runtime/agent_workspace`),
+    /// so a path the host judges is a path the worker would actually touch.
+    pub fn with_agent_root(mut self, path: impl Into<PathBuf>) -> Self {
+        self.agent_root = path.into();
+        self
+    }
+
+    /// Mount `/host/jobs` around this scheduler.
+    ///
+    /// Mounting is not starting: the routes answer `enabled: false` until the
+    /// caller spawns the timer, which is the honest reading of "the button
+    /// exists, nothing is on a clock".
+    pub fn with_jobs(mut self, scheduler: Arc<Scheduler>) -> Self {
+        self.jobs = Some(scheduler);
+        self
+    }
+
+    /// The workspace root the agent kernel routes judge paths against.
+    pub fn agent_root(&self) -> PathBuf {
+        self.agent_root.clone()
+    }
+
+    /// The scheduler behind `/host/jobs`, when one is wired.
+    pub fn jobs(&self) -> Option<Arc<Scheduler>> {
+        self.jobs.clone()
     }
 
     /// The knowledge graph the native search routes read.
@@ -116,6 +152,8 @@ impl fmt::Debug for GatewayState {
         f.debug_struct("GatewayState")
             .field("worker_origin", &self.worker_origin())
             .field("db_path", &self.db_path)
+            .field("agent_root", &self.agent_root)
+            .field("jobs", &self.jobs.is_some())
             .finish()
     }
 }
@@ -158,19 +196,27 @@ pub fn ensure_loopback(addr: &SocketAddr) -> Result<(), GatewayError> {
     }
 }
 
-/// The full router: host routes, the native search lanes, and the proxy
-/// fallback.
+/// The full router: the host's own routes, every mounted native crate, and the
+/// proxy fallback.
 ///
-/// `/rust/search/*` is the host's namespace the same way `/host/*` is — an
-/// unknown path under it is a 404 from here, never a request quietly handed to
-/// the worker under a name that promised native retrieval.
+/// `/host/*` and `/rust/*` are host namespaces the same way: an unknown path
+/// under either is a 404 from here, never a request quietly handed to the
+/// worker under a name that promised a native answer. That guard used to be
+/// three catch-all routes per namespace; with four crates mounting their own
+/// paths underneath, a catch-all would collide with them, so
+/// [`routes::gateway_fallback`] makes the same decision at the one place axum
+/// reaches when nothing matched.
+///
+/// Order of assembly is deliberate: the host's routes and the mounted crates
+/// are real routes, and the proxy is only the fallback, so nothing native can
+/// be shadowed by the reverse proxy.
 pub fn build_router(state: Arc<GatewayState>) -> Router {
+    let db = state.db_path();
+    let agent_root = state.agent_root();
+    let jobs = state.jobs();
     Router::new()
         .route("/host/health", get(routes::host_health))
         .route("/host/status", get(routes::host_status))
-        .route("/host", any(routes::host_not_found))
-        .route("/host/", any(routes::host_not_found))
-        .route("/host/*rest", any(routes::host_not_found))
         .route(
             "/rust/search/hybrid",
             get(search::hybrid).post(search::hybrid),
@@ -183,11 +229,9 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
             "/rust/search/vector",
             get(search::vector).post(search::vector),
         )
-        .route("/rust/search", any(routes::unknown_search))
-        .route("/rust/search/", any(routes::unknown_search))
-        .route("/rust/search/*rest", any(routes::unknown_search))
-        .fallback(proxy::proxy_handler)
+        .fallback(routes::gateway_fallback)
         .with_state(state)
+        .merge(mounts::native_router(db, &agent_root, jobs))
 }
 
 /// Bind a loopback listener, refusing anything else.
@@ -292,7 +336,28 @@ mod tests {
 
     #[test]
     fn the_router_builds_without_route_conflicts() {
-        let state = GatewayState::new(Arc::new(Stub)).expect("state");
+        // Pinned at a temporary root: building the router creates the agent
+        // workspace, and a unit test has no business writing to the home
+        // directory of whoever runs it.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = GatewayState::new(Arc::new(Stub))
+            .expect("state")
+            .with_db_path(dir.path().join("knowledge_graph.sqlite"))
+            .with_agent_root(dir.path().join("agent_workspace"));
+        assert!(state.jobs().is_none(), "no scheduler unless one is wired");
+        let _router = build_router(Arc::new(state));
+
+        // …and again with the jobs routes mounted.
+        let state = GatewayState::new(Arc::new(Stub))
+            .expect("state")
+            .with_db_path(dir.path().join("knowledge_graph.sqlite"))
+            .with_agent_root(dir.path().join("agent_workspace"))
+            .with_jobs(mounts::scheduler(
+                "http://127.0.0.1:1",
+                http_client().expect("client"),
+            ));
+        assert!(state.jobs().is_some());
+        assert!(format!("{state:?}").contains("jobs: true"));
         let _router = build_router(Arc::new(state));
     }
 }

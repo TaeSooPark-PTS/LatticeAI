@@ -1,0 +1,48 @@
+{
+  "contracts": {
+    "bypass": {
+      "circuit_breakers": true,
+      "computer_control_auto": true,
+      "computer_observation_auto": true,
+      "exec_auto": true,
+      "knowledge_reads_auto": true,
+      "label": "Bypass",
+      "label_ko": "바이패스",
+      "mode": "bypass",
+      "proposal_first": false,
+      "requires_ack": true,
+      "risk": "high",
+      "workspace_writes_auto": true
+    },
+    "strict": {
+      "circuit_breakers": true,
+      "computer_control_auto": false,
+      "computer_observation_auto": false,
+      "exec_auto": false,
+      "knowledge_reads_auto": false,
+      "label": "Strict",
+      "label_ko": "엄격",
+      "mode": "strict",
+      "proposal_first": true,
+      "requires_ack": false,
+      "risk": "low",
+      "workspace_writes_auto": false
+    },
+    "trusted": {
+      "circuit_breakers": true,
+      "computer_control_auto": false,
+      "computer_observation_auto": true,
+      "exec_auto": false,
+      "knowledge_reads_auto": true,
+      "label": "Trusted",
+      "label_ko": "신뢰",
+      "mode": "trusted",
+      "proposal_first": false,
+      "requires_ack": false,
+      "risk": "medium",
+      "workspace_writes_auto": true
+    }
+  },
+  "default_mode": "strict",
+  "schema": "agent-kernel-parity/v1"
+}

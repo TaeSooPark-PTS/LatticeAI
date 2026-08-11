@@ -1,0 +1,486 @@
+{
+  "default": {
+    "auto_approve": false,
+    "destructive": false,
+    "network": false,
+    "risk": "write",
+    "rollback": "none",
+    "sandbox": "workspace",
+    "shell": false
+  },
+  "overrides": {
+    "edit_file|blocked_prefix": {
+      "auto_approve": false,
+      "destructive": true,
+      "network": false,
+      "risk": "destructive",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "local_write|blocked_prefix": {
+      "auto_approve": false,
+      "destructive": true,
+      "network": false,
+      "risk": "destructive",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "write_file|blocked_prefix": {
+      "auto_approve": false,
+      "destructive": true,
+      "network": false,
+      "risk": "destructive",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    }
+  },
+  "schema": "agent-kernel-parity/v1",
+  "tools": {
+    "build_project": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": true
+    },
+    "chrome_status": {
+      "auto_approve": false,
+      "capability": "desktop:control",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "system",
+      "scope": "host",
+      "shell": false
+    },
+    "computer_click": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_drag": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_key": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_move": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_open_app": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_open_url": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": true,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_screenshot": {
+      "auto_approve": false,
+      "capability": "desktop:control",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "system",
+      "scope": "host",
+      "shell": false
+    },
+    "computer_scroll": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_status": {
+      "auto_approve": false,
+      "capability": "desktop:control",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "system",
+      "scope": "host",
+      "shell": false
+    },
+    "computer_type": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "computer_use_status": {
+      "auto_approve": false,
+      "capability": "desktop:control",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "system",
+      "scope": "host",
+      "shell": false
+    },
+    "create_docx": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "create_pdf": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "create_pptx": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "create_web_project": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "create_xlsx": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "deploy_project": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": true,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": true
+    },
+    "edit_file": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "git",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "git_diff": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": true
+    },
+    "git_log": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": true
+    },
+    "git_show": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": true
+    },
+    "git_status": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": true
+    },
+    "grep": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "inspect_html": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "knowledge_save": {
+      "auto_approve": false,
+      "capability": "workspace:write",
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "scope": "workspace_user",
+      "shell": false
+    },
+    "knowledge_search": {
+      "auto_approve": false,
+      "capability": "workspace:read",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "scope": "workspace_user",
+      "shell": false
+    },
+    "knowledge_tree": {
+      "auto_approve": false,
+      "capability": "workspace:read",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "scope": "workspace_user",
+      "shell": false
+    },
+    "list_dir": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "local_list": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "home",
+      "shell": false
+    },
+    "local_read": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "home",
+      "shell": false
+    },
+    "local_write": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "home",
+      "shell": false
+    },
+    "network_status": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": true,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": true
+    },
+    "obsidian_save": {
+      "auto_approve": false,
+      "capability": "workspace:write",
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "scope": "workspace_user",
+      "shell": false
+    },
+    "obsidian_search": {
+      "auto_approve": false,
+      "capability": "workspace:read",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "scope": "workspace_user",
+      "shell": false
+    },
+    "obsidian_tree": {
+      "auto_approve": false,
+      "capability": "workspace:read",
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "scope": "workspace_user",
+      "shell": false
+    },
+    "preview_url": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "read_document": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "home",
+      "shell": false
+    },
+    "read_file": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "run_command": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "exec",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": true
+    },
+    "search_files": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "todo_read": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "todo_write": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "vision_analyze": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "system",
+      "shell": false
+    },
+    "workspace_tree": {
+      "auto_approve": true,
+      "destructive": false,
+      "network": false,
+      "risk": "read",
+      "rollback": "none",
+      "sandbox": "workspace",
+      "shell": false
+    },
+    "write_file": {
+      "auto_approve": false,
+      "destructive": false,
+      "network": false,
+      "risk": "write",
+      "rollback": "git",
+      "sandbox": "workspace",
+      "shell": false
+    }
+  }
+}

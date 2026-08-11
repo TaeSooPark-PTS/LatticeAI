@@ -1,0 +1,14 @@
+{
+  "key": "no_hit",
+  "result": {
+    "node_id": "",
+    "query": "zzqq wumpus",
+    "relationship_type": "",
+    "relationships": []
+  },
+  "spec": {
+    "key": "no_hit",
+    "query": "zzqq wumpus"
+  },
+  "suite": "relationship"
+}

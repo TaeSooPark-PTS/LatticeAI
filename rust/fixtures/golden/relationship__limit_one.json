@@ -1,0 +1,42 @@
+{
+  "key": "limit_one",
+  "result": {
+    "node_id": "",
+    "query": "",
+    "relationship_type": "",
+    "relationships": [
+      {
+        "created_at": "2026-07-03T00:00:00",
+        "id": "edge:114efd07a566c6c3774cf8c6",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "task:parity-harness",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        },
+        "target": {
+          "id": "dec:rust-foundation",
+          "metadata": {
+            "category": "platform"
+          },
+          "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+          "title": "Rust 기반 검색 이관 결정",
+          "type": "Decision"
+        },
+        "type": "MENTIONS",
+        "weight": 1.0
+      }
+    ]
+  },
+  "spec": {
+    "key": "limit_one",
+    "limit": 1
+  },
+  "suite": "relationship"
+}

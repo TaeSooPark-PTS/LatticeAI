@@ -8,12 +8,18 @@
 //! Tauri's: five commands, one window, and the promise that closing the window
 //! stops the worker.
 //!
+//! Since 11.5.0 the shell also *serves* that front door: the gateway runs
+//! in-process on the public port and the worker sits behind it (see
+//! [`topology`] for the arrangement and its escape hatches).
+//!
 //! The five command names and their response shapes are unchanged — the
 //! frontend (`frontend/src/api/base.ts`, `frontend/src/api/client.ts`) invokes
-//! them by name and reads `backend_status` as a plain record.
+//! them by name and reads `backend_status` as a plain record. The fields added
+//! in 11.5.0 are additive; nothing was renamed or removed.
 
 mod backend;
 mod folder;
+mod topology;
 
 use std::sync::Arc;
 
@@ -85,7 +91,8 @@ fn boot(app: &tauri::App) {
     });
 }
 
-/// Stop the worker from a synchronous Tauri callback (window close, app exit).
+/// Stop the worker and the front door from a synchronous Tauri callback
+/// (window close, app exit).
 ///
 /// `block_on` is safe here because these callbacks run on the event loop
 /// thread, outside any async runtime — and the wait is what makes the shutdown
@@ -94,9 +101,13 @@ fn boot(app: &tauri::App) {
 fn stop_worker<R: tauri::Runtime, M: Manager<R>>(manager: &M) {
     if let Some(shell) = manager.try_state::<Arc<DesktopBackend>>() {
         let shell = Arc::clone(&shell);
+        let stopping = Arc::clone(&shell);
         tauri::async_runtime::block_on(async move {
-            shell.stop().await;
+            stopping.stop().await;
         });
+        // The gateway outlives `shutdown_backend` on purpose (so the window can
+        // still read `/host/status`), but not the process.
+        shell.stop_gateway();
     }
 }
 
@@ -109,8 +120,9 @@ fn main() {
         }
     };
     eprintln!(
-        "lattice-ai-desktop: backend {} ({})",
+        "lattice-ai-desktop: backend {} [{}] ({})",
         shell.origin(),
+        shell.topology().as_str(),
         if shell.supervised() {
             "supervised here"
         } else {

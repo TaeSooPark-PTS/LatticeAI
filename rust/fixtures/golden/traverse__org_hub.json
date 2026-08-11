@@ -1,0 +1,106 @@
+{
+  "key": "org_hub",
+  "result": {
+    "depth": 2,
+    "edges": [
+      {
+        "from": "org:lattice",
+        "id": "edge:0b57b59e7e8a8f090382c90f",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "to": "person:jiwon",
+        "type": "CONTAINS",
+        "weight": 0.25
+      },
+      {
+        "from": "org:lattice",
+        "id": "edge:5037613da3bd384666bffa0d",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "to": "person:minseo",
+        "type": "CONTAINS",
+        "weight": 0.25
+      },
+      {
+        "from": "person:jiwon",
+        "id": "edge:22fe3b50b2c1aeaec62c9510",
+        "metadata": {
+          "legacy_label": "owns"
+        },
+        "to": "task:parity-harness",
+        "type": "MENTIONS",
+        "weight": 0.6
+      },
+      {
+        "from": "person:minseo",
+        "id": "edge:f8b0ac918a0ee351673dcdb6",
+        "metadata": {
+          "legacy_label": "owns"
+        },
+        "to": "code:build-failure",
+        "type": "MENTIONS",
+        "weight": 0.6
+      }
+    ],
+    "nodes": [
+      {
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "id": "code:build-failure",
+        "metadata": {
+          "ext": ".py",
+          "filename": "build_pipeline.py"
+        },
+        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
+        "title": "build_pipeline.py",
+        "type": "CodeFile",
+        "updated_at": "2026-04-22T18:05:00"
+      },
+      {
+        "id": "person:minseo",
+        "metadata": {
+          "role": "reviewer"
+        },
+        "summary": "빌드 파이프라인 담당자입니다.",
+        "title": "박민서 님",
+        "type": "Person",
+        "updated_at": "2026-04-12T10:00:00"
+      },
+      {
+        "id": "person:jiwon",
+        "metadata": {
+          "role": "owner"
+        },
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person",
+        "updated_at": "2026-04-11T10:00:00"
+      },
+      {
+        "id": "org:lattice",
+        "metadata": {},
+        "summary": "The organization.",
+        "title": "Lattice",
+        "type": "Organization",
+        "updated_at": "2026-02-22T10:00:00"
+      }
+    ],
+    "root": "org:lattice"
+  },
+  "spec": {
+    "depth": 2,
+    "key": "org_hub",
+    "node_id": "org:lattice"
+  },
+  "suite": "traverse"
+}

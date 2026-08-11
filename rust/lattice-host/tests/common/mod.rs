@@ -362,11 +362,30 @@ pub struct TestGateway {
     handle: JoinHandle<()>,
 }
 
+/// A throwaway agent workspace under the crate's target directory.
+///
+/// Building the router creates and canonicalises this root, and no test may do
+/// that inside the home directory of whoever is running the suite — the product
+/// writes `~/.ltcai/desktop-runtime/agent_workspace`, and a test that quietly
+/// shares it would be reading someone's real files.
+pub fn test_agent_root(name: &str) -> std::path::PathBuf {
+    let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join("agent-roots")
+        .join(name);
+    std::fs::create_dir_all(&root).expect("test agent root");
+    root
+}
+
 impl TestGateway {
     /// A gateway whose native search routes read the environment-resolved
     /// store (`LATTICEAI_DATA_DIR`, else `~/.ltcai`).
     pub async fn start(provider: Arc<dyn StatusProvider>) -> Self {
-        Self::serve(GatewayState::new(provider).expect("gateway state")).await
+        Self::serve(
+            GatewayState::new(provider)
+                .expect("gateway state")
+                .with_agent_root(test_agent_root("default")),
+        )
+        .await
     }
 
     /// A gateway pinned to one store, for the cases where the answer must not
@@ -378,9 +397,16 @@ impl TestGateway {
         Self::serve(
             GatewayState::new(provider)
                 .expect("gateway state")
-                .with_db_path(db),
+                .with_db_path(db)
+                .with_agent_root(test_agent_root("default")),
         )
         .await
+    }
+
+    /// A gateway over a state the caller assembled — the mounts (jobs, agent
+    /// root, store) are exactly what was wired.
+    pub async fn start_with_state(state: GatewayState) -> Self {
+        Self::serve(state).await
     }
 
     async fn serve(state: GatewayState) -> Self {

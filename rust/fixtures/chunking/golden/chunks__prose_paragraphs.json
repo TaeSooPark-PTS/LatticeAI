@@ -1,0 +1,192 @@
+{
+  "chunk_count": 11,
+  "chunks": [
+    {
+      "chunk_id": "chunk:7ca36a9ab77ea347a78d6f44",
+      "index": 0,
+      "len_bytes": 210,
+      "len_chars": 86,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "0번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n1번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:3529a975ce679578b5b02b35",
+      "index": 1,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 61,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 61,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n2번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:233280dbc09da06408e3303c",
+      "index": 2,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 104,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 104,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n3번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:22d719df5ac409f7e140568b",
+      "index": 3,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 147,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 147,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n4번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:2e125a77eca669cea5cec3be",
+      "index": 4,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 190,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 190,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n5번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:e3a3767027244a8d0d34272f",
+      "index": 5,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 233,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 233,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n6번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:c6229abc4d94da55f7aa8202",
+      "index": 6,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 276,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 276,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n7번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:fe854e3a5d2488e53ac93331",
+      "index": 7,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 319,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 319,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n8번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:62f7533d8ad2a114bf134f8f",
+      "index": 8,
+      "len_bytes": 166,
+      "len_chars": 68,
+      "meta": {
+        "heading_path": null,
+        "start_char": 362,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 362,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n9번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:2e510397208ef4c97da44763",
+      "index": 9,
+      "len_bytes": 167,
+      "len_chars": 69,
+      "meta": {
+        "heading_path": null,
+        "start_char": 405,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 405,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n10번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n"
+    },
+    {
+      "chunk_id": "chunk:547dc416f92de61261ca3264",
+      "index": 10,
+      "len_bytes": 165,
+      "len_chars": 67,
+      "meta": {
+        "heading_path": null,
+        "start_char": 449,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 449,
+        "strategy": "prose"
+      },
+      "text": "표가 없습니다 그래서 문단 경계만 남습니다\n\n11번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다"
+    }
+  ],
+  "cleaned_len_bytes": 1260,
+  "cleaned_len_chars": 516,
+  "content_type": "",
+  "filename": "para.txt",
+  "key": "prose_paragraphs",
+  "overlap": 25,
+  "requested_strategy": null,
+  "size": 110,
+  "source_node_id": "file:prose_paragraphs",
+  "strategy": "prose",
+  "text": "0번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n1번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n2번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n3번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n4번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n5번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n6번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n7번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n8번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n9번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n10번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다\n\n11번 문단입니다 이 문단에는 마침표가 없습니다 그래서 문단 경계만 남습니다"
+}

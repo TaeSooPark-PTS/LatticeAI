@@ -1,0 +1,32 @@
+{
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "chunk_id": "chunk:0dbe105d5b2c1251dc2646f7",
+      "index": 0,
+      "len_bytes": 947,
+      "len_chars": 611,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "text": "00. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 0번에 있습니다.\n01. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 1번에 있습니다.\n02. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 2번에 있습니다.\n03. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 3번에 있습니다.\n04. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 4번에 있습니다.\n05. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 5번에 있습니다."
+    }
+  ],
+  "cleaned_len_bytes": 947,
+  "cleaned_len_chars": 611,
+  "content_type": "",
+  "filename": "plainish.md",
+  "key": "markdown_no_heading",
+  "overlap": 160,
+  "requested_strategy": null,
+  "size": 1200,
+  "source_node_id": "file:markdown_no_heading",
+  "strategy": "markdown",
+  "text": "00. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 0번에 있습니다.\n01. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 1번에 있습니다.\n02. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 2번에 있습니다.\n03. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 3번에 있습니다.\n04. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 4번에 있습니다.\n05. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 5번에 있습니다."
+}

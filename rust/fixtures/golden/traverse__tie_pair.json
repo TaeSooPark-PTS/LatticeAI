@@ -1,0 +1,43 @@
+{
+  "key": "tie_pair",
+  "result": {
+    "depth": 2,
+    "edges": [
+      {
+        "from": "tie:a",
+        "id": "edge:2f9901e8589ab38040fdf5de",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "tie:b",
+        "type": "MENTIONS",
+        "weight": 1.0
+      }
+    ],
+    "nodes": [
+      {
+        "id": "tie:a",
+        "metadata": {},
+        "summary": "",
+        "title": "Tie candidate A",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "tie:b",
+        "metadata": {},
+        "summary": "",
+        "title": "Tie candidate B",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      }
+    ],
+    "root": "tie:a"
+  },
+  "spec": {
+    "depth": 2,
+    "key": "tie_pair",
+    "node_id": "tie:a"
+  },
+  "suite": "traverse"
+}

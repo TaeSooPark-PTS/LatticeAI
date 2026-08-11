@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**11.4.0 — Rust Foundation** lays the first stone of the Rust architecture: a `rust/` cargo workspace with a native retrieval engine proven bit-for-bit against the Python engine (75/75 exact-parity goldens), and a `lattice-host` supervisor — HTTP health gating, crash auto-restart, graceful shutdown, unified ports — that the Tauri desktop shell now rides. The Python server keeps serving every product surface; the extension surface is unchanged.
+**11.5.0 — Rust Complete** finishes Phases 2–4 of the Rust roadmap: the desktop now fronts through the Rust gateway by default, the native surface covers three-channel search, graph reads, history, context assembly, typed chunking, a permission kernel with 2,452 exact decision-table verdicts, and a scheduler that finally drives the background embed queue — all pinned by bidirectional parity goldens (191/191 retrieval, 332 chunks, zero epsilon). The Python worker keeps parsers, embedding production, LLM inference, mutations, and graph writes; the extension surface is unchanged.
 The memory stats moved into a hover badge with a small summary graph, the six
 capture chips folded behind one + on the composer, the model banner became a
 status pill with the single accented CTA, and past conversations / stats / the

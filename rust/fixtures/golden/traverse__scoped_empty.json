@@ -1,0 +1,12 @@
+{
+  "key": "scoped_empty",
+  "result": {
+    "error": "graph node not found: dec:fusion-alpha"
+  },
+  "spec": {
+    "allowed": [],
+    "key": "scoped_empty",
+    "node_id": "dec:fusion-alpha"
+  },
+  "suite": "traverse"
+}

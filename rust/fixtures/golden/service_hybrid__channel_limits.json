@@ -1,0 +1,487 @@
+{
+  "key": "channel_limits",
+  "result": {
+    "channels": {
+      "graph": {
+        "expand_depth": 1,
+        "mode": "graph",
+        "query": "hybrid retrieval ranking"
+      },
+      "keyword": {
+        "mode": "keyword",
+        "query": "hybrid retrieval ranking"
+      },
+      "vector": {
+        "embedding_dim": 384,
+        "embedding_model": "lattice-local-hash-v1:384",
+        "mode": "vector",
+        "query": "hybrid retrieval ranking",
+        "recall": {
+          "backend": "bruteforce-cosine",
+          "candidates_scanned": 44,
+          "candidates_total": 44,
+          "detail": null,
+          "max_candidates": 10000,
+          "truncated": false
+        }
+      }
+    },
+    "matches": [
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          }
+        ],
+        "id": "dec:fusion-alpha",
+        "item_type": "node",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 1,
+        "score": 0.811925,
+        "source_scores": {
+          "graph": 1.0,
+          "keyword": 1.0,
+          "vector": 0.529813
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "sheet:metrics",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx"
+        },
+        "node_id": "sheet:metrics",
+        "rank": 2,
+        "score": 0.4875,
+        "source_scores": {
+          "keyword": 0.25,
+          "vector": 0.539077
+        },
+        "sources": [
+          "keyword",
+          "vector"
+        ],
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "task:parity-harness",
+        "item_type": "node",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 3,
+        "score": 0.484582,
+        "source_scores": {
+          "graph": 0.5,
+          "keyword": 0.5,
+          "vector": 0.461455
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "code:hybrid-search",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".py",
+          "filename": "hybrid.py"
+        },
+        "node_id": "code:hybrid-search",
+        "rank": 4,
+        "score": 0.291137,
+        "source_scores": {
+          "keyword": 0.333333,
+          "vector": 0.436177
+        },
+        "sources": [
+          "keyword",
+          "vector"
+        ],
+        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+        "title": "hybrid.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-08T09:30:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "concept:retrieval",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:retrieval",
+        "rank": 5,
+        "score": 0.193498,
+        "source_scores": {
+          "vector": 0.483744
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "meeting:weekly",
+              "id": "edge:805dbdc114935dd71cf9bb89",
+              "to": "dec:fusion-alpha",
+              "type": "DISCUSSES",
+              "weight": 0.95
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "meeting:weekly",
+              "id": "edge:805dbdc114935dd71cf9bb89",
+              "to": "dec:fusion-alpha",
+              "type": "DISCUSSES",
+              "weight": 0.95
+            }
+          }
+        ],
+        "id": "meeting:weekly",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "meeting:weekly",
+        "rank": 6,
+        "score": 0.1125,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "code:hybrid-search",
+              "id": "edge:17137d757ca2934c0c9f13ac",
+              "to": "file:ranking-notes",
+              "type": "MENTIONS",
+              "weight": 0.3
+            }
+          },
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "code:hybrid-search",
+              "id": "edge:17137d757ca2934c0c9f13ac",
+              "to": "file:ranking-notes",
+              "type": "MENTIONS",
+              "weight": 0.3
+            }
+          },
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "file:ranking-notes",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "node_id": "file:ranking-notes",
+        "rank": 7,
+        "score": 0.1125,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:fd94b124b47e0ae02a04f890",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.8
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:fd94b124b47e0ae02a04f890",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.8
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          }
+        ],
+        "id": "concept:ranking",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:ranking",
+        "rank": 8,
+        "score": 0.1125,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "chunk:spec:2",
+        "item_type": "node",
+        "metadata": {
+          "index": 1,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 900
+        },
+        "node_id": "chunk:spec:2",
+        "rank": 9,
+        "score": 0.07,
+        "source_scores": {
+          "keyword": 0.2
+        },
+        "sources": [
+          "keyword"
+        ],
+        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
+        "title": "retrieval-spec.pdf chunk 2",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:02"
+      }
+    ],
+    "mode": "hybrid",
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": "hybrid retrieval ranking"
+    },
+    "query": "hybrid retrieval ranking",
+    "query_class": "fact",
+    "weights": {
+      "graph": 0.25,
+      "keyword": 0.35,
+      "vector": 0.4
+    }
+  },
+  "spec": {
+    "graph_limit": 5,
+    "key": "channel_limits",
+    "keyword_limit": 5,
+    "query": "hybrid retrieval ranking",
+    "vector_limit": 5
+  },
+  "suite": "service_hybrid"
+}

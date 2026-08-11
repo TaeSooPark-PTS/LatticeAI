@@ -1,0 +1,64 @@
+{
+  "chunk_count": 3,
+  "chunks": [
+    {
+      "chunk_id": "chunk:dfd639189a2601634bd4a983",
+      "index": 0,
+      "len_bytes": 1846,
+      "len_chars": 1200,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "00. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 0번에 있습니다.\n01. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 1번에 있습니다.\n02. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 2번에 있습니다.\n03. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 3번에 있습니다.\n04. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 4번에 있습니다.\n05. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 5번에 있습니다.\n06. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 6번에 있습니다.\n07. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 7번에 있습니다.\n08. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 8번에 있습니다.\n09. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 9번에 있습니다.\n10. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 10번에 있습니다.\n11. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embed"
+    },
+    {
+      "chunk_id": "chunk:ef0dacd55f37d5d25cd93552",
+      "index": 1,
+      "len_bytes": 1828,
+      "len_chars": 1200,
+      "meta": {
+        "heading_path": null,
+        "start_char": 1040,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 1040,
+        "strategy": "plain"
+      },
+      "text": "니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 10번에 있습니다.\n11. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 11번에 있습니다.\n12. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 12번에 있습니다.\n13. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 13번에 있습니다.\n14. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 14번에 있습니다.\n15. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 15번에 있습니다.\n16. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 16번에 있습니다.\n17. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 17번에 있습니다.\n18. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 18번에 있습니다.\n19. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 19번에 있습니다.\n20. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 20번에 있습니다.\n21. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거"
+    },
+    {
+      "chunk_id": "chunk:c26fdabba4b6dd4232bbc9a4",
+      "index": 2,
+      "len_bytes": 1529,
+      "len_chars": 999,
+      "meta": {
+        "heading_path": null,
+        "start_char": 2080,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 2080,
+        "strategy": "plain"
+      },
+      "text": "trieval pipeline chunks text before it is embedded. 결정 근거는 문서 20번에 있습니다.\n21. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 21번에 있습니다.\n22. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 22번에 있습니다.\n23. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 23번에 있습니다.\n24. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 24번에 있습니다.\n25. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 25번에 있습니다.\n26. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 26번에 있습니다.\n27. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 27번에 있습니다.\n28. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 28번에 있습니다.\n29. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 29번에 있습니다."
+    }
+  ],
+  "cleaned_len_bytes": 4759,
+  "cleaned_len_chars": 3079,
+  "content_type": "",
+  "filename": "log",
+  "key": "plain_default_long",
+  "overlap": 160,
+  "requested_strategy": null,
+  "size": 1200,
+  "source_node_id": "file:plain_default_long",
+  "strategy": "plain",
+  "text": "00. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 0번에 있습니다.\n01. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 1번에 있습니다.\n02. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 2번에 있습니다.\n03. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 3번에 있습니다.\n04. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 4번에 있습니다.\n05. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 5번에 있습니다.\n06. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 6번에 있습니다.\n07. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 7번에 있습니다.\n08. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 8번에 있습니다.\n09. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 9번에 있습니다.\n10. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 10번에 있습니다.\n11. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 11번에 있습니다.\n12. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 12번에 있습니다.\n13. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 13번에 있습니다.\n14. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 14번에 있습니다.\n15. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 15번에 있습니다.\n16. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 16번에 있습니다.\n17. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 17번에 있습니다.\n18. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 18번에 있습니다.\n19. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 19번에 있습니다.\n20. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 20번에 있습니다.\n21. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 21번에 있습니다.\n22. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 22번에 있습니다.\n23. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 23번에 있습니다.\n24. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 24번에 있습니다.\n25. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 25번에 있습니다.\n26. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 26번에 있습니다.\n27. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 27번에 있습니다.\n28. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 28번에 있습니다.\n29. 회의에서 결정한 사항을 정리합니다. The retrieval pipeline chunks text before it is embedded. 결정 근거는 문서 29번에 있습니다."
+}

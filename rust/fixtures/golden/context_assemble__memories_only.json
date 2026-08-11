@@ -1,0 +1,70 @@
+{
+  "key": "memories_only",
+  "result": {
+    "approx_tokens": 9,
+    "text": "[User memories]\n- (preference) 답변은 한국어로\n- (memory)",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [
+        {
+          "approx_tokens": 9,
+          "name": "User memories",
+          "provenance": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0
+            }
+          ],
+          "source": "memory",
+          "truncated": false
+        }
+      ],
+      "used_approx_tokens": 9
+    }
+  },
+  "spec": {
+    "key": "memories_only",
+    "knowledge": false,
+    "memories": {
+      "results": [
+        {
+          "id": "mem-1",
+          "kind": "preference",
+          "score": 0.91,
+          "snippet": "답변은 한국어로",
+          "source": "workspace"
+        },
+        {
+          "id": "mem-2",
+          "kind": null,
+          "score": 0.0,
+          "snippet": "",
+          "source": "workspace"
+        },
+        {
+          "id": "mem-3",
+          "kind": "decision",
+          "score": 0.4,
+          "snippet": "ranking keeps alpha fusion",
+          "source": "personal"
+        },
+        {
+          "id": "mem-4",
+          "kind": "fact",
+          "score": 0.3,
+          "snippet": "온보딩은 다섯 걸음",
+          "source": "workspace"
+        }
+      ]
+    },
+    "memory_limit": 2,
+    "query": "온보딩"
+  },
+  "suite": "context_assemble"
+}

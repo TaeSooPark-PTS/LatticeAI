@@ -1,0 +1,1136 @@
+{
+  "chunk_count": 70,
+  "chunks": [
+    {
+      "chunk_id": "chunk:349806cf7a970993cf021397",
+      "index": 0,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "The retrieval pipeline chunks text befor"
+    },
+    {
+      "chunk_id": "chunk:d64c23e4c8d6adf199120bf7",
+      "index": 1,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 1,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 1,
+        "strategy": "prose"
+      },
+      "text": "he retrieval pipeline chunks text before"
+    },
+    {
+      "chunk_id": "chunk:34c49c2fcff9acd353b3e449",
+      "index": 2,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 2,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 2,
+        "strategy": "prose"
+      },
+      "text": "e retrieval pipeline chunks text before "
+    },
+    {
+      "chunk_id": "chunk:ee4a20f2efc09ed81092658d",
+      "index": 3,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 3,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 3,
+        "strategy": "prose"
+      },
+      "text": " retrieval pipeline chunks text before i"
+    },
+    {
+      "chunk_id": "chunk:c6820b3dce9281d1530e909d",
+      "index": 4,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 4,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 4,
+        "strategy": "prose"
+      },
+      "text": "retrieval pipeline chunks text before it"
+    },
+    {
+      "chunk_id": "chunk:ce0f7c5a4c6d990d8245a229",
+      "index": 5,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 5,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 5,
+        "strategy": "prose"
+      },
+      "text": "etrieval pipeline chunks text before it "
+    },
+    {
+      "chunk_id": "chunk:3fc670caa1bcc3e99369fea1",
+      "index": 6,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 6,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 6,
+        "strategy": "prose"
+      },
+      "text": "trieval pipeline chunks text before it i"
+    },
+    {
+      "chunk_id": "chunk:9283886c8d28fbacc975f0b4",
+      "index": 7,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 7,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 7,
+        "strategy": "prose"
+      },
+      "text": "rieval pipeline chunks text before it is"
+    },
+    {
+      "chunk_id": "chunk:f0f961311add8b238f072451",
+      "index": 8,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 8,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 8,
+        "strategy": "prose"
+      },
+      "text": "ieval pipeline chunks text before it is "
+    },
+    {
+      "chunk_id": "chunk:58f0721f9ea1379d911a4860",
+      "index": 9,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 9,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 9,
+        "strategy": "prose"
+      },
+      "text": "eval pipeline chunks text before it is e"
+    },
+    {
+      "chunk_id": "chunk:78bcfef0e66af5db057fcb86",
+      "index": 10,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 10,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 10,
+        "strategy": "prose"
+      },
+      "text": "val pipeline chunks text before it is em"
+    },
+    {
+      "chunk_id": "chunk:3cf92cc2b576cc4083ecae90",
+      "index": 11,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 11,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 11,
+        "strategy": "prose"
+      },
+      "text": "al pipeline chunks text before it is emb"
+    },
+    {
+      "chunk_id": "chunk:6966a76d24f346594baa43a8",
+      "index": 12,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 12,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 12,
+        "strategy": "prose"
+      },
+      "text": "l pipeline chunks text before it is embe"
+    },
+    {
+      "chunk_id": "chunk:795efad3b33b86c80c138571",
+      "index": 13,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 13,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 13,
+        "strategy": "prose"
+      },
+      "text": " pipeline chunks text before it is embed"
+    },
+    {
+      "chunk_id": "chunk:99396c164b828e3e23475b92",
+      "index": 14,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 14,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 14,
+        "strategy": "prose"
+      },
+      "text": "pipeline chunks text before it is embedd"
+    },
+    {
+      "chunk_id": "chunk:a6a2279f4ca5b2dae06894ed",
+      "index": 15,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 15,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 15,
+        "strategy": "prose"
+      },
+      "text": "ipeline chunks text before it is embedde"
+    },
+    {
+      "chunk_id": "chunk:e577cdf89f21f9e7ed760160",
+      "index": 16,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 16,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 16,
+        "strategy": "prose"
+      },
+      "text": "peline chunks text before it is embedded"
+    },
+    {
+      "chunk_id": "chunk:167b20c71a03c183faf55cc4",
+      "index": 17,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 17,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 17,
+        "strategy": "prose"
+      },
+      "text": "eline chunks text before it is embedded."
+    },
+    {
+      "chunk_id": "chunk:0f394d45e5ca8be2fd8b2dfd",
+      "index": 18,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 18,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 18,
+        "strategy": "prose"
+      },
+      "text": "line chunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:343461034b65de46337acc9f",
+      "index": 19,
+      "len_bytes": 39,
+      "len_chars": 39,
+      "meta": {
+        "heading_path": null,
+        "start_char": 19,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 19,
+        "strategy": "prose"
+      },
+      "text": "ine chunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:9623fdb570f6bec1445f94d4",
+      "index": 20,
+      "len_bytes": 38,
+      "len_chars": 38,
+      "meta": {
+        "heading_path": null,
+        "start_char": 20,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 20,
+        "strategy": "prose"
+      },
+      "text": "ne chunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:9803885439480fd37480190c",
+      "index": 21,
+      "len_bytes": 37,
+      "len_chars": 37,
+      "meta": {
+        "heading_path": null,
+        "start_char": 21,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 21,
+        "strategy": "prose"
+      },
+      "text": "e chunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:122d134a65c50db085a8680b",
+      "index": 22,
+      "len_bytes": 36,
+      "len_chars": 36,
+      "meta": {
+        "heading_path": null,
+        "start_char": 22,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 22,
+        "strategy": "prose"
+      },
+      "text": " chunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:44aadb4b0e6aa724e13f3a01",
+      "index": 23,
+      "len_bytes": 35,
+      "len_chars": 35,
+      "meta": {
+        "heading_path": null,
+        "start_char": 23,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 23,
+        "strategy": "prose"
+      },
+      "text": "chunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:a5857c90368f8250c972c05a",
+      "index": 24,
+      "len_bytes": 34,
+      "len_chars": 34,
+      "meta": {
+        "heading_path": null,
+        "start_char": 24,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 24,
+        "strategy": "prose"
+      },
+      "text": "hunks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:74d67b4194a05861d2ab7ab1",
+      "index": 25,
+      "len_bytes": 33,
+      "len_chars": 33,
+      "meta": {
+        "heading_path": null,
+        "start_char": 25,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 25,
+        "strategy": "prose"
+      },
+      "text": "unks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:c29abf9a14914bf21f089725",
+      "index": 26,
+      "len_bytes": 32,
+      "len_chars": 32,
+      "meta": {
+        "heading_path": null,
+        "start_char": 26,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 26,
+        "strategy": "prose"
+      },
+      "text": "nks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:15df3a3aabe12315df02838b",
+      "index": 27,
+      "len_bytes": 31,
+      "len_chars": 31,
+      "meta": {
+        "heading_path": null,
+        "start_char": 27,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 27,
+        "strategy": "prose"
+      },
+      "text": "ks text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:2d23bb0685d3e80c04bace2a",
+      "index": 28,
+      "len_bytes": 30,
+      "len_chars": 30,
+      "meta": {
+        "heading_path": null,
+        "start_char": 28,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 28,
+        "strategy": "prose"
+      },
+      "text": "s text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:17c880650c57a3cc9d21e6f3",
+      "index": 29,
+      "len_bytes": 29,
+      "len_chars": 29,
+      "meta": {
+        "heading_path": null,
+        "start_char": 29,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 29,
+        "strategy": "prose"
+      },
+      "text": " text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:3a7de8571c4fc4eed3046b6e",
+      "index": 30,
+      "len_bytes": 28,
+      "len_chars": 28,
+      "meta": {
+        "heading_path": null,
+        "start_char": 30,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 30,
+        "strategy": "prose"
+      },
+      "text": "text before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:701e93a1a9814e1c6ab4ead9",
+      "index": 31,
+      "len_bytes": 27,
+      "len_chars": 27,
+      "meta": {
+        "heading_path": null,
+        "start_char": 31,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 31,
+        "strategy": "prose"
+      },
+      "text": "ext before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:f49730ff322cef661abc089c",
+      "index": 32,
+      "len_bytes": 26,
+      "len_chars": 26,
+      "meta": {
+        "heading_path": null,
+        "start_char": 32,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 32,
+        "strategy": "prose"
+      },
+      "text": "xt before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:da7a5fa6361ebbd57f5f2cde",
+      "index": 33,
+      "len_bytes": 25,
+      "len_chars": 25,
+      "meta": {
+        "heading_path": null,
+        "start_char": 33,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 33,
+        "strategy": "prose"
+      },
+      "text": "t before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:fb9371d9aeed6a6744036c7b",
+      "index": 34,
+      "len_bytes": 24,
+      "len_chars": 24,
+      "meta": {
+        "heading_path": null,
+        "start_char": 34,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 34,
+        "strategy": "prose"
+      },
+      "text": " before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:94587d51d4baa16a389bfd9a",
+      "index": 35,
+      "len_bytes": 23,
+      "len_chars": 23,
+      "meta": {
+        "heading_path": null,
+        "start_char": 35,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 35,
+        "strategy": "prose"
+      },
+      "text": "before it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:f2d8bfe59d9866302cbc9d93",
+      "index": 36,
+      "len_bytes": 22,
+      "len_chars": 22,
+      "meta": {
+        "heading_path": null,
+        "start_char": 36,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 36,
+        "strategy": "prose"
+      },
+      "text": "efore it is embedded. "
+    },
+    {
+      "chunk_id": "chunk:0976ac601a7acb8ce48092ee",
+      "index": 37,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 37,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 37,
+        "strategy": "prose"
+      },
+      "text": "fore it is embedded. Each chunk carries "
+    },
+    {
+      "chunk_id": "chunk:3c5279c0e1838ef7eeb1f3a5",
+      "index": 38,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 38,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 38,
+        "strategy": "prose"
+      },
+      "text": "ore it is embedded. Each chunk carries a"
+    },
+    {
+      "chunk_id": "chunk:031cae3a3d18f21d800d88f4",
+      "index": 39,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 39,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 39,
+        "strategy": "prose"
+      },
+      "text": "re it is embedded. Each chunk carries a "
+    },
+    {
+      "chunk_id": "chunk:c8224d2175d580dd0275e7d5",
+      "index": 40,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 40,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 40,
+        "strategy": "prose"
+      },
+      "text": "e it is embedded. Each chunk carries a s"
+    },
+    {
+      "chunk_id": "chunk:c5d0dc1e82fc87b3c4061779",
+      "index": 41,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 41,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 41,
+        "strategy": "prose"
+      },
+      "text": " it is embedded. Each chunk carries a st"
+    },
+    {
+      "chunk_id": "chunk:ac9311a7a16323cff3cde751",
+      "index": 42,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 42,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 42,
+        "strategy": "prose"
+      },
+      "text": "it is embedded. Each chunk carries a sta"
+    },
+    {
+      "chunk_id": "chunk:14e4ff385faa310880ec2360",
+      "index": 43,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 43,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 43,
+        "strategy": "prose"
+      },
+      "text": "t is embedded. Each chunk carries a star"
+    },
+    {
+      "chunk_id": "chunk:1f09e26e981cec5777d2b492",
+      "index": 44,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 44,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 44,
+        "strategy": "prose"
+      },
+      "text": " is embedded. Each chunk carries a start"
+    },
+    {
+      "chunk_id": "chunk:43e84c1f6e9573bb7beb47aa",
+      "index": 45,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 45,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 45,
+        "strategy": "prose"
+      },
+      "text": "is embedded. Each chunk carries a start "
+    },
+    {
+      "chunk_id": "chunk:a606090d9a0279d1f30d179b",
+      "index": 46,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 46,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 46,
+        "strategy": "prose"
+      },
+      "text": "s embedded. Each chunk carries a start o"
+    },
+    {
+      "chunk_id": "chunk:b597b454bc2de74249bc4627",
+      "index": 47,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 47,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 47,
+        "strategy": "prose"
+      },
+      "text": " embedded. Each chunk carries a start of"
+    },
+    {
+      "chunk_id": "chunk:3bc6c8f8fead084946260097",
+      "index": 48,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 48,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 48,
+        "strategy": "prose"
+      },
+      "text": "embedded. Each chunk carries a start off"
+    },
+    {
+      "chunk_id": "chunk:dd3d8f2bbaeff38a1b0befa8",
+      "index": 49,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 49,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 49,
+        "strategy": "prose"
+      },
+      "text": "mbedded. Each chunk carries a start offs"
+    },
+    {
+      "chunk_id": "chunk:e87c88ae7c875752ef27fc9a",
+      "index": 50,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 50,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 50,
+        "strategy": "prose"
+      },
+      "text": "bedded. Each chunk carries a start offse"
+    },
+    {
+      "chunk_id": "chunk:b923b9ec4325e91633435a4e",
+      "index": 51,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 51,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 51,
+        "strategy": "prose"
+      },
+      "text": "edded. Each chunk carries a start offset"
+    },
+    {
+      "chunk_id": "chunk:538628cb801e05fd77975903",
+      "index": 52,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 52,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 52,
+        "strategy": "prose"
+      },
+      "text": "dded. Each chunk carries a start offset "
+    },
+    {
+      "chunk_id": "chunk:49044843bd96436acca95fe0",
+      "index": 53,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 53,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 53,
+        "strategy": "prose"
+      },
+      "text": "ded. Each chunk carries a start offset s"
+    },
+    {
+      "chunk_id": "chunk:1a96dec448a4ad0de5fe4753",
+      "index": 54,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 54,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 54,
+        "strategy": "prose"
+      },
+      "text": "ed. Each chunk carries a start offset so"
+    },
+    {
+      "chunk_id": "chunk:805debef4d66205141d36b52",
+      "index": 55,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 55,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 55,
+        "strategy": "prose"
+      },
+      "text": "d. Each chunk carries a start offset so "
+    },
+    {
+      "chunk_id": "chunk:79ff542f085195b8ca858b0c",
+      "index": 56,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 56,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 56,
+        "strategy": "prose"
+      },
+      "text": ". Each chunk carries a start offset so a"
+    },
+    {
+      "chunk_id": "chunk:289e0785f795e51b371b7876",
+      "index": 57,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 57,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 57,
+        "strategy": "prose"
+      },
+      "text": " Each chunk carries a start offset so a "
+    },
+    {
+      "chunk_id": "chunk:0286378c6620091215b4f11f",
+      "index": 58,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 58,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 58,
+        "strategy": "prose"
+      },
+      "text": "Each chunk carries a start offset so a c"
+    },
+    {
+      "chunk_id": "chunk:62367619af0d7025972cbf0d",
+      "index": 59,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 59,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 59,
+        "strategy": "prose"
+      },
+      "text": "ach chunk carries a start offset so a ci"
+    },
+    {
+      "chunk_id": "chunk:4d788eb2a94b3931767e819f",
+      "index": 60,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 60,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 60,
+        "strategy": "prose"
+      },
+      "text": "ch chunk carries a start offset so a cit"
+    },
+    {
+      "chunk_id": "chunk:689887b2da3eeabbcd5364af",
+      "index": 61,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 61,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 61,
+        "strategy": "prose"
+      },
+      "text": "h chunk carries a start offset so a cita"
+    },
+    {
+      "chunk_id": "chunk:6f2013275fdb0de98832b3bf",
+      "index": 62,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 62,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 62,
+        "strategy": "prose"
+      },
+      "text": " chunk carries a start offset so a citat"
+    },
+    {
+      "chunk_id": "chunk:ac3ce5b81b8ceb0ea24215a9",
+      "index": 63,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 63,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 63,
+        "strategy": "prose"
+      },
+      "text": "chunk carries a start offset so a citati"
+    },
+    {
+      "chunk_id": "chunk:01b364c6d9f10ac60648d1a9",
+      "index": 64,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 64,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 64,
+        "strategy": "prose"
+      },
+      "text": "hunk carries a start offset so a citatio"
+    },
+    {
+      "chunk_id": "chunk:7c527bcdacbbb68c399fa7f8",
+      "index": 65,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 65,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 65,
+        "strategy": "prose"
+      },
+      "text": "unk carries a start offset so a citation"
+    },
+    {
+      "chunk_id": "chunk:0f09ddd49c602593865f8a18",
+      "index": 66,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 66,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 66,
+        "strategy": "prose"
+      },
+      "text": "nk carries a start offset so a citation "
+    },
+    {
+      "chunk_id": "chunk:c027d5287f70daccddb753b1",
+      "index": 67,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 67,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 67,
+        "strategy": "prose"
+      },
+      "text": "k carries a start offset so a citation c"
+    },
+    {
+      "chunk_id": "chunk:68b08caad65eeef90ca87f5b",
+      "index": 68,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 68,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 68,
+        "strategy": "prose"
+      },
+      "text": " carries a start offset so a citation ca"
+    },
+    {
+      "chunk_id": "chunk:71b064bba6bfe0b699b8d160",
+      "index": 69,
+      "len_bytes": 40,
+      "len_chars": 40,
+      "meta": {
+        "heading_path": null,
+        "start_char": 69,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 69,
+        "strategy": "prose"
+      },
+      "text": "carries a start offset so a citation can"
+    }
+  ],
+  "cleaned_len_bytes": 109,
+  "cleaned_len_chars": 109,
+  "content_type": "",
+  "filename": "essay.txt",
+  "key": "prose_tight_overlap",
+  "overlap": 39,
+  "requested_strategy": null,
+  "size": 40,
+  "source_node_id": "file:prose_tight_overlap",
+  "strategy": "prose",
+  "text": "The retrieval pipeline chunks text before it is embedded. Each chunk carries a start offset so a citation can "
+}

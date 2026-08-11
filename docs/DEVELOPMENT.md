@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **11.4.0 — Rust Foundation**.
+Current release: **11.5.0 — Rust Complete**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release

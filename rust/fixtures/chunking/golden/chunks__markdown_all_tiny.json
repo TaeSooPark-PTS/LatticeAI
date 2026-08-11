@@ -1,0 +1,33 @@
+{
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "chunk_id": "chunk:77d43dd9dab09a3ec56d8cca",
+      "index": 0,
+      "len_bytes": 48,
+      "len_chars": 28,
+      "meta": {
+        "heading_path": "하나",
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "meta_fields": {
+        "heading_path": "하나",
+        "start_char": 0,
+        "strategy": "markdown"
+      },
+      "text": "# 하나\n짧다.\n## 둘\n더 짧다.\n### 셋\n끝."
+    }
+  ],
+  "cleaned_len_bytes": 48,
+  "cleaned_len_chars": 28,
+  "content_type": "",
+  "filename": "tiny.markdown",
+  "key": "markdown_all_tiny",
+  "overlap": 160,
+  "requested_strategy": null,
+  "size": 1200,
+  "source_node_id": "file:markdown_all_tiny",
+  "strategy": "markdown",
+  "text": "# 하나\n짧다.\n## 둘\n더 짧다.\n### 셋\n끝."
+}

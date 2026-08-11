@@ -1,0 +1,1417 @@
+{
+  "key": "en_filler",
+  "result": {
+    "channels": {
+      "graph": {
+        "expand_depth": 1,
+        "mode": "graph",
+        "query": "the retrieval specification"
+      },
+      "keyword": {
+        "mode": "keyword",
+        "query": "the retrieval specification"
+      },
+      "vector": {
+        "embedding_dim": 384,
+        "embedding_model": "lattice-local-hash-v1:384",
+        "mode": "vector",
+        "query": "the retrieval specification",
+        "recall": {
+          "backend": "bruteforce-cosine",
+          "candidates_scanned": 44,
+          "candidates_total": 44,
+          "detail": null,
+          "max_candidates": 10000,
+          "truncated": false
+        }
+      }
+    },
+    "matches": [
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "doc:handbook",
+              "id": "edge:925238c39c45c82b73435a65",
+              "to": "doc:retrieval-spec",
+              "type": "MENTIONS",
+              "weight": 0.1
+            }
+          }
+        ],
+        "id": "doc:retrieval-spec",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf"
+        },
+        "node_id": "doc:retrieval-spec",
+        "rank": 1,
+        "score": 1.0,
+        "source_scores": {
+          "graph": 1.0,
+          "keyword": 1.0,
+          "vector": 0.817226
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+        "title": "Retrieval specification",
+        "type": "Document",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:56adf9267d30650da146f7da",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.9
+            }
+          }
+        ],
+        "id": "dec:fusion-alpha",
+        "item_type": "node",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 2,
+        "score": 0.465101,
+        "source_scores": {
+          "graph": 0.5,
+          "keyword": 0.5,
+          "vector": 0.412752
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "task:parity-harness",
+        "item_type": "node",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 3,
+        "score": 0.327821,
+        "source_scores": {
+          "graph": 0.333333,
+          "keyword": 0.333333,
+          "vector": 0.319553
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:56adf9267d30650da146f7da",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.9
+            }
+          },
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "concept:retrieval",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:retrieval",
+        "rank": 4,
+        "score": 0.312388,
+        "source_scores": {
+          "graph": 0.225,
+          "keyword": 0.111111,
+          "vector": 0.543124
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "sheet:metrics",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx"
+        },
+        "node_id": "sheet:metrics",
+        "rank": 5,
+        "score": 0.306788,
+        "source_scores": {
+          "graph": 0.25,
+          "keyword": 0.25,
+          "vector": 0.391971
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "img:whiteboard",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".png",
+          "filename": "whiteboard-retrieval.png"
+        },
+        "node_id": "img:whiteboard",
+        "rank": 6,
+        "score": 0.279929,
+        "source_scores": {
+          "graph": 0.166667,
+          "keyword": 0.166667,
+          "vector": 0.449823
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "Whiteboard photo from the retrieval design session.",
+        "title": "whiteboard-retrieval.png",
+        "type": "Image",
+        "updated_at": "2026-03-19T11:11:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "img:ocr-notes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "whiteboard-retrieval.png",
+          "ocr": true
+        },
+        "node_id": "img:ocr-notes",
+        "rank": 7,
+        "score": 0.256606,
+        "source_scores": {
+          "graph": 0.2,
+          "keyword": 0.2,
+          "vector": 0.341515
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+        "title": "화이트보드 OCR 텍스트",
+        "type": "ImageText",
+        "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:fd94b124b47e0ae02a04f890",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.8
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "concept:retrieval",
+              "id": "edge:5b5a7ccf39a15b042eb7f323",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.4
+            }
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:fd94b124b47e0ae02a04f890",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.8
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "concept:retrieval",
+              "id": "edge:5b5a7ccf39a15b042eb7f323",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.4
+            }
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          }
+        ],
+        "id": "concept:ranking",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:ranking",
+        "rank": 8,
+        "score": 0.1875,
+        "source_scores": {
+          "graph": 0.75
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "chunk:spec:1",
+        "item_type": "node",
+        "metadata": {
+          "heading_path": "Retrieval > Fusion",
+          "index": 0,
+          "page": 2,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 0
+        },
+        "node_id": "chunk:spec:1",
+        "rank": 9,
+        "score": 0.121053,
+        "source_scores": {
+          "graph": 0.125,
+          "keyword": 0.125,
+          "vector": 0.115133
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "The lexical channel scores one over rank. The vector channel is max normalized before fusion.",
+        "title": "retrieval-spec.pdf chunk 1",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:01"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:handbook",
+              "id": "edge:925238c39c45c82b73435a65",
+              "to": "doc:retrieval-spec",
+              "type": "MENTIONS",
+              "weight": 0.1
+            }
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "doc:handbook",
+              "id": "edge:925238c39c45c82b73435a65",
+              "to": "doc:retrieval-spec",
+              "type": "MENTIONS",
+              "weight": 0.1
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:handbook",
+              "id": "edge:925238c39c45c82b73435a65",
+              "to": "doc:retrieval-spec",
+              "type": "MENTIONS",
+              "weight": 0.1
+            }
+          },
+          {
+            "reason": "relationship_match",
+            "relationship": {
+              "from": "doc:handbook",
+              "id": "edge:925238c39c45c82b73435a65",
+              "to": "doc:retrieval-spec",
+              "type": "MENTIONS",
+              "weight": 0.1
+            }
+          }
+        ],
+        "id": "doc:handbook",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "source_node": "doc:handbook"
+        },
+        "node_id": "doc:handbook",
+        "rank": 10,
+        "score": 0.1125,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "org:lattice",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Organization"
+          }
+        },
+        "node_id": "org:lattice",
+        "rank": 11,
+        "score": 0.109204,
+        "source_scores": {
+          "vector": 0.273009
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "The organization.",
+        "title": "Lattice",
+        "type": "Organization",
+        "updated_at": "2026-02-22T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "meeting:kickoff",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Meeting"
+          }
+        },
+        "node_id": "meeting:kickoff",
+        "rank": 12,
+        "score": 0.101144,
+        "source_scores": {
+          "vector": 0.252861
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Kickoff meeting for the Rust foundation work.",
+        "title": "Kickoff meeting",
+        "type": "Meeting",
+        "updated_at": "2026-02-09T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "task:parity-harness",
+              "id": "edge:114efd07a566c6c3774cf8c6",
+              "to": "dec:rust-foundation",
+              "type": "MENTIONS",
+              "weight": 1.0
+            }
+          }
+        ],
+        "id": "dec:rust-foundation",
+        "item_type": "node",
+        "metadata": {
+          "category": "platform",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "category": "platform",
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:rust-foundation",
+        "rank": 13,
+        "score": 0.094783,
+        "source_scores": {
+          "graph": 0.15,
+          "vector": 0.143208
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+        "title": "Rust 기반 검색 이관 결정",
+        "type": "Decision",
+        "updated_at": "2026-07-18T14:30:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "slide:fusion",
+              "id": "edge:26a7d16bbb4827c42215ad72",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.25
+            }
+          }
+        ],
+        "id": "slide:fusion",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:fusion",
+        "rank": 14,
+        "score": 0.08931,
+        "source_scores": {
+          "graph": 0.05,
+          "vector": 0.184213
+        },
+        "sources": [
+          "vector",
+          "graph"
+        ],
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "chunk:spec:2",
+        "item_type": "node",
+        "metadata": {
+          "index": 1,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 900
+        },
+        "node_id": "chunk:spec:2",
+        "rank": 15,
+        "score": 0.085714,
+        "source_scores": {
+          "graph": 0.142857,
+          "keyword": 0.142857
+        },
+        "sources": [
+          "keyword",
+          "graph"
+        ],
+        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
+        "title": "retrieval-spec.pdf chunk 2",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:02"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "source:repo",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "git",
+          "vector": {
+            "node_type": "Source",
+            "source": "git"
+          }
+        },
+        "node_id": "source:repo",
+        "rank": 16,
+        "score": 0.079451,
+        "source_scores": {
+          "vector": 0.198627
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Source repository for the product.",
+        "title": "github.com/lattice/ai",
+        "type": "Source",
+        "updated_at": "2026-02-20T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "workflow:nightly",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Workflow"
+          }
+        },
+        "node_id": "workflow:nightly",
+        "rank": 17,
+        "score": 0.057785,
+        "source_scores": {
+          "vector": 0.144463
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "A workflow that reindexes the vector store overnight.",
+        "title": "Nightly reindex",
+        "type": "Workflow",
+        "updated_at": "2026-03-02T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "meeting:weekly",
+              "id": "edge:805dbdc114935dd71cf9bb89",
+              "to": "dec:fusion-alpha",
+              "type": "DISCUSSES",
+              "weight": 0.95
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "meeting:weekly",
+              "id": "edge:805dbdc114935dd71cf9bb89",
+              "to": "dec:fusion-alpha",
+              "type": "DISCUSSES",
+              "weight": 0.95
+            }
+          }
+        ],
+        "id": "meeting:weekly",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "meeting:weekly",
+        "rank": 18,
+        "score": 0.05625,
+        "source_scores": {
+          "graph": 0.225
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          }
+        ],
+        "id": "file:ranking-notes",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "node_id": "file:ranking-notes",
+        "rank": 19,
+        "score": 0.05625,
+        "source_scores": {
+          "graph": 0.225
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "agent:librarian",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Agent"
+          }
+        },
+        "node_id": "agent:librarian",
+        "rank": 20,
+        "score": 0.054758,
+        "source_scores": {
+          "vector": 0.136896
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "An agent that files new documents into the graph.",
+        "title": "Librarian agent",
+        "type": "Agent",
+        "updated_at": "2026-03-03T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "repo:lattice",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Repository"
+          }
+        },
+        "node_id": "repo:lattice",
+        "rank": 21,
+        "score": 0.052129,
+        "source_scores": {
+          "vector": 0.130322
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "The monorepo holding the Python worker and the Rust workspace.",
+        "title": "lattice-ai",
+        "type": "Repository",
+        "updated_at": "2026-02-21T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "chat:ranking",
+        "item_type": "node",
+        "metadata": {
+          "conversation_id": "conv-1",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "conversation_id": "conv-1",
+            "node_type": "Chat"
+          }
+        },
+        "node_id": "chat:ranking",
+        "rank": 22,
+        "score": 0.049072,
+        "source_scores": {
+          "vector": 0.122679
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
+        "title": "랭킹 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-05T21:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "feature:command-palette",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:command-palette",
+        "rank": 23,
+        "score": 0.047182,
+        "source_scores": {
+          "vector": 0.117954
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "The palette that opens search from anywhere.",
+        "title": "Command palette",
+        "type": "Feature",
+        "updated_at": "2026-03-05T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "twin:doc-b",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-b",
+        "rank": 24,
+        "score": 0.04307,
+        "source_scores": {
+          "vector": 0.107676
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "동일한 시각의 문서 B",
+        "title": "Twin document B",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "twin:doc-a",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-a",
+        "rank": 25,
+        "score": 0.04307,
+        "source_scores": {
+          "vector": 0.107676
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "동일한 시각의 문서 A",
+        "title": "Twin document A",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "person:jiwon",
+              "id": "edge:22fe3b50b2c1aeaec62c9510",
+              "to": "task:parity-harness",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "person:jiwon",
+              "id": "edge:22fe3b50b2c1aeaec62c9510",
+              "to": "task:parity-harness",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          }
+        ],
+        "id": "person:jiwon",
+        "item_type": "node",
+        "metadata": {
+          "role": "owner"
+        },
+        "node_id": "person:jiwon",
+        "rank": 26,
+        "score": 0.0375,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person",
+        "updated_at": "2026-04-11T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "error:timeout",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Error"
+          }
+        },
+        "node_id": "error:timeout",
+        "rank": 27,
+        "score": 0.03437,
+        "source_scores": {
+          "vector": 0.085925
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "An error where the ranking took longer than the request budget.",
+        "title": "Search timeout",
+        "type": "Error",
+        "updated_at": "2026-03-04T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "tie:e",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:e",
+        "rank": 28,
+        "score": 0.027802,
+        "source_scores": {
+          "vector": 0.069505
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "",
+        "title": "Tie candidate E",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "tie:d",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:d",
+        "rank": 29,
+        "score": 0.027802,
+        "source_scores": {
+          "vector": 0.069505
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "",
+        "title": "Tie candidate D",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "tie:c",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:c",
+        "rank": 30,
+        "score": 0.027802,
+        "source_scores": {
+          "vector": 0.069505
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "",
+        "title": "Tie candidate C",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      }
+    ],
+    "mode": "hybrid",
+    "policy": {
+      "rewrite_rules": [
+        "collapse_whitespace",
+        "strip_filler_en_leading",
+        "strip_filler_en_trailing"
+      ],
+      "search_query": "the retrieval specification"
+    },
+    "query": "  what is   the retrieval specification please  ",
+    "query_class": "fact",
+    "weights": {
+      "graph": 0.25,
+      "keyword": 0.35,
+      "vector": 0.4
+    }
+  },
+  "spec": {
+    "key": "en_filler",
+    "query": "  what is   the retrieval specification please  "
+  },
+  "suite": "service_hybrid"
+}

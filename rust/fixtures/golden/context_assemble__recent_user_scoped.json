@@ -1,0 +1,35 @@
+{
+  "key": "recent_user_scoped",
+  "result": {
+    "approx_tokens": 42,
+    "text": "[Recent conversation]\nuser (web): 고마워\nuser (web): 이전 대화 기록입니다\nassistant (web): 네, 확인했습니다.\nuser (web): Ranking ties are broken by node id\nassistant (web): Yes — id ascending keeps it stable.",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [
+        {
+          "approx_tokens": 42,
+          "name": "Recent conversation",
+          "provenance": [
+            {
+              "conversation_id": null,
+              "user_email": null
+            }
+          ],
+          "source": "recent_chat",
+          "truncated": false
+        }
+      ],
+      "used_approx_tokens": 42
+    }
+  },
+  "spec": {
+    "key": "recent_user_scoped",
+    "knowledge": false,
+    "query": "온보딩",
+    "recent": {
+      "limit": 5,
+      "user_email": "jiwon@lattice.ai"
+    }
+  },
+  "suite": "context_assemble"
+}

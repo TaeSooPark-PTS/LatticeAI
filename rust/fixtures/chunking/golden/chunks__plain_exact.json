@@ -1,0 +1,32 @@
+{
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "chunk_id": "chunk:2bdd7cfb7d07b8c3db442267",
+      "index": 0,
+      "len_bytes": 64,
+      "len_chars": 64,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz01"
+    }
+  ],
+  "cleaned_len_bytes": 64,
+  "cleaned_len_chars": 64,
+  "content_type": "",
+  "filename": "n",
+  "key": "plain_exact",
+  "overlap": 8,
+  "requested_strategy": null,
+  "size": 64,
+  "source_node_id": "file:plain_exact",
+  "strategy": "plain",
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz01"
+}

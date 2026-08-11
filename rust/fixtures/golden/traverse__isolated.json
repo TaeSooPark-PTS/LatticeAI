@@ -1,0 +1,24 @@
+{
+  "key": "isolated",
+  "result": {
+    "depth": 2,
+    "edges": [],
+    "nodes": [
+      {
+        "id": "tie:c",
+        "metadata": {},
+        "summary": "",
+        "title": "Tie candidate C",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      }
+    ],
+    "root": "tie:c"
+  },
+  "spec": {
+    "depth": 2,
+    "key": "isolated",
+    "node_id": "tie:c"
+  },
+  "suite": "traverse"
+}

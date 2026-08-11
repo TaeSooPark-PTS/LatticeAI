@@ -1,0 +1,30 @@
+{
+  "key": "legacy_bucket",
+  "result": [
+    {
+      "content": "이전 대화 기록입니다",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-06-01T09:00:00",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원"
+    },
+    {
+      "content": "네, 확인했습니다.",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-06-01T09:00:03",
+      "user_email": "jiwon@lattice.ai"
+    },
+    {
+      "content": "legacy english message about ranking",
+      "role": "user",
+      "timestamp": ""
+    }
+  ],
+  "spec": {
+    "conversation_id": "legacy-previous-history",
+    "key": "legacy_bucket"
+  },
+  "suite": "conversation_messages"
+}

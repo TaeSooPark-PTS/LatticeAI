@@ -1,0 +1,17 @@
+{
+  "schema": "agent-kernel-parity/v1",
+  "cases": [
+    {"input": "", "key": "empty", "outcome": "ok", "relative": "."},
+    {"input": ".", "key": "dot", "outcome": "ok", "relative": "."},
+    {"input": "notes/a.txt", "key": "benign", "outcome": "ok", "relative": "notes/a.txt"},
+    {"input": "notes/../notes/a.txt", "key": "normalising", "outcome": "ok", "relative": "notes/a.txt"},
+    {"input": "노트/메모.txt", "key": "korean", "outcome": "ok", "relative": "노트/메모.txt"},
+    {"error": {"kind": "tool", "message": "Path escapes the agent workspace."}, "input": "../outside_secret.txt", "key": "traversal", "outcome": "error"},
+    {"error": {"kind": "tool", "message": "Path escapes the agent workspace."}, "input": "/etc/passwd", "key": "absolute_outside", "outcome": "error"},
+    {"input": "<AGENT_ROOT>/notes/a.txt", "key": "absolute_inside", "outcome": "ok", "relative": "notes/a.txt"},
+    {"input": "<AGENT_ROOT>", "key": "absolute_root", "outcome": "ok", "relative": "."},
+    {"input": "inside_link", "key": "symlink_inside", "outcome": "ok", "relative": "notes/a.txt"},
+    {"error": {"kind": "tool", "message": "Path escapes the agent workspace."}, "input": "escape_link", "key": "symlink_escape", "outcome": "error"},
+    {"input": "notes/missing/deeper.txt", "key": "missing_but_inside", "outcome": "ok", "relative": "notes/missing/deeper.txt"}
+  ]
+}

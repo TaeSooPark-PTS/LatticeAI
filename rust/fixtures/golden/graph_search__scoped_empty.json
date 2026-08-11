@@ -1,0 +1,15 @@
+{
+  "key": "scoped_empty",
+  "result": {
+    "expand_depth": 1,
+    "matches": [],
+    "mode": "graph",
+    "query": "hybrid retrieval ranking"
+  },
+  "spec": {
+    "allowed": [],
+    "key": "scoped_empty",
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "graph_search"
+}

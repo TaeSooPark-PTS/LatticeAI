@@ -1,0 +1,49 @@
+{
+  "key": "scoped_empty",
+  "result": {
+    "channels": {
+      "graph": {
+        "expand_depth": 1,
+        "mode": "graph",
+        "query": "hybrid retrieval ranking"
+      },
+      "keyword": {
+        "mode": "keyword",
+        "query": "hybrid retrieval ranking"
+      },
+      "vector": {
+        "embedding_dim": 384,
+        "embedding_model": "lattice-local-hash-v1:384",
+        "mode": "vector",
+        "query": "hybrid retrieval ranking",
+        "recall": {
+          "backend": "bruteforce-cosine",
+          "candidates_scanned": 44,
+          "candidates_total": 44,
+          "detail": null,
+          "max_candidates": 10000,
+          "truncated": false
+        }
+      }
+    },
+    "matches": [],
+    "mode": "hybrid",
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": "hybrid retrieval ranking"
+    },
+    "query": "hybrid retrieval ranking",
+    "query_class": "fact",
+    "weights": {
+      "graph": 0.25,
+      "keyword": 0.35,
+      "vector": 0.4
+    }
+  },
+  "spec": {
+    "allowed": [],
+    "key": "scoped_empty",
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "service_hybrid"
+}

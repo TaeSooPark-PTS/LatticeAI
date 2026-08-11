@@ -25,6 +25,7 @@ def phase_platform_features(ctx: RuntimeContext) -> None:
     from latticeai.api.command_center import create_command_center_router
     from latticeai.api.evidence_actions import create_evidence_actions_router
     from latticeai.api.funnel_metrics import create_funnel_metrics_router
+    from latticeai.api.index_jobs import create_index_jobs_router
     from latticeai.api.marketplace import create_marketplace_router
     from latticeai.api.plugins import create_plugins_router
     from latticeai.api.project_sessions import create_project_sessions_router
@@ -173,6 +174,19 @@ def phase_platform_features(ctx: RuntimeContext) -> None:
             service=ctx.CHRONICLE,
             require_user=ctx.require_user,
             gate_read=ctx.PLATFORM.gate_read,
+        )
+    )
+
+    # Index jobs (v11.5.0): the embed backlog has been durable since 11.1.0 and
+    # had no trigger — the only drain was a pipeline method no scheduler could
+    # reach. This is the HTTP surface lattice-jobs ticks.
+    ctx.app.include_router(
+        create_index_jobs_router(
+            pipeline=ctx.INGESTION_PIPELINE if ctx.ENABLE_GRAPH else None,
+            knowledge_graph=ctx.KNOWLEDGE_GRAPH if ctx.ENABLE_GRAPH else None,
+            require_user=ctx.require_user,
+            gate_read=ctx.PLATFORM.gate_read,
+            gate_write=ctx.PLATFORM.gate_write,
         )
     )
 

@@ -1,0 +1,11 @@
+{
+  "key": "empty_id",
+  "result": {
+    "error": "node_id required"
+  },
+  "spec": {
+    "key": "empty_id",
+    "node_id": ""
+  },
+  "suite": "traverse"
+}

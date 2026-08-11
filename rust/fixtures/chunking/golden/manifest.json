@@ -1,0 +1,395 @@
+{
+  "cases": [
+    {
+      "content_type": "",
+      "filename": "empty.txt",
+      "key": "empty",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:empty",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "blank.txt",
+      "key": "whitespace_only",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:whitespace_only",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "note",
+      "key": "plain_short",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:plain_short",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "note",
+      "key": "plain_strip_not_collapse",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:plain_strip_not_collapse",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_exact_minus_one",
+      "overlap": 8,
+      "size": 64,
+      "source_node_id": "file:plain_exact_minus_one",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_exact",
+      "overlap": 8,
+      "size": 64,
+      "source_node_id": "file:plain_exact",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_exact_plus_one",
+      "overlap": 8,
+      "size": 64,
+      "source_node_id": "file:plain_exact_plus_one",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "log",
+      "key": "plain_default_long",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:plain_default_long",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_korean_small_window",
+      "overlap": 3,
+      "size": 10,
+      "source_node_id": "file:plain_korean_small_window",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_grapheme_soup",
+      "overlap": 2,
+      "size": 7,
+      "source_node_id": "file:plain_grapheme_soup",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_overlap_clamped",
+      "overlap": 100,
+      "size": 5,
+      "source_node_id": "file:plain_overlap_clamped",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_overlap_zero",
+      "overlap": 0,
+      "size": 7,
+      "source_node_id": "file:plain_overlap_zero",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_overlap_negative",
+      "overlap": -4,
+      "size": 7,
+      "source_node_id": "file:plain_overlap_negative",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_size_one",
+      "overlap": 160,
+      "size": 1,
+      "source_node_id": "file:plain_size_one",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "n",
+      "key": "plain_size_zero_coerced",
+      "overlap": 3,
+      "size": 0,
+      "source_node_id": "file:plain_size_zero_coerced",
+      "strategy": "plain"
+    },
+    {
+      "content_type": "",
+      "filename": "x.md",
+      "key": "unknown_strategy_falls_back",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:unknown_strategy_falls_back",
+      "strategy": "sideways"
+    },
+    {
+      "content_type": "",
+      "filename": "guide.md",
+      "key": "markdown_full",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:markdown_full",
+      "strategy": "markdown"
+    },
+    {
+      "content_type": "",
+      "filename": "guide.md",
+      "key": "markdown_full_small_window",
+      "overlap": 30,
+      "size": 120,
+      "source_node_id": "file:markdown_full_small_window",
+      "strategy": "markdown"
+    },
+    {
+      "content_type": "",
+      "filename": "tiny.markdown",
+      "key": "markdown_all_tiny",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:markdown_all_tiny",
+      "strategy": "markdown"
+    },
+    {
+      "content_type": "",
+      "filename": "floor.md",
+      "key": "markdown_threshold",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:markdown_threshold",
+      "strategy": "markdown"
+    },
+    {
+      "content_type": "",
+      "filename": "edge.md",
+      "key": "markdown_not_headings",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:markdown_not_headings",
+      "strategy": "markdown"
+    },
+    {
+      "content_type": "",
+      "filename": "plainish.md",
+      "key": "markdown_no_heading",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:markdown_no_heading",
+      "strategy": "markdown"
+    },
+    {
+      "content_type": "",
+      "filename": "u.md",
+      "key": "markdown_grapheme_soup",
+      "overlap": 3,
+      "size": 9,
+      "source_node_id": "file:markdown_grapheme_soup",
+      "strategy": "markdown"
+    },
+    {
+      "content_type": "",
+      "filename": "module.py",
+      "key": "code_python",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:code_python",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "module.py",
+      "key": "code_python_packed",
+      "overlap": 12,
+      "size": 60,
+      "source_node_id": "file:code_python_packed",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "app.tsx",
+      "key": "code_javascript",
+      "overlap": 16,
+      "size": 80,
+      "source_node_id": "file:code_javascript",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "big.py",
+      "key": "code_monster_segment",
+      "overlap": 20,
+      "size": 100,
+      "source_node_id": "file:code_monster_segment",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "module.py",
+      "key": "code_korean_small",
+      "overlap": 5,
+      "size": 24,
+      "source_node_id": "file:code_korean_small",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "edge.py",
+      "key": "code_hard_limit_boundary",
+      "overlap": 5,
+      "size": 25,
+      "source_node_id": "file:code_hard_limit_boundary",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "c0.py",
+      "key": "code_c0_blank_run",
+      "overlap": 3,
+      "size": 12,
+      "source_node_id": "file:code_c0_blank_run",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "quotes.txt",
+      "key": "prose_closers",
+      "overlap": 10,
+      "size": 45,
+      "source_node_id": "file:prose_closers",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "matrix.py",
+      "key": "code_declaration_matrix",
+      "overlap": 3,
+      "size": 12,
+      "source_node_id": "file:code_declaration_matrix",
+      "strategy": "code"
+    },
+    {
+      "content_type": "",
+      "filename": "terms.txt",
+      "key": "prose_terminator_matrix",
+      "overlap": 2,
+      "size": 20,
+      "source_node_id": "file:prose_terminator_matrix",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "closers.txt",
+      "key": "prose_closer_matrix",
+      "overlap": 2,
+      "size": 20,
+      "source_node_id": "file:prose_closer_matrix",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "essay.txt",
+      "key": "prose_english",
+      "overlap": 20,
+      "size": 90,
+      "source_node_id": "file:prose_english",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "essay.txt",
+      "key": "prose_korean",
+      "overlap": 15,
+      "size": 60,
+      "source_node_id": "file:prose_korean",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "essay.txt",
+      "key": "prose_no_boundary",
+      "overlap": 9,
+      "size": 40,
+      "source_node_id": "file:prose_no_boundary",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "list.txt",
+      "key": "prose_lines_only",
+      "overlap": 14,
+      "size": 70,
+      "source_node_id": "file:prose_lines_only",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "para.txt",
+      "key": "prose_paragraphs",
+      "overlap": 25,
+      "size": 110,
+      "source_node_id": "file:prose_paragraphs",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "report.pdf",
+      "key": "prose_default_window",
+      "overlap": 160,
+      "size": 1200,
+      "source_node_id": "file:prose_default_window",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "u.html",
+      "key": "prose_grapheme_soup",
+      "overlap": 4,
+      "size": 11,
+      "source_node_id": "file:prose_grapheme_soup",
+      "strategy": "prose"
+    },
+    {
+      "content_type": "",
+      "filename": "essay.txt",
+      "key": "prose_tight_overlap",
+      "overlap": 39,
+      "size": 40,
+      "source_node_id": "file:prose_tight_overlap",
+      "strategy": "prose"
+    }
+  ],
+  "defaults": {
+    "markdown_min_section_chars": 200,
+    "overlap": 160,
+    "size": 1200
+  },
+  "source": "lattice_brain/graph/_kg_common/text.py",
+  "strategies": [
+    "code",
+    "markdown",
+    "plain",
+    "prose",
+    "sideways"
+  ]
+}

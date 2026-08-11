@@ -1,0 +1,144 @@
+{
+  "chunk_count": 8,
+  "chunks": [
+    {
+      "chunk_id": "chunk:14da5a66cc2127ce4b38d526",
+      "index": 0,
+      "len_bytes": 125,
+      "len_chars": 65,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "prose"
+      },
+      "text": "- 항목 0 준비 완료\n- 항목 1 준비 완료\n- 항목 2 준비 완료\n- 항목 3 준비 완료\n- 항목 4 준비 완료\n"
+    },
+    {
+      "chunk_id": "chunk:28e16e6d5feddaf834b9c2fd",
+      "index": 1,
+      "len_bytes": 126,
+      "len_chars": 66,
+      "meta": {
+        "heading_path": null,
+        "start_char": 51,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 51,
+        "strategy": "prose"
+      },
+      "text": "\n- 항목 4 준비 완료\n- 항목 5 준비 완료\n- 항목 6 준비 완료\n- 항목 7 준비 완료\n- 항목 8 준비 완료\n"
+    },
+    {
+      "chunk_id": "chunk:277a3f8dea228c1be39d1f19",
+      "index": 2,
+      "len_bytes": 129,
+      "len_chars": 69,
+      "meta": {
+        "heading_path": null,
+        "start_char": 103,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 103,
+        "strategy": "prose"
+      },
+      "text": "\n- 항목 8 준비 완료\n- 항목 9 준비 완료\n- 항목 10 준비 완료\n- 항목 11 준비 완료\n- 항목 12 준비 완료\n"
+    },
+    {
+      "chunk_id": "chunk:fd68ca5b6b51ee1b8b755676",
+      "index": 3,
+      "len_bytes": 130,
+      "len_chars": 70,
+      "meta": {
+        "heading_path": null,
+        "start_char": 158,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 158,
+        "strategy": "prose"
+      },
+      "text": "- 항목 12 준비 완료\n- 항목 13 준비 완료\n- 항목 14 준비 완료\n- 항목 15 준비 완료\n- 항목 16 준비 완료\n"
+    },
+    {
+      "chunk_id": "chunk:c7d5fdca53aa8f30adfd6e99",
+      "index": 4,
+      "len_bytes": 130,
+      "len_chars": 70,
+      "meta": {
+        "heading_path": null,
+        "start_char": 214,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 214,
+        "strategy": "prose"
+      },
+      "text": "- 항목 16 준비 완료\n- 항목 17 준비 완료\n- 항목 18 준비 완료\n- 항목 19 준비 완료\n- 항목 20 준비 완료\n"
+    },
+    {
+      "chunk_id": "chunk:e76304e8a7a6e2c562c16a07",
+      "index": 5,
+      "len_bytes": 130,
+      "len_chars": 70,
+      "meta": {
+        "heading_path": null,
+        "start_char": 270,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 270,
+        "strategy": "prose"
+      },
+      "text": "- 항목 20 준비 완료\n- 항목 21 준비 완료\n- 항목 22 준비 완료\n- 항목 23 준비 완료\n- 항목 24 준비 완료\n"
+    },
+    {
+      "chunk_id": "chunk:0b6c6acb45a067d0518251c3",
+      "index": 6,
+      "len_bytes": 130,
+      "len_chars": 70,
+      "meta": {
+        "heading_path": null,
+        "start_char": 326,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 326,
+        "strategy": "prose"
+      },
+      "text": "- 항목 24 준비 완료\n- 항목 25 준비 완료\n- 항목 26 준비 완료\n- 항목 27 준비 완료\n- 항목 28 준비 완료\n"
+    },
+    {
+      "chunk_id": "chunk:c6a6ec1da8a6bd4a2c1b7a66",
+      "index": 7,
+      "len_bytes": 51,
+      "len_chars": 27,
+      "meta": {
+        "heading_path": null,
+        "start_char": 382,
+        "strategy": "prose"
+      },
+      "meta_fields": {
+        "start_char": 382,
+        "strategy": "prose"
+      },
+      "text": "- 항목 28 준비 완료\n- 항목 29 준비 완료"
+    }
+  ],
+  "cleaned_len_bytes": 769,
+  "cleaned_len_chars": 409,
+  "content_type": "",
+  "filename": "list.txt",
+  "key": "prose_lines_only",
+  "overlap": 14,
+  "requested_strategy": null,
+  "size": 70,
+  "source_node_id": "file:prose_lines_only",
+  "strategy": "prose",
+  "text": "- 항목 0 준비 완료\n- 항목 1 준비 완료\n- 항목 2 준비 완료\n- 항목 3 준비 완료\n- 항목 4 준비 완료\n- 항목 5 준비 완료\n- 항목 6 준비 완료\n- 항목 7 준비 완료\n- 항목 8 준비 완료\n- 항목 9 준비 완료\n- 항목 10 준비 완료\n- 항목 11 준비 완료\n- 항목 12 준비 완료\n- 항목 13 준비 완료\n- 항목 14 준비 완료\n- 항목 15 준비 완료\n- 항목 16 준비 완료\n- 항목 17 준비 완료\n- 항목 18 준비 완료\n- 항목 19 준비 완료\n- 항목 20 준비 완료\n- 항목 21 준비 완료\n- 항목 22 준비 완료\n- 항목 23 준비 완료\n- 항목 24 준비 완료\n- 항목 25 준비 완료\n- 항목 26 준비 완료\n- 항목 27 준비 완료\n- 항목 28 준비 완료\n- 항목 29 준비 완료"
+}

@@ -1,0 +1,254 @@
+{
+  "key": "by_query_en",
+  "result": {
+    "node_id": "",
+    "query": "ranking",
+    "relationship_type": "",
+    "relationships": [
+      {
+        "created_at": "2026-07-03T00:00:00",
+        "id": "edge:114efd07a566c6c3774cf8c6",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "task:parity-harness",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        },
+        "target": {
+          "id": "dec:rust-foundation",
+          "metadata": {
+            "category": "platform"
+          },
+          "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+          "title": "Rust 기반 검색 이관 결정",
+          "type": "Decision"
+        },
+        "type": "MENTIONS",
+        "weight": 1.0
+      },
+      {
+        "created_at": "2026-07-05T00:00:00",
+        "id": "edge:805dbdc114935dd71cf9bb89",
+        "metadata": {
+          "legacy_label": "discusses"
+        },
+        "source": {
+          "id": "meeting:weekly",
+          "metadata": {},
+          "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+          "title": "주간 회의 2026-07-14",
+          "type": "Meeting"
+        },
+        "target": {
+          "id": "dec:fusion-alpha",
+          "metadata": {
+            "category": "retrieval",
+            "owner": "jiwon"
+          },
+          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        "type": "DISCUSSES",
+        "weight": 0.95
+      },
+      {
+        "created_at": "2026-07-01T00:00:00",
+        "id": "edge:56adf9267d30650da146f7da",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "dec:fusion-alpha",
+          "metadata": {
+            "category": "retrieval",
+            "owner": "jiwon"
+          },
+          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        "target": {
+          "id": "concept:retrieval",
+          "metadata": {},
+          "summary": "Retrieval is the act of finding the right memory for a question.",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "created_at": "2026-07-02T00:00:00",
+        "id": "edge:fd94b124b47e0ae02a04f890",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "dec:fusion-alpha",
+          "metadata": {
+            "category": "retrieval",
+            "owner": "jiwon"
+          },
+          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        "target": {
+          "id": "concept:ranking",
+          "metadata": {},
+          "summary": "Ranking orders candidates so the best answer is first.",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.8
+      },
+      {
+        "created_at": "2026-07-06T00:00:00",
+        "id": "edge:22fe3b50b2c1aeaec62c9510",
+        "metadata": {
+          "legacy_label": "owns"
+        },
+        "source": {
+          "id": "person:jiwon",
+          "metadata": {
+            "role": "owner"
+          },
+          "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+          "title": "김지원 님",
+          "type": "Person"
+        },
+        "target": {
+          "id": "task:parity-harness",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        },
+        "type": "MENTIONS",
+        "weight": 0.6
+      },
+      {
+        "created_at": "2026-06-02T00:00:00",
+        "id": "edge:ac803179d2934d2cf5aa254e",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "doc:retrieval-spec",
+          "metadata": {
+            "ext": ".pdf",
+            "filename": "retrieval-spec.pdf"
+          },
+          "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+          "title": "Retrieval specification",
+          "type": "Document"
+        },
+        "target": {
+          "id": "concept:ranking",
+          "metadata": {},
+          "summary": "Ranking orders candidates so the best answer is first.",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.45
+      },
+      {
+        "created_at": "2026-06-03T00:00:00",
+        "id": "edge:5b5a7ccf39a15b042eb7f323",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "concept:retrieval",
+          "metadata": {},
+          "summary": "Retrieval is the act of finding the right memory for a question.",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        "target": {
+          "id": "concept:ranking",
+          "metadata": {},
+          "summary": "Ranking orders candidates so the best answer is first.",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.4
+      },
+      {
+        "created_at": "2026-06-04T00:00:00",
+        "id": "edge:7f22f14e6b87e9087ad6cfcf",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "file:ranking-notes",
+          "metadata": {
+            "ext": ".md",
+            "filename": "ranking-notes.md"
+          },
+          "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+          "title": "ranking-notes.md",
+          "type": "File"
+        },
+        "target": {
+          "id": "dec:fusion-alpha",
+          "metadata": {
+            "category": "retrieval",
+            "owner": "jiwon"
+          },
+          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        "type": "MENTIONS",
+        "weight": 0.35
+      },
+      {
+        "created_at": "2026-06-05T00:00:00",
+        "id": "edge:17137d757ca2934c0c9f13ac",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "code:hybrid-search",
+          "metadata": {
+            "ext": ".py",
+            "filename": "hybrid.py"
+          },
+          "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+          "title": "hybrid.py",
+          "type": "CodeFile"
+        },
+        "target": {
+          "id": "file:ranking-notes",
+          "metadata": {
+            "ext": ".md",
+            "filename": "ranking-notes.md"
+          },
+          "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+          "title": "ranking-notes.md",
+          "type": "File"
+        },
+        "type": "MENTIONS",
+        "weight": 0.3
+      }
+    ]
+  },
+  "spec": {
+    "key": "by_query_en",
+    "query": "ranking"
+  },
+  "suite": "relationship"
+}

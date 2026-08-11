@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.4.0 — Rust Foundation**.
+Current release: **11.5.0 — Rust Complete**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -140,5 +140,1068 @@
       "top_k": 2
     }
   ],
-  "store": "parity_store.sqlite"
+  "store": "parity_store.sqlite",
+  "suites": {
+    "context_assemble": [
+      {
+        "artifacts": [
+          {
+            "at": "2026-07-20T09:00:00",
+            "path": "notes/ranking.md",
+            "run_id": "run-1"
+          },
+          {
+            "path": "notes/onboarding.md",
+            "run_id": "run-2"
+          },
+          {
+            "at": "2026-07-20T09:00:01",
+            "path": ""
+          },
+          "not-a-dict",
+          {
+            "at": null,
+            "path": "out/file-0.md",
+            "run_id": "r0"
+          },
+          {
+            "at": null,
+            "path": "out/file-1.md",
+            "run_id": "r1"
+          },
+          {
+            "at": null,
+            "path": "out/file-2.md",
+            "run_id": "r2"
+          },
+          {
+            "at": null,
+            "path": "out/file-3.md",
+            "run_id": "r3"
+          },
+          {
+            "at": null,
+            "path": "out/file-4.md",
+            "run_id": "r4"
+          },
+          {
+            "at": null,
+            "path": "out/file-5.md",
+            "run_id": "r5"
+          },
+          {
+            "at": null,
+            "path": "out/file-6.md",
+            "run_id": "r6"
+          },
+          {
+            "at": null,
+            "path": "out/file-7.md",
+            "run_id": "r7"
+          },
+          {
+            "at": null,
+            "path": "out/file-8.md",
+            "run_id": "r8"
+          },
+          {
+            "at": null,
+            "path": "out/file-9.md",
+            "run_id": "r9"
+          }
+        ],
+        "key": "all_seams",
+        "memories": {
+          "results": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91,
+              "snippet": "답변은 한국어로",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0,
+              "snippet": "",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-3",
+              "kind": "decision",
+              "score": 0.4,
+              "snippet": "ranking keeps alpha fusion",
+              "source": "personal"
+            },
+            {
+              "id": "mem-4",
+              "kind": "fact",
+              "score": 0.3,
+              "snippet": "온보딩은 다섯 걸음",
+              "source": "workspace"
+            }
+          ]
+        },
+        "notes": "정원 노트: 랭킹은 alpha 융합을 유지한다.",
+        "query": "회의 결정 사항",
+        "recent": {
+          "limit": 4
+        }
+      },
+      {
+        "key": "knowledge_only",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "no_seams",
+        "knowledge": false,
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "memories_only",
+        "knowledge": false,
+        "memories": {
+          "results": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91,
+              "snippet": "답변은 한국어로",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0,
+              "snippet": "",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-3",
+              "kind": "decision",
+              "score": 0.4,
+              "snippet": "ranking keeps alpha fusion",
+              "source": "personal"
+            },
+            {
+              "id": "mem-4",
+              "kind": "fact",
+              "score": 0.3,
+              "snippet": "온보딩은 다섯 걸음",
+              "source": "workspace"
+            }
+          ]
+        },
+        "memory_limit": 2,
+        "query": "온보딩"
+      },
+      {
+        "artifacts": [
+          {
+            "at": "2026-07-20T09:00:00",
+            "path": "notes/ranking.md",
+            "run_id": "run-1"
+          },
+          {
+            "path": "notes/onboarding.md",
+            "run_id": "run-2"
+          },
+          {
+            "at": "2026-07-20T09:00:01",
+            "path": ""
+          },
+          "not-a-dict",
+          {
+            "at": null,
+            "path": "out/file-0.md",
+            "run_id": "r0"
+          },
+          {
+            "at": null,
+            "path": "out/file-1.md",
+            "run_id": "r1"
+          },
+          {
+            "at": null,
+            "path": "out/file-2.md",
+            "run_id": "r2"
+          },
+          {
+            "at": null,
+            "path": "out/file-3.md",
+            "run_id": "r3"
+          },
+          {
+            "at": null,
+            "path": "out/file-4.md",
+            "run_id": "r4"
+          },
+          {
+            "at": null,
+            "path": "out/file-5.md",
+            "run_id": "r5"
+          },
+          {
+            "at": null,
+            "path": "out/file-6.md",
+            "run_id": "r6"
+          },
+          {
+            "at": null,
+            "path": "out/file-7.md",
+            "run_id": "r7"
+          },
+          {
+            "at": null,
+            "path": "out/file-8.md",
+            "run_id": "r8"
+          },
+          {
+            "at": null,
+            "path": "out/file-9.md",
+            "run_id": "r9"
+          }
+        ],
+        "key": "artifacts_only",
+        "knowledge": false,
+        "query": "온보딩"
+      },
+      {
+        "key": "notes_blank",
+        "knowledge": false,
+        "notes": "   ",
+        "query": "온보딩"
+      },
+      {
+        "key": "recent_conversation",
+        "knowledge": false,
+        "query": "온보딩",
+        "recent": {
+          "conversation_id": "conv-a",
+          "limit": 10
+        }
+      },
+      {
+        "key": "recent_personal_workspace",
+        "knowledge": false,
+        "query": "온보딩",
+        "recent": {
+          "limit": 6,
+          "workspace_id": "personal"
+        }
+      },
+      {
+        "key": "recent_user_scoped",
+        "knowledge": false,
+        "query": "온보딩",
+        "recent": {
+          "limit": 5,
+          "user_email": "jiwon@lattice.ai"
+        }
+      },
+      {
+        "artifacts": [
+          {
+            "at": "2026-07-20T09:00:00",
+            "path": "notes/ranking.md",
+            "run_id": "run-1"
+          },
+          {
+            "path": "notes/onboarding.md",
+            "run_id": "run-2"
+          },
+          {
+            "at": "2026-07-20T09:00:01",
+            "path": ""
+          },
+          "not-a-dict",
+          {
+            "at": null,
+            "path": "out/file-0.md",
+            "run_id": "r0"
+          },
+          {
+            "at": null,
+            "path": "out/file-1.md",
+            "run_id": "r1"
+          },
+          {
+            "at": null,
+            "path": "out/file-2.md",
+            "run_id": "r2"
+          },
+          {
+            "at": null,
+            "path": "out/file-3.md",
+            "run_id": "r3"
+          },
+          {
+            "at": null,
+            "path": "out/file-4.md",
+            "run_id": "r4"
+          },
+          {
+            "at": null,
+            "path": "out/file-5.md",
+            "run_id": "r5"
+          },
+          {
+            "at": null,
+            "path": "out/file-6.md",
+            "run_id": "r6"
+          },
+          {
+            "at": null,
+            "path": "out/file-7.md",
+            "run_id": "r7"
+          },
+          {
+            "at": null,
+            "path": "out/file-8.md",
+            "run_id": "r8"
+          },
+          {
+            "at": null,
+            "path": "out/file-9.md",
+            "run_id": "r9"
+          }
+        ],
+        "budget": 20,
+        "key": "budget_tiny",
+        "memories": {
+          "results": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91,
+              "snippet": "답변은 한국어로",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0,
+              "snippet": "",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-3",
+              "kind": "decision",
+              "score": 0.4,
+              "snippet": "ranking keeps alpha fusion",
+              "source": "personal"
+            },
+            {
+              "id": "mem-4",
+              "kind": "fact",
+              "score": 0.3,
+              "snippet": "온보딩은 다섯 걸음",
+              "source": "workspace"
+            }
+          ]
+        },
+        "notes": "정원 노트: 랭킹은 alpha 융합을 유지한다.",
+        "query": "회의 결정 사항",
+        "recent": {
+          "limit": 4
+        }
+      },
+      {
+        "artifacts": [
+          {
+            "at": "2026-07-20T09:00:00",
+            "path": "notes/ranking.md",
+            "run_id": "run-1"
+          },
+          {
+            "path": "notes/onboarding.md",
+            "run_id": "run-2"
+          },
+          {
+            "at": "2026-07-20T09:00:01",
+            "path": ""
+          },
+          "not-a-dict",
+          {
+            "at": null,
+            "path": "out/file-0.md",
+            "run_id": "r0"
+          },
+          {
+            "at": null,
+            "path": "out/file-1.md",
+            "run_id": "r1"
+          },
+          {
+            "at": null,
+            "path": "out/file-2.md",
+            "run_id": "r2"
+          },
+          {
+            "at": null,
+            "path": "out/file-3.md",
+            "run_id": "r3"
+          },
+          {
+            "at": null,
+            "path": "out/file-4.md",
+            "run_id": "r4"
+          },
+          {
+            "at": null,
+            "path": "out/file-5.md",
+            "run_id": "r5"
+          },
+          {
+            "at": null,
+            "path": "out/file-6.md",
+            "run_id": "r6"
+          },
+          {
+            "at": null,
+            "path": "out/file-7.md",
+            "run_id": "r7"
+          },
+          {
+            "at": null,
+            "path": "out/file-8.md",
+            "run_id": "r8"
+          },
+          {
+            "at": null,
+            "path": "out/file-9.md",
+            "run_id": "r9"
+          }
+        ],
+        "budget": 1,
+        "key": "budget_one",
+        "memories": {
+          "results": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91,
+              "snippet": "답변은 한국어로",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0,
+              "snippet": "",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-3",
+              "kind": "decision",
+              "score": 0.4,
+              "snippet": "ranking keeps alpha fusion",
+              "source": "personal"
+            },
+            {
+              "id": "mem-4",
+              "kind": "fact",
+              "score": 0.3,
+              "snippet": "온보딩은 다섯 걸음",
+              "source": "workspace"
+            }
+          ]
+        },
+        "notes": "노트",
+        "query": "회의 결정 사항",
+        "recent": {
+          "limit": 4
+        }
+      },
+      {
+        "budget": 0,
+        "key": "budget_zero",
+        "memories": {
+          "results": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91,
+              "snippet": "답변은 한국어로",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0,
+              "snippet": "",
+              "source": "workspace"
+            },
+            {
+              "id": "mem-3",
+              "kind": "decision",
+              "score": 0.4,
+              "snippet": "ranking keeps alpha fusion",
+              "source": "personal"
+            },
+            {
+              "id": "mem-4",
+              "kind": "fact",
+              "score": 0.3,
+              "snippet": "온보딩은 다섯 걸음",
+              "source": "workspace"
+            }
+          ]
+        },
+        "notes": "노트",
+        "query": "회의 결정 사항"
+      },
+      {
+        "key": "knowledge_limit_one",
+        "knowledge_limit": 1,
+        "query": "hybrid retrieval ranking"
+      }
+    ],
+    "conversation_messages": [
+      {
+        "conversation_id": "conv-a",
+        "key": "conv_a"
+      },
+      {
+        "conversation_id": "legacy-previous-history",
+        "key": "legacy_bucket"
+      },
+      {
+        "conversation_id": "nope",
+        "key": "missing"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "conversation_id": "conv-a",
+        "key": "scoped_alpha_strict",
+        "legacy": false
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "conversation_id": "legacy-previous-history",
+        "key": "legacy_bucket_scoped",
+        "legacy": false
+      }
+    ],
+    "conversations": [
+      {
+        "key": "all"
+      },
+      {
+        "key": "user_jiwon",
+        "user_email": "jiwon@lattice.ai"
+      },
+      {
+        "key": "user_jiwon_strict",
+        "legacy": false,
+        "user_email": "jiwon@lattice.ai"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "ws_alpha_strict",
+        "legacy": false
+      },
+      {
+        "allowed": [
+          "ws-beta"
+        ],
+        "key": "ws_beta_strict",
+        "legacy": false
+      },
+      {
+        "allowed": [],
+        "key": "ws_empty_strict",
+        "legacy": false
+      }
+    ],
+    "graph_search": [
+      {
+        "key": "en_fact",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "ko_fact",
+        "query": "회의 결정 사항"
+      },
+      {
+        "key": "person",
+        "query": "who owns the onboarding checklist"
+      },
+      {
+        "key": "code",
+        "query": "빌드 실패 원인"
+      },
+      {
+        "expand_depth": 0,
+        "key": "expand0",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "expand_depth": 3,
+        "key": "expand3",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "expand_depth": 9,
+        "key": "expand_clamp",
+        "query": "회의 결정 사항"
+      },
+      {
+        "key": "limit_small",
+        "limit": 3,
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "limit_over",
+        "limit": 500,
+        "query": "회의 결정 사항"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha_legacy",
+        "legacy": true,
+        "query": "회의 결정 사항"
+      },
+      {
+        "allowed": [],
+        "key": "scoped_empty",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "no_hit",
+        "query": "zzqq wumpus nonsense"
+      },
+      {
+        "key": "empty_query",
+        "query": ""
+      }
+    ],
+    "history": [
+      {
+        "key": "all"
+      },
+      {
+        "key": "limit_two",
+        "limit": 2
+      },
+      {
+        "key": "limit_zero",
+        "limit": 0
+      },
+      {
+        "conversation_id": "conv-a",
+        "key": "conv_a"
+      },
+      {
+        "conversation_id": "nope",
+        "key": "conv_missing"
+      },
+      {
+        "conversation_id": "",
+        "key": "conv_null"
+      },
+      {
+        "key": "user_jiwon",
+        "user_email": "jiwon@lattice.ai"
+      },
+      {
+        "key": "user_jiwon_strict",
+        "legacy": false,
+        "user_email": "jiwon@lattice.ai"
+      },
+      {
+        "key": "user_unknown",
+        "user_email": "ghost@lattice.ai"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "ws_alpha"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "ws_alpha_strict",
+        "legacy": false
+      },
+      {
+        "allowed": [
+          "ws-alpha",
+          "ws-beta"
+        ],
+        "key": "ws_both_strict",
+        "legacy": false
+      },
+      {
+        "allowed": [],
+        "key": "ws_empty_legacy"
+      },
+      {
+        "allowed": [],
+        "key": "ws_empty_strict",
+        "legacy": false
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "user_and_ws",
+        "legacy": false,
+        "user_email": "jiwon@lattice.ai"
+      },
+      {
+        "conversation_id": "conv-a",
+        "key": "conv_and_user",
+        "legacy": false,
+        "user_email": "jiwon@lattice.ai"
+      },
+      {
+        "allowed": [
+          ""
+        ],
+        "key": "ws_blank_only",
+        "legacy": false
+      }
+    ],
+    "history_search": [
+      {
+        "key": "ko_hit",
+        "query": "회의"
+      },
+      {
+        "key": "ko_partial",
+        "query": "체크리스트"
+      },
+      {
+        "key": "en_hit",
+        "query": "ranking"
+      },
+      {
+        "key": "case_insensitive",
+        "query": "RANKING"
+      },
+      {
+        "key": "blank",
+        "query": "   "
+      },
+      {
+        "key": "no_hit",
+        "query": "zzqq"
+      },
+      {
+        "key": "limit_one",
+        "limit": 1,
+        "query": "ranking"
+      },
+      {
+        "allowed": [
+          "ws-beta"
+        ],
+        "key": "scoped_strict",
+        "legacy": false,
+        "query": "ranking"
+      }
+    ],
+    "relationship": [
+      {
+        "key": "all"
+      },
+      {
+        "key": "by_type_mention",
+        "relationship_type": "mention"
+      },
+      {
+        "key": "by_type_contains",
+        "relationship_type": "CONTAINS"
+      },
+      {
+        "key": "by_type_unknown",
+        "relationship_type": "relates_to"
+      },
+      {
+        "key": "by_node",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "key": "by_query_ko",
+        "query": "회의"
+      },
+      {
+        "key": "by_query_en",
+        "query": "ranking"
+      },
+      {
+        "key": "by_query_meta",
+        "query": "lattice"
+      },
+      {
+        "key": "combined",
+        "node_id": "dec:fusion-alpha",
+        "query": "retrieval",
+        "relationship_type": "mention"
+      },
+      {
+        "key": "limit_one",
+        "limit": 1
+      },
+      {
+        "key": "limit_zero",
+        "limit": 0
+      },
+      {
+        "key": "limit_over",
+        "limit": 500
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha_legacy",
+        "legacy": true
+      },
+      {
+        "allowed": [
+          "ws-beta"
+        ],
+        "key": "scoped_beta"
+      },
+      {
+        "allowed": [],
+        "key": "scoped_empty"
+      },
+      {
+        "key": "no_hit",
+        "query": "zzqq wumpus"
+      }
+    ],
+    "service_hybrid": [
+      {
+        "key": "en_fact",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "ko_recency",
+        "query": "지난주 회의 기록"
+      },
+      {
+        "key": "en_code",
+        "query": "vector_search() returns"
+      },
+      {
+        "key": "ko_person",
+        "query": "담당자 누구"
+      },
+      {
+        "key": "en_filler",
+        "query": "  what is   the retrieval specification please  "
+      },
+      {
+        "key": "pinned_recency",
+        "query": "지난주 회의 기록",
+        "weights": {
+          "graph": 0.2,
+          "keyword": 0.5,
+          "vector": 0.3
+        }
+      },
+      {
+        "key": "pinned_partial",
+        "query": "hybrid retrieval ranking",
+        "weights": {
+          "graph": 1.0
+        }
+      },
+      {
+        "key": "pinned_zero",
+        "query": "회의 결정 사항",
+        "weights": {
+          "graph": 0.0,
+          "keyword": 0.0,
+          "vector": 0.0
+        }
+      },
+      {
+        "key": "limit_small",
+        "limit": 3,
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "limit_over",
+        "limit": 500,
+        "query": "회의 결정 사항"
+      },
+      {
+        "graph_limit": 5,
+        "key": "channel_limits",
+        "keyword_limit": 5,
+        "query": "hybrid retrieval ranking",
+        "vector_limit": 5
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha_legacy",
+        "legacy": true,
+        "query": "회의 결정 사항"
+      },
+      {
+        "allowed": [],
+        "key": "scoped_empty",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "no_hit",
+        "query": "zzqq wumpus nonsense"
+      },
+      {
+        "key": "empty_query",
+        "query": ""
+      }
+    ],
+    "traverse": [
+      {
+        "depth": 0,
+        "key": "hub_d0",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 1,
+        "key": "hub_d1",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 2,
+        "key": "hub_d2",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 3,
+        "key": "hub_d3",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 9,
+        "key": "hub_d9",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": -1,
+        "key": "hub_dneg",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 2,
+        "key": "leaf_d2",
+        "node_id": "code:hybrid-search"
+      },
+      {
+        "depth": 2,
+        "key": "isolated",
+        "node_id": "tie:c"
+      },
+      {
+        "depth": 3,
+        "key": "limit_two",
+        "limit": 2,
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 3,
+        "key": "limit_five",
+        "limit": 5,
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 2,
+        "key": "limit_zero",
+        "limit": 0,
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 2,
+        "key": "limit_over",
+        "limit": 900,
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "depth": 2,
+        "key": "org_hub",
+        "node_id": "org:lattice"
+      },
+      {
+        "depth": 2,
+        "key": "tie_pair",
+        "node_id": "tie:a"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "depth": 2,
+        "key": "scoped_alpha",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "depth": 2,
+        "key": "scoped_alpha_legacy",
+        "legacy": true,
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "allowed": [
+          "ws-beta"
+        ],
+        "key": "scoped_seed_hidden",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "allowed": [],
+        "key": "scoped_empty",
+        "node_id": "dec:fusion-alpha"
+      },
+      {
+        "key": "empty_id",
+        "node_id": ""
+      },
+      {
+        "key": "missing_seed",
+        "node_id": "nope:missing"
+      }
+    ]
+  }
 }

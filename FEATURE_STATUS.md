@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v11.4.0)
+# Lattice AI Feature Status (v11.5.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **11.4.0 — Rust Foundation**.
+Current release: **11.5.0 — Rust Complete**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 9.0.0 and later in `RELEASE.md` and
@@ -105,7 +105,7 @@ work off the loop.
 | Temporal Knowledge | Current | Nodes and edges carry `valid_from` / `valid_to` / `superseded_by`, added by an idempotent additive migration on an existing Brain (NULL means "since `created_at`" / "still true" — never an empty string, and no backfill). `store.as_of(timestamp)` returns the graph slice that was valid at that instant, and `neighbors(..., as_of=…)` takes the same slice; both default to today's behaviour when the argument is omitted. |
 | Proactive Synthesis | Current | The Brain notices on its own and asks rather than acts: contradicting memories, recurring-but-unnamed topics, always-together-never-linked pairs, and decayed episodic fragments all arrive as Review Center proposals (`kg_change_digest`) with a plain-language explanation. Deterministic — token overlap and clock arithmetic, no model needed; a model may only reword the weekly brief. Runs event-driven: the ingestion pipeline's audit seam hands every landed ingest to `BrainIntelligenceService.note_ingest`, and a pass fires every `LATTICEAI_SYNTHESIS_THRESHOLD` (25) genuinely new nodes — duplicates do not count, and a trigger that fails never fails the ingest. **Every write goes through approval**: `POST /api/brain/contradictions/resolve` approves the proposal first and only then stamps the pair's validity windows (keep / replace / keep both with time ranges), and the same pair is never proposed twice while it is still waiting. The *automatic* trigger is **toggleable from the home dock's 기능 drawer** since 11.2.0 (`LATTICEAI_SYNTHESIS`, default on); turning it off stops the Brain deciding *when*, and an explicitly requested run still works. |
 | Memory Decay | Current | `GET /api/brain/importance` scores each memory by use (ingested access counts, else the store's own read counter) plus recency decay, and names the weakest *episodic* fragments only — a decayed Decision or Document is reported as stale knowledge, never folded away. `/api/brain/quality-report` carries the same numbers plus a `tidying` flag so "the Brain is tidying up" is visible rather than a background surprise. |
-| Rust Foundation (Phase 1) | Current (opt-in host) | The `rust/` cargo workspace holds three crates: `lattice-core` (read-only SQLite layer over the same `knowledge_graph.sqlite` + a bit-for-bit port of the hash embedder), `lattice-retrieval` (native hybrid/keyword/vector engines proven against committed Python goldens — 75/75 exact, zero epsilon — with a bidirectional contract: `tests/unit/test_rust_parity_contract.py` re-runs Python against the same goldens so neither side can drift silently), and `lattice-host` (worker supervisor with HTTP `/health` gating, crash auto-restart with backoff, graceful SIGTERM, unified port selection, plus a loopback-only axum gateway serving the `/host/` status routes, native `/rust/search/{hybrid,keyword,vector}`, and a streaming reverse proxy for everything else). The Tauri desktop shell now rides the supervisor (its five IPC commands kept their exact contracts). The gateway front-door is **opt-in** (`lattice-host` binary); default entry paths are unchanged. Roadmap: docs/v11.4.0_RUST_FOUNDATION_PLAN.md. |
+| Rust Foundation (Phases 1-4) | Current (desktop front door) | The `rust/` cargo workspace holds six crates. **Phase 1 (11.4.0)**: `lattice-core` (read-only SQLite layer over the same `knowledge_graph.sqlite` + a bit-for-bit port of the hash embedder), `lattice-retrieval` (native hybrid/keyword/vector engines proven against committed Python goldens, zero epsilon, with a bidirectional contract: `tests/unit/test_rust_parity_contract.py` re-runs Python against the same goldens so neither side can drift silently), and `lattice-host` (worker supervisor with HTTP `/health` gating, crash auto-restart with backoff, graceful SIGTERM, unified port selection, plus a loopback-only axum gateway serving the `/host/` status routes, native `/rust/search/{hybrid,keyword,vector}`, and a streaming reverse proxy for everything else). **Phases 2-4 (11.5.0)**: the retrieval crate grew the service-layer three-channel fusion, the KG relationship/traversal reads, the durable history reads and the context assembler; `lattice-ingest` ported typed chunking, the hash conventions, the PDF page arithmetic, the folder filter chain and the polling watcher; `lattice-jobs` added the scheduler the embed queue never had; `lattice-agent` ported the permission kernel and the `run_command` validator and executes only read-only allow-listed commands. The gateway mounts all four router factories ahead of its streaming reverse proxy, and the **desktop now runs that gateway as its front door by default** — worker on an internal port behind it, `LATTICEAI_DESKTOP_DIRECT=1` / `LATTICEAI_DESKTOP_BACKEND_ORIGIN` / `LATTICEAI_DESKTOP_NO_BACKEND` preserved as escape hatches, the five IPC commands unchanged (new status fields are additive). Four golden families hold both runtimes to the same files: retrieval (191), chunking, the agent kernel (2,358 decisions), and context/history. **Honest boundaries** (plan §4c): Python still serves every product surface and the native routes are a proven alternative path, not a replacement; the document parser matrix, embedding production, LLM inference, mutating tool execution and all graph writes stay in the worker by design (single writer / AI Worker); and the Rust port of the agent loop's orchestration is deliberately not attempted while the twelve `AgentDeps` seams are unproven — the decision kernel is locked, the loop is not. Roadmaps: docs/v11.4.0_RUST_FOUNDATION_PLAN.md, docs/v11.5.0_RUST_COMPLETE_PLAN.md. |
 | Brain Chronicle (연대기) | Current | A seventh primary screen (`#/chronicle`, alias `#/timeline`) that turns the Brain's growth into a timeline. Read-only over existing tables — `GET /api/chronicle/overview` (day-bucketed totals + sparse activity series in the app timezone), `GET /api/chronicle/day/{date}` (the day's story: sources, new concepts, conversations, changed facts — group lists capped at 200 with true totals in `counts`), `GET /api/chronicle/as-of` (graph slice stats + top entities at any past instant, via `store.as_of()`). The UI is a hand-rolled SVG growth curve with a keyboard-operable time handle (ARIA slider), a week×weekday activity heatmap, plain-language day cards deep-linking into memory search / graph / conversations, and a rewind panel ("그때 중요했던 개념"). First surface to expose the 11.1.0 temporal columns. No writes, no schema change, no model calls; an empty Brain shows an honest empty state. |
 | Hybrid Recall | Current | /api/memory/recall and the graph-layer `hybrid_search` blend lexical evidence with vector similarity (hybrid-evidence/v2 gate) with workspace-scoped vector hits and honest lexical fallback when the vector tier fails. Chat consumes a `context_quality` signal so grounding reflects how strong the retrieved context actually is. |
 | Folder Ingestion | Current | `ingest_folder` indexes a chosen local folder with `.latticeignore` filtering; long runs execute as resumable background jobs surfaced through `/api/ingestion/jobs` rather than a single blocking request. |
@@ -177,13 +177,23 @@ work off the loop.
 - **A long download no longer freezes the server, but it is still not
   cancellable.** Closing the tab mid-pull leaves the pull running to completion
   on its worker thread.
-- **Nothing in the server drives the background embed queue yet.** The queue is
-  durable and drains correctly, but the only caller is
-  `IngestionPipeline.drain_vector_queue()`. In the normal case this changes
-  nothing — the inline sync embeds during the ingest, so new content is
-  searchable immediately — and the queue exists for the case where that sync
-  fails. Until a scheduler calls it, a failed embedding is retried when someone
-  asks for a tick, not on a timer.
+- **The background embed queue now has a driver, with limits worth naming.**
+  11.5.0 closed the gap this list carried since 11.1.0. The server exposes
+  `POST /api/index/drain` (`require_user` plus the workspace gate; `limit`
+  1-100, default 25) and `GET /api/index/queue`, and the Rust scheduler in
+  `lattice-jobs` calls the drain every 60s by default
+  (`LATTICEAI_JOBS_INTERVAL`, floored at 5s, backing off to 10 minutes after
+  consecutive failures and snapping back on the first success). The schedule is
+  visible and forceable through the host's `host/jobs` and `host/jobs/tick`
+  routes. What that does *not* mean: the backlog is machine-wide (one SQLite
+  queue serves every workspace, so a drain embeds whatever is owed and the
+  counts are totals for this Brain); the timer only exists while a host process
+  is running it, so a worker started on its own still has the endpoint and no
+  clock; resuming interrupted ingestion jobs is opt-in
+  (`LATTICEAI_JOBS_AUTORESUME=1`) and takes at most one partial-or-failed job
+  with work left per tick; and on an install with authentication switched on an
+  unauthenticated tick answers 401, which surfaces verbatim in the schedule's
+  `last_tick.error` rather than passing as a quiet success.
 - **The HNSW index is rebuilt whole, never appended to.** The `.hnsw` sidecar is
   fingerprinted on the row count and the newest `indexed_at`, so *any* write to
   `vector_embeddings` invalidates it and the next search pays a full rebuild

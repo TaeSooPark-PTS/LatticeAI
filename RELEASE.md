@@ -13,6 +13,31 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.5.0 — Rust Complete (2026-08-11)
+
+Rust 로드맵 Phase 2·3·4 완결 — 검증된 조각만, Python은 AI Worker로.
+
+- **Front-door 기본화(데스크톱)**: Tauri = 수퍼바이저+게이트웨이 토폴로지,
+  포트 결박 CSRF는 env 주입으로 해소(실워커 라이브 증명 200/403),
+  안전 밸브 3종, SSE `X-Accel-Buffering` 보강.
+- **네이티브 확장**: 3채널 service-hybrid·graph 읽기 3종·히스토리
+  전 읽기·Context Assembler — **패리티 191/191 완전 일치**(계약 199
+  양방향); typed chunking 42케이스/332청크 + **뮤테이션 26/26** +
+  폴링 워처(lattice-ingest, 쓰기는 워커 위임); 권한 커널 **판정
+  2,452건 완전 일치** + 읽기 전용 명령 네이티브 실행(lattice-agent).
+- **스케줄러가 갭을 닫음**: `POST /api/index/drain`(100% 커버) +
+  lattice-jobs 60s 타이머·백오프·`/host/jobs` — "아무도 큐를 몰지
+  않는다"는 한계 문구 삭제.
+- 플로어: **6,861 + 1,761 테스트 · 100.00% · Rust 534**. 잔여는
+  §4c(루프 이식)만, 사유 명시.
+
+빌드 산출물은 `dist/ltcai-11.5.0-py3-none-any.whl`,
+`dist/ltcai-11.5.0.tar.gz`, `ltcai-11.5.0.tgz`, `dist/ltcai-11.5.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.5.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.5.0.md](RELEASE_NOTES_v11.5.0.md)
+
 ## v11.4.0 — Rust Foundation (2026-08-11)
 
 Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각부터.

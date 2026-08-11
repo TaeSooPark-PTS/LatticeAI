@@ -1,0 +1,96 @@
+{
+  "chunk_count": 5,
+  "chunks": [
+    {
+      "chunk_id": "chunk:acabf3fc23827b64e1915715",
+      "index": 0,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 0,
+        "strategy": "plain"
+      },
+      "text": "abcdefg"
+    },
+    {
+      "chunk_id": "chunk:ce61eea32d38b37b583b9f3a",
+      "index": 1,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 7,
+        "strategy": "plain"
+      },
+      "text": "hijklmn"
+    },
+    {
+      "chunk_id": "chunk:5fe77835e8900a66aa313a2a",
+      "index": 2,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 14,
+        "strategy": "plain"
+      },
+      "text": "opqrstu"
+    },
+    {
+      "chunk_id": "chunk:ba96a6ba57d10ff8c34dea84",
+      "index": 3,
+      "len_bytes": 7,
+      "len_chars": 7,
+      "meta": {
+        "heading_path": null,
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 21,
+        "strategy": "plain"
+      },
+      "text": "vwxyz01"
+    },
+    {
+      "chunk_id": "chunk:3caf3c51d771df73bf781d5e",
+      "index": 4,
+      "len_bytes": 2,
+      "len_chars": 2,
+      "meta": {
+        "heading_path": null,
+        "start_char": 28,
+        "strategy": "plain"
+      },
+      "meta_fields": {
+        "start_char": 28,
+        "strategy": "plain"
+      },
+      "text": "23"
+    }
+  ],
+  "cleaned_len_bytes": 30,
+  "cleaned_len_chars": 30,
+  "content_type": "",
+  "filename": "n",
+  "key": "plain_overlap_negative",
+  "overlap": -4,
+  "requested_strategy": null,
+  "size": 7,
+  "source_node_id": "file:plain_overlap_negative",
+  "strategy": "plain",
+  "text": "abcdefghijklmnopqrstuvwxyz0123"
+}

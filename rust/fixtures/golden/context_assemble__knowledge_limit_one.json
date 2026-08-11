@@ -1,0 +1,36 @@
+{
+  "key": "knowledge_limit_one",
+  "result": {
+    "approx_tokens": 35,
+    "text": "[Knowledge]\n- Hybrid retrieval fusion stays alpha weighted: We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [
+        {
+          "approx_tokens": 35,
+          "name": "Knowledge",
+          "provenance": [
+            {
+              "id": "dec:fusion-alpha",
+              "score": 0.811925,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            }
+          ],
+          "source": "knowledge",
+          "truncated": false
+        }
+      ],
+      "used_approx_tokens": 35
+    }
+  },
+  "spec": {
+    "key": "knowledge_limit_one",
+    "knowledge_limit": 1,
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "context_assemble"
+}

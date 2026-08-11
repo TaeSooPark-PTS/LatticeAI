@@ -1,0 +1,133 @@
+{
+  "key": "artifacts_only",
+  "result": {
+    "approx_tokens": 48,
+    "text": "[Files created in this conversation]\n- notes/ranking.md (2026-07-20T09:00:00)\n- notes/onboarding.md\n- out/file-0.md\n- out/file-1.md\n- out/file-2.md\n- out/file-3.md\n- out/file-4.md\n- out/file-5.md\n- out/file-6.md\n- out/file-7.md",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [
+        {
+          "approx_tokens": 48,
+          "name": "Files created in this conversation",
+          "provenance": [
+            {
+              "path": "notes/ranking.md",
+              "run_id": "run-1"
+            },
+            {
+              "path": "notes/onboarding.md",
+              "run_id": "run-2"
+            },
+            {
+              "path": "out/file-0.md",
+              "run_id": "r0"
+            },
+            {
+              "path": "out/file-1.md",
+              "run_id": "r1"
+            },
+            {
+              "path": "out/file-2.md",
+              "run_id": "r2"
+            },
+            {
+              "path": "out/file-3.md",
+              "run_id": "r3"
+            },
+            {
+              "path": "out/file-4.md",
+              "run_id": "r4"
+            },
+            {
+              "path": "out/file-5.md",
+              "run_id": "r5"
+            },
+            {
+              "path": "out/file-6.md",
+              "run_id": "r6"
+            },
+            {
+              "path": "out/file-7.md",
+              "run_id": "r7"
+            }
+          ],
+          "source": "artifacts",
+          "truncated": false
+        }
+      ],
+      "used_approx_tokens": 48
+    }
+  },
+  "spec": {
+    "artifacts": [
+      {
+        "at": "2026-07-20T09:00:00",
+        "path": "notes/ranking.md",
+        "run_id": "run-1"
+      },
+      {
+        "path": "notes/onboarding.md",
+        "run_id": "run-2"
+      },
+      {
+        "at": "2026-07-20T09:00:01",
+        "path": ""
+      },
+      "not-a-dict",
+      {
+        "at": null,
+        "path": "out/file-0.md",
+        "run_id": "r0"
+      },
+      {
+        "at": null,
+        "path": "out/file-1.md",
+        "run_id": "r1"
+      },
+      {
+        "at": null,
+        "path": "out/file-2.md",
+        "run_id": "r2"
+      },
+      {
+        "at": null,
+        "path": "out/file-3.md",
+        "run_id": "r3"
+      },
+      {
+        "at": null,
+        "path": "out/file-4.md",
+        "run_id": "r4"
+      },
+      {
+        "at": null,
+        "path": "out/file-5.md",
+        "run_id": "r5"
+      },
+      {
+        "at": null,
+        "path": "out/file-6.md",
+        "run_id": "r6"
+      },
+      {
+        "at": null,
+        "path": "out/file-7.md",
+        "run_id": "r7"
+      },
+      {
+        "at": null,
+        "path": "out/file-8.md",
+        "run_id": "r8"
+      },
+      {
+        "at": null,
+        "path": "out/file-9.md",
+        "run_id": "r9"
+      }
+    ],
+    "key": "artifacts_only",
+    "knowledge": false,
+    "query": "온보딩"
+  },
+  "suite": "context_assemble"
+}

@@ -1,0 +1,625 @@
+{
+  "key": "en_fact",
+  "result": {
+    "expand_depth": 1,
+    "matches": [
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:fd94b124b47e0ae02a04f890",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.8
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:56adf9267d30650da146f7da",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.9
+            }
+          }
+        ],
+        "id": "dec:fusion-alpha",
+        "item_type": "node",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 1,
+        "score": 1.0,
+        "source_scores": {
+          "graph": 1.0
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "task:parity-harness",
+        "item_type": "node",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 2,
+        "score": 0.5,
+        "source_scores": {
+          "graph": 0.5
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "meeting:weekly",
+              "id": "edge:805dbdc114935dd71cf9bb89",
+              "to": "dec:fusion-alpha",
+              "type": "DISCUSSES",
+              "weight": 0.95
+            }
+          }
+        ],
+        "id": "meeting:weekly",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "meeting:weekly",
+        "rank": 3,
+        "score": 0.45,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:ranking-notes",
+              "id": "edge:7f22f14e6b87e9087ad6cfcf",
+              "to": "dec:fusion-alpha",
+              "type": "MENTIONS",
+              "weight": 0.35
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "code:hybrid-search",
+              "id": "edge:17137d757ca2934c0c9f13ac",
+              "to": "file:ranking-notes",
+              "type": "MENTIONS",
+              "weight": 0.3
+            }
+          },
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "file:ranking-notes",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "node_id": "file:ranking-notes",
+        "rank": 4,
+        "score": 0.45,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:fd94b124b47e0ae02a04f890",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.8
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          },
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "concept:retrieval",
+              "id": "edge:5b5a7ccf39a15b042eb7f323",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.4
+            }
+          }
+        ],
+        "id": "concept:ranking",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:ranking",
+        "rank": 5,
+        "score": 0.45,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "dec:fusion-alpha",
+              "id": "edge:56adf9267d30650da146f7da",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.9
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "concept:retrieval",
+              "id": "edge:5b5a7ccf39a15b042eb7f323",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.4
+            }
+          },
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "concept:retrieval",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:retrieval",
+        "rank": 6,
+        "score": 0.45,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "code:hybrid-search",
+              "id": "edge:17137d757ca2934c0c9f13ac",
+              "to": "file:ranking-notes",
+              "type": "MENTIONS",
+              "weight": 0.3
+            }
+          }
+        ],
+        "id": "code:hybrid-search",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".py",
+          "filename": "hybrid.py"
+        },
+        "node_id": "code:hybrid-search",
+        "rank": 7,
+        "score": 0.333333,
+        "source_scores": {
+          "graph": 0.333333
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+        "title": "hybrid.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-08T09:30:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "sheet:metrics",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx"
+        },
+        "node_id": "sheet:metrics",
+        "rank": 8,
+        "score": 0.25,
+        "source_scores": {
+          "graph": 0.25
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "task:parity-harness",
+              "id": "edge:114efd07a566c6c3774cf8c6",
+              "to": "dec:rust-foundation",
+              "type": "MENTIONS",
+              "weight": 1.0
+            }
+          }
+        ],
+        "id": "dec:rust-foundation",
+        "item_type": "node",
+        "metadata": {
+          "category": "platform"
+        },
+        "node_id": "dec:rust-foundation",
+        "rank": 9,
+        "score": 0.225,
+        "source_scores": {
+          "graph": 0.225
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+        "title": "Rust 기반 검색 이관 결정",
+        "type": "Decision",
+        "updated_at": "2026-07-18T14:30:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "person:jiwon",
+              "id": "edge:22fe3b50b2c1aeaec62c9510",
+              "to": "task:parity-harness",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
+          }
+        ],
+        "id": "person:jiwon",
+        "item_type": "node",
+        "metadata": {
+          "role": "owner"
+        },
+        "node_id": "person:jiwon",
+        "rank": 10,
+        "score": 0.225,
+        "source_scores": {
+          "graph": 0.225
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person",
+        "updated_at": "2026-04-11T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "chunk:spec:2",
+        "item_type": "node",
+        "metadata": {
+          "index": 1,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 900
+        },
+        "node_id": "chunk:spec:2",
+        "rank": 11,
+        "score": 0.2,
+        "source_scores": {
+          "graph": 0.2
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
+        "title": "retrieval-spec.pdf chunk 2",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:02"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:retrieval-spec",
+              "id": "edge:ac803179d2934d2cf5aa254e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.45
+            }
+          }
+        ],
+        "id": "doc:retrieval-spec",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf"
+        },
+        "node_id": "doc:retrieval-spec",
+        "rank": 12,
+        "score": 0.142857,
+        "source_scores": {
+          "graph": 0.142857
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+        "title": "Retrieval specification",
+        "type": "Document",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "img:ocr-notes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "whiteboard-retrieval.png",
+          "ocr": true
+        },
+        "node_id": "img:ocr-notes",
+        "rank": 13,
+        "score": 0.125,
+        "source_scores": {
+          "graph": 0.125
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+        "title": "화이트보드 OCR 텍스트",
+        "type": "ImageText",
+        "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "img:whiteboard",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".png",
+          "filename": "whiteboard-retrieval.png"
+        },
+        "node_id": "img:whiteboard",
+        "rank": 14,
+        "score": 0.111111,
+        "source_scores": {
+          "graph": 0.111111
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Whiteboard photo from the retrieval design session.",
+        "title": "whiteboard-retrieval.png",
+        "type": "Image",
+        "updated_at": "2026-03-19T11:11:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "chunk:spec:1",
+        "item_type": "node",
+        "metadata": {
+          "heading_path": "Retrieval > Fusion",
+          "index": 0,
+          "page": 2,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 0
+        },
+        "node_id": "chunk:spec:1",
+        "rank": 15,
+        "score": 0.1,
+        "source_scores": {
+          "graph": 0.1
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "The lexical channel scores one over rank. The vector channel is max normalized before fusion.",
+        "title": "retrieval-spec.pdf chunk 1",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:01"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "error:timeout",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "error:timeout",
+        "rank": 16,
+        "score": 0.076923,
+        "source_scores": {
+          "graph": 0.076923
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "An error where the ranking took longer than the request budget.",
+        "title": "Search timeout",
+        "type": "Error",
+        "updated_at": "2026-03-04T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:handbook",
+              "id": "edge:925238c39c45c82b73435a65",
+              "to": "doc:retrieval-spec",
+              "type": "MENTIONS",
+              "weight": 0.1
+            }
+          }
+        ],
+        "id": "doc:handbook",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "source_node": "doc:handbook"
+        },
+        "node_id": "doc:handbook",
+        "rank": 17,
+        "score": 0.064286,
+        "source_scores": {
+          "graph": 0.064286
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "slide:fusion",
+              "id": "edge:26a7d16bbb4827c42215ad72",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.25
+            }
+          }
+        ],
+        "id": "slide:fusion",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "slide:fusion",
+        "rank": 18,
+        "score": 0.0375,
+        "source_scores": {
+          "graph": 0.0375
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      }
+    ],
+    "mode": "graph",
+    "query": "hybrid retrieval ranking"
+  },
+  "spec": {
+    "key": "en_fact",
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "graph_search"
+}

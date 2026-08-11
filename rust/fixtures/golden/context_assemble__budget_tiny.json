@@ -1,0 +1,269 @@
+{
+  "key": "budget_tiny",
+  "result": {
+    "approx_tokens": 20,
+    "text": "[User memories]\n- (preference) 답변은 한국어로\n- (memory) \n- (fact) 온보딩은 다섯 걸음\n\n[Files created in this conversation]\n- notes/ranking.md (2026",
+    "trace": {
+      "budget_approx_tokens": 20,
+      "sections": [
+        {
+          "approx_tokens": 14,
+          "name": "User memories",
+          "provenance": [
+            {
+              "id": "mem-1",
+              "kind": "preference",
+              "score": 0.91
+            },
+            {
+              "id": "mem-2",
+              "kind": null,
+              "score": 0.0
+            },
+            {
+              "id": "mem-4",
+              "kind": "fact",
+              "score": 0.3
+            }
+          ],
+          "source": "memory",
+          "truncated": false
+        },
+        {
+          "approx_tokens": 6,
+          "name": "Files created in this conversation",
+          "provenance": [
+            {
+              "path": "notes/ranking.md",
+              "run_id": "run-1"
+            },
+            {
+              "path": "notes/onboarding.md",
+              "run_id": "run-2"
+            },
+            {
+              "path": "out/file-0.md",
+              "run_id": "r0"
+            },
+            {
+              "path": "out/file-1.md",
+              "run_id": "r1"
+            },
+            {
+              "path": "out/file-2.md",
+              "run_id": "r2"
+            },
+            {
+              "path": "out/file-3.md",
+              "run_id": "r3"
+            },
+            {
+              "path": "out/file-4.md",
+              "run_id": "r4"
+            },
+            {
+              "path": "out/file-5.md",
+              "run_id": "r5"
+            },
+            {
+              "path": "out/file-6.md",
+              "run_id": "r6"
+            },
+            {
+              "path": "out/file-7.md",
+              "run_id": "r7"
+            }
+          ],
+          "source": "artifacts",
+          "truncated": true
+        },
+        {
+          "approx_tokens": 0,
+          "name": "Knowledge",
+          "provenance": [
+            {
+              "id": "img:ocr-notes",
+              "score": 1.0,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "chunk:handbook:2",
+              "score": 0.5,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "dec:rust-foundation",
+              "score": 0.333333,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "meeting:weekly",
+              "score": 0.22,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "doc:handbook",
+              "score": 0.180769,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            }
+          ],
+          "source": "knowledge",
+          "truncated": true
+        },
+        {
+          "approx_tokens": 0,
+          "name": "Garden notes",
+          "provenance": [
+            {
+              "included": true,
+              "source": "garden"
+            }
+          ],
+          "source": "notes",
+          "truncated": true
+        },
+        {
+          "approx_tokens": 0,
+          "name": "Recent conversation",
+          "provenance": [
+            {
+              "conversation_id": null,
+              "user_email": null
+            }
+          ],
+          "source": "recent_chat",
+          "truncated": true
+        }
+      ],
+      "used_approx_tokens": 20
+    }
+  },
+  "spec": {
+    "artifacts": [
+      {
+        "at": "2026-07-20T09:00:00",
+        "path": "notes/ranking.md",
+        "run_id": "run-1"
+      },
+      {
+        "path": "notes/onboarding.md",
+        "run_id": "run-2"
+      },
+      {
+        "at": "2026-07-20T09:00:01",
+        "path": ""
+      },
+      "not-a-dict",
+      {
+        "at": null,
+        "path": "out/file-0.md",
+        "run_id": "r0"
+      },
+      {
+        "at": null,
+        "path": "out/file-1.md",
+        "run_id": "r1"
+      },
+      {
+        "at": null,
+        "path": "out/file-2.md",
+        "run_id": "r2"
+      },
+      {
+        "at": null,
+        "path": "out/file-3.md",
+        "run_id": "r3"
+      },
+      {
+        "at": null,
+        "path": "out/file-4.md",
+        "run_id": "r4"
+      },
+      {
+        "at": null,
+        "path": "out/file-5.md",
+        "run_id": "r5"
+      },
+      {
+        "at": null,
+        "path": "out/file-6.md",
+        "run_id": "r6"
+      },
+      {
+        "at": null,
+        "path": "out/file-7.md",
+        "run_id": "r7"
+      },
+      {
+        "at": null,
+        "path": "out/file-8.md",
+        "run_id": "r8"
+      },
+      {
+        "at": null,
+        "path": "out/file-9.md",
+        "run_id": "r9"
+      }
+    ],
+    "budget": 20,
+    "key": "budget_tiny",
+    "memories": {
+      "results": [
+        {
+          "id": "mem-1",
+          "kind": "preference",
+          "score": 0.91,
+          "snippet": "답변은 한국어로",
+          "source": "workspace"
+        },
+        {
+          "id": "mem-2",
+          "kind": null,
+          "score": 0.0,
+          "snippet": "",
+          "source": "workspace"
+        },
+        {
+          "id": "mem-3",
+          "kind": "decision",
+          "score": 0.4,
+          "snippet": "ranking keeps alpha fusion",
+          "source": "personal"
+        },
+        {
+          "id": "mem-4",
+          "kind": "fact",
+          "score": 0.3,
+          "snippet": "온보딩은 다섯 걸음",
+          "source": "workspace"
+        }
+      ]
+    },
+    "notes": "정원 노트: 랭킹은 alpha 융합을 유지한다.",
+    "query": "회의 결정 사항",
+    "recent": {
+      "limit": 4
+    }
+  },
+  "suite": "context_assemble"
+}

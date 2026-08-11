@@ -133,6 +133,7 @@ MIGRATED_ROUTERS = [
     "latticeai/api/chat_intents.py",
     "latticeai/api/chronicle.py",
     "latticeai/api/features.py",
+    "latticeai/api/index_jobs.py",
     "latticeai/api/knowledge_graph.py",
     "latticeai/api/local_files.py",
     "latticeai/api/mcp.py",

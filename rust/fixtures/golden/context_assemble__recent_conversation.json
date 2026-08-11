@@ -1,0 +1,35 @@
+{
+  "key": "recent_conversation",
+  "result": {
+    "approx_tokens": 23,
+    "text": "[Recent conversation]\nuser (web): 온보딩 체크리스트 어떻게 시작해?\nassistant (web): 먼저 폴더를 연결하세요. 그다음 질문하면 됩니다.\nuser (web): 고마워",
+    "trace": {
+      "budget_approx_tokens": 2000,
+      "sections": [
+        {
+          "approx_tokens": 23,
+          "name": "Recent conversation",
+          "provenance": [
+            {
+              "conversation_id": null,
+              "user_email": null
+            }
+          ],
+          "source": "recent_chat",
+          "truncated": false
+        }
+      ],
+      "used_approx_tokens": 23
+    }
+  },
+  "spec": {
+    "key": "recent_conversation",
+    "knowledge": false,
+    "query": "온보딩",
+    "recent": {
+      "conversation_id": "conv-a",
+      "limit": 10
+    }
+  },
+  "suite": "context_assemble"
+}

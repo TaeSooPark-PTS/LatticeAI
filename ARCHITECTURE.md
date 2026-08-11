@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.4.0 — Rust Foundation**.
+Current release: **11.5.0 — Rust Complete**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -313,25 +313,31 @@ Important expectations:
 - keep API-specific HTTP errors at the route boundary and domain/model errors in
   services.
 
-## Rust Foundation (11.4.0)
+## Rust Foundation (11.4.0) / Rust Complete (11.5.0)
 
-`rust/` is a cargo workspace of three crates. It is Phase 1 of
-[`docs/v11.4.0_RUST_FOUNDATION_PLAN.md`](docs/v11.4.0_RUST_FOUNDATION_PLAN.md):
-the layers that are pure computation move to Rust first, and Python keeps
-everything that is not. The workspace is deliberately **not** a member of
+`rust/` is a cargo workspace of six crates. 11.4.0 landed Phase 1 of
+[`docs/v11.4.0_RUST_FOUNDATION_PLAN.md`](docs/v11.4.0_RUST_FOUNDATION_PLAN.md);
+11.5.0 landed Phases 2-4 in
+[`docs/v11.5.0_RUST_COMPLETE_PLAN.md`](docs/v11.5.0_RUST_COMPLETE_PLAN.md). The
+rule did not change: the layers that are pure computation move to Rust, Python
+keeps everything that is not, and every ported path is locked by a golden that
+both runtimes are held to. The workspace is deliberately **not** a member of
 `src-tauri`'s build — none of it depends on `tauri`, so a bare ubuntu CI runner
 compiles and tests all of it with no desktop system libraries installed.
 
 | Crate | Role |
 |---|---|
 | `lattice-core` | Data-directory resolution (`LATTICEAI_DATA_DIR`, else `~/.ltcai`), read-only WAL access to the shared `knowledge_graph.sqlite`, and a 1:1 port of `lattice_brain/embeddings.py` (tokenizer, blake2b-8 hashed bag of features, L2 normalization, `<f32` encoding, pure-inner-product similarity). |
-| `lattice-retrieval` | The graph-layer engines: `search()` (keyword), `vector_search()` (brute-force cosine), `hybrid_search()` (two-channel alpha fusion), including query classification, filler rewriting, recency decay, banker's rounding, and the honesty blocks. |
-| `lattice-host` | The Python worker supervisor and the loopback-only IPC/API gateway. Usable as a library (the desktop shell consumes it) and as an opt-in `lattice-host` binary. |
+| `lattice-retrieval` | The graph-layer engines — `search()` (keyword), `vector_search()` (brute-force cosine), `hybrid_search()` (two-channel alpha fusion) — plus, in 11.5.0, the service-layer three-channel fusion, the KG relationship and traversal reads, the durable conversation-history reads, and the budgeted context assembler. Exposes them as a mountable router. |
+| `lattice-ingest` | Watch, parse, chunk, hash: the four typed chunking strategies and their boundary arithmetic, the chunk-id and content-hash conventions, the PDF page-offset arithmetic, the folder filter chain, and the polling mtime watcher. It never writes the graph — detection and chunking here, the write delegated to the worker. |
+| `lattice-jobs` | The timer nothing had: a scheduler that calls the worker's `POST /api/index/drain` on an interval, optionally resumes one interrupted ingestion job per tick, backs off on failure, and exposes its schedule and backlog as status routes. |
+| `lattice-agent` | The agent safety kernel — permission modes, auto-approve decisions, circuit breakers, proposal staging, tool classification, and the `run_command` validator — plus native execution of the read-only allow-listed commands. Inference and mutation stay with the worker. |
+| `lattice-host` | The Python worker supervisor and the loopback-only IPC/API gateway that mounts all of the above. Usable as a library (the desktop shell consumes it) and as a `lattice-host` binary. |
 
 ### The parity contract runs both ways
 
 `scripts/generate_rust_parity_fixtures.py` builds `rust/fixtures/parity_store.sqlite`
-and 75 golden files through the **real Python write and read paths**, and both
+and the golden files through the **real Python write and read paths**, and both
 runtimes are then held to them: `tests/unit/test_rust_parity_contract.py` re-runs
 the Python engines against the committed goldens, and `rust/lattice-retrieval/tests/parity.rs`
 runs the Rust ones. Comparison is exact `serde_json::Value` equality over the
@@ -339,61 +345,109 @@ whole response, so a drifting float, a renamed key, a missing honesty field and 
 reordered tie all fail the same way. A semantic change on the Python side cannot
 silently invalidate the goldens, and a Rust port cannot quietly narrow the claim.
 
+Four golden families exist, each generated from the real Python original and
+asserted from both sides:
+
+| Family | What is pinned | Generator |
+|---|---|---|
+| Retrieval | 191 goldens: keyword / vector / hybrid answers, the service-layer three-channel fusion, graph search, relationship search and traversal | `scripts/generate_rust_parity_fixtures.py` |
+| Chunking | The four typed strategies over boundary cases, Korean and English, and the PDF page-offset arithmetic | `scripts/generate_chunking_parity_fixtures.py` |
+| Agent kernel | 2,358 decisions: mode normalization, effective auto-approve, circuit breakers, proposal staging, tool classification, and the `run_command` validator verdicts | `scripts/generate_agent_parity_fixtures.py` |
+| Context / history | The assembler's section order and greedy budget truncation, and the history reads with their scoping and grouping | `scripts/generate_rust_parity_fixtures.py` |
+
 The clock is a parameter, not a call: `hybrid_search` takes `now_secs`, because a
 golden file that reads the wall clock is not a golden file.
 
 ### Gateway topology
 
-The gateway binds 127.0.0.1 and refuses any other address outright. Three
-namespaces, no overlap:
+The gateway binds 127.0.0.1 and refuses any other address outright. Two host
+namespaces and one fallthrough, no overlap:
 
-- `/host/health`, `/host/status` — the host answers itself. Anything else under
-  `/host/` is a 404 from the host, never a request leaked to the worker.
-- `/rust/search/{hybrid,keyword,vector}` (GET and POST) — served natively by
-  `lattice-retrieval` against the read-only store, with no workspace scoping:
-  that is Python's `trusted_local_owner` branch, and a loopback request on the
-  owner's own machine is exactly that caller. Bad input is a 422 naming the
-  field; a machine with no brain yet gets a 404 that says so rather than an
+- `/host/health`, `/host/status` — the host answers itself; `/host/jobs` and
+  `/host/jobs/tick` are added by `lattice-jobs` when a scheduler is wired.
+  Anything else under `/host/` is a 404 from the host, never a request leaked to
+  the worker.
+- `/rust/...` — served natively by the mounted crates, with no workspace
+  scoping: that is Python's `trusted_local_owner` branch, and a loopback request
+  on the owner's own machine is exactly that caller. Bad input is a 422 naming
+  the field; a machine with no brain yet gets a 404 that says so rather than an
   empty result set that reads like "nothing matched". SQLite work runs on
-  `spawn_blocking`, so a search never stalls an in-flight SSE stream.
+  `spawn_blocking`, so a search never stalls an in-flight SSE stream. An unknown
+  path under `/rust/` is a 404 that lists the families that exist.
 - everything else — reverse-proxied to the Python worker with the response body
-  streamed, so `/api/chat/stream` and the agent step feed keep flowing.
+  streamed, so `/api/chat/stream` and the agent step feed keep flowing. A
+  proxied `text/event-stream` response also picks up `X-Accel-Buffering: no`
+  when the worker did not set it, so a buffering proxy in front of the desktop
+  cannot turn a live stream into one late burst.
 
-In 11.4.0 the gateway is an **opt-in front door**: it runs when the
-`lattice-host` binary is started. The existing entry points (the `ltcai` CLI, a
-browser pointed straight at the worker) are unchanged.
+The mount map (`rust/lattice-host/src/gateway/mounts.rs`) is one screen:
 
-### The desktop shell rides the supervisor
+| Route family | Crate |
+|---|---|
+| `rust/search/{hybrid,keyword,vector}` | `lattice-host` (the Phase 1 lanes, unmoved — the committed hybrid goldens are asserted through these handlers) |
+| `rust/search/service-hybrid`, `rust/graph/*`, `rust/history*`, `rust/context/assemble` | `lattice-retrieval` |
+| `rust/ingest/{plan,chunk}` | `lattice-ingest` |
+| `rust/agent/{preflight,exec,contract}` | `lattice-agent` |
+| `host/jobs`, `host/jobs/tick` | `lattice-jobs` |
 
-`src-tauri/src/main.rs` no longer resolves, spawns, probes or restarts anything
-itself; it consumes `lattice-host` as a path dependency and is a thin Tauri
-shell (451 lines → 144). The five commands (`backend_origin`, `backend_status`,
+### The desktop is the front door
+
+In 11.4.0 the gateway was an opt-in binary. In 11.5.0 the **desktop runs it by
+default**: the Tauri process serves the gateway on the public port and
+supervises the worker on an internal port behind it, `backend_origin` returns
+the gateway origin, and the webview navigates there once health answers through
+the proxy. That is what makes the native surfaces reachable from the app at all.
+
+One thing had to be fixed for the origin switch to be safe, and it is the whole
+of the change: the worker's CSRF guard builds its trust set from **its own**
+host and port, and a proxy strips `Host` as hop-by-hop, so a page served on the
+gateway port would have every cookie-authenticated write rejected. The
+supervisor therefore injects
+`LATTICEAI_CSRF_TRUSTED_ORIGINS=http://127.0.0.1:{gateway},http://localhost:{gateway}`
+into the worker environment — and only when a gateway port exists, because the
+direct topology has no second origin to trust.
+
+Escape hatches, resolved in `src-tauri/src/topology.rs`:
+
+| Environment | Topology | Webview origin | Spawns |
+|---|---|---|---|
+| *(none)* | `gateway` | the gateway port | worker + in-process gateway |
+| `LATTICEAI_DESKTOP_DIRECT=1` | `direct` | the worker port | worker only (11.4.0 behaviour) |
+| `LATTICEAI_DESKTOP_BACKEND_ORIGIN=…` | `external` | that origin, verbatim | nothing |
+| `LATTICEAI_DESKTOP_NO_BACKEND=1` | `disabled` | the worker port | nothing |
+
+An explicit origin outranks every other switch; the kill switch outranks the
+topology choice. `LATTICEAI_PORT` is still honoured verbatim, as the port the
+person visits. The five IPC commands (`backend_origin`, `backend_status`,
 `restart_backend`, `shutdown_backend`, `select_folder`) keep their names and
-their response shapes, and the webview still navigates to `{origin}/app`. What
-changed underneath is quality, not contract:
+their response shapes; `backend_status` gained `topology`, `worker_origin`,
+`gateway_origin` and `jobs_running` as additive fields.
 
-- the boot gate is an HTTP `GET /health` instead of a TCP connect, which proved
-  only that *something* had bound the port;
-- a crashed worker is restarted with exponential backoff instead of staying dead
-  until the user notices;
-- shutdown is SIGTERM then SIGKILL after a grace period, so the worker closes
-  its SQLite handles;
-- the port is the unified 4825 scanned upward, instead of a hardcoded 8765 —
-  `LATTICEAI_PORT` is still honoured verbatim when set;
-- the python-candidate list is no longer `sort()`ed before `dedup()`, which used
-  to discard the declared interpreter priority.
+The shell also inherits what the supervisor already gave it in 11.4.0: an HTTP
+`GET /health` boot gate instead of a TCP connect, crash restart with exponential
+backoff, SIGTERM-then-SIGKILL shutdown so the worker closes its SQLite handles,
+and the unified 4825 port scan.
 
-`LATTICEAI_DESKTOP_BACKEND_ORIGIN` (front an existing worker, spawn nothing) and
-`LATTICEAI_DESKTOP_NO_BACKEND` (kill switch) behave as before.
+### The boundary, stated rather than discovered
 
-### What stays Python
+Python is not being retired — it is converging on the AI Worker of the target
+diagram, and two rules keep the split honest:
 
-Everything not listed above. Phase 1 explicitly does not port the three-channel
-`SearchService.hybrid_search`, the KG read APIs, ingestion, jobs/events/scheduler,
-or the agent runtime; and inside retrieval it covers only the default
-configuration (brute backend, RRF off, graph expansion off, image late fusion
-off, cross-encoder rerank off). Anything outside that envelope is proxied to the
-worker, so no capability is lost — only the fast path is native.
+- **Single writer.** Every write to `knowledge_graph.sqlite` goes through the
+  Python worker. The Rust crates open the store `SQLITE_OPEN_READ_ONLY`;
+  `lattice-ingest` detects, parses, chunks and judges duplicates, and then
+  delegates the write; `lattice-jobs` drains the embed queue by *calling* the
+  worker, never by embedding itself.
+- **AI Worker.** Inference, the document parser matrix (pdf/docx/xlsx/pptx),
+  embedding production, mutating tool execution and graph writes stay in Python
+  by design. The agent kernel decides in Rust and executes only validated,
+  read-only, allow-listed commands; everything else comes back as a verdict.
+
+Python still serves every product surface. The native routes are a proven
+alternative path, not a replacement, and the Rust port of the agent loop's
+orchestration remains explicitly outstanding (plan §4c: the decision kernel is
+locked, the loop is not, and porting twelve `AgentDeps` seams without a wiring
+proof would be a rewrite without evidence).
 
 ## Brain Core
 
@@ -1117,13 +1171,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.4.0 exact artifact names:
+11.5.0 exact artifact names:
 
-- `dist/ltcai-11.4.0-py3-none-any.whl`
-- `dist/ltcai-11.4.0.tar.gz`
-- `ltcai-11.4.0.tgz`
-- `dist/ltcai-11.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.4.0_aarch64.dmg`
+- `dist/ltcai-11.5.0-py3-none-any.whl`
+- `dist/ltcai-11.5.0.tar.gz`
+- `ltcai-11.5.0.tgz`
+- `dist/ltcai-11.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

@@ -1,0 +1,272 @@
+{
+  "key": "hub_d3",
+  "result": {
+    "depth": 3,
+    "edges": [
+      {
+        "from": "meeting:weekly",
+        "id": "edge:805dbdc114935dd71cf9bb89",
+        "metadata": {
+          "legacy_label": "discusses"
+        },
+        "to": "dec:fusion-alpha",
+        "type": "DISCUSSES",
+        "weight": 0.95
+      },
+      {
+        "from": "dec:fusion-alpha",
+        "id": "edge:56adf9267d30650da146f7da",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "from": "dec:fusion-alpha",
+        "id": "edge:fd94b124b47e0ae02a04f890",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.8
+      },
+      {
+        "from": "file:ranking-notes",
+        "id": "edge:7f22f14e6b87e9087ad6cfcf",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "dec:fusion-alpha",
+        "type": "MENTIONS",
+        "weight": 0.35
+      },
+      {
+        "from": "meeting:weekly",
+        "id": "edge:dac11c0354953b35cf3fcc4b",
+        "metadata": {
+          "legacy_label": "discusses"
+        },
+        "to": "task:onboarding-checklist",
+        "type": "DISCUSSES",
+        "weight": 0.55
+      },
+      {
+        "from": "doc:retrieval-spec",
+        "id": "edge:ac803179d2934d2cf5aa254e",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.45
+      },
+      {
+        "from": "concept:retrieval",
+        "id": "edge:5b5a7ccf39a15b042eb7f323",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.4
+      },
+      {
+        "from": "code:hybrid-search",
+        "id": "edge:17137d757ca2934c0c9f13ac",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "file:ranking-notes",
+        "type": "MENTIONS",
+        "weight": 0.3
+      },
+      {
+        "from": "slide:fusion",
+        "id": "edge:26a7d16bbb4827c42215ad72",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.25
+      },
+      {
+        "from": "deck:review",
+        "id": "edge:d41ef88ab120a38e991f0338",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "meeting:weekly",
+        "type": "MENTIONS",
+        "weight": 0.2
+      },
+      {
+        "from": "topic:quality",
+        "id": "edge:777c7fccc069fb9d2ddf3a0a",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "deck:review",
+        "type": "MENTIONS",
+        "weight": 0.2
+      },
+      {
+        "from": "task:onboarding-checklist",
+        "id": "edge:5bfbbabd5899795f73b3394d",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "page:onboarding",
+        "type": "MENTIONS",
+        "weight": 0.15
+      },
+      {
+        "from": "doc:handbook",
+        "id": "edge:925238c39c45c82b73435a65",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "doc:retrieval-spec",
+        "type": "MENTIONS",
+        "weight": 0.1
+      }
+    ],
+    "nodes": [
+      {
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "id": "meeting:weekly",
+        "metadata": {},
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "id": "file:ranking-notes",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "id": "code:hybrid-search",
+        "metadata": {
+          "ext": ".py",
+          "filename": "hybrid.py"
+        },
+        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+        "title": "hybrid.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-08T09:30:00"
+      },
+      {
+        "id": "deck:review",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "quarterly-review.pptx"
+        },
+        "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
+        "title": "분기 리뷰 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-02T15:00:00"
+      },
+      {
+        "id": "task:onboarding-checklist",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
+        "title": "온보딩 체크리스트 정리",
+        "type": "Task",
+        "updated_at": "2026-06-30T08:20:00"
+      },
+      {
+        "id": "doc:handbook",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "source_node": "doc:handbook"
+        },
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "id": "page:onboarding",
+        "metadata": {},
+        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+        "title": "온보딩 첫 다섯 걸음",
+        "type": "Page",
+        "updated_at": "2026-06-01T12:00:00"
+      },
+      {
+        "id": "doc:retrieval-spec",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf"
+        },
+        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+        "title": "Retrieval specification",
+        "type": "Document",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "id": "slide:fusion",
+        "metadata": {},
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "id": "concept:ranking",
+        "metadata": {},
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "id": "concept:retrieval",
+        "metadata": {},
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "id": "topic:quality",
+        "metadata": {},
+        "summary": "검색 품질에 대한 주제입니다.",
+        "title": "검색 품질",
+        "type": "Topic",
+        "updated_at": "2026-03-06T10:00:00"
+      }
+    ],
+    "root": "dec:fusion-alpha"
+  },
+  "spec": {
+    "depth": 3,
+    "key": "hub_d3",
+    "node_id": "dec:fusion-alpha"
+  },
+  "suite": "traverse"
+}

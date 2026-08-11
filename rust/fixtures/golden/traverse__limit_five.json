@@ -1,0 +1,104 @@
+{
+  "key": "limit_five",
+  "result": {
+    "depth": 3,
+    "edges": [
+      {
+        "from": "meeting:weekly",
+        "id": "edge:805dbdc114935dd71cf9bb89",
+        "metadata": {
+          "legacy_label": "discusses"
+        },
+        "to": "dec:fusion-alpha",
+        "type": "DISCUSSES",
+        "weight": 0.95
+      },
+      {
+        "from": "dec:fusion-alpha",
+        "id": "edge:56adf9267d30650da146f7da",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "from": "dec:fusion-alpha",
+        "id": "edge:fd94b124b47e0ae02a04f890",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.8
+      },
+      {
+        "from": "file:ranking-notes",
+        "id": "edge:7f22f14e6b87e9087ad6cfcf",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "dec:fusion-alpha",
+        "type": "MENTIONS",
+        "weight": 0.35
+      }
+    ],
+    "nodes": [
+      {
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "id": "meeting:weekly",
+        "metadata": {},
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "id": "file:ranking-notes",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "id": "concept:ranking",
+        "metadata": {},
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "id": "concept:retrieval",
+        "metadata": {},
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      }
+    ],
+    "root": "dec:fusion-alpha"
+  },
+  "spec": {
+    "depth": 3,
+    "key": "limit_five",
+    "limit": 5,
+    "node_id": "dec:fusion-alpha"
+  },
+  "suite": "traverse"
+}

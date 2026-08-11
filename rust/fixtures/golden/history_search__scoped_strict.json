@@ -1,0 +1,48 @@
+{
+  "key": "scoped_strict",
+  "result": [
+    {
+      "conversation_id": "conv-b",
+      "messages": [
+        {
+          "content": "How does hybrid retrieval ranking work?",
+          "conversation_id": "conv-b",
+          "organization_id": "org-1",
+          "role": "user",
+          "source": "telegram",
+          "timestamp": "2026-07-21T10:00:00",
+          "user_email": "minseo@lattice.ai",
+          "user_nickname": "Minseo",
+          "workspace_id": "ws-beta"
+        }
+      ],
+      "title": "How does hybrid retrieval ranking work?"
+    },
+    {
+      "conversation_id": "conv-e",
+      "messages": [
+        {
+          "content": "Ranking ties are broken by node id",
+          "conversation_id": "conv-e",
+          "organization_id": "org-2",
+          "role": "user",
+          "source": "web",
+          "timestamp": "2026-07-24T12:00:00",
+          "user_email": "jiwon@lattice.ai",
+          "user_nickname": "지원",
+          "workspace_id": "ws-beta"
+        }
+      ],
+      "title": "Ranking ties are broken by node id"
+    }
+  ],
+  "spec": {
+    "allowed": [
+      "ws-beta"
+    ],
+    "key": "scoped_strict",
+    "legacy": false,
+    "query": "ranking"
+  },
+  "suite": "history_search"
+}

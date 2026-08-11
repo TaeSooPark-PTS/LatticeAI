@@ -1,0 +1,24 @@
+{
+  "key": "limit_one",
+  "result": [
+    {
+      "conversation_id": "conv-g",
+      "messages": [
+        {
+          "content": "follow up question about ranking",
+          "conversation_id": "conv-g",
+          "role": "user",
+          "source": "web",
+          "timestamp": "2026-07-26T14:00:10"
+        }
+      ],
+      "title": "follow up question about ranking"
+    }
+  ],
+  "spec": {
+    "key": "limit_one",
+    "limit": 1,
+    "query": "ranking"
+  },
+  "suite": "history_search"
+}

@@ -1,0 +1,13 @@
+{
+  "key": "legacy_bucket_scoped",
+  "result": [],
+  "spec": {
+    "allowed": [
+      "ws-alpha"
+    ],
+    "conversation_id": "legacy-previous-history",
+    "key": "legacy_bucket_scoped",
+    "legacy": false
+  },
+  "suite": "conversation_messages"
+}

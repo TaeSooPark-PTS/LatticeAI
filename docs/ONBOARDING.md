@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **11.4.0 — Rust Foundation**.
+Current release: **11.5.0 — Rust Complete**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

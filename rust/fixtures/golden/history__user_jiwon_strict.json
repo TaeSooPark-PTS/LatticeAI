@@ -1,0 +1,80 @@
+{
+  "key": "user_jiwon_strict",
+  "result": [
+    {
+      "content": "온보딩 체크리스트 어떻게 시작해?",
+      "conversation_id": "conv-a",
+      "organization_id": "org-1",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-20T09:00:00",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "먼저 폴더를 연결하세요. 그다음 질문하면 됩니다.",
+      "conversation_id": "conv-a",
+      "organization_id": "org-1",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-07-20T09:00:05",
+      "user_email": "jiwon@lattice.ai",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "고마워",
+      "conversation_id": "conv-a",
+      "organization_id": "org-1",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-20T09:01:00",
+      "trace_id": "t-1",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원",
+      "workspace_id": "ws-alpha"
+    },
+    {
+      "content": "이전 대화 기록입니다",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-06-01T09:00:00",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원"
+    },
+    {
+      "content": "네, 확인했습니다.",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-06-01T09:00:03",
+      "user_email": "jiwon@lattice.ai"
+    },
+    {
+      "content": "Ranking ties are broken by node id",
+      "conversation_id": "conv-e",
+      "organization_id": "org-2",
+      "role": "user",
+      "source": "web",
+      "timestamp": "2026-07-24T12:00:00",
+      "user_email": "jiwon@lattice.ai",
+      "user_nickname": "지원",
+      "workspace_id": "ws-beta"
+    },
+    {
+      "content": "Yes — id ascending keeps it stable.",
+      "conversation_id": "conv-e",
+      "organization_id": "org-2",
+      "role": "assistant",
+      "source": "web",
+      "timestamp": "2026-07-24T12:00:05",
+      "user_email": "jiwon@lattice.ai",
+      "workspace_id": "ws-beta"
+    }
+  ],
+  "spec": {
+    "key": "user_jiwon_strict",
+    "legacy": false,
+    "user_email": "jiwon@lattice.ai"
+  },
+  "suite": "history"
+}
