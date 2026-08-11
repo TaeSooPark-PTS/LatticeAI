@@ -12,7 +12,31 @@
   },
   "query": "회의 결정 사항",
   "result": {
-    "matches": [],
+    "matches": [
+      {
+        "id": "concept:proposal",
+        "metadata": {},
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
+      },
+      {
+        "id": "self:habit:b2",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "workspace_id": null
+        },
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
+      }
+    ],
     "query": "회의 결정 사항"
   }
 }

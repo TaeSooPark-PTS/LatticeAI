@@ -97,6 +97,41 @@
       },
       {
         "fusion": "vector",
+        "id": "self:relationship:d4",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "vector": {
+            "confidence": 0.5,
+            "node_type": "Relationship",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "relationship",
+            "signal": "ko_with",
+            "workspace_id": "ws-beta"
+          },
+          "workspace_id": "ws-beta"
+        },
+        "node_id": "self:relationship:d4",
+        "rank": 4,
+        "rerank_score": 0.079889,
+        "score": 0.079889,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.133148
+        },
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship",
+        "updated_at": "2026-07-05T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "agent:librarian",
         "metadata": {
           "parent_node_id": null,
@@ -106,7 +141,7 @@
           }
         },
         "node_id": "agent:librarian",
-        "rank": 4,
+        "rank": 5,
         "rerank_score": 0.075644,
         "score": 0.075644,
         "scores": {
@@ -144,7 +179,7 @@
           }
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 5,
+        "rank": 6,
         "rerank_score": 0.063618,
         "score": 0.063618,
         "scores": {
@@ -169,7 +204,7 @@
           }
         },
         "node_id": "person:minseo",
-        "rank": 6,
+        "rank": 7,
         "rerank_score": 0.058796,
         "score": 0.058796,
         "scores": {
@@ -196,7 +231,7 @@
           }
         },
         "node_id": "img:whiteboard",
-        "rank": 7,
+        "rank": 8,
         "rerank_score": 0.05649,
         "score": 0.05649,
         "scores": {
@@ -219,7 +254,7 @@
           }
         },
         "node_id": "concept:ranking",
-        "rank": 8,
+        "rank": 9,
         "rerank_score": 0.037822,
         "score": 0.037822,
         "scores": {
@@ -242,7 +277,7 @@
           }
         },
         "node_id": "workflow:nightly",
-        "rank": 9,
+        "rank": 10,
         "rerank_score": 0.03326,
         "score": 0.03326,
         "scores": {
@@ -256,30 +291,30 @@
       },
       {
         "fusion": "vector",
-        "id": "code:build-failure",
+        "id": "deck:proposal",
         "metadata": {
-          "ext": ".py",
-          "filename": "build_pipeline.py",
+          "ext": ".pptx",
+          "filename": "proposal.pptx",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "ext": ".py",
-            "filename": "build_pipeline.py",
-            "node_type": "CodeFile"
+            "ext": ".pptx",
+            "filename": "proposal.pptx",
+            "node_type": "SlideDeck"
           }
         },
-        "node_id": "code:build-failure",
-        "rank": 10,
+        "node_id": "deck:proposal",
+        "rank": 11,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
           "lexical": 0.0,
           "vector": 0.0
         },
-        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
-        "title": "build_pipeline.py",
-        "type": "CodeFile",
-        "updated_at": "2026-04-22T18:05:00"
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-29T09:00:00"
       }
     ],
     "mode": "hybrid",
@@ -303,14 +338,14 @@
     },
     "sources": {
       "lexical": 1,
-      "vector": 12
+      "vector": 13
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

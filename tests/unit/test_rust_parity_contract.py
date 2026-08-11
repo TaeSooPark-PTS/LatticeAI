@@ -12,7 +12,11 @@ still describe what Python does — the Phase-1 search engines (``hybrid_search`
 ``search`` / ``vector_search``) and the v11.5.0 ports beside them: the knowledge
 graph's ``relationship_search`` / ``traverse``, the service layer's
 ``graph_search`` and three-channel ``hybrid_search``, the durable history reads
-and grouping, and the ``ContextAssembler``. Two consequences worth stating:
+and grouping, and the ``ContextAssembler`` — plus the v11.5.1 document-generation
+trio: ``search_for_document_generation``, ``multi_hop_context``, and
+``retrieve_context_for_generation`` (whose golden also carries
+``format_sources_footnote`` over the sources it produced). Two consequences
+worth stating:
 
 * it is a contract test, not a regression test — a deliberate ranking change is
   supposed to fail it, and the fix is to regenerate the fixtures with
@@ -137,14 +141,16 @@ def test_manifest_describes_the_current_query_set(manifest, golden_dir: Path):
 
 
 def test_manifest_describes_the_current_suite_set(manifest):
-    """The nine v11.5.0 ports and their specs, as the Rust suite enumerates them."""
+    """Every ported entry point and its specs, as the Rust suite enumerates them."""
     recorded = manifest["suites"]
     assert set(recorded) == set(fixtures.SUITES) == set(fixtures.SUITE_RUNNERS)
-    assert len(recorded) == 9, "nine ported entry points; a missing suite is a missing proof"
+    assert len(recorded) == 12, "twelve ported entry points; a missing suite is a missing proof"
+    # The v11.5.1 document-generation trio, named so a dropped suite is loud.
+    assert {"docgen_search", "multi_hop", "context_document"} <= set(recorded)
     for suite, specs in recorded.items():
         assert specs == fixtures.SUITES[suite], suite
         assert specs, f"{suite} has no specs"
-    assert len(SUITE_CASES) >= 100, "the suite set is the coverage — keep it wide"
+    assert len(SUITE_CASES) >= 150, "the suite set is the coverage — keep it wide"
 
 
 @pytest.mark.parametrize(
@@ -169,6 +175,105 @@ def test_the_conversation_corpus_actually_landed_in_the_store(harness):
     assert any(not item.get("conversation_id") for item in rows), "legacy rows are the point"
     assert any(item.get("workspace_id") for item in rows)
     assert {item.get("user_email") for item in rows} >= {None, "jiwon@lattice.ai"}
+
+
+def test_the_self_model_subgraph_actually_landed_in_the_store(harness):
+    """A profile golden over an empty subgraph would pass and prove nothing."""
+    from lattice_brain.self_model import self_model_summary
+
+    summary = self_model_summary(harness.store, limit_tokens=200)
+    assert summary.startswith("사용자에 대해 확인된 사실:")
+    assert len(summary.splitlines()) == 1 + 5, "five kinds, one line each"
+    # The root is excluded by id, and the row with no recognised kind is dropped.
+    assert "뿌리입니다" not in summary
+    assert "kind가 없는" not in summary
+
+
+def test_multi_hop_goldens_are_normalized_because_python_does_not_order_them(
+    harness, golden_dir: Path
+):
+    """The one deliberate normalization, asserted rather than described.
+
+    ``multi_hop_context`` iterates ``frontier`` — a ``set`` — so the order in
+    which nodes and their edges are appended depends on string hashing, which
+    CPython randomizes per process. The *contents* are fully determined, so both
+    sides sort before comparing (nodes by ``(hop, id)``, edges by
+    ``(from, to, type, weight)``); the Rust port emits that order natively.
+    """
+    spec = next(spec for spec in fixtures.SUITES["multi_hop"] if spec["key"] == "multi_seed")
+    with fixtures.pinned_environment():
+        raw = harness.store.multi_hop_context(spec["node_ids"], max_hops=spec["max_hops"])
+    normalized = fixtures.docgen.normalize_multi_hop(raw)
+    golden = json.loads((golden_dir / "multi_hop__multi_seed.json").read_text(encoding="utf-8"))
+    assert _canonical(normalized) == _canonical(golden["result"])
+    # The raw payload carries the same records — only the sequence is unpinned.
+    assert sorted(node["id"] for node in raw["nodes"]) == sorted(
+        node["id"] for node in normalized["nodes"]
+    )
+    assert len(raw["edges"]) == len(normalized["edges"])
+    # Two seeds share hop 0, and hop-N nodes exist only as edge endpoints.
+    hops = {node["hop"] for node in normalized["nodes"]}
+    assert hops == {0, 1}, "max_hops=2 labels two rounds and fetches no third"
+    assert sum(node["hop"] == 0 for node in normalized["nodes"]) == 2
+
+
+def test_docgen_search_keeps_the_insertion_order_of_a_score_tie(golden_dir: Path):
+    """The stable descending sort is the contract, not an implementation detail."""
+    golden = json.loads((golden_dir / "docgen_search__tie.json").read_text(encoding="utf-8"))
+    tied = [item for item in golden["result"] if item["id"].startswith("tie:")]
+    assert len(tied) >= 3, "the tie block must reach the answer"
+    equal = [item for item in tied if item["hybrid_score"] == tied[-1]["hybrid_score"]]
+    assert [item["id"] for item in equal] == sorted(item["id"] for item in equal), (
+        "equal scores keep the candidate insertion order, which the lanes made id ASC"
+    )
+    every = json.loads(
+        (golden_dir / "docgen_search__ko_proposal.json").read_text(encoding="utf-8")
+    )["result"]
+    assert all(
+        set(item["scores"]) == {"text", "graph", "recency"} for item in every
+    ), "three named score components, always"
+    assert all(len(item["related_concepts"]) <= 8 for item in every)
+    assert json.loads(
+        (golden_dir / "docgen_search__empty_query.json").read_text(encoding="utf-8")
+    )["result"] == []
+
+
+def test_the_document_context_contract_covers_all_three_methods(golden_dir: Path):
+    """``hybrid`` / ``fallback`` / ``none`` — the three shapes callers pin."""
+    def context(key: str) -> dict:
+        payload = json.loads(
+            (golden_dir / f"context_document__{key}.json").read_text(encoding="utf-8")
+        )["result"]
+        assert set(payload) == {"context", "sources_footnote"}
+        return payload
+
+    hybrid = context("default")["context"]
+    assert set(hybrid) == {
+        "query", "context_markdown", "sources", "stats", "context_quality", "trace"
+    }
+    assert hybrid["stats"]["method"] == "hybrid"
+    assert hybrid["stats"]["primary_matches"] and hybrid["stats"]["graph_nodes"]
+    assert hybrid["context_markdown"].startswith("### 🙋 사용자 프로필")
+    assert "(relevance: " in hybrid["context_markdown"]
+    assert hybrid["trace"]["sections"][0]["source"] == "self_model"
+
+    fallback = context("fallback_lexical")["context"]
+    assert fallback["stats"] == {"method": "fallback", "matches": 0, "budget_trimmed": False}
+    assert fallback["context_quality"]["mode"] == "lexical_only"
+    assert fallback["sources"] == []
+    assert context("fallback_empty")["context"]["context_quality"]["mode"] == "none"
+
+    nothing = context("empty_query")["context"]
+    assert nothing["stats"] == {"method": "none", "matches": 0}
+    assert nothing["trace"]["budget_approx_tokens"] == 2000
+    assert context("empty_query")["sources_footnote"] == ""
+
+    # The budget is honoured, and the profile is charged to it.
+    assert context("budget_240")["context"]["stats"]["budget_trimmed"] is True
+    assert context("no_self_model")["context"]["trace"]["sections"][0]["source"] == "knowledge"
+    footnote = context("default")["sources_footnote"]
+    assert footnote.startswith("\n---\n**참조된 지식 그래프 노드:**")
+    assert len(footnote.splitlines()) <= 3 + 10
 
 
 def test_traverse_records_its_refusals_rather_than_skipping_them(golden_dir: Path):

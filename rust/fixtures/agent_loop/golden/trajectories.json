@@ -1,0 +1,1444 @@
+{
+  "cases": [
+    {
+      "approval_requirements": {
+        "non_auto_steps": [
+          "run_command"
+        ],
+        "permission_mode": "strict",
+        "plan_summary": "run the tests\n1. list",
+        "requires_approval": true
+      },
+      "audit": [],
+      "final_message": "",
+      "final_state": "WAITING_APPROVAL",
+      "governor_verdict": null,
+      "key": "approval_pause_strict",
+      "llm_calls": 1,
+      "loop": {
+        "corrections": 0,
+        "events": 1,
+        "kind_counts": {
+          "llm_call": 1
+        },
+        "llm_calls": 1,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {},
+        "truncated_events": 0
+      },
+      "message": "run the tests",
+      "mode": "strict",
+      "paused": true,
+      "req": {
+        "max_steps": 25,
+        "message": "run the tests",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"run the tests\", \"steps\": [{\"action\": \"run_command\", \"args\": {\"command\": \"ls\"}, \"description\": \"list\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}"
+      ],
+      "seed": {},
+      "state_history": [
+        "PLANNING",
+        "WAITING_APPROVAL"
+      ],
+      "tool_calls": [],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "run the tests",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "run_command",
+              "args": {
+                "command": "ls"
+              },
+              "description": "list"
+            }
+          ]
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "bypass",
+        "plan_summary": "fix the hosts file\n1. look first",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        },
+        {
+          "action": "write_file",
+          "event": "agent_blocked",
+          "governance": {
+            "auto_approve": false,
+            "destructive": true,
+            "network": false,
+            "risk": "destructive",
+            "rollback": "none",
+            "sandbox": "system",
+            "shell": false
+          },
+          "reason": "destructive",
+          "source": "agent",
+          "user_email": "owner@example.com"
+        }
+      ],
+      "final_message": "nothing was changed",
+      "final_state": "FAILED",
+      "governor_verdict": null,
+      "key": "blocked_breaker_bypass",
+      "llm_calls": 4,
+      "loop": {
+        "corrections": 0,
+        "events": 8,
+        "kind_counts": {
+          "decision": 3,
+          "llm_call": 4,
+          "tool": 1
+        },
+        "llm_calls": 4,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {
+          "blocked_destructive": 1
+        },
+        "truncated_events": 0
+      },
+      "message": "fix the hosts file",
+      "mode": "bypass",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "fix the hosts file",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"fix the hosts file\", \"steps\": [{\"action\": \"read_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"look first\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"action\": \"write_file\", \"args\": {\"path\": \"/etc/hosts\", \"content\": \"x\\n\"}}",
+        "{\"action\": \"final\", \"message\": \"시스템 파일은 건드리지 않았습니다.\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"FAIL\", \"next_state\": \"FAILED\", \"reason\": \"nothing was changed\", \"corrections\": []}"
+      ],
+      "seed": {},
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "FAILED"
+      ],
+      "tool_calls": [],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "fix the hosts file",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "read_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "look first"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "content": "x\n",
+            "path": "/etc/hosts"
+          },
+          "error": "BLOCKED: destructive action is always blocked",
+          "governance": {
+            "auto_approve": false,
+            "destructive": true,
+            "network": false,
+            "risk": "destructive",
+            "rollback": "none",
+            "sandbox": "system",
+            "shell": false
+          },
+          "permission_mode": "bypass",
+          "risk": "high",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": false,
+          "next_state": "FAILED",
+          "reason": "nothing was changed",
+          "state": "VERIFYING",
+          "verdict": "FAIL",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "strict",
+        "plan_summary": "delete the note\n1. look at it first",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        },
+        {
+          "action": "delete_file",
+          "change_class": "destructive",
+          "event": "agent_blocked",
+          "governance": {
+            "auto_approve": false,
+            "destructive": false,
+            "network": false,
+            "risk": "write",
+            "rollback": "none",
+            "sandbox": "workspace",
+            "shell": false
+          },
+          "path": "note.md",
+          "permission_mode": "strict",
+          "reason": "overwrite_fail_closed",
+          "source": "agent",
+          "user_email": "owner@example.com"
+        }
+      ],
+      "final_message": "검증자는 통과를 보고했지만 실제 실행 근거(도구 실행 기록)가 없어 완료로 처리하지 않았습니다. 결과를 직접 확인해 주세요.",
+      "final_state": "NEEDS_REVIEW",
+      "governor_verdict": null,
+      "key": "blocked_fail_closed_strict",
+      "llm_calls": 4,
+      "loop": {
+        "corrections": 0,
+        "events": 9,
+        "kind_counts": {
+          "decision": 4,
+          "llm_call": 4,
+          "tool": 1
+        },
+        "llm_calls": 4,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {
+          "blocked_overwrite": 1
+        },
+        "truncated_events": 0
+      },
+      "message": "delete the note",
+      "mode": "strict",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "delete the note",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"delete the note\", \"steps\": [{\"action\": \"read_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"look at it first\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"action\": \"delete_file\", \"args\": {\"path\": \"note.md\"}}",
+        "{\"action\": \"final\", \"message\": \"삭제하지 못했습니다.\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"nothing was deleted\", \"corrections\": []}"
+      ],
+      "seed": {
+        "note.md": "original\n"
+      },
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "NEEDS_REVIEW"
+      ],
+      "tool_calls": [],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "delete the note",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "read_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "look at it first"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "delete_file",
+          "args": {
+            "path": "note.md"
+          },
+          "change_class": "destructive",
+          "error": "NEEDS_REVIEW: 'delete_file' 은(는) 이미 있는 파일 'note.md' 을(를) 덮어씁니다. 이 도구의 변경은 검토 가능한 제안으로 만들 수 없어 실행하지 않았습니다. 새 파일 이름으로 만들거나 write_file/edit_file 로 수정하세요.",
+          "governance": {
+            "auto_approve": false,
+            "destructive": false,
+            "network": false,
+            "risk": "write",
+            "rollback": "none",
+            "sandbox": "workspace",
+            "shell": false
+          },
+          "permission_mode": "strict",
+          "risk": "medium",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": false,
+          "next_state": "DONE",
+          "reason": "nothing was deleted",
+          "state": "VERIFYING",
+          "verdict": "PASS",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "trusted",
+        "plan_summary": "make a note\n1. the note",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        },
+        {
+          "action": "write_file",
+          "event": "agent_change_auto_applied",
+          "note": "permission mode auto-applies mutation with audit",
+          "path": "note.md",
+          "permission_mode": "trusted",
+          "user_email": "owner@example.com",
+          "workspace_id": null
+        }
+      ],
+      "final_message": "파일을 만들었습니다.",
+      "final_state": "DONE",
+      "governor_verdict": null,
+      "key": "clean_done_trusted",
+      "llm_calls": 4,
+      "loop": {
+        "corrections": 0,
+        "events": 8,
+        "kind_counts": {
+          "decision": 3,
+          "llm_call": 4,
+          "tool": 1
+        },
+        "llm_calls": 4,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {
+          "ok": 1
+        },
+        "truncated_events": 0
+      },
+      "message": "make a note",
+      "mode": "trusted",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "make a note",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [
+        {
+          "content": null,
+          "existed": false,
+          "path": "note.md",
+          "too_large": false
+        }
+      ],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"make a note\", \"steps\": [{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"the note\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"thoughts\": \"writing\", \"action\": \"write_file\", \"args\": {\"path\": \"note.md\", \"content\": \"# Note\\n\\nhello\\n\"}}",
+        "{\"action\": \"final\", \"message\": \"파일을 만들었습니다.\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"the file exists\", \"corrections\": []}"
+      ],
+      "seed": {},
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "DONE"
+      ],
+      "tool_calls": [
+        {
+          "args": {
+            "content": "# Note\n\nhello\n",
+            "path": "note.md"
+          },
+          "result": {
+            "bytes": 14,
+            "path": "note.md"
+          },
+          "tool": "write_file"
+        }
+      ],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "make a note",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "write_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "the note"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "content": "# Note\n\nhello\n",
+            "path": "note.md"
+          },
+          "governance": {
+            "auto_approve": false,
+            "destructive": false,
+            "network": false,
+            "risk": "write",
+            "rollback": "git",
+            "sandbox": "workspace",
+            "shell": false
+          },
+          "result": {
+            "bytes": 14,
+            "path": "note.md"
+          },
+          "risk": "medium",
+          "state": "EXECUTING",
+          "thoughts": "writing"
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "DONE",
+          "reason": "the file exists",
+          "state": "VERIFYING",
+          "verdict": "PASS",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "trusted",
+        "plan_summary": "make a note\n1. the note",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        }
+      ],
+      "final_message": "검증자는 통과를 보고했지만 실제 실행 근거(도구 실행 기록)가 없어 완료로 처리하지 않았습니다. 결과를 직접 확인해 주세요.",
+      "final_state": "NEEDS_REVIEW",
+      "governor_verdict": null,
+      "key": "parse_budget_exhaustion",
+      "llm_calls": 5,
+      "loop": {
+        "corrections": 2,
+        "events": 13,
+        "kind_counts": {
+          "correction": 2,
+          "decision": 3,
+          "llm_call": 5,
+          "parse_error": 3
+        },
+        "llm_calls": 5,
+        "parse_errors": 3,
+        "parse_recovered": 2,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {},
+        "truncated_events": 0
+      },
+      "message": "make a note",
+      "mode": "trusted",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "make a note",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"make a note\", \"steps\": [{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"the note\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "I will now write the file for you.",
+        "Writing it now, one moment.",
+        "All done, I think.",
+        "{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"looks fine\", \"corrections\": []}"
+      ],
+      "seed": {},
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "NEEDS_REVIEW"
+      ],
+      "tool_calls": [],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "make a note",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "write_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "the note"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "parse_error",
+          "error": "Agent did not return valid JSON: <decoder-detail>",
+          "raw": "I will now write the file for you.",
+          "state": "EXECUTING"
+        },
+        {
+          "action": "parse_error",
+          "error": "Agent did not return valid JSON: <decoder-detail>",
+          "raw": "Writing it now, one moment.",
+          "state": "EXECUTING"
+        },
+        {
+          "action": "parse_error",
+          "error": "Agent did not return valid JSON: <decoder-detail>",
+          "raw": "All done, I think.",
+          "state": "EXECUTING"
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": false,
+          "next_state": "DONE",
+          "reason": "looks fine",
+          "state": "VERIFYING",
+          "verdict": "PASS",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "trusted",
+        "plan_summary": "make a note\n1. the note",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        },
+        {
+          "action": "write_file",
+          "event": "agent_change_auto_applied",
+          "note": "permission mode auto-applies mutation with audit",
+          "path": "note.md",
+          "permission_mode": "trusted",
+          "user_email": "owner@example.com",
+          "workspace_id": null
+        }
+      ],
+      "final_message": "written once",
+      "final_state": "DONE",
+      "governor_verdict": null,
+      "key": "repeated_create_guard",
+      "llm_calls": 4,
+      "loop": {
+        "corrections": 0,
+        "events": 8,
+        "kind_counts": {
+          "decision": 3,
+          "llm_call": 4,
+          "tool": 1
+        },
+        "llm_calls": 4,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {
+          "ok": 1
+        },
+        "truncated_events": 0
+      },
+      "message": "make a note",
+      "mode": "trusted",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "make a note",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [
+        {
+          "content": null,
+          "existed": false,
+          "path": "note.md",
+          "too_large": false
+        }
+      ],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"make a note\", \"steps\": [{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"the note\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\", \"content\": \"body\\n\"}}",
+        "{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\", \"content\": \"body\\n\"}}",
+        "{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"written once\", \"corrections\": []}"
+      ],
+      "seed": {},
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "DONE"
+      ],
+      "tool_calls": [
+        {
+          "args": {
+            "content": "body\n",
+            "path": "note.md"
+          },
+          "result": {
+            "bytes": 5,
+            "path": "note.md"
+          },
+          "tool": "write_file"
+        }
+      ],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "make a note",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "write_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "the note"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "content": "body\n",
+            "path": "note.md"
+          },
+          "governance": {
+            "auto_approve": false,
+            "destructive": false,
+            "network": false,
+            "risk": "write",
+            "rollback": "git",
+            "sandbox": "workspace",
+            "shell": false
+          },
+          "result": {
+            "bytes": 5,
+            "path": "note.md"
+          },
+          "risk": "medium",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "action": "write_file",
+          "error": "LOOP_DETECTED: identical action+args repeated — halted.",
+          "state": "EXECUTING"
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "DONE",
+          "reason": "written once",
+          "state": "VERIFYING",
+          "verdict": "PASS",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "trusted",
+        "plan_summary": "update the note\n1. the note",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        },
+        {
+          "action": "write_file",
+          "event": "agent_change_auto_applied",
+          "note": "permission mode auto-applies mutation with audit",
+          "path": "note.md",
+          "permission_mode": "trusted",
+          "user_email": "owner@example.com",
+          "workspace_id": null
+        },
+        {
+          "event": "agent_rollback",
+          "rolled_back": [
+            {
+              "action": "restored",
+              "mode": "snapshot",
+              "ok": true,
+              "path": "note.md"
+            }
+          ],
+          "user_email": "owner@example.com"
+        }
+      ],
+      "final_message": "실행 실패로 롤백했습니다. 복구 파일: ['note.md (snapshot)']",
+      "final_state": "FAILED",
+      "governor_verdict": null,
+      "key": "rollback_path",
+      "llm_calls": 4,
+      "loop": {
+        "corrections": 0,
+        "events": 9,
+        "kind_counts": {
+          "decision": 4,
+          "llm_call": 4,
+          "tool": 1
+        },
+        "llm_calls": 4,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {
+          "ok": 1
+        },
+        "truncated_events": 0
+      },
+      "message": "update the note",
+      "mode": "trusted",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "update the note",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [
+        {
+          "content": "original\n",
+          "existed": true,
+          "path": "note.md",
+          "too_large": false
+        }
+      ],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"update the note\", \"steps\": [{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"the note\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\", \"content\": \"broken\\n\"}}",
+        "{\"action\": \"final\", \"message\": \"done\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"FAIL\", \"next_state\": \"ROLLBACK\", \"reason\": \"the change is wrong\", \"corrections\": []}"
+      ],
+      "seed": {
+        "note.md": "original\n"
+      },
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "ROLLBACK",
+        "FAILED"
+      ],
+      "tool_calls": [
+        {
+          "args": {
+            "content": "broken\n",
+            "path": "note.md"
+          },
+          "result": {
+            "bytes": 7,
+            "path": "note.md"
+          },
+          "tool": "write_file"
+        }
+      ],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "update the note",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "write_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "the note"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "content": "broken\n",
+            "path": "note.md"
+          },
+          "governance": {
+            "auto_approve": false,
+            "destructive": false,
+            "network": false,
+            "risk": "write",
+            "rollback": "git",
+            "sandbox": "workspace",
+            "shell": false
+          },
+          "result": {
+            "bytes": 7,
+            "path": "note.md"
+          },
+          "risk": "medium",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "ROLLBACK",
+          "reason": "the change is wrong",
+          "state": "VERIFYING",
+          "verdict": "FAIL",
+          "verdict_valid": true,
+          "verifier_available": true
+        },
+        {
+          "rolled_back": [
+            {
+              "action": "restored",
+              "mode": "snapshot",
+              "ok": true,
+              "path": "note.md"
+            }
+          ],
+          "state": "ROLLBACK"
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "strict",
+        "plan_summary": "update the note\n1. the note",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        },
+        {
+          "action": "write_file",
+          "change_class": "mutation",
+          "event": "agent_change_proposed",
+          "proposal_id": "prop-1",
+          "user_email": "owner@example.com"
+        }
+      ],
+      "final_message": "제안으로 저장했습니다.",
+      "final_state": "DONE",
+      "governor_verdict": {
+        "classification": {
+          "change_class": "mutation"
+        },
+        "decision": "proposed",
+        "proposal": {
+          "id": "prop-1"
+        }
+      },
+      "key": "strict_proposal_pause",
+      "llm_calls": 4,
+      "loop": {
+        "corrections": 0,
+        "events": 8,
+        "kind_counts": {
+          "decision": 3,
+          "llm_call": 4,
+          "tool": 1
+        },
+        "llm_calls": 4,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {
+          "proposed": 1
+        },
+        "truncated_events": 0
+      },
+      "message": "update the note",
+      "mode": "strict",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "update the note",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"update the note\", \"steps\": [{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"the note\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"thoughts\": \"rewriting\", \"action\": \"write_file\", \"args\": {\"path\": \"note.md\", \"content\": \"rewritten\\n\"}}",
+        "{\"action\": \"final\", \"message\": \"제안으로 저장했습니다.\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"staged for review\", \"corrections\": []}"
+      ],
+      "seed": {
+        "note.md": "original\n"
+      },
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "DONE"
+      ],
+      "tool_calls": [],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "update the note",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "write_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "the note"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "path": "note.md"
+          },
+          "governance": {
+            "auto_approve": false,
+            "destructive": false,
+            "network": false,
+            "risk": "write",
+            "rollback": "git",
+            "sandbox": "workspace",
+            "shell": false
+          },
+          "result": {
+            "note": "기존 내용을 바꾸는 작업이라 변경 제안으로 저장했습니다. 검토함에서 승인하면 적용됩니다.",
+            "proposal_id": "prop-1",
+            "proposed": true
+          },
+          "risk": "medium",
+          "state": "EXECUTING",
+          "thoughts": "rewriting"
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "DONE",
+          "reason": "staged for review",
+          "state": "VERIFYING",
+          "verdict": "PASS",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "trusted",
+        "plan_summary": "answer the question",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        }
+      ],
+      "final_message": "검증자는 통과를 보고했지만 실제 실행 근거(도구 실행 기록)가 없어 완료로 처리하지 않았습니다. 결과를 직접 확인해 주세요.",
+      "final_state": "NEEDS_REVIEW",
+      "governor_verdict": null,
+      "key": "verify_pass_no_evidence",
+      "llm_calls": 3,
+      "loop": {
+        "corrections": 0,
+        "events": 7,
+        "kind_counts": {
+          "decision": 4,
+          "llm_call": 3
+        },
+        "llm_calls": 3,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 0,
+        "tool_outcomes": {},
+        "truncated_events": 0
+      },
+      "message": "tell me about the notes",
+      "mode": "trusted",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "tell me about the notes",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"answer the question\", \"steps\": [], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"action\": \"final\", \"message\": \"여기 답변입니다.\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"answered\", \"corrections\": []}"
+      ],
+      "seed": {},
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "NEEDS_REVIEW"
+      ],
+      "tool_calls": [],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "answer the question",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": []
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": false,
+          "next_state": "DONE",
+          "reason": "answered",
+          "state": "VERIFYING",
+          "verdict": "PASS",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    },
+    {
+      "approval_requirements": {
+        "non_auto_steps": [],
+        "permission_mode": "trusted",
+        "plan_summary": "make a note\n1. the note",
+        "requires_approval": false
+      },
+      "audit": [
+        {
+          "decision": "auto_approved",
+          "event": "agent_approval",
+          "non_auto_steps": [],
+          "requires_approval": false,
+          "user_email": "owner@example.com"
+        },
+        {
+          "action": "write_file",
+          "event": "agent_change_auto_applied",
+          "note": "permission mode auto-applies mutation with audit",
+          "path": "note.md",
+          "permission_mode": "trusted",
+          "user_email": "owner@example.com",
+          "workspace_id": null
+        }
+      ],
+      "final_message": "처리 중 문제가 발생했습니다. 다시 시도해 주세요.",
+      "final_state": "FAILED",
+      "governor_verdict": null,
+      "key": "verify_retry_then_failed",
+      "llm_calls": 10,
+      "loop": {
+        "corrections": 0,
+        "events": 23,
+        "kind_counts": {
+          "decision": 9,
+          "llm_call": 10,
+          "retry": 3,
+          "tool": 1
+        },
+        "llm_calls": 10,
+        "parse_errors": 0,
+        "parse_recovered": 0,
+        "repairs": {},
+        "retries": 3,
+        "tool_outcomes": {
+          "ok": 1
+        },
+        "truncated_events": 0
+      },
+      "message": "make a note",
+      "mode": "trusted",
+      "paused": false,
+      "req": {
+        "max_steps": 25,
+        "message": "make a note",
+        "temperature": 0.1,
+        "user_email": "owner@example.com"
+      },
+      "rollback_log": [
+        {
+          "content": null,
+          "existed": false,
+          "path": "note.md",
+          "too_large": false
+        }
+      ],
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"make a note\", \"steps\": [{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\"}, \"description\": \"the note\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "{\"action\": \"write_file\", \"args\": {\"path\": \"note.md\", \"content\": \"v1\\n\"}}",
+        "{\"action\": \"final\", \"message\": \"done\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"FAIL\", \"next_state\": \"EXECUTING\", \"reason\": \"not good enough\", \"corrections\": []}",
+        "{\"action\": \"final\", \"message\": \"done\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"FAIL\", \"next_state\": \"EXECUTING\", \"reason\": \"still not\", \"corrections\": []}",
+        "{\"action\": \"final\", \"message\": \"done\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"FAIL\", \"next_state\": \"EXECUTING\", \"reason\": \"no\", \"corrections\": []}",
+        "{\"action\": \"final\", \"message\": \"done\"}",
+        "{\"action\": \"verdict\", \"verdict\": \"FAIL\", \"next_state\": \"EXECUTING\", \"reason\": \"give up\", \"corrections\": []}"
+      ],
+      "seed": {},
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "EXECUTING",
+        "VERIFYING",
+        "EXECUTING",
+        "VERIFYING",
+        "EXECUTING",
+        "VERIFYING",
+        "FAILED"
+      ],
+      "tool_calls": [
+        {
+          "args": {
+            "content": "v1\n",
+            "path": "note.md"
+          },
+          "result": {
+            "bytes": 3,
+            "path": "note.md"
+          },
+          "tool": "write_file"
+        }
+      ],
+      "transcript": [
+        {
+          "estimated_steps": 1,
+          "goal": "make a note",
+          "requires_approval": false,
+          "rollback_strategy": "none",
+          "state": "PLANNING",
+          "steps": [
+            {
+              "action": "write_file",
+              "args": {
+                "path": "note.md"
+              },
+              "description": "the note"
+            }
+          ]
+        },
+        {
+          "decision": "auto_approved",
+          "non_auto_approve_steps": [],
+          "requires_approval": false,
+          "state": "WAITING_APPROVAL"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "content": "v1\n",
+            "path": "note.md"
+          },
+          "governance": {
+            "auto_approve": false,
+            "destructive": false,
+            "network": false,
+            "risk": "write",
+            "rollback": "git",
+            "sandbox": "workspace",
+            "shell": false
+          },
+          "result": {
+            "bytes": 3,
+            "path": "note.md"
+          },
+          "risk": "medium",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "EXECUTING",
+          "reason": "not good enough",
+          "state": "VERIFYING",
+          "verdict": "FAIL",
+          "verdict_valid": true,
+          "verifier_available": true
+        },
+        {
+          "corrections": [],
+          "retry_attempt": 1,
+          "state": "EXECUTING"
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "EXECUTING",
+          "reason": "still not",
+          "state": "VERIFYING",
+          "verdict": "FAIL",
+          "verdict_valid": true,
+          "verifier_available": true
+        },
+        {
+          "corrections": [],
+          "retry_attempt": 2,
+          "state": "EXECUTING"
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "EXECUTING",
+          "reason": "no",
+          "state": "VERIFYING",
+          "verdict": "FAIL",
+          "verdict_valid": true,
+          "verifier_available": true
+        },
+        {
+          "corrections": [],
+          "retry_attempt": 3,
+          "state": "EXECUTING"
+        },
+        {
+          "action": "final",
+          "state": "EXECUTING",
+          "thoughts": ""
+        },
+        {
+          "confidence": 0.9,
+          "corrections": [],
+          "evidence": true,
+          "next_state": "EXECUTING",
+          "reason": "give up",
+          "state": "VERIFYING",
+          "verdict": "FAIL",
+          "verdict_valid": true,
+          "verifier_available": true
+        }
+      ],
+      "unused_script": 0
+    }
+  ],
+  "schema": "agent-loop-parity/v1"
+}

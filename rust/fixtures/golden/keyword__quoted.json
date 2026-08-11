@@ -14,6 +14,16 @@
   "result": {
     "matches": [
       {
+        "id": "doc:release-notes",
+        "metadata": {
+          "source": "release"
+        },
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
         "id": "dec:fusion-alpha",
         "metadata": {
           "category": "retrieval",

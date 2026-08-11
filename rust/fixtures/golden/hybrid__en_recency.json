@@ -54,6 +54,42 @@
       },
       {
         "fusion": "vector",
+        "id": "self:trait:e5",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "vector": {
+            "confidence": 0.7,
+            "node_type": "Self",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "trait",
+            "signal": "ko_role",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:trait:e5",
+        "rank": 2,
+        "rerank_score": 0.265753,
+        "score": 0.265753,
+        "scores": {
+          "age_decay": 0.63716,
+          "lexical": 0.0,
+          "vector": 0.834179
+        },
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "doc:retrieval-spec",
         "metadata": {
           "ext": ".pdf",
@@ -67,7 +103,7 @@
           }
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 2,
+        "rank": 3,
         "rerank_score": 0.196654,
         "score": 0.196654,
         "scores": {
@@ -91,7 +127,7 @@
           }
         },
         "node_id": "topic:quality",
-        "rank": 3,
+        "rank": 4,
         "rerank_score": 0.187067,
         "score": 0.187067,
         "scores": {
@@ -131,7 +167,7 @@
           }
         },
         "node_id": "doc:handbook",
-        "rank": 4,
+        "rank": 5,
         "rerank_score": 0.173916,
         "score": 0.173916,
         "scores": {
@@ -159,7 +195,7 @@
           }
         },
         "node_id": "sheet:metrics",
-        "rank": 5,
+        "rank": 6,
         "rerank_score": 0.166566,
         "score": 0.166566,
         "scores": {
@@ -183,7 +219,7 @@
           }
         },
         "node_id": "meeting:weekly",
-        "rank": 6,
+        "rank": 7,
         "rerank_score": 0.16653,
         "score": 0.16653,
         "scores": {
@@ -209,7 +245,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 7,
+        "rank": 8,
         "rerank_score": 0.158697,
         "score": 0.158697,
         "scores": {
@@ -233,7 +269,7 @@
           }
         },
         "node_id": "slide:fusion",
-        "rank": 8,
+        "rank": 9,
         "rerank_score": 0.157582,
         "score": 0.157582,
         "scores": {
@@ -248,6 +284,32 @@
       },
       {
         "fusion": "vector",
+        "id": "task:proposal-review",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "status": "open",
+          "vector": {
+            "node_type": "Task",
+            "status": "open"
+          }
+        },
+        "node_id": "task:proposal-review",
+        "rank": 10,
+        "rerank_score": 0.156503,
+        "score": 0.156503,
+        "scores": {
+          "age_decay": 0.887946,
+          "lexical": 0.0,
+          "vector": 0.352505
+        },
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
+        "type": "Task",
+        "updated_at": "2026-07-27T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "org:lattice",
         "metadata": {
           "parent_node_id": null,
@@ -257,7 +319,7 @@
           }
         },
         "node_id": "org:lattice",
-        "rank": 9,
+        "rank": 11,
         "rerank_score": 0.152695,
         "score": 0.152695,
         "scores": {
@@ -283,7 +345,7 @@
           }
         },
         "node_id": "dec:rust-foundation",
-        "rank": 10,
+        "rank": 12,
         "rerank_score": 0.14437,
         "score": 0.14437,
         "scores": {
@@ -307,7 +369,7 @@
           }
         },
         "node_id": "legacy:global-note",
-        "rank": 11,
+        "rank": 13,
         "rerank_score": 0.136673,
         "score": 0.136673,
         "scores": {
@@ -333,7 +395,7 @@
           }
         },
         "node_id": "task:parity-harness",
-        "rank": 12,
+        "rank": 14,
         "rerank_score": 0.127752,
         "score": 0.127752,
         "scores": {
@@ -357,7 +419,7 @@
           }
         },
         "node_id": "agent:librarian",
-        "rank": 13,
+        "rank": 15,
         "rerank_score": 0.122531,
         "score": 0.122531,
         "scores": {
@@ -381,7 +443,7 @@
           }
         },
         "node_id": "twin:doc-a",
-        "rank": 14,
+        "rank": 16,
         "rerank_score": 0.120422,
         "score": 0.120422,
         "scores": {
@@ -405,7 +467,7 @@
           }
         },
         "node_id": "twin:doc-b",
-        "rank": 15,
+        "rank": 17,
         "rerank_score": 0.120422,
         "score": 0.120422,
         "scores": {
@@ -429,7 +491,7 @@
           }
         },
         "node_id": "concept:retrieval",
-        "rank": 16,
+        "rank": 18,
         "rerank_score": 0.115968,
         "score": 0.115968,
         "scores": {
@@ -455,7 +517,7 @@
           }
         },
         "node_id": "task:onboarding-checklist",
-        "rank": 17,
+        "rank": 19,
         "rerank_score": 0.1096,
         "score": 0.1096,
         "scores": {
@@ -483,7 +545,7 @@
           }
         },
         "node_id": "img:whiteboard",
-        "rank": 18,
+        "rank": 20,
         "rerank_score": 0.106829,
         "score": 0.106829,
         "scores": {
@@ -495,66 +557,13 @@
         "title": "whiteboard-retrieval.png",
         "type": "Image",
         "updated_at": "2026-03-19T11:11:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "img:ocr-notes",
-        "metadata": {
-          "filename": "whiteboard-retrieval.png",
-          "ocr": true,
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "ImageText",
-            "ocr": true
-          }
-        },
-        "node_id": "img:ocr-notes",
-        "rank": 19,
-        "rerank_score": 0.088237,
-        "score": 0.088237,
-        "scores": {
-          "age_decay": 0.500624,
-          "lexical": 0.0,
-          "vector": 0.352505
-        },
-        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
-        "title": "화이트보드 OCR 텍스트",
-        "type": "ImageText",
-        "updated_at": "2026-03-19T11:12:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "tie:a",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "tie:a",
-        "rank": 20,
-        "rerank_score": 0.07773,
-        "score": 0.07773,
-        "scores": {
-          "age_decay": 0.500063,
-          "lexical": 0.0,
-          "vector": 0.310879
-        },
-        "summary": "",
-        "title": "Tie candidate A",
-        "type": "Concept",
-        "updated_at": "2026-02-01T00:00:00"
       }
     ],
     "mode": "hybrid",
     "multimodal": {
-      "images": 2,
+      "images": 1,
       "types": [
-        "Image",
-        "ImageText"
+        "Image"
       ]
     },
     "policy": {
@@ -577,7 +586,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

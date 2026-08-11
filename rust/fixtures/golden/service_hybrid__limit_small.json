@@ -18,8 +18,8 @@
         "query": "hybrid retrieval ranking",
         "recall": {
           "backend": "bruteforce-cosine",
-          "candidates_scanned": 44,
-          "candidates_total": 44,
+          "candidates_scanned": 69,
+          "candidates_total": 69,
           "detail": null,
           "max_candidates": 10000,
           "truncated": false
@@ -127,10 +127,10 @@
         },
         "node_id": "sheet:metrics",
         "rank": 2,
-        "score": 0.55,
+        "score": 0.52,
         "source_scores": {
-          "graph": 0.25,
-          "keyword": 0.25,
+          "graph": 0.2,
+          "keyword": 0.2,
           "vector": 0.539077
         },
         "sources": [
@@ -160,30 +160,40 @@
         "graph_context": [
           {
             "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:release-notes",
+              "id": "edge:1895af74189a6e7dde366375",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.72
+            }
           }
         ],
-        "id": "task:parity-harness",
+        "id": "doc:release-notes",
         "item_type": "node",
         "metadata": {
-          "status": "open"
+          "source": "release"
         },
-        "node_id": "task:parity-harness",
+        "node_id": "doc:release-notes",
         "rank": 3,
-        "score": 0.484582,
+        "score": 0.429777,
         "source_scores": {
           "graph": 0.5,
           "keyword": 0.5,
-          "vector": 0.461455
+          "vector": 0.324443
         },
         "sources": [
           "keyword",
           "vector",
           "graph"
         ],
-        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
-        "title": "Build the retrieval parity harness",
-        "type": "Task",
-        "updated_at": "2026-07-15T11:00:00"
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
       }
     ],
     "mode": "hybrid",

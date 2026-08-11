@@ -1,0 +1,149 @@
+{
+  "key": "ko_meeting",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다\n- 결정: 문서는 한국어로 쓴다\n- 관계: 박민서 님과 빌드 파이프라인을 함께 본다\n\n### 📄 관련 문서/파일\n\n- **[Document] 제안서 초안: 검색 품질 개선** (relevance: 0.65)\n  - 출처: docs/proposal.md\n  - 검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.\n  - 관련: 근거, 제안서, Ranking, Retrieval, 문서 형식은 마크다운으로 통일\n\n- **[File] meeting-minutes.md** (relevance: 0.54)\n  - 출처: notes/meeting-minutes.md\n  - 회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.\n  - 관련: 문서 형식은 마크다운으로 통일\n\n- **[ImageText] 화이트보드 OCR 텍스트** (relevance: 0.50)\n  - 출처: whiteboard-retrieval.png\n  - 회의 결정 사항: 랭킹은 alpha 융합을 유지한다.\n\n- **[Document] Lattice AI 사용 안내서** (relevance: 0.32)\n  - 출처: handbook.pdf\n  - 제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.\n\n### ✅ 관련 결정사항/작업\n\n- **[Decision] Rust 기반 검색 이관 결정** (relevance: 0.62)\n  - 검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.\n  - 관련: Build the retrieval parity harness\n\n### 🔗 관련 개념/기술\n\n- **[Concept] 제안서** (relevance: 0.40)\n  - 제안서는 결정을 요청하는 문서입니다.\n\n- **[Concept] 근거**\n  - 근거는 주장을 뒷받침하는 자료입니다.\n\n- **[Concept] Ranking**\n  - Ranking orders candidates so the best answer is first.\n\n- **[Concept] Retrieval**\n  - Retrieval is the act of finding the right memory for a question.\n\n- **[Feature] Command palette**\n  - The palette that opens search from anywhere.\n\n- **[Feature] 문서 생성**\n  - 질문에서 문서를 만들어 주는 기능입니다.",
+      "context_quality": {
+        "limited": false,
+        "mode": "hybrid",
+        "multimodal": {
+          "images": 1,
+          "types": [
+            "ImageText"
+          ]
+        },
+        "nodes": 6,
+        "reason": null
+      },
+      "query": "회의 결정 사항",
+      "sources": [
+        {
+          "id": "doc:proposal",
+          "source": "docs/proposal.md",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        {
+          "id": "dec:rust-foundation",
+          "source": "dec:rust-foundation",
+          "title": "Rust 기반 검색 이관 결정",
+          "type": "Decision"
+        },
+        {
+          "id": "file:meeting-minutes",
+          "source": "notes/meeting-minutes.md",
+          "title": "meeting-minutes.md",
+          "type": "File"
+        },
+        {
+          "id": "img:ocr-notes",
+          "source": "whiteboard-retrieval.png",
+          "title": "화이트보드 OCR 텍스트",
+          "type": "ImageText"
+        },
+        {
+          "id": "concept:proposal",
+          "source": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        },
+        {
+          "id": "doc:handbook",
+          "source": "handbook.pdf",
+          "title": "Lattice AI 사용 안내서",
+          "type": "Document"
+        }
+      ],
+      "stats": {
+        "budget_trimmed": false,
+        "graph_edges": 36,
+        "graph_nodes": 24,
+        "method": "hybrid",
+        "primary_matches": 6
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 34,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 39,
+            "name": "관련 문서/파일",
+            "provenance": [
+              {
+                "id": "doc:proposal",
+                "type": "Document"
+              },
+              {
+                "id": "file:meeting-minutes",
+                "type": "File"
+              },
+              {
+                "id": "img:ocr-notes",
+                "type": "ImageText"
+              },
+              {
+                "id": "doc:handbook",
+                "type": "Document"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 13,
+            "name": "관련 결정사항/작업",
+            "provenance": [
+              {
+                "id": "dec:rust-foundation",
+                "type": "Decision"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 58,
+            "name": "관련 개념/기술",
+            "provenance": [
+              {
+                "id": "concept:proposal",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:evidence",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:ranking",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:retrieval",
+                "type": "Concept"
+              },
+              {
+                "id": "feature:command-palette",
+                "type": "Feature"
+              },
+              {
+                "id": "feature:doc-generation",
+                "type": "Feature"
+              }
+            ],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 332
+      }
+    },
+    "sources_footnote": "\n---\n**참조된 지식 그래프 노드:**\n1. [Document] 제안서 초안: 검색 품질 개선 (docs/proposal.md)\n2. [Decision] Rust 기반 검색 이관 결정 (dec:rust-foundation)\n3. [File] meeting-minutes.md (notes/meeting-minutes.md)\n4. [ImageText] 화이트보드 OCR 텍스트 (whiteboard-retrieval.png)\n5. [Concept] 제안서 (concept:proposal)\n6. [Document] Lattice AI 사용 안내서 (handbook.pdf)"
+  },
+  "spec": {
+    "key": "ko_meeting",
+    "query": "회의 결정 사항"
+  },
+  "suite": "context_document"
+}

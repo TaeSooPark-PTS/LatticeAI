@@ -29,6 +29,59 @@
         "title": "AdminUserUpdate",
         "type": "object"
       },
+      "AgentChangeProposalRequest": {
+        "description": "A governor consultation for a write that may touch existing content.\n\n``policy`` is optional: the Rust kernel already holds the policy it\npreflighted with, and passing it back keeps the two sides deciding on the\nsame facts. Omitted, the registry's own policy for this call is used.",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "title": "AgentChangeProposalRequest",
+        "type": "object"
+      },
       "AgentConfigRequest": {
         "properties": {
           "config": {
@@ -74,6 +127,52 @@
           "skill"
         ],
         "title": "AgentEvalRequest",
+        "type": "object"
+      },
+      "AgentLLMRequest": {
+        "description": "One completion, with the model chosen per call.\n\n``model_id`` omitted means the router's current default; a model that is\nnot cached makes ``generate_as`` answer ``\"No model.\"``, which is returned\nverbatim rather than dressed up as an error \u2014 the loop records it as the\nstep's text and re-plans, exactly as the Python loop does.",
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "max_tokens": {
+            "default": 4096,
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "temperature": {
+            "default": 0.2,
+            "title": "Temperature",
+            "type": "number"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "AgentLLMRequest",
         "type": "object"
       },
       "AgentRegisterRequest": {
@@ -381,6 +480,36 @@
           "goal"
         ],
         "title": "AgentRunRequest",
+        "type": "object"
+      },
+      "AgentToolRequest": {
+        "description": "One governed tool call on behalf of the authenticated user.",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "title": "AgentToolRequest",
         "type": "object"
       },
       "AutomationRunNowRequest": {
@@ -5052,7 +5181,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "11.5.0"
+    "version": "11.5.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6226,6 +6355,43 @@
         "summary": "Agent Approvals"
       }
     },
+    "/agent/change-proposal": {
+      "post": {
+        "description": "Ask the governor what should happen to this write.\n\nThe verdict is returned verbatim \u2014 ``{\"decision\": \"allow_additive\"}``\nor ``{\"decision\": \"proposed\", \"proposal\": {...}}`` \u2014 because the Rust\nloop has to act on the same facts the Review Center will show.\n\n``review`` answers ``None`` for \"I have nothing to say about this call:\nfall through to the normal gates\". Three different situations collapse\ninto that one ``None`` (not a governed tool; no proposal required; the\nedit could not be computed deterministically) and the service does not\ndistinguish them, so neither does this payload: ``{\"decision\": \"none\"}``\nand nothing invented about why.\n\nNo mode-invariant guard here, because nothing executes: staging a\nproposal writes a review item, and the write itself still has to come\nback through ``/agent/tool`` \u2014 where the guards are.",
+        "operationId": "agent_change_proposal_agent_change_proposal_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentChangeProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Change Proposal"
+      }
+    },
     "/agent/eval": {
       "post": {
         "operationId": "agent_eval_agent_eval_post",
@@ -6262,6 +6428,43 @@
         "summary": "Agent Eval"
       }
     },
+    "/agent/llm": {
+      "post": {
+        "description": "Generate once. Writes nothing, remembers nothing.\n\nNot gated by ``LATTICEAI_AGENT_TOOL_SEAM``: a completion has no side\neffect to gate, and the Rust loop is not the only caller that wants one\n(``/rust/context/document`` composes a prompt the same way). Auth and\nthe per-step rate limit are the whole ceremony.\n\nStructural problems in the body \u2014 a missing ``message``, a string where\na number belongs \u2014 answer with FastAPI's own 422, uniform with every\nother router. Semantic ones answer in the caller's language.",
+        "operationId": "agent_llm_agent_llm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentLLMRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Llm"
+      }
+    },
     "/agent/resume": {
       "post": {
         "operationId": "agent_resume_agent_resume_post",
@@ -6296,6 +6499,43 @@
           }
         },
         "summary": "Agent Resume"
+      }
+    },
+    "/agent/tool": {
+      "post": {
+        "description": "Run one tool through the same lifecycle the Python loop uses.\n\nThe answer shape mirrors the loop's own catch (``execution.py``): a\n``ToolError``/``KeyError``/``TypeError``/``PermissionError`` is the\n*step's* outcome, not the request's, so it comes back 200 with\n``{\"error\": ...}`` for the transcript. A denial \u2014 role, circuit\nbreaker, fail-closed governance \u2014 is the request's outcome and comes\nback 4xx, because retrying it would be pointless.",
+        "operationId": "agent_tool_agent_tool_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentToolRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Tool"
       }
     },
     "/agents": {

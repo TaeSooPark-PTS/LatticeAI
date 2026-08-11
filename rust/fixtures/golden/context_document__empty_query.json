@@ -1,0 +1,31 @@
+{
+  "key": "empty_query",
+  "result": {
+    "context": {
+      "context_markdown": "",
+      "context_quality": {
+        "limited": true,
+        "mode": "none",
+        "nodes": 0,
+        "reason": "문서 생성 컨텍스트를 조회할 수 없습니다"
+      },
+      "query": "",
+      "sources": [],
+      "stats": {
+        "matches": 0,
+        "method": "none"
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [],
+        "used_approx_tokens": 0
+      }
+    },
+    "sources_footnote": ""
+  },
+  "spec": {
+    "key": "empty_query",
+    "query": ""
+  },
+  "suite": "context_document"
+}

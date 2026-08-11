@@ -24,6 +24,17 @@
         "updated_at": "2026-07-15T11:00:00"
       },
       {
+        "id": "code:doc-builder",
+        "metadata": {
+          "filename": "context_builder.py",
+          "relative_path": "latticeai/core/context_builder.py"
+        },
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
         "id": "doc:handbook",
         "metadata": {
           "ext": ".pdf",
@@ -42,6 +53,32 @@
         "title": "Fusion slide",
         "type": "Slide",
         "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "id": "self:trait:e5",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "workspace_id": null
+        },
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
+      },
+      {
+        "id": "self:root",
+        "metadata": {
+          "self_model": true,
+          "self_model_kind": "root"
+        },
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self",
+        "updated_at": "2026-07-01T09:00:00"
       },
       {
         "id": "repo:lattice",

@@ -1,3 +1,13 @@
+# [v11.5.1 - Rust Full Loop] (2026-08-12)
+
+11.5.0의 명시적 잔여 완결: 에이전트 루프 오케스트레이터 Rust 이식(실
+런타임 대본 재생 궤적 10종 byte-identical + 실워커 라이브 스모크),
+AI Worker 시임 3종(불변 가드 유지), 문서 생성 컨텍스트 네이티브(골든
+총 247). 다이어그램의 모든 Rust 박스 구현 — Python은 설계된 AI Worker로.
+플로어: 7,006+1,761 테스트 · 100.00% · Rust 739.
+
+See [RELEASE_NOTES_v11.5.1.md](RELEASE_NOTES_v11.5.1.md).
+
 # [v11.5.0 - Rust Complete] (2026-08-11)
 
 Rust 로드맵 Phase 2·3·4 완결: 데스크톱 front-door 기본화(CSRF env 주입
@@ -441,7 +451,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.5.0**.
+This repository keeps public release history from **9.0.0 through 11.5.1**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

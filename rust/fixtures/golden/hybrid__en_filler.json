@@ -46,23 +46,22 @@
       },
       {
         "fusion": "both",
-        "id": "dec:fusion-alpha",
+        "id": "doc:release-notes",
         "metadata": {
-          "category": "retrieval",
-          "owner": "jiwon"
+          "source": "release"
         },
-        "node_id": "dec:fusion-alpha",
+        "node_id": "doc:release-notes",
         "rank": 2,
-        "rerank_score": 0.503039,
-        "score": 0.503039,
+        "rerank_score": 0.457095,
+        "score": 0.457095,
         "scores": {
           "lexical": 0.5,
-          "vector": 0.505065
+          "vector": 0.428492
         },
-        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
-        "title": "Hybrid retrieval fusion stays alpha weighted",
-        "type": "Decision",
-        "updated_at": "2026-07-20T09:00:00"
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
       },
       {
         "fusion": "both",
@@ -70,10 +69,10 @@
         "metadata": {},
         "node_id": "concept:retrieval",
         "rank": 3,
-        "rerank_score": 0.443201,
-        "score": 0.443201,
+        "rerank_score": 0.438757,
+        "score": 0.438757,
         "scores": {
-          "lexical": 0.111111,
+          "lexical": 0.1,
           "vector": 0.664595
         },
         "summary": "Retrieval is the act of finding the right memory for a question.",
@@ -83,17 +82,37 @@
       },
       {
         "fusion": "both",
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 4,
+        "rerank_score": 0.436372,
+        "score": 0.436372,
+        "scores": {
+          "lexical": 0.333333,
+          "vector": 0.505065
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": "both",
         "id": "img:whiteboard",
         "metadata": {
           "ext": ".png",
           "filename": "whiteboard-retrieval.png"
         },
         "node_id": "img:whiteboard",
-        "rank": 4,
-        "rerank_score": 0.396923,
-        "score": 0.396923,
+        "rank": 5,
+        "rerank_score": 0.387399,
+        "score": 0.387399,
         "scores": {
-          "lexical": 0.166667,
+          "lexical": 0.142857,
           "vector": 0.550427
         },
         "summary": "Whiteboard photo from the retrieval design session.",
@@ -109,11 +128,11 @@
           "filename": "retrieval-metrics.xlsx"
         },
         "node_id": "sheet:metrics",
-        "rank": 5,
-        "rerank_score": 0.387782,
-        "score": 0.387782,
+        "rank": 6,
+        "rerank_score": 0.367782,
+        "score": 0.367782,
         "scores": {
-          "lexical": 0.25,
+          "lexical": 0.2,
           "vector": 0.479636
         },
         "summary": "Recall and precision per query class for the ranking experiments.",
@@ -128,11 +147,11 @@
           "status": "open"
         },
         "node_id": "task:parity-harness",
-        "rank": 6,
-        "rerank_score": 0.367946,
-        "score": 0.367946,
+        "rank": 7,
+        "rerank_score": 0.334613,
+        "score": 0.334613,
         "scores": {
-          "lexical": 0.333333,
+          "lexical": 0.25,
           "vector": 0.391022
         },
         "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
@@ -148,11 +167,11 @@
           "ocr": true
         },
         "node_id": "img:ocr-notes",
-        "rank": 7,
-        "rerank_score": 0.330737,
-        "score": 0.330737,
+        "rank": 8,
+        "rerank_score": 0.317404,
+        "score": 0.317404,
         "scores": {
-          "lexical": 0.2,
+          "lexical": 0.166667,
           "vector": 0.417895
         },
         "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
@@ -171,7 +190,7 @@
           }
         },
         "node_id": "org:lattice",
-        "rank": 8,
+        "rank": 9,
         "rerank_score": 0.200441,
         "score": 0.200441,
         "scores": {
@@ -194,7 +213,7 @@
           }
         },
         "node_id": "meeting:kickoff",
-        "rank": 9,
+        "rank": 10,
         "rerank_score": 0.185648,
         "score": 0.185648,
         "scores": {
@@ -219,7 +238,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 10,
+        "rank": 11,
         "rerank_score": 0.14583,
         "score": 0.14583,
         "scores": {
@@ -233,6 +252,33 @@
       },
       {
         "fusion": "vector",
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 12,
+        "rerank_score": 0.139682,
+        "score": 0.139682,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.232803
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "slide:fusion",
         "metadata": {
           "parent_node_id": null,
@@ -242,7 +288,7 @@
           }
         },
         "node_id": "slide:fusion",
-        "rank": 11,
+        "rank": 13,
         "rerank_score": 0.135248,
         "score": 0.135248,
         "scores": {
@@ -256,6 +302,33 @@
       },
       {
         "fusion": "vector",
+        "id": "code:doc-builder",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "rank": 14,
+        "rerank_score": 0.113793,
+        "score": 0.113793,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.189655
+        },
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "workflow:nightly",
         "metadata": {
           "parent_node_id": null,
@@ -265,7 +338,7 @@
           }
         },
         "node_id": "workflow:nightly",
-        "rank": 12,
+        "rank": 15,
         "rerank_score": 0.106063,
         "score": 0.106063,
         "scores": {
@@ -290,7 +363,7 @@
           }
         },
         "node_id": "dec:rust-foundation",
-        "rank": 13,
+        "rank": 16,
         "rerank_score": 0.105142,
         "score": 0.105142,
         "scores": {
@@ -313,7 +386,7 @@
           }
         },
         "node_id": "agent:librarian",
-        "rank": 14,
+        "rank": 17,
         "rerank_score": 0.100508,
         "score": 0.100508,
         "scores": {
@@ -336,7 +409,7 @@
           }
         },
         "node_id": "repo:lattice",
-        "rank": 15,
+        "rank": 18,
         "rerank_score": 0.095681,
         "score": 0.095681,
         "scores": {
@@ -361,7 +434,7 @@
           }
         },
         "node_id": "chat:ranking",
-        "rank": 16,
+        "rank": 19,
         "rerank_score": 0.09007,
         "score": 0.09007,
         "scores": {
@@ -384,7 +457,7 @@
           }
         },
         "node_id": "feature:command-palette",
-        "rank": 17,
+        "rank": 20,
         "rerank_score": 0.086601,
         "score": 0.086601,
         "scores": {
@@ -395,75 +468,6 @@
         "title": "Command palette",
         "type": "Feature",
         "updated_at": "2026-03-05T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "twin:doc-a",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "twin:doc-a",
-        "rank": 18,
-        "rerank_score": 0.079055,
-        "score": 0.079055,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.131758
-        },
-        "summary": "동일한 시각의 문서 A",
-        "title": "Twin document A",
-        "type": "Document",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "twin:doc-b",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "twin:doc-b",
-        "rank": 19,
-        "rerank_score": 0.079055,
-        "score": 0.079055,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.131758
-        },
-        "summary": "동일한 시각의 문서 B",
-        "title": "Twin document B",
-        "type": "Document",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "error:timeout",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Error"
-          }
-        },
-        "node_id": "error:timeout",
-        "rank": 20,
-        "rerank_score": 0.063085,
-        "score": 0.063085,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.105142
-        },
-        "summary": "An error where the ranking took longer than the request budget.",
-        "title": "Search timeout",
-        "type": "Error",
-        "updated_at": "2026-03-04T10:00:00"
       }
     ],
     "mode": "hybrid",
@@ -490,7 +494,7 @@
       "model": null
     },
     "sources": {
-      "lexical": 9,
+      "lexical": 10,
       "vector": 40
     },
     "top_k": 20,
@@ -498,7 +502,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

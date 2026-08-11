@@ -63,6 +63,25 @@
         "updated_at": "2026-04-02T10:00:00"
       },
       {
+        "id": "doc:release-notes",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "release",
+          "vector": {
+            "node_type": "Document",
+            "source": "release"
+          }
+        },
+        "node_id": "doc:release-notes",
+        "score": 0.424437,
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
         "id": "img:whiteboard",
         "item_type": "node",
         "metadata": {
@@ -238,6 +257,27 @@
         "updated_at": "2026-07-18T14:30:00"
       },
       {
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "score": 0.173832,
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
         "id": "slide:fusion",
         "item_type": "node",
         "metadata": {
@@ -270,6 +310,27 @@
         "title": "Librarian agent",
         "type": "Agent",
         "updated_at": "2026-03-03T10:00:00"
+      },
+      {
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "score": 0.156479,
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
       },
       {
         "id": "twin:doc-b",
@@ -442,6 +503,23 @@
         "updated_at": "2026-02-05T00:00:00"
       },
       {
+        "id": "slide:proposal-1",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:proposal-1",
+        "score": 0.090951,
+        "summary": "제안서 요약 슬라이드입니다.",
+        "title": "제안 슬라이드 1",
+        "type": "Slide",
+        "updated_at": "2026-07-19T09:00:00"
+      },
+      {
         "id": "concept:ranking",
         "item_type": "node",
         "metadata": {
@@ -459,136 +537,74 @@
         "updated_at": "2026-04-03T10:00:00"
       },
       {
-        "id": "audio:standup",
+        "id": "audio:proposal-call",
         "item_type": "node",
         "metadata": {
           "ext": ".m4a",
-          "filename": "standup-2026-07-13.m4a",
+          "filename": "proposal-call.m4a",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
             "ext": ".m4a",
-            "filename": "standup-2026-07-13.m4a",
+            "filename": "proposal-call.m4a",
             "node_type": "Audio"
           }
         },
-        "node_id": "audio:standup",
-        "score": 0.068218,
-        "summary": "Standup recording where the parity harness was assigned.",
-        "title": "standup-2026-07-13.m4a",
+        "node_id": "audio:proposal-call",
+        "score": 0.079212,
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
         "type": "Audio",
-        "updated_at": "2026-07-13T09:05:00"
+        "updated_at": "2026-07-15T09:00:00"
       },
       {
-        "id": "person:jiwon",
+        "id": "sheet:proposal-budget",
         "item_type": "node",
         "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "role": "owner",
-          "vector": {
-            "node_type": "Person",
-            "role": "owner"
-          }
-        },
-        "node_id": "person:jiwon",
-        "score": 0.061604,
-        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
-        "title": "김지원 님",
-        "type": "Person",
-        "updated_at": "2026-04-11T10:00:00"
-      },
-      {
-        "id": "tie:e",
-        "item_type": "node",
-        "metadata": {
+          "ext": ".xlsx",
+          "filename": "proposal-budget.xlsx",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "node_type": "Concept"
+            "ext": ".xlsx",
+            "filename": "proposal-budget.xlsx",
+            "node_type": "Spreadsheet"
           }
         },
-        "node_id": "tie:e",
-        "score": 0.057166,
-        "summary": "",
-        "title": "Tie candidate E",
-        "type": "Concept",
-        "updated_at": "2026-02-01T00:00:00"
+        "node_id": "sheet:proposal-budget",
+        "score": 0.074407,
+        "summary": "제안서 예산 표입니다.",
+        "title": "proposal-budget.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-07-17T09:00:00"
       },
       {
-        "id": "tie:d",
+        "id": "img:proposal-sketch",
         "item_type": "node",
         "metadata": {
+          "ext": ".png",
+          "filename": "proposal-sketch.png",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "node_type": "Concept"
+            "ext": ".png",
+            "filename": "proposal-sketch.png",
+            "node_type": "Image"
           }
         },
-        "node_id": "tie:d",
-        "score": 0.057166,
-        "summary": "",
-        "title": "Tie candidate D",
-        "type": "Concept",
-        "updated_at": "2026-02-01T00:00:00"
-      },
-      {
-        "id": "tie:c",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "tie:c",
-        "score": 0.057166,
-        "summary": "",
-        "title": "Tie candidate C",
-        "type": "Concept",
-        "updated_at": "2026-02-01T00:00:00"
-      },
-      {
-        "id": "tie:b",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "tie:b",
-        "score": 0.057166,
-        "summary": "",
-        "title": "Tie candidate B",
-        "type": "Concept",
-        "updated_at": "2026-02-01T00:00:00"
-      },
-      {
-        "id": "tie:a",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "tie:a",
-        "score": 0.057166,
-        "summary": "",
-        "title": "Tie candidate A",
-        "type": "Concept",
-        "updated_at": "2026-02-01T00:00:00"
+        "node_id": "img:proposal-sketch",
+        "score": 0.073546,
+        "summary": "제안서 구조 스케치입니다.",
+        "title": "proposal-sketch.png",
+        "type": "Image",
+        "updated_at": "2026-07-16T09:00:00"
       }
     ],
     "query": "what is   the retrieval specification please",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.5.0 — Rust Complete**.
+Current release: **11.5.1 — Rust Full Loop**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 9.0.0 through 11.5.0. Security
+The public Git tree keeps release history from 9.0.0 through 11.5.1. Security
 support follows that same product era.
 
 | Version | Support |

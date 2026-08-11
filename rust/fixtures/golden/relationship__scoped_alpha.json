@@ -82,6 +82,60 @@
         "weight": 0.95
       },
       {
+        "created_at": "2026-07-30T00:01:00",
+        "id": "edge:e4429dea61a61786d6e929d4",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "concept:evidence",
+          "metadata": {},
+          "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+          "title": "근거",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.91
+      },
+      {
+        "created_at": "2026-07-30T00:02:00",
+        "id": "edge:9d7c30812b7f30ed956e1a29",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "feature:doc-generation",
+          "metadata": {},
+          "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+          "title": "문서 생성",
+          "type": "Feature"
+        },
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
         "created_at": "2026-07-01T00:00:00",
         "id": "edge:56adf9267d30650da146f7da",
         "metadata": {
@@ -108,19 +162,131 @@
         "weight": 0.9
       },
       {
-        "created_at": "2026-07-06T00:00:00",
-        "id": "edge:22fe3b50b2c1aeaec62c9510",
+        "created_at": "2026-07-30T00:03:00",
+        "id": "edge:a3970c26bfa32ef451ec5337",
         "metadata": {
-          "legacy_label": "owns"
+          "legacy_label": "relates_to"
         },
         "source": {
-          "id": "person:jiwon",
+          "id": "doc:proposal",
           "metadata": {
-            "role": "owner"
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
           },
-          "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
-          "title": "김지원 님",
-          "type": "Person"
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "dec:doc-format",
+          "metadata": {},
+          "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+          "title": "문서 형식은 마크다운으로 통일",
+          "type": "Decision"
+        },
+        "type": "MENTIONS",
+        "weight": 0.89
+      },
+      {
+        "created_at": "2026-07-30T00:04:00",
+        "id": "edge:a83c0c5dbd4f361518e5d34d",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "task:proposal-review",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+          "title": "제안서 검토",
+          "type": "Task"
+        },
+        "type": "MENTIONS",
+        "weight": 0.88
+      },
+      {
+        "created_at": "2026-07-30T00:05:00",
+        "id": "edge:118aa0fc1ce3333002ab7296",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "concept:retrieval",
+          "metadata": {},
+          "summary": "Retrieval is the act of finding the right memory for a question.",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.87
+      },
+      {
+        "created_at": "2026-07-30T00:07:00",
+        "id": "edge:237cdddaebf4d81e0ea18736",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "feature:command-palette",
+          "metadata": {},
+          "summary": "The palette that opens search from anywhere.",
+          "title": "Command palette",
+          "type": "Feature"
+        },
+        "type": "MENTIONS",
+        "weight": 0.85
+      },
+      {
+        "created_at": "2026-07-30T00:08:00",
+        "id": "edge:8a2e9fe01b4f40450ebd1211",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
         },
         "target": {
           "id": "task:parity-harness",
@@ -132,107 +298,49 @@
           "type": "Task"
         },
         "type": "MENTIONS",
-        "weight": 0.6
+        "weight": 0.84
       },
       {
-        "created_at": "2026-06-04T00:00:00",
-        "id": "edge:7f22f14e6b87e9087ad6cfcf",
+        "created_at": "2026-07-28T00:00:00",
+        "id": "edge:b021c3b80b12beee374f2d5f",
         "metadata": {
           "legacy_label": "relates_to"
         },
         "source": {
-          "id": "file:ranking-notes",
+          "id": "file:meeting-minutes",
           "metadata": {
-            "ext": ".md",
-            "filename": "ranking-notes.md"
+            "filename": "meeting-minutes.md",
+            "relative_path": "notes/meeting-minutes.md"
           },
-          "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-          "title": "ranking-notes.md",
+          "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+          "title": "meeting-minutes.md",
           "type": "File"
         },
         "target": {
-          "id": "dec:fusion-alpha",
-          "metadata": {
-            "category": "retrieval",
-            "owner": "jiwon"
-          },
-          "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
-          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "id": "dec:doc-format",
+          "metadata": {},
+          "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+          "title": "문서 형식은 마크다운으로 통일",
           "type": "Decision"
         },
         "type": "MENTIONS",
-        "weight": 0.35
+        "weight": 0.8
       },
       {
-        "created_at": "2026-06-05T00:00:00",
-        "id": "edge:17137d757ca2934c0c9f13ac",
+        "created_at": "2026-07-28T00:01:00",
+        "id": "edge:e98ffd7dd121636629945e8b",
         "metadata": {
           "legacy_label": "relates_to"
         },
         "source": {
-          "id": "code:hybrid-search",
+          "id": "file:meeting-minutes",
           "metadata": {
-            "ext": ".py",
-            "filename": "hybrid.py"
+            "filename": "meeting-minutes.md",
+            "relative_path": "notes/meeting-minutes.md"
           },
-          "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
-          "title": "hybrid.py",
-          "type": "CodeFile"
-        },
-        "target": {
-          "id": "file:ranking-notes",
-          "metadata": {
-            "ext": ".md",
-            "filename": "ranking-notes.md"
-          },
-          "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-          "title": "ranking-notes.md",
+          "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+          "title": "meeting-minutes.md",
           "type": "File"
-        },
-        "type": "MENTIONS",
-        "weight": 0.3
-      },
-      {
-        "created_at": "2026-06-09T00:00:00",
-        "id": "edge:777c7fccc069fb9d2ddf3a0a",
-        "metadata": {
-          "legacy_label": "relates_to"
-        },
-        "source": {
-          "id": "topic:quality",
-          "metadata": {},
-          "summary": "검색 품질에 대한 주제입니다.",
-          "title": "검색 품질",
-          "type": "Topic"
-        },
-        "target": {
-          "id": "deck:review",
-          "metadata": {
-            "ext": ".pptx",
-            "filename": "quarterly-review.pptx"
-          },
-          "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
-          "title": "분기 리뷰 발표자료",
-          "type": "SlideDeck"
-        },
-        "type": "MENTIONS",
-        "weight": 0.2
-      },
-      {
-        "created_at": "2026-06-09T00:00:00",
-        "id": "edge:d41ef88ab120a38e991f0338",
-        "metadata": {
-          "legacy_label": "relates_to"
-        },
-        "source": {
-          "id": "deck:review",
-          "metadata": {
-            "ext": ".pptx",
-            "filename": "quarterly-review.pptx"
-          },
-          "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
-          "title": "분기 리뷰 발표자료",
-          "type": "SlideDeck"
         },
         "target": {
           "id": "meeting:weekly",
@@ -242,7 +350,90 @@
           "type": "Meeting"
         },
         "type": "MENTIONS",
-        "weight": 0.2
+        "weight": 0.79
+      },
+      {
+        "created_at": "2026-07-27T00:00:00",
+        "id": "edge:eafedb993f0fc4323fdfa38a",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "chat:proposal",
+          "metadata": {
+            "conversation_id": "conv-f"
+          },
+          "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+          "title": "제안서 관련 대화",
+          "type": "Chat"
+        },
+        "target": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "type": "MENTIONS",
+        "weight": 0.78
+      },
+      {
+        "created_at": "2026-07-25T00:00:00",
+        "id": "edge:95a0876c11c7a8d97330a0f5",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "audio:proposal-call",
+          "metadata": {
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a"
+          },
+          "summary": "제안서 관련 통화 녹음입니다.",
+          "title": "proposal-call.m4a",
+          "type": "Audio"
+        },
+        "target": {
+          "id": "task:proposal-review",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+          "title": "제안서 검토",
+          "type": "Task"
+        },
+        "type": "MENTIONS",
+        "weight": 0.75
+      },
+      {
+        "created_at": "2026-07-24T00:00:00",
+        "id": "edge:a9abf40ba36dec0603ac4098",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "code:doc-builder",
+          "metadata": {
+            "filename": "context_builder.py",
+            "relative_path": "latticeai/core/context_builder.py"
+          },
+          "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+          "title": "context_builder.py",
+          "type": "CodeFile"
+        },
+        "target": {
+          "id": "feature:doc-generation",
+          "metadata": {},
+          "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+          "title": "문서 생성",
+          "type": "Feature"
+        },
+        "type": "MENTIONS",
+        "weight": 0.74
       }
     ]
   },

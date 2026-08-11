@@ -92,10 +92,10 @@
         "metadata": {},
         "node_id": "meeting:weekly",
         "rank": 4,
-        "rerank_score": 0.482493,
-        "score": 0.482493,
+        "rerank_score": 0.452493,
+        "score": 0.452493,
         "scores": {
-          "lexical": 0.2,
+          "lexical": 0.125,
           "vector": 0.670821
         },
         "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
@@ -232,6 +232,52 @@
       },
       {
         "fusion": "vector",
+        "id": "self:unknown:f6",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "rank": 10,
+        "rerank_score": 0.204185,
+        "score": 0.204185,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.340308
+        },
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
+        "fusion": "both",
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "node_id": "doc:proposal",
+        "rank": 11,
+        "rerank_score": 0.198467,
+        "score": 0.198467,
+        "scores": {
+          "lexical": 0.2,
+          "vector": 0.197445
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "dec:fusion-alpha",
         "metadata": {
           "category": "retrieval",
@@ -245,7 +291,7 @@
           }
         },
         "node_id": "dec:fusion-alpha",
-        "rank": 10,
+        "rank": 12,
         "rerank_score": 0.196396,
         "score": 0.196396,
         "scores": {
@@ -272,7 +318,7 @@
           }
         },
         "node_id": "sheet:metrics",
-        "rank": 11,
+        "rank": 13,
         "rerank_score": 0.186508,
         "score": 0.186508,
         "scores": {
@@ -297,7 +343,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 12,
+        "rank": 14,
         "rerank_score": 0.162018,
         "score": 0.162018,
         "scores": {
@@ -308,6 +354,29 @@
         "title": "github.com/lattice/ai",
         "type": "Source",
         "updated_at": "2026-02-20T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:undated",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "rank": 15,
+        "rerank_score": 0.157697,
+        "score": 0.157697,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.262829
+        },
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
       },
       {
         "fusion": "vector",
@@ -324,7 +393,7 @@
           }
         },
         "node_id": "deck:review",
-        "rank": 13,
+        "rank": 16,
         "rerank_score": 0.139348,
         "score": 0.139348,
         "scores": {
@@ -349,7 +418,7 @@
           }
         },
         "node_id": "task:parity-harness",
-        "rank": 14,
+        "rank": 17,
         "rerank_score": 0.114037,
         "score": 0.114037,
         "scores": {
@@ -376,7 +445,7 @@
           }
         },
         "node_id": "code:hybrid-search",
-        "rank": 15,
+        "rank": 18,
         "rerank_score": 0.107791,
         "score": 0.107791,
         "scores": {
@@ -390,124 +459,48 @@
       },
       {
         "fusion": "vector",
-        "id": "audio:standup",
-        "metadata": {
-          "ext": ".m4a",
-          "filename": "standup-2026-07-13.m4a",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".m4a",
-            "filename": "standup-2026-07-13.m4a",
-            "node_type": "Audio"
-          }
-        },
-        "node_id": "audio:standup",
-        "rank": 16,
-        "rerank_score": 0.094719,
-        "score": 0.094719,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.157865
-        },
-        "summary": "Standup recording where the parity harness was assigned.",
-        "title": "standup-2026-07-13.m4a",
-        "type": "Audio",
-        "updated_at": "2026-07-13T09:05:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "agent:librarian",
+        "id": "doc:release-notes",
         "metadata": {
           "parent_node_id": null,
           "parent_type": null,
+          "source": "release",
           "vector": {
-            "node_type": "Agent"
+            "node_type": "Document",
+            "source": "release"
           }
         },
-        "node_id": "agent:librarian",
-        "rank": 17,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "An agent that files new documents into the graph.",
-        "title": "Librarian agent",
-        "type": "Agent",
-        "updated_at": "2026-03-03T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "chat:ranking",
-        "metadata": {
-          "conversation_id": "conv-1",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "conversation_id": "conv-1",
-            "node_type": "Chat"
-          }
-        },
-        "node_id": "chat:ranking",
-        "rank": 18,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
-        "title": "랭킹 관련 대화",
-        "type": "Chat",
-        "updated_at": "2026-07-05T21:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "concept:ranking",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
+        "node_id": "doc:release-notes",
         "rank": 19,
-        "rerank_score": 0.0,
-        "score": 0.0,
+        "rerank_score": 0.105234,
+        "score": 0.105234,
         "scores": {
           "lexical": 0.0,
-          "vector": 0.0
+          "vector": 0.17539
         },
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
       },
       {
-        "fusion": "vector",
-        "id": "error:timeout",
+        "fusion": "both",
+        "id": "file:meeting-minutes",
         "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Error"
-          }
+          "filename": "meeting-minutes.md",
+          "relative_path": "notes/meeting-minutes.md"
         },
-        "node_id": "error:timeout",
+        "node_id": "file:meeting-minutes",
         "rank": 20,
-        "rerank_score": 0.0,
-        "score": 0.0,
+        "rerank_score": 0.1,
+        "score": 0.1,
         "scores": {
-          "lexical": 0.0,
+          "lexical": 0.25,
           "vector": 0.0
         },
-        "summary": "An error where the ranking took longer than the request budget.",
-        "title": "Search timeout",
-        "type": "Error",
-        "updated_at": "2026-03-04T10:00:00"
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
       }
     ],
     "mode": "hybrid",
@@ -530,7 +523,7 @@
       "model": null
     },
     "sources": {
-      "lexical": 5,
+      "lexical": 9,
       "vector": 40
     },
     "top_k": 20,
@@ -538,7 +531,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

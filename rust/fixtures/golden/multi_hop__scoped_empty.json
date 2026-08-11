@@ -1,0 +1,16 @@
+{
+  "key": "scoped_empty",
+  "result": {
+    "edges": [],
+    "nodes": []
+  },
+  "spec": {
+    "allowed": [],
+    "key": "scoped_empty",
+    "max_hops": 2,
+    "node_ids": [
+      "doc:proposal"
+    ]
+  },
+  "suite": "multi_hop"
+}

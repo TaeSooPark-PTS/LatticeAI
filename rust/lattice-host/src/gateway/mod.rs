@@ -51,6 +51,7 @@ pub struct GatewayState {
     client: reqwest::Client,
     db_path: PathBuf,
     agent_root: PathBuf,
+    agent_runs_dir: Option<PathBuf>,
     jobs: Option<Arc<Scheduler>>,
 }
 
@@ -72,6 +73,7 @@ impl GatewayState {
             // because a brain can appear at any time.
             db_path: lattice_core::graph_db_path(),
             agent_root: mounts::default_agent_root(),
+            agent_runs_dir: None,
             jobs: None,
         }
     }
@@ -114,6 +116,24 @@ impl GatewayState {
     /// The scheduler behind `/host/jobs`, when one is wired.
     pub fn jobs(&self) -> Option<Arc<Scheduler>> {
         self.jobs.clone()
+    }
+
+    /// Where paused `/rust/agent/run` approvals are stored.
+    ///
+    /// Defaults to `lattice_agent::runs::default_runs_dir`; a caller (a test, or
+    /// a host supervising more than one brain) can point it elsewhere.
+    pub fn with_agent_runs_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.agent_runs_dir = Some(path.into());
+        self
+    }
+
+    /// The loop orchestrator's configuration for this gateway.
+    pub fn agent_loop_config(&self) -> lattice_agent::LoopConfig {
+        let mut config = mounts::agent_loop_config(&self.worker_origin(), self.client.clone());
+        if let Some(dir) = &self.agent_runs_dir {
+            config.runs_dir = dir.clone();
+        }
+        config
     }
 
     /// The knowledge graph the native search routes read.
@@ -214,6 +234,9 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
     let db = state.db_path();
     let agent_root = state.agent_root();
     let jobs = state.jobs();
+    // The loop orchestrator talks to the worker this host supervises, over the
+    // client it already pools.
+    let agent = state.agent_loop_config();
     Router::new()
         .route("/host/health", get(routes::host_health))
         .route("/host/status", get(routes::host_status))
@@ -231,7 +254,7 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
         )
         .fallback(routes::gateway_fallback)
         .with_state(state)
-        .merge(mounts::native_router(db, &agent_root, jobs))
+        .merge(mounts::native_router(db, &agent_root, agent, jobs))
 }
 
 /// Bind a loopback listener, refusing anything else.

@@ -1,0 +1,45 @@
+{
+  "key": "fallback_empty",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다\n- 결정: 문서는 한국어로 쓴다\n- 관계: 박민서 님과 빌드 파이프라인을 함께 본다",
+      "context_quality": {
+        "limited": true,
+        "mode": "none",
+        "nodes": 0,
+        "reason": "그래프에서 관련 지식을 찾지 못했습니다"
+      },
+      "query": "zzqq wumpus nonsense",
+      "sources": [],
+      "stats": {
+        "budget_trimmed": false,
+        "matches": 0,
+        "method": "fallback"
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 34,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 0,
+            "name": "Knowledge (fallback)",
+            "provenance": [],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 34
+      }
+    },
+    "sources_footnote": ""
+  },
+  "spec": {
+    "key": "fallback_empty",
+    "query": "zzqq wumpus nonsense"
+  },
+  "suite": "context_document"
+}

@@ -1,0 +1,71 @@
+{
+  "key": "limit_one",
+  "result": [
+    {
+      "hybrid_score": 1.0535,
+      "id": "doc:proposal",
+      "metadata": {
+        "ext": ".md",
+        "filename": "proposal.md",
+        "relative_path": "docs/proposal.md"
+      },
+      "related_concepts": [
+        {
+          "id": "concept:evidence",
+          "title": "근거",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:ranking",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:retrieval",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        {
+          "id": "dec:doc-format",
+          "title": "문서 형식은 마크다운으로 통일",
+          "type": "Decision"
+        },
+        {
+          "id": "feature:command-palette",
+          "title": "Command palette",
+          "type": "Feature"
+        },
+        {
+          "id": "feature:doc-generation",
+          "title": "문서 생성",
+          "type": "Feature"
+        },
+        {
+          "id": "task:parity-harness",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        }
+      ],
+      "scores": {
+        "graph": 0.6598,
+        "recency": 0.9001,
+        "text": 1.0
+      },
+      "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+      "title": "제안서 초안: 검색 품질 개선",
+      "type": "Document",
+      "updated_at": "2026-07-30T09:00:00"
+    }
+  ],
+  "spec": {
+    "key": "limit_one",
+    "limit": 1,
+    "query": "제안서"
+  },
+  "suite": "docgen_search"
+}

@@ -6,27 +6,23 @@ something keeps proving it is still one. This script is the Python half of that
 proof: it builds a small, fully deterministic Brain with the **real** write path
 (``KnowledgeGraphStore._upsert_node`` / ``_upsert_chunk`` / ``_upsert_edge``,
 the real hash embedder, the real v2 projection and trigram FTS index), then runs
-the real ``hybrid_search`` / ``search`` / ``vector_search`` over it and writes
-their answers to ``rust/fixtures/golden/``.
+the real engines over it and writes their answers to ``rust/fixtures/golden/``.
+The suite set widens with the port (:data:`SUITES`): the search engines
+(v11.4.0); the KG relationship/traverse reads, the service layer, the durable
+history reads and the context assembler (v11.5.0); the document-generation
+search, traversal and context builder (v11.5.1, whose corpus and runners live
+in ``scripts/parity_fixture_corpus_docgen.py``).
 
-v11.5.0 widens it past search: the same store also carries the conversation
-corpus, and the same generator drives the KG relationship/traverse reads, the
-service-layer graph and three-channel hybrid, the durable history reads and the
-context assembler (:data:`SUITES`).
-
-Two consumers read what it writes:
-
-* ``tests/unit/test_rust_parity_contract.py`` re-runs the Python engines against
-  the committed database and asserts the goldens still hold — so a change to
-  Python semantics fails loudly instead of silently invalidating the contract
-  the Rust side is pinned to;
-* ``rust/lattice-retrieval/tests/parity.rs`` runs the Rust port against the same
-  database and the same goldens.
-
-Determinism is the whole design constraint: every timestamp is written by the
-real code and then **backdated**; the two ``datetime.now()`` calls the ports
-reach are frozen at :data:`FROZEN_NOW` (recorded in the manifest); LLM concept
-extraction is forced off; every environment knob is pinned to its default.
+Two consumers read what it writes: ``tests/unit/test_rust_parity_contract.py``
+re-runs the Python entry points against the committed database and asserts the
+goldens still hold — so a change to Python semantics fails loudly instead of
+silently invalidating the contract the Rust side is pinned to — and
+``rust/lattice-retrieval/tests/{parity,suites}.rs`` run the Rust ports against
+the same database and the same goldens. Determinism is the whole design
+constraint: every timestamp is written by the real code and then **backdated**;
+every ``datetime.now()`` the ports reach is frozen at :data:`FROZEN_NOW`
+(recorded in the manifest); LLM concept extraction is forced off; every
+environment knob is pinned to its default.
 
 Usage::
 
@@ -47,8 +43,14 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# The repo (for the product packages) and this directory: `scripts` is not a
+# package, so the docgen corpus is imported by name off the script directory —
+# the same by-path convention the contract test uses to import this file.
+for _import_root in (REPO_ROOT, Path(__file__).resolve().parent):
+    if str(_import_root) not in sys.path:
+        sys.path.insert(0, str(_import_root))
+
+import parity_fixture_corpus_docgen as docgen  # noqa: E402
 
 FIXTURE_DIR = REPO_ROOT / "rust" / "fixtures"
 GOLDEN_DIR = FIXTURE_DIR / "golden"
@@ -80,11 +82,11 @@ WS_BETA = "ws-beta"
 # (node_id, type, title, summary, metadata, workspace_id, updated_at)
 #
 # Shaped on purpose: every ``type_boost`` type appears and so do types outside it;
-# titles/summaries are half Korean (the tokenizer, classifier and extractor all
-# branch on script); the ``tie:`` block is five rows sharing one timestamp, one
-# type and nothing to match, pinning the (hits, boost, updated_at) → id ASC
-# tie-break; two workspaces plus NULL-workspace rows cover all three scoping
-# answers (no scoping / empty set / a specific workspace).
+# titles/summaries are half Korean (tokenizer, classifier and extractor all branch
+# on script); the ``tie:`` block is five rows sharing one timestamp, one type and
+# nothing to match, pinning the (hits, boost, updated_at) → id ASC tie-break; two
+# workspaces plus NULL-workspace rows cover all three scoping answers (no scoping
+# / empty set / a specific workspace). The v11.5.1 tail is in the docgen corpus.
 NODES: List[Tuple[str, str, str, str, Dict[str, Any], Optional[str], str]] = [
     ("dec:fusion-alpha", "Decision", "Hybrid retrieval fusion stays alpha weighted",
      "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
@@ -186,14 +188,14 @@ NODES: List[Tuple[str, str, str, str, Dict[str, Any], Optional[str], str]] = [
     ("legacy:global-note", "Document", "Legacy global note",
      "A legacy row with no workspace, visible only with include_legacy_global.",
      {}, None, "2026-06-20T10:00:00"),
+    *docgen.DOCGEN_NODES,
 ]
 
 # (chunk_id, parent_node_id, index, node_title, text, chunk_fields, workspace, updated_at)
 #
 # The shape mirrors ``KnowledgeGraphIngestMixin``: every chunk is BOTH a ``Chunk``
-# node (lexical lane + workspace scoping) and a ``chunks`` row with its own
-# embedding (vector lane, rolled up to its parent). Getting that duality wrong is
-# the whole reason chunk-heavy queries are in the query set.
+# node (lexical lane + workspace scoping) and a ``chunks`` row with its own embedding
+# (vector lane, rolled up to its parent) — the duality chunk-heavy queries pin.
 CHUNKS: List[Tuple[str, str, int, str, str, Dict[str, Any], Optional[str], str]] = [
     ("chunk:handbook:1", "doc:handbook", 0, "handbook.pdf chunk 1",
      "온보딩 체크리스트: 첫째, 폴더를 연결합니다. 둘째, 질문을 합니다. 셋째, 근거를 확인합니다.",
@@ -218,10 +220,10 @@ CHUNKS: List[Tuple[str, str, int, str, str, Dict[str, Any], Optional[str], str]]
 # orders by ``weight DESC, created_at DESC, id ASC`` and ``traverse`` caps every BFS
 # round with ``ORDER BY weight DESC, id ASC``, so an edge set sharing one weight and
 # one clock proves nothing. Three shapes are deliberate — a weight tie broken by
-# ``created_at`` (the ``org:lattice`` pair), a weight *and* clock tie broken by edge
-# id (``topic:quality``/``deck:review``), and legacy-global endpoints for scoping.
-# Types are canonicalized by the write door (``relates_to``/``owns`` → ``MENTIONS``),
-# which is why the goldens record uppercase names the fixture never spells.
+# ``created_at`` (``org:lattice``), a weight *and* clock tie broken by edge id
+# (``topic:quality``/``deck:review``), and legacy-global endpoints for scoping. The
+# write door canonicalizes types (``relates_to``/``owns`` → ``MENTIONS``), which is
+# why the goldens record uppercase names the fixture never spells.
 EDGES: List[Tuple[str, str, str, float, str]] = [
     ("dec:fusion-alpha", "concept:retrieval", "mentions", 0.9, "2026-07-01T00:00:00"),
     ("dec:fusion-alpha", "concept:ranking", "mentions", 0.8, "2026-07-02T00:00:00"),
@@ -246,6 +248,7 @@ EDGES: List[Tuple[str, str, str, float, str]] = [
     ("task:onboarding-checklist", "page:onboarding", "relates_to", 0.15, "2026-05-01T00:00:00"),
     ("doc:handbook", "doc:retrieval-spec", "relates_to", 0.1, "2026-05-02T00:00:00"),
     ("tie:a", "tie:b", "relates_to", 1.0, "2026-07-03T00:00:00"),
+    *docgen.DOCGEN_EDGES,
 ]
 
 # ── the conversation corpus (episodic memory, same database file) ────────────
@@ -257,7 +260,7 @@ EDGES: List[Tuple[str, str, str, float, str]] = [
 # ``conversation_id`` (the ``legacy-previous-history`` bucket), a whitespace-only
 # first message (the ``새 대화`` placeholder and its later upgrade), an
 # assistant-first conversation (no upgrade), an empty timestamp (the ``or ""``
-# fallbacks), extra keys ``metadata_json`` merges flat, and ko/en content.
+# fallbacks), extra keys ``metadata_json`` merges flat, ko/en content.
 MESSAGES: List[Tuple[Any, ...]] = [
     ("conv-a", "user", "온보딩 체크리스트 어떻게 시작해?", "jiwon@lattice.ai", "지원", "web", "2026-07-20T09:00:00", WS_ALPHA, "org-1", {}),
     ("conv-a", "assistant", "먼저 폴더를 연결하세요. 그다음 질문하면 됩니다.", "jiwon@lattice.ai", None, "web", "2026-07-20T09:00:05", WS_ALPHA, "org-1", {}),
@@ -307,17 +310,15 @@ QUERIES: List[Dict[str, Any]] = [
     {"key": "ws_alpha", "query": "hybrid retrieval ranking", "allowed": [WS_ALPHA]},
     {"key": "ws_alpha_legacy", "query": "회의 결정 사항", "allowed": [WS_ALPHA], "legacy": True},
     {"key": "ws_beta", "query": "온보딩 체크리스트", "allowed": [WS_BETA]},
-    # A vector floor nothing clears — the only way to reach the stale-embedder
-    # probe and the lexical-only fusion label without breaking the store.
+    # A vector floor nothing clears: the stale-embedder probe and the
+    # lexical-only fusion label, without breaking the store.
     {"key": "min_vector_floor", "query": "hybrid retrieval ranking", "min_vector": 0.95},
     # top_k small enough that the rerank window (top_k * 2) cuts the candidates.
     {"key": "top_k_small", "query": "hybrid retrieval ranking", "top_k": 3},
-    # Pinned alpha: no policy, so no class, no rewrite, and no age decay on a
-    # query that would otherwise be recency-classed.
+    # Pinned alpha: no policy, so no class/rewrite/age decay on a recency query.
     {"key": "alpha_pinned", "query": "지난주 회의 기록", "alpha": 0.2},
-    # A limit below the FTS hit count, so `ORDER BY rank LIMIT ?` decides which
-    # rows exist at all — the one place bm25 ordering (and therefore a SQLite
-    # version difference between the two runtimes) is observable.
+    # A limit below the FTS hit count, so `ORDER BY rank LIMIT ?` decides which rows
+    # exist at all — the one place bm25 ordering (a SQLite version difference) shows.
     {"key": "fts_rank_cut", "query": "Tie candidate", "limit": 2, "top_k": 2},
 ]
 
@@ -403,8 +404,8 @@ SUITES: Dict[str, List[Dict[str, Any]]] = {
         {"key": "en_code", "query": "vector_search() returns"},
         {"key": "ko_person", "query": "담당자 누구"},
         {"key": "en_filler", "query": "  what is   the retrieval specification please  "},
-        # Explicit weights disable BOTH the rewrite and the age decay, on a
-        # query that would otherwise get both. That asymmetry is the contract.
+        # Explicit weights disable BOTH rewrite and age decay on a query that
+        # would otherwise get both — that asymmetry is the contract.
         {"key": "pinned_recency", "query": "지난주 회의 기록", "weights": {"keyword": 0.5, "vector": 0.3, "graph": 0.2}},
         {"key": "pinned_partial", "query": "hybrid retrieval ranking", "weights": {"graph": 1.0}},
         {"key": "pinned_zero", "query": "회의 결정 사항", "weights": {"keyword": 0.0, "vector": 0.0, "graph": 0.0}},
@@ -476,6 +477,8 @@ SUITES: Dict[str, List[Dict[str, Any]]] = {
         {"key": "budget_zero", "query": "회의 결정 사항", "memories": CONTEXT_MEMORIES, "notes": "노트", "budget": 0},
         {"key": "knowledge_limit_one", "query": "hybrid retrieval ranking", "knowledge_limit": 1},
     ],
+    # v11.5.1: the document-generation ports, specs and runners alike.
+    **docgen.DOCGEN_SUITES,
 }
 
 #: Texts whose tokenizer output, hashes and vectors pin the embedding port.
@@ -517,10 +520,12 @@ def pinned_environment() -> Iterator[None]:
 def frozen_clock() -> Iterator[None]:
     """Freeze every ported ``datetime.now()`` at :data:`FROZEN_NOW`.
 
-    Only the recency-class age decay reads the clock, through the ``datetime``
-    name its module imported — so rebinding that name is the whole patch. Two
-    modules do it: the graph-layer and the service-layer ``hybrid_search``.
+    Only the recency decay reads the clock, through the ``datetime`` name its
+    module imported, so rebinding that name is the whole patch. Three modules
+    reach it: the graph-layer and service-layer ``hybrid_search``, and the
+    document-generation search's own 14-day half-life.
     """
+    from lattice_brain.graph import retrieval_docgen as docgen_module
     from lattice_brain.graph.retrieval import hybrid as hybrid_module
     from latticeai.services import search_service as service_module
 
@@ -531,7 +536,7 @@ def frozen_clock() -> Iterator[None]:
         def now(cls, tz=None):  # noqa: ARG003 — mirrors datetime.now's signature
             return frozen
 
-    modules = (hybrid_module, service_module)
+    modules = (hybrid_module, service_module, docgen_module)
     originals = [module.datetime for module in modules]
     for module in modules:
         module.datetime = _FrozenDatetime
@@ -546,8 +551,8 @@ def frozen_clock() -> Iterator[None]:
 def rules_only_extraction() -> Iterator[None]:
     """Force ``_topic_candidates`` down its rule-based path.
 
-    The LLM path needs a bound router no fixture run has, but "no router happens
-    to be bound" is an accident and this contract cannot rest on one.
+    The LLM path needs a bound router no fixture run has, but "no router
+    happens to be bound" is an accident this contract cannot rest on.
     """
     from lattice_brain.graph._kg_common import extraction
 
@@ -618,13 +623,12 @@ def build_store(db_path: Path) -> None:
         for from_node, to_node, edge_type, weight, stamp in EDGES:
             # ``_upsert_edge`` stamps ``created_at`` from the wall clock in BOTH
             # tables, and the read path is the ``kgv2_edges`` view over ``edges_v2``:
-            # backdating only the legacy table (as this generator first did) left
-            # the relationship ordering moving with the clock.
+            # backdating only the legacy table left the ordering moving with the clock.
             edge_id = store._upsert_edge(conn, from_node, to_node, edge_type, weight, {})
             conn.execute("UPDATE edges SET created_at=? WHERE id=?", (stamp, edge_id))
             conn.execute("UPDATE edges_v2 SET created_at=? WHERE id=?", (stamp, edge_id))
-        # ``indexed_at`` decides the candidate scan order (and, when the cap bites,
-        # which candidates exist at all), so it is assigned rather than inherited.
+        # ``indexed_at`` decides the candidate scan order (and, when the cap
+        # bites, which candidates exist), so it is assigned rather than inherited.
         item_ids = [row["item_id"] for row in conn.execute(
             "SELECT item_id FROM vector_embeddings ORDER BY item_id ASC"
         ).fetchall()]
@@ -636,8 +640,8 @@ def build_store(db_path: Path) -> None:
     store.record_embedder_fingerprint()
     write_conversations(db_path)
 
-    # Leave one self-contained file behind: checkpoint the WAL, drop back to a
-    # rollback journal so no sidecar is committed, and compact.
+    # One self-contained file: checkpoint the WAL, drop to a rollback journal
+    # so no sidecar is committed, and compact.
     with sqlite3.connect(str(db_path)) as conn:
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         conn.execute("PRAGMA journal_mode=DELETE")
@@ -678,18 +682,18 @@ def run_engine(store, engine: str, spec: Dict[str, Any]) -> Dict[str, Any]:
         return ENGINES[engine](store, spec)
 
 
-# ── suites (v11.5.0): KG reads, the service layer, history, context ──────────
+# ── the suites beyond search (v11.5.0/v11.5.1) ───────────────────────────────
 #
 # The Phase-1 engines share one query shape (a query set × an engine set); the
-# Phase-2/3 ports do not, so each gets its own spec list and runner, both carried
-# in the manifest so Rust and Python enumerate exactly the same work.
+# later ports do not, so each gets its own spec list and runner, both carried in
+# the manifest so Rust and Python enumerate exactly the same work.
 
 
 class Harness:
     """Every Python entry point the v11.5.0 goldens are produced from.
 
     ``require_auth=False`` is the loopback-owner configuration the native routes
-    reproduce: the history scope is whatever the caller passes explicitly.
+    reproduce: the history scope is whatever the caller passes.
     """
 
     def __init__(self, db_path: Path):
@@ -718,8 +722,7 @@ def _history_scope(spec: Dict[str, Any]) -> Dict[str, Any]:
     """The identity/workspace scope every history read takes.
 
     ``include_legacy_global`` defaults to ``True`` — ``ConversationStore``'s own
-    default, the opposite of the graph layer's and the kind of asymmetry a port
-    gets wrong.
+    default, the opposite of the graph layer's and an asymmetry a port gets wrong.
     """
     allowed = spec.get("allowed")
     return {
@@ -801,7 +804,7 @@ def _context_seams(h: Harness, spec: Dict[str, Any]) -> Dict[str, Any]:
 
     ``memories`` / ``artifacts`` / ``notes`` are *data* seams: the payload is the
     spec, so both runtimes feed the assembler the same bytes and what is under
-    test is the assembler. ``knowledge`` and ``recent`` are real — the
+    test is the assembler. ``knowledge`` and ``recent`` are real engines — the
     service-layer hybrid search and the durable history reader.
     """
     from latticeai.api.chat_helpers import build_recent_chat_context
@@ -868,6 +871,7 @@ SUITE_RUNNERS: Dict[str, Callable[[Harness, Dict[str, Any]], Any]] = {
     "conversation_messages": _run_conversation_messages,
     "history_search": _run_history_search,
     "context_assemble": _run_context_assemble,
+    **docgen.DOCGEN_RUNNERS,
 }
 
 
@@ -901,7 +905,7 @@ def suite_payload(suite: str, spec: Dict[str, Any], result: Any) -> Dict[str, An
     """One suite golden: the spec that produced it, verbatim, and the answer.
 
     The spec rides along rather than being flattened into a fixed ``params``
-    block: these entry points share no parameter shape.
+    block — these entry points share no parameter shape.
     """
     return {"suite": suite, "key": spec["key"], "spec": spec, "result": result}
 
@@ -982,8 +986,7 @@ def main() -> int:
         _dump(GOLDEN_DIR / "embeddings_golden.json", embeddings_golden())
         _dump(GOLDEN_DIR / "rounding_golden.json", rounding_golden())
         _dump(GOLDEN_DIR / "manifest.json", manifest())
-    # ``KnowledgeGraphStore.__init__`` creates its blob directory eagerly and the
-    # fixture has no blobs; an empty directory beside an artefact is just noise.
+    # The store creates its blob directory eagerly and the fixture has no blobs.
     blob_dir = STORE_PATH.parent / "blobs"
     if blob_dir.is_dir() and not any(blob_dir.iterdir()):
         blob_dir.rmdir()

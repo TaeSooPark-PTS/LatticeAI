@@ -1,0 +1,149 @@
+{
+  "key": "self_root",
+  "result": {
+    "edges": [
+      {
+        "from": "self:decision:a1",
+        "to": "self:root",
+        "type": "PART_OF",
+        "weight": 1.0
+      },
+      {
+        "from": "self:habit:b2",
+        "to": "self:root",
+        "type": "PART_OF",
+        "weight": 1.0
+      },
+      {
+        "from": "self:preference:c3",
+        "to": "self:root",
+        "type": "PART_OF",
+        "weight": 1.0
+      },
+      {
+        "from": "self:relationship:d4",
+        "to": "self:root",
+        "type": "PART_OF",
+        "weight": 1.0
+      },
+      {
+        "from": "self:trait:e5",
+        "to": "self:root",
+        "type": "PART_OF",
+        "weight": 1.0
+      },
+      {
+        "from": "self:unknown:f6",
+        "to": "self:root",
+        "type": "PART_OF",
+        "weight": 1.0
+      }
+    ],
+    "nodes": [
+      {
+        "hop": 0,
+        "id": "self:root",
+        "metadata": {
+          "self_model": true,
+          "self_model_kind": "root"
+        },
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self"
+      },
+      {
+        "hop": 1,
+        "id": "self:decision:a1",
+        "metadata": {
+          "confidence": 0.9,
+          "origin": "user",
+          "self_model": true,
+          "self_model_kind": "decision",
+          "signal": "ko_decision_marker",
+          "workspace_id": "ws-alpha"
+        },
+        "summary": "문서는 한국어로 쓴다",
+        "title": "문서는 한국어로 쓴다",
+        "type": "Decision"
+      },
+      {
+        "hop": 1,
+        "id": "self:habit:b2",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "workspace_id": null
+        },
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit"
+      },
+      {
+        "hop": 1,
+        "id": "self:preference:c3",
+        "metadata": {
+          "confidence": 0.8,
+          "origin": "user",
+          "self_model": true,
+          "self_model_kind": "preference",
+          "signal": "ko_prefer",
+          "workspace_id": null
+        },
+        "summary": "설명은 짧고 근거를 먼저",
+        "title": "설명은 짧고 근거를 먼저",
+        "type": "Preference"
+      },
+      {
+        "hop": 1,
+        "id": "self:relationship:d4",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "workspace_id": "ws-beta"
+        },
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship"
+      },
+      {
+        "hop": 1,
+        "id": "self:trait:e5",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "workspace_id": null
+        },
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self"
+      },
+      {
+        "hop": 1,
+        "id": "self:unknown:f6",
+        "metadata": {
+          "self_model": true
+        },
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept"
+      }
+    ]
+  },
+  "spec": {
+    "key": "self_root",
+    "max_hops": 2,
+    "node_ids": [
+      "self:root"
+    ]
+  },
+  "suite": "multi_hop"
+}

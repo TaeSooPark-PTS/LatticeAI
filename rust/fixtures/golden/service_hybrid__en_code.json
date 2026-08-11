@@ -18,8 +18,8 @@
         "query": "vector_search() returns",
         "recall": {
           "backend": "bruteforce-cosine",
-          "candidates_scanned": 44,
-          "candidates_total": 44,
+          "candidates_scanned": 69,
+          "candidates_total": 69,
           "detail": null,
           "max_candidates": 10000,
           "truncated": false
@@ -420,6 +420,45 @@
             "vector": 0.25
           }
         },
+        "id": "imgtext:proposal-ocr",
+        "item_type": "node",
+        "metadata": {
+          "filename": "proposal-sketch.png",
+          "ocr": true,
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "filename": "proposal-sketch.png",
+            "node_type": "ImageText",
+            "ocr": true
+          }
+        },
+        "node_id": "imgtext:proposal-ocr",
+        "rank": 10,
+        "score": 0.037268,
+        "source_scores": {
+          "vector": 0.149071
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 구조: 배경, 근거, 결론.",
+        "title": "제안서 스케치 OCR",
+        "type": "ImageText",
+        "updated_at": "2026-07-16T09:01:00"
+      },
+      {
+        "fusion": {
+          "query_class": "code",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.2,
+            "keyword": 0.55,
+            "vector": 0.25
+          }
+        },
         "id": "feature:command-palette",
         "item_type": "node",
         "metadata": {
@@ -430,7 +469,7 @@
           }
         },
         "node_id": "feature:command-palette",
-        "rank": 10,
+        "rank": 11,
         "score": 0.033333,
         "source_scores": {
           "vector": 0.133333
@@ -455,6 +494,45 @@
             "vector": 0.25
           }
         },
+        "id": "img:proposal-sketch",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".png",
+          "filename": "proposal-sketch.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "proposal-sketch.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:proposal-sketch",
+        "rank": 12,
+        "score": 0.031587,
+        "source_scores": {
+          "vector": 0.12635
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 구조 스케치입니다.",
+        "title": "proposal-sketch.png",
+        "type": "Image",
+        "updated_at": "2026-07-16T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "code",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.2,
+            "keyword": 0.55,
+            "vector": 0.25
+          }
+        },
         "id": "twin:doc-b",
         "item_type": "node",
         "metadata": {
@@ -465,7 +543,7 @@
           }
         },
         "node_id": "twin:doc-b",
-        "rank": 11,
+        "rank": 13,
         "score": 0.030429,
         "source_scores": {
           "vector": 0.121716
@@ -500,7 +578,7 @@
           }
         },
         "node_id": "twin:doc-a",
-        "rank": 12,
+        "rank": 14,
         "score": 0.030429,
         "source_scores": {
           "vector": 0.121716
@@ -512,6 +590,78 @@
         "title": "Twin document A",
         "type": "Document",
         "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "code",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.2,
+            "keyword": 0.55,
+            "vector": 0.25
+          }
+        },
+        "id": "self:unknown:f6",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "rank": 15,
+        "score": 0.030317,
+        "source_scores": {
+          "vector": 0.121268
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "code",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.2,
+            "keyword": 0.55,
+            "vector": 0.25
+          }
+        },
+        "id": "feature:doc-generation",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:doc-generation",
+        "rank": 16,
+        "score": 0.027778,
+        "source_scores": {
+          "vector": 0.111111
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
       },
       {
         "fusion": {
@@ -539,7 +689,7 @@
           }
         },
         "node_id": "sheet:metrics",
-        "rank": 13,
+        "rank": 17,
         "score": 0.027692,
         "source_scores": {
           "vector": 0.11077
@@ -564,6 +714,80 @@
             "vector": 0.25
           }
         },
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "rank": 18,
+        "score": 0.023891,
+        "source_scores": {
+          "vector": 0.095564
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "code",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.2,
+            "keyword": 0.55,
+            "vector": 0.25
+          }
+        },
+        "id": "doc:undated",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "rank": 19,
+        "score": 0.023415,
+        "source_scores": {
+          "vector": 0.093659
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
+        "fusion": {
+          "query_class": "code",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.2,
+            "keyword": 0.55,
+            "vector": 0.25
+          }
+        },
         "id": "concept:ranking",
         "item_type": "node",
         "metadata": {
@@ -574,7 +798,7 @@
           }
         },
         "node_id": "concept:ranking",
-        "rank": 14,
+        "rank": 20,
         "score": 0.023212,
         "source_scores": {
           "vector": 0.092848
@@ -611,7 +835,7 @@
           }
         },
         "node_id": "task:parity-harness",
-        "rank": 15,
+        "rank": 21,
         "score": 0.022576,
         "source_scores": {
           "vector": 0.090305
@@ -652,7 +876,7 @@
           }
         },
         "node_id": "doc:handbook",
-        "rank": 16,
+        "rank": 22,
         "score": 0.022451,
         "source_scores": {
           "vector": 0.089803
@@ -687,7 +911,7 @@
           }
         },
         "node_id": "meeting:kickoff",
-        "rank": 17,
+        "rank": 23,
         "score": 0.021437,
         "source_scores": {
           "vector": 0.085749
@@ -726,7 +950,7 @@
           }
         },
         "node_id": "deck:review",
-        "rank": 18,
+        "rank": 24,
         "score": 0.02069,
         "source_scores": {
           "vector": 0.082761
@@ -751,6 +975,45 @@
             "vector": 0.25
           }
         },
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 25,
+        "score": 0.020679,
+        "source_scores": {
+          "vector": 0.082715
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "code",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.2,
+            "keyword": 0.55,
+            "vector": 0.25
+          }
+        },
         "id": "meeting:weekly",
         "item_type": "node",
         "metadata": {
@@ -761,7 +1024,7 @@
           }
         },
         "node_id": "meeting:weekly",
-        "rank": 19,
+        "rank": 26,
         "score": 0.019921,
         "source_scores": {
           "vector": 0.079682
@@ -796,7 +1059,7 @@
           }
         },
         "node_id": "legacy:global-note",
-        "rank": 20,
+        "rank": 27,
         "score": 0.01843,
         "source_scores": {
           "vector": 0.073721
@@ -833,7 +1096,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 21,
+        "rank": 28,
         "score": 0.016037,
         "source_scores": {
           "vector": 0.06415
@@ -878,7 +1141,7 @@
           }
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 22,
+        "rank": 29,
         "score": 0.015475,
         "source_scores": {
           "vector": 0.061898
@@ -913,7 +1176,7 @@
           }
         },
         "node_id": "repo:lattice",
-        "rank": 23,
+        "rank": 30,
         "score": 0.014731,
         "source_scores": {
           "vector": 0.058926
@@ -925,267 +1188,6 @@
         "title": "lattice-ai",
         "type": "Repository",
         "updated_at": "2026-02-21T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "code",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.2,
-            "keyword": 0.55,
-            "vector": 0.25
-          }
-        },
-        "id": "concept:retrieval",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:retrieval",
-        "rank": 24,
-        "score": 0.014618,
-        "source_scores": {
-          "vector": 0.058471
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "Retrieval is the act of finding the right memory for a question.",
-        "title": "Retrieval",
-        "type": "Concept",
-        "updated_at": "2026-04-02T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "code",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.2,
-            "keyword": 0.55,
-            "vector": 0.25
-          }
-        },
-        "id": "org:lattice",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Organization"
-          }
-        },
-        "node_id": "org:lattice",
-        "rank": 25,
-        "score": 0.012859,
-        "source_scores": {
-          "vector": 0.051434
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "The organization.",
-        "title": "Lattice",
-        "type": "Organization",
-        "updated_at": "2026-02-22T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "code",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.2,
-            "keyword": 0.55,
-            "vector": 0.25
-          }
-        },
-        "id": "img:whiteboard",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".png",
-          "filename": "whiteboard-retrieval.png",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".png",
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "Image"
-          }
-        },
-        "node_id": "img:whiteboard",
-        "rank": 26,
-        "score": 0.011556,
-        "source_scores": {
-          "vector": 0.046225
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "Whiteboard photo from the retrieval design session.",
-        "title": "whiteboard-retrieval.png",
-        "type": "Image",
-        "updated_at": "2026-03-19T11:11:00"
-      },
-      {
-        "fusion": {
-          "query_class": "code",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.2,
-            "keyword": 0.55,
-            "vector": 0.25
-          }
-        },
-        "id": "agent:librarian",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Agent"
-          }
-        },
-        "node_id": "agent:librarian",
-        "rank": 27,
-        "score": 0.009259,
-        "source_scores": {
-          "vector": 0.030949
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "An agent that files new documents into the graph.",
-        "title": "Librarian agent",
-        "type": "Agent",
-        "updated_at": "2026-03-03T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "code",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.2,
-            "keyword": 0.55,
-            "vector": 0.25
-          }
-        },
-        "id": "img:ocr-notes",
-        "item_type": "node",
-        "metadata": {
-          "filename": "whiteboard-retrieval.png",
-          "ocr": true,
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "ImageText",
-            "ocr": true
-          }
-        },
-        "node_id": "img:ocr-notes",
-        "rank": 28,
-        "score": 0.008929,
-        "source_scores": {
-          "vector": 0.029696
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
-        "title": "화이트보드 OCR 텍스트",
-        "type": "ImageText",
-        "updated_at": "2026-03-19T11:12:00"
-      },
-      {
-        "fusion": {
-          "query_class": "code",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.2,
-            "keyword": 0.55,
-            "vector": 0.25
-          }
-        },
-        "id": "code:build-failure",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".py",
-          "filename": "build_pipeline.py",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".py",
-            "filename": "build_pipeline.py",
-            "node_type": "CodeFile"
-          }
-        },
-        "node_id": "code:build-failure",
-        "rank": 29,
-        "score": 0.008621,
-        "source_scores": {
-          "vector": 0.023689
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
-        "title": "build_pipeline.py",
-        "type": "CodeFile",
-        "updated_at": "2026-04-22T18:05:00"
-      },
-      {
-        "fusion": {
-          "query_class": "code",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.2,
-            "keyword": 0.55,
-            "vector": 0.25
-          }
-        },
-        "id": "audio:standup",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".m4a",
-          "filename": "standup-2026-07-13.m4a",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".m4a",
-            "filename": "standup-2026-07-13.m4a",
-            "node_type": "Audio"
-          }
-        },
-        "node_id": "audio:standup",
-        "rank": 30,
-        "score": 0.008333,
-        "source_scores": {
-          "vector": 0.018751
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "Standup recording where the parity harness was assigned.",
-        "title": "standup-2026-07-13.m4a",
-        "type": "Audio",
-        "updated_at": "2026-07-13T09:05:00"
       }
     ],
     "mode": "hybrid",

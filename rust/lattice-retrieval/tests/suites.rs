@@ -1,6 +1,10 @@
-//! Python↔Rust parity for the v11.5.0 ports: the knowledge-graph relationship
+//! Python↔Rust parity for the v11.5.0 ports — the knowledge-graph relationship
 //! and traversal reads, the service layer (graph channel + three-channel
-//! fusion), the durable history reads, and the context assembler.
+//! fusion), the durable history reads and the context assembler — and the
+//! v11.5.1 document-generation ports beside them: the hybrid document search,
+//! the hop-labelled traversal, and the budgeted context builder (whose golden
+//! carries the sources footnote alongside the contract dict, so both public
+//! entry points are proven by one suite).
 //!
 //! Each suite in the manifest is a list of specs the Python generator ran; this
 //! runs the Rust port on the same spec and compares the whole answer exactly.
@@ -13,6 +17,10 @@ use common::{allowed_set, diff, golden, manifest, open_store, pin_environment};
 
 use lattice_core::{parse_iso, CoreError, LocalEmbeddingModel};
 use lattice_retrieval::context::{assemble_context, ContextRequest, RecentRequest};
+use lattice_retrieval::docgen::{multi_hop_context, search_for_document_generation};
+use lattice_retrieval::docgen_context::{
+    format_sources_footnote, retrieve_context_for_generation, DocumentContextRequest,
+};
 use lattice_retrieval::graph_reads::{
     relationship_search, traverse, RelationshipQuery, TraverseOptions,
 };
@@ -68,6 +76,19 @@ fn history_scope(spec: &Value) -> HistoryScope {
 
 fn scoped_history(conn: &Connection, spec: &Value) -> Vec<Value> {
     history(conn, None, None, &history_scope(spec)).expect("history must not fail on the fixture")
+}
+
+/// The document-generation seed list, as the spec spells it.
+fn node_ids(spec: &Value) -> Vec<String> {
+    spec.get("node_ids")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .map(|item| item.as_str().unwrap_or_default().to_string())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn recent_request(spec: &Value) -> Option<RecentRequest> {
@@ -164,6 +185,44 @@ fn run(
             &text(spec, "query"),
             int(spec, "limit", 30),
         )),
+        "docgen_search" => Value::Array(
+            search_for_document_generation(
+                conn,
+                &text(spec, "query"),
+                int(spec, "limit", 10),
+                &graph_scope(spec),
+                now,
+            )
+            .expect("document search must not fail on the fixture"),
+        ),
+        "multi_hop" => multi_hop_context(
+            conn,
+            &node_ids(spec),
+            int(spec, "max_hops", 2),
+            &graph_scope(spec),
+        )
+        .expect("multi-hop must not fail on the fixture"),
+        "context_document" => {
+            let context = retrieve_context_for_generation(
+                conn,
+                &DocumentContextRequest {
+                    query: text(spec, "query"),
+                    max_results: int(spec, "max_results", 10),
+                    max_hops: int(spec, "max_hops", 2),
+                    budget: int(spec, "budget", 2000),
+                    include_self_model: flag(spec, "include_self_model", true),
+                    self_model_tokens: int(spec, "self_model_tokens", 200),
+                    scope: graph_scope(spec),
+                    now_secs: now,
+                },
+            )
+            .expect("document context must not fail on the fixture");
+            let sources: Vec<Value> = context["sources"].as_array().cloned().unwrap_or_default();
+            serde_json::json!({
+                "context": context,
+                "sources_footnote": format_sources_footnote(&sources),
+            })
+        }
         "context_assemble" => assemble_context(
             conn,
             model,
@@ -200,8 +259,8 @@ fn every_suite_spec_matches_its_python_golden() {
         .expect("the manifest must describe the v11.5.0 suites");
     assert_eq!(
         suites.len(),
-        9,
-        "nine ported entry points; a missing suite is a missing proof"
+        12,
+        "twelve ported entry points; a missing suite is a missing proof"
     );
 
     let mut checked = 0usize;
@@ -230,5 +289,5 @@ fn every_suite_spec_matches_its_python_golden() {
         failures.len(),
         failures.join("\n")
     );
-    assert!(checked >= 100, "only {checked} suite cases — keep it wide");
+    assert!(checked >= 150, "only {checked} suite cases — keep it wide");
 }

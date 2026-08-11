@@ -1,0 +1,82 @@
+{
+  "key": "scoped_beta",
+  "result": [
+    {
+      "hybrid_score": 0.9045,
+      "id": "deck:proposal",
+      "metadata": {
+        "ext": ".pptx",
+        "filename": "proposal.pptx"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.8567,
+        "text": 1.0
+      },
+      "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+      "title": "제안 발표자료",
+      "type": "SlideDeck",
+      "updated_at": "2026-07-29T09:00:00"
+    },
+    {
+      "hybrid_score": 0.6724,
+      "id": "imgtext:proposal-ocr",
+      "metadata": {
+        "filename": "proposal-sketch.png",
+        "ocr": true
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.4501,
+        "text": 1.0
+      },
+      "summary": "제안서 구조: 배경, 근거, 결론.",
+      "title": "제안서 스케치 OCR",
+      "type": "ImageText",
+      "updated_at": "2026-07-16T09:01:00"
+    },
+    {
+      "hybrid_score": 0.6564,
+      "id": "slide:proposal-1",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.5221,
+        "text": 1.0
+      },
+      "summary": "제안서 요약 슬라이드입니다.",
+      "title": "제안 슬라이드 1",
+      "type": "Slide",
+      "updated_at": "2026-07-19T09:00:00"
+    },
+    {
+      "hybrid_score": 0.642,
+      "id": "img:proposal-sketch",
+      "metadata": {
+        "ext": ".png",
+        "filename": "proposal-sketch.png"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.4501,
+        "text": 1.0
+      },
+      "summary": "제안서 구조 스케치입니다.",
+      "title": "proposal-sketch.png",
+      "type": "Image",
+      "updated_at": "2026-07-16T09:00:00"
+    }
+  ],
+  "spec": {
+    "allowed": [
+      "ws-beta"
+    ],
+    "key": "scoped_beta",
+    "query": "제안서"
+  },
+  "suite": "docgen_search"
+}

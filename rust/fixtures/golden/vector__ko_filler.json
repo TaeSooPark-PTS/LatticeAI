@@ -159,6 +159,44 @@
         "updated_at": "2026-03-19T11:12:00"
       },
       {
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "score": 0.148134,
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
+        "id": "doc:undated",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "score": 0.119808,
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
         "id": "agent:librarian",
         "item_type": "node",
         "metadata": {
@@ -299,6 +337,64 @@
         "updated_at": "2026-07-13T09:05:00"
       },
       {
+        "id": "self:habit:b2",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "vector": {
+            "confidence": 0.6,
+            "node_type": "Habit",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "habit",
+            "signal": "ko_habit",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:habit:b2",
+        "score": 0.087039,
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
+      },
+      {
+        "id": "self:relationship:d4",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "vector": {
+            "confidence": 0.5,
+            "node_type": "Relationship",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "relationship",
+            "signal": "ko_with",
+            "workspace_id": "ws-beta"
+          },
+          "workspace_id": "ws-beta"
+        },
+        "node_id": "self:relationship:d4",
+        "score": 0.083624,
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship",
+        "updated_at": "2026-07-05T09:00:00"
+      },
+      {
         "id": "twin:doc-b",
         "item_type": "node",
         "metadata": {
@@ -331,6 +427,44 @@
         "title": "Twin document A",
         "type": "Document",
         "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "id": "feature:doc-generation",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:doc-generation",
+        "score": 0.071067,
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
+      },
+      {
+        "id": "audio:proposal-call",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:proposal-call",
+        "score": 0.069631,
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
       },
       {
         "id": "chunk:spec:1",
@@ -382,6 +516,27 @@
         "updated_at": "2026-05-14T12:00:00"
       },
       {
+        "id": "img:proposal-sketch",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".png",
+          "filename": "proposal-sketch.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "proposal-sketch.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:proposal-sketch",
+        "score": 0.064651,
+        "summary": "제안서 구조 스케치입니다.",
+        "title": "proposal-sketch.png",
+        "type": "Image",
+        "updated_at": "2026-07-16T09:00:00"
+      },
+      {
         "id": "person:minseo",
         "item_type": "node",
         "metadata": {
@@ -399,6 +554,27 @@
         "title": "박민서 님",
         "type": "Person",
         "updated_at": "2026-04-12T10:00:00"
+      },
+      {
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "score": 0.061123,
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
       },
       {
         "id": "chat:ranking",
@@ -460,169 +636,13 @@
         "title": "Hybrid retrieval fusion stays alpha weighted",
         "type": "Decision",
         "updated_at": "2026-07-20T09:00:00"
-      },
-      {
-        "id": "sheet:metrics",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".xlsx",
-          "filename": "retrieval-metrics.xlsx",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".xlsx",
-            "filename": "retrieval-metrics.xlsx",
-            "node_type": "Spreadsheet"
-          }
-        },
-        "node_id": "sheet:metrics",
-        "score": 0.047232,
-        "summary": "Recall and precision per query class for the ranking experiments.",
-        "title": "retrieval-metrics.xlsx",
-        "type": "Spreadsheet",
-        "updated_at": "2026-05-06T09:45:00"
-      },
-      {
-        "id": "file:ranking-notes",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".md",
-          "filename": "ranking-notes.md",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".md",
-            "filename": "ranking-notes.md",
-            "node_type": "File"
-          }
-        },
-        "node_id": "file:ranking-notes",
-        "score": 0.04398,
-        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-        "title": "ranking-notes.md",
-        "type": "File",
-        "updated_at": "2026-07-10T16:45:00"
-      },
-      {
-        "id": "feature:command-palette",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Feature"
-          }
-        },
-        "node_id": "feature:command-palette",
-        "score": 0.04264,
-        "summary": "The palette that opens search from anywhere.",
-        "title": "Command palette",
-        "type": "Feature",
-        "updated_at": "2026-03-05T10:00:00"
-      },
-      {
-        "id": "dec:rust-foundation",
-        "item_type": "node",
-        "metadata": {
-          "category": "platform",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "category": "platform",
-            "node_type": "Decision"
-          }
-        },
-        "node_id": "dec:rust-foundation",
-        "score": 0.041416,
-        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
-        "title": "Rust 기반 검색 이관 결정",
-        "type": "Decision",
-        "updated_at": "2026-07-18T14:30:00"
-      },
-      {
-        "id": "error:timeout",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Error"
-          }
-        },
-        "node_id": "error:timeout",
-        "score": 0.041416,
-        "summary": "An error where the ranking took longer than the request budget.",
-        "title": "Search timeout",
-        "type": "Error",
-        "updated_at": "2026-03-04T10:00:00"
-      },
-      {
-        "id": "chunk:spec:2",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "index": 1,
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          },
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "parent_node_id": "doc:retrieval-spec",
-          "parent_type": "Document",
-          "vector": {
-            "index": 1,
-            "parent_source_node": "doc:retrieval-spec",
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "score": 0.03959,
-        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
-        "title": "Retrieval specification",
-        "type": "Chunk",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "id": "concept:ranking",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
-        "score": 0.03959,
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "id": "workflow:nightly",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Workflow"
-          }
-        },
-        "node_id": "workflow:nightly",
-        "score": 0.034816,
-        "summary": "A workflow that reindexes the vector store overnight.",
-        "title": "Nightly reindex",
-        "type": "Workflow",
-        "updated_at": "2026-03-02T10:00:00"
       }
     ],
     "query": "온보딩 체크리스트 좀 알려줘",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

@@ -46,7 +46,10 @@ async fn gateway(worker: &FakeWorker, name: &str, jobs: bool) -> TestGateway {
     let mut state = GatewayState::new(Arc::new(FixedProvider::new(worker.origin(), worker.port())))
         .expect("gateway state")
         .with_db_path(store_copy(name))
-        .with_agent_root(test_agent_root(name));
+        .with_agent_root(test_agent_root(name))
+        // Never the real `~/.ltcai/rust_agent_runs`: a paused approval is a
+        // real file, and a test must not write into the user's store.
+        .with_agent_runs_dir(test_agent_root(name).join("rust_agent_runs"));
     if jobs {
         state = state.with_jobs(mounts::scheduler(&worker.origin(), client()));
     }
@@ -184,6 +187,49 @@ async fn the_agent_kernel_answers_its_contract_and_refuses_mutation() {
     assert!(calls[0].get("auto_approve").is_some(), "{decisions}");
 
     assert_eq!(worker.request_count(), 0, "the kernel is native");
+    gateway.stop().await;
+    worker.shutdown();
+}
+
+/// The loop routes mount alongside the kernel ones, and the approvals lane
+/// answers natively — from the host's own store, without a worker hop.
+#[tokio::test]
+async fn the_agent_loop_routes_are_mounted_and_answer_natively() {
+    let worker = FakeWorker::start().await;
+    let gateway = gateway(&worker, "agent-loop", false).await;
+
+    let pending = json(
+        client()
+            .get(gateway.url("/rust/agent/approvals"))
+            .send()
+            .await
+            .expect("request"),
+    )
+    .await;
+    assert_eq!(pending["pending"], serde_json::json!([]), "{pending}");
+
+    // A resume for a run that was never paused is a 404 from *here*, not a
+    // proxied 404 from the worker.
+    let missing = client()
+        .post(gateway.url("/rust/agent/resume"))
+        .header("content-type", "application/json")
+        .body(r#"{"run_id": "not-a-real-run", "approval_token": "x"}"#)
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(missing.status(), 404);
+
+    // A run with no message is refused before any worker call is attempted.
+    let invalid = client()
+        .post(gateway.url("/rust/agent/run"))
+        .header("content-type", "application/json")
+        .body(r#"{"message": "   "}"#)
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(invalid.status(), 400);
+
+    assert_eq!(worker.request_count(), 0, "the loop routes are native");
     gateway.stop().await;
     worker.shutdown();
 }

@@ -32,10 +32,10 @@
         },
         "node_id": "task:onboarding-checklist",
         "rank": 1,
-        "rerank_score": 1.0,
-        "score": 1.0,
+        "rerank_score": 0.8,
+        "score": 0.8,
         "scores": {
-          "lexical": 1.0,
+          "lexical": 0.5,
           "vector": 1.0
         },
         "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
@@ -49,16 +49,36 @@
         "metadata": {},
         "node_id": "page:onboarding",
         "rank": 2,
-        "rerank_score": 0.6006,
-        "score": 0.6006,
+        "rerank_score": 0.567267,
+        "score": 0.567267,
         "scores": {
-          "lexical": 0.333333,
+          "lexical": 0.25,
           "vector": 0.778778
         },
         "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
         "title": "온보딩 첫 다섯 걸음",
         "type": "Page",
         "updated_at": "2026-06-01T12:00:00"
+      },
+      {
+        "fusion": "both",
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "relative_path": "notes/meeting-minutes.md"
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 3,
+        "rerank_score": 0.541517,
+        "score": 0.541517,
+        "scores": {
+          "lexical": 1.0,
+          "vector": 0.235861
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
       },
       {
         "fusion": "both",
@@ -69,11 +89,11 @@
           "source_node": "doc:handbook"
         },
         "node_id": "doc:handbook",
-        "rank": 3,
-        "rerank_score": 0.536124,
-        "score": 0.536124,
+        "rank": 4,
+        "rerank_score": 0.469457,
+        "score": 0.469457,
         "scores": {
-          "lexical": 0.5,
+          "lexical": 0.333333,
           "vector": 0.560206
         },
         "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
@@ -88,11 +108,11 @@
           "role": "owner"
         },
         "node_id": "person:jiwon",
-        "rank": 4,
-        "rerank_score": 0.273603,
-        "score": 0.273603,
+        "rank": 5,
+        "rerank_score": 0.264079,
+        "score": 0.264079,
         "scores": {
-          "lexical": 0.166667,
+          "lexical": 0.142857,
           "vector": 0.344893
         },
         "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
@@ -105,11 +125,11 @@
         "id": "meeting:weekly",
         "metadata": {},
         "node_id": "meeting:weekly",
-        "rank": 5,
-        "rerank_score": 0.177376,
-        "score": 0.177376,
+        "rank": 6,
+        "rerank_score": 0.164043,
+        "score": 0.164043,
         "scores": {
-          "lexical": 0.2,
+          "lexical": 0.166667,
           "vector": 0.162294
         },
         "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
@@ -132,7 +152,7 @@
           }
         },
         "node_id": "img:ocr-notes",
-        "rank": 6,
+        "rank": 7,
         "rerank_score": 0.14516,
         "score": 0.14516,
         "scores": {
@@ -155,7 +175,7 @@
           }
         },
         "node_id": "tie:a",
-        "rank": 7,
+        "rank": 8,
         "rerank_score": 0.096014,
         "score": 0.096014,
         "scores": {
@@ -178,7 +198,7 @@
           }
         },
         "node_id": "tie:b",
-        "rank": 8,
+        "rank": 9,
         "rerank_score": 0.096014,
         "score": 0.096014,
         "scores": {
@@ -201,7 +221,7 @@
           }
         },
         "node_id": "tie:c",
-        "rank": 9,
+        "rank": 10,
         "rerank_score": 0.096014,
         "score": 0.096014,
         "scores": {
@@ -224,7 +244,7 @@
           }
         },
         "node_id": "tie:d",
-        "rank": 10,
+        "rank": 11,
         "rerank_score": 0.096014,
         "score": 0.096014,
         "scores": {
@@ -247,7 +267,7 @@
           }
         },
         "node_id": "tie:e",
-        "rank": 11,
+        "rank": 12,
         "rerank_score": 0.096014,
         "score": 0.096014,
         "scores": {
@@ -274,7 +294,7 @@
           }
         },
         "node_id": "audio:standup",
-        "rank": 12,
+        "rank": 13,
         "rerank_score": 0.091662,
         "score": 0.091662,
         "scores": {
@@ -288,6 +308,76 @@
       },
       {
         "fusion": "vector",
+        "id": "self:habit:b2",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "vector": {
+            "confidence": 0.6,
+            "node_type": "Habit",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "habit",
+            "signal": "ko_habit",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:habit:b2",
+        "rank": 14,
+        "rerank_score": 0.083151,
+        "score": 0.083151,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.138585
+        },
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "self:relationship:d4",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "vector": {
+            "confidence": 0.5,
+            "node_type": "Relationship",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "relationship",
+            "signal": "ko_with",
+            "workspace_id": "ws-beta"
+          },
+          "workspace_id": "ws-beta"
+        },
+        "node_id": "self:relationship:d4",
+        "rank": 15,
+        "rerank_score": 0.079889,
+        "score": 0.079889,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.133148
+        },
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship",
+        "updated_at": "2026-07-05T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "agent:librarian",
         "metadata": {
           "parent_node_id": null,
@@ -297,7 +387,7 @@
           }
         },
         "node_id": "agent:librarian",
-        "rank": 13,
+        "rank": 16,
         "rerank_score": 0.075644,
         "score": 0.075644,
         "scores": {
@@ -320,7 +410,7 @@
           }
         },
         "node_id": "twin:doc-a",
-        "rank": 14,
+        "rank": 17,
         "rerank_score": 0.074372,
         "score": 0.074372,
         "scores": {
@@ -343,7 +433,7 @@
           }
         },
         "node_id": "twin:doc-b",
-        "rank": 15,
+        "rank": 18,
         "rerank_score": 0.074372,
         "score": 0.074372,
         "scores": {
@@ -354,6 +444,33 @@
         "title": "Twin document B",
         "type": "Document",
         "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "audio:proposal-call",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:proposal-call",
+        "rank": 19,
+        "rerank_score": 0.066521,
+        "score": 0.066521,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.110868
+        },
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
       },
       {
         "fusion": "vector",
@@ -381,7 +498,7 @@
           }
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 16,
+        "rank": 20,
         "rerank_score": 0.063618,
         "score": 0.063618,
         "scores": {
@@ -392,118 +509,13 @@
         "title": "Retrieval specification",
         "type": "Chunk",
         "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "person:minseo",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "role": "reviewer",
-          "vector": {
-            "node_type": "Person",
-            "role": "reviewer"
-          }
-        },
-        "node_id": "person:minseo",
-        "rank": 17,
-        "rerank_score": 0.058796,
-        "score": 0.058796,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.097994
-        },
-        "summary": "빌드 파이프라인 담당자입니다.",
-        "title": "박민서 님",
-        "type": "Person",
-        "updated_at": "2026-04-12T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "chat:ranking",
-        "metadata": {
-          "conversation_id": "conv-1",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "conversation_id": "conv-1",
-            "node_type": "Chat"
-          }
-        },
-        "node_id": "chat:ranking",
-        "rank": 18,
-        "rerank_score": 0.05649,
-        "score": 0.05649,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.09415
-        },
-        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
-        "title": "랭킹 관련 대화",
-        "type": "Chat",
-        "updated_at": "2026-07-05T21:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "img:whiteboard",
-        "metadata": {
-          "ext": ".png",
-          "filename": "whiteboard-retrieval.png",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".png",
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "Image"
-          }
-        },
-        "node_id": "img:whiteboard",
-        "rank": 19,
-        "rerank_score": 0.05649,
-        "score": 0.05649,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.09415
-        },
-        "summary": "Whiteboard photo from the retrieval design session.",
-        "title": "whiteboard-retrieval.png",
-        "type": "Image",
-        "updated_at": "2026-03-19T11:11:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "dec:fusion-alpha",
-        "metadata": {
-          "category": "retrieval",
-          "owner": "jiwon",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "category": "retrieval",
-            "node_type": "Decision",
-            "owner": "jiwon"
-          }
-        },
-        "node_id": "dec:fusion-alpha",
-        "rank": 20,
-        "rerank_score": 0.047515,
-        "score": 0.047515,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.079191
-        },
-        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
-        "title": "Hybrid retrieval fusion stays alpha weighted",
-        "type": "Decision",
-        "updated_at": "2026-07-20T09:00:00"
       }
     ],
     "mode": "hybrid",
     "multimodal": {
-      "images": 2,
+      "images": 1,
       "types": [
-        "ImageText",
-        "Image"
+        "ImageText"
       ]
     },
     "policy": {
@@ -520,7 +532,7 @@
       "model": null
     },
     "sources": {
-      "lexical": 6,
+      "lexical": 7,
       "vector": 40
     },
     "top_k": 20,
@@ -528,7 +540,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

@@ -62,6 +62,12 @@
         "graph_context": [
           {
             "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
           }
         ],
         "id": "dec:rust-foundation",
@@ -90,6 +96,100 @@
           },
           {
             "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:meeting-minutes",
+              "id": "edge:e98ffd7dd121636629945e8b",
+              "to": "meeting:weekly",
+              "type": "MENTIONS",
+              "weight": 0.79
+            }
+          }
+        ],
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "relative_path": "notes/meeting-minutes.md"
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 4,
+        "score": 0.25,
+        "source_scores": {
+          "graph": 0.25
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:004abb18089b94df451c1aa7",
+              "to": "concept:proposal",
+              "type": "MENTIONS",
+              "weight": 0.92
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "doc:proposal",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "node_id": "doc:proposal",
+        "rank": 5,
+        "score": 0.2,
+        "source_scores": {
+          "graph": 0.2
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "direct_match"
+          },
+          {
+            "reason": "neighbor_expansion"
           }
         ],
         "id": "doc:handbook",
@@ -100,10 +200,10 @@
           "source_node": "doc:handbook"
         },
         "node_id": "doc:handbook",
-        "rank": 4,
-        "score": 0.25,
+        "rank": 6,
+        "score": 0.166667,
         "source_scores": {
-          "graph": 0.25
+          "graph": 0.166667
         },
         "sources": [
           "graph"
@@ -119,25 +219,370 @@
             "reason": "neighbor_expansion"
           },
           {
-            "reason": "direct_match"
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "deck:proposal",
+              "id": "edge:fcefea3af13a6967ca8050c0",
+              "to": "doc:proposal",
+              "type": "MENTIONS",
+              "weight": 0.82
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
           }
         ],
-        "id": "meeting:weekly",
+        "id": "deck:proposal",
         "item_type": "node",
-        "metadata": {},
-        "node_id": "meeting:weekly",
-        "rank": 5,
-        "score": 0.2,
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "proposal.pptx"
+        },
+        "node_id": "deck:proposal",
+        "rank": 7,
+        "score": 0.15,
         "source_scores": {
-          "graph": 0.2
+          "graph": 0.15
         },
         "sources": [
           "graph"
         ],
-        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
-        "title": "주간 회의 2026-07-14",
-        "type": "Meeting",
-        "updated_at": "2026-07-14T10:00:00"
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-29T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:a83c0c5dbd4f361518e5d34d",
+              "to": "task:proposal-review",
+              "type": "MENTIONS",
+              "weight": 0.88
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "task:proposal-review",
+        "item_type": "node",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:proposal-review",
+        "rank": 8,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
+        "type": "Task",
+        "updated_at": "2026-07-27T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "chat:proposal",
+              "id": "edge:eafedb993f0fc4323fdfa38a",
+              "to": "doc:proposal",
+              "type": "MENTIONS",
+              "weight": 0.78
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "chat:proposal",
+        "item_type": "node",
+        "metadata": {
+          "conversation_id": "conv-f"
+        },
+        "node_id": "chat:proposal",
+        "rank": 9,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-26T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:9d7c30812b7f30ed956e1a29",
+              "to": "feature:doc-generation",
+              "type": "MENTIONS",
+              "weight": 0.9
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "feature:doc-generation",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "feature:doc-generation",
+        "rank": 10,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:004abb18089b94df451c1aa7",
+              "to": "concept:proposal",
+              "type": "MENTIONS",
+              "weight": 0.92
+            }
+          },
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "concept:proposal",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:proposal",
+        "rank": 11,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:e4429dea61a61786d6e929d4",
+              "to": "concept:evidence",
+              "type": "MENTIONS",
+              "weight": 0.91
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "concept:evidence",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:evidence",
+        "rank": 12,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept",
+        "updated_at": "2026-07-23T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:meeting-minutes",
+              "id": "edge:b021c3b80b12beee374f2d5f",
+              "to": "dec:doc-format",
+              "type": "MENTIONS",
+              "weight": 0.8
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:a3970c26bfa32ef451ec5337",
+              "to": "dec:doc-format",
+              "type": "MENTIONS",
+              "weight": 0.89
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "dec:doc-format",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "dec:doc-format",
+        "rank": 13,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision",
+        "updated_at": "2026-07-22T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:e102453c1335d2686054bd44",
+              "to": "page:proposal-outline",
+              "type": "CONTAINS",
+              "weight": 0.83
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "page:proposal-outline",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "page:proposal-outline",
+        "rank": 14,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
+        "type": "Page",
+        "updated_at": "2026-07-21T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "sheet:proposal-budget",
+              "id": "edge:4bf2021502951f76e7811377",
+              "to": "doc:proposal",
+              "type": "MENTIONS",
+              "weight": 0.73
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "sheet:proposal-budget",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "proposal-budget.xlsx"
+        },
+        "node_id": "sheet:proposal-budget",
+        "rank": 15,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "제안서 예산 표입니다.",
+        "title": "proposal-budget.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-07-17T09:00:00"
       },
       {
         "graph_context": [
@@ -150,6 +595,22 @@
               "type": "MENTIONS",
               "weight": 1.0
             }
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:8a2e9fe01b4f40450ebd1211",
+              "to": "task:parity-harness",
+              "type": "MENTIONS",
+              "weight": 0.84
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
           }
         ],
         "id": "task:parity-harness",
@@ -158,7 +619,7 @@
           "status": "open"
         },
         "node_id": "task:parity-harness",
-        "rank": 6,
+        "rank": 16,
         "score": 0.15,
         "source_scores": {
           "graph": 0.15
@@ -175,6 +636,12 @@
         "graph_context": [
           {
             "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
           }
         ],
         "id": "person:jiwon",
@@ -183,7 +650,7 @@
           "role": "owner"
         },
         "node_id": "person:jiwon",
-        "rank": 7,
+        "rank": 17,
         "score": 0.15,
         "source_scores": {
           "graph": 0.15
@@ -200,13 +667,145 @@
         "graph_context": [
           {
             "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:bcc437c883d69520d5055a5e",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.86
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "concept:ranking",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:ranking",
+        "rank": 18,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:118aa0fc1ce3333002ab7296",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.87
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "concept:retrieval",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "concept:retrieval",
+        "rank": 19,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:237cdddaebf4d81e0ea18736",
+              "to": "feature:command-palette",
+              "type": "MENTIONS",
+              "weight": 0.85
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "feature:command-palette",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "feature:command-palette",
+        "rank": 20,
+        "score": 0.15,
+        "source_scores": {
+          "graph": 0.15
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "The palette that opens search from anywhere.",
+        "title": "Command palette",
+        "type": "Feature",
+        "updated_at": "2026-03-05T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
           }
         ],
         "id": "org:lattice",
         "item_type": "node",
         "metadata": {},
         "node_id": "org:lattice",
-        "rank": 8,
+        "rank": 21,
         "score": 0.15,
         "source_scores": {
           "graph": 0.15
@@ -230,13 +829,16 @@
               "type": "DISCUSSES",
               "weight": 0.5
             }
+          },
+          {
+            "reason": "neighbor_expansion"
           }
         ],
         "id": "meeting:kickoff",
         "item_type": "node",
         "metadata": {},
         "node_id": "meeting:kickoff",
-        "rank": 9,
+        "rank": 22,
         "score": 0.15,
         "source_scores": {
           "graph": 0.15
@@ -251,6 +853,54 @@
       },
       {
         "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "file:meeting-minutes",
+              "id": "edge:e98ffd7dd121636629945e8b",
+              "to": "meeting:weekly",
+              "type": "MENTIONS",
+              "weight": 0.79
+            }
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "meeting:weekly",
+        "item_type": "node",
+        "metadata": {},
+        "node_id": "meeting:weekly",
+        "rank": 23,
+        "score": 0.125,
+        "source_scores": {
+          "graph": 0.125
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
           {
             "reason": "neighbor_expansion"
           },
@@ -272,7 +922,7 @@
           "owner": "jiwon"
         },
         "node_id": "dec:fusion-alpha",
-        "rank": 10,
+        "rank": 24,
         "score": 0.1125,
         "source_scores": {
           "graph": 0.1125
@@ -287,6 +937,77 @@
       },
       {
         "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion"
+          }
+        ],
+        "id": "file:ranking-notes",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "node_id": "file:ranking-notes",
+        "rank": 25,
+        "score": 0.1125,
+        "source_scores": {
+          "graph": 0.1125
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "deck:review",
+              "id": "edge:d41ef88ab120a38e991f0338",
+              "to": "meeting:weekly",
+              "type": "MENTIONS",
+              "weight": 0.2
+            }
+          }
+        ],
+        "id": "deck:review",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "quarterly-review.pptx"
+        },
+        "node_id": "deck:review",
+        "rank": 26,
+        "score": 0.1125,
+        "source_scores": {
+          "graph": 0.1125
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
+        "title": "분기 리뷰 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-02T15:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
           {
             "reason": "neighbor_expansion"
           },
@@ -307,7 +1028,7 @@
           "status": "open"
         },
         "node_id": "task:onboarding-checklist",
-        "rank": 11,
+        "rank": 27,
         "score": 0.1125,
         "source_scores": {
           "graph": 0.1125
@@ -322,6 +1043,9 @@
       },
       {
         "graph_context": [
+          {
+            "reason": "neighbor_expansion"
+          },
           {
             "reason": "neighbor_expansion",
             "relationship": {
@@ -340,7 +1064,7 @@
         "item_type": "node",
         "metadata": {},
         "node_id": "page:onboarding",
-        "rank": 12,
+        "rank": 28,
         "score": 0.1125,
         "source_scores": {
           "graph": 0.1125
@@ -356,201 +1080,8 @@
       {
         "graph_context": [
           {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "doc:handbook",
-              "id": "edge:925238c39c45c82b73435a65",
-              "to": "doc:retrieval-spec",
-              "type": "MENTIONS",
-              "weight": 0.1
-            }
-          },
-          {
-            "reason": "neighbor_expansion"
-          }
-        ],
-        "id": "doc:retrieval-spec",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf"
-        },
-        "node_id": "doc:retrieval-spec",
-        "rank": 13,
-        "score": 0.1125,
-        "source_scores": {
-          "graph": 0.1125
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
-        "title": "Retrieval specification",
-        "type": "Document",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "graph_context": [
-          {
             "reason": "neighbor_expansion"
           },
-          {
-            "reason": "neighbor_expansion"
-          }
-        ],
-        "id": "concept:ranking",
-        "item_type": "node",
-        "metadata": {},
-        "node_id": "concept:ranking",
-        "rank": 14,
-        "score": 0.1125,
-        "source_scores": {
-          "graph": 0.1125
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion"
-          },
-          {
-            "reason": "neighbor_expansion"
-          }
-        ],
-        "id": "concept:retrieval",
-        "item_type": "node",
-        "metadata": {},
-        "node_id": "concept:retrieval",
-        "rank": 15,
-        "score": 0.1125,
-        "source_scores": {
-          "graph": 0.1125
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "Retrieval is the act of finding the right memory for a question.",
-        "title": "Retrieval",
-        "type": "Concept",
-        "updated_at": "2026-04-02T10:00:00"
-      },
-      {
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion"
-          }
-        ],
-        "id": "file:ranking-notes",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".md",
-          "filename": "ranking-notes.md"
-        },
-        "node_id": "file:ranking-notes",
-        "rank": 16,
-        "score": 0.09,
-        "source_scores": {
-          "graph": 0.09
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-        "title": "ranking-notes.md",
-        "type": "File",
-        "updated_at": "2026-07-10T16:45:00"
-      },
-      {
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion"
-          }
-        ],
-        "id": "code:hybrid-search",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".py",
-          "filename": "hybrid.py"
-        },
-        "node_id": "code:hybrid-search",
-        "rank": 17,
-        "score": 0.09,
-        "source_scores": {
-          "graph": 0.09
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
-        "title": "hybrid.py",
-        "type": "CodeFile",
-        "updated_at": "2026-07-08T09:30:00"
-      },
-      {
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion",
-            "relationship": {
-              "from": "deck:review",
-              "id": "edge:d41ef88ab120a38e991f0338",
-              "to": "meeting:weekly",
-              "type": "MENTIONS",
-              "weight": 0.2
-            }
-          }
-        ],
-        "id": "deck:review",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".pptx",
-          "filename": "quarterly-review.pptx"
-        },
-        "node_id": "deck:review",
-        "rank": 18,
-        "score": 0.09,
-        "source_scores": {
-          "graph": 0.09
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
-        "title": "분기 리뷰 발표자료",
-        "type": "SlideDeck",
-        "updated_at": "2026-07-02T15:00:00"
-      },
-      {
-        "graph_context": [
-          {
-            "reason": "neighbor_expansion"
-          }
-        ],
-        "id": "slide:fusion",
-        "item_type": "node",
-        "metadata": {},
-        "node_id": "slide:fusion",
-        "rank": 19,
-        "score": 0.09,
-        "source_scores": {
-          "graph": 0.09
-        },
-        "sources": [
-          "graph"
-        ],
-        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
-        "title": "Fusion slide",
-        "type": "Slide",
-        "updated_at": "2026-05-14T12:00:00"
-      },
-      {
-        "graph_context": [
           {
             "reason": "neighbor_expansion"
           }
@@ -559,10 +1090,10 @@
         "item_type": "node",
         "metadata": {},
         "node_id": "topic:quality",
-        "rank": 20,
-        "score": 0.09,
+        "rank": 29,
+        "score": 0.1125,
         "source_scores": {
-          "graph": 0.09
+          "graph": 0.1125
         },
         "sources": [
           "graph"
@@ -571,6 +1102,36 @@
         "title": "검색 품질",
         "type": "Topic",
         "updated_at": "2026-03-06T10:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "self:habit:b2",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "workspace_id": null
+        },
+        "node_id": "self:habit:b2",
+        "rank": 30,
+        "score": 0.111111,
+        "source_scores": {
+          "graph": 0.111111
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
       }
     ],
     "mode": "graph",

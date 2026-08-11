@@ -1,0 +1,24 @@
+{
+  "key": "isolated",
+  "result": {
+    "edges": [],
+    "nodes": [
+      {
+        "hop": 0,
+        "id": "tie:c",
+        "metadata": {},
+        "summary": "",
+        "title": "Tie candidate C",
+        "type": "Concept"
+      }
+    ]
+  },
+  "spec": {
+    "key": "isolated",
+    "max_hops": 2,
+    "node_ids": [
+      "tie:c"
+    ]
+  },
+  "suite": "multi_hop"
+}

@@ -46,6 +46,35 @@
         "updated_at": "2026-07-20T09:00:00"
       },
       {
+        "id": "self:trait:e5",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "vector": {
+            "confidence": 0.7,
+            "node_type": "Self",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "trait",
+            "signal": "ko_role",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:trait:e5",
+        "score": 0.23094,
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
+      },
+      {
         "id": "doc:retrieval-spec",
         "item_type": "node",
         "metadata": {
@@ -461,6 +490,25 @@
         "updated_at": "2026-06-12T10:00:00"
       },
       {
+        "id": "task:proposal-review",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "status": "open",
+          "vector": {
+            "node_type": "Task",
+            "status": "open"
+          }
+        },
+        "node_id": "task:proposal-review",
+        "score": 0.09759,
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
+        "type": "Task",
+        "updated_at": "2026-07-27T09:00:00"
+      },
+      {
         "id": "img:ocr-notes",
         "item_type": "node",
         "metadata": {
@@ -567,62 +615,32 @@
         "updated_at": "2026-02-01T00:00:00"
       },
       {
-        "id": "twin:concept-a",
+        "id": "code:doc-builder",
         "item_type": "node",
         "metadata": {
+          "filename": "context_builder.py",
           "parent_node_id": null,
           "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
           "vector": {
-            "node_type": "Concept"
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
           }
         },
-        "node_id": "twin:concept-a",
-        "score": 0.069007,
-        "summary": "동일한 시각의 개념 A",
-        "title": "Twin concept A",
-        "type": "Concept",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "id": "concept:ranking",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
-        "score": 0.067806,
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "id": "repo:lattice",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Repository"
-          }
-        },
-        "node_id": "repo:lattice",
-        "score": 0.06455,
-        "summary": "The monorepo holding the Python worker and the Rust workspace.",
-        "title": "lattice-ai",
-        "type": "Repository",
-        "updated_at": "2026-02-21T10:00:00"
+        "node_id": "code:doc-builder",
+        "score": 0.06979,
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
       }
     ],
     "query": "recent decisions last week",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

@@ -122,6 +122,56 @@
       },
       {
         "fusion": "vector",
+        "id": "deck:proposal",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "proposal.pptx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".pptx",
+            "filename": "proposal.pptx",
+            "node_type": "SlideDeck"
+          }
+        },
+        "node_id": "deck:proposal",
+        "rank": 5,
+        "rerank_score": 0.419302,
+        "score": 0.419302,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.698836
+        },
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-29T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:undated",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "rank": 6,
+        "rerank_score": 0.364186,
+        "score": 0.364186,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.606977
+        },
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
+        "fusion": "vector",
         "id": "file:ranking-notes",
         "metadata": {
           "ext": ".md",
@@ -135,7 +185,7 @@
           }
         },
         "node_id": "file:ranking-notes",
-        "rank": 5,
+        "rank": 7,
         "rerank_score": 0.334217,
         "score": 0.334217,
         "scores": {
@@ -146,6 +196,58 @@
         "title": "ranking-notes.md",
         "type": "File",
         "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "docs/proposal.md",
+          "vector": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "node_type": "Document",
+            "relative_path": "docs/proposal.md"
+          }
+        },
+        "node_id": "doc:proposal",
+        "rank": 8,
+        "rerank_score": 0.273589,
+        "score": 0.273589,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.455981
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "dec:doc-format",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:doc-format",
+        "rank": 9,
+        "rerank_score": 0.267373,
+        "score": 0.267373,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.445622
+        },
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision",
+        "updated_at": "2026-07-22T09:00:00"
       },
       {
         "fusion": "vector",
@@ -176,7 +278,7 @@
           }
         },
         "node_id": "doc:handbook",
-        "rank": 6,
+        "rank": 10,
         "rerank_score": 0.267373,
         "score": 0.267373,
         "scores": {
@@ -190,6 +292,41 @@
       },
       {
         "fusion": "vector",
+        "id": "self:habit:b2",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "vector": {
+            "confidence": 0.6,
+            "node_type": "Habit",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "habit",
+            "signal": "ko_habit",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:habit:b2",
+        "rank": 11,
+        "rerank_score": 0.264577,
+        "score": 0.264577,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.440961
+        },
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "feature:command-palette",
         "metadata": {
           "parent_node_id": null,
@@ -199,7 +336,7 @@
           }
         },
         "node_id": "feature:command-palette",
-        "rank": 7,
+        "rank": 12,
         "rerank_score": 0.259231,
         "score": 0.259231,
         "scores": {
@@ -210,6 +347,33 @@
         "title": "Command palette",
         "type": "Feature",
         "updated_at": "2026-03-05T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 13,
+        "rerank_score": 0.257306,
+        "score": 0.257306,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.428844
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
       },
       {
         "fusion": "vector",
@@ -224,7 +388,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 8,
+        "rank": 14,
         "rerank_score": 0.249444,
         "score": 0.249444,
         "scores": {
@@ -251,7 +415,7 @@
           }
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 9,
+        "rank": 15,
         "rerank_score": 0.24773,
         "score": 0.24773,
         "scores": {
@@ -274,7 +438,7 @@
           }
         },
         "node_id": "topic:quality",
-        "rank": 10,
+        "rank": 16,
         "rerank_score": 0.244951,
         "score": 0.244951,
         "scores": {
@@ -297,7 +461,7 @@
           }
         },
         "node_id": "agent:librarian",
-        "rank": 11,
+        "rank": 17,
         "rerank_score": 0.240687,
         "score": 0.240687,
         "scores": {
@@ -320,7 +484,7 @@
           }
         },
         "node_id": "twin:doc-a",
-        "rank": 12,
+        "rank": 18,
         "rerank_score": 0.236644,
         "score": 0.236644,
         "scores": {
@@ -343,7 +507,7 @@
           }
         },
         "node_id": "twin:doc-b",
-        "rank": 13,
+        "rank": 19,
         "rerank_score": 0.236644,
         "score": 0.236644,
         "scores": {
@@ -366,7 +530,7 @@
           }
         },
         "node_id": "concept:retrieval",
-        "rank": 14,
+        "rank": 20,
         "rerank_score": 0.227358,
         "score": 0.227358,
         "scores": {
@@ -377,165 +541,9 @@
         "title": "Retrieval",
         "type": "Concept",
         "updated_at": "2026-04-02T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "dec:fusion-alpha",
-        "metadata": {
-          "category": "retrieval",
-          "owner": "jiwon",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "category": "retrieval",
-            "node_type": "Decision",
-            "owner": "jiwon"
-          }
-        },
-        "node_id": "dec:fusion-alpha",
-        "rank": 15,
-        "rerank_score": 0.22678,
-        "score": 0.22678,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.377966
-        },
-        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
-        "title": "Hybrid retrieval fusion stays alpha weighted",
-        "type": "Decision",
-        "updated_at": "2026-07-20T09:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "img:whiteboard",
-        "metadata": {
-          "ext": ".png",
-          "filename": "whiteboard-retrieval.png",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".png",
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "Image"
-          }
-        },
-        "node_id": "img:whiteboard",
-        "rank": 16,
-        "rerank_score": 0.179743,
-        "score": 0.179743,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.299572
-        },
-        "summary": "Whiteboard photo from the retrieval design session.",
-        "title": "whiteboard-retrieval.png",
-        "type": "Image",
-        "updated_at": "2026-03-19T11:11:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "task:parity-harness",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "status": "open",
-          "vector": {
-            "node_type": "Task",
-            "status": "open"
-          }
-        },
-        "node_id": "task:parity-harness",
-        "rank": 17,
-        "rerank_score": 0.175573,
-        "score": 0.175573,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.292621
-        },
-        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
-        "title": "Build the retrieval parity harness",
-        "type": "Task",
-        "updated_at": "2026-07-15T11:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "meeting:weekly",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Meeting"
-          }
-        },
-        "node_id": "meeting:weekly",
-        "rank": 18,
-        "rerank_score": 0.154921,
-        "score": 0.154921,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.258201
-        },
-        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
-        "title": "주간 회의 2026-07-14",
-        "type": "Meeting",
-        "updated_at": "2026-07-14T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "dec:rust-foundation",
-        "metadata": {
-          "category": "platform",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "category": "platform",
-            "node_type": "Decision"
-          }
-        },
-        "node_id": "dec:rust-foundation",
-        "rank": 19,
-        "rerank_score": 0.125892,
-        "score": 0.125892,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.20982
-        },
-        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
-        "title": "Rust 기반 검색 이관 결정",
-        "type": "Decision",
-        "updated_at": "2026-07-18T14:30:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "error:timeout",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Error"
-          }
-        },
-        "node_id": "error:timeout",
-        "rank": 20,
-        "rerank_score": 0.125892,
-        "score": 0.125892,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.20982
-        },
-        "summary": "An error where the ranking took longer than the request budget.",
-        "title": "Search timeout",
-        "type": "Error",
-        "updated_at": "2026-03-04T10:00:00"
       }
     ],
     "mode": "hybrid",
-    "multimodal": {
-      "images": 1,
-      "types": [
-        "Image"
-      ]
-    },
     "policy": {
       "rewrite_rules": [],
       "search_query": "zzqq wumpus nonsense"
@@ -556,7 +564,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

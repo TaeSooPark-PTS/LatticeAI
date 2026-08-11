@@ -19,10 +19,14 @@ use serde_json::{Map, Value};
 
 use super::params::{ParamError, RequestParams};
 use crate::context::{assemble_context, ContextRequest, RecentRequest};
+use crate::docgen_context::{
+    retrieve_context_for_generation, DocumentContextRequest, DEFAULT_DOCUMENT_CONTEXT_BUDGET,
+};
 use crate::graph_reads::{relationship_search, traverse, RelationshipQuery, TraverseOptions};
 use crate::history::{
     conversation_messages, group_conversations, history, search_history, HistoryScope,
 };
+use crate::self_model::DEFAULT_SUMMARY_TOKENS;
 use crate::service::{graph_search, GraphSearchOptions, Scope};
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
 
@@ -50,6 +54,9 @@ pub enum Endpoint {
     HistorySearch,
     /// The budgeted context assembly.
     ContextAssemble,
+    /// The document-generation context: hybrid document search, a hop-labelled
+    /// traversal around it, and the budgeted markdown a writer prompt is given.
+    ContextDocument,
 }
 
 impl Endpoint {
@@ -65,6 +72,7 @@ impl Endpoint {
             Endpoint::ConversationMessages => "/rust/history/conversations/{id}",
             Endpoint::HistorySearch => "/rust/history/search",
             Endpoint::ContextAssemble => "/rust/context/assemble",
+            Endpoint::ContextDocument => "/rust/context/document",
         }
     }
 }
@@ -103,6 +111,7 @@ pub enum Plan {
         scope: HistoryScope,
     },
     ContextAssemble(Box<ContextRequest>),
+    ContextDocument(Box<DocumentContextRequest>),
 }
 
 /// The history scope a loopback owner gets, optionally narrowed by the caller.
@@ -241,6 +250,30 @@ impl Plan {
                     .optional_instant("now")?
                     .unwrap_or_else(super::naive_local_now),
             }))),
+            Endpoint::ContextDocument => {
+                Ok(Plan::ContextDocument(Box::new(DocumentContextRequest {
+                    query: params.required_text(&["query", "q"])?,
+                    // The engine clamps to 1..=50; this front door refuses
+                    // outside its own range rather than answering a different
+                    // question than the one that was asked.
+                    max_results: params.optional_int("max_results", 1, 50)?.unwrap_or(10),
+                    max_hops: params.optional_int("max_hops", 0, 4)?.unwrap_or(2),
+                    // Zero is admitted: it is how "spend the profile's own
+                    // ceiling and never trim the knowledge" is spelled.
+                    budget: params
+                        .optional_int("budget", 0, 1_000_000)?
+                        .unwrap_or(DEFAULT_DOCUMENT_CONTEXT_BUDGET),
+                    include_self_model: params.optional_bool("include_self_model")?.unwrap_or(true),
+                    self_model_tokens: params
+                        .optional_int("self_model_tokens", 0, 10_000)?
+                        .unwrap_or(DEFAULT_SUMMARY_TOKENS),
+                    // Loopback trust, as everywhere else in this router.
+                    scope: Scope::default(),
+                    now_secs: params
+                        .optional_instant("now")?
+                        .unwrap_or_else(super::naive_local_now),
+                })))
+            }
         }
     }
 
@@ -296,6 +329,7 @@ impl Plan {
                 let model = LocalEmbeddingModel::from_env();
                 assemble_context(&conn, &model, &request)
             }
+            Plan::ContextDocument(request) => retrieve_context_for_generation(&conn, &request),
         }
     }
 }
@@ -327,11 +361,12 @@ mod tests {
             Endpoint::ConversationMessages,
             Endpoint::HistorySearch,
             Endpoint::ContextAssemble,
+            Endpoint::ContextDocument,
         ]
         .iter()
         .map(|endpoint| endpoint.path())
         .collect();
-        assert_eq!(mounts.len(), 9);
+        assert_eq!(mounts.len(), 10);
         assert!(mounts.iter().all(|path| path.starts_with("/rust/")));
         assert_eq!(Endpoint::History.path(), "/rust/history");
         assert_eq!(Endpoint::ServiceHybrid, Endpoint::ServiceHybrid);
@@ -368,6 +403,31 @@ mod tests {
         assert_eq!(options.depth, 1);
         assert_eq!(options.limit, 100);
         assert!(options.allowed_workspaces.is_none());
+
+        let Plan::ContextDocument(request) =
+            Plan::build(Endpoint::ContextDocument, &bag("?q=hi")).expect("plan")
+        else {
+            panic!("wrong plan");
+        };
+        assert_eq!(request.max_results, 10);
+        assert_eq!(request.max_hops, 2);
+        assert_eq!(request.budget, 2000);
+        assert_eq!(request.self_model_tokens, 200);
+        assert!(
+            request.include_self_model,
+            "the profile rides along by default"
+        );
+        assert!(request.scope.allowed_workspaces.is_none());
+        // Zero budget and zero hops are legal answers, not typos.
+        let Plan::ContextDocument(edge) = Plan::build(
+            Endpoint::ContextDocument,
+            &bag("?q=hi&budget=0&max_hops=0&include_self_model=no"),
+        )
+        .expect("plan") else {
+            panic!("wrong plan");
+        };
+        assert_eq!((edge.budget, edge.max_hops), (0, 0));
+        assert!(!edge.include_self_model);
     }
 
     #[test]
@@ -436,6 +496,24 @@ mod tests {
                 "knowledge",
             ),
             (Endpoint::ContextAssemble, "?q=hi&memories=oops", "memories"),
+            (Endpoint::ContextDocument, "", "query"),
+            (
+                Endpoint::ContextDocument,
+                "?q=hi&max_results=51",
+                "max_results",
+            ),
+            (Endpoint::ContextDocument, "?q=hi&max_hops=5", "max_hops"),
+            (Endpoint::ContextDocument, "?q=hi&budget=-1", "budget"),
+            (
+                Endpoint::ContextDocument,
+                "?q=hi&include_self_model=perhaps",
+                "include_self_model",
+            ),
+            (
+                Endpoint::ContextDocument,
+                "?q=hi&self_model_tokens=10001",
+                "self_model_tokens",
+            ),
         ] {
             let err = Plan::build(endpoint, &bag(query)).expect_err("must reject");
             assert_eq!(err.field, field, "for {} {query}", endpoint.path());

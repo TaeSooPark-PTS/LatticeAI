@@ -1,0 +1,81 @@
+{
+  "key": "ko_sketch",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다\n- 결정: 문서는 한국어로 쓴다\n- 관계: 박민서 님과 빌드 파이프라인을 함께 본다\n\n### 📄 관련 문서/파일\n\n- **[ImageText] 제안서 스케치 OCR** (relevance: 0.67)\n  - 출처: proposal-sketch.png\n  - 제안서 구조: 배경, 근거, 결론.\n  - 관련: 제안서\n\n- **[Image] proposal-sketch.png** (relevance: 0.64)\n  - 출처: proposal-sketch.png\n  - 제안서 구조 스케치입니다.\n\n### 🔗 관련 개념/기술\n\n- **[Concept] 제안서**\n  - 제안서는 결정을 요청하는 문서입니다.",
+      "context_quality": {
+        "limited": false,
+        "mode": "hybrid",
+        "multimodal": {
+          "images": 2,
+          "types": [
+            "ImageText",
+            "Image"
+          ]
+        },
+        "nodes": 2,
+        "reason": null
+      },
+      "query": "스케치",
+      "sources": [
+        {
+          "id": "imgtext:proposal-ocr",
+          "source": "proposal-sketch.png",
+          "title": "제안서 스케치 OCR",
+          "type": "ImageText"
+        }
+      ],
+      "stats": {
+        "budget_trimmed": false,
+        "graph_edges": 4,
+        "graph_nodes": 3,
+        "method": "hybrid",
+        "primary_matches": 2
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 34,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 9,
+            "name": "관련 문서/파일",
+            "provenance": [
+              {
+                "id": "imgtext:proposal-ocr",
+                "type": "ImageText"
+              },
+              {
+                "id": "img:proposal-sketch",
+                "type": "Image"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 5,
+            "name": "관련 개념/기술",
+            "provenance": [
+              {
+                "id": "concept:proposal",
+                "type": "Concept"
+              }
+            ],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 107
+      }
+    },
+    "sources_footnote": "\n---\n**참조된 지식 그래프 노드:**\n1. [ImageText] 제안서 스케치 OCR (proposal-sketch.png)"
+  },
+  "spec": {
+    "key": "ko_sketch",
+    "query": "스케치"
+  },
+  "suite": "context_document"
+}

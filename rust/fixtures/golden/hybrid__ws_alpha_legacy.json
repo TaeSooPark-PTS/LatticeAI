@@ -74,10 +74,10 @@
         "metadata": {},
         "node_id": "meeting:weekly",
         "rank": 3,
-        "rerank_score": 0.542074,
-        "score": 0.542074,
+        "rerank_score": 0.499217,
+        "score": 0.499217,
         "scores": {
-          "lexical": 0.25,
+          "lexical": 0.142857,
           "vector": 0.73679
         },
         "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
@@ -132,6 +132,52 @@
         "updated_at": "2026-04-02T10:00:00"
       },
       {
+        "fusion": "both",
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "node_id": "doc:proposal",
+        "rank": 6,
+        "rerank_score": 0.230117,
+        "score": 0.230117,
+        "scores": {
+          "lexical": 0.25,
+          "vector": 0.216862
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "self:unknown:f6",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "rank": 7,
+        "rerank_score": 0.224264,
+        "score": 0.224264,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.373774
+        },
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
         "fusion": "vector",
         "id": "dec:fusion-alpha",
         "metadata": {
@@ -146,7 +192,7 @@
           }
         },
         "node_id": "dec:fusion-alpha",
-        "rank": 6,
+        "rank": 8,
         "rerank_score": 0.21571,
         "score": 0.21571,
         "scores": {
@@ -173,7 +219,7 @@
           }
         },
         "node_id": "sheet:metrics",
-        "rank": 7,
+        "rank": 9,
         "rerank_score": 0.204849,
         "score": 0.204849,
         "scores": {
@@ -198,7 +244,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 8,
+        "rank": 10,
         "rerank_score": 0.17795,
         "score": 0.17795,
         "scores": {
@@ -209,6 +255,29 @@
         "title": "github.com/lattice/ai",
         "type": "Source",
         "updated_at": "2026-02-20T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:undated",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "rank": 11,
+        "rerank_score": 0.173206,
+        "score": 0.173206,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.288676
+        },
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
       },
       {
         "fusion": "vector",
@@ -225,7 +294,7 @@
           }
         },
         "node_id": "deck:review",
-        "rank": 9,
+        "rank": 12,
         "rerank_score": 0.153052,
         "score": 0.153052,
         "scores": {
@@ -236,6 +305,26 @@
         "title": "분기 리뷰 발표자료",
         "type": "SlideDeck",
         "updated_at": "2026-07-02T15:00:00"
+      },
+      {
+        "fusion": "both",
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "relative_path": "notes/meeting-minutes.md"
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 13,
+        "rerank_score": 0.133333,
+        "score": 0.133333,
+        "scores": {
+          "lexical": 0.333333,
+          "vector": 0.0
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
       },
       {
         "fusion": "vector",
@@ -250,7 +339,7 @@
           }
         },
         "node_id": "task:parity-harness",
-        "rank": 10,
+        "rank": 14,
         "rerank_score": 0.125252,
         "score": 0.125252,
         "scores": {
@@ -277,7 +366,7 @@
           }
         },
         "node_id": "code:hybrid-search",
-        "rank": 11,
+        "rank": 15,
         "rerank_score": 0.118391,
         "score": 0.118391,
         "scores": {
@@ -288,6 +377,31 @@
         "title": "hybrid.py",
         "type": "CodeFile",
         "updated_at": "2026-07-08T09:30:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:release-notes",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "release",
+          "vector": {
+            "node_type": "Document",
+            "source": "release"
+          }
+        },
+        "node_id": "doc:release-notes",
+        "rank": 16,
+        "rerank_score": 0.115583,
+        "score": 0.115583,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.192638
+        },
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
       },
       {
         "fusion": "vector",
@@ -304,7 +418,7 @@
           }
         },
         "node_id": "audio:standup",
-        "rank": 12,
+        "rank": 17,
         "rerank_score": 0.104034,
         "score": 0.104034,
         "scores": {
@@ -317,185 +431,61 @@
         "updated_at": "2026-07-13T09:05:00"
       },
       {
-        "fusion": "vector",
-        "id": "chat:ranking",
-        "metadata": {
-          "conversation_id": "conv-1",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "conversation_id": "conv-1",
-            "node_type": "Chat"
-          }
-        },
-        "node_id": "chat:ranking",
-        "rank": 13,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
-        "title": "랭킹 관련 대화",
-        "type": "Chat",
-        "updated_at": "2026-07-05T21:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "error:timeout",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Error"
-          }
-        },
-        "node_id": "error:timeout",
-        "rank": 14,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "An error where the ranking took longer than the request budget.",
-        "title": "Search timeout",
-        "type": "Error",
-        "updated_at": "2026-03-04T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "feature:command-palette",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Feature"
-          }
-        },
-        "node_id": "feature:command-palette",
-        "rank": 15,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "The palette that opens search from anywhere.",
-        "title": "Command palette",
-        "type": "Feature",
-        "updated_at": "2026-03-05T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "file:ranking-notes",
-        "metadata": {
-          "ext": ".md",
-          "filename": "ranking-notes.md",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".md",
-            "filename": "ranking-notes.md",
-            "node_type": "File"
-          }
-        },
-        "node_id": "file:ranking-notes",
-        "rank": 16,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-        "title": "ranking-notes.md",
-        "type": "File",
-        "updated_at": "2026-07-10T16:45:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "legacy:global-note",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "legacy:global-note",
-        "rank": 17,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
-        "title": "Legacy global note",
-        "type": "Document",
-        "updated_at": "2026-06-20T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "org:lattice",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Organization"
-          }
-        },
-        "node_id": "org:lattice",
+        "fusion": "both",
+        "id": "concept:proposal",
+        "metadata": {},
+        "node_id": "concept:proposal",
         "rank": 18,
-        "rerank_score": 0.0,
-        "score": 0.0,
+        "rerank_score": 0.066667,
+        "score": 0.066667,
         "scores": {
-          "lexical": 0.0,
+          "lexical": 0.166667,
           "vector": 0.0
         },
-        "summary": "The organization.",
-        "title": "Lattice",
-        "type": "Organization",
-        "updated_at": "2026-02-22T10:00:00"
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
       },
       {
-        "fusion": "vector",
-        "id": "page:onboarding",
+        "fusion": "lexical",
+        "id": "self:habit:b2",
         "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Page"
-          }
+          "confidence": 0.6,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "workspace_id": null
         },
-        "node_id": "page:onboarding",
+        "node_id": "self:habit:b2",
         "rank": 19,
-        "rerank_score": 0.0,
-        "score": 0.0,
+        "rerank_score": 0.05,
+        "score": 0.05,
         "scores": {
-          "lexical": 0.0,
+          "lexical": 0.125,
           "vector": 0.0
         },
-        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
-        "title": "온보딩 첫 다섯 걸음",
-        "type": "Page",
-        "updated_at": "2026-06-01T12:00:00"
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
       },
       {
         "fusion": "vector",
-        "id": "person:jiwon",
+        "id": "audio:proposal-call",
         "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
           "parent_node_id": null,
           "parent_type": null,
-          "role": "owner",
           "vector": {
-            "node_type": "Person",
-            "role": "owner"
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
           }
         },
-        "node_id": "person:jiwon",
+        "node_id": "audio:proposal-call",
         "rank": 20,
         "rerank_score": 0.0,
         "score": 0.0,
@@ -503,10 +493,10 @@
           "lexical": 0.0,
           "vector": 0.0
         },
-        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
-        "title": "김지원 님",
-        "type": "Person",
-        "updated_at": "2026-04-11T10:00:00"
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
       }
     ],
     "mode": "hybrid",
@@ -522,15 +512,15 @@
       "model": null
     },
     "sources": {
-      "lexical": 4,
-      "vector": 28
+      "lexical": 8,
+      "vector": 31
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

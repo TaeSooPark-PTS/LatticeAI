@@ -1,0 +1,469 @@
+{
+  "key": "hub_h3",
+  "result": {
+    "edges": [
+      {
+        "from": "audio:proposal-call",
+        "to": "task:proposal-review",
+        "type": "MENTIONS",
+        "weight": 0.75
+      },
+      {
+        "from": "chat:proposal",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.78
+      },
+      {
+        "from": "code:doc-builder",
+        "to": "feature:doc-generation",
+        "type": "MENTIONS",
+        "weight": 0.74
+      },
+      {
+        "from": "concept:retrieval",
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.4
+      },
+      {
+        "from": "dec:fusion-alpha",
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.8
+      },
+      {
+        "from": "dec:fusion-alpha",
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "from": "deck:proposal",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.82
+      },
+      {
+        "from": "deck:proposal",
+        "to": "slide:proposal-1",
+        "type": "CONTAINS",
+        "weight": 0.81
+      },
+      {
+        "from": "doc:handbook",
+        "to": "doc:retrieval-spec",
+        "type": "MENTIONS",
+        "weight": 0.1
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:evidence",
+        "type": "MENTIONS",
+        "weight": 0.91
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:proposal",
+        "type": "MENTIONS",
+        "weight": 0.92
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.86
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.87
+      },
+      {
+        "from": "doc:proposal",
+        "to": "dec:doc-format",
+        "type": "MENTIONS",
+        "weight": 0.89
+      },
+      {
+        "from": "doc:proposal",
+        "to": "feature:command-palette",
+        "type": "MENTIONS",
+        "weight": 0.85
+      },
+      {
+        "from": "doc:proposal",
+        "to": "feature:doc-generation",
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "from": "doc:proposal",
+        "to": "page:proposal-outline",
+        "type": "CONTAINS",
+        "weight": 0.83
+      },
+      {
+        "from": "doc:proposal",
+        "to": "task:parity-harness",
+        "type": "MENTIONS",
+        "weight": 0.84
+      },
+      {
+        "from": "doc:proposal",
+        "to": "task:proposal-review",
+        "type": "MENTIONS",
+        "weight": 0.88
+      },
+      {
+        "from": "doc:release-notes",
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.72
+      },
+      {
+        "from": "doc:retrieval-spec",
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.45
+      },
+      {
+        "from": "doc:undated",
+        "to": "concept:proposal",
+        "type": "MENTIONS",
+        "weight": 0.71
+      },
+      {
+        "from": "file:meeting-minutes",
+        "to": "dec:doc-format",
+        "type": "MENTIONS",
+        "weight": 0.8
+      },
+      {
+        "from": "file:meeting-minutes",
+        "to": "meeting:weekly",
+        "type": "MENTIONS",
+        "weight": 0.79
+      },
+      {
+        "from": "file:ranking-notes",
+        "to": "dec:fusion-alpha",
+        "type": "MENTIONS",
+        "weight": 0.35
+      },
+      {
+        "from": "img:proposal-sketch",
+        "to": "imgtext:proposal-ocr",
+        "type": "MENTIONS",
+        "weight": 0.77
+      },
+      {
+        "from": "imgtext:proposal-ocr",
+        "to": "concept:proposal",
+        "type": "MENTIONS",
+        "weight": 0.76
+      },
+      {
+        "from": "meeting:kickoff",
+        "to": "dec:rust-foundation",
+        "type": "DISCUSSES",
+        "weight": 0.5
+      },
+      {
+        "from": "meeting:weekly",
+        "to": "dec:fusion-alpha",
+        "type": "DISCUSSES",
+        "weight": 0.95
+      },
+      {
+        "from": "org:lattice",
+        "to": "person:jiwon",
+        "type": "CONTAINS",
+        "weight": 0.25
+      },
+      {
+        "from": "person:jiwon",
+        "to": "task:parity-harness",
+        "type": "MENTIONS",
+        "weight": 0.6
+      },
+      {
+        "from": "sheet:proposal-budget",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.73
+      },
+      {
+        "from": "slide:fusion",
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.25
+      },
+      {
+        "from": "task:parity-harness",
+        "to": "dec:rust-foundation",
+        "type": "MENTIONS",
+        "weight": 1.0
+      }
+    ],
+    "nodes": [
+      {
+        "hop": 0,
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document"
+      },
+      {
+        "hop": 1,
+        "id": "chat:proposal",
+        "metadata": {
+          "conversation_id": "conv-f"
+        },
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat"
+      },
+      {
+        "hop": 1,
+        "id": "concept:evidence",
+        "metadata": {},
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept"
+      },
+      {
+        "hop": 1,
+        "id": "concept:proposal",
+        "metadata": {},
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept"
+      },
+      {
+        "hop": 1,
+        "id": "concept:ranking",
+        "metadata": {},
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept"
+      },
+      {
+        "hop": 1,
+        "id": "concept:retrieval",
+        "metadata": {},
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept"
+      },
+      {
+        "hop": 1,
+        "id": "dec:doc-format",
+        "metadata": {},
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision"
+      },
+      {
+        "hop": 1,
+        "id": "deck:proposal",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "proposal.pptx"
+        },
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck"
+      },
+      {
+        "hop": 1,
+        "id": "feature:command-palette",
+        "metadata": {},
+        "summary": "The palette that opens search from anywhere.",
+        "title": "Command palette",
+        "type": "Feature"
+      },
+      {
+        "hop": 1,
+        "id": "feature:doc-generation",
+        "metadata": {},
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature"
+      },
+      {
+        "hop": 1,
+        "id": "page:proposal-outline",
+        "metadata": {},
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
+        "type": "Page"
+      },
+      {
+        "hop": 1,
+        "id": "sheet:proposal-budget",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "proposal-budget.xlsx"
+        },
+        "summary": "제안서 예산 표입니다.",
+        "title": "proposal-budget.xlsx",
+        "type": "Spreadsheet"
+      },
+      {
+        "hop": 1,
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task"
+      },
+      {
+        "hop": 1,
+        "id": "task:proposal-review",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
+        "type": "Task"
+      },
+      {
+        "hop": 2,
+        "id": "audio:proposal-call",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a"
+        },
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio"
+      },
+      {
+        "hop": 2,
+        "id": "code:doc-builder",
+        "metadata": {
+          "filename": "context_builder.py",
+          "relative_path": "latticeai/core/context_builder.py"
+        },
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile"
+      },
+      {
+        "hop": 2,
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision"
+      },
+      {
+        "hop": 2,
+        "id": "dec:rust-foundation",
+        "metadata": {
+          "category": "platform"
+        },
+        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+        "title": "Rust 기반 검색 이관 결정",
+        "type": "Decision"
+      },
+      {
+        "hop": 2,
+        "id": "doc:release-notes",
+        "metadata": {
+          "source": "release"
+        },
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document"
+      },
+      {
+        "hop": 2,
+        "id": "doc:retrieval-spec",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf"
+        },
+        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+        "title": "Retrieval specification",
+        "type": "Document"
+      },
+      {
+        "hop": 2,
+        "id": "doc:undated",
+        "metadata": {},
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document"
+      },
+      {
+        "hop": 2,
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "relative_path": "notes/meeting-minutes.md"
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File"
+      },
+      {
+        "hop": 2,
+        "id": "imgtext:proposal-ocr",
+        "metadata": {
+          "filename": "proposal-sketch.png",
+          "ocr": true
+        },
+        "summary": "제안서 구조: 배경, 근거, 결론.",
+        "title": "제안서 스케치 OCR",
+        "type": "ImageText"
+      },
+      {
+        "hop": 2,
+        "id": "person:jiwon",
+        "metadata": {
+          "role": "owner"
+        },
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person"
+      },
+      {
+        "hop": 2,
+        "id": "slide:fusion",
+        "metadata": {},
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide"
+      },
+      {
+        "hop": 2,
+        "id": "slide:proposal-1",
+        "metadata": {},
+        "summary": "제안서 요약 슬라이드입니다.",
+        "title": "제안 슬라이드 1",
+        "type": "Slide"
+      }
+    ]
+  },
+  "spec": {
+    "key": "hub_h3",
+    "max_hops": 3,
+    "node_ids": [
+      "doc:proposal"
+    ]
+  },
+  "suite": "multi_hop"
+}

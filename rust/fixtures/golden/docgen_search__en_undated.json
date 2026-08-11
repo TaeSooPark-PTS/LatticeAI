@@ -1,0 +1,31 @@
+{
+  "key": "en_undated",
+  "result": [
+    {
+      "hybrid_score": 0.6624,
+      "id": "doc:undated",
+      "metadata": {},
+      "related_concepts": [
+        {
+          "id": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        }
+      ],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.0,
+        "text": 1.0
+      },
+      "summary": "An undated memo about 제안서; its stamp does not parse.",
+      "title": "Undated 제안서 memo",
+      "type": "Document",
+      "updated_at": "not-a-timestamp"
+    }
+  ],
+  "spec": {
+    "key": "en_undated",
+    "query": "Undated"
+  },
+  "suite": "docgen_search"
+}

@@ -214,6 +214,25 @@
         "updated_at": "2026-04-22T18:05:00"
       },
       {
+        "id": "self:unknown:f6",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "score": 0.099015,
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
         "id": "dec:fusion-alpha",
         "item_type": "node",
         "metadata": {
@@ -275,6 +294,23 @@
         "updated_at": "2026-02-20T10:00:00"
       },
       {
+        "id": "doc:undated",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "score": 0.076472,
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
         "id": "doc:handbook",
         "item_type": "node",
         "metadata": {
@@ -319,6 +355,29 @@
         "updated_at": "2026-07-02T15:00:00"
       },
       {
+        "id": "doc:proposal",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "docs/proposal.md",
+          "vector": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "node_type": "Document",
+            "relative_path": "docs/proposal.md"
+          }
+        },
+        "node_id": "doc:proposal",
+        "score": 0.057448,
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
         "id": "task:parity-harness",
         "item_type": "node",
         "metadata": {
@@ -359,6 +418,25 @@
         "updated_at": "2026-07-08T09:30:00"
       },
       {
+        "id": "doc:release-notes",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "release",
+          "vector": {
+            "node_type": "Document",
+            "source": "release"
+          }
+        },
+        "node_id": "doc:release-notes",
+        "score": 0.051031,
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
         "id": "audio:standup",
         "item_type": "node",
         "metadata": {
@@ -380,47 +458,49 @@
         "updated_at": "2026-07-13T09:05:00"
       },
       {
-        "id": "file:ranking-notes",
+        "id": "file:meeting-minutes",
         "item_type": "node",
         "metadata": {
-          "ext": ".md",
-          "filename": "ranking-notes.md",
+          "filename": "meeting-minutes.md",
           "parent_node_id": null,
           "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
           "vector": {
-            "ext": ".md",
-            "filename": "ranking-notes.md",
-            "node_type": "File"
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
           }
         },
-        "node_id": "file:ranking-notes",
+        "node_id": "file:meeting-minutes",
         "score": 0.0,
-        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-        "title": "ranking-notes.md",
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
         "type": "File",
-        "updated_at": "2026-07-10T16:45:00"
+        "updated_at": "2026-08-01T11:00:00"
       },
       {
-        "id": "chat:ranking",
+        "id": "deck:proposal",
         "item_type": "node",
         "metadata": {
-          "conversation_id": "conv-1",
+          "ext": ".pptx",
+          "filename": "proposal.pptx",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "conversation_id": "conv-1",
-            "node_type": "Chat"
+            "ext": ".pptx",
+            "filename": "proposal.pptx",
+            "node_type": "SlideDeck"
           }
         },
-        "node_id": "chat:ranking",
+        "node_id": "deck:proposal",
         "score": 0.0,
-        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
-        "title": "랭킹 관련 대화",
-        "type": "Chat",
-        "updated_at": "2026-07-05T21:00:00"
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-29T09:00:00"
       },
       {
-        "id": "task:onboarding-checklist",
+        "id": "task:proposal-review",
         "item_type": "node",
         "metadata": {
           "parent_node_id": null,
@@ -431,215 +511,34 @@
             "status": "open"
           }
         },
-        "node_id": "task:onboarding-checklist",
+        "node_id": "task:proposal-review",
         "score": 0.0,
-        "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
-        "title": "온보딩 체크리스트 정리",
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
         "type": "Task",
-        "updated_at": "2026-06-30T08:20:00"
+        "updated_at": "2026-07-27T09:00:00"
       },
       {
-        "id": "legacy:global-note",
+        "id": "chat:proposal",
         "item_type": "node",
         "metadata": {
+          "conversation_id": "conv-f",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "node_type": "Document"
+            "conversation_id": "conv-f",
+            "node_type": "Chat"
           }
         },
-        "node_id": "legacy:global-note",
+        "node_id": "chat:proposal",
         "score": 0.0,
-        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
-        "title": "Legacy global note",
-        "type": "Document",
-        "updated_at": "2026-06-20T10:00:00"
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-26T09:00:00"
       },
       {
-        "id": "chunk:handbook:1",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "heading_path": "안내서 > 온보딩",
-            "index": 0,
-            "page": 3,
-            "page_end": 4,
-            "source_node": "doc:handbook",
-            "start_char": 0
-          },
-          "ext": ".pdf",
-          "filename": "handbook.pdf",
-          "locator": "안내서 > 온보딩 · p.3–4",
-          "parent_node_id": "doc:handbook",
-          "parent_type": "Document",
-          "source_node": "doc:handbook",
-          "vector": {
-            "heading_path": "안내서 > 온보딩",
-            "index": 0,
-            "page": 3,
-            "page_end": 4,
-            "parent_source_node": "doc:handbook",
-            "source_node": "doc:handbook",
-            "start_char": 0
-          }
-        },
-        "node_id": "doc:handbook",
-        "score": 0.0,
-        "summary": "온보딩 체크리스트: 첫째, 폴더를 연결합니다. 둘째, 질문을 합니다. 셋째, 근거를 확인합니다.",
-        "title": "Lattice AI 사용 안내서",
-        "type": "Chunk",
-        "updated_at": "2026-06-12T10:00:00"
-      },
-      {
-        "id": "page:onboarding",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Page"
-          }
-        },
-        "node_id": "page:onboarding",
-        "score": 0.0,
-        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
-        "title": "온보딩 첫 다섯 걸음",
-        "type": "Page",
-        "updated_at": "2026-06-01T12:00:00"
-      },
-      {
-        "id": "chunk:spec:2",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "index": 1,
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          },
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "parent_node_id": "doc:retrieval-spec",
-          "parent_type": "Document",
-          "vector": {
-            "index": 1,
-            "parent_source_node": "doc:retrieval-spec",
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "score": 0.0,
-        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
-        "title": "Retrieval specification",
-        "type": "Chunk",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "id": "chunk:spec:1",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "heading_path": "Retrieval > Fusion",
-            "index": 0,
-            "page": 2,
-            "source_node": "doc:retrieval-spec",
-            "start_char": 0
-          },
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "locator": "Retrieval > Fusion · p.2",
-          "parent_node_id": "doc:retrieval-spec",
-          "parent_type": "Document",
-          "vector": {
-            "heading_path": "Retrieval > Fusion",
-            "index": 0,
-            "page": 2,
-            "parent_source_node": "doc:retrieval-spec",
-            "source_node": "doc:retrieval-spec",
-            "start_char": 0
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "score": 0.0,
-        "summary": "The lexical channel scores one over rank. The vector channel is max normalized before fusion.",
-        "title": "Retrieval specification",
-        "type": "Chunk",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "id": "slide:fusion",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Slide"
-          }
-        },
-        "node_id": "slide:fusion",
-        "score": 0.0,
-        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
-        "title": "Fusion slide",
-        "type": "Slide",
-        "updated_at": "2026-05-14T12:00:00"
-      },
-      {
-        "id": "person:minseo",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "role": "reviewer",
-          "vector": {
-            "node_type": "Person",
-            "role": "reviewer"
-          }
-        },
-        "node_id": "person:minseo",
-        "score": 0.0,
-        "summary": "빌드 파이프라인 담당자입니다.",
-        "title": "박민서 님",
-        "type": "Person",
-        "updated_at": "2026-04-12T10:00:00"
-      },
-      {
-        "id": "person:jiwon",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "role": "owner",
-          "vector": {
-            "node_type": "Person",
-            "role": "owner"
-          }
-        },
-        "node_id": "person:jiwon",
-        "score": 0.0,
-        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
-        "title": "김지원 님",
-        "type": "Person",
-        "updated_at": "2026-04-11T10:00:00"
-      },
-      {
-        "id": "concept:ranking",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
-        "score": 0.0,
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "id": "feature:command-palette",
+        "id": "feature:doc-generation",
         "item_type": "node",
         "metadata": {
           "parent_node_id": null,
@@ -648,19 +547,87 @@
             "node_type": "Feature"
           }
         },
-        "node_id": "feature:command-palette",
+        "node_id": "feature:doc-generation",
         "score": 0.0,
-        "summary": "The palette that opens search from anywhere.",
-        "title": "Command palette",
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
         "type": "Feature",
-        "updated_at": "2026-03-05T10:00:00"
+        "updated_at": "2026-07-25T09:00:00"
+      },
+      {
+        "id": "concept:proposal",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:proposal",
+        "score": 0.0,
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
+      },
+      {
+        "id": "concept:evidence",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:evidence",
+        "score": 0.0,
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept",
+        "updated_at": "2026-07-23T09:00:00"
+      },
+      {
+        "id": "dec:doc-format",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:doc-format",
+        "score": 0.0,
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision",
+        "updated_at": "2026-07-22T09:00:00"
+      },
+      {
+        "id": "page:proposal-outline",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Page"
+          }
+        },
+        "node_id": "page:proposal-outline",
+        "score": 0.0,
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
+        "type": "Page",
+        "updated_at": "2026-07-21T09:00:00"
       }
     ],
     "query": "회의 결정 사항",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

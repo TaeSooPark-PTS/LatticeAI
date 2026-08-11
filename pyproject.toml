@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "11.5.0"
+version = "11.5.1"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -379,6 +379,7 @@ files = [
   "latticeai/api/__init__.py",
   "latticeai/api/admin.py",
   "latticeai/api/agent_registry.py",
+  "latticeai/api/agent_worker_seam.py",
   "latticeai/api/agents.py",
   "latticeai/api/auth.py",
   "latticeai/api/automation_intelligence.py",

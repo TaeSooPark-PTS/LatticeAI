@@ -26,7 +26,32 @@
     "matches": [
       {
         "fusion": "vector",
-        "id": "legacy:global-note",
+        "id": "self:unknown:f6",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "rank": 1,
+        "rerank_score": 0.6,
+        "score": 0.6,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 1.0
+        },
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:undated",
         "metadata": {
           "parent_node_id": null,
           "parent_type": null,
@@ -34,45 +59,88 @@
             "node_type": "Document"
           }
         },
-        "node_id": "legacy:global-note",
-        "rank": 1,
-        "rerank_score": 0.0,
-        "score": 0.0,
+        "node_id": "doc:undated",
+        "rank": 2,
+        "rerank_score": 0.463396,
+        "score": 0.463396,
         "scores": {
           "lexical": 0.0,
+          "vector": 0.772327
+        },
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
+        "fusion": "both",
+        "id": "concept:proposal",
+        "metadata": {},
+        "node_id": "concept:proposal",
+        "rank": 3,
+        "rerank_score": 0.4,
+        "score": 0.4,
+        "scores": {
+          "lexical": 1.0,
           "vector": 0.0
         },
-        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
-        "title": "Legacy global note",
-        "type": "Document",
-        "updated_at": "2026-06-20T10:00:00"
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
       },
       {
         "fusion": "vector",
-        "id": "org:lattice",
+        "id": "doc:release-notes",
         "metadata": {
           "parent_node_id": null,
           "parent_type": null,
+          "source": "release",
           "vector": {
-            "node_type": "Organization"
+            "node_type": "Document",
+            "source": "release"
           }
         },
-        "node_id": "org:lattice",
-        "rank": 2,
-        "rerank_score": 0.0,
-        "score": 0.0,
+        "node_id": "doc:release-notes",
+        "rank": 4,
+        "rerank_score": 0.309232,
+        "score": 0.309232,
         "scores": {
           "lexical": 0.0,
+          "vector": 0.515387
+        },
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "self:habit:b2",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "workspace_id": null
+        },
+        "node_id": "self:habit:b2",
+        "rank": 5,
+        "rerank_score": 0.2,
+        "score": 0.2,
+        "scores": {
+          "lexical": 0.5,
           "vector": 0.0
         },
-        "summary": "The organization.",
-        "title": "Lattice",
-        "type": "Organization",
-        "updated_at": "2026-02-22T10:00:00"
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
       },
       {
         "fusion": "vector",
-        "id": "page:onboarding",
+        "id": "page:proposal-outline",
         "metadata": {
           "parent_node_id": null,
           "parent_type": null,
@@ -80,64 +148,53 @@
             "node_type": "Page"
           }
         },
-        "node_id": "page:onboarding",
-        "rank": 3,
+        "node_id": "page:proposal-outline",
+        "rank": 6,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
           "lexical": 0.0,
           "vector": 0.0
         },
-        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
-        "title": "온보딩 첫 다섯 걸음",
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
         "type": "Page",
-        "updated_at": "2026-06-01T12:00:00"
+        "updated_at": "2026-07-21T09:00:00"
       },
       {
         "fusion": "vector",
-        "id": "slide:fusion",
+        "id": "self:trait:e5",
         "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
           "parent_node_id": null,
           "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
           "vector": {
-            "node_type": "Slide"
-          }
+            "confidence": 0.7,
+            "node_type": "Self",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "trait",
+            "signal": "ko_role",
+            "workspace_id": null
+          },
+          "workspace_id": null
         },
-        "node_id": "slide:fusion",
-        "rank": 4,
+        "node_id": "self:trait:e5",
+        "rank": 7,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
           "lexical": 0.0,
           "vector": 0.0
         },
-        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
-        "title": "Fusion slide",
-        "type": "Slide",
-        "updated_at": "2026-05-14T12:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "tie:e",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "tie:e",
-        "rank": 5,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "",
-        "title": "Tie candidate E",
-        "type": "Concept",
-        "updated_at": "2026-02-01T00:00:00"
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
       }
     ],
     "mode": "hybrid",
@@ -153,15 +210,15 @@
       "model": null
     },
     "sources": {
-      "lexical": 0,
-      "vector": 5
+      "lexical": 2,
+      "vector": 6
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

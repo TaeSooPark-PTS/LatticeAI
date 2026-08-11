@@ -98,6 +98,10 @@ pub fn router(db: impl Into<PathBuf>) -> Router {
             Endpoint::ContextAssemble.path(),
             both(Endpoint::ContextAssemble),
         )
+        .route(
+            Endpoint::ContextDocument.path(),
+            both(Endpoint::ContextDocument),
+        )
         .with_state(state)
 }
 
@@ -326,6 +330,7 @@ mod tests {
             Endpoint::Conversations,
             Endpoint::History,
             Endpoint::ContextAssemble,
+            Endpoint::ContextDocument,
         ] {
             if endpoint.path() == path {
                 return Some(endpoint);
@@ -350,12 +355,54 @@ mod tests {
             "/rust/history",
             "/rust/history/conversations",
             "/rust/history/search?q=ranking",
+            "/rust/context/document?q=ranking",
         ] {
             for method in [Method::GET, Method::POST] {
                 let (status, _) = call(&db, method, uri, "");
                 assert_eq!(status, StatusCode::OK, "{uri}");
             }
         }
+    }
+
+    #[test]
+    fn the_document_context_route_answers_the_whole_contract() {
+        let (_dir, db) = store();
+        let (status, body) = call(
+            &db,
+            Method::POST,
+            "/rust/context/document",
+            r#"{"query": "ranking", "max_results": 2, "max_hops": 2, "budget": 500,
+                "include_self_model": false, "now": "2026-01-04T00:00:00"}"#,
+        );
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["query"], "ranking");
+        assert_eq!(body["stats"]["method"], "hybrid");
+        assert_eq!(body["stats"]["primary_matches"], 2);
+        assert!(body["context_markdown"]
+            .as_str()
+            .unwrap()
+            .contains("### \u{2705} 관련 결정사항/작업"));
+        assert_eq!(body["context_quality"]["mode"], "hybrid");
+        assert_eq!(body["trace"]["budget_approx_tokens"], 500);
+        assert!(!body["sources"].as_array().unwrap().is_empty());
+        // This brain has no Self-Model rows, so nothing is injected even when
+        // the caller asks for it — an absent profile is an absent section.
+        let (_, with_profile) = call(
+            &db,
+            Method::GET,
+            "/rust/context/document?q=ranking&now=2026-01-04T00:00:00",
+            "",
+        );
+        assert_eq!(
+            with_profile["trace"]["sections"][0]["source"], "knowledge",
+            "no profile means no self_model section"
+        );
+        // A query the graph cannot answer at all is said plainly.
+        let (_, nothing) = call(&db, Method::GET, "/rust/context/document?q=", "");
+        assert_eq!(
+            nothing["stats"],
+            serde_json::json!({"method": "none", "matches": 0})
+        );
     }
 
     #[test]

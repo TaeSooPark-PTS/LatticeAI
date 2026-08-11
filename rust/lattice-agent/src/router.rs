@@ -54,8 +54,18 @@ impl AgentState {
     }
 }
 
-/// Mount the kernel routes. Returns a `Router<()>` so any host can merge it.
-pub fn router(workspace: Workspace) -> Router {
+/// Mount the kernel routes **and** the loop routes. Returns a `Router<()>` so
+/// any host can merge it.
+///
+/// The `config` argument arrived with the loop (v11.5.1): the orchestrator
+/// needs to know where its AI worker listens and where paused runs are stored,
+/// and neither is something this crate can discover for itself.
+pub fn router(workspace: Workspace, config: crate::LoopConfig) -> Router {
+    kernel_router(workspace.clone()).merge(crate::loop_router(workspace, config))
+}
+
+/// Just the three decision routes, for callers that want no loop.
+pub fn kernel_router(workspace: Workspace) -> Router {
     Router::new()
         .route("/rust/agent/preflight", post(preflight))
         .route("/rust/agent/exec", post(exec_command))
@@ -517,12 +527,16 @@ mod tests {
     }
 
     #[test]
-    fn the_router_mounts_exactly_the_three_kernel_routes() {
+    fn the_router_mounts_the_kernel_and_the_loop_without_colliding() {
         let dir = tempfile::tempdir().expect("tempdir");
         let workspace = Workspace::new(dir.path().join("ws")).expect("workspace");
         // Building it is the assertion: axum panics on a duplicate or malformed
-        // route at construction time.
-        let _router: Router = router(workspace);
+        // route at construction time, so a loop route that shadowed a kernel
+        // route would fail here.
+        let mut config = crate::LoopConfig::new("http://127.0.0.1:1");
+        config.runs_dir = dir.path().join("rust_agent_runs");
+        let _router: Router = router(workspace.clone(), config);
+        let _kernel: Router = kernel_router(workspace);
     }
 
     #[test]

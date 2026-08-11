@@ -183,6 +183,25 @@
         "updated_at": "2026-05-28T13:15:00"
       },
       {
+        "id": "doc:release-notes",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "release",
+          "vector": {
+            "node_type": "Document",
+            "source": "release"
+          }
+        },
+        "node_id": "doc:release-notes",
+        "score": 0.324443,
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
         "id": "img:ocr-notes",
         "item_type": "node",
         "metadata": {
@@ -269,6 +288,54 @@
         "updated_at": "2026-05-28T13:15:00"
       },
       {
+        "id": "self:decision:a1",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.9,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "decision",
+          "signal": "ko_decision_marker",
+          "vector": {
+            "confidence": 0.9,
+            "node_type": "Decision",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "decision",
+            "signal": "ko_decision_marker",
+            "workspace_id": "ws-alpha"
+          },
+          "workspace_id": "ws-alpha"
+        },
+        "node_id": "self:decision:a1",
+        "score": 0.162221,
+        "summary": "문서는 한국어로 쓴다",
+        "title": "문서는 한국어로 쓴다",
+        "type": "Decision",
+        "updated_at": "2026-07-02T09:00:00"
+      },
+      {
+        "id": "self:unknown:f6",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "score": 0.118033,
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
         "id": "code:build-failure",
         "item_type": "node",
         "metadata": {
@@ -326,6 +393,56 @@
         "updated_at": "2026-02-20T10:00:00"
       },
       {
+        "id": "self:preference:c3",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.8,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "preference",
+          "signal": "ko_prefer",
+          "vector": {
+            "confidence": 0.8,
+            "node_type": "Preference",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "preference",
+            "signal": "ko_prefer",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:preference:c3",
+        "score": 0.081111,
+        "summary": "설명은 짧고 근거를 먼저",
+        "title": "설명은 짧고 근거를 먼저",
+        "type": "Preference",
+        "updated_at": "2026-07-04T09:00:00"
+      },
+      {
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "score": 0.080509,
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
         "id": "workflow:nightly",
         "item_type": "node",
         "metadata": {
@@ -341,6 +458,27 @@
         "title": "Nightly reindex",
         "type": "Workflow",
         "updated_at": "2026-03-02T10:00:00"
+      },
+      {
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "score": 0.077512,
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
       },
       {
         "id": "tie:e",
@@ -477,140 +615,32 @@
         "updated_at": "2026-06-01T12:00:00"
       },
       {
-        "id": "twin:concept-a",
+        "id": "imgtext:proposal-ocr",
         "item_type": "node",
         "metadata": {
+          "filename": "proposal-sketch.png",
+          "ocr": true,
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "node_type": "Concept"
+            "filename": "proposal-sketch.png",
+            "node_type": "ImageText",
+            "ocr": true
           }
         },
-        "node_id": "twin:concept-a",
-        "score": 0.061314,
-        "summary": "동일한 시각의 개념 A",
-        "title": "Twin concept A",
-        "type": "Concept",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "id": "twin:doc-b",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "twin:doc-b",
-        "score": 0.059235,
-        "summary": "동일한 시각의 문서 B",
-        "title": "Twin document B",
-        "type": "Document",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "id": "twin:doc-a",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "twin:doc-a",
-        "score": 0.059235,
-        "summary": "동일한 시각의 문서 A",
-        "title": "Twin document A",
-        "type": "Document",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "id": "doc:handbook",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".pdf",
-          "filename": "handbook.pdf",
-          "parent_node_id": null,
-          "parent_type": null,
-          "source_node": "doc:handbook",
-          "vector": {
-            "ext": ".pdf",
-            "filename": "handbook.pdf",
-            "node_type": "Document",
-            "source_node": "doc:handbook"
-          }
-        },
-        "node_id": "doc:handbook",
-        "score": 0.058272,
-        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
-        "title": "Lattice AI 사용 안내서",
-        "type": "Document",
-        "updated_at": "2026-06-12T10:00:00"
-      },
-      {
-        "id": "repo:lattice",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Repository"
-          }
-        },
-        "node_id": "repo:lattice",
-        "score": 0.057354,
-        "summary": "The monorepo holding the Python worker and the Rust workspace.",
-        "title": "lattice-ai",
-        "type": "Repository",
-        "updated_at": "2026-02-21T10:00:00"
-      },
-      {
-        "id": "audio:standup",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".m4a",
-          "filename": "standup-2026-07-13.m4a",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".m4a",
-            "filename": "standup-2026-07-13.m4a",
-            "node_type": "Audio"
-          }
-        },
-        "node_id": "audio:standup",
-        "score": 0.054754,
-        "summary": "Standup recording where the parity harness was assigned.",
-        "title": "standup-2026-07-13.m4a",
-        "type": "Audio",
-        "updated_at": "2026-07-13T09:05:00"
-      },
-      {
-        "id": "org:lattice",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Organization"
-          }
-        },
-        "node_id": "org:lattice",
-        "score": 0.050063,
-        "summary": "The organization.",
-        "title": "Lattice",
-        "type": "Organization",
-        "updated_at": "2026-02-22T10:00:00"
+        "node_id": "imgtext:proposal-ocr",
+        "score": 0.072548,
+        "summary": "제안서 구조: 배경, 근거, 결론.",
+        "title": "제안서 스케치 OCR",
+        "type": "ImageText",
+        "updated_at": "2026-07-16T09:01:00"
       }
     ],
     "query": "hybrid retrieval ranking",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

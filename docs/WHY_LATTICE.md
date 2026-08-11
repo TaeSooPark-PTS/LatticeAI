@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **11.5.0 — Rust Complete**.
+Current release: **11.5.1 — Rust Full Loop**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

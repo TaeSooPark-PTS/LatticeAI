@@ -13,6 +13,28 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.5.1 — Rust Full Loop (2026-08-12)
+
+11.5.0의 명시적 잔여 2건 완결 — 다이어그램의 모든 Rust 박스가 구현됨.
+
+- **에이전트 루프 Rust 이식**: 상태기계·실행 규칙 전부·검증 fail-closed
+  매핑·롤백 3-tier·승인 스토어(TTL/410) — 실제 Python 런타임 대본 재생
+  **궤적 10종 byte-identical** + 헬퍼 그리드(판정 90 포함). 실워커
+  라이브 스모크: 시임 4종 실통신, 무모델 턴 fail-closed 동일.
+- **AI Worker 시임 3종**(additive, 문·분기 100%): `/agent/llm`·
+  `/agent/tool`(서버측 불변 가드 유지+시임 게이트)·`/agent/change-proposal`.
+- **문서 생성 컨텍스트 네이티브**: docgen 검색·multi-hop·컨텍스트 계약
+  전체 — 골든 53 신규(총 247) 완전 일치, 계약 pytest 256.
+- ARCHITECTURE.md System Map을 Rust 기반 현재 구조로 재작성.
+- 플로어: **7,006 + 1,761 테스트 · 100.00% · Rust 739**.
+
+빌드 산출물은 `dist/ltcai-11.5.1-py3-none-any.whl`,
+`dist/ltcai-11.5.1.tar.gz`, `ltcai-11.5.1.tgz`, `dist/ltcai-11.5.1.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.5.1_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.5.1.md](RELEASE_NOTES_v11.5.1.md)
+
 ## v11.5.0 — Rust Complete (2026-08-11)
 
 Rust 로드맵 Phase 2·3·4 완결 — 검증된 조각만, Python은 AI Worker로.

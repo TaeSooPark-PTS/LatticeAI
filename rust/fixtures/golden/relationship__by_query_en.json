@@ -85,6 +85,62 @@
         "weight": 0.9
       },
       {
+        "created_at": "2026-07-30T00:06:00",
+        "id": "edge:bcc437c883d69520d5055a5e",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "concept:ranking",
+          "metadata": {},
+          "summary": "Ranking orders candidates so the best answer is first.",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.86
+      },
+      {
+        "created_at": "2026-07-30T00:08:00",
+        "id": "edge:8a2e9fe01b4f40450ebd1211",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "source": {
+          "id": "doc:proposal",
+          "metadata": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "relative_path": "docs/proposal.md"
+          },
+          "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        "target": {
+          "id": "task:parity-harness",
+          "metadata": {
+            "status": "open"
+          },
+          "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        },
+        "type": "MENTIONS",
+        "weight": 0.84
+      },
+      {
         "created_at": "2026-07-02T00:00:00",
         "id": "edge:fd94b124b47e0ae02a04f890",
         "metadata": {
@@ -109,6 +165,31 @@
         },
         "type": "MENTIONS",
         "weight": 0.8
+      },
+      {
+        "created_at": "2026-07-22T00:00:00",
+        "id": "edge:1895af74189a6e7dde366375",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "source": {
+          "id": "doc:release-notes",
+          "metadata": {
+            "source": "release"
+          },
+          "summary": "Release notes describing the ranking port and the parity harness.",
+          "title": "Release notes for the retrieval port",
+          "type": "Document"
+        },
+        "target": {
+          "id": "concept:ranking",
+          "metadata": {},
+          "summary": "Ranking orders candidates so the best answer is first.",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        "type": "MENTIONS",
+        "weight": 0.72
       },
       {
         "created_at": "2026-07-06T00:00:00",

@@ -246,6 +246,33 @@
       },
       {
         "fusion": "vector",
+        "id": "imgtext:proposal-ocr",
+        "metadata": {
+          "filename": "proposal-sketch.png",
+          "ocr": true,
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "filename": "proposal-sketch.png",
+            "node_type": "ImageText",
+            "ocr": true
+          }
+        },
+        "node_id": "imgtext:proposal-ocr",
+        "rank": 9,
+        "rerank_score": 0.135833,
+        "score": 0.135833,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.388094
+        },
+        "summary": "제안서 구조: 배경, 근거, 결론.",
+        "title": "제안서 스케치 OCR",
+        "type": "ImageText",
+        "updated_at": "2026-07-16T09:01:00"
+      },
+      {
+        "fusion": "vector",
         "id": "feature:command-palette",
         "metadata": {
           "parent_node_id": null,
@@ -255,7 +282,7 @@
           }
         },
         "node_id": "feature:command-palette",
-        "rank": 9,
+        "rank": 10,
         "rerank_score": 0.121492,
         "score": 0.121492,
         "scores": {
@@ -269,6 +296,33 @@
       },
       {
         "fusion": "vector",
+        "id": "img:proposal-sketch",
+        "metadata": {
+          "ext": ".png",
+          "filename": "proposal-sketch.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "proposal-sketch.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:proposal-sketch",
+        "rank": 11,
+        "rerank_score": 0.115129,
+        "score": 0.115129,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.328941
+        },
+        "summary": "제안서 구조 스케치입니다.",
+        "title": "proposal-sketch.png",
+        "type": "Image",
+        "updated_at": "2026-07-16T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "twin:doc-a",
         "metadata": {
           "parent_node_id": null,
@@ -278,7 +332,7 @@
           }
         },
         "node_id": "twin:doc-a",
-        "rank": 10,
+        "rank": 12,
         "rerank_score": 0.110907,
         "score": 0.110907,
         "scores": {
@@ -301,7 +355,7 @@
           }
         },
         "node_id": "twin:doc-b",
-        "rank": 11,
+        "rank": 13,
         "rerank_score": 0.110907,
         "score": 0.110907,
         "scores": {
@@ -312,6 +366,54 @@
         "title": "Twin document B",
         "type": "Document",
         "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "self:unknown:f6",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "rank": 14,
+        "rerank_score": 0.110499,
+        "score": 0.110499,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.315711
+        },
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "feature:doc-generation",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:doc-generation",
+        "rank": 15,
+        "rerank_score": 0.101244,
+        "score": 0.101244,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.289268
+        },
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
       },
       {
         "fusion": "vector",
@@ -328,7 +430,7 @@
           }
         },
         "node_id": "sheet:metrics",
-        "rank": 12,
+        "rank": 16,
         "rerank_score": 0.100933,
         "score": 0.100933,
         "scores": {
@@ -342,6 +444,56 @@
       },
       {
         "fusion": "vector",
+        "id": "code:doc-builder",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "rank": 17,
+        "rerank_score": 0.087078,
+        "score": 0.087078,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.248793
+        },
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:undated",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "rank": 18,
+        "rerank_score": 0.085342,
+        "score": 0.085342,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.243833
+        },
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
+        "fusion": "vector",
         "id": "concept:ranking",
         "metadata": {
           "parent_node_id": null,
@@ -351,7 +503,7 @@
           }
         },
         "node_id": "concept:ranking",
-        "rank": 13,
+        "rank": 19,
         "rerank_score": 0.084603,
         "score": 0.084603,
         "scores": {
@@ -376,7 +528,7 @@
           }
         },
         "node_id": "task:parity-harness",
-        "rank": 14,
+        "rank": 20,
         "rerank_score": 0.082285,
         "score": 0.082285,
         "scores": {
@@ -387,153 +539,16 @@
         "title": "Build the retrieval parity harness",
         "type": "Task",
         "updated_at": "2026-07-15T11:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "meeting:kickoff",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Meeting"
-          }
-        },
-        "node_id": "meeting:kickoff",
-        "rank": 15,
-        "rerank_score": 0.078134,
-        "score": 0.078134,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.22324
-        },
-        "summary": "Kickoff meeting for the Rust foundation work.",
-        "title": "Kickoff meeting",
-        "type": "Meeting",
-        "updated_at": "2026-02-09T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "deck:review",
-        "metadata": {
-          "ext": ".pptx",
-          "filename": "quarterly-review.pptx",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".pptx",
-            "filename": "quarterly-review.pptx",
-            "node_type": "SlideDeck"
-          }
-        },
-        "node_id": "deck:review",
-        "rank": 16,
-        "rerank_score": 0.075411,
-        "score": 0.075411,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.215461
-        },
-        "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
-        "title": "분기 리뷰 발표자료",
-        "type": "SlideDeck",
-        "updated_at": "2026-07-02T15:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "meeting:weekly",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Meeting"
-          }
-        },
-        "node_id": "meeting:weekly",
-        "rank": 17,
-        "rerank_score": 0.072606,
-        "score": 0.072606,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.207445
-        },
-        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
-        "title": "주간 회의 2026-07-14",
-        "type": "Meeting",
-        "updated_at": "2026-07-14T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "legacy:global-note",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "legacy:global-note",
-        "rank": 18,
-        "rerank_score": 0.067174,
-        "score": 0.067174,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.191926
-        },
-        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
-        "title": "Legacy global note",
-        "type": "Document",
-        "updated_at": "2026-06-20T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "source:repo",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "source": "git",
-          "vector": {
-            "node_type": "Source",
-            "source": "git"
-          }
-        },
-        "node_id": "source:repo",
-        "rank": 19,
-        "rerank_score": 0.058453,
-        "score": 0.058453,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.167009
-        },
-        "summary": "Source repository for the product.",
-        "title": "github.com/lattice/ai",
-        "type": "Source",
-        "updated_at": "2026-02-20T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "repo:lattice",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Repository"
-          }
-        },
-        "node_id": "repo:lattice",
-        "rank": 20,
-        "rerank_score": 0.053693,
-        "score": 0.053693,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.153409
-        },
-        "summary": "The monorepo holding the Python worker and the Rust workspace.",
-        "title": "lattice-ai",
-        "type": "Repository",
-        "updated_at": "2026-02-21T10:00:00"
       }
     ],
     "mode": "hybrid",
+    "multimodal": {
+      "images": 2,
+      "types": [
+        "ImageText",
+        "Image"
+      ]
+    },
     "policy": {
       "rewrite_rules": [],
       "search_query": "vector_search() returns"
@@ -554,7 +569,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

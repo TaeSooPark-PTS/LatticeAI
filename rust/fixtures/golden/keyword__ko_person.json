@@ -14,6 +14,21 @@
   "result": {
     "matches": [
       {
+        "id": "self:trait:e5",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "workspace_id": null
+        },
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
+      },
+      {
         "id": "person:minseo",
         "metadata": {
           "role": "reviewer"

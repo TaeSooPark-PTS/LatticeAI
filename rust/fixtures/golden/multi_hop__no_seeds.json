@@ -1,0 +1,13 @@
+{
+  "key": "no_seeds",
+  "result": {
+    "edges": [],
+    "nodes": []
+  },
+  "spec": {
+    "key": "no_seeds",
+    "max_hops": 2,
+    "node_ids": []
+  },
+  "suite": "multi_hop"
+}

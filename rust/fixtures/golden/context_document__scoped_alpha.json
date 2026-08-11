@@ -1,0 +1,149 @@
+{
+  "key": "scoped_alpha",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다\n- 결정: 문서는 한국어로 쓴다\n\n### 📄 관련 문서/파일\n\n- **[Document] 제안서 초안: 검색 품질 개선** (relevance: 1.05)\n  - 출처: docs/proposal.md\n  - 검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.\n  - 관련: 근거, Retrieval, 문서 형식은 마크다운으로 통일, Command palette, 문서 생성\n\n- **[Spreadsheet] proposal-budget.xlsx** (relevance: 0.40)\n  - 출처: proposal-budget.xlsx\n  - 제안서 예산 표입니다.\n\n- **[Audio] proposal-call.m4a** (relevance: 0.39)\n  - 출처: proposal-call.m4a\n  - 제안서 관련 통화 녹음입니다.\n  - 관련: 제안서 검토\n\n- **[CodeFile] context_builder.py** (relevance: 0.38)\n  - 출처: latticeai/core/context_builder.py\n  - 문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.\n  - 관련: 문서 생성\n\n### ✅ 관련 결정사항/작업\n\n- **[Task] 제안서 검토** (relevance: 0.74)\n  - 제안서 초안을 검토하고 근거를 확인합니다.\n\n### 💬 관련 대화\n\n- **[Chat] 제안서 관련 대화** (relevance: 0.70)\n  - 출처: conv-f\n  - 제안서 초안을 어떻게 쓸지 논의한 대화입니다.\n\n### 🔗 관련 개념/기술\n\n- **[Concept] 근거**\n  - 근거는 주장을 뒷받침하는 자료입니다.\n\n- **[Concept] Retrieval**\n  - Retrieval is the act of finding the right memory for a question.\n\n- **[Feature] Command palette**\n  - The palette that opens search from anywhere.\n\n- **[Feature] 문서 생성**\n  - 질문에서 문서를 만들어 주는 기능입니다.",
+      "context_quality": {
+        "limited": false,
+        "mode": "hybrid",
+        "nodes": 6,
+        "reason": null
+      },
+      "query": "제안서 초안",
+      "sources": [
+        {
+          "id": "doc:proposal",
+          "source": "docs/proposal.md",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        {
+          "id": "task:proposal-review",
+          "source": "task:proposal-review",
+          "title": "제안서 검토",
+          "type": "Task"
+        },
+        {
+          "id": "chat:proposal",
+          "source": "conv-f",
+          "title": "제안서 관련 대화",
+          "type": "Chat"
+        },
+        {
+          "id": "sheet:proposal-budget",
+          "source": "proposal-budget.xlsx",
+          "title": "proposal-budget.xlsx",
+          "type": "Spreadsheet"
+        },
+        {
+          "id": "audio:proposal-call",
+          "source": "proposal-call.m4a",
+          "title": "proposal-call.m4a",
+          "type": "Audio"
+        },
+        {
+          "id": "code:doc-builder",
+          "source": "latticeai/core/context_builder.py",
+          "title": "context_builder.py",
+          "type": "CodeFile"
+        }
+      ],
+      "stats": {
+        "budget_trimmed": false,
+        "graph_edges": 11,
+        "graph_nodes": 12,
+        "method": "hybrid",
+        "primary_matches": 6
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 27,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 30,
+            "name": "관련 문서/파일",
+            "provenance": [
+              {
+                "id": "doc:proposal",
+                "type": "Document"
+              },
+              {
+                "id": "sheet:proposal-budget",
+                "type": "Spreadsheet"
+              },
+              {
+                "id": "audio:proposal-call",
+                "type": "Audio"
+              },
+              {
+                "id": "code:doc-builder",
+                "type": "CodeFile"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 6,
+            "name": "관련 결정사항/작업",
+            "provenance": [
+              {
+                "id": "task:proposal-review",
+                "type": "Task"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 7,
+            "name": "관련 대화",
+            "provenance": [
+              {
+                "id": "chat:proposal",
+                "type": "Chat"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 39,
+            "name": "관련 개념/기술",
+            "provenance": [
+              {
+                "id": "concept:evidence",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:retrieval",
+                "type": "Concept"
+              },
+              {
+                "id": "feature:command-palette",
+                "type": "Feature"
+              },
+              {
+                "id": "feature:doc-generation",
+                "type": "Feature"
+              }
+            ],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 292
+      }
+    },
+    "sources_footnote": "\n---\n**참조된 지식 그래프 노드:**\n1. [Document] 제안서 초안: 검색 품질 개선 (docs/proposal.md)\n2. [Task] 제안서 검토 (task:proposal-review)\n3. [Chat] 제안서 관련 대화 (conv-f)\n4. [Spreadsheet] proposal-budget.xlsx (proposal-budget.xlsx)\n5. [Audio] proposal-call.m4a (proposal-call.m4a)\n6. [CodeFile] context_builder.py (latticeai/core/context_builder.py)"
+  },
+  "spec": {
+    "allowed": [
+      "ws-alpha"
+    ],
+    "key": "scoped_alpha",
+    "query": "제안서 초안"
+  },
+  "suite": "context_document"
+}

@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.5.0 — Rust Complete**.
+Current release: **11.5.1 — Rust Full Loop**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -16,39 +16,51 @@ registries, and import-safe server composition.
 flowchart TB
   user(["User"])
 
-  subgraph surfaces["Surfaces — every one talks to the same localhost sidecar"]
+  subgraph surfaces["Surfaces"]
     direction LR
     ui["React / Vite app<br/>lazy routes · per-route i18n<br/>ko · en switch in the top bar"]
-    desktop["Tauri desktop shell<br/>supervised by lattice-host"]
+    desktop["Tauri desktop shell<br/>boots the host topology"]
     editor["VS Code<br/>extension"]
     browser["Browser<br/>extension"]
     telegram["Telegram<br/>bridge"]
     desktop ~~~ ui ~~~ editor ~~~ browser ~~~ telegram
   end
 
-  api["FastAPI localhost sidecar — latticeai.app_factory"]
+  subgraph host["Lattice Host — Rust front door (desktop default · opt-in binary)"]
+    direction TB
+    gateway["Gateway (axum, loopback-only)<br/>/host/* · /rust/* native · streaming reverse proxy"]
+    subgraph crates["Native crates — every port pinned by bidirectional parity goldens"]
+      direction LR
+      core_c["lattice-core<br/>storage reads · hash embedder<br/>(bit-for-bit)"]
+      retr["lattice-retrieval<br/>hybrid · keyword · vector ·<br/>graph · history · context ·<br/>doc-gen (191+ goldens)"]
+      ingest["lattice-ingest<br/>watch · parse · chunk ·<br/>dedup (332 golden chunks)"]
+      jobs["lattice-jobs<br/>scheduler · embed-queue drain"]
+      agentc["lattice-agent<br/>loop orchestrator ·<br/>permission kernel (2,452 verdicts) ·<br/>sandbox · read-only exec"]
+      core_c ~~~ retr ~~~ ingest ~~~ jobs ~~~ agentc
+    end
+    supervisor["Supervisor<br/>spawn · /health gate · backoff restart ·<br/>graceful stop · unified ports · CSRF origin injection"]
+    gateway --> crates
+    gateway --> supervisor
+  end
 
   subgraph gates["Trust boundary — every request crosses this"]
     direction LR
     trust["auth · consent<br/>audit · redaction"]
     mode["PermissionMode dial<br/>strict · trusted · bypass<br/><i>may this tool run?</i>"]
     net["NetworkBoundary dial<br/>local_only · cloud_allowed<br/><i>may knowledge leave?</i>"]
-    breakers["Circuit breakers<br/>mode-invariant"]
+    breakers["Circuit breakers<br/>mode-invariant — enforced in<br/>BOTH the Rust kernel and the worker"]
     trust ~~~ mode ~~~ net ~~~ breakers
   end
 
-  runtime["Runtime composition root — latticeai.runtime"]
-
-  subgraph exec["Execution"]
+  subgraph worker["Python AI Worker — FastAPI (latticeai.app_factory)"]
     direction LR
-    agent["AgentRuntime<br/>plan · approve · execute · verify"]
-    governor["Change Governor<br/>proposal-first"]
-    tools["ToolRegistry / MCP<br/>policy · dispatch"]
-    agent --> governor
-    agent --> tools
+    llm["LLM inference<br/>/agent/llm · chat streams<br/>MLX · on-device"]
+    toolexec["Tool handlers + graph writes<br/>/agent/tool · /agent/change-proposal<br/>single writer · proposal-first"]
+    platform["Platform routes<br/>chat · memory · ingestion pipeline ·<br/>parsers · review · admin (~450 routes)"]
+    llm ~~~ toolexec ~~~ platform
   end
 
-  subgraph data["Brain Core — lattice_brain"]
+  subgraph data["Brain Core — lattice_brain (one SQLite file)"]
     direction LR
     kg["Knowledge Graph<br/>nodes · edges · provenance"]
     store["Local storage<br/>SQLite live · Postgres optional"]
@@ -56,25 +68,23 @@ flowchart TB
     kg ~~~ store ~~~ archive
   end
 
-  services["Product services<br/>chat · memory · model · ingestion · search · review"]
-  models["Local model runtimes<br/>MLX · on-device"]
   cloud["Cloud LLM worker<br/>OpenAI-compatible stream<br/><b>opt-in, off by default</b>"]
 
   user --> surfaces
-  surfaces --> api
-  api --> gates
-  gates --> runtime
-  runtime --> exec
-  runtime --> services
-  tools --> services
-  services --> models
-  services --> data
+  surfaces --> host
+  gateway -- "everything not native<br/>(streaming, SSE)" --> gates
+  gates --> worker
+  agentc -- "plan · execute · verify turns<br/>via the worker seams" --> worker
+  jobs -- "drain ticks" --> worker
+  ingest -- "detected content<br/>(writes stay delegated)" --> worker
+  crates -- "read-only<br/>(WAL, busy-timeout)" --> data
+  worker -- "single writer" --> data
 
-  mode -. "widens approval only" .-> tools
-  breakers -. "no mode ever widens these" .-> tools
+  mode -. "widens approval only" .-> agentc
+  breakers -. "no mode ever widens these" .-> agentc
 
-  services -- "minimal extracted slice only<br/>never the graph" --> cloud
-  cloud -- "streamed answer +<br/>proposed memory" --> services
+  worker -- "minimal extracted slice only<br/>never the graph" --> cloud
+  cloud -- "streamed answer +<br/>proposed memory" --> worker
   net -. "local_only blocks this edge entirely" .-> cloud
   breakers -. "sensitive · private · do_not_share<br/>filtered in BOTH modes" .-> cloud
 
@@ -1171,13 +1181,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.5.0 exact artifact names:
+11.5.1 exact artifact names:
 
-- `dist/ltcai-11.5.0-py3-none-any.whl`
-- `dist/ltcai-11.5.0.tar.gz`
-- `ltcai-11.5.0.tgz`
-- `dist/ltcai-11.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.0_aarch64.dmg`
+- `dist/ltcai-11.5.1-py3-none-any.whl`
+- `dist/ltcai-11.5.1.tar.gz`
+- `ltcai-11.5.1.tgz`
+- `dist/ltcai-11.5.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.1_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

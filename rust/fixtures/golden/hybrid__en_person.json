@@ -103,6 +103,31 @@
       },
       {
         "fusion": "vector",
+        "id": "doc:release-notes",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "release",
+          "vector": {
+            "node_type": "Document",
+            "source": "release"
+          }
+        },
+        "node_id": "doc:release-notes",
+        "rank": 4,
+        "rerank_score": 0.344459,
+        "score": 0.344459,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.765465
+        },
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "chunk:spec:2",
         "metadata": {
           "chunk": {
@@ -122,7 +147,7 @@
           }
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 4,
+        "rank": 5,
         "rerank_score": 0.341144,
         "score": 0.341144,
         "scores": {
@@ -147,7 +172,7 @@
           }
         },
         "node_id": "task:parity-harness",
-        "rank": 5,
+        "rank": 6,
         "rerank_score": 0.3318,
         "score": 0.3318,
         "scores": {
@@ -170,7 +195,7 @@
           }
         },
         "node_id": "repo:lattice",
-        "rank": 6,
+        "rank": 7,
         "rerank_score": 0.324759,
         "score": 0.324759,
         "scores": {
@@ -193,7 +218,7 @@
           }
         },
         "node_id": "concept:retrieval",
-        "rank": 7,
+        "rank": 8,
         "rerank_score": 0.322252,
         "score": 0.322252,
         "scores": {
@@ -218,7 +243,7 @@
           }
         },
         "node_id": "person:jiwon",
-        "rank": 8,
+        "rank": 9,
         "rerank_score": 0.311086,
         "score": 0.311086,
         "scores": {
@@ -245,7 +270,7 @@
           }
         },
         "node_id": "img:ocr-notes",
-        "rank": 9,
+        "rank": 10,
         "rerank_score": 0.272772,
         "score": 0.272772,
         "scores": {
@@ -270,7 +295,7 @@
           }
         },
         "node_id": "person:minseo",
-        "rank": 10,
+        "rank": 11,
         "rerank_score": 0.265166,
         "score": 0.265166,
         "scores": {
@@ -295,7 +320,7 @@
           }
         },
         "node_id": "chat:ranking",
-        "rank": 11,
+        "rank": 12,
         "rerank_score": 0.254763,
         "score": 0.254763,
         "scores": {
@@ -309,6 +334,33 @@
       },
       {
         "fusion": "vector",
+        "id": "audio:proposal-call",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:proposal-call",
+        "rank": 13,
+        "rerank_score": 0.249999,
+        "score": 0.249999,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.555554
+        },
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "error:timeout",
         "metadata": {
           "parent_node_id": null,
@@ -318,7 +370,7 @@
           }
         },
         "node_id": "error:timeout",
-        "rank": 12,
+        "rank": 14,
         "rerank_score": 0.237915,
         "score": 0.237915,
         "scores": {
@@ -341,7 +393,7 @@
           }
         },
         "node_id": "agent:librarian",
-        "rank": 13,
+        "rank": 15,
         "rerank_score": 0.22743,
         "score": 0.22743,
         "scores": {
@@ -364,7 +416,7 @@
           }
         },
         "node_id": "concept:ranking",
-        "rank": 14,
+        "rank": 16,
         "rerank_score": 0.22743,
         "score": 0.22743,
         "scores": {
@@ -387,7 +439,7 @@
           }
         },
         "node_id": "meeting:weekly",
-        "rank": 15,
+        "rank": 17,
         "rerank_score": 0.219577,
         "score": 0.219577,
         "scores": {
@@ -410,7 +462,7 @@
           }
         },
         "node_id": "meeting:kickoff",
-        "rank": 16,
+        "rank": 18,
         "rerank_score": 0.210042,
         "score": 0.210042,
         "scores": {
@@ -424,6 +476,41 @@
       },
       {
         "fusion": "vector",
+        "id": "self:trait:e5",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "vector": {
+            "confidence": 0.7,
+            "node_type": "Self",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "trait",
+            "signal": "ko_role",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:trait:e5",
+        "rank": 19,
+        "rerank_score": 0.193649,
+        "score": 0.193649,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.430331
+        },
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "slide:fusion",
         "metadata": {
           "parent_node_id": null,
@@ -433,7 +520,7 @@
           }
         },
         "node_id": "slide:fusion",
-        "rank": 17,
+        "rank": 20,
         "rerank_score": 0.191273,
         "score": 0.191273,
         "scores": {
@@ -444,85 +531,6 @@
         "title": "Fusion slide",
         "type": "Slide",
         "updated_at": "2026-05-14T12:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "file:ranking-notes",
-        "metadata": {
-          "ext": ".md",
-          "filename": "ranking-notes.md",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".md",
-            "filename": "ranking-notes.md",
-            "node_type": "File"
-          }
-        },
-        "node_id": "file:ranking-notes",
-        "rank": 18,
-        "rerank_score": 0.189484,
-        "score": 0.189484,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.421075
-        },
-        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-        "title": "ranking-notes.md",
-        "type": "File",
-        "updated_at": "2026-07-10T16:45:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "dec:fusion-alpha",
-        "metadata": {
-          "category": "retrieval",
-          "owner": "jiwon",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "category": "retrieval",
-            "node_type": "Decision",
-            "owner": "jiwon"
-          }
-        },
-        "node_id": "dec:fusion-alpha",
-        "rank": 19,
-        "rerank_score": 0.178572,
-        "score": 0.178572,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.396826
-        },
-        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
-        "title": "Hybrid retrieval fusion stays alpha weighted",
-        "type": "Decision",
-        "updated_at": "2026-07-20T09:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "source:repo",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "source": "git",
-          "vector": {
-            "node_type": "Source",
-            "source": "git"
-          }
-        },
-        "node_id": "source:repo",
-        "rank": 20,
-        "rerank_score": 0.176777,
-        "score": 0.176777,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.392837
-        },
-        "summary": "Source repository for the product.",
-        "title": "github.com/lattice/ai",
-        "type": "Source",
-        "updated_at": "2026-02-20T10:00:00"
       }
     ],
     "mode": "hybrid",
@@ -553,7 +561,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

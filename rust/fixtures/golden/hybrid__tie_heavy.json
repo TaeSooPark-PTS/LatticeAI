@@ -174,6 +174,29 @@
       },
       {
         "fusion": "vector",
+        "id": "doc:undated",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "rank": 9,
+        "rerank_score": 0.105962,
+        "score": 0.105962,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.176604
+        },
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
+        "fusion": "vector",
         "id": "task:onboarding-checklist",
         "metadata": {
           "parent_node_id": null,
@@ -185,7 +208,7 @@
           }
         },
         "node_id": "task:onboarding-checklist",
-        "rank": 9,
+        "rank": 10,
         "rerank_score": 0.104151,
         "score": 0.104151,
         "scores": {
@@ -212,7 +235,7 @@
           }
         },
         "node_id": "audio:standup",
-        "rank": 10,
+        "rank": 11,
         "rerank_score": 0.095467,
         "score": 0.095467,
         "scores": {
@@ -223,6 +246,56 @@
         "title": "standup-2026-07-13.m4a",
         "type": "Audio",
         "updated_at": "2026-07-13T09:05:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "feature:doc-generation",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:doc-generation",
+        "rank": 12,
+        "rerank_score": 0.094281,
+        "score": 0.094281,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.157135
+        },
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "self:root",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "root",
+          "vector": {
+            "node_type": "Self",
+            "self_model": true,
+            "self_model_kind": "root"
+          }
+        },
+        "node_id": "self:root",
+        "rank": 13,
+        "rerank_score": 0.083406,
+        "score": 0.083406,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.13901
+        },
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self",
+        "updated_at": "2026-07-01T09:00:00"
       },
       {
         "fusion": "vector",
@@ -241,7 +314,7 @@
           }
         },
         "node_id": "doc:handbook",
-        "rank": 11,
+        "rank": 14,
         "rerank_score": 0.0762,
         "score": 0.0762,
         "scores": {
@@ -268,7 +341,7 @@
           }
         },
         "node_id": "img:ocr-notes",
-        "rank": 12,
+        "rank": 15,
         "rerank_score": 0.075593,
         "score": 0.075593,
         "scores": {
@@ -291,7 +364,7 @@
           }
         },
         "node_id": "concept:retrieval",
-        "rank": 13,
+        "rank": 16,
         "rerank_score": 0.074421,
         "score": 0.074421,
         "scores": {
@@ -314,7 +387,7 @@
           }
         },
         "node_id": "legacy:global-note",
-        "rank": 14,
+        "rank": 17,
         "rerank_score": 0.062554,
         "score": 0.062554,
         "scores": {
@@ -337,7 +410,7 @@
           }
         },
         "node_id": "feature:command-palette",
-        "rank": 15,
+        "rank": 18,
         "rerank_score": 0.056569,
         "score": 0.056569,
         "scores": {
@@ -362,7 +435,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 16,
+        "rank": 19,
         "rerank_score": 0.054433,
         "score": 0.054433,
         "scores": {
@@ -389,7 +462,7 @@
           }
         },
         "node_id": "img:whiteboard",
-        "rank": 17,
+        "rank": 20,
         "rerank_score": 0.052298,
         "score": 0.052298,
         "scores": {
@@ -400,79 +473,6 @@
         "title": "whiteboard-retrieval.png",
         "type": "Image",
         "updated_at": "2026-03-19T11:11:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "sheet:metrics",
-        "metadata": {
-          "ext": ".xlsx",
-          "filename": "retrieval-metrics.xlsx",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".xlsx",
-            "filename": "retrieval-metrics.xlsx",
-            "node_type": "Spreadsheet"
-          }
-        },
-        "node_id": "sheet:metrics",
-        "rank": 18,
-        "rerank_score": 0.046996,
-        "score": 0.046996,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.078326
-        },
-        "summary": "Recall and precision per query class for the ranking experiments.",
-        "title": "retrieval-metrics.xlsx",
-        "type": "Spreadsheet",
-        "updated_at": "2026-05-06T09:45:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "workflow:nightly",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Workflow"
-          }
-        },
-        "node_id": "workflow:nightly",
-        "rank": 19,
-        "rerank_score": 0.046188,
-        "score": 0.046188,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.07698
-        },
-        "summary": "A workflow that reindexes the vector store overnight.",
-        "title": "Nightly reindex",
-        "type": "Workflow",
-        "updated_at": "2026-03-02T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "org:lattice",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Organization"
-          }
-        },
-        "node_id": "org:lattice",
-        "rank": 20,
-        "rerank_score": 0.043643,
-        "score": 0.043643,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.072739
-        },
-        "summary": "The organization.",
-        "title": "Lattice",
-        "type": "Organization",
-        "updated_at": "2026-02-22T10:00:00"
       }
     ],
     "mode": "hybrid",
@@ -503,7 +503,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

@@ -16,6 +16,7 @@ def phase_platform_features(ctx: RuntimeContext) -> None:
     """Workspace platform, automation, review queue, command centre, proposals."""
     ctx.enter("platform_features")
 
+    from latticeai.api.agent_worker_seam import create_agent_worker_seam_router
     from latticeai.api.agents import create_agents_router
     from latticeai.api.automation_intelligence import (
         create_automation_intelligence_router,
@@ -48,9 +49,12 @@ def phase_platform_features(ctx: RuntimeContext) -> None:
     from latticeai.services.chronicle import ChronicleService
     from latticeai.services.command_center import CommandCenterService
     from latticeai.services.evidence_actions import EvidenceActionService
-    from latticeai.services.tool_dispatch import get_tool_permission
+    from latticeai.services.tool_dispatch import (
+        DEFAULT_TOOL_DISPATCH_SERVICE,
+        get_tool_permission,
+    )
     from latticeai.services.voice_capture import VoiceCaptureService
-    from latticeai.tools import resolve_workspace_path
+    from latticeai.tools import execute_tool, resolve_workspace_path
 
     # v2 Agentic Workspace Platform: cross-system wiring.
     platform_automation_runtime = build_platform_automation_runtime(
@@ -207,6 +211,23 @@ def phase_platform_features(ctx: RuntimeContext) -> None:
             require_user=ctx.require_user,
             gate_read=ctx.PLATFORM.gate_read,
             gate_write=ctx.PLATFORM.gate_write,
+        )
+    )
+
+    # AI-Worker seam (v11.5.1, plan §Y1): the three calls the Rust agent loop
+    # makes back into Python once orchestration lives in ``lattice-agent``.
+    # Registered here because it needs the change governor above; the two
+    # side-effecting routes stay behind ``LATTICEAI_AGENT_TOOL_SEAM=1``, which
+    # only lattice-host injects into a worker it started.
+    ctx.app.include_router(
+        create_agent_worker_seam_router(
+            model_router=ctx.model_router,
+            dispatch_service=DEFAULT_TOOL_DISPATCH_SERVICE,
+            execute_tool=execute_tool,
+            hooks=ctx.HOOKS_REGISTRY,
+            change_proposals=ctx.CHANGE_PROPOSALS,
+            require_user=ctx.require_user,
+            enforce_rate_limit=ctx.enforce_rate_limit,
         )
     )
 

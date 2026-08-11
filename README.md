@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v11.5.0 Living Brain walkthrough](output/release/v11.5.0/gifs/v11.5.0-living-brain-walkthrough.gif)
+![v11.5.1 Living Brain walkthrough](output/release/v11.5.1/gifs/v11.5.1-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.5.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.5.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.5.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.5.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.5.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.5.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.5.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.5.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.5.1/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.5.1/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.5.1/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.5.1/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.5.1/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.5.1/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.5.1/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.5.1/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,17 +58,23 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v11.5.0/screenshots/01-login.png) | ![Model install](output/release/v11.5.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.5.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v11.5.1/screenshots/01-login.png) | ![Model install](output/release/v11.5.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.5.1/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v11.5.0/SCREENSHOT_INDEX.md](output/release/v11.5.0/SCREENSHOT_INDEX.md)
+[output/release/v11.5.1/SCREENSHOT_INDEX.md](output/release/v11.5.1/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **11.5.0 — Rust Complete**:
+The current release is **11.5.1 — Rust Full Loop**:
 
-Phases 2–4 of the Rust roadmap land in one release — as **working, proven
-pieces**, with Python converging to its target role: the AI Worker.
+The two explicitly-remaining items are done: the agent loop orchestrator
+now runs in Rust — proven by replaying the real Python runtime on scripted
+LLM transcripts (**10 trajectories, byte-identical**) and by a live smoke
+against the real worker — and the document-generation context builder is
+native (53 new goldens, 247 total). Every Rust box in the target diagram
+is implemented; Python remains exactly the AI Worker that diagram draws:
+LLM inference, tool-handler execution, and all graph writes behind three
+new fully-covered worker seams with server-side circuit breakers intact.
 
 - **The desktop's front door is now the Rust gateway.** The Tauri shell
   boots the supervisor + gateway topology by default and the webview
@@ -96,19 +102,19 @@ pieces**, with Python converging to its target role: the AI Worker.
   remains for a future release, for reasons written down in the plan.
 
 All of it lands with the floor intact: **6,861 Python + 1,761 frontend
-tests at 100.00% statement and branch coverage, 534 Rust workspace
-tests**, four bidirectional golden families, mypy/ruff/clippy clean,
+tests at 100.00% statement and branch coverage — now 7,006 Python +
+1,761 frontend — and 739 Rust workspace tests**, four bidirectional golden families, mypy/ruff/clippy clean,
 verified on macOS 3.14 and a fresh-resolve python 3.11 environment.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 11.5.0 release must use exact filenames:
+Expected artifacts for 11.5.1 release must use exact filenames:
 
-- `dist/ltcai-11.5.0-py3-none-any.whl`
-- `dist/ltcai-11.5.0.tar.gz`
-- `ltcai-11.5.0.tgz`
-- `dist/ltcai-11.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.0_aarch64.dmg`
+- `dist/ltcai-11.5.1-py3-none-any.whl`
+- `dist/ltcai-11.5.1.tar.gz`
+- `ltcai-11.5.1.tgz`
+- `dist/ltcai-11.5.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.1_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -143,6 +149,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 11.5.1 | Rust Full Loop |
 | 11.5.0 | Rust Complete |
 | 11.4.0 | Rust Foundation |
 | 11.3.0 | Time Remembers |

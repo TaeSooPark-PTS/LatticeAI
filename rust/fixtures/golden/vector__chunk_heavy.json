@@ -159,6 +159,27 @@
         "updated_at": "2026-03-19T11:12:00"
       },
       {
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "score": 0.173702,
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
         "id": "meeting:weekly",
         "item_type": "node",
         "metadata": {
@@ -282,6 +303,64 @@
         "updated_at": "2026-07-13T09:05:00"
       },
       {
+        "id": "self:habit:b2",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "vector": {
+            "confidence": 0.6,
+            "node_type": "Habit",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "habit",
+            "signal": "ko_habit",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:habit:b2",
+        "score": 0.102062,
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
+      },
+      {
+        "id": "self:relationship:d4",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "vector": {
+            "confidence": 0.5,
+            "node_type": "Relationship",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "relationship",
+            "signal": "ko_with",
+            "workspace_id": "ws-beta"
+          },
+          "workspace_id": "ws-beta"
+        },
+        "node_id": "self:relationship:d4",
+        "score": 0.098058,
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship",
+        "updated_at": "2026-07-05T09:00:00"
+      },
+      {
         "id": "agent:librarian",
         "item_type": "node",
         "metadata": {
@@ -333,6 +412,27 @@
         "updated_at": "2026-02-05T00:00:00"
       },
       {
+        "id": "audio:proposal-call",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:proposal-call",
+        "score": 0.08165,
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
+      },
+      {
         "id": "chunk:spec:1",
         "item_type": "chunk",
         "metadata": {
@@ -382,6 +482,27 @@
         "title": "박민서 님",
         "type": "Person",
         "updated_at": "2026-04-12T10:00:00"
+      },
+      {
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "score": 0.071673,
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
       },
       {
         "id": "chat:ranking",
@@ -521,112 +642,13 @@
         "title": "Rust 기반 검색 이관 결정",
         "type": "Decision",
         "updated_at": "2026-07-18T14:30:00"
-      },
-      {
-        "id": "chunk:spec:2",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "index": 1,
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          },
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "parent_node_id": "doc:retrieval-spec",
-          "parent_type": "Document",
-          "vector": {
-            "index": 1,
-            "parent_source_node": "doc:retrieval-spec",
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "score": 0.046424,
-        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
-        "title": "Retrieval specification",
-        "type": "Chunk",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "id": "concept:ranking",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
-        "score": 0.046424,
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "id": "workflow:nightly",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Workflow"
-          }
-        },
-        "node_id": "workflow:nightly",
-        "score": 0.040825,
-        "summary": "A workflow that reindexes the vector store overnight.",
-        "title": "Nightly reindex",
-        "type": "Workflow",
-        "updated_at": "2026-03-02T10:00:00"
-      },
-      {
-        "id": "slide:fusion",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Slide"
-          }
-        },
-        "node_id": "slide:fusion",
-        "score": 0.039043,
-        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
-        "title": "Fusion slide",
-        "type": "Slide",
-        "updated_at": "2026-05-14T12:00:00"
-      },
-      {
-        "id": "code:hybrid-search",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".py",
-          "filename": "hybrid.py",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".py",
-            "filename": "hybrid.py",
-            "node_type": "CodeFile"
-          }
-        },
-        "node_id": "code:hybrid-search",
-        "score": 0.032009,
-        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
-        "title": "hybrid.py",
-        "type": "CodeFile",
-        "updated_at": "2026-07-08T09:30:00"
       }
     ],
     "query": "온보딩 체크리스트",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

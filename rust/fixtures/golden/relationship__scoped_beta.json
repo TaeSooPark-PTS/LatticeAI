@@ -6,58 +6,59 @@
     "relationship_type": "",
     "relationships": [
       {
-        "created_at": "2026-07-07T00:00:00",
-        "id": "edge:f8b0ac918a0ee351673dcdb6",
+        "created_at": "2026-07-29T00:01:00",
+        "id": "edge:dad224ff5b37d9b2cf521d8e",
         "metadata": {
-          "legacy_label": "owns"
+          "legacy_label": "contains"
         },
         "source": {
-          "id": "person:minseo",
+          "id": "deck:proposal",
           "metadata": {
-            "role": "reviewer"
+            "ext": ".pptx",
+            "filename": "proposal.pptx"
           },
-          "summary": "빌드 파이프라인 담당자입니다.",
-          "title": "박민서 님",
-          "type": "Person"
+          "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+          "title": "제안 발표자료",
+          "type": "SlideDeck"
         },
         "target": {
-          "id": "code:build-failure",
-          "metadata": {
-            "ext": ".py",
-            "filename": "build_pipeline.py"
-          },
-          "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
-          "title": "build_pipeline.py",
-          "type": "CodeFile"
+          "id": "slide:proposal-1",
+          "metadata": {},
+          "summary": "제안서 요약 슬라이드입니다.",
+          "title": "제안 슬라이드 1",
+          "type": "Slide"
         },
-        "type": "MENTIONS",
-        "weight": 0.6
+        "type": "CONTAINS",
+        "weight": 0.81
       },
       {
-        "created_at": "2026-06-02T00:00:00",
-        "id": "edge:ac803179d2934d2cf5aa254e",
+        "created_at": "2026-07-26T00:00:00",
+        "id": "edge:286b66cc778bfc512869fda0",
         "metadata": {
-          "legacy_label": "mentions"
+          "legacy_label": "relates_to"
         },
         "source": {
-          "id": "doc:retrieval-spec",
+          "id": "img:proposal-sketch",
           "metadata": {
-            "ext": ".pdf",
-            "filename": "retrieval-spec.pdf"
+            "ext": ".png",
+            "filename": "proposal-sketch.png"
           },
-          "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
-          "title": "Retrieval specification",
-          "type": "Document"
+          "summary": "제안서 구조 스케치입니다.",
+          "title": "proposal-sketch.png",
+          "type": "Image"
         },
         "target": {
-          "id": "concept:ranking",
-          "metadata": {},
-          "summary": "Ranking orders candidates so the best answer is first.",
-          "title": "Ranking",
-          "type": "Concept"
+          "id": "imgtext:proposal-ocr",
+          "metadata": {
+            "filename": "proposal-sketch.png",
+            "ocr": true
+          },
+          "summary": "제안서 구조: 배경, 근거, 결론.",
+          "title": "제안서 스케치 OCR",
+          "type": "ImageText"
         },
         "type": "MENTIONS",
-        "weight": 0.45
+        "weight": 0.77
       }
     ]
   },

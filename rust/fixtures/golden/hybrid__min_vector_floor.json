@@ -46,16 +46,35 @@
       },
       {
         "fusion": "lexical",
-        "id": "task:parity-harness",
+        "id": "doc:release-notes",
         "metadata": {
-          "status": "open"
+          "source": "release"
         },
-        "node_id": "task:parity-harness",
+        "node_id": "doc:release-notes",
         "rank": 2,
         "rerank_score": 0.2,
         "score": 0.2,
         "scores": {
           "lexical": 0.5,
+          "vector": 0.0
+        },
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 3,
+        "rerank_score": 0.133333,
+        "score": 0.133333,
+        "scores": {
+          "lexical": 0.333333,
           "vector": 0.0
         },
         "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
@@ -71,11 +90,11 @@
           "filename": "hybrid.py"
         },
         "node_id": "code:hybrid-search",
-        "rank": 3,
-        "rerank_score": 0.133333,
-        "score": 0.133333,
+        "rank": 4,
+        "rerank_score": 0.1,
+        "score": 0.1,
         "scores": {
-          "lexical": 0.333333,
+          "lexical": 0.25,
           "vector": 0.0
         },
         "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
@@ -91,11 +110,11 @@
           "filename": "retrieval-metrics.xlsx"
         },
         "node_id": "sheet:metrics",
-        "rank": 4,
-        "rerank_score": 0.1,
-        "score": 0.1,
+        "rank": 5,
+        "rerank_score": 0.08,
+        "score": 0.08,
         "scores": {
-          "lexical": 0.25,
+          "lexical": 0.2,
           "vector": 0.0
         },
         "summary": "Recall and precision per query class for the ranking experiments.",
@@ -112,11 +131,11 @@
           "start_char": 900
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 5,
-        "rerank_score": 0.08,
-        "score": 0.08,
+        "rank": 6,
+        "rerank_score": 0.066667,
+        "score": 0.066667,
         "scores": {
-          "lexical": 0.2,
+          "lexical": 0.166667,
           "vector": 0.0
         },
         "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
@@ -132,11 +151,11 @@
           "filename": "ranking-notes.md"
         },
         "node_id": "file:ranking-notes",
-        "rank": 6,
-        "rerank_score": 0.066667,
-        "score": 0.066667,
+        "rank": 7,
+        "rerank_score": 0.057143,
+        "score": 0.057143,
         "scores": {
-          "lexical": 0.166667,
+          "lexical": 0.142857,
           "vector": 0.0
         },
         "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
@@ -152,11 +171,11 @@
           "ocr": true
         },
         "node_id": "img:ocr-notes",
-        "rank": 7,
-        "rerank_score": 0.05,
-        "score": 0.05,
+        "rank": 8,
+        "rerank_score": 0.044444,
+        "score": 0.044444,
         "scores": {
-          "lexical": 0.125,
+          "lexical": 0.111111,
           "vector": 0.0
         },
         "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
@@ -172,11 +191,11 @@
           "filename": "whiteboard-retrieval.png"
         },
         "node_id": "img:whiteboard",
-        "rank": 8,
-        "rerank_score": 0.044444,
-        "score": 0.044444,
+        "rank": 9,
+        "rerank_score": 0.04,
+        "score": 0.04,
         "scores": {
-          "lexical": 0.111111,
+          "lexical": 0.1,
           "vector": 0.0
         },
         "summary": "Whiteboard photo from the retrieval design session.",
@@ -189,11 +208,11 @@
         "id": "concept:ranking",
         "metadata": {},
         "node_id": "concept:ranking",
-        "rank": 9,
-        "rerank_score": 0.036364,
-        "score": 0.036364,
+        "rank": 10,
+        "rerank_score": 0.033333,
+        "score": 0.033333,
         "scores": {
-          "lexical": 0.090909,
+          "lexical": 0.083333,
           "vector": 0.0
         },
         "summary": "Ranking orders candidates so the best answer is first.",
@@ -206,11 +225,11 @@
         "id": "concept:retrieval",
         "metadata": {},
         "node_id": "concept:retrieval",
-        "rank": 10,
-        "rerank_score": 0.033333,
-        "score": 0.033333,
+        "rank": 11,
+        "rerank_score": 0.030769,
+        "score": 0.030769,
         "scores": {
-          "lexical": 0.083333,
+          "lexical": 0.076923,
           "vector": 0.0
         },
         "summary": "Retrieval is the act of finding the right memory for a question.",
@@ -223,11 +242,11 @@
         "id": "error:timeout",
         "metadata": {},
         "node_id": "error:timeout",
-        "rank": 11,
-        "rerank_score": 0.030769,
-        "score": 0.030769,
+        "rank": 12,
+        "rerank_score": 0.028572,
+        "score": 0.028572,
         "scores": {
-          "lexical": 0.076923,
+          "lexical": 0.071429,
           "vector": 0.0
         },
         "summary": "An error where the ranking took longer than the request budget.",
@@ -256,7 +275,7 @@
       "model": null
     },
     "sources": {
-      "lexical": 13,
+      "lexical": 14,
       "vector": 0
     },
     "top_k": 20,
@@ -264,7 +283,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

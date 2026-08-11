@@ -1,0 +1,1903 @@
+{
+  "budgets": {
+    "phase": {
+      "execute_tokens": 4096,
+      "memory_tokens": 256,
+      "plan_tokens": 1024,
+      "verify_tokens": 512
+    },
+    "transcript": {
+      "result_chars": 700,
+      "verify_chars": 1200,
+      "window": 8
+    }
+  },
+  "extract_action_details": [
+    {
+      "action": {
+        "action": "final",
+        "message": "done"
+      },
+      "key": "clean",
+      "ok": true,
+      "raw": "{\"action\": \"final\", \"message\": \"done\"}",
+      "repairs": []
+    },
+    {
+      "action": {
+        "action": "write_file",
+        "args": {
+          "path": "a.md"
+        },
+        "thoughts": "t"
+      },
+      "key": "clean_with_args",
+      "ok": true,
+      "raw": "{\"thoughts\": \"t\", \"action\": \"write_file\", \"args\": {\"path\": \"a.md\"}}",
+      "repairs": []
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "a.md"
+        }
+      },
+      "key": "fence_json",
+      "ok": true,
+      "raw": "```json\n{\"action\": \"read_file\", \"args\": {\"path\": \"a.md\"}}\n```",
+      "repairs": [
+        "fence"
+      ]
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "fence_bare",
+      "ok": true,
+      "raw": "```\n{\"action\": \"final\"}\n```",
+      "repairs": [
+        "fence"
+      ]
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "fence_with_prose",
+      "ok": true,
+      "raw": "Sure!\n```json\n{\"action\": \"final\"}\n```\nHope that helps.",
+      "repairs": [
+        "fence"
+      ]
+    },
+    {
+      "action": {
+        "action": "final",
+        "message": "ok"
+      },
+      "key": "fence_multiline",
+      "ok": true,
+      "raw": "```json\n{\n  \"action\": \"final\",\n  \"message\": \"ok\"\n}\n```",
+      "repairs": [
+        "fence"
+      ]
+    },
+    {
+      "action": {
+        "action": "right"
+      },
+      "key": "think_then_json",
+      "ok": true,
+      "raw": "<think>hmm {\"action\": \"wrong\"}</think>\n{\"action\": \"right\"}",
+      "repairs": [
+        "think_strip"
+      ]
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "thinking_tag",
+      "ok": true,
+      "raw": "<thinking>plan</thinking>{\"action\": \"final\"}",
+      "repairs": [
+        "think_strip"
+      ]
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "reasoning_tag",
+      "ok": true,
+      "raw": "<reasoning>why</reasoning>\n{\"action\": \"final\"}",
+      "repairs": [
+        "think_strip"
+      ]
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "think_uppercase",
+      "ok": true,
+      "raw": "<THINK>x</THINK>{\"action\": \"final\"}",
+      "repairs": [
+        "think_strip"
+      ]
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "think_unclosed",
+      "ok": true,
+      "raw": "<think>never closed {\"action\": \"final\"}",
+      "repairs": [
+        "slice"
+      ]
+    },
+    {
+      "action": {
+        "action": "a"
+      },
+      "key": "think_mismatched",
+      "ok": true,
+      "raw": "<think>{\"action\": \"a\"}</reasoning>",
+      "repairs": [
+        "slice"
+      ]
+    },
+    {
+      "action": {
+        "action": "write_file"
+      },
+      "key": "slice_prefix",
+      "ok": true,
+      "raw": "I will call: {\"action\": \"write_file\"}",
+      "repairs": [
+        "slice"
+      ]
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "slice_suffix",
+      "ok": false,
+      "raw": "{\"action\": \"write_file\"} — that is the call."
+    },
+    {
+      "action": {
+        "action": "final",
+        "message": "완료"
+      },
+      "key": "slice_both",
+      "ok": true,
+      "raw": "Calling {\"action\": \"final\", \"message\": \"완료\"} now.",
+      "repairs": [
+        "slice"
+      ]
+    },
+    {
+      "action": {
+        "action": "a",
+        "args": {
+          "b": {
+            "c": 1
+          }
+        }
+      },
+      "key": "slice_nested",
+      "ok": true,
+      "raw": "note {\"action\": \"a\", \"args\": {\"b\": {\"c\": 1}}} end",
+      "repairs": [
+        "slice"
+      ]
+    },
+    {
+      "action": {
+        "action": "final",
+        "message": "x"
+      },
+      "key": "trailing_comma_object",
+      "ok": true,
+      "raw": "{\"action\": \"final\", \"message\": \"x\",}",
+      "repairs": [
+        "trailing_comma"
+      ]
+    },
+    {
+      "action": {
+        "action": "a",
+        "args": {
+          "items": [
+            1,
+            2
+          ]
+        }
+      },
+      "key": "trailing_comma_array",
+      "ok": true,
+      "raw": "{\"action\": \"a\", \"args\": {\"items\": [1, 2,]}}",
+      "repairs": [
+        "trailing_comma"
+      ]
+    },
+    {
+      "action": {
+        "action": "a",
+        "args": {
+          "x": 1
+        }
+      },
+      "key": "trailing_comma_nested",
+      "ok": true,
+      "raw": "{\"action\": \"a\", \"args\": {\"x\": 1,},}",
+      "repairs": [
+        "trailing_comma"
+      ]
+    },
+    {
+      "action": {
+        "action": "write_file",
+        "args": {
+          "path": "a.md"
+        }
+      },
+      "key": "python_literal",
+      "ok": true,
+      "raw": "{'action': 'write_file', 'args': {'path': 'a.md'}}",
+      "repairs": [
+        "python_literal"
+      ]
+    },
+    {
+      "action": {
+        "action": "a",
+        "bad": false,
+        "none": null,
+        "ok": true
+      },
+      "key": "python_literal_true",
+      "ok": true,
+      "raw": "{'action': 'a', 'ok': True, 'bad': False, 'none': None}",
+      "repairs": [
+        "python_literal"
+      ]
+    },
+    {
+      "action": {
+        "action": "final",
+        "message": "hi"
+      },
+      "key": "python_literal_trailing",
+      "ok": true,
+      "raw": "{'action': 'final', 'message': 'hi',}",
+      "repairs": [
+        "python_literal"
+      ]
+    },
+    {
+      "action": {
+        "action": "a",
+        "args": {
+          "items": [
+            1,
+            2.5,
+            "x"
+          ]
+        }
+      },
+      "key": "python_literal_nested",
+      "ok": true,
+      "raw": "{'action': 'a', 'args': {'items': [1, 2.5, 'x']}}",
+      "repairs": [
+        "python_literal"
+      ]
+    },
+    {
+      "action": {
+        "action": "a",
+        "note": "line\nbreak"
+      },
+      "key": "python_literal_escapes",
+      "ok": true,
+      "raw": "{'action': 'a', 'note': 'line\\nbreak'}",
+      "repairs": [
+        "python_literal"
+      ]
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "python_literal_not_dict",
+      "ok": false,
+      "raw": "('a', 'b')"
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "broken_prose",
+      "ok": false,
+      "raw": "I think we should start by reading the notes."
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "broken_empty",
+      "ok": false,
+      "raw": ""
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "broken_whitespace",
+      "ok": false,
+      "raw": "   \n  "
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "broken_unclosed",
+      "ok": false,
+      "raw": "{\"action\": \"final\""
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "broken_missing_value",
+      "ok": false,
+      "raw": "{\"action\": }"
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "broken_unquoted_key",
+      "ok": false,
+      "raw": "{action: 1}"
+    },
+    {
+      "error": "Agent JSON must include an action field.",
+      "key": "no_action_key",
+      "ok": false,
+      "raw": "{\"thoughts\": \"no action here\"}"
+    },
+    {
+      "error": "Agent JSON must include an action field.",
+      "key": "not_an_object",
+      "ok": false,
+      "raw": "[1, 2, 3]"
+    },
+    {
+      "error": "Agent JSON must include an action field.",
+      "key": "bare_number",
+      "ok": false,
+      "raw": "42"
+    },
+    {
+      "error": "Agent JSON must include an action field.",
+      "key": "bare_string",
+      "ok": false,
+      "raw": "\"just text\""
+    },
+    {
+      "action": {
+        "action": "final",
+        "message": "완료"
+      },
+      "key": "korean_prose_slice",
+      "ok": true,
+      "raw": "작업 계획: {\"action\": \"final\", \"message\": \"완료\"} 끝.",
+      "repairs": [
+        "slice"
+      ]
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "double_object",
+      "ok": false,
+      "raw": "{\"action\": \"a\"} {\"action\": \"b\"}"
+    },
+    {
+      "action": {
+        "action": "final",
+        "thoughts": "가나다라마바사"
+      },
+      "key": "unicode_thoughts",
+      "ok": true,
+      "raw": "{\"action\": \"final\", \"thoughts\": \"가나다라마바사\"}",
+      "repairs": []
+    }
+  ],
+  "filter_learnings": [
+    {
+      "input": [
+        "short",
+        "파일을 만들었습니다",
+        "Successfully created the file",
+        "Vite needs the entry script tag before </body> or the app never mounts",
+        "VITE NEEDS THE ENTRY SCRIPT TAG BEFORE </BODY> OR THE APP NEVER MOUNTS",
+        null
+      ],
+      "kept": [
+        "Vite needs the entry script tag before </body> or the app never mounts"
+      ]
+    },
+    {
+      "input": [
+        "작업을 완료했습니다",
+        "task was completed",
+        "file was created",
+        "Successfully created the file, but the CSS never loaded because the path was wrong"
+      ],
+      "kept": [
+        "Successfully created the file, but the CSS never loaded because the path was wrong"
+      ]
+    },
+    {
+      "input": [],
+      "kept": []
+    },
+    {
+      "input": [
+        123456789012345,
+        "  padded learning that is long enough  "
+      ],
+      "kept": [
+        "123456789012345",
+        "padded learning that is long enough"
+      ]
+    }
+  ],
+  "inference": [
+    {
+      "file_target": "generated_page.html",
+      "manifest": null,
+      "message": "html 파일 만들어줘"
+    },
+    {
+      "file_target": "script.py",
+      "manifest": null,
+      "message": "write me a python script"
+    },
+    {
+      "file_target": "data.csv",
+      "manifest": null,
+      "message": "csv 저장해줘"
+    },
+    {
+      "file_target": null,
+      "manifest": null,
+      "message": "html이 뭐야?"
+    },
+    {
+      "file_target": null,
+      "manifest": null,
+      "message": "만들어줘"
+    },
+    {
+      "file_target": null,
+      "manifest": null,
+      "message": ""
+    },
+    {
+      "file_target": null,
+      "manifest": null,
+      "message": "   "
+    },
+    {
+      "file_target": "styles.css",
+      "manifest": {
+        "files": [
+          {
+            "brief": "The main HTML page of the project. Reference the sibling files: <link rel=\"stylesheet\" href=\"style.css\"> in <head>. Do not inline styles or behavior scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "All visual styles for index.html (layout, colors, typography).",
+            "path": "style.css"
+          }
+        ],
+        "kind": "web",
+        "name": "web-project"
+      },
+      "message": "html과 css 만들어줘"
+    },
+    {
+      "file_target": "generated_page.html",
+      "manifest": {
+        "files": [
+          {
+            "brief": "The main HTML page of the project. Reference the sibling files: <link rel=\"stylesheet\" href=\"style.css\"> in <head>. Do not inline styles or behavior scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "All visual styles for index.html (layout, colors, typography).",
+            "path": "style.css"
+          }
+        ],
+        "kind": "web",
+        "name": "web-project"
+      },
+      "message": "html and css 만들어줘"
+    },
+    {
+      "file_target": "generated_page.html",
+      "manifest": {
+        "files": [
+          {
+            "brief": "The main HTML page of the project. Reference the sibling files: <link rel=\"stylesheet\" href=\"style.css\"> in <head> and <script src=\"app.js\"></script> just before </body>. Do not inline styles or behavior scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "All visual styles for index.html (layout, colors, typography).",
+            "path": "style.css"
+          },
+          {
+            "brief": "All page behavior for index.html as plain browser JavaScript (no build step, no imports of missing files).",
+            "path": "app.js"
+          }
+        ],
+        "kind": "web",
+        "name": "todo-app"
+      },
+      "message": "todo 앱 html+css+js로 만들어줘"
+    },
+    {
+      "file_target": "generated_page.html",
+      "manifest": {
+        "files": [
+          {
+            "brief": "The main HTML page of the project. Reference the sibling files: <script src=\"app.js\"></script> just before </body>. Do not inline styles or behavior scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "All page behavior for index.html as plain browser JavaScript (no build step, no imports of missing files).",
+            "path": "app.js"
+          }
+        ],
+        "kind": "web",
+        "name": "web-project"
+      },
+      "message": "웹페이지 js로 만들어줘"
+    },
+    {
+      "file_target": "generated_page.html",
+      "manifest": {
+        "files": [
+          {
+            "brief": "The main HTML page of the project. Reference the sibling files: <link rel=\"stylesheet\" href=\"style.css\"> in <head>. Do not inline styles or behavior scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "All visual styles for index.html (layout, colors, typography).",
+            "path": "style.css"
+          }
+        ],
+        "kind": "web",
+        "name": "web-project"
+      },
+      "message": "웹페이지 css로 만들어줘"
+    },
+    {
+      "file_target": null,
+      "manifest": {
+        "files": [
+          {
+            "brief": "Vite React app manifest: strictly valid JSON with \"name\": \"todo-app\", \"private\": true, \"type\": \"module\", \"scripts\" {\"dev\": \"vite\", \"build\": \"vite build\", \"preview\": \"vite preview\"}, \"dependencies\" with react and react-dom (^18), and \"devDependencies\" with vite and @vitejs/plugin-react.",
+            "path": "package.json"
+          },
+          {
+            "brief": "The Vite entry HTML: <div id=\"root\"></div> in <body> and <script type=\"module\" src=\"/src/main.jsx\"></script> just before </body>. No inline styles or scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "React entry: createRoot from react-dom/client rendering <App /> into #root; imports ./App.jsx and ./App.css.",
+            "path": "src/main.jsx"
+          },
+          {
+            "brief": "The main App component implementing the user's request as one self-contained React component (hooks allowed, no extra deps).",
+            "path": "src/App.jsx"
+          },
+          {
+            "brief": "All visual styles for the App component.",
+            "path": "src/App.css"
+          }
+        ],
+        "kind": "react",
+        "name": "todo-app"
+      },
+      "message": "react 로 todo 앱 만들어줘"
+    },
+    {
+      "file_target": null,
+      "manifest": {
+        "files": [
+          {
+            "brief": "Vite React app manifest: strictly valid JSON with \"name\": \"react-app\", \"private\": true, \"type\": \"module\", \"scripts\" {\"dev\": \"vite\", \"build\": \"vite build\", \"preview\": \"vite preview\"}, \"dependencies\" with react and react-dom (^18), and \"devDependencies\" with vite and @vitejs/plugin-react.",
+            "path": "package.json"
+          },
+          {
+            "brief": "The Vite entry HTML: <div id=\"root\"></div> in <body> and <script type=\"module\" src=\"/src/main.jsx\"></script> just before </body>. No inline styles or scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "React entry: createRoot from react-dom/client rendering <App /> into #root; imports ./App.jsx and ./App.css.",
+            "path": "src/main.jsx"
+          },
+          {
+            "brief": "The main App component implementing the user's request as one self-contained React component (hooks allowed, no extra deps).",
+            "path": "src/App.jsx"
+          },
+          {
+            "brief": "All visual styles for the App component.",
+            "path": "src/App.css"
+          }
+        ],
+        "kind": "react",
+        "name": "react-app"
+      },
+      "message": "리액트로 만들어줘"
+    },
+    {
+      "file_target": null,
+      "manifest": {
+        "files": [
+          {
+            "brief": "Vite React app manifest: strictly valid JSON with \"name\": \"vite-app\", \"private\": true, \"type\": \"module\", \"scripts\" {\"dev\": \"vite\", \"build\": \"vite build\", \"preview\": \"vite preview\"}, \"dependencies\" with react and react-dom (^18), and \"devDependencies\" with vite and @vitejs/plugin-react.",
+            "path": "package.json"
+          },
+          {
+            "brief": "The Vite entry HTML: <div id=\"root\"></div> in <body> and <script type=\"module\" src=\"/src/main.jsx\"></script> just before </body>. No inline styles or scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "React entry: createRoot from react-dom/client rendering <App /> into #root; imports ./App.jsx and ./App.css.",
+            "path": "src/main.jsx"
+          },
+          {
+            "brief": "The main App component implementing the user's request as one self-contained React component (hooks allowed, no extra deps).",
+            "path": "src/App.jsx"
+          },
+          {
+            "brief": "All visual styles for the App component.",
+            "path": "src/App.css"
+          }
+        ],
+        "kind": "react",
+        "name": "vite-app"
+      },
+      "message": "vite 앱 만들어줘"
+    },
+    {
+      "file_target": "script.py",
+      "manifest": {
+        "files": [
+          {
+            "brief": "Package init for mytool: import and re-export the public API from .core with an explicit __all__.",
+            "path": "mytool/__init__.py"
+          },
+          {
+            "brief": "Implement the user's request as clean, documented functions/classes with type hints. Standard library only.",
+            "path": "mytool/core.py"
+          },
+          {
+            "brief": "argparse CLI wrapping the core API: a main() function and an if __name__ == \"__main__\": main() guard.",
+            "path": "mytool/cli.py"
+          },
+          {
+            "brief": "Usage documentation for the mytool package: install, import example, and CLI example.",
+            "path": "README.md"
+          }
+        ],
+        "kind": "python",
+        "name": "mytool"
+      },
+      "message": "mytool 패키지 파이썬으로 만들어줘"
+    },
+    {
+      "file_target": "script.py",
+      "manifest": {
+        "files": [
+          {
+            "brief": "Package init for my_tool: import and re-export the public API from .core with an explicit __all__.",
+            "path": "my_tool/__init__.py"
+          },
+          {
+            "brief": "Implement the user's request as clean, documented functions/classes with type hints. Standard library only.",
+            "path": "my_tool/core.py"
+          },
+          {
+            "brief": "argparse CLI wrapping the core API: a main() function and an if __name__ == \"__main__\": main() guard.",
+            "path": "my_tool/cli.py"
+          },
+          {
+            "brief": "Usage documentation for the my_tool package: install, import example, and CLI example.",
+            "path": "README.md"
+          }
+        ],
+        "kind": "python",
+        "name": "my_tool"
+      },
+      "message": "my-tool 패키지 파이썬으로 생성"
+    },
+    {
+      "file_target": "script.py",
+      "manifest": {
+        "files": [
+          {
+            "brief": "Package init for my_package: import and re-export the public API from .core with an explicit __all__.",
+            "path": "my_package/__init__.py"
+          },
+          {
+            "brief": "Implement the user's request as clean, documented functions/classes with type hints. Standard library only.",
+            "path": "my_package/core.py"
+          },
+          {
+            "brief": "argparse CLI wrapping the core API: a main() function and an if __name__ == \"__main__\": main() guard.",
+            "path": "my_package/cli.py"
+          },
+          {
+            "brief": "Usage documentation for the my_package package: install, import example, and CLI example.",
+            "path": "README.md"
+          }
+        ],
+        "kind": "python",
+        "name": "my_package"
+      },
+      "message": "파이썬 패키지 만들어줘"
+    },
+    {
+      "file_target": "generated_page.html",
+      "manifest": null,
+      "message": "index.html 이랑 style.css 만들어줘"
+    },
+    {
+      "file_target": "styles.css",
+      "manifest": {
+        "files": [
+          {
+            "brief": "The main HTML page of the project. Reference the sibling files: <link rel=\"stylesheet\" href=\"style.css\"> in <head> and <script src=\"app.js\"></script> just before </body>. Do not inline styles or behavior scripts.",
+            "path": "index.html"
+          },
+          {
+            "brief": "All visual styles for index.html (layout, colors, typography).",
+            "path": "style.css"
+          },
+          {
+            "brief": "All page behavior for index.html as plain browser JavaScript (no build step, no imports of missing files).",
+            "path": "app.js"
+          }
+        ],
+        "kind": "web",
+        "name": "web-project"
+      },
+      "message": "웹사이트 css js 만들어줘"
+    },
+    {
+      "file_target": "notes.md",
+      "manifest": null,
+      "message": "마크다운 파일 작성해줘"
+    },
+    {
+      "file_target": "config.yaml",
+      "manifest": null,
+      "message": "yaml 만들어줘"
+    }
+  ],
+  "normalize_plan": [
+    {
+      "fixes": [],
+      "key": "complete",
+      "message": "read a.md",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "read_file",
+            "args": {
+              "path": "a.md"
+            }
+          }
+        ]
+      },
+      "plan": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "read_file",
+            "args": {
+              "path": "a.md"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fixes": [
+        "plan_not_object",
+        "goal_defaulted"
+      ],
+      "key": "not_an_object",
+      "message": "hi",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "hi",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": [
+        "nope"
+      ]
+    },
+    {
+      "fixes": [
+        "plan_not_object",
+        "goal_defaulted"
+      ],
+      "key": "null_plan",
+      "message": "hi",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "hi",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": null
+    },
+    {
+      "fixes": [
+        "plan_not_object",
+        "goal_defaulted"
+      ],
+      "key": "string_plan",
+      "message": "hi",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "hi",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": "a plan"
+    },
+    {
+      "fixes": [
+        "goal_defaulted"
+      ],
+      "key": "blank_goal",
+      "message": "do the thing",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "do the thing",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "goal": "   ",
+        "steps": []
+      }
+    },
+    {
+      "fixes": [
+        "goal_defaulted"
+      ],
+      "key": "missing_goal",
+      "message": "do the thing",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "do the thing",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "steps": []
+      }
+    },
+    {
+      "fixes": [],
+      "key": "numeric_goal",
+      "message": "hi",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": 5,
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "goal": 5,
+        "steps": []
+      }
+    },
+    {
+      "fixes": [
+        "steps_filtered"
+      ],
+      "key": "junk_steps",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "read_file"
+          }
+        ]
+      },
+      "plan": {
+        "goal": "g",
+        "steps": [
+          "x",
+          {
+            "no_action": 1
+          },
+          {
+            "action": ""
+          },
+          {
+            "action": "read_file"
+          }
+        ]
+      }
+    },
+    {
+      "fixes": [
+        "steps_filtered"
+      ],
+      "key": "steps_not_a_list",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "goal": "g",
+        "steps": "read a file"
+      }
+    },
+    {
+      "fixes": [],
+      "key": "empty_steps",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "goal": "g",
+        "steps": []
+      }
+    },
+    {
+      "fixes": [
+        "manifest_steps"
+      ],
+      "key": "manifest_empty_plan",
+      "message": "todo 앱 html css js 만들어줘",
+      "normalized": {
+        "estimated_steps": 3,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "index.html"
+            },
+            "description": "The main HTML page of the project. Reference the sibling files: <link rel=\"stylesheet\" href=\"style.css\"> in <head> and <script src=\"app.js\"></script> just before </body>. Do not inline styles or behavior scripts."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "style.css"
+            },
+            "description": "All visual styles for index.html (layout, colors, typography)."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "app.js"
+            },
+            "description": "All page behavior for index.html as plain browser JavaScript (no build step, no imports of missing files)."
+          }
+        ]
+      },
+      "plan": {
+        "goal": "g",
+        "steps": []
+      }
+    },
+    {
+      "fixes": [
+        "manifest_rewrite"
+      ],
+      "key": "manifest_partial",
+      "message": "todo 앱 html css js 만들어줘",
+      "normalized": {
+        "estimated_steps": 3,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "index.html"
+            },
+            "description": "The main HTML page of the project. Reference the sibling files: <link rel=\"stylesheet\" href=\"style.css\"> in <head> and <script src=\"app.js\"></script> just before </body>. Do not inline styles or behavior scripts."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "style.css"
+            },
+            "description": "All visual styles for index.html (layout, colors, typography)."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "app.js"
+            },
+            "description": "All page behavior for index.html as plain browser JavaScript (no build step, no imports of missing files)."
+          }
+        ]
+      },
+      "plan": {
+        "goal": "g",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "index.html"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fixes": [],
+      "key": "manifest_covered",
+      "message": "todo 앱 html css js 만들어줘",
+      "normalized": {
+        "estimated_steps": 3,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "page.HTML"
+            }
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "a.css"
+            }
+          },
+          {
+            "action": "generate_file",
+            "args": {
+              "path": "b.js"
+            }
+          }
+        ]
+      },
+      "plan": {
+        "goal": "g",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "page.HTML"
+            }
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "a.css"
+            }
+          },
+          {
+            "action": "generate_file",
+            "args": {
+              "path": "b.js"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fixes": [],
+      "key": "manifest_with_read",
+      "message": "todo 앱 html css js 만들어줘",
+      "normalized": {
+        "estimated_steps": 2,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "read_file",
+            "args": {
+              "path": "spec.md"
+            }
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "index.html"
+            }
+          }
+        ]
+      },
+      "plan": {
+        "goal": "g",
+        "steps": [
+          {
+            "action": "read_file",
+            "args": {
+              "path": "spec.md"
+            }
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "index.html"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fixes": [
+        "goal_defaulted",
+        "manifest_steps"
+      ],
+      "key": "manifest_react",
+      "message": "react 로 todo 앱 만들어줘",
+      "normalized": {
+        "estimated_steps": 5,
+        "goal": "react 로 todo 앱 만들어줘",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "package.json"
+            },
+            "description": "Vite React app manifest: strictly valid JSON with \"name\": \"todo-app\", \"private\": true, \"type\": \"module\", \"scripts\" {\"dev\": \"vite\", \"build\": \"vite build\", \"preview\": \"vite preview\"}, \"dependencies\" with react and react-dom (^18), and \"devDependencies\" with vite and @vitejs/plugin-react."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "index.html"
+            },
+            "description": "The Vite entry HTML: <div id=\"root\"></div> in <body> and <script type=\"module\" src=\"/src/main.jsx\"></script> just before </body>. No inline styles or scripts."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "src/main.jsx"
+            },
+            "description": "React entry: createRoot from react-dom/client rendering <App /> into #root; imports ./App.jsx and ./App.css."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "src/App.jsx"
+            },
+            "description": "The main App component implementing the user's request as one self-contained React component (hooks allowed, no extra deps)."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "src/App.css"
+            },
+            "description": "All visual styles for the App component."
+          }
+        ]
+      },
+      "plan": {}
+    },
+    {
+      "fixes": [
+        "goal_defaulted",
+        "manifest_steps"
+      ],
+      "key": "manifest_python",
+      "message": "mytool 패키지 파이썬으로 만들어줘",
+      "normalized": {
+        "estimated_steps": 4,
+        "goal": "mytool 패키지 파이썬으로 만들어줘",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "mytool/__init__.py"
+            },
+            "description": "Package init for mytool: import and re-export the public API from .core with an explicit __all__."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "mytool/core.py"
+            },
+            "description": "Implement the user's request as clean, documented functions/classes with type hints. Standard library only."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "mytool/cli.py"
+            },
+            "description": "argparse CLI wrapping the core API: a main() function and an if __name__ == \"__main__\": main() guard."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "README.md"
+            },
+            "description": "Usage documentation for the mytool package: install, import example, and CLI example."
+          }
+        ]
+      },
+      "plan": {}
+    },
+    {
+      "fixes": [
+        "goal_defaulted",
+        "heuristic_file_step"
+      ],
+      "key": "heuristic_single_file",
+      "message": "html 파일 만들어줘",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "html 파일 만들어줘",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "generated_page.html"
+            },
+            "description": "Create generated_page.html for: html 파일 만들어줘"
+          }
+        ]
+      },
+      "plan": {}
+    },
+    {
+      "fixes": [
+        "goal_defaulted",
+        "heuristic_file_step"
+      ],
+      "key": "heuristic_long_message",
+      "message": "html 파일 만들어줘 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "html 파일 만들어줘 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "generated_page.html"
+            },
+            "description": "Create generated_page.html for: html 파일 만들어줘 가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"
+          }
+        ]
+      },
+      "plan": {}
+    },
+    {
+      "fixes": [],
+      "key": "estimated_string",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 4,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "estimated_steps": "4",
+        "goal": "g"
+      }
+    },
+    {
+      "fixes": [],
+      "key": "estimated_float",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 3,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "estimated_steps": 3.7,
+        "goal": "g"
+      }
+    },
+    {
+      "fixes": [
+        "estimated_steps_invalid"
+      ],
+      "key": "estimated_invalid",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "estimated_steps": "many",
+        "goal": "g"
+      }
+    },
+    {
+      "fixes": [
+        "estimated_steps_invalid"
+      ],
+      "key": "estimated_list",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "estimated_steps": [
+          3
+        ],
+        "goal": "g"
+      }
+    },
+    {
+      "fixes": [],
+      "key": "coerced_tail",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": true,
+        "rollback_strategy": "none",
+        "steps": []
+      },
+      "plan": {
+        "goal": "g",
+        "requires_approval": "yes",
+        "rollback_strategy": 7
+      }
+    },
+    {
+      "fixes": [],
+      "key": "rollback_kept",
+      "message": "g",
+      "normalized": {
+        "estimated_steps": 1,
+        "goal": "g",
+        "requires_approval": false,
+        "rollback_strategy": "git",
+        "steps": []
+      },
+      "plan": {
+        "goal": "g",
+        "rollback_strategy": "git"
+      }
+    }
+  ],
+  "schema": "agent-loop-parity/v1",
+  "transcript_helpers": [
+    {
+      "artifact_checklist": [],
+      "compact_window_2": [],
+      "files_written": [],
+      "key": "empty",
+      "message": "todo 앱 html css js 만들어줘",
+      "requirement_coverage": {
+        "complete": false,
+        "files": {
+          "declared": [
+            "index.html",
+            "style.css",
+            "app.js"
+          ],
+          "written": []
+        },
+        "missing_files": [
+          "index.html",
+          "style.css",
+          "app.js"
+        ],
+        "requirements": []
+      },
+      "transcript": []
+    },
+    {
+      "artifact_checklist": [
+        {
+          "path": "index.html",
+          "repaired": false,
+          "sanitized": false
+        }
+      ],
+      "compact_window_2": [
+        {
+          "action": "write_file",
+          "args": {
+            "path": "index.html"
+          },
+          "result": {
+            "bytes": 10,
+            "path": "index.html"
+          },
+          "state": "EXECUTING"
+        }
+      ],
+      "files_written": [
+        "index.html"
+      ],
+      "key": "one_write",
+      "message": "todo 앱 html css js 만들어줘",
+      "requirement_coverage": {
+        "complete": false,
+        "files": {
+          "declared": [
+            "index.html",
+            "style.css",
+            "app.js"
+          ],
+          "written": [
+            "index.html"
+          ]
+        },
+        "missing_files": [
+          "style.css",
+          "app.js"
+        ],
+        "requirements": []
+      },
+      "transcript": [
+        {
+          "action": "write_file",
+          "args": {
+            "path": "index.html"
+          },
+          "result": {
+            "bytes": 10,
+            "path": "index.html"
+          },
+          "state": "EXECUTING"
+        }
+      ]
+    },
+    {
+      "artifact_checklist": [
+        {
+          "path": "index.html",
+          "repaired": false,
+          "sanitized": false
+        },
+        {
+          "path": "sub/STYLE.CSS",
+          "repaired": false,
+          "sanitized": false
+        },
+        {
+          "path": "app.js",
+          "repaired": true,
+          "sanitized": true
+        }
+      ],
+      "compact_window_2": [
+        {
+          "note": "older steps compacted — full detail retained in the run record",
+          "summarized_older_steps": 1
+        },
+        {
+          "action": "write_file",
+          "ok": true,
+          "path": "index.html",
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "path": "sub/STYLE.CSS"
+          },
+          "result": {
+            "bytes": 3,
+            "path": "sub/STYLE.CSS"
+          },
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "path": "app.js"
+          },
+          "content_sanitize": {
+            "repaired": true,
+            "sanitized": true
+          },
+          "result": {
+            "bytes": 3,
+            "path": "app.js"
+          },
+          "state": "EXECUTING"
+        }
+      ],
+      "files_written": [
+        "index.html",
+        "sub/STYLE.CSS",
+        "app.js"
+      ],
+      "key": "all_written",
+      "message": "todo 앱 html css js 만들어줘",
+      "requirement_coverage": {
+        "complete": true,
+        "files": {
+          "declared": [
+            "index.html",
+            "style.css",
+            "app.js"
+          ],
+          "written": [
+            "index.html",
+            "sub/STYLE.CSS",
+            "app.js"
+          ]
+        },
+        "missing_files": [],
+        "requirements": []
+      },
+      "transcript": [
+        {
+          "action": "write_file",
+          "args": {
+            "path": "index.html"
+          },
+          "result": {
+            "bytes": 10,
+            "path": "index.html"
+          },
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "path": "sub/STYLE.CSS"
+          },
+          "result": {
+            "bytes": 3,
+            "path": "sub/STYLE.CSS"
+          },
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "path": "app.js"
+          },
+          "content_sanitize": {
+            "repaired": true,
+            "sanitized": true
+          },
+          "result": {
+            "bytes": 3,
+            "path": "app.js"
+          },
+          "state": "EXECUTING"
+        }
+      ]
+    },
+    {
+      "artifact_checklist": [
+        {
+          "path": "a.md",
+          "repaired": false,
+          "sanitized": false
+        },
+        {
+          "path": "a.md",
+          "repaired": false,
+          "sanitized": false
+        }
+      ],
+      "compact_window_2": [
+        {
+          "note": "older steps compacted — full detail retained in the run record",
+          "summarized_older_steps": 3
+        },
+        {
+          "action": "write_file",
+          "error": "BLOCKED: nope",
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "ok": true,
+          "path": "a.md",
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "ok": true,
+          "path": "a.md",
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "result": {
+            "path": "ignored.md"
+          },
+          "state": "VERIFYING"
+        },
+        {
+          "action": "read_file",
+          "result": {
+            "path": "skip.md"
+          },
+          "state": "EXECUTING"
+        }
+      ],
+      "files_written": [
+        "a.md"
+      ],
+      "key": "blocked_and_repeated",
+      "message": "make a note",
+      "requirement_coverage": {
+        "complete": true,
+        "files": {
+          "declared": [],
+          "written": [
+            "a.md"
+          ]
+        },
+        "missing_files": [],
+        "requirements": []
+      },
+      "transcript": [
+        {
+          "action": "write_file",
+          "args": {
+            "path": "a.md"
+          },
+          "error": "BLOCKED: nope",
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "path": "a.md"
+          },
+          "result": {
+            "bytes": 2,
+            "path": "a.md"
+          },
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "args": {
+            "path": "a.md"
+          },
+          "result": {
+            "bytes": 2,
+            "path": "a.md"
+          },
+          "state": "EXECUTING"
+        },
+        {
+          "action": "write_file",
+          "result": {
+            "path": "ignored.md"
+          },
+          "state": "VERIFYING"
+        },
+        {
+          "action": "read_file",
+          "result": {
+            "path": "skip.md"
+          },
+          "state": "EXECUTING"
+        }
+      ]
+    },
+    {
+      "artifact_checklist": [],
+      "compact_window_2": [],
+      "files_written": [],
+      "key": "requirements_listed",
+      "message": "만들어줘:\n- 다크모드\n* dark mode\n1. 검색 기능\n2) 필터\nfree prose\n- ab",
+      "requirement_coverage": {
+        "complete": true,
+        "files": {
+          "declared": [],
+          "written": []
+        },
+        "missing_files": [],
+        "requirements": [
+          "다크모드",
+          "dark mode",
+          "검색 기능"
+        ]
+      },
+      "transcript": []
+    },
+    {
+      "artifact_checklist": [],
+      "compact_window_2": [],
+      "files_written": [],
+      "key": "requirements_capped",
+      "message": "- item number 0\n- item number 1\n- item number 2\n- item number 3\n- item number 4\n- item number 5\n- item number 6\n- item number 7\n- item number 8\n- item number 9\n- item number 10\n- item number 11\n- item number 12\n- item number 13\n- item number 14",
+      "requirement_coverage": {
+        "complete": true,
+        "files": {
+          "declared": [],
+          "written": []
+        },
+        "missing_files": [],
+        "requirements": [
+          "item number 0",
+          "item number 1",
+          "item number 2",
+          "item number 3",
+          "item number 4",
+          "item number 5",
+          "item number 6",
+          "item number 7",
+          "item number 8",
+          "item number 9"
+        ]
+      },
+      "transcript": []
+    },
+    {
+      "artifact_checklist": [
+        {
+          "path": "a.md",
+          "repaired": false,
+          "sanitized": false
+        }
+      ],
+      "compact_window_2": [
+        {
+          "action": "write_file",
+          "args": {
+            "path": "a.md"
+          },
+          "result": {
+            "proposal_id": "p1",
+            "proposed": true
+          },
+          "state": "EXECUTING"
+        }
+      ],
+      "files_written": [
+        "a.md"
+      ],
+      "key": "proposed_step",
+      "message": "make a note",
+      "requirement_coverage": {
+        "complete": true,
+        "files": {
+          "declared": [],
+          "written": [
+            "a.md"
+          ]
+        },
+        "missing_files": [],
+        "requirements": []
+      },
+      "transcript": [
+        {
+          "action": "write_file",
+          "args": {
+            "path": "a.md"
+          },
+          "result": {
+            "proposal_id": "p1",
+            "proposed": true
+          },
+          "state": "EXECUTING"
+        }
+      ]
+    }
+  ],
+  "truncate_strings": [
+    {
+      "key": "short",
+      "limit": 700,
+      "truncated": {
+        "a": "hello"
+      },
+      "value": {
+        "a": "hello"
+      }
+    },
+    {
+      "key": "exact",
+      "limit": 5,
+      "truncated": "abcde",
+      "value": "abcde"
+    },
+    {
+      "key": "over",
+      "limit": 5,
+      "truncated": "abcde…[+3 chars]",
+      "value": "abcdefgh"
+    },
+    {
+      "key": "korean",
+      "limit": 5,
+      "truncated": "가가가가가…[+5 chars]",
+      "value": "가가가가가가가가가가"
+    },
+    {
+      "key": "nested",
+      "limit": 3,
+      "truncated": {
+        "a": [
+          "abc…[+3 chars]",
+          {
+            "b": "xyz…[+1 chars]"
+          }
+        ],
+        "n": 5,
+        "t": true
+      },
+      "value": {
+        "a": [
+          "abcdef",
+          {
+            "b": "xyz!"
+          }
+        ],
+        "n": 5,
+        "t": true
+      }
+    },
+    {
+      "key": "null_and_float",
+      "limit": 2,
+      "truncated": {
+        "a": null,
+        "b": 1.5,
+        "c": []
+      },
+      "value": {
+        "a": null,
+        "b": 1.5,
+        "c": []
+      }
+    }
+  ]
+}

@@ -136,6 +136,50 @@ pub fn multimodal_signal(matches: &[Value]) -> Option<Value> {
     Some(Value::Object(map))
 }
 
+/// `retrieval.signals.context_quality_signal` — the honest four-key block.
+///
+/// Two rules are easy to get backwards and both are load-bearing: zero nodes
+/// *collapses* the mode to `"none"` no matter what the caller claimed, and a
+/// caller-supplied `reason` is dropped again when the context turns out not to
+/// be limited — the field says "here is what is thin about this", so it may not
+/// survive a context that is fine.
+pub fn context_quality_signal(
+    mode: &str,
+    nodes: i64,
+    reason: Option<&str>,
+    multimodal: Option<Value>,
+) -> Value {
+    let nodes = nodes.max(0);
+    let mut mode = if nodes == 0 { "none" } else { mode };
+    if !matches!(mode, "hybrid" | "lexical_only" | "none") {
+        mode = "lexical_only";
+    }
+    let limited = nodes <= 1 || mode != "hybrid";
+    let reason = match (limited, reason) {
+        (false, _) => None,
+        (true, Some(given)) => Some(given.to_string()),
+        (true, None) if nodes == 0 => Some("그래프에서 관련 지식을 찾지 못했습니다".to_string()),
+        (true, None) if mode == "lexical_only" => {
+            Some("벡터 검색을 사용할 수 없어 키워드 검색 결과만 사용했습니다".to_string())
+        }
+        (true, None) => Some("그래프 기반 컨텍스트가 제한적입니다".to_string()),
+    };
+    let mut signal = Map::new();
+    signal.insert("mode".into(), Value::String(mode.to_string()));
+    signal.insert("nodes".into(), Value::from(nodes));
+    signal.insert("limited".into(), Value::Bool(limited));
+    signal.insert(
+        "reason".into(),
+        reason.map(Value::String).unwrap_or(Value::Null),
+    );
+    // Present only when there is something to report: an all-text answer keeps
+    // the four-key shape existing consumers pin.
+    if let Some(multimodal) = multimodal {
+        signal.insert("multimodal".into(), multimodal);
+    }
+    Value::Object(signal)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,6 +249,46 @@ mod tests {
         assert!(
             empty.get("vector").is_none(),
             "the early return carries no vector block"
+        );
+    }
+
+    #[test]
+    fn context_quality_collapses_to_none_and_explains_itself() {
+        let none = context_quality_signal("hybrid", 0, None, None);
+        assert_eq!(none["mode"], "none", "zero nodes is never hybrid");
+        assert_eq!(none["limited"], true);
+        assert_eq!(none["reason"], "그래프에서 관련 지식을 찾지 못했습니다");
+        assert!(none.get("multimodal").is_none());
+
+        let lexical = context_quality_signal("lexical_only", 3, None, None);
+        assert_eq!(
+            lexical["reason"],
+            "벡터 검색을 사용할 수 없어 키워드 검색 결과만 사용했습니다"
+        );
+        // A hybrid answer resting on one node is thin, and says so.
+        let thin = context_quality_signal("hybrid", 1, None, None);
+        assert_eq!(thin["reason"], "그래프 기반 컨텍스트가 제한적입니다");
+        // An unrecognised mode degrades to lexical_only rather than being echoed.
+        assert_eq!(
+            context_quality_signal("guess", 2, None, None)["mode"],
+            "lexical_only"
+        );
+
+        let wide = context_quality_signal("hybrid", 6, Some("ignored"), Some(json!({"images": 1})));
+        assert_eq!(wide["limited"], false);
+        assert_eq!(
+            wide["reason"],
+            Value::Null,
+            "a fine context carries no reason"
+        );
+        assert_eq!(wide["multimodal"], json!({"images": 1}));
+        assert_eq!(
+            context_quality_signal("none", -4, Some("given"), None)["nodes"],
+            0
+        );
+        assert_eq!(
+            context_quality_signal("none", 0, Some("given"), None)["reason"],
+            "given"
         );
     }
 }

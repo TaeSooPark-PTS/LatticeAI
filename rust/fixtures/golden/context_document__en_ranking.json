@@ -1,0 +1,169 @@
+{
+  "key": "en_ranking",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다\n- 결정: 문서는 한국어로 쓴다\n- 관계: 박민서 님과 빌드 파이프라인을 함께 본다\n\n### 📄 관련 문서/파일\n\n- **[Document] Release notes for the retrieval port** (relevance: 0.66)\n  - 출처: release\n  - Release notes describing the ranking port and the parity harness.\n  - 관련: Ranking\n\n- **[CodeFile] hybrid.py** (relevance: 0.45)\n  - 출처: hybrid.py\n  - def hybrid_search(query): the ranking pipeline lives here and calls vector_search().\n\n- **[File] ranking-notes.md** (relevance: 0.38)\n  - 출처: ranking-notes.md\n  - Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.\n  - 관련: Hybrid retrieval fusion stays alpha weighted\n\n- **[Spreadsheet] retrieval-metrics.xlsx** (relevance: 0.34)\n  - 출처: retrieval-metrics.xlsx\n  - Recall and precision per query class for the ranking experiments.\n\n- **[Document] Retrieval specification** (relevance: 0.31)\n  - 출처: retrieval-spec.pdf\n  - The retrieval specification describes the lexical channel, the vector channel and their fusion.\n  - 관련: Ranking\n\n- **[ImageText] 화이트보드 OCR 텍스트** (relevance: 0.17)\n  - 출처: whiteboard-retrieval.png\n  - 회의 결정 사항: 랭킹은 alpha 융합을 유지한다.\n\n### ✅ 관련 결정사항/작업\n\n- **[Decision] Hybrid retrieval fusion stays alpha weighted** (relevance: 0.88)\n  - We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.\n  - 관련: Ranking, Retrieval\n\n- **[Task] Build the retrieval parity harness** (relevance: 0.52)\n  - Generate a golden fixture so the Rust ranking can be compared against the Python ranking.\n  - 관련: Rust 기반 검색 이관 결정\n\n### 🔗 관련 개념/기술\n\n- **[Concept] Ranking** (relevance: 0.30)\n  - Ranking orders candidates so the best answer is first.\n  - 관련: Hybrid retrieval fusion stays alpha weighted, Retrieval\n\n- **[Concept] Retrieval** (relevance: 0.29)\n  - Retrieval is the act of finding the right memory for a question.\n  - 관련: Ranking, Hybrid retrieval fusion stays alpha weighted",
+      "context_quality": {
+        "limited": false,
+        "mode": "hybrid",
+        "multimodal": {
+          "images": 1,
+          "types": [
+            "ImageText"
+          ]
+        },
+        "nodes": 10,
+        "reason": null
+      },
+      "query": "hybrid retrieval ranking",
+      "sources": [
+        {
+          "id": "dec:fusion-alpha",
+          "source": "dec:fusion-alpha",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        {
+          "id": "doc:release-notes",
+          "source": "doc:release-notes",
+          "title": "Release notes for the retrieval port",
+          "type": "Document"
+        },
+        {
+          "id": "task:parity-harness",
+          "source": "task:parity-harness",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        },
+        {
+          "id": "code:hybrid-search",
+          "source": "hybrid.py",
+          "title": "hybrid.py",
+          "type": "CodeFile"
+        },
+        {
+          "id": "file:ranking-notes",
+          "source": "ranking-notes.md",
+          "title": "ranking-notes.md",
+          "type": "File"
+        },
+        {
+          "id": "sheet:metrics",
+          "source": "retrieval-metrics.xlsx",
+          "title": "retrieval-metrics.xlsx",
+          "type": "Spreadsheet"
+        },
+        {
+          "id": "doc:retrieval-spec",
+          "source": "retrieval-spec.pdf",
+          "title": "Retrieval specification",
+          "type": "Document"
+        },
+        {
+          "id": "concept:ranking",
+          "source": "concept:ranking",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:retrieval",
+          "source": "concept:retrieval",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        {
+          "id": "img:ocr-notes",
+          "source": "whiteboard-retrieval.png",
+          "title": "화이트보드 OCR 텍스트",
+          "type": "ImageText"
+        }
+      ],
+      "stats": {
+        "budget_trimmed": false,
+        "graph_edges": 31,
+        "graph_nodes": 16,
+        "method": "hybrid",
+        "primary_matches": 10
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 34,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 108,
+            "name": "관련 문서/파일",
+            "provenance": [
+              {
+                "id": "doc:release-notes",
+                "type": "Document"
+              },
+              {
+                "id": "code:hybrid-search",
+                "type": "CodeFile"
+              },
+              {
+                "id": "file:ranking-notes",
+                "type": "File"
+              },
+              {
+                "id": "sheet:metrics",
+                "type": "Spreadsheet"
+              },
+              {
+                "id": "doc:retrieval-spec",
+                "type": "Document"
+              },
+              {
+                "id": "img:ocr-notes",
+                "type": "ImageText"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 45,
+            "name": "관련 결정사항/작업",
+            "provenance": [
+              {
+                "id": "dec:fusion-alpha",
+                "type": "Decision"
+              },
+              {
+                "id": "task:parity-harness",
+                "type": "Task"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 30,
+            "name": "관련 개념/기술",
+            "provenance": [
+              {
+                "id": "concept:ranking",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:retrieval",
+                "type": "Concept"
+              }
+            ],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 487
+      }
+    },
+    "sources_footnote": "\n---\n**참조된 지식 그래프 노드:**\n1. [Decision] Hybrid retrieval fusion stays alpha weighted (dec:fusion-alpha)\n2. [Document] Release notes for the retrieval port (doc:release-notes)\n3. [Task] Build the retrieval parity harness (task:parity-harness)\n4. [CodeFile] hybrid.py (hybrid.py)\n5. [File] ranking-notes.md (ranking-notes.md)\n6. [Spreadsheet] retrieval-metrics.xlsx (retrieval-metrics.xlsx)\n7. [Document] Retrieval specification (retrieval-spec.pdf)\n8. [Concept] Ranking (concept:ranking)\n9. [Concept] Retrieval (concept:retrieval)\n10. [ImageText] 화이트보드 OCR 텍스트 (whiteboard-retrieval.png)"
+  },
+  "spec": {
+    "key": "en_ranking",
+    "query": "hybrid retrieval ranking"
+  },
+  "suite": "context_document"
+}

@@ -29,6 +29,7 @@ const API_DIR = "latticeai/api";
 // which is how the removed root shims used to be referenced.
 const LOCALIZED = [
   "admin",
+  "agent_worker_seam",
   "auth",
   "browser",
   "chat",

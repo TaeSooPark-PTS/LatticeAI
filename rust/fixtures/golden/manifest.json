@@ -658,6 +658,106 @@
         "query": "hybrid retrieval ranking"
       }
     ],
+    "context_document": [
+      {
+        "key": "default",
+        "query": "제안서 초안"
+      },
+      {
+        "include_self_model": false,
+        "key": "no_self_model",
+        "query": "제안서 초안"
+      },
+      {
+        "key": "self_model_tokens_small",
+        "query": "제안서 초안",
+        "self_model_tokens": 12
+      },
+      {
+        "budget": 240,
+        "key": "budget_240",
+        "query": "제안서 초안"
+      },
+      {
+        "budget": 120,
+        "key": "budget_120",
+        "query": "제안서 초안"
+      },
+      {
+        "budget": 40,
+        "key": "budget_40",
+        "query": "제안서 초안"
+      },
+      {
+        "budget": 1,
+        "key": "budget_one",
+        "query": "제안서 초안"
+      },
+      {
+        "budget": 0,
+        "key": "budget_zero",
+        "query": "제안서 초안"
+      },
+      {
+        "key": "hops_zero",
+        "max_hops": 0,
+        "query": "제안서 초안"
+      },
+      {
+        "key": "hops_three",
+        "max_hops": 3,
+        "query": "제안서 초안"
+      },
+      {
+        "key": "results_two",
+        "max_results": 2,
+        "query": "제안서 초안"
+      },
+      {
+        "key": "ko_meeting",
+        "query": "회의 결정 사항"
+      },
+      {
+        "key": "en_ranking",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "ko_sketch",
+        "query": "스케치"
+      },
+      {
+        "key": "fallback_lexical",
+        "query": "박민서 님"
+      },
+      {
+        "key": "fallback_empty",
+        "query": "zzqq wumpus nonsense"
+      },
+      {
+        "key": "empty_query",
+        "query": ""
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha",
+        "query": "제안서 초안"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha_legacy",
+        "legacy": true,
+        "query": "제안서 초안"
+      },
+      {
+        "allowed": [],
+        "key": "scoped_empty",
+        "query": "제안서 초안"
+      }
+    ],
     "conversation_messages": [
       {
         "conversation_id": "conv-a",
@@ -719,6 +819,94 @@
         "allowed": [],
         "key": "ws_empty_strict",
         "legacy": false
+      }
+    ],
+    "docgen_search": [
+      {
+        "key": "ko_proposal",
+        "query": "제안서 초안"
+      },
+      {
+        "key": "ko_meeting",
+        "query": "회의 결정 사항"
+      },
+      {
+        "key": "en_ranking",
+        "query": "hybrid retrieval ranking"
+      },
+      {
+        "key": "ko_sketch",
+        "query": "스케치"
+      },
+      {
+        "key": "ko_self_model",
+        "query": "문서는 한국어로"
+      },
+      {
+        "key": "en_undated",
+        "query": "Undated"
+      },
+      {
+        "key": "hub_deck",
+        "query": "제안 발표자료"
+      },
+      {
+        "key": "tie",
+        "query": "Tie candidate"
+      },
+      {
+        "key": "no_hit",
+        "query": "zzqq wumpus nonsense"
+      },
+      {
+        "key": "empty_query",
+        "query": ""
+      },
+      {
+        "key": "blank_query",
+        "query": "   "
+      },
+      {
+        "key": "limit_one",
+        "limit": 1,
+        "query": "제안서"
+      },
+      {
+        "key": "limit_zero",
+        "limit": 0,
+        "query": "제안서"
+      },
+      {
+        "key": "limit_over",
+        "limit": 900,
+        "query": "제안서"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha",
+        "query": "제안서"
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha_legacy",
+        "legacy": true,
+        "query": "제안서"
+      },
+      {
+        "allowed": [
+          "ws-beta"
+        ],
+        "key": "scoped_beta",
+        "query": "제안서"
+      },
+      {
+        "allowed": [],
+        "key": "scoped_empty",
+        "query": "제안서"
       }
     ],
     "graph_search": [
@@ -918,6 +1106,123 @@
         "key": "scoped_strict",
         "legacy": false,
         "query": "ranking"
+      }
+    ],
+    "multi_hop": [
+      {
+        "key": "hub_h0",
+        "max_hops": 0,
+        "node_ids": [
+          "doc:proposal"
+        ]
+      },
+      {
+        "key": "hub_h1",
+        "max_hops": 1,
+        "node_ids": [
+          "doc:proposal"
+        ]
+      },
+      {
+        "key": "hub_h2",
+        "max_hops": 2,
+        "node_ids": [
+          "doc:proposal"
+        ]
+      },
+      {
+        "key": "hub_h3",
+        "max_hops": 3,
+        "node_ids": [
+          "doc:proposal"
+        ]
+      },
+      {
+        "key": "hub_hneg",
+        "max_hops": -1,
+        "node_ids": [
+          "doc:proposal"
+        ]
+      },
+      {
+        "key": "multi_seed",
+        "max_hops": 2,
+        "node_ids": [
+          "doc:proposal",
+          "dec:fusion-alpha"
+        ]
+      },
+      {
+        "key": "leaf",
+        "max_hops": 2,
+        "node_ids": [
+          "slide:proposal-1"
+        ]
+      },
+      {
+        "key": "isolated",
+        "max_hops": 2,
+        "node_ids": [
+          "tie:c"
+        ]
+      },
+      {
+        "key": "self_root",
+        "max_hops": 2,
+        "node_ids": [
+          "self:root"
+        ]
+      },
+      {
+        "key": "missing_seed",
+        "max_hops": 2,
+        "node_ids": [
+          "nope:missing"
+        ]
+      },
+      {
+        "key": "no_seeds",
+        "max_hops": 2,
+        "node_ids": []
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha",
+        "max_hops": 2,
+        "node_ids": [
+          "doc:proposal"
+        ]
+      },
+      {
+        "allowed": [
+          "ws-alpha"
+        ],
+        "key": "scoped_alpha_legacy",
+        "legacy": true,
+        "max_hops": 2,
+        "node_ids": [
+          "doc:proposal"
+        ]
+      },
+      {
+        "allowed": [
+          "ws-beta"
+        ],
+        "key": "scoped_beta",
+        "max_hops": 2,
+        "node_ids": [
+          "deck:proposal"
+        ]
+      },
+      {
+        "allowed": [],
+        "key": "scoped_empty",
+        "max_hops": 2,
+        "node_ids": [
+          "doc:proposal"
+        ]
       }
     ],
     "relationship": [

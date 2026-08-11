@@ -1,0 +1,9 @@
+{
+  "key": "blank_query",
+  "result": [],
+  "spec": {
+    "key": "blank_query",
+    "query": "   "
+  },
+  "suite": "docgen_search"
+}

@@ -4,6 +4,28 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.5.1] - 2026-08-12 — Rust Full Loop
+
+### Added
+- **에이전트 루프 오케스트레이터 Rust 이식**(§4c 완결,
+  docs/v11.5.1_RUST_FULL_LOOP_PLAN.md): lattice-agent에 상태기계(200
+  전이 캡)·실행 루프 전 규칙·검증 fail-closed 매핑·롤백 3-tier·승인
+  스토어(sha256/TTL 600s/만료 410)·`POST /rust/agent/run`(SSE)/`resume`/
+  `approvals`. 증명: 실제 Python SingleAgentRuntime 대본 재생 궤적
+  10종 byte-identical + 헬퍼 그리드(액션 파서 38·정규화 24·판정 90) +
+  실워커 라이브 스모크(시임 4종 실통신, 무모델 턴 NEEDS_REVIEW 동일).
+- **AI Worker 시임**(additive, 100% 커버, 22번째 로컬라이즈 라우터):
+  `POST /agent/llm`(부작용 0), `POST /agent/tool`(서버측 서킷 브레이커
+  403·fail-closed 409 유지, `LATTICEAI_AGENT_TOOL_SEAM` 게이트 — 기본
+  꺼짐, 수퍼바이즈된 워커에만 주입), `POST /agent/change-proposal`.
+- **문서 생성 컨텍스트 네이티브**(§3b 이월 완결): docgen 검색·
+  multi_hop·retrieve_context_for_generation 전체 계약 — 골든 53 신규
+  (총 247) 완전 일치, `POST /rust/context/document`.
+
+### Changed
+- ARCHITECTURE.md System Map 다이어그램을 Rust 기반 현재 구조로 재작성
+  (Lattice Host front-door + 6크레이트 + AI Worker 경계).
+
 ## [11.5.0] - 2026-08-11 — Rust Complete
 
 ### Added

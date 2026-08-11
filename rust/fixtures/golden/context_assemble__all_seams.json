@@ -1,8 +1,8 @@
 {
   "key": "all_seams",
   "result": {
-    "approx_tokens": 184,
-    "text": "[User memories]\n- (preference) 답변은 한국어로\n- (memory) \n- (fact) 온보딩은 다섯 걸음\n\n[Files created in this conversation]\n- notes/ranking.md (2026-07-20T09:00:00)\n- notes/onboarding.md\n- out/file-0.md\n- out/file-1.md\n- out/file-2.md\n- out/file-3.md\n- out/file-4.md\n- out/file-5.md\n- out/file-6.md\n- out/file-7.md\n\n[Knowledge]\n- 화이트보드 OCR 텍스트: 회의 결정 사항: 랭킹은 alpha 융합을 유지한다.\n- handbook.pdf chunk 2: 검색 화면에서는 회의 결정 사항을 한 번에 찾을 수 있습니다.\n- Rust 기반 검색 이관 결정: 검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.\n- 주간 회의 2026-07-14: 지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.\n- Lattice AI 사용 안내서: 제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.\n\n[Garden notes]\n정원 노트: 랭킹은 alpha 융합을 유지한다.\n\n[Recent conversation]\nassistant (web): assistant-first conversation\nuser (web): follow up question about ranking\nuser: Empty user and empty workspace row\nassistant: 회의 결정 사항을 정리했습니다.",
+    "approx_tokens": 181,
+    "text": "[User memories]\n- (preference) 답변은 한국어로\n- (memory) \n- (fact) 온보딩은 다섯 걸음\n\n[Files created in this conversation]\n- notes/ranking.md (2026-07-20T09:00:00)\n- notes/onboarding.md\n- out/file-0.md\n- out/file-1.md\n- out/file-2.md\n- out/file-3.md\n- out/file-4.md\n- out/file-5.md\n- out/file-6.md\n- out/file-7.md\n\n[Knowledge]\n- 화이트보드 OCR 텍스트: 회의 결정 사항: 랭킹은 alpha 융합을 유지한다.\n- handbook.pdf chunk 2: 검색 화면에서는 회의 결정 사항을 한 번에 찾을 수 있습니다.\n- Rust 기반 검색 이관 결정: 검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.\n- 주간 회의 2026-07-14: 지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.\n- meeting-minutes.md: 회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.\n\n[Garden notes]\n정원 노트: 랭킹은 alpha 융합을 유지한다.\n\n[Recent conversation]\nassistant (web): assistant-first conversation\nuser (web): follow up question about ranking\nuser: Empty user and empty workspace row\nassistant: 회의 결정 사항을 정리했습니다.",
     "trace": {
       "budget_approx_tokens": 2000,
       "sections": [
@@ -78,7 +78,7 @@
           "truncated": false
         },
         {
-          "approx_tokens": 75,
+          "approx_tokens": 72,
           "name": "Knowledge",
           "provenance": [
             {
@@ -110,7 +110,7 @@
             },
             {
               "id": "meeting:weekly",
-              "score": 0.22,
+              "score": 0.175,
               "sources": [
                 "keyword",
                 "vector",
@@ -118,8 +118,8 @@
               ]
             },
             {
-              "id": "doc:handbook",
-              "score": 0.180769,
+              "id": "file:meeting-minutes",
+              "score": 0.168182,
               "sources": [
                 "keyword",
                 "vector",
@@ -155,7 +155,7 @@
           "truncated": false
         }
       ],
-      "used_approx_tokens": 184
+      "used_approx_tokens": 181
     }
   },
   "spec": {

@@ -28,6 +28,18 @@ pub const SAFETY_OFF_FLAGS: [&str; 6] = [
 /// (`latticeai/core/config.py`, parsed as a comma-separated list).
 pub const CSRF_TRUSTED_ORIGINS_ENV: &str = "LATTICEAI_CSRF_TRUSTED_ORIGINS";
 
+/// Opens the worker's AI-worker seam (`/agent/llm`, `/agent/tool`,
+/// `/agent/change-proposal`) for the native loop orchestrator.
+///
+/// Off by default in the worker, and injected **only here**: these endpoints
+/// exist for `lattice-agent`'s loop, and a worker nobody supervises has no
+/// reason to expose a bare completion endpoint or a loop-scoped tool dispatch.
+/// The host opening it for its own child is what makes "the kernel decides, the
+/// worker executes" a boundary rather than a convention — and the worker keeps
+/// its mode-invariant guards behind the seam regardless, so opening it widens
+/// *reachability*, never authority.
+pub const AGENT_TOOL_SEAM_ENV: &str = "LATTICEAI_AGENT_TOOL_SEAM";
+
 /// The origins a worker must trust to be usable through a front door.
 ///
 /// The CSRF guard builds its default trust set from the **worker's own** host
@@ -113,6 +125,10 @@ pub fn worker_python_path(command: &WorkerCommand, probe: &dyn HostProbe) -> Opt
 /// behind one. `None` — the direct topology, where the browser talks to the
 /// worker's own port — injects nothing, because there is no second origin to
 /// trust and inventing one would widen the CSRF policy for no reason.
+///
+/// [`AGENT_TOOL_SEAM_ENV`] is set for **every** supervised worker, fronted or
+/// not: the loop orchestrator runs in this process and talks to this child over
+/// loopback in either topology.
 pub fn worker_env(
     command: &WorkerCommand,
     port: u16,
@@ -127,6 +143,7 @@ pub fn worker_env(
     for flag in SAFETY_OFF_FLAGS {
         env.push((flag.into(), "false".into()));
     }
+    env.push((AGENT_TOOL_SEAM_ENV.into(), "1".into()));
     if let Some(gateway_port) = gateway_port {
         env.push((
             CSRF_TRUSTED_ORIGINS_ENV.into(),
@@ -183,6 +200,25 @@ mod tests {
         assert_eq!(
             lookup(&env, "LATTICEAI_AGENT_ROOT"),
             Some("/rt/agent_workspace")
+        );
+    }
+
+    /// The seam is the loop's only way to reach a model or a tool, and the
+    /// worker refuses it (404) unless the host says so.
+    #[test]
+    fn every_supervised_worker_gets_the_agent_seam_opened() {
+        for gateway in [None, Some(4825)] {
+            let env = worker_env(&command(), 4899, gateway, None, &StaticProbe::new());
+            assert_eq!(
+                lookup(&env, AGENT_TOOL_SEAM_ENV),
+                Some("1"),
+                "the native loop cannot run against a closed seam"
+            );
+        }
+        assert_eq!(AGENT_TOOL_SEAM_ENV, "LATTICEAI_AGENT_TOOL_SEAM");
+        assert!(
+            !SAFETY_OFF_FLAGS.contains(&AGENT_TOOL_SEAM_ENV),
+            "the seam is opened, not pinned off"
         );
     }
 

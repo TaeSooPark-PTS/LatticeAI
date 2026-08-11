@@ -1,0 +1,15 @@
+{
+  "key": "missing_seed",
+  "result": {
+    "edges": [],
+    "nodes": []
+  },
+  "spec": {
+    "key": "missing_seed",
+    "max_hops": 2,
+    "node_ids": [
+      "nope:missing"
+    ]
+  },
+  "suite": "multi_hop"
+}

@@ -1,0 +1,45 @@
+{
+  "key": "fallback_lexical",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다\n- 결정: 문서는 한국어로 쓴다\n- 관계: 박민서 님과 빌드 파이프라인을 함께 본다\n\n- [Relationship] 박민서 님과 빌드 파이프라인을 함께 본다 | source=self:relationship:d4 | 박민서 님과 빌드 파이프라인을 함께 본다\n- [Person] 박민서 님 | source=person:minseo | 빌드 파이프라인 담당자입니다.",
+      "context_quality": {
+        "limited": true,
+        "mode": "lexical_only",
+        "nodes": 1,
+        "reason": "벡터 검색을 사용할 수 없어 키워드 검색 결과만 사용했습니다"
+      },
+      "query": "박민서 님",
+      "sources": [],
+      "stats": {
+        "budget_trimmed": false,
+        "matches": 0,
+        "method": "fallback"
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 34,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 39,
+            "name": "Knowledge (fallback)",
+            "provenance": [],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 73
+      }
+    },
+    "sources_footnote": ""
+  },
+  "spec": {
+    "key": "fallback_lexical",
+    "query": "박민서 님"
+  },
+  "suite": "context_document"
+}

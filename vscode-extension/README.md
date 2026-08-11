@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**11.5.0 — Rust Complete** finishes Phases 2–4 of the Rust roadmap: the desktop now fronts through the Rust gateway by default, the native surface covers three-channel search, graph reads, history, context assembly, typed chunking, a permission kernel with 2,452 exact decision-table verdicts, and a scheduler that finally drives the background embed queue — all pinned by bidirectional parity goldens (191/191 retrieval, 332 chunks, zero epsilon). The Python worker keeps parsers, embedding production, LLM inference, mutations, and graph writes; the extension surface is unchanged.
+**11.5.1 — Rust Full Loop** completes the migration's explicit remainders — the agent loop orchestrator now runs in Rust (proven byte-identical against the real Python runtime and by a live worker smoke) and the document-generation context builder is native. Building on 11.5.0: the desktop now fronts through the Rust gateway by default, the native surface covers three-channel search, graph reads, history, context assembly, typed chunking, a permission kernel with 2,452 exact decision-table verdicts, and a scheduler that finally drives the background embed queue — all pinned by bidirectional parity goldens (191/191 retrieval, 332 chunks, zero epsilon). The Python worker keeps parsers, embedding production, LLM inference, mutations, and graph writes; the extension surface is unchanged.
 The memory stats moved into a hover badge with a small summary graph, the six
 capture chips folded behind one + on the composer, the model banner became a
 status pill with the single accented CTA, and past conversations / stats / the

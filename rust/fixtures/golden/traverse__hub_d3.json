@@ -44,6 +44,46 @@
         "weight": 0.35
       },
       {
+        "from": "doc:proposal",
+        "id": "edge:118aa0fc1ce3333002ab7296",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.87
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:bcc437c883d69520d5055a5e",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.86
+      },
+      {
+        "from": "file:meeting-minutes",
+        "id": "edge:e98ffd7dd121636629945e8b",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "meeting:weekly",
+        "type": "MENTIONS",
+        "weight": 0.79
+      },
+      {
+        "from": "doc:release-notes",
+        "id": "edge:1895af74189a6e7dde366375",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.72
+      },
+      {
         "from": "meeting:weekly",
         "id": "edge:dac11c0354953b35cf3fcc4b",
         "metadata": {
@@ -104,6 +144,126 @@
         "weight": 0.2
       },
       {
+        "from": "doc:proposal",
+        "id": "edge:004abb18089b94df451c1aa7",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:proposal",
+        "type": "MENTIONS",
+        "weight": 0.92
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:e4429dea61a61786d6e929d4",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "concept:evidence",
+        "type": "MENTIONS",
+        "weight": 0.91
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:9d7c30812b7f30ed956e1a29",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "feature:doc-generation",
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:a3970c26bfa32ef451ec5337",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "dec:doc-format",
+        "type": "MENTIONS",
+        "weight": 0.89
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:a83c0c5dbd4f361518e5d34d",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "task:proposal-review",
+        "type": "MENTIONS",
+        "weight": 0.88
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:237cdddaebf4d81e0ea18736",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "feature:command-palette",
+        "type": "MENTIONS",
+        "weight": 0.85
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:8a2e9fe01b4f40450ebd1211",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "task:parity-harness",
+        "type": "MENTIONS",
+        "weight": 0.84
+      },
+      {
+        "from": "doc:proposal",
+        "id": "edge:e102453c1335d2686054bd44",
+        "metadata": {
+          "legacy_label": "contains"
+        },
+        "to": "page:proposal-outline",
+        "type": "CONTAINS",
+        "weight": 0.83
+      },
+      {
+        "from": "deck:proposal",
+        "id": "edge:fcefea3af13a6967ca8050c0",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.82
+      },
+      {
+        "from": "file:meeting-minutes",
+        "id": "edge:b021c3b80b12beee374f2d5f",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "dec:doc-format",
+        "type": "MENTIONS",
+        "weight": 0.8
+      },
+      {
+        "from": "chat:proposal",
+        "id": "edge:eafedb993f0fc4323fdfa38a",
+        "metadata": {
+          "legacy_label": "mentions"
+        },
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.78
+      },
+      {
+        "from": "sheet:proposal-budget",
+        "id": "edge:4bf2021502951f76e7811377",
+        "metadata": {
+          "legacy_label": "relates_to"
+        },
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.73
+      },
+      {
         "from": "topic:quality",
         "id": "edge:777c7fccc069fb9d2ddf3a0a",
         "metadata": {
@@ -136,6 +296,110 @@
     ],
     "nodes": [
       {
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "relative_path": "notes/meeting-minutes.md"
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
+        "id": "deck:proposal",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "proposal.pptx"
+        },
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-29T09:00:00"
+      },
+      {
+        "id": "doc:release-notes",
+        "metadata": {
+          "source": "release"
+        },
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
+        "id": "task:proposal-review",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
+        "type": "Task",
+        "updated_at": "2026-07-27T09:00:00"
+      },
+      {
+        "id": "chat:proposal",
+        "metadata": {
+          "conversation_id": "conv-f"
+        },
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-26T09:00:00"
+      },
+      {
+        "id": "feature:doc-generation",
+        "metadata": {},
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
+      },
+      {
+        "id": "concept:proposal",
+        "metadata": {},
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
+      },
+      {
+        "id": "concept:evidence",
+        "metadata": {},
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept",
+        "updated_at": "2026-07-23T09:00:00"
+      },
+      {
+        "id": "dec:doc-format",
+        "metadata": {},
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision",
+        "updated_at": "2026-07-22T09:00:00"
+      },
+      {
+        "id": "page:proposal-outline",
+        "metadata": {},
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
+        "type": "Page",
+        "updated_at": "2026-07-21T09:00:00"
+      },
+      {
         "id": "dec:fusion-alpha",
         "metadata": {
           "category": "retrieval",
@@ -145,6 +409,27 @@
         "title": "Hybrid retrieval fusion stays alpha weighted",
         "type": "Decision",
         "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "id": "sheet:proposal-budget",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "proposal-budget.xlsx"
+        },
+        "summary": "제안서 예산 표입니다.",
+        "title": "proposal-budget.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-07-17T09:00:00"
+      },
+      {
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
       },
       {
         "id": "meeting:weekly",
@@ -259,6 +544,14 @@
         "title": "검색 품질",
         "type": "Topic",
         "updated_at": "2026-03-06T10:00:00"
+      },
+      {
+        "id": "feature:command-palette",
+        "metadata": {},
+        "summary": "The palette that opens search from anywhere.",
+        "title": "Command palette",
+        "type": "Feature",
+        "updated_at": "2026-03-05T10:00:00"
       }
     ],
     "root": "dec:fusion-alpha"

@@ -25,6 +25,21 @@
         "updated_at": "2026-04-22T18:05:00"
       },
       {
+        "id": "self:relationship:d4",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "workspace_id": "ws-beta"
+        },
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship",
+        "updated_at": "2026-07-05T09:00:00"
+      },
+      {
         "id": "person:minseo",
         "metadata": {
           "role": "reviewer"

@@ -26,6 +26,41 @@
     "matches": [
       {
         "fusion": "vector",
+        "id": "self:relationship:d4",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "vector": {
+            "confidence": 0.5,
+            "node_type": "Relationship",
+            "origin": "extraction",
+            "self_model": true,
+            "self_model_kind": "relationship",
+            "signal": "ko_with",
+            "workspace_id": "ws-beta"
+          },
+          "workspace_id": "ws-beta"
+        },
+        "node_id": "self:relationship:d4",
+        "rank": 1,
+        "rerank_score": 0.6,
+        "score": 0.6,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 1.0
+        },
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship",
+        "updated_at": "2026-07-05T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "chat:ranking",
         "metadata": {
           "conversation_id": "conv-1",
@@ -37,12 +72,12 @@
           }
         },
         "node_id": "chat:ranking",
-        "rank": 1,
-        "rerank_score": 0.6,
-        "score": 0.6,
+        "rank": 2,
+        "rerank_score": 0.424264,
+        "score": 0.424264,
         "scores": {
           "lexical": 0.0,
-          "vector": 1.0
+          "vector": 0.707107
         },
         "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
         "title": "랭킹 관련 대화",
@@ -58,40 +93,17 @@
           "source_node": "doc:handbook"
         },
         "node_id": "doc:handbook",
-        "rank": 2,
-        "rerank_score": 0.588546,
-        "score": 0.588546,
+        "rank": 3,
+        "rerank_score": 0.408076,
+        "score": 0.408076,
         "scores": {
-          "lexical": 0.5,
-          "vector": 0.647576
+          "lexical": 0.333333,
+          "vector": 0.457905
         },
         "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
         "title": "Lattice AI 사용 안내서",
         "type": "Document",
         "updated_at": "2026-06-12T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "concept:ranking",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
-        "rank": 3,
-        "rerank_score": 0.401719,
-        "score": 0.401719,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.669532
-        },
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
       },
       {
         "fusion": "both",
@@ -113,15 +125,106 @@
         "updated_at": "2026-07-15T11:00:00"
       },
       {
+        "fusion": "vector",
+        "id": "chat:proposal",
+        "metadata": {
+          "conversation_id": "conv-f",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "conversation_id": "conv-f",
+            "node_type": "Chat"
+          }
+        },
+        "node_id": "chat:proposal",
+        "rank": 5,
+        "rerank_score": 0.360556,
+        "score": 0.360556,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.600927
+        },
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-26T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "dec:doc-format",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:doc-format",
+        "rank": 6,
+        "rerank_score": 0.315554,
+        "score": 0.315554,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.525924
+        },
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision",
+        "updated_at": "2026-07-22T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "concept:ranking",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:ranking",
+        "rank": 7,
+        "rerank_score": 0.284059,
+        "score": 0.284059,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.473431
+        },
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
         "fusion": "both",
+        "id": "code:doc-builder",
+        "metadata": {
+          "filename": "context_builder.py",
+          "relative_path": "latticeai/core/context_builder.py"
+        },
+        "node_id": "code:doc-builder",
+        "rank": 8,
+        "rerank_score": 0.2,
+        "score": 0.2,
+        "scores": {
+          "lexical": 0.5,
+          "vector": 0.0
+        },
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
+        "fusion": "lexical",
         "id": "slide:fusion",
         "metadata": {},
         "node_id": "slide:fusion",
-        "rank": 5,
-        "rerank_score": 0.133333,
-        "score": 0.133333,
+        "rank": 9,
+        "rerank_score": 0.1,
+        "score": 0.1,
         "scores": {
-          "lexical": 0.333333,
+          "lexical": 0.25,
           "vector": 0.0
         },
         "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
@@ -131,14 +234,58 @@
       },
       {
         "fusion": "both",
+        "id": "self:trait:e5",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "workspace_id": null
+        },
+        "node_id": "self:trait:e5",
+        "rank": 10,
+        "rerank_score": 0.08,
+        "score": 0.08,
+        "scores": {
+          "lexical": 0.2,
+          "vector": 0.0
+        },
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
+      },
+      {
+        "fusion": "both",
+        "id": "self:root",
+        "metadata": {
+          "self_model": true,
+          "self_model_kind": "root"
+        },
+        "node_id": "self:root",
+        "rank": 11,
+        "rerank_score": 0.066667,
+        "score": 0.066667,
+        "scores": {
+          "lexical": 0.166667,
+          "vector": 0.0
+        },
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self",
+        "updated_at": "2026-07-01T09:00:00"
+      },
+      {
+        "fusion": "lexical",
         "id": "repo:lattice",
         "metadata": {},
         "node_id": "repo:lattice",
-        "rank": 6,
-        "rerank_score": 0.1,
-        "score": 0.1,
+        "rank": 12,
+        "rerank_score": 0.057143,
+        "score": 0.057143,
         "scores": {
-          "lexical": 0.25,
+          "lexical": 0.142857,
           "vector": 0.0
         },
         "summary": "The monorepo holding the Python worker and the Rust workspace.",
@@ -147,17 +294,17 @@
         "updated_at": "2026-02-21T10:00:00"
       },
       {
-        "fusion": "both",
+        "fusion": "lexical",
         "id": "source:repo",
         "metadata": {
           "source": "git"
         },
         "node_id": "source:repo",
-        "rank": 7,
-        "rerank_score": 0.08,
-        "score": 0.08,
+        "rank": 13,
+        "rerank_score": 0.05,
+        "score": 0.05,
         "scores": {
-          "lexical": 0.2,
+          "lexical": 0.125,
           "vector": 0.0
         },
         "summary": "Source repository for the product.",
@@ -167,26 +314,30 @@
       },
       {
         "fusion": "vector",
-        "id": "agent:librarian",
+        "id": "audio:proposal-call",
         "metadata": {
+          "ext": ".m4a",
+          "filename": "proposal-call.m4a",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "node_type": "Agent"
+            "ext": ".m4a",
+            "filename": "proposal-call.m4a",
+            "node_type": "Audio"
           }
         },
-        "node_id": "agent:librarian",
-        "rank": 8,
+        "node_id": "audio:proposal-call",
+        "rank": 14,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
           "lexical": 0.0,
           "vector": 0.0
         },
-        "summary": "An agent that files new documents into the graph.",
-        "title": "Librarian agent",
-        "type": "Agent",
-        "updated_at": "2026-03-03T10:00:00"
+        "summary": "제안서 관련 통화 녹음입니다.",
+        "title": "proposal-call.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-15T09:00:00"
       },
       {
         "fusion": "vector",
@@ -203,7 +354,7 @@
           }
         },
         "node_id": "audio:standup",
-        "rank": 9,
+        "rank": 15,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
@@ -214,33 +365,6 @@
         "title": "standup-2026-07-13.m4a",
         "type": "Audio",
         "updated_at": "2026-07-13T09:05:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "code:build-failure",
-        "metadata": {
-          "ext": ".py",
-          "filename": "build_pipeline.py",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".py",
-            "filename": "build_pipeline.py",
-            "node_type": "CodeFile"
-          }
-        },
-        "node_id": "code:build-failure",
-        "rank": 10,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
-        "title": "build_pipeline.py",
-        "type": "CodeFile",
-        "updated_at": "2026-04-22T18:05:00"
       },
       {
         "fusion": "vector",
@@ -257,7 +381,7 @@
           }
         },
         "node_id": "code:hybrid-search",
-        "rank": 11,
+        "rank": 16,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
@@ -271,7 +395,7 @@
       },
       {
         "fusion": "vector",
-        "id": "concept:retrieval",
+        "id": "concept:evidence",
         "metadata": {
           "parent_node_id": null,
           "parent_type": null,
@@ -279,18 +403,41 @@
             "node_type": "Concept"
           }
         },
-        "node_id": "concept:retrieval",
-        "rank": 12,
+        "node_id": "concept:evidence",
+        "rank": 17,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
           "lexical": 0.0,
           "vector": 0.0
         },
-        "summary": "Retrieval is the act of finding the right memory for a question.",
-        "title": "Retrieval",
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
         "type": "Concept",
-        "updated_at": "2026-04-02T10:00:00"
+        "updated_at": "2026-07-23T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "concept:proposal",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:proposal",
+        "rank": 18,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
       },
       {
         "fusion": "vector",
@@ -307,7 +454,7 @@
           }
         },
         "node_id": "dec:fusion-alpha",
-        "rank": 13,
+        "rank": 19,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
@@ -332,7 +479,7 @@
           }
         },
         "node_id": "dec:rust-foundation",
-        "rank": 14,
+        "rank": 20,
         "rerank_score": 0.0,
         "score": 0.0,
         "scores": {
@@ -343,169 +490,9 @@
         "title": "Rust 기반 검색 이관 결정",
         "type": "Decision",
         "updated_at": "2026-07-18T14:30:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "deck:review",
-        "metadata": {
-          "ext": ".pptx",
-          "filename": "quarterly-review.pptx",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".pptx",
-            "filename": "quarterly-review.pptx",
-            "node_type": "SlideDeck"
-          }
-        },
-        "node_id": "deck:review",
-        "rank": 15,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
-        "title": "분기 리뷰 발표자료",
-        "type": "SlideDeck",
-        "updated_at": "2026-07-02T15:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "doc:retrieval-spec",
-        "metadata": {
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".pdf",
-            "filename": "retrieval-spec.pdf",
-            "node_type": "Document"
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "rank": 16,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
-        "title": "Retrieval specification",
-        "type": "Document",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "error:timeout",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Error"
-          }
-        },
-        "node_id": "error:timeout",
-        "rank": 17,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "An error where the ranking took longer than the request budget.",
-        "title": "Search timeout",
-        "type": "Error",
-        "updated_at": "2026-03-04T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "feature:command-palette",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Feature"
-          }
-        },
-        "node_id": "feature:command-palette",
-        "rank": 18,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "The palette that opens search from anywhere.",
-        "title": "Command palette",
-        "type": "Feature",
-        "updated_at": "2026-03-05T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "file:ranking-notes",
-        "metadata": {
-          "ext": ".md",
-          "filename": "ranking-notes.md",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".md",
-            "filename": "ranking-notes.md",
-            "node_type": "File"
-          }
-        },
-        "node_id": "file:ranking-notes",
-        "rank": 19,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
-        "title": "ranking-notes.md",
-        "type": "File",
-        "updated_at": "2026-07-10T16:45:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "img:ocr-notes",
-        "metadata": {
-          "filename": "whiteboard-retrieval.png",
-          "ocr": true,
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "ImageText",
-            "ocr": true
-          }
-        },
-        "node_id": "img:ocr-notes",
-        "rank": 20,
-        "rerank_score": 0.0,
-        "score": 0.0,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.0
-        },
-        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
-        "title": "화이트보드 OCR 텍스트",
-        "type": "ImageText",
-        "updated_at": "2026-03-19T11:12:00"
       }
     ],
     "mode": "hybrid",
-    "multimodal": {
-      "images": 1,
-      "types": [
-        "ImageText"
-      ]
-    },
     "policy": {
       "rewrite_rules": [],
       "search_query": "ai"
@@ -518,7 +505,7 @@
       "model": null
     },
     "sources": {
-      "lexical": 5,
+      "lexical": 8,
       "vector": 40
     },
     "top_k": 20,
@@ -526,7 +513,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

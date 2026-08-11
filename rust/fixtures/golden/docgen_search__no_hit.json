@@ -1,0 +1,9 @@
+{
+  "key": "no_hit",
+  "result": [],
+  "spec": {
+    "key": "no_hit",
+    "query": "zzqq wumpus nonsense"
+  },
+  "suite": "docgen_search"
+}

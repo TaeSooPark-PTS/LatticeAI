@@ -1,0 +1,32 @@
+{
+  "key": "ko_self_model",
+  "result": [
+    {
+      "hybrid_score": 0.7164,
+      "id": "self:decision:a1",
+      "metadata": {
+        "confidence": 0.9,
+        "origin": "user",
+        "self_model": true,
+        "self_model_kind": "decision",
+        "signal": "ko_decision_marker",
+        "workspace_id": "ws-alpha"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.225,
+        "text": 1.0
+      },
+      "summary": "문서는 한국어로 쓴다",
+      "title": "문서는 한국어로 쓴다",
+      "type": "Decision",
+      "updated_at": "2026-07-02T09:00:00"
+    }
+  ],
+  "spec": {
+    "key": "ko_self_model",
+    "query": "문서는 한국어로"
+  },
+  "suite": "docgen_search"
+}

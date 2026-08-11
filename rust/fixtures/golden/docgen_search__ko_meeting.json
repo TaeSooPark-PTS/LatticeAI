@@ -1,0 +1,169 @@
+{
+  "key": "ko_meeting",
+  "result": [
+    {
+      "hybrid_score": 0.6535,
+      "id": "doc:proposal",
+      "metadata": {
+        "ext": ".md",
+        "filename": "proposal.md",
+        "relative_path": "docs/proposal.md"
+      },
+      "related_concepts": [
+        {
+          "id": "concept:evidence",
+          "title": "근거",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:ranking",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:retrieval",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        {
+          "id": "dec:doc-format",
+          "title": "문서 형식은 마크다운으로 통일",
+          "type": "Decision"
+        },
+        {
+          "id": "feature:command-palette",
+          "title": "Command palette",
+          "type": "Feature"
+        },
+        {
+          "id": "feature:doc-generation",
+          "title": "문서 생성",
+          "type": "Feature"
+        },
+        {
+          "id": "task:parity-harness",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        }
+      ],
+      "scores": {
+        "graph": 0.6598,
+        "recency": 0.9001,
+        "text": 0.3333
+      },
+      "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+      "title": "제안서 초안: 검색 품질 개선",
+      "type": "Document",
+      "updated_at": "2026-07-30T09:00:00"
+    },
+    {
+      "hybrid_score": 0.6195,
+      "id": "dec:rust-foundation",
+      "metadata": {
+        "category": "platform"
+      },
+      "related_concepts": [
+        {
+          "id": "task:parity-harness",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        }
+      ],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.5026,
+        "text": 0.6667
+      },
+      "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+      "title": "Rust 기반 검색 이관 결정",
+      "type": "Decision",
+      "updated_at": "2026-07-18T14:30:00"
+    },
+    {
+      "hybrid_score": 0.5384,
+      "id": "file:meeting-minutes",
+      "metadata": {
+        "filename": "meeting-minutes.md",
+        "relative_path": "notes/meeting-minutes.md"
+      },
+      "related_concepts": [
+        {
+          "id": "dec:doc-format",
+          "title": "문서 형식은 마크다운으로 통일",
+          "type": "Decision"
+        }
+      ],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.9979,
+        "text": 0.3333
+      },
+      "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+      "title": "meeting-minutes.md",
+      "type": "File",
+      "updated_at": "2026-08-01T11:00:00"
+    },
+    {
+      "hybrid_score": 0.5002,
+      "id": "img:ocr-notes",
+      "metadata": {
+        "filename": "whiteboard-retrieval.png",
+        "ocr": true
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.0,
+        "recency": 0.0012,
+        "text": 1.0
+      },
+      "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+      "title": "화이트보드 OCR 텍스트",
+      "type": "ImageText",
+      "updated_at": "2026-03-19T11:12:00"
+    },
+    {
+      "hybrid_score": 0.4044,
+      "id": "concept:proposal",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.3466,
+        "recency": 0.6688,
+        "text": 0.3333
+      },
+      "summary": "제안서는 결정을 요청하는 문서입니다.",
+      "title": "제안서",
+      "type": "Concept",
+      "updated_at": "2026-07-24T09:00:00"
+    },
+    {
+      "hybrid_score": 0.319,
+      "id": "doc:handbook",
+      "metadata": {
+        "ext": ".pdf",
+        "filename": "handbook.pdf",
+        "source_node": "doc:handbook"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.0838,
+        "text": 0.3333
+      },
+      "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+      "title": "Lattice AI 사용 안내서",
+      "type": "Document",
+      "updated_at": "2026-06-12T10:00:00"
+    }
+  ],
+  "spec": {
+    "key": "ko_meeting",
+    "query": "회의 결정 사항"
+  },
+  "suite": "docgen_search"
+}

@@ -97,6 +97,69 @@
       {
         "graph_context": [
           {
+            "reason": "direct_match"
+          }
+        ],
+        "id": "self:relationship:d4",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.5,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "relationship",
+          "signal": "ko_with",
+          "workspace_id": "ws-beta"
+        },
+        "node_id": "self:relationship:d4",
+        "rank": 3,
+        "score": 0.5,
+        "source_scores": {
+          "graph": 0.5
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "title": "박민서 님과 빌드 파이프라인을 함께 본다",
+        "type": "Relationship",
+        "updated_at": "2026-07-05T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "self:relationship:d4",
+              "id": "edge:578c90c0c0b9bc3e042cebb6",
+              "to": "self:root",
+              "type": "PART_OF",
+              "weight": 1.0
+            }
+          }
+        ],
+        "id": "self:root",
+        "item_type": "node",
+        "metadata": {
+          "self_model": true,
+          "self_model_kind": "root"
+        },
+        "node_id": "self:root",
+        "rank": 4,
+        "score": 0.225,
+        "source_scores": {
+          "graph": 0.225
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self",
+        "updated_at": "2026-07-01T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
             "reason": "neighbor_expansion",
             "relationship": {
               "from": "org:lattice",
@@ -111,10 +174,10 @@
         "item_type": "node",
         "metadata": {},
         "node_id": "org:lattice",
-        "rank": 3,
-        "score": 0.225,
+        "rank": 5,
+        "score": 0.15,
         "source_scores": {
-          "graph": 0.225
+          "graph": 0.15
         },
         "sources": [
           "graph"

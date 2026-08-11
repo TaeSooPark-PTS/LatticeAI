@@ -26,23 +26,22 @@
     "matches": [
       {
         "fusion": "both",
-        "id": "dec:fusion-alpha",
+        "id": "doc:release-notes",
         "metadata": {
-          "category": "retrieval",
-          "owner": "jiwon"
+          "source": "release"
         },
-        "node_id": "dec:fusion-alpha",
+        "node_id": "doc:release-notes",
         "rank": 1,
-        "rerank_score": 0.802161,
-        "score": 0.802161,
+        "rerank_score": 0.704218,
+        "score": 0.704218,
         "scores": {
           "lexical": 1.0,
-          "vector": 0.670268
+          "vector": 0.50703
         },
-        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
-        "title": "Hybrid retrieval fusion stays alpha weighted",
-        "type": "Decision",
-        "updated_at": "2026-07-20T09:00:00"
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
       },
       {
         "fusion": "both",
@@ -53,10 +52,10 @@
         },
         "node_id": "img:whiteboard",
         "rank": 2,
-        "rerank_score": 0.666667,
-        "score": 0.666667,
+        "rerank_score": 0.657143,
+        "score": 0.657143,
         "scores": {
-          "lexical": 0.166667,
+          "lexical": 0.142857,
           "vector": 1.0
         },
         "summary": "Whiteboard photo from the retrieval design session.",
@@ -70,10 +69,10 @@
         "metadata": {},
         "node_id": "concept:retrieval",
         "rank": 3,
-        "rerank_score": 0.613655,
-        "score": 0.613655,
+        "rerank_score": 0.60921,
+        "score": 0.60921,
         "scores": {
-          "lexical": 0.111111,
+          "lexical": 0.1,
           "vector": 0.948684
         },
         "summary": "Retrieval is the act of finding the right memory for a question.",
@@ -83,17 +82,37 @@
       },
       {
         "fusion": "both",
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 4,
+        "rerank_score": 0.602161,
+        "score": 0.602161,
+        "scores": {
+          "lexical": 0.5,
+          "vector": 0.670268
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": "both",
         "id": "doc:retrieval-spec",
         "metadata": {
           "ext": ".pdf",
           "filename": "retrieval-spec.pdf"
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 4,
-        "rerank_score": 0.579107,
-        "score": 0.579107,
+        "rank": 5,
+        "rerank_score": 0.545774,
+        "score": 0.545774,
         "scores": {
-          "lexical": 0.333333,
+          "lexical": 0.25,
           "vector": 0.742957
         },
         "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
@@ -109,11 +128,11 @@
           "filename": "retrieval-metrics.xlsx"
         },
         "node_id": "sheet:metrics",
-        "rank": 5,
-        "rerank_score": 0.54931,
-        "score": 0.54931,
+        "rank": 6,
+        "rerank_score": 0.52931,
+        "score": 0.52931,
         "scores": {
-          "lexical": 0.25,
+          "lexical": 0.2,
           "vector": 0.74885
         },
         "summary": "Recall and precision per query class for the ranking experiments.",
@@ -129,11 +148,11 @@
           "ocr": true
         },
         "node_id": "img:ocr-notes",
-        "rank": 6,
-        "rerank_score": 0.513631,
-        "score": 0.513631,
+        "rank": 7,
+        "rerank_score": 0.500298,
+        "score": 0.500298,
         "scores": {
-          "lexical": 0.2,
+          "lexical": 0.166667,
           "vector": 0.722718
         },
         "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
@@ -148,11 +167,11 @@
           "status": "open"
         },
         "node_id": "task:parity-harness",
-        "rank": 7,
-        "rerank_score": 0.474723,
-        "score": 0.474723,
+        "rank": 8,
+        "rerank_score": 0.408056,
+        "score": 0.408056,
         "scores": {
-          "lexical": 0.5,
+          "lexical": 0.333333,
           "vector": 0.457872
         },
         "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
@@ -173,7 +192,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 8,
+        "rank": 9,
         "rerank_score": 0.117094,
         "score": 0.117094,
         "scores": {
@@ -187,6 +206,66 @@
       },
       {
         "fusion": "vector",
+        "id": "self:preference:c3",
+        "metadata": {
+          "confidence": 0.8,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "preference",
+          "signal": "ko_prefer",
+          "vector": {
+            "confidence": 0.8,
+            "node_type": "Preference",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "preference",
+            "signal": "ko_prefer",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:preference:c3",
+        "rank": 10,
+        "rerank_score": 0.101406,
+        "score": 0.101406,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.16901
+        },
+        "summary": "설명은 짧고 근거를 먼저",
+        "title": "설명은 짧고 근거를 먼저",
+        "type": "Preference",
+        "updated_at": "2026-07-04T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "self:unknown:f6",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "rank": 11,
+        "rerank_score": 0.098378,
+        "score": 0.098378,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.163964
+        },
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "tie:a",
         "metadata": {
           "parent_node_id": null,
@@ -196,7 +275,7 @@
           }
         },
         "node_id": "tie:a",
-        "rank": 9,
+        "rank": 12,
         "rerank_score": 0.095606,
         "score": 0.095606,
         "scores": {
@@ -219,7 +298,7 @@
           }
         },
         "node_id": "tie:b",
-        "rank": 10,
+        "rank": 13,
         "rerank_score": 0.095606,
         "score": 0.095606,
         "scores": {
@@ -242,7 +321,7 @@
           }
         },
         "node_id": "tie:c",
-        "rank": 11,
+        "rank": 14,
         "rerank_score": 0.095606,
         "score": 0.095606,
         "scores": {
@@ -265,7 +344,7 @@
           }
         },
         "node_id": "tie:d",
-        "rank": 12,
+        "rank": 15,
         "rerank_score": 0.095606,
         "score": 0.095606,
         "scores": {
@@ -288,7 +367,7 @@
           }
         },
         "node_id": "tie:e",
-        "rank": 13,
+        "rank": 16,
         "rerank_score": 0.095606,
         "score": 0.095606,
         "scores": {
@@ -311,7 +390,7 @@
           }
         },
         "node_id": "page:onboarding",
-        "rank": 14,
+        "rank": 17,
         "rerank_score": 0.093056,
         "score": 0.093056,
         "scores": {
@@ -338,7 +417,7 @@
           }
         },
         "node_id": "audio:standup",
-        "rank": 15,
+        "rank": 18,
         "rerank_score": 0.091273,
         "score": 0.091273,
         "scores": {
@@ -365,7 +444,7 @@
           }
         },
         "node_id": "code:hybrid-search",
-        "rank": 16,
+        "rank": 19,
         "rerank_score": 0.077902,
         "score": 0.077902,
         "scores": {
@@ -379,95 +458,30 @@
       },
       {
         "fusion": "vector",
-        "id": "agent:librarian",
+        "id": "code:doc-builder",
         "metadata": {
+          "filename": "context_builder.py",
           "parent_node_id": null,
           "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
           "vector": {
-            "node_type": "Agent"
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
           }
         },
-        "node_id": "agent:librarian",
-        "rank": 17,
-        "rerank_score": 0.075323,
-        "score": 0.075323,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.125538
-        },
-        "summary": "An agent that files new documents into the graph.",
-        "title": "Librarian agent",
-        "type": "Agent",
-        "updated_at": "2026-03-03T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "twin:doc-a",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "twin:doc-a",
-        "rank": 18,
-        "rerank_score": 0.074056,
-        "score": 0.074056,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.123427
-        },
-        "summary": "동일한 시각의 문서 A",
-        "title": "Twin document A",
-        "type": "Document",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "twin:doc-b",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "twin:doc-b",
-        "rank": 19,
-        "rerank_score": 0.074056,
-        "score": 0.074056,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.123427
-        },
-        "summary": "동일한 시각의 문서 B",
-        "title": "Twin document B",
-        "type": "Document",
-        "updated_at": "2026-02-05T00:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "meeting:kickoff",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Meeting"
-          }
-        },
-        "node_id": "meeting:kickoff",
+        "node_id": "code:doc-builder",
         "rank": 20,
-        "rerank_score": 0.069564,
-        "score": 0.069564,
+        "rerank_score": 0.077525,
+        "score": 0.077525,
         "scores": {
           "lexical": 0.0,
-          "vector": 0.11594
+          "vector": 0.129209
         },
-        "summary": "Kickoff meeting for the Rust foundation work.",
-        "title": "Kickoff meeting",
-        "type": "Meeting",
-        "updated_at": "2026-02-09T10:00:00"
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
       }
     ],
     "mode": "hybrid",
@@ -490,7 +504,7 @@
       "model": null
     },
     "sources": {
-      "lexical": 9,
+      "lexical": 10,
       "vector": 40
     },
     "top_k": 20,
@@ -498,7 +512,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

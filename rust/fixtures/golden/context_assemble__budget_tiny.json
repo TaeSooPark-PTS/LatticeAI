@@ -110,7 +110,7 @@
             },
             {
               "id": "meeting:weekly",
-              "score": 0.22,
+              "score": 0.175,
               "sources": [
                 "keyword",
                 "vector",
@@ -118,8 +118,8 @@
               ]
             },
             {
-              "id": "doc:handbook",
-              "score": 0.180769,
+              "id": "file:meeting-minutes",
+              "score": 0.168182,
               "sources": [
                 "keyword",
                 "vector",

@@ -250,6 +250,50 @@
           {
             "reason": "neighbor_expansion",
             "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:8a2e9fe01b4f40450ebd1211",
+              "to": "task:parity-harness",
+              "type": "MENTIONS",
+              "weight": 0.84
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "doc:proposal",
+              "id": "edge:118aa0fc1ce3333002ab7296",
+              "to": "concept:retrieval",
+              "type": "MENTIONS",
+              "weight": 0.87
+            }
+          }
+        ],
+        "id": "doc:proposal",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "node_id": "doc:proposal",
+        "rank": 8,
+        "score": 0.225,
+        "source_scores": {
+          "graph": 0.225
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
               "from": "task:parity-harness",
               "id": "edge:114efd07a566c6c3774cf8c6",
               "to": "dec:rust-foundation",
@@ -264,7 +308,7 @@
           "category": "platform"
         },
         "node_id": "dec:rust-foundation",
-        "rank": 8,
+        "rank": 9,
         "score": 0.225,
         "source_scores": {
           "graph": 0.225
@@ -296,7 +340,7 @@
           "role": "owner"
         },
         "node_id": "person:jiwon",
-        "rank": 9,
+        "rank": 10,
         "score": 0.225,
         "source_scores": {
           "graph": 0.225
@@ -319,7 +363,7 @@
         "item_type": "node",
         "metadata": {},
         "node_id": "error:timeout",
-        "rank": 10,
+        "rank": 11,
         "score": 0.142857,
         "source_scores": {
           "graph": 0.142857

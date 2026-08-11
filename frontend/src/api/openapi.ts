@@ -623,6 +623,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/change-proposal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Change Proposal
+         * @description Ask the governor what should happen to this write.
+         *
+         *     The verdict is returned verbatim — ``{"decision": "allow_additive"}``
+         *     or ``{"decision": "proposed", "proposal": {...}}`` — because the Rust
+         *     loop has to act on the same facts the Review Center will show.
+         *
+         *     ``review`` answers ``None`` for "I have nothing to say about this call:
+         *     fall through to the normal gates". Three different situations collapse
+         *     into that one ``None`` (not a governed tool; no proposal required; the
+         *     edit could not be computed deterministically) and the service does not
+         *     distinguish them, so neither does this payload: ``{"decision": "none"}``
+         *     and nothing invented about why.
+         *
+         *     No mode-invariant guard here, because nothing executes: staging a
+         *     proposal writes a review item, and the write itself still has to come
+         *     back through ``/agent/tool`` — where the guards are.
+         */
+        post: operations["agent_change_proposal_agent_change_proposal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/eval": {
         parameters: {
             query?: never;
@@ -640,6 +675,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/llm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Llm
+         * @description Generate once. Writes nothing, remembers nothing.
+         *
+         *     Not gated by ``LATTICEAI_AGENT_TOOL_SEAM``: a completion has no side
+         *     effect to gate, and the Rust loop is not the only caller that wants one
+         *     (``/rust/context/document`` composes a prompt the same way). Auth and
+         *     the per-step rate limit are the whole ceremony.
+         *
+         *     Structural problems in the body — a missing ``message``, a string where
+         *     a number belongs — answer with FastAPI's own 422, uniform with every
+         *     other router. Semantic ones answer in the caller's language.
+         */
+        post: operations["agent_llm_agent_llm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/resume": {
         parameters: {
             query?: never;
@@ -651,6 +715,33 @@ export interface paths {
         put?: never;
         /** Agent Resume */
         post: operations["agent_resume_agent_resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/tool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Tool
+         * @description Run one tool through the same lifecycle the Python loop uses.
+         *
+         *     The answer shape mirrors the loop's own catch (``execution.py``): a
+         *     ``ToolError``/``KeyError``/``TypeError``/``PermissionError`` is the
+         *     *step's* outcome, not the request's, so it comes back 200 with
+         *     ``{"error": ...}`` for the transcript. A denial — role, circuit
+         *     breaker, fail-closed governance — is the request's outcome and comes
+         *     back 4xx, because retrying it would be pointless.
+         */
+        post: operations["agent_tool_agent_tool_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7521,6 +7612,30 @@ export interface components {
             /** Role */
             role?: string | null;
         };
+        /**
+         * AgentChangeProposalRequest
+         * @description A governor consultation for a write that may touch existing content.
+         *
+         *     ``policy`` is optional: the Rust kernel already holds the policy it
+         *     preflighted with, and passing it back keeps the two sides deciding on the
+         *     same facts. Omitted, the registry's own policy for this call is used.
+         */
+        AgentChangeProposalRequest: {
+            /** Args */
+            args?: {
+                [key: string]: unknown;
+            };
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Policy */
+            policy?: {
+                [key: string]: unknown;
+            } | null;
+            /** Tool */
+            tool: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
         /** AgentConfigRequest */
         AgentConfigRequest: {
             /**
@@ -7539,6 +7654,33 @@ export interface components {
             case_id?: string | null;
             /** Skill */
             skill: string;
+        };
+        /**
+         * AgentLLMRequest
+         * @description One completion, with the model chosen per call.
+         *
+         *     ``model_id`` omitted means the router's current default; a model that is
+         *     not cached makes ``generate_as`` answer ``"No model."``, which is returned
+         *     verbatim rather than dressed up as an error — the loop records it as the
+         *     step's text and re-plans, exactly as the Python loop does.
+         */
+        AgentLLMRequest: {
+            /** Context */
+            context?: string | null;
+            /**
+             * Max Tokens
+             * @default 4096
+             */
+            max_tokens: number;
+            /** Message */
+            message: string;
+            /** Model Id */
+            model_id?: string | null;
+            /**
+             * Temperature
+             * @default 0.2
+             */
+            temperature: number;
         };
         /** AgentRegisterRequest */
         AgentRegisterRequest: {
@@ -7664,6 +7806,20 @@ export interface components {
              * @default []
              */
             roles: string[];
+        };
+        /**
+         * AgentToolRequest
+         * @description One governed tool call on behalf of the authenticated user.
+         */
+        AgentToolRequest: {
+            /** Args */
+            args?: {
+                [key: string]: unknown;
+            };
+            /** Tool */
+            tool: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /** AutomationRunNowRequest */
         AutomationRunNowRequest: {
@@ -10979,6 +11135,39 @@ export interface operations {
             };
         };
     };
+    agent_change_proposal_agent_change_proposal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentChangeProposalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     agent_eval_agent_eval_post: {
         parameters: {
             query?: never;
@@ -11012,6 +11201,39 @@ export interface operations {
             };
         };
     };
+    agent_llm_agent_llm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentLLMRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     agent_resume_agent_resume_post: {
         parameters: {
             query?: never;
@@ -11022,6 +11244,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AgentResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_tool_agent_tool_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentToolRequest"];
             };
         };
         responses: {

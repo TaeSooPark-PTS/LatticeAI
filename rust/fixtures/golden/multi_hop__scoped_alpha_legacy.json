@@ -1,0 +1,196 @@
+{
+  "key": "scoped_alpha_legacy",
+  "result": {
+    "edges": [
+      {
+        "from": "chat:proposal",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.78
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:evidence",
+        "type": "MENTIONS",
+        "weight": 0.91
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:proposal",
+        "type": "MENTIONS",
+        "weight": 0.92
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.87
+      },
+      {
+        "from": "doc:proposal",
+        "to": "dec:doc-format",
+        "type": "MENTIONS",
+        "weight": 0.89
+      },
+      {
+        "from": "doc:proposal",
+        "to": "feature:command-palette",
+        "type": "MENTIONS",
+        "weight": 0.85
+      },
+      {
+        "from": "doc:proposal",
+        "to": "feature:doc-generation",
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "from": "doc:proposal",
+        "to": "page:proposal-outline",
+        "type": "CONTAINS",
+        "weight": 0.83
+      },
+      {
+        "from": "doc:proposal",
+        "to": "task:parity-harness",
+        "type": "MENTIONS",
+        "weight": 0.84
+      },
+      {
+        "from": "doc:proposal",
+        "to": "task:proposal-review",
+        "type": "MENTIONS",
+        "weight": 0.88
+      },
+      {
+        "from": "sheet:proposal-budget",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.73
+      }
+    ],
+    "nodes": [
+      {
+        "hop": 0,
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document"
+      },
+      {
+        "hop": 1,
+        "id": "chat:proposal",
+        "metadata": {
+          "conversation_id": "conv-f"
+        },
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat"
+      },
+      {
+        "hop": 1,
+        "id": "concept:evidence",
+        "metadata": {},
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept"
+      },
+      {
+        "hop": 1,
+        "id": "concept:proposal",
+        "metadata": {},
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept"
+      },
+      {
+        "hop": 1,
+        "id": "concept:retrieval",
+        "metadata": {},
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept"
+      },
+      {
+        "hop": 1,
+        "id": "dec:doc-format",
+        "metadata": {},
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision"
+      },
+      {
+        "hop": 1,
+        "id": "feature:command-palette",
+        "metadata": {},
+        "summary": "The palette that opens search from anywhere.",
+        "title": "Command palette",
+        "type": "Feature"
+      },
+      {
+        "hop": 1,
+        "id": "feature:doc-generation",
+        "metadata": {},
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature"
+      },
+      {
+        "hop": 1,
+        "id": "page:proposal-outline",
+        "metadata": {},
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
+        "type": "Page"
+      },
+      {
+        "hop": 1,
+        "id": "sheet:proposal-budget",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "proposal-budget.xlsx"
+        },
+        "summary": "제안서 예산 표입니다.",
+        "title": "proposal-budget.xlsx",
+        "type": "Spreadsheet"
+      },
+      {
+        "hop": 1,
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task"
+      },
+      {
+        "hop": 1,
+        "id": "task:proposal-review",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
+        "type": "Task"
+      }
+    ]
+  },
+  "spec": {
+    "allowed": [
+      "ws-alpha"
+    ],
+    "key": "scoped_alpha_legacy",
+    "legacy": true,
+    "max_hops": 2,
+    "node_ids": [
+      "doc:proposal"
+    ]
+  },
+  "suite": "multi_hop"
+}

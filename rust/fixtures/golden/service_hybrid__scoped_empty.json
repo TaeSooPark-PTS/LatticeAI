@@ -18,8 +18,8 @@
         "query": "hybrid retrieval ranking",
         "recall": {
           "backend": "bruteforce-cosine",
-          "candidates_scanned": 44,
-          "candidates_total": 44,
+          "candidates_scanned": 69,
+          "candidates_total": 69,
           "detail": null,
           "max_candidates": 10000,
           "truncated": false

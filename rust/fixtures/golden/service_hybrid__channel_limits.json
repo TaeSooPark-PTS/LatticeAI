@@ -18,8 +18,8 @@
         "query": "hybrid retrieval ranking",
         "recall": {
           "backend": "bruteforce-cosine",
-          "candidates_scanned": 44,
-          "candidates_total": 44,
+          "candidates_scanned": 69,
+          "candidates_total": 69,
           "detail": null,
           "max_candidates": 10000,
           "truncated": false
@@ -101,9 +101,9 @@
         },
         "node_id": "sheet:metrics",
         "rank": 2,
-        "score": 0.4875,
+        "score": 0.47,
         "source_scores": {
-          "keyword": 0.25,
+          "keyword": 0.2,
           "vector": 0.539077
         },
         "sources": [
@@ -120,7 +120,40 @@
           "query_class": "fact",
           "sources": [
             "keyword",
-            "vector",
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.25,
+            "keyword": 0.35,
+            "vector": 0.4
+          }
+        },
+        "id": "task:parity-harness",
+        "item_type": "node",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 3,
+        "score": 0.301249,
+        "source_scores": {
+          "keyword": 0.333333,
+          "vector": 0.461455
+        },
+        "sources": [
+          "keyword",
+          "vector"
+        ],
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "fact",
+          "sources": [
+            "keyword",
             "graph"
           ],
           "weights": {
@@ -134,28 +167,26 @@
             "reason": "direct_match"
           }
         ],
-        "id": "task:parity-harness",
+        "id": "doc:release-notes",
         "item_type": "node",
         "metadata": {
-          "status": "open"
+          "source": "release"
         },
-        "node_id": "task:parity-harness",
-        "rank": 3,
-        "score": 0.484582,
+        "node_id": "doc:release-notes",
+        "rank": 4,
+        "score": 0.3,
         "source_scores": {
           "graph": 0.5,
-          "keyword": 0.5,
-          "vector": 0.461455
+          "keyword": 0.5
         },
         "sources": [
           "keyword",
-          "vector",
           "graph"
         ],
-        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
-        "title": "Build the retrieval parity harness",
-        "type": "Task",
-        "updated_at": "2026-07-15T11:00:00"
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
       },
       {
         "fusion": {
@@ -177,10 +208,10 @@
           "filename": "hybrid.py"
         },
         "node_id": "code:hybrid-search",
-        "rank": 4,
-        "score": 0.291137,
+        "rank": 5,
+        "score": 0.261971,
         "source_scores": {
-          "keyword": 0.333333,
+          "keyword": 0.25,
           "vector": 0.436177
         },
         "sources": [
@@ -214,7 +245,7 @@
           }
         },
         "node_id": "concept:retrieval",
-        "rank": 5,
+        "rank": 6,
         "score": 0.193498,
         "source_scores": {
           "vector": 0.483744
@@ -265,7 +296,7 @@
         "item_type": "node",
         "metadata": {},
         "node_id": "meeting:weekly",
-        "rank": 6,
+        "rank": 7,
         "score": 0.1125,
         "source_scores": {
           "graph": 0.45
@@ -345,7 +376,7 @@
           "filename": "ranking-notes.md"
         },
         "node_id": "file:ranking-notes",
-        "rank": 7,
+        "rank": 8,
         "score": 0.1125,
         "source_scores": {
           "graph": 0.45
@@ -384,6 +415,16 @@
           {
             "reason": "neighbor_expansion",
             "relationship": {
+              "from": "doc:release-notes",
+              "id": "edge:1895af74189a6e7dde366375",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.72
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
               "from": "doc:retrieval-spec",
               "id": "edge:ac803179d2934d2cf5aa254e",
               "to": "concept:ranking",
@@ -404,6 +445,16 @@
           {
             "reason": "neighbor_expansion",
             "relationship": {
+              "from": "doc:release-notes",
+              "id": "edge:1895af74189a6e7dde366375",
+              "to": "concept:ranking",
+              "type": "MENTIONS",
+              "weight": 0.72
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
               "from": "doc:retrieval-spec",
               "id": "edge:ac803179d2934d2cf5aa254e",
               "to": "concept:ranking",
@@ -416,7 +467,7 @@
         "item_type": "node",
         "metadata": {},
         "node_id": "concept:ranking",
-        "rank": 8,
+        "rank": 9,
         "score": 0.1125,
         "source_scores": {
           "graph": 0.45
@@ -428,39 +479,6 @@
         "title": "Ranking",
         "type": "Concept",
         "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "fact",
-          "sources": [
-            "keyword"
-          ],
-          "weights": {
-            "graph": 0.25,
-            "keyword": 0.35,
-            "vector": 0.4
-          }
-        },
-        "id": "chunk:spec:2",
-        "item_type": "node",
-        "metadata": {
-          "index": 1,
-          "source_node": "doc:retrieval-spec",
-          "start_char": 900
-        },
-        "node_id": "chunk:spec:2",
-        "rank": 9,
-        "score": 0.07,
-        "source_scores": {
-          "keyword": 0.2
-        },
-        "sources": [
-          "keyword"
-        ],
-        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
-        "title": "retrieval-spec.pdf chunk 2",
-        "type": "Chunk",
-        "updated_at": "2026-05-28T13:15:02"
       }
     ],
     "mode": "hybrid",

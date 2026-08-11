@@ -126,6 +126,7 @@ def test_http_error_carries_the_localized_detail():
 # test_the_two_gates_agree below fails if the two ever drift apart.
 MIGRATED_ROUTERS = [
     "latticeai/api/admin.py",
+    "latticeai/api/agent_worker_seam.py",
     "latticeai/api/auth.py",
     "latticeai/api/browser.py",
     "latticeai/api/chat.py",

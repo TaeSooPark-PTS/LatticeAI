@@ -147,6 +147,25 @@
         "updated_at": "2026-07-20T09:00:00"
       },
       {
+        "id": "doc:release-notes",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "release",
+          "vector": {
+            "node_type": "Document",
+            "source": "release"
+          }
+        },
+        "node_id": "doc:release-notes",
+        "score": 0.294174,
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
         "id": "task:parity-harness",
         "item_type": "node",
         "metadata": {
@@ -183,6 +202,54 @@
         "title": "github.com/lattice/ai",
         "type": "Source",
         "updated_at": "2026-02-20T10:00:00"
+      },
+      {
+        "id": "self:preference:c3",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.8,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "preference",
+          "signal": "ko_prefer",
+          "vector": {
+            "confidence": 0.8,
+            "node_type": "Preference",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "preference",
+            "signal": "ko_prefer",
+            "workspace_id": null
+          },
+          "workspace_id": null
+        },
+        "node_id": "self:preference:c3",
+        "score": 0.098058,
+        "summary": "설명은 짧고 근거를 먼저",
+        "title": "설명은 짧고 근거를 먼저",
+        "type": "Preference",
+        "updated_at": "2026-07-04T09:00:00"
+      },
+      {
+        "id": "self:unknown:f6",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "score": 0.09513,
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
       },
       {
         "id": "tie:e",
@@ -329,6 +396,27 @@
         "updated_at": "2026-07-08T09:30:00"
       },
       {
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "score": 0.074966,
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
         "id": "agent:librarian",
         "item_type": "node",
         "metadata": {
@@ -431,6 +519,48 @@
         "updated_at": "2026-02-22T10:00:00"
       },
       {
+        "id": "img:proposal-sketch",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".png",
+          "filename": "proposal-sketch.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "proposal-sketch.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:proposal-sketch",
+        "score": 0.05947,
+        "summary": "제안서 구조 스케치입니다.",
+        "title": "proposal-sketch.png",
+        "type": "Image",
+        "updated_at": "2026-07-16T09:00:00"
+      },
+      {
+        "id": "self:root",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "root",
+          "vector": {
+            "node_type": "Self",
+            "self_model": true,
+            "self_model_kind": "root"
+          }
+        },
+        "node_id": "self:root",
+        "score": 0.057831,
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self",
+        "updated_at": "2026-07-01T09:00:00"
+      },
+      {
         "id": "legacy:global-note",
         "item_type": "node",
         "metadata": {
@@ -448,155 +578,28 @@
         "updated_at": "2026-06-20T10:00:00"
       },
       {
-        "id": "chat:ranking",
+        "id": "page:proposal-outline",
         "item_type": "node",
         "metadata": {
-          "conversation_id": "conv-1",
           "parent_node_id": null,
           "parent_type": null,
           "vector": {
-            "conversation_id": "conv-1",
-            "node_type": "Chat"
+            "node_type": "Page"
           }
         },
-        "node_id": "chat:ranking",
+        "node_id": "page:proposal-outline",
         "score": 0.054393,
-        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
-        "title": "랭킹 관련 대화",
-        "type": "Chat",
-        "updated_at": "2026-07-05T21:00:00"
-      },
-      {
-        "id": "person:jiwon",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "role": "owner",
-          "vector": {
-            "node_type": "Person",
-            "role": "owner"
-          }
-        },
-        "node_id": "person:jiwon",
-        "score": 0.049814,
-        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
-        "title": "김지원 님",
-        "type": "Person",
-        "updated_at": "2026-04-11T10:00:00"
-      },
-      {
-        "id": "feature:command-palette",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Feature"
-          }
-        },
-        "node_id": "feature:command-palette",
-        "score": 0.039223,
-        "summary": "The palette that opens search from anywhere.",
-        "title": "Command palette",
-        "type": "Feature",
-        "updated_at": "2026-03-05T10:00:00"
-      },
-      {
-        "id": "concept:ranking",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
-        "score": 0.036418,
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "id": "doc:handbook",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".pdf",
-          "filename": "handbook.pdf",
-          "parent_node_id": null,
-          "parent_type": null,
-          "source_node": "doc:handbook",
-          "vector": {
-            "ext": ".pdf",
-            "filename": "handbook.pdf",
-            "node_type": "Document",
-            "source_node": "doc:handbook"
-          }
-        },
-        "node_id": "doc:handbook",
-        "score": 0.035223,
-        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
-        "title": "Lattice AI 사용 안내서",
-        "type": "Document",
-        "updated_at": "2026-06-12T10:00:00"
-      },
-      {
-        "id": "repo:lattice",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Repository"
-          }
-        },
-        "node_id": "repo:lattice",
-        "score": 0.034669,
-        "summary": "The monorepo holding the Python worker and the Rust workspace.",
-        "title": "lattice-ai",
-        "type": "Repository",
-        "updated_at": "2026-02-21T10:00:00"
-      },
-      {
-        "id": "chunk:spec:1",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "heading_path": "Retrieval > Fusion",
-            "index": 0,
-            "page": 2,
-            "source_node": "doc:retrieval-spec",
-            "start_char": 0
-          },
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "locator": "Retrieval > Fusion · p.2",
-          "parent_node_id": "doc:retrieval-spec",
-          "parent_type": "Document",
-          "vector": {
-            "heading_path": "Retrieval > Fusion",
-            "index": 0,
-            "page": 2,
-            "parent_source_node": "doc:retrieval-spec",
-            "source_node": "doc:retrieval-spec",
-            "start_char": 0
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "score": 0.030628,
-        "summary": "The lexical channel scores one over rank. The vector channel is max normalized before fusion.",
-        "title": "Retrieval specification",
-        "type": "Chunk",
-        "updated_at": "2026-05-28T13:15:00"
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
+        "type": "Page",
+        "updated_at": "2026-07-21T09:00:00"
       }
     ],
     "query": "said \"retrieval\" twice",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

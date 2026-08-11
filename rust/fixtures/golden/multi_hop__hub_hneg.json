@@ -1,0 +1,15 @@
+{
+  "key": "hub_hneg",
+  "result": {
+    "edges": [],
+    "nodes": []
+  },
+  "spec": {
+    "key": "hub_hneg",
+    "max_hops": -1,
+    "node_ids": [
+      "doc:proposal"
+    ]
+  },
+  "suite": "multi_hop"
+}

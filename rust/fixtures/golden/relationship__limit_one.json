@@ -6,30 +6,29 @@
     "relationship_type": "",
     "relationships": [
       {
-        "created_at": "2026-07-03T00:00:00",
-        "id": "edge:114efd07a566c6c3774cf8c6",
-        "metadata": {
-          "legacy_label": "relates_to"
-        },
+        "created_at": "2026-07-07T00:00:00",
+        "id": "edge:27bd176233f2a7554e19cc32",
+        "metadata": {},
         "source": {
-          "id": "task:parity-harness",
+          "id": "self:unknown:f6",
           "metadata": {
-            "status": "open"
+            "self_model": true
           },
-          "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
-          "title": "Build the retrieval parity harness",
-          "type": "Task"
+          "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+          "title": "kind가 없는 self 노드",
+          "type": "Concept"
         },
         "target": {
-          "id": "dec:rust-foundation",
+          "id": "self:root",
           "metadata": {
-            "category": "platform"
+            "self_model": true,
+            "self_model_kind": "root"
           },
-          "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
-          "title": "Rust 기반 검색 이관 결정",
-          "type": "Decision"
+          "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+          "title": "나",
+          "type": "Self"
         },
-        "type": "MENTIONS",
+        "type": "PART_OF",
         "weight": 1.0
       }
     ]

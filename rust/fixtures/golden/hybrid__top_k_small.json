@@ -46,42 +46,42 @@
       },
       {
         "fusion": "both",
-        "id": "task:parity-harness",
-        "metadata": {
-          "status": "open"
-        },
-        "node_id": "task:parity-harness",
-        "rank": 2,
-        "rerank_score": 0.713605,
-        "score": 0.713605,
-        "scores": {
-          "lexical": 0.5,
-          "vector": 0.856009
-        },
-        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
-        "title": "Build the retrieval parity harness",
-        "type": "Task",
-        "updated_at": "2026-07-15T11:00:00"
-      },
-      {
-        "fusion": "both",
         "id": "sheet:metrics",
         "metadata": {
           "ext": ".xlsx",
           "filename": "retrieval-metrics.xlsx"
         },
         "node_id": "sheet:metrics",
-        "rank": 3,
-        "rerank_score": 0.7,
-        "score": 0.7,
+        "rank": 2,
+        "rerank_score": 0.68,
+        "score": 0.68,
         "scores": {
-          "lexical": 0.25,
+          "lexical": 0.2,
           "vector": 1.0
         },
         "summary": "Recall and precision per query class for the ranking experiments.",
         "title": "retrieval-metrics.xlsx",
         "type": "Spreadsheet",
         "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "fusion": "both",
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 3,
+        "rerank_score": 0.646939,
+        "score": 0.646939,
+        "scores": {
+          "lexical": 0.333333,
+          "vector": 0.856009
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
       }
     ],
     "mode": "hybrid",
@@ -97,7 +97,7 @@
       "model": null
     },
     "sources": {
-      "lexical": 13,
+      "lexical": 14,
       "vector": 20
     },
     "top_k": 3,
@@ -105,7 +105,7 @@
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

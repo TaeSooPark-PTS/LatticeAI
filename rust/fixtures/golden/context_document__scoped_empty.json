@@ -1,0 +1,46 @@
+{
+  "key": "scoped_empty",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다",
+      "context_quality": {
+        "limited": true,
+        "mode": "none",
+        "nodes": 0,
+        "reason": "그래프에서 관련 지식을 찾지 못했습니다"
+      },
+      "query": "제안서 초안",
+      "sources": [],
+      "stats": {
+        "budget_trimmed": false,
+        "matches": 0,
+        "method": "fallback"
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 22,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 0,
+            "name": "Knowledge (fallback)",
+            "provenance": [],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 22
+      }
+    },
+    "sources_footnote": ""
+  },
+  "spec": {
+    "allowed": [],
+    "key": "scoped_empty",
+    "query": "제안서 초안"
+  },
+  "suite": "context_document"
+}

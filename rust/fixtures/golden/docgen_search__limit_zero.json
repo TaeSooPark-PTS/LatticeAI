@@ -1,0 +1,231 @@
+{
+  "key": "limit_zero",
+  "result": [
+    {
+      "hybrid_score": 1.0535,
+      "id": "doc:proposal",
+      "metadata": {
+        "ext": ".md",
+        "filename": "proposal.md",
+        "relative_path": "docs/proposal.md"
+      },
+      "related_concepts": [
+        {
+          "id": "concept:evidence",
+          "title": "근거",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:ranking",
+          "title": "Ranking",
+          "type": "Concept"
+        },
+        {
+          "id": "concept:retrieval",
+          "title": "Retrieval",
+          "type": "Concept"
+        },
+        {
+          "id": "dec:doc-format",
+          "title": "문서 형식은 마크다운으로 통일",
+          "type": "Decision"
+        },
+        {
+          "id": "feature:command-palette",
+          "title": "Command palette",
+          "type": "Feature"
+        },
+        {
+          "id": "feature:doc-generation",
+          "title": "문서 생성",
+          "type": "Feature"
+        },
+        {
+          "id": "task:parity-harness",
+          "title": "Build the retrieval parity harness",
+          "type": "Task"
+        }
+      ],
+      "scores": {
+        "graph": 0.6598,
+        "recency": 0.9001,
+        "text": 1.0
+      },
+      "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+      "title": "제안서 초안: 검색 품질 개선",
+      "type": "Document",
+      "updated_at": "2026-07-30T09:00:00"
+    },
+    {
+      "hybrid_score": 0.9045,
+      "id": "deck:proposal",
+      "metadata": {
+        "ext": ".pptx",
+        "filename": "proposal.pptx"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.8567,
+        "text": 1.0
+      },
+      "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+      "title": "제안 발표자료",
+      "type": "SlideDeck",
+      "updated_at": "2026-07-29T09:00:00"
+    },
+    {
+      "hybrid_score": 0.7377,
+      "id": "concept:proposal",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.3466,
+        "recency": 0.6688,
+        "text": 1.0
+      },
+      "summary": "제안서는 결정을 요청하는 문서입니다.",
+      "title": "제안서",
+      "type": "Concept",
+      "updated_at": "2026-07-24T09:00:00"
+    },
+    {
+      "hybrid_score": 0.7376,
+      "id": "task:proposal-review",
+      "metadata": {
+        "status": "open"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.7759,
+        "text": 1.0
+      },
+      "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+      "title": "제안서 검토",
+      "type": "Task",
+      "updated_at": "2026-07-27T09:00:00"
+    },
+    {
+      "hybrid_score": 0.6997,
+      "id": "chat:proposal",
+      "metadata": {
+        "conversation_id": "conv-f"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.7384,
+        "text": 1.0
+      },
+      "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+      "title": "제안서 관련 대화",
+      "type": "Chat",
+      "updated_at": "2026-07-26T09:00:00"
+    },
+    {
+      "hybrid_score": 0.6724,
+      "id": "imgtext:proposal-ocr",
+      "metadata": {
+        "filename": "proposal-sketch.png",
+        "ocr": true
+      },
+      "related_concepts": [
+        {
+          "id": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        }
+      ],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.4501,
+        "text": 1.0
+      },
+      "summary": "제안서 구조: 배경, 근거, 결론.",
+      "title": "제안서 스케치 OCR",
+      "type": "ImageText",
+      "updated_at": "2026-07-16T09:01:00"
+    },
+    {
+      "hybrid_score": 0.6673,
+      "id": "page:proposal-outline",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.5765,
+        "text": 1.0
+      },
+      "summary": "제안서 목차 페이지입니다.",
+      "title": "제안서 목차",
+      "type": "Page",
+      "updated_at": "2026-07-21T09:00:00"
+    },
+    {
+      "hybrid_score": 0.6624,
+      "id": "doc:undated",
+      "metadata": {},
+      "related_concepts": [
+        {
+          "id": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        }
+      ],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.0,
+        "text": 1.0
+      },
+      "summary": "An undated memo about 제안서; its stamp does not parse.",
+      "title": "Undated 제안서 memo",
+      "type": "Document",
+      "updated_at": "not-a-timestamp"
+    },
+    {
+      "hybrid_score": 0.6564,
+      "id": "slide:proposal-1",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.5221,
+        "text": 1.0
+      },
+      "summary": "제안서 요약 슬라이드입니다.",
+      "title": "제안 슬라이드 1",
+      "type": "Slide",
+      "updated_at": "2026-07-19T09:00:00"
+    },
+    {
+      "hybrid_score": 0.6466,
+      "id": "sheet:proposal-budget",
+      "metadata": {
+        "ext": ".xlsx",
+        "filename": "proposal-budget.xlsx"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.4729,
+        "text": 1.0
+      },
+      "summary": "제안서 예산 표입니다.",
+      "title": "proposal-budget.xlsx",
+      "type": "Spreadsheet",
+      "updated_at": "2026-07-17T09:00:00"
+    }
+  ],
+  "spec": {
+    "key": "limit_zero",
+    "limit": 0,
+    "query": "제안서"
+  },
+  "suite": "docgen_search"
+}

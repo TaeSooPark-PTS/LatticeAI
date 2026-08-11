@@ -1,0 +1,101 @@
+{
+  "key": "results_two",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n- 습관: 매주 월요일 회의록을 정리한다\n- 결정: 문서는 한국어로 쓴다\n- 관계: 박민서 님과 빌드 파이프라인을 함께 본다\n\n### 📄 관련 문서/파일\n\n- **[Document] 제안서 초안: 검색 품질 개선** (relevance: 1.05)\n  - 출처: docs/proposal.md\n  - 검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.\n  - 관련: 근거, 제안서, Ranking, Retrieval, 문서 형식은 마크다운으로 통일\n\n- **[SlideDeck] 제안 발표자료** (relevance: 0.90)\n  - 출처: proposal.pptx\n  - 제안서 초안을 발표용으로 정리한 자료입니다.\n\n### 🔗 관련 개념/기술\n\n- **[Concept] 근거**\n  - 근거는 주장을 뒷받침하는 자료입니다.\n\n- **[Concept] 제안서**\n  - 제안서는 결정을 요청하는 문서입니다.\n\n- **[Concept] Ranking**\n  - Ranking orders candidates so the best answer is first.\n\n- **[Concept] Retrieval**\n  - Retrieval is the act of finding the right memory for a question.\n\n- **[Feature] Command palette**\n  - The palette that opens search from anywhere.\n\n- **[Feature] 문서 생성**\n  - 질문에서 문서를 만들어 주는 기능입니다.",
+      "context_quality": {
+        "limited": false,
+        "mode": "hybrid",
+        "nodes": 2,
+        "reason": null
+      },
+      "query": "제안서 초안",
+      "sources": [
+        {
+          "id": "doc:proposal",
+          "source": "docs/proposal.md",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        {
+          "id": "deck:proposal",
+          "source": "proposal.pptx",
+          "title": "제안 발표자료",
+          "type": "SlideDeck"
+        }
+      ],
+      "stats": {
+        "budget_trimmed": false,
+        "graph_edges": 27,
+        "graph_nodes": 15,
+        "method": "hybrid",
+        "primary_matches": 2
+      },
+      "trace": {
+        "budget_approx_tokens": 2000,
+        "sections": [
+          {
+            "approx_tokens": 34,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 19,
+            "name": "관련 문서/파일",
+            "provenance": [
+              {
+                "id": "doc:proposal",
+                "type": "Document"
+              },
+              {
+                "id": "deck:proposal",
+                "type": "SlideDeck"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 58,
+            "name": "관련 개념/기술",
+            "provenance": [
+              {
+                "id": "concept:evidence",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:proposal",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:ranking",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:retrieval",
+                "type": "Concept"
+              },
+              {
+                "id": "feature:command-palette",
+                "type": "Feature"
+              },
+              {
+                "id": "feature:doc-generation",
+                "type": "Feature"
+              }
+            ],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 213
+      }
+    },
+    "sources_footnote": "\n---\n**참조된 지식 그래프 노드:**\n1. [Document] 제안서 초안: 검색 품질 개선 (docs/proposal.md)\n2. [SlideDeck] 제안 발표자료 (proposal.pptx)"
+  },
+  "spec": {
+    "key": "results_two",
+    "max_results": 2,
+    "query": "제안서 초안"
+  },
+  "suite": "context_document"
+}

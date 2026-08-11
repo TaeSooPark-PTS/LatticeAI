@@ -161,6 +161,41 @@
       },
       {
         "fusion": "vector",
+        "id": "self:decision:a1",
+        "metadata": {
+          "confidence": 0.9,
+          "origin": "user",
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "self_model_kind": "decision",
+          "signal": "ko_decision_marker",
+          "vector": {
+            "confidence": 0.9,
+            "node_type": "Decision",
+            "origin": "user",
+            "self_model": true,
+            "self_model_kind": "decision",
+            "signal": "ko_decision_marker",
+            "workspace_id": "ws-alpha"
+          },
+          "workspace_id": "ws-alpha"
+        },
+        "node_id": "self:decision:a1",
+        "rank": 8,
+        "rerank_score": 0.180554,
+        "score": 0.180554,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.300924
+        },
+        "summary": "문서는 한국어로 쓴다",
+        "title": "문서는 한국어로 쓴다",
+        "type": "Decision",
+        "updated_at": "2026-07-02T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "source:repo",
         "metadata": {
           "parent_node_id": null,
@@ -172,7 +207,7 @@
           }
         },
         "node_id": "source:repo",
-        "rank": 8,
+        "rank": 9,
         "rerank_score": 0.104244,
         "score": 0.104244,
         "scores": {
@@ -186,6 +221,60 @@
       },
       {
         "fusion": "vector",
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 10,
+        "rerank_score": 0.089608,
+        "score": 0.089608,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.149346
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "code:doc-builder",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "rank": 11,
+        "rerank_score": 0.086272,
+        "score": 0.086272,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.143787
+        },
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
+        "fusion": "vector",
         "id": "tie:a",
         "metadata": {
           "parent_node_id": null,
@@ -195,7 +284,7 @@
           }
         },
         "node_id": "tie:a",
-        "rank": 9,
+        "rank": 12,
         "rerank_score": 0.085114,
         "score": 0.085114,
         "scores": {
@@ -218,7 +307,7 @@
           }
         },
         "node_id": "tie:b",
-        "rank": 10,
+        "rank": 13,
         "rerank_score": 0.085114,
         "score": 0.085114,
         "scores": {
@@ -241,7 +330,7 @@
           }
         },
         "node_id": "twin:concept-a",
-        "rank": 11,
+        "rank": 14,
         "rerank_score": 0.068243,
         "score": 0.068243,
         "scores": {
@@ -264,7 +353,7 @@
           }
         },
         "node_id": "twin:doc-a",
-        "rank": 12,
+        "rank": 15,
         "rerank_score": 0.065929,
         "score": 0.065929,
         "scores": {
@@ -287,7 +376,7 @@
           }
         },
         "node_id": "twin:doc-b",
-        "rank": 13,
+        "rank": 16,
         "rerank_score": 0.065929,
         "score": 0.065929,
         "scores": {
@@ -316,7 +405,7 @@
           }
         },
         "node_id": "doc:handbook",
-        "rank": 14,
+        "rank": 17,
         "rerank_score": 0.064858,
         "score": 0.064858,
         "scores": {
@@ -339,7 +428,7 @@
           }
         },
         "node_id": "repo:lattice",
-        "rank": 15,
+        "rank": 18,
         "rerank_score": 0.063836,
         "score": 0.063836,
         "scores": {
@@ -350,6 +439,29 @@
         "title": "lattice-ai",
         "type": "Repository",
         "updated_at": "2026-02-21T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "concept:evidence",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:evidence",
+        "rank": 19,
+        "rerank_score": 0.061929,
+        "score": 0.061929,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.103215
+        },
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept",
+        "updated_at": "2026-07-23T09:00:00"
       },
       {
         "fusion": "vector",
@@ -366,7 +478,7 @@
           }
         },
         "node_id": "audio:standup",
-        "rank": 16,
+        "rank": 20,
         "rerank_score": 0.060942,
         "score": 0.060942,
         "scores": {
@@ -377,102 +489,6 @@
         "title": "standup-2026-07-13.m4a",
         "type": "Audio",
         "updated_at": "2026-07-13T09:05:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "chat:ranking",
-        "metadata": {
-          "conversation_id": "conv-1",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "conversation_id": "conv-1",
-            "node_type": "Chat"
-          }
-        },
-        "node_id": "chat:ranking",
-        "rank": 17,
-        "rerank_score": 0.050077,
-        "score": 0.050077,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.083461
-        },
-        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
-        "title": "랭킹 관련 대화",
-        "type": "Chat",
-        "updated_at": "2026-07-05T21:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "person:jiwon",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "role": "owner",
-          "vector": {
-            "node_type": "Person",
-            "role": "owner"
-          }
-        },
-        "node_id": "person:jiwon",
-        "rank": 18,
-        "rerank_score": 0.04586,
-        "score": 0.04586,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.076434
-        },
-        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
-        "title": "김지원 님",
-        "type": "Person",
-        "updated_at": "2026-04-11T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "meeting:weekly",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Meeting"
-          }
-        },
-        "node_id": "meeting:weekly",
-        "rank": 19,
-        "rerank_score": 0.04316,
-        "score": 0.04316,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.071934
-        },
-        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
-        "title": "주간 회의 2026-07-14",
-        "type": "Meeting",
-        "updated_at": "2026-07-14T10:00:00"
-      },
-      {
-        "fusion": "vector",
-        "id": "feature:command-palette",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Feature"
-          }
-        },
-        "node_id": "feature:command-palette",
-        "rank": 20,
-        "rerank_score": 0.03611,
-        "score": 0.03611,
-        "scores": {
-          "lexical": 0.0,
-          "vector": 0.060184
-        },
-        "summary": "The palette that opens search from anywhere.",
-        "title": "Command palette",
-        "type": "Feature",
-        "updated_at": "2026-03-05T10:00:00"
       }
     ],
     "mode": "hybrid",
@@ -489,14 +505,14 @@
     },
     "sources": {
       "lexical": 7,
-      "vector": 22
+      "vector": 21
     },
     "top_k": 20,
     "vector": {
       "approx": false,
       "backend": "bruteforce-cosine",
       "degraded": null,
-      "embedded_rows": 44,
+      "embedded_rows": 69,
       "exhaustive": true,
       "truncated": false
     }

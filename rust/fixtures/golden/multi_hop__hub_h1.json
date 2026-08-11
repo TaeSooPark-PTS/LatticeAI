@@ -1,0 +1,107 @@
+{
+  "key": "hub_h1",
+  "result": {
+    "edges": [
+      {
+        "from": "chat:proposal",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.78
+      },
+      {
+        "from": "deck:proposal",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.82
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:evidence",
+        "type": "MENTIONS",
+        "weight": 0.91
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:proposal",
+        "type": "MENTIONS",
+        "weight": 0.92
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:ranking",
+        "type": "MENTIONS",
+        "weight": 0.86
+      },
+      {
+        "from": "doc:proposal",
+        "to": "concept:retrieval",
+        "type": "MENTIONS",
+        "weight": 0.87
+      },
+      {
+        "from": "doc:proposal",
+        "to": "dec:doc-format",
+        "type": "MENTIONS",
+        "weight": 0.89
+      },
+      {
+        "from": "doc:proposal",
+        "to": "feature:command-palette",
+        "type": "MENTIONS",
+        "weight": 0.85
+      },
+      {
+        "from": "doc:proposal",
+        "to": "feature:doc-generation",
+        "type": "MENTIONS",
+        "weight": 0.9
+      },
+      {
+        "from": "doc:proposal",
+        "to": "page:proposal-outline",
+        "type": "CONTAINS",
+        "weight": 0.83
+      },
+      {
+        "from": "doc:proposal",
+        "to": "task:parity-harness",
+        "type": "MENTIONS",
+        "weight": 0.84
+      },
+      {
+        "from": "doc:proposal",
+        "to": "task:proposal-review",
+        "type": "MENTIONS",
+        "weight": 0.88
+      },
+      {
+        "from": "sheet:proposal-budget",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.73
+      }
+    ],
+    "nodes": [
+      {
+        "hop": 0,
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document"
+      }
+    ]
+  },
+  "spec": {
+    "key": "hub_h1",
+    "max_hops": 1,
+    "node_ids": [
+      "doc:proposal"
+    ]
+  },
+  "suite": "multi_hop"
+}

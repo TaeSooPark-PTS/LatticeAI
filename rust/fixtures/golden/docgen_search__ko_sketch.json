@@ -1,0 +1,52 @@
+{
+  "key": "ko_sketch",
+  "result": [
+    {
+      "hybrid_score": 0.6724,
+      "id": "imgtext:proposal-ocr",
+      "metadata": {
+        "filename": "proposal-sketch.png",
+        "ocr": true
+      },
+      "related_concepts": [
+        {
+          "id": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        }
+      ],
+      "scores": {
+        "graph": 0.2747,
+        "recency": 0.4501,
+        "text": 1.0
+      },
+      "summary": "제안서 구조: 배경, 근거, 결론.",
+      "title": "제안서 스케치 OCR",
+      "type": "ImageText",
+      "updated_at": "2026-07-16T09:01:00"
+    },
+    {
+      "hybrid_score": 0.642,
+      "id": "img:proposal-sketch",
+      "metadata": {
+        "ext": ".png",
+        "filename": "proposal-sketch.png"
+      },
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.4501,
+        "text": 1.0
+      },
+      "summary": "제안서 구조 스케치입니다.",
+      "title": "proposal-sketch.png",
+      "type": "Image",
+      "updated_at": "2026-07-16T09:00:00"
+    }
+  ],
+  "spec": {
+    "key": "ko_sketch",
+    "query": "스케치"
+  },
+  "suite": "docgen_search"
+}

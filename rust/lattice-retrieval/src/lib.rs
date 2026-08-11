@@ -21,14 +21,23 @@
 //! loopback [`routes`] that expose all of it over HTTP. Same proof, same
 //! goldens, same two-sided contract test.
 
+//! v11.5.1 (Y3 of `docs/v11.5.1_RUST_FULL_LOOP_PLAN.md`) closes the last
+//! retrieval box: document generation. [`docgen`] ports the hybrid document
+//! search and the hop-labelled traversal, [`self_model`] the profile read a
+//! prompt is assembled with, and [`docgen_context`] the budgeted context builder
+//! that composes them — behind `POST /rust/context/document`.
+
 pub mod concepts;
 pub mod context;
+pub mod docgen;
+pub mod docgen_context;
 pub mod graph_reads;
 pub mod history;
 pub mod hybrid;
 pub mod keyword;
 pub mod policy;
 pub mod routes;
+pub mod self_model;
 pub mod service;
 pub mod service_hybrid;
 pub mod shape;
@@ -36,12 +45,17 @@ pub mod vector;
 
 pub use concepts::topic_candidates;
 pub use context::{assemble_context, ContextRequest};
+pub use docgen::{context_for_query, multi_hop_context, search_for_document_generation};
+pub use docgen_context::{
+    format_sources_footnote, retrieve_context_for_generation, DocumentContextRequest,
+};
 pub use graph_reads::{relationship_search, traverse, RelationshipQuery, TraverseOptions};
 pub use history::{history, HistoryScope};
 pub use hybrid::{hybrid_search, HybridOptions};
 pub use keyword::search;
 pub use policy::{class_weights, classify_query, resolve_policy, rewrite_query, Policy};
 pub use routes::router;
+pub use self_model::summary_for_prompt;
 pub use service::{graph_search, GraphSearchOptions};
 pub use service_hybrid::{service_hybrid_search, ServiceHybridOptions};
 pub use vector::vector_search;

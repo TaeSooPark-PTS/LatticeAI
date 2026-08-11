@@ -11,6 +11,7 @@
 //! | `/rust/search/service-hybrid`, `/rust/graph/*`, `/rust/history*`, `/rust/context/assemble` | `lattice-retrieval` | `lattice_retrieval::router` |
 //! | `/rust/ingest/{plan,chunk}` | `lattice-ingest` | `lattice_ingest::router` |
 //! | `/rust/agent/{preflight,exec,contract}` | `lattice-agent` | `lattice_agent::router` |
+//! | `/rust/agent/{run,resume,approvals}` | `lattice-agent` | `lattice_agent::router` |
 //! | `/host/jobs`, `/host/jobs/tick` | `lattice-jobs` | `lattice_jobs::router` |
 //!
 //! The three P1 lanes stay with `lattice-host`: `lattice-retrieval`'s router
@@ -29,6 +30,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use lattice_agent::sandbox::Workspace;
+use lattice_agent::LoopConfig;
 use lattice_ingest::IngestApiConfig;
 use lattice_jobs::{parse_flag, Scheduler, SchedulerConfig};
 
@@ -100,16 +102,31 @@ pub fn scheduler(worker_origin: &str, client: reqwest::Client) -> Arc<Scheduler>
     ))
 }
 
-/// The agent kernel routes, or `None` when this machine has no workspace to
-/// judge paths against.
+/// The loop orchestrator's configuration: where its AI worker listens, where
+/// paused runs are stored, and the client to reach the worker with.
+///
+/// The worker origin is the gateway's own (`StatusProvider::worker_origin`), so
+/// the loop talks to the very worker this host supervises — the one that was
+/// handed `LATTICEAI_AGENT_TOOL_SEAM=1` and is therefore the only worker whose
+/// seam endpoints answer at all.
+pub fn agent_loop_config(worker_origin: &str, client: reqwest::Client) -> LoopConfig {
+    LoopConfig {
+        worker_origin: worker_origin.to_string(),
+        runs_dir: lattice_agent::runs::default_runs_dir(),
+        client: Some(client),
+    }
+}
+
+/// The agent kernel **and loop** routes, or `None` when this machine has no
+/// workspace to judge paths against.
 ///
 /// `Workspace::new` creates and canonicalises the root; a failure means the
 /// directory cannot exist (permissions, a file in the way), and mounting
 /// routes that would answer every path question wrongly is worse than not
 /// mounting them.
-pub fn agent_router(root: &Path) -> Option<Router> {
+pub fn agent_router(root: &Path, config: LoopConfig) -> Option<Router> {
     match Workspace::new(root) {
-        Ok(workspace) => Some(lattice_agent::router(workspace)),
+        Ok(workspace) => Some(lattice_agent::router(workspace, config)),
         Err(err) => {
             eprintln!(
                 "lattice-host: /rust/agent is unavailable — cannot use {} as the agent workspace: {err}",
@@ -123,13 +140,19 @@ pub fn agent_router(root: &Path) -> Option<Router> {
 /// Every mounted native router, merged into one.
 ///
 /// `db` is the knowledge graph the retrieval routes read, `agent_root` the
-/// workspace the kernel judges paths against, and `jobs` the scheduler whose
-/// status routes are exposed (absent ⇒ `/host/jobs` is not mounted at all).
-pub fn native_router(db: PathBuf, agent_root: &Path, jobs: Option<Arc<Scheduler>>) -> Router {
+/// workspace the kernel judges paths against, `agent` the loop orchestrator's
+/// configuration, and `jobs` the scheduler whose status routes are exposed
+/// (absent ⇒ `/host/jobs` is not mounted at all).
+pub fn native_router(
+    db: PathBuf,
+    agent_root: &Path,
+    agent: LoopConfig,
+    jobs: Option<Arc<Scheduler>>,
+) -> Router {
     let mut router =
         lattice_retrieval::router(db).merge(lattice_ingest::router(IngestApiConfig::default()));
-    if let Some(agent) = agent_router(agent_root) {
-        router = router.merge(agent);
+    if let Some(mounted) = agent_router(agent_root, agent) {
+        router = router.merge(mounted);
     }
     if let Some(scheduler) = jobs {
         router = router.merge(lattice_jobs::router(scheduler));
@@ -199,12 +222,39 @@ mod tests {
         assert_eq!(scheduler.config().worker_origin, "http://127.0.0.1:4825");
     }
 
+    /// A loop config whose run store is a throwaway directory, so a test can
+    /// never read or write the real one.
+    fn test_loop_config(dir: &Path) -> LoopConfig {
+        LoopConfig {
+            runs_dir: dir.join("rust_agent_runs"),
+            ..agent_loop_config(
+                "http://127.0.0.1:1",
+                crate::supervisor::http_client().expect("client"),
+            )
+        }
+    }
+
     #[test]
     fn an_unusable_agent_root_is_absent_rather_than_wrong() {
         let dir = tempfile::tempdir().expect("tempdir");
         let blocked = dir.path().join("a-file");
         std::fs::write(&blocked, b"not a directory").expect("write");
-        assert!(agent_router(&blocked.join("root")).is_none());
+        assert!(agent_router(&blocked.join("root"), test_loop_config(dir.path())).is_none());
+    }
+
+    #[test]
+    fn the_loop_config_points_at_the_supervised_worker() {
+        let config = agent_loop_config(
+            "http://127.0.0.1:4899",
+            crate::supervisor::http_client().expect("client"),
+        );
+        assert_eq!(config.worker_origin, "http://127.0.0.1:4899");
+        assert!(config.client.is_some(), "the loopback pool is shared");
+        assert!(
+            config.runs_dir.ends_with("rust_agent_runs"),
+            "the native store is not Python's: {:?}",
+            config.runs_dir
+        );
     }
 
     #[test]
@@ -217,11 +267,13 @@ mod tests {
         let _router = native_router(
             dir.path().join("knowledge_graph.sqlite"),
             &dir.path().join("agent_workspace"),
+            test_loop_config(dir.path()),
             Some(jobs),
         );
         let _without_jobs = native_router(
             dir.path().join("knowledge_graph.sqlite"),
             &dir.path().join("agent_workspace"),
+            test_loop_config(dir.path()),
             None,
         );
     }

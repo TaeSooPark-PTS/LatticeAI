@@ -225,6 +225,27 @@
         "updated_at": "2026-05-14T12:00:00"
       },
       {
+        "id": "imgtext:proposal-ocr",
+        "item_type": "node",
+        "metadata": {
+          "filename": "proposal-sketch.png",
+          "ocr": true,
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "filename": "proposal-sketch.png",
+            "node_type": "ImageText",
+            "ocr": true
+          }
+        },
+        "node_id": "imgtext:proposal-ocr",
+        "score": 0.149071,
+        "summary": "제안서 구조: 배경, 근거, 결론.",
+        "title": "제안서 스케치 OCR",
+        "type": "ImageText",
+        "updated_at": "2026-07-16T09:01:00"
+      },
+      {
         "id": "feature:command-palette",
         "item_type": "node",
         "metadata": {
@@ -240,6 +261,27 @@
         "title": "Command palette",
         "type": "Feature",
         "updated_at": "2026-03-05T10:00:00"
+      },
+      {
+        "id": "img:proposal-sketch",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".png",
+          "filename": "proposal-sketch.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "proposal-sketch.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:proposal-sketch",
+        "score": 0.12635,
+        "summary": "제안서 구조 스케치입니다.",
+        "title": "proposal-sketch.png",
+        "type": "Image",
+        "updated_at": "2026-07-16T09:00:00"
       },
       {
         "id": "twin:doc-b",
@@ -276,6 +318,42 @@
         "updated_at": "2026-02-05T00:00:00"
       },
       {
+        "id": "self:unknown:f6",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "self_model": true,
+          "vector": {
+            "node_type": "Concept",
+            "self_model": true
+          }
+        },
+        "node_id": "self:unknown:f6",
+        "score": 0.121268,
+        "summary": "self_model_kind가 없어 프로필에서 제외되는 행입니다.",
+        "title": "kind가 없는 self 노드",
+        "type": "Concept",
+        "updated_at": "2026-07-07T09:00:00"
+      },
+      {
+        "id": "feature:doc-generation",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:doc-generation",
+        "score": 0.111111,
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
+      },
+      {
         "id": "sheet:metrics",
         "item_type": "node",
         "metadata": {
@@ -295,6 +373,44 @@
         "title": "retrieval-metrics.xlsx",
         "type": "Spreadsheet",
         "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "score": 0.095564,
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
+      },
+      {
+        "id": "doc:undated",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "score": 0.093659,
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
       },
       {
         "id": "concept:ranking",
@@ -394,6 +510,27 @@
         "updated_at": "2026-07-02T15:00:00"
       },
       {
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "score": 0.082715,
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
         "id": "meeting:weekly",
         "item_type": "node",
         "metadata": {
@@ -489,148 +626,13 @@
         "title": "lattice-ai",
         "type": "Repository",
         "updated_at": "2026-02-21T10:00:00"
-      },
-      {
-        "id": "concept:retrieval",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:retrieval",
-        "score": 0.058471,
-        "summary": "Retrieval is the act of finding the right memory for a question.",
-        "title": "Retrieval",
-        "type": "Concept",
-        "updated_at": "2026-04-02T10:00:00"
-      },
-      {
-        "id": "org:lattice",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Organization"
-          }
-        },
-        "node_id": "org:lattice",
-        "score": 0.051434,
-        "summary": "The organization.",
-        "title": "Lattice",
-        "type": "Organization",
-        "updated_at": "2026-02-22T10:00:00"
-      },
-      {
-        "id": "img:whiteboard",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".png",
-          "filename": "whiteboard-retrieval.png",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".png",
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "Image"
-          }
-        },
-        "node_id": "img:whiteboard",
-        "score": 0.046225,
-        "summary": "Whiteboard photo from the retrieval design session.",
-        "title": "whiteboard-retrieval.png",
-        "type": "Image",
-        "updated_at": "2026-03-19T11:11:00"
-      },
-      {
-        "id": "agent:librarian",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Agent"
-          }
-        },
-        "node_id": "agent:librarian",
-        "score": 0.030949,
-        "summary": "An agent that files new documents into the graph.",
-        "title": "Librarian agent",
-        "type": "Agent",
-        "updated_at": "2026-03-03T10:00:00"
-      },
-      {
-        "id": "img:ocr-notes",
-        "item_type": "node",
-        "metadata": {
-          "filename": "whiteboard-retrieval.png",
-          "ocr": true,
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "ImageText",
-            "ocr": true
-          }
-        },
-        "node_id": "img:ocr-notes",
-        "score": 0.029696,
-        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
-        "title": "화이트보드 OCR 텍스트",
-        "type": "ImageText",
-        "updated_at": "2026-03-19T11:12:00"
-      },
-      {
-        "id": "code:build-failure",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".py",
-          "filename": "build_pipeline.py",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".py",
-            "filename": "build_pipeline.py",
-            "node_type": "CodeFile"
-          }
-        },
-        "node_id": "code:build-failure",
-        "score": 0.023689,
-        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
-        "title": "build_pipeline.py",
-        "type": "CodeFile",
-        "updated_at": "2026-04-22T18:05:00"
-      },
-      {
-        "id": "audio:standup",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".m4a",
-          "filename": "standup-2026-07-13.m4a",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".m4a",
-            "filename": "standup-2026-07-13.m4a",
-            "node_type": "Audio"
-          }
-        },
-        "node_id": "audio:standup",
-        "score": 0.018751,
-        "summary": "Standup recording where the parity harness was assigned.",
-        "title": "standup-2026-07-13.m4a",
-        "type": "Audio",
-        "updated_at": "2026-07-13T09:05:00"
       }
     ],
     "query": "vector_search() returns",
     "recall": {
       "backend": "bruteforce-cosine",
-      "candidates_scanned": 44,
-      "candidates_total": 44,
+      "candidates_scanned": 69,
+      "candidates_total": 69,
       "detail": null,
       "max_candidates": 10000,
       "truncated": false

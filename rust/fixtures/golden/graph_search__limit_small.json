@@ -45,12 +45,12 @@
             "reason": "direct_match"
           }
         ],
-        "id": "task:parity-harness",
+        "id": "doc:release-notes",
         "item_type": "node",
         "metadata": {
-          "status": "open"
+          "source": "release"
         },
-        "node_id": "task:parity-harness",
+        "node_id": "doc:release-notes",
         "rank": 2,
         "score": 0.5,
         "source_scores": {
@@ -59,10 +59,10 @@
         "sources": [
           "graph"
         ],
-        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
-        "title": "Build the retrieval parity harness",
-        "type": "Task",
-        "updated_at": "2026-07-15T11:00:00"
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
       },
       {
         "graph_context": [

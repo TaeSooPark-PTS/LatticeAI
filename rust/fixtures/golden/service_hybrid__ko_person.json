@@ -18,8 +18,8 @@
         "query": "담당자 누구",
         "recall": {
           "backend": "bruteforce-cosine",
-          "candidates_scanned": 44,
-          "candidates_total": 44,
+          "candidates_scanned": 69,
+          "candidates_total": 69,
           "detail": null,
           "max_candidates": 10000,
           "truncated": false
@@ -46,17 +46,64 @@
             "reason": "direct_match"
           }
         ],
+        "id": "self:trait:e5",
+        "item_type": "node",
+        "metadata": {
+          "confidence": 0.7,
+          "origin": "user",
+          "self_model": true,
+          "self_model_kind": "trait",
+          "signal": "ko_role",
+          "workspace_id": null
+        },
+        "node_id": "self:trait:e5",
+        "rank": 1,
+        "score": 1.0,
+        "source_scores": {
+          "graph": 1.0,
+          "keyword": 1.0,
+          "vector": 0.67082
+        },
+        "sources": [
+          "keyword",
+          "vector",
+          "graph"
+        ],
+        "summary": "검색 품질 담당자",
+        "title": "검색 품질 담당자",
+        "type": "Self",
+        "updated_at": "2026-07-06T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "keyword",
+            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "direct_match"
+          }
+        ],
         "id": "person:minseo",
         "item_type": "node",
         "metadata": {
           "role": "reviewer"
         },
         "node_id": "person:minseo",
-        "rank": 1,
-        "score": 1.0,
+        "rank": 2,
+        "score": 0.5,
         "source_scores": {
-          "graph": 1.0,
-          "keyword": 1.0,
+          "graph": 0.5,
+          "keyword": 0.5,
           "vector": 0.204124
         },
         "sources": [
@@ -94,11 +141,11 @@
           "role": "owner"
         },
         "node_id": "person:jiwon",
-        "rank": 2,
-        "score": 0.5,
+        "rank": 3,
+        "score": 0.333333,
         "source_scores": {
-          "graph": 0.5,
-          "keyword": 0.5,
+          "graph": 0.333333,
+          "keyword": 0.333333,
           "vector": 0.179605
         },
         "sources": [
@@ -115,7 +162,60 @@
         "fusion": {
           "query_class": "person",
           "sources": [
-            "vector",
+            "graph"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "graph_context": [
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "self:trait:e5",
+              "id": "edge:7b1af590d40d851f1915b66d",
+              "to": "self:root",
+              "type": "PART_OF",
+              "weight": 1.0
+            }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "self:trait:e5",
+              "id": "edge:7b1af590d40d851f1915b66d",
+              "to": "self:root",
+              "type": "PART_OF",
+              "weight": 1.0
+            }
+          }
+        ],
+        "id": "self:root",
+        "item_type": "node",
+        "metadata": {
+          "self_model": true,
+          "self_model_kind": "root"
+        },
+        "node_id": "self:root",
+        "rank": 4,
+        "score": 0.18,
+        "source_scores": {
+          "graph": 0.45
+        },
+        "sources": [
+          "graph"
+        ],
+        "summary": "Brain이 사용자에 대해 알고 있는 사실의 뿌리입니다.",
+        "title": "나",
+        "type": "Self",
+        "updated_at": "2026-07-01T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
             "graph"
           ],
           "weights": {
@@ -134,30 +234,31 @@
               "type": "MENTIONS",
               "weight": 0.6
             }
+          },
+          {
+            "reason": "neighbor_expansion",
+            "relationship": {
+              "from": "person:minseo",
+              "id": "edge:f8b0ac918a0ee351673dcdb6",
+              "to": "code:build-failure",
+              "type": "MENTIONS",
+              "weight": 0.6
+            }
           }
         ],
         "id": "code:build-failure",
         "item_type": "node",
         "metadata": {
           "ext": ".py",
-          "filename": "build_pipeline.py",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".py",
-            "filename": "build_pipeline.py",
-            "node_type": "CodeFile"
-          }
+          "filename": "build_pipeline.py"
         },
         "node_id": "code:build-failure",
-        "rank": 3,
-        "score": 0.191538,
+        "rank": 5,
+        "score": 0.09,
         "source_scores": {
-          "graph": 0.45,
-          "vector": 0.0
+          "graph": 0.225
         },
         "sources": [
-          "vector",
           "graph"
         ],
         "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
@@ -223,10 +324,10 @@
         "item_type": "node",
         "metadata": {},
         "node_id": "org:lattice",
-        "rank": 4,
-        "score": 0.18,
+        "rank": 6,
+        "score": 0.09,
         "source_scores": {
-          "graph": 0.45
+          "graph": 0.225
         },
         "sources": [
           "graph"
@@ -235,6 +336,45 @@
         "title": "Lattice",
         "type": "Organization",
         "updated_at": "2026-02-22T10:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "sheet:metrics",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".xlsx",
+            "filename": "retrieval-metrics.xlsx",
+            "node_type": "Spreadsheet"
+          }
+        },
+        "node_id": "sheet:metrics",
+        "rank": 7,
+        "score": 0.075,
+        "source_scores": {
+          "vector": 0.156652
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
       },
       {
         "fusion": {
@@ -273,10 +413,10 @@
           }
         },
         "node_id": "task:parity-harness",
-        "rank": 5,
-        "score": 0.115,
+        "rank": 8,
+        "score": 0.07,
         "source_scores": {
-          "graph": 0.225,
+          "graph": 0.15,
           "vector": 0.0
         },
         "sources": [
@@ -300,45 +440,6 @@
             "vector": 0.3
           }
         },
-        "id": "sheet:metrics",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".xlsx",
-          "filename": "retrieval-metrics.xlsx",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".xlsx",
-            "filename": "retrieval-metrics.xlsx",
-            "node_type": "Spreadsheet"
-          }
-        },
-        "node_id": "sheet:metrics",
-        "rank": 6,
-        "score": 0.1,
-        "source_scores": {
-          "vector": 0.156652
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "Recall and precision per query class for the ranking experiments.",
-        "title": "retrieval-metrics.xlsx",
-        "type": "Spreadsheet",
-        "updated_at": "2026-05-06T09:45:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
         "id": "agent:librarian",
         "item_type": "node",
         "metadata": {
@@ -349,8 +450,8 @@
           }
         },
         "node_id": "agent:librarian",
-        "rank": 7,
-        "score": 0.075,
+        "rank": 9,
+        "score": 0.06,
         "source_scores": {
           "vector": 0.131306
         },
@@ -384,8 +485,8 @@
           }
         },
         "node_id": "twin:doc-b",
-        "rank": 8,
-        "score": 0.06,
+        "rank": 10,
+        "score": 0.05,
         "source_scores": {
           "vector": 0.129099
         },
@@ -419,8 +520,8 @@
           }
         },
         "node_id": "twin:doc-a",
-        "rank": 9,
-        "score": 0.05,
+        "rank": 11,
+        "score": 0.042857,
         "source_scores": {
           "vector": 0.129099
         },
@@ -431,6 +532,45 @@
         "title": "Twin document A",
         "type": "Document",
         "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "code:doc-builder",
+        "item_type": "node",
+        "metadata": {
+          "filename": "context_builder.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "latticeai/core/context_builder.py",
+          "vector": {
+            "filename": "context_builder.py",
+            "node_type": "CodeFile",
+            "relative_path": "latticeai/core/context_builder.py"
+          }
+        },
+        "node_id": "code:doc-builder",
+        "rank": 12,
+        "score": 0.0375,
+        "source_scores": {
+          "vector": 0.101361
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "문서 생성 컨텍스트를 조합하는 코드입니다. 제안서 생성도 여기를 지납니다.",
+        "title": "context_builder.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-14T09:00:00"
       },
       {
         "fusion": {
@@ -469,8 +609,8 @@
           }
         },
         "node_id": "doc:retrieval-spec",
-        "rank": 10,
-        "score": 0.042857,
+        "rank": 13,
+        "score": 0.033333,
         "source_scores": {
           "vector": 0.055216
         },
@@ -481,6 +621,47 @@
         "title": "Retrieval specification",
         "type": "Chunk",
         "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "doc:proposal",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "docs/proposal.md",
+          "vector": {
+            "ext": ".md",
+            "filename": "proposal.md",
+            "node_type": "Document",
+            "relative_path": "docs/proposal.md"
+          }
+        },
+        "node_id": "doc:proposal",
+        "rank": 14,
+        "score": 0.03,
+        "source_scores": {
+          "vector": 0.049752
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
       },
       {
         "fusion": {
@@ -508,8 +689,8 @@
           }
         },
         "node_id": "audio:standup",
-        "rank": 11,
-        "score": 0.0375,
+        "rank": 15,
+        "score": 0.027273,
         "source_scores": {
           "vector": 0.039778
         },
@@ -547,8 +728,8 @@
           }
         },
         "node_id": "file:ranking-notes",
-        "rank": 12,
-        "score": 0.033333,
+        "rank": 16,
+        "score": 0.025,
         "source_scores": {
           "vector": 0.036466
         },
@@ -559,6 +740,405 @@
         "title": "ranking-notes.md",
         "type": "File",
         "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "doc:undated",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:undated",
+        "rank": 17,
+        "score": 0.023077,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "An undated memo about 제안서; its stamp does not parse.",
+        "title": "Undated 제안서 memo",
+        "type": "Document",
+        "updated_at": "not-a-timestamp"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "file:meeting-minutes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "relative_path": "notes/meeting-minutes.md",
+          "vector": {
+            "filename": "meeting-minutes.md",
+            "node_type": "File",
+            "relative_path": "notes/meeting-minutes.md"
+          }
+        },
+        "node_id": "file:meeting-minutes",
+        "rank": 18,
+        "score": 0.021429,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "deck:proposal",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "proposal.pptx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".pptx",
+            "filename": "proposal.pptx",
+            "node_type": "SlideDeck"
+          }
+        },
+        "node_id": "deck:proposal",
+        "rank": 19,
+        "score": 0.02,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck",
+        "updated_at": "2026-07-29T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "doc:release-notes",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "release",
+          "vector": {
+            "node_type": "Document",
+            "source": "release"
+          }
+        },
+        "node_id": "doc:release-notes",
+        "rank": 20,
+        "score": 0.01875,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "Release notes describing the ranking port and the parity harness.",
+        "title": "Release notes for the retrieval port",
+        "type": "Document",
+        "updated_at": "2026-07-28T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "task:proposal-review",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "status": "open",
+          "vector": {
+            "node_type": "Task",
+            "status": "open"
+          }
+        },
+        "node_id": "task:proposal-review",
+        "rank": 21,
+        "score": 0.017647,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 초안을 검토하고 근거를 확인합니다.",
+        "title": "제안서 검토",
+        "type": "Task",
+        "updated_at": "2026-07-27T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "chat:proposal",
+        "item_type": "node",
+        "metadata": {
+          "conversation_id": "conv-f",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "conversation_id": "conv-f",
+            "node_type": "Chat"
+          }
+        },
+        "node_id": "chat:proposal",
+        "rank": 22,
+        "score": 0.016667,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 초안을 어떻게 쓸지 논의한 대화입니다.",
+        "title": "제안서 관련 대화",
+        "type": "Chat",
+        "updated_at": "2026-07-26T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "feature:doc-generation",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Feature"
+          }
+        },
+        "node_id": "feature:doc-generation",
+        "rank": 23,
+        "score": 0.015789,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "질문에서 문서를 만들어 주는 기능입니다.",
+        "title": "문서 생성",
+        "type": "Feature",
+        "updated_at": "2026-07-25T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "concept:proposal",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:proposal",
+        "rank": 24,
+        "score": 0.015,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서는 결정을 요청하는 문서입니다.",
+        "title": "제안서",
+        "type": "Concept",
+        "updated_at": "2026-07-24T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "concept:evidence",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:evidence",
+        "rank": 25,
+        "score": 0.014286,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "근거는 주장을 뒷받침하는 자료입니다.",
+        "title": "근거",
+        "type": "Concept",
+        "updated_at": "2026-07-23T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "dec:doc-format",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:doc-format",
+        "rank": 26,
+        "score": 0.013636,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "문서 생성 결과는 마크다운으로 통일하기로 했습니다.",
+        "title": "문서 형식은 마크다운으로 통일",
+        "type": "Decision",
+        "updated_at": "2026-07-22T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "page:proposal-outline",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Page"
+          }
+        },
+        "node_id": "page:proposal-outline",
+        "rank": 27,
+        "score": 0.013043,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 목차 페이지입니다.",
+        "title": "제안서 목차",
+        "type": "Page",
+        "updated_at": "2026-07-21T09:00:00"
       },
       {
         "fusion": {
@@ -586,8 +1166,8 @@
           }
         },
         "node_id": "dec:fusion-alpha",
-        "rank": 13,
-        "score": 0.03,
+        "rank": 28,
+        "score": 0.0125,
         "source_scores": {
           "vector": 0.0
         },
@@ -598,6 +1178,41 @@
         "title": "Hybrid retrieval fusion stays alpha weighted",
         "type": "Decision",
         "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": {
+          "query_class": "person",
+          "sources": [
+            "vector"
+          ],
+          "weights": {
+            "graph": 0.4,
+            "keyword": 0.3,
+            "vector": 0.3
+          }
+        },
+        "id": "slide:proposal-1",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:proposal-1",
+        "rank": 29,
+        "score": 0.012,
+        "source_scores": {
+          "vector": 0.0
+        },
+        "sources": [
+          "vector"
+        ],
+        "summary": "제안서 요약 슬라이드입니다.",
+        "title": "제안 슬라이드 1",
+        "type": "Slide",
+        "updated_at": "2026-07-19T09:00:00"
       },
       {
         "fusion": {
@@ -623,8 +1238,8 @@
           }
         },
         "node_id": "dec:rust-foundation",
-        "rank": 14,
-        "score": 0.027273,
+        "rank": 30,
+        "score": 0.011538,
         "source_scores": {
           "vector": 0.0
         },
@@ -635,636 +1250,6 @@
         "title": "Rust 기반 검색 이관 결정",
         "type": "Decision",
         "updated_at": "2026-07-18T14:30:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "meeting:weekly",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Meeting"
-          }
-        },
-        "node_id": "meeting:weekly",
-        "rank": 15,
-        "score": 0.023077,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
-        "title": "주간 회의 2026-07-14",
-        "type": "Meeting",
-        "updated_at": "2026-07-14T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "code:hybrid-search",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".py",
-          "filename": "hybrid.py",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".py",
-            "filename": "hybrid.py",
-            "node_type": "CodeFile"
-          }
-        },
-        "node_id": "code:hybrid-search",
-        "rank": 16,
-        "score": 0.021429,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
-        "title": "hybrid.py",
-        "type": "CodeFile",
-        "updated_at": "2026-07-08T09:30:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "chat:ranking",
-        "item_type": "node",
-        "metadata": {
-          "conversation_id": "conv-1",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "conversation_id": "conv-1",
-            "node_type": "Chat"
-          }
-        },
-        "node_id": "chat:ranking",
-        "rank": 17,
-        "score": 0.02,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "랭킹이 왜 이렇게 나오는지 물어본 대화입니다.",
-        "title": "랭킹 관련 대화",
-        "type": "Chat",
-        "updated_at": "2026-07-05T21:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "deck:review",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".pptx",
-          "filename": "quarterly-review.pptx",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".pptx",
-            "filename": "quarterly-review.pptx",
-            "node_type": "SlideDeck"
-          }
-        },
-        "node_id": "deck:review",
-        "rank": 18,
-        "score": 0.01875,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "지난주 분기 리뷰에서 사용한 발표자료입니다. 검색 품질 지표를 담고 있습니다.",
-        "title": "분기 리뷰 발표자료",
-        "type": "SlideDeck",
-        "updated_at": "2026-07-02T15:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "task:onboarding-checklist",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "status": "open",
-          "vector": {
-            "node_type": "Task",
-            "status": "open"
-          }
-        },
-        "node_id": "task:onboarding-checklist",
-        "rank": 19,
-        "score": 0.017647,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
-        "title": "온보딩 체크리스트 정리",
-        "type": "Task",
-        "updated_at": "2026-06-30T08:20:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "legacy:global-note",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Document"
-          }
-        },
-        "node_id": "legacy:global-note",
-        "rank": 20,
-        "score": 0.016667,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
-        "title": "Legacy global note",
-        "type": "Document",
-        "updated_at": "2026-06-20T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "doc:handbook",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".pdf",
-          "filename": "handbook.pdf",
-          "parent_node_id": null,
-          "parent_type": null,
-          "source_node": "doc:handbook",
-          "vector": {
-            "ext": ".pdf",
-            "filename": "handbook.pdf",
-            "node_type": "Document",
-            "source_node": "doc:handbook"
-          }
-        },
-        "node_id": "doc:handbook",
-        "rank": 21,
-        "score": 0.015789,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
-        "title": "Lattice AI 사용 안내서",
-        "type": "Document",
-        "updated_at": "2026-06-12T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "chunk:handbook:2",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "heading_path": "안내서 > 검색",
-            "index": 1,
-            "page": 7,
-            "source_node": "doc:handbook",
-            "start_char": 1200
-          },
-          "ext": ".pdf",
-          "filename": "handbook.pdf",
-          "locator": "안내서 > 검색 · p.7",
-          "parent_node_id": "doc:handbook",
-          "parent_type": "Document",
-          "source_node": "doc:handbook",
-          "vector": {
-            "heading_path": "안내서 > 검색",
-            "index": 1,
-            "page": 7,
-            "parent_source_node": "doc:handbook",
-            "source_node": "doc:handbook",
-            "start_char": 1200
-          }
-        },
-        "node_id": "doc:handbook",
-        "rank": 22,
-        "score": 0.015,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "검색 화면에서는 회의 결정 사항을 한 번에 찾을 수 있습니다.",
-        "title": "Lattice AI 사용 안내서",
-        "type": "Chunk",
-        "updated_at": "2026-06-12T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "chunk:handbook:1",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "heading_path": "안내서 > 온보딩",
-            "index": 0,
-            "page": 3,
-            "page_end": 4,
-            "source_node": "doc:handbook",
-            "start_char": 0
-          },
-          "ext": ".pdf",
-          "filename": "handbook.pdf",
-          "locator": "안내서 > 온보딩 · p.3–4",
-          "parent_node_id": "doc:handbook",
-          "parent_type": "Document",
-          "source_node": "doc:handbook",
-          "vector": {
-            "heading_path": "안내서 > 온보딩",
-            "index": 0,
-            "page": 3,
-            "page_end": 4,
-            "parent_source_node": "doc:handbook",
-            "source_node": "doc:handbook",
-            "start_char": 0
-          }
-        },
-        "node_id": "doc:handbook",
-        "rank": 23,
-        "score": 0.014286,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "온보딩 체크리스트: 첫째, 폴더를 연결합니다. 둘째, 질문을 합니다. 셋째, 근거를 확인합니다.",
-        "title": "Lattice AI 사용 안내서",
-        "type": "Chunk",
-        "updated_at": "2026-06-12T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "page:onboarding",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Page"
-          }
-        },
-        "node_id": "page:onboarding",
-        "rank": 24,
-        "score": 0.013636,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
-        "title": "온보딩 첫 다섯 걸음",
-        "type": "Page",
-        "updated_at": "2026-06-01T12:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "doc:retrieval-spec",
-        "item_type": "node",
-        "metadata": {
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "ext": ".pdf",
-            "filename": "retrieval-spec.pdf",
-            "node_type": "Document"
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "rank": 25,
-        "score": 0.013043,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
-        "title": "Retrieval specification",
-        "type": "Document",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "chunk:spec:2",
-        "item_type": "chunk",
-        "metadata": {
-          "chunk": {
-            "index": 1,
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          },
-          "ext": ".pdf",
-          "filename": "retrieval-spec.pdf",
-          "parent_node_id": "doc:retrieval-spec",
-          "parent_type": "Document",
-          "vector": {
-            "index": 1,
-            "parent_source_node": "doc:retrieval-spec",
-            "source_node": "doc:retrieval-spec",
-            "start_char": 900
-          }
-        },
-        "node_id": "doc:retrieval-spec",
-        "rank": 26,
-        "score": 0.0125,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
-        "title": "Retrieval specification",
-        "type": "Chunk",
-        "updated_at": "2026-05-28T13:15:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "slide:fusion",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Slide"
-          }
-        },
-        "node_id": "slide:fusion",
-        "rank": 27,
-        "score": 0.012,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
-        "title": "Fusion slide",
-        "type": "Slide",
-        "updated_at": "2026-05-14T12:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "concept:ranking",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:ranking",
-        "rank": 28,
-        "score": 0.011111,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "Ranking orders candidates so the best answer is first.",
-        "title": "Ranking",
-        "type": "Concept",
-        "updated_at": "2026-04-03T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "concept:retrieval",
-        "item_type": "node",
-        "metadata": {
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "node_type": "Concept"
-          }
-        },
-        "node_id": "concept:retrieval",
-        "rank": 29,
-        "score": 0.010714,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "Retrieval is the act of finding the right memory for a question.",
-        "title": "Retrieval",
-        "type": "Concept",
-        "updated_at": "2026-04-02T10:00:00"
-      },
-      {
-        "fusion": {
-          "query_class": "person",
-          "sources": [
-            "vector"
-          ],
-          "weights": {
-            "graph": 0.4,
-            "keyword": 0.3,
-            "vector": 0.3
-          }
-        },
-        "id": "img:ocr-notes",
-        "item_type": "node",
-        "metadata": {
-          "filename": "whiteboard-retrieval.png",
-          "ocr": true,
-          "parent_node_id": null,
-          "parent_type": null,
-          "vector": {
-            "filename": "whiteboard-retrieval.png",
-            "node_type": "ImageText",
-            "ocr": true
-          }
-        },
-        "node_id": "img:ocr-notes",
-        "rank": 30,
-        "score": 0.010345,
-        "source_scores": {
-          "vector": 0.0
-        },
-        "sources": [
-          "vector"
-        ],
-        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
-        "title": "화이트보드 OCR 텍스트",
-        "type": "ImageText",
-        "updated_at": "2026-03-19T11:12:00"
       }
     ],
     "mode": "hybrid",

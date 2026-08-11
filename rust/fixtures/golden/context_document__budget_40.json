@@ -1,0 +1,184 @@
+{
+  "key": "budget_40",
+  "result": {
+    "context": {
+      "context_markdown": "### 🙋 사용자 프로필\n\n사용자에 대해 확인된 사실:\n- 나: 검색 품질 담당자\n- 선호: 설명은 짧고 근거를 먼저\n\n### 📄 관련 문서/파일\n\n- **[Document] 제안서 초안: 검색 품질 개선** (relevance: 1.05)\n  - 출처: docs/proposal.md",
+      "context_quality": {
+        "limited": false,
+        "mode": "hybrid",
+        "multimodal": {
+          "images": 2,
+          "types": [
+            "ImageText",
+            "Image"
+          ]
+        },
+        "nodes": 10,
+        "reason": null
+      },
+      "query": "제안서 초안",
+      "sources": [
+        {
+          "id": "doc:proposal",
+          "source": "docs/proposal.md",
+          "title": "제안서 초안: 검색 품질 개선",
+          "type": "Document"
+        },
+        {
+          "id": "deck:proposal",
+          "source": "proposal.pptx",
+          "title": "제안 발표자료",
+          "type": "SlideDeck"
+        },
+        {
+          "id": "task:proposal-review",
+          "source": "task:proposal-review",
+          "title": "제안서 검토",
+          "type": "Task"
+        },
+        {
+          "id": "chat:proposal",
+          "source": "conv-f",
+          "title": "제안서 관련 대화",
+          "type": "Chat"
+        },
+        {
+          "id": "concept:proposal",
+          "source": "concept:proposal",
+          "title": "제안서",
+          "type": "Concept"
+        },
+        {
+          "id": "imgtext:proposal-ocr",
+          "source": "proposal-sketch.png",
+          "title": "제안서 스케치 OCR",
+          "type": "ImageText"
+        },
+        {
+          "id": "page:proposal-outline",
+          "source": "page:proposal-outline",
+          "title": "제안서 목차",
+          "type": "Page"
+        },
+        {
+          "id": "slide:proposal-1",
+          "source": "slide:proposal-1",
+          "title": "제안 슬라이드 1",
+          "type": "Slide"
+        },
+        {
+          "id": "sheet:proposal-budget",
+          "source": "proposal-budget.xlsx",
+          "title": "proposal-budget.xlsx",
+          "type": "Spreadsheet"
+        }
+      ],
+      "stats": {
+        "budget_trimmed": true,
+        "graph_edges": 28,
+        "graph_nodes": 19,
+        "method": "hybrid",
+        "primary_matches": 10
+      },
+      "trace": {
+        "budget_approx_tokens": 40,
+        "sections": [
+          {
+            "approx_tokens": 17,
+            "name": "사용자 프로필",
+            "provenance": [],
+            "source": "self_model"
+          },
+          {
+            "approx_tokens": 31,
+            "name": "관련 문서/파일",
+            "provenance": [
+              {
+                "id": "doc:proposal",
+                "type": "Document"
+              },
+              {
+                "id": "deck:proposal",
+                "type": "SlideDeck"
+              },
+              {
+                "id": "imgtext:proposal-ocr",
+                "type": "ImageText"
+              },
+              {
+                "id": "sheet:proposal-budget",
+                "type": "Spreadsheet"
+              },
+              {
+                "id": "img:proposal-sketch",
+                "type": "Image"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 6,
+            "name": "관련 결정사항/작업",
+            "provenance": [
+              {
+                "id": "task:proposal-review",
+                "type": "Task"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 7,
+            "name": "관련 대화",
+            "provenance": [
+              {
+                "id": "chat:proposal",
+                "type": "Chat"
+              }
+            ],
+            "source": "knowledge"
+          },
+          {
+            "approx_tokens": 58,
+            "name": "관련 개념/기술",
+            "provenance": [
+              {
+                "id": "concept:proposal",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:evidence",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:ranking",
+                "type": "Concept"
+              },
+              {
+                "id": "concept:retrieval",
+                "type": "Concept"
+              },
+              {
+                "id": "feature:command-palette",
+                "type": "Feature"
+              },
+              {
+                "id": "feature:doc-generation",
+                "type": "Feature"
+              }
+            ],
+            "source": "knowledge"
+          }
+        ],
+        "used_approx_tokens": 40
+      }
+    },
+    "sources_footnote": "\n---\n**참조된 지식 그래프 노드:**\n1. [Document] 제안서 초안: 검색 품질 개선 (docs/proposal.md)\n2. [SlideDeck] 제안 발표자료 (proposal.pptx)\n3. [Task] 제안서 검토 (task:proposal-review)\n4. [Chat] 제안서 관련 대화 (conv-f)\n5. [Concept] 제안서 (concept:proposal)\n6. [ImageText] 제안서 스케치 OCR (proposal-sketch.png)\n7. [Page] 제안서 목차 (page:proposal-outline)\n8. [Slide] 제안 슬라이드 1 (slide:proposal-1)\n9. [Spreadsheet] proposal-budget.xlsx (proposal-budget.xlsx)"
+  },
+  "spec": {
+    "budget": 40,
+    "key": "budget_40",
+    "query": "제안서 초안"
+  },
+  "suite": "context_document"
+}

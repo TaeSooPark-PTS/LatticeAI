@@ -1,0 +1,297 @@
+{
+  "cases": [
+    {
+      "key": "full",
+      "round_trip": {
+        "approved_by_human": true,
+        "corrections": [
+          "reply with JSON"
+        ],
+        "executing_model": "m-exec",
+        "final_message": "paused",
+        "permission_mode": "trusted",
+        "plan": {
+          "goal": "g",
+          "steps": [
+            {
+              "action": "write_file"
+            }
+          ]
+        },
+        "retry_count": 2,
+        "reviewing_model": "m-review",
+        "rollback_log": [
+          {
+            "existed": false,
+            "path": "a.md"
+          }
+        ],
+        "state": "WAITING_APPROVAL",
+        "state_history": [
+          "PLANNING",
+          "WAITING_APPROVAL"
+        ],
+        "trace": {
+          "events": [
+            {
+              "kind": "llm_call",
+              "model": "m-exec",
+              "phase": "plan"
+            },
+            {
+              "kind": "repair",
+              "phase": "plan",
+              "repairs": [
+                "fence"
+              ]
+            }
+          ],
+          "truncated": 0
+        },
+        "transcript": [
+          {
+            "goal": "g",
+            "state": "PLANNING"
+          }
+        ]
+      },
+      "serialized": {
+        "approved_by_human": true,
+        "corrections": [
+          "reply with JSON"
+        ],
+        "executing_model": "m-exec",
+        "final_message": "paused",
+        "permission_mode": "trusted",
+        "plan": {
+          "goal": "g",
+          "steps": [
+            {
+              "action": "write_file"
+            }
+          ]
+        },
+        "retry_count": 2,
+        "reviewing_model": "m-review",
+        "rollback_log": [
+          {
+            "existed": false,
+            "path": "a.md"
+          }
+        ],
+        "state": "WAITING_APPROVAL",
+        "state_history": [
+          "PLANNING",
+          "WAITING_APPROVAL"
+        ],
+        "trace": {
+          "events": [
+            {
+              "kind": "llm_call",
+              "model": "m-exec",
+              "phase": "plan"
+            },
+            {
+              "kind": "repair",
+              "phase": "plan",
+              "repairs": [
+                "fence"
+              ]
+            }
+          ],
+          "truncated": 0
+        },
+        "transcript": [
+          {
+            "goal": "g",
+            "state": "PLANNING"
+          }
+        ]
+      }
+    },
+    {
+      "key": "empty",
+      "round_trip": {
+        "approved_by_human": false,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": null,
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "IDLE",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      },
+      "serialized": {
+        "approved_by_human": false,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": null,
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "IDLE",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      }
+    },
+    {
+      "key": "restore_unknown_state",
+      "payload": {
+        "state": "SOMETHING_NEW"
+      },
+      "restored": {
+        "approved_by_human": false,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": null,
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "WAITING_APPROVAL",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      }
+    },
+    {
+      "key": "restore_no_state",
+      "payload": {},
+      "restored": {
+        "approved_by_human": false,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": null,
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "WAITING_APPROVAL",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      }
+    },
+    {
+      "key": "restore_null_state",
+      "payload": {
+        "state": null
+      },
+      "restored": {
+        "approved_by_human": false,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": null,
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "WAITING_APPROVAL",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      }
+    },
+    {
+      "key": "restore_blank_mode",
+      "payload": {
+        "permission_mode": "",
+        "state": "EXECUTING"
+      },
+      "restored": {
+        "approved_by_human": false,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": null,
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "EXECUTING",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      }
+    },
+    {
+      "key": "restore_kept_mode",
+      "payload": {
+        "permission_mode": "bypass",
+        "state": "EXECUTING"
+      },
+      "restored": {
+        "approved_by_human": false,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": "bypass",
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "EXECUTING",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      }
+    },
+    {
+      "key": "restore_truthy_approval",
+      "payload": {
+        "approved_by_human": 1
+      },
+      "restored": {
+        "approved_by_human": true,
+        "corrections": [],
+        "executing_model": null,
+        "final_message": "",
+        "permission_mode": null,
+        "plan": {},
+        "retry_count": 0,
+        "reviewing_model": null,
+        "rollback_log": [],
+        "state": "WAITING_APPROVAL",
+        "state_history": [],
+        "trace": {
+          "events": [],
+          "truncated": 0
+        },
+        "transcript": []
+      }
+    }
+  ],
+  "schema": "agent-loop-parity/v1"
+}

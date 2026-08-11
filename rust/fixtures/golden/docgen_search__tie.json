@@ -1,0 +1,123 @@
+{
+  "key": "tie",
+  "result": [
+    {
+      "hybrid_score": 0.552,
+      "id": "tie:a",
+      "metadata": {},
+      "related_concepts": [
+        {
+          "id": "tie:b",
+          "title": "Tie candidate B",
+          "type": "Concept"
+        }
+      ],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.0001,
+        "text": 1.0
+      },
+      "summary": "",
+      "title": "Tie candidate A",
+      "type": "Concept",
+      "updated_at": "2026-02-01T00:00:00"
+    },
+    {
+      "hybrid_score": 0.552,
+      "id": "tie:b",
+      "metadata": {},
+      "related_concepts": [
+        {
+          "id": "tie:a",
+          "title": "Tie candidate A",
+          "type": "Concept"
+        }
+      ],
+      "scores": {
+        "graph": 0.1733,
+        "recency": 0.0001,
+        "text": 1.0
+      },
+      "summary": "",
+      "title": "Tie candidate B",
+      "type": "Concept",
+      "updated_at": "2026-02-01T00:00:00"
+    },
+    {
+      "hybrid_score": 0.5,
+      "id": "tie:c",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.0,
+        "recency": 0.0001,
+        "text": 1.0
+      },
+      "summary": "",
+      "title": "Tie candidate C",
+      "type": "Concept",
+      "updated_at": "2026-02-01T00:00:00"
+    },
+    {
+      "hybrid_score": 0.5,
+      "id": "tie:d",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.0,
+        "recency": 0.0001,
+        "text": 1.0
+      },
+      "summary": "",
+      "title": "Tie candidate D",
+      "type": "Concept",
+      "updated_at": "2026-02-01T00:00:00"
+    },
+    {
+      "hybrid_score": 0.5,
+      "id": "tie:e",
+      "metadata": {},
+      "related_concepts": [],
+      "scores": {
+        "graph": 0.0,
+        "recency": 0.0001,
+        "text": 1.0
+      },
+      "summary": "",
+      "title": "Tie candidate E",
+      "type": "Concept",
+      "updated_at": "2026-02-01T00:00:00"
+    },
+    {
+      "hybrid_score": 0.3849,
+      "id": "concept:ranking",
+      "metadata": {},
+      "related_concepts": [
+        {
+          "id": "dec:fusion-alpha",
+          "title": "Hybrid retrieval fusion stays alpha weighted",
+          "type": "Decision"
+        },
+        {
+          "id": "concept:retrieval",
+          "title": "Retrieval",
+          "type": "Concept"
+        }
+      ],
+      "scores": {
+        "graph": 0.4479,
+        "recency": 0.0026,
+        "text": 0.5
+      },
+      "summary": "Ranking orders candidates so the best answer is first.",
+      "title": "Ranking",
+      "type": "Concept",
+      "updated_at": "2026-04-03T10:00:00"
+    }
+  ],
+  "spec": {
+    "key": "tie",
+    "query": "Tie candidate"
+  },
+  "suite": "docgen_search"
+}

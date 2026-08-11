@@ -22,6 +22,18 @@
         "updated_at": "2026-07-14T10:00:00"
       },
       {
+        "id": "doc:proposal",
+        "metadata": {
+          "ext": ".md",
+          "filename": "proposal.md",
+          "relative_path": "docs/proposal.md"
+        },
+        "summary": "검색 품질 개선 제안서 초안입니다. 근거는 주간 회의 기록과 분기 리뷰 발표자료입니다.",
+        "title": "제안서 초안: 검색 품질 개선",
+        "type": "Document",
+        "updated_at": "2026-07-30T09:00:00"
+      },
+      {
         "id": "doc:handbook",
         "metadata": {
           "ext": ".pdf",
@@ -32,6 +44,17 @@
         "title": "Lattice AI 사용 안내서",
         "type": "Document",
         "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "id": "file:meeting-minutes",
+        "metadata": {
+          "filename": "meeting-minutes.md",
+          "relative_path": "notes/meeting-minutes.md"
+        },
+        "summary": "회의록: 랭킹 개선과 온보딩 체크리스트를 확정했습니다.",
+        "title": "meeting-minutes.md",
+        "type": "File",
+        "updated_at": "2026-08-01T11:00:00"
       },
       {
         "id": "dec:rust-foundation",
@@ -64,6 +87,21 @@
         "title": "화이트보드 OCR 텍스트",
         "type": "ImageText",
         "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "id": "self:habit:b2",
+        "metadata": {
+          "confidence": 0.6,
+          "origin": "extraction",
+          "self_model": true,
+          "self_model_kind": "habit",
+          "signal": "ko_habit",
+          "workspace_id": null
+        },
+        "summary": "매주 월요일 회의록을 정리한다",
+        "title": "매주 월요일 회의록을 정리한다",
+        "type": "Habit",
+        "updated_at": "2026-07-03T09:00:00"
       },
       {
         "id": "chunk:handbook:2",

@@ -536,6 +536,41 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "한 번에 처리할 개수는 {min}에서 {max} 사이여야 합니다.",
         "en": "Ask for between {min} and {max} items in one pass.",
     },
+    # ── AI-Worker seam (the Rust loop's three calls back into Python) ────
+    "agent_seam.disabled": {
+        "ko": "워커 시임이 꺼져 있습니다. 호스트가 직접 띄운 워커에서만 열립니다.",
+        "en": "The worker seam is off. It opens only in a worker the host started itself.",
+    },
+    "agent_seam.message_required": {
+        "ko": "모델에 보낼 내용을 적어주세요.",
+        "en": "Write the message to send to the model.",
+    },
+    "agent_seam.max_tokens_out_of_range": {
+        "ko": "한 번에 만들 길이는 {min}에서 {max} 사이여야 합니다.",
+        "en": "Ask for between {min} and {max} tokens in one completion.",
+    },
+    "agent_seam.temperature_out_of_range": {
+        "ko": "온도는 {min}에서 {max} 사이여야 합니다.",
+        "en": "Temperature has to be between {min} and {max}.",
+    },
+    "agent_seam.tool_required": {
+        "ko": "실행할 도구 이름이 필요합니다.",
+        "en": "A tool name to run is required.",
+    },
+    "agent_seam.tool_blocked": {
+        "ko": "'{tool}' 도구는 어떤 모드에서도 차단됩니다 ({reason}).",
+        "en": "'{tool}' is blocked in every mode ({reason}).",
+    },
+    "agent_seam.tool_fail_closed": {
+        "ko": "'{tool}' 도구는 기존 내용을 바꾸지만 검토할 수 있는 제안으로 "
+              "만들 수 없어 차단했습니다 ({reason}).",
+        "en": "'{tool}' would change existing content but cannot be staged as a "
+              "reviewable proposal, so it is blocked ({reason}).",
+    },
+    "agent_seam.proposals_unavailable": {
+        "ko": "변경 제안 서비스가 연결되어 있지 않습니다.",
+        "en": "The change proposal service is not connected.",
+    },
     # ── MCP / setup ─────────────────────────────────────────────────────
     "mcp.connector_not_found": {
         "ko": "커넥터를 찾을 수 없습니다.",

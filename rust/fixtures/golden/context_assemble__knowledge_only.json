@@ -1,13 +1,13 @@
 {
   "key": "knowledge_only",
   "result": {
-    "approx_tokens": 134,
-    "text": "[Knowledge]\n- Hybrid retrieval fusion stays alpha weighted: We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.\n- retrieval-metrics.xlsx: Recall and precision per query class for the ranking experiments.\n- Build the retrieval parity harness: Generate a golden fixture so the Rust ranking can be compared against the Python ranking.\n- hybrid.py: def hybrid_search(query): the ranking pipeline lives here and calls vector_search().\n- Retrieval: Retrieval is the act of finding the right memory for a question.",
+    "approx_tokens": 136,
+    "text": "[Knowledge]\n- Hybrid retrieval fusion stays alpha weighted: We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.\n- retrieval-metrics.xlsx: Recall and precision per query class for the ranking experiments.\n- Release notes for the retrieval port: Release notes describing the ranking port and the parity harness.\n- Build the retrieval parity harness: Generate a golden fixture so the Rust ranking can be compared against the Python ranking.\n- Retrieval: Retrieval is the act of finding the right memory for a question.",
     "trace": {
       "budget_approx_tokens": 2000,
       "sections": [
         {
-          "approx_tokens": 134,
+          "approx_tokens": 136,
           "name": "Knowledge",
           "provenance": [
             {
@@ -21,7 +21,16 @@
             },
             {
               "id": "sheet:metrics",
-              "score": 0.55,
+              "score": 0.52,
+              "sources": [
+                "keyword",
+                "vector",
+                "graph"
+              ]
+            },
+            {
+              "id": "doc:release-notes",
+              "score": 0.429777,
               "sources": [
                 "keyword",
                 "vector",
@@ -30,16 +39,7 @@
             },
             {
               "id": "task:parity-harness",
-              "score": 0.484582,
-              "sources": [
-                "keyword",
-                "vector",
-                "graph"
-              ]
-            },
-            {
-              "id": "code:hybrid-search",
-              "score": 0.374471,
+              "score": 0.384582,
               "sources": [
                 "keyword",
                 "vector",
@@ -48,7 +48,7 @@
             },
             {
               "id": "concept:retrieval",
-              "score": 0.335164,
+              "score": 0.332921,
               "sources": [
                 "keyword",
                 "vector",
@@ -60,7 +60,7 @@
           "truncated": false
         }
       ],
-      "used_approx_tokens": 134
+      "used_approx_tokens": 136
     }
   },
   "spec": {

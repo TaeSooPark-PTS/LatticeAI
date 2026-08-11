@@ -10,10 +10,19 @@ use serde_json::{Map, Value};
 
 /// `round(value, 6)` with CPython's semantics (round-half-even on the exact value).
 pub fn round6(value: f64) -> f64 {
+    round_to(value, 6)
+}
+
+/// `round(value, 4)` — the precision the document-generation scores are stored at.
+pub fn round4(value: f64) -> f64 {
+    round_to(value, 4)
+}
+
+fn round_to(value: f64, digits: usize) -> f64 {
     if !value.is_finite() {
         return value;
     }
-    format!("{value:.6}").parse::<f64>().unwrap_or(value)
+    format!("{value:.digits$}").parse::<f64>().unwrap_or(value)
 }
 
 /// True for every character Python's `re` `\s` and `str.strip()` treat as space.
@@ -45,6 +54,17 @@ pub fn clean_text(text: &str) -> String {
 /// Python's `text[:n]` — n **characters**, not bytes.
 pub fn truncate_chars(text: &str, n: usize) -> String {
     text.chars().take(n).collect()
+}
+
+/// Python's `str.rstrip()` — trailing whitespace by *Python's* definition of it,
+/// which is why it goes through [`is_py_space`] rather than `str::trim_end`.
+pub fn rstrip(text: &str) -> String {
+    text.trim_end_matches(is_py_space).to_string()
+}
+
+/// Python's `str.strip()`, for the same reason.
+pub fn strip(text: &str) -> String {
+    text.trim_matches(is_py_space).to_string()
 }
 
 /// `lattice_brain.graph.json_utils._safe_loads` — object or `{}`, never an error.
@@ -225,6 +245,24 @@ mod tests {
         assert!(round6(f64::NAN).is_nan());
         assert_eq!(round6(f64::INFINITY), f64::INFINITY);
         assert_eq!(round6(123456.7890625), 123456.789062);
+        // `round(x, 4)` — the document-generation scores' precision.
+        assert_eq!(
+            round4(0.65975),
+            0.6597,
+            "half-even, not half-away-from-zero"
+        );
+        assert_eq!(round4(0.5 + 0.3 * (1.0 / 3.0) + 0.2), 0.8);
+        assert_eq!(round4(1.0 / 3.0), 0.3333);
+        assert!(round4(f64::NAN).is_nan());
+    }
+
+    #[test]
+    fn rstrip_and_strip_follow_pythons_definition_of_space() {
+        assert_eq!(rstrip("a b \n\t"), "a b");
+        assert_eq!(rstrip("a\u{1c}"), "a", "a C0 separator is space to Python");
+        assert_eq!(rstrip("   "), "");
+        assert_eq!(strip("  회의록  "), "회의록");
+        assert_eq!(strip(""), "");
     }
 
     #[test]

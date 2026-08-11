@@ -11,6 +11,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 /// One tool's governance record — the Python `ToolPolicy` TypedDict.
 ///
@@ -99,12 +100,61 @@ impl ToolPolicy {
 /// the arguments (the worker, or the fixture generator) passes the rewritten
 /// policy in. Guessing it here would mean re-deriving
 /// `LOCAL_WRITE_BLOCKED_PREFIXES` in a second place.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyTable {
     #[serde(default)]
     pub tools: BTreeMap<String, ToolPolicy>,
     #[serde(default)]
     pub default: ToolPolicy,
+    /// `LOCAL_WRITE_BLOCKED_PREFIXES` — **data**, like the rest of the table.
+    ///
+    /// The loop cannot pre-compute a policy for a tool the model has not chosen
+    /// yet, so [`PolicyTable::policy_for`] has to make the one args-dependent
+    /// rewrite `ToolRegistry.policy_for` makes. The prefixes come in with the
+    /// table rather than being hard-coded a second time, and the parity goldens
+    /// carry the real tuple so a change in Python fails the contract.
+    #[serde(default = "default_blocked_write_prefixes")]
+    pub blocked_write_prefixes: Vec<String>,
+}
+
+/// The tuple `latticeai.core.tool_registry` ships, for callers that send none.
+fn default_blocked_write_prefixes() -> Vec<String> {
+    [
+        "/etc/",
+        "/usr/",
+        "/bin/",
+        "/sbin/",
+        "/System/",
+        "/private/etc/",
+        "/Library/LaunchDaemons/",
+        "/Library/LaunchAgents/",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect()
+}
+
+impl Default for PolicyTable {
+    fn default() -> Self {
+        Self {
+            tools: BTreeMap::new(),
+            default: ToolPolicy::default(),
+            blocked_write_prefixes: default_blocked_write_prefixes(),
+        }
+    }
+}
+
+/// Tools whose `path` argument is checked against the blocked prefixes.
+const PREFIX_CHECKED_WRITERS: [&str; 3] = ["edit_file", "local_write", "write_file"];
+
+/// `RISK_LEVEL_MAP` — policy risk → the coarse label the transcript records.
+pub fn risk_level(policy: &ToolPolicy) -> &'static str {
+    match policy.risk() {
+        "read" => "low",
+        "write" => "medium",
+        "exec" | "destructive" => "high",
+        _ => "medium",
+    }
 }
 
 impl PolicyTable {
@@ -116,6 +166,37 @@ impl PolicyTable {
     /// Whether the table carries an entry of its own for `name`.
     pub fn has(&self, name: &str) -> bool {
         self.tools.contains_key(name)
+    }
+
+    /// `ToolRegistry.policy_for`: the table entry, unless this is a write aimed
+    /// at a blocked system prefix — which is a destructive policy instead.
+    pub fn policy_for(&self, name: &str, args: &Map<String, Value>) -> ToolPolicy {
+        if PREFIX_CHECKED_WRITERS.binary_search(&name).is_ok() {
+            // `str(args.get("path", ""))`: a *present* null stringifies to
+            // `"None"`, which matches no prefix — the default `""` does not.
+            let path = match args.get("path") {
+                Some(value) => crate::pystr::py_str(value),
+                None => String::new(),
+            }
+            .replace('\\', "/");
+            for prefix in &self.blocked_write_prefixes {
+                let normalized = prefix.trim_end_matches('/');
+                if path == normalized || path.starts_with(&format!("{normalized}/")) {
+                    return ToolPolicy {
+                        risk: "destructive".into(),
+                        destructive: true,
+                        shell: false,
+                        network: false,
+                        auto_approve: false,
+                        sandbox: "system".into(),
+                        rollback: "none".into(),
+                        capability: None,
+                        scope: None,
+                    };
+                }
+            }
+        }
+        self.get(name).clone()
     }
 }
 
@@ -167,6 +248,80 @@ mod tests {
         assert!(table.has("read_file"));
         assert_eq!(table.get("not_a_tool").risk(), "write");
         assert!(!table.has("not_a_tool"));
+    }
+
+    #[test]
+    fn a_write_to_a_blocked_system_prefix_becomes_a_destructive_policy() {
+        let table = PolicyTable::default();
+        let args = |path: &str| {
+            serde_json::json!({"path": path})
+                .as_object()
+                .expect("object")
+                .clone()
+        };
+        for blocked in [
+            "/etc/hosts",
+            "/etc",
+            "\\etc\\hosts",
+            "/Library/LaunchAgents/x.plist",
+        ] {
+            let policy = table.policy_for("write_file", &args(blocked));
+            assert!(policy.is_destructive(), "{blocked}");
+            assert_eq!(policy.sandbox(), "system");
+            assert!(!policy.auto_approve);
+        }
+        for allowed in ["notes/a.md", "/etcetera/a.md", "", "/home/u/etc/a"] {
+            assert!(
+                !table
+                    .policy_for("write_file", &args(allowed))
+                    .is_destructive(),
+                "{allowed}"
+            );
+        }
+        // The rewrite only applies to the three writers that take a path.
+        assert!(!table
+            .policy_for("read_file", &args("/etc/hosts"))
+            .is_destructive());
+        assert!(!table.policy_for("write_file", &Map::new()).is_destructive());
+    }
+
+    #[test]
+    fn the_prefix_list_is_data_the_caller_can_replace() {
+        let table = PolicyTable {
+            blocked_write_prefixes: vec!["/srv/".into()],
+            ..PolicyTable::default()
+        };
+        let args = serde_json::json!({"path": "/srv/x"})
+            .as_object()
+            .expect("object")
+            .clone();
+        assert!(table.policy_for("write_file", &args).is_destructive());
+        let etc = serde_json::json!({"path": "/etc/hosts"})
+            .as_object()
+            .expect("object")
+            .clone();
+        assert!(!table.policy_for("write_file", &etc).is_destructive());
+        assert_eq!(default_blocked_write_prefixes().len(), 8);
+    }
+
+    #[test]
+    fn risk_levels_are_the_python_map_with_its_fallback() {
+        let of = |risk: &str| {
+            risk_level(&ToolPolicy {
+                risk: risk.into(),
+                ..ToolPolicy::default()
+            })
+        };
+        assert_eq!(of("read"), "low");
+        assert_eq!(of("write"), "medium");
+        assert_eq!(of("exec"), "high");
+        assert_eq!(of("destructive"), "high");
+        assert_eq!(
+            of("write_scoped"),
+            "medium",
+            "unmapped falls back to medium"
+        );
+        assert_eq!(of(""), "medium");
     }
 
     #[test]

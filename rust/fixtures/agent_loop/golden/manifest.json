@@ -1,0 +1,123 @@
+{
+  "constants": {
+    "file_create_actions": [
+      "create_docx",
+      "create_pdf",
+      "create_pptx",
+      "create_web_project",
+      "create_xlsx",
+      "edit_file",
+      "write_file"
+    ],
+    "governed_tools": [
+      "edit_file",
+      "write_file"
+    ],
+    "max_retry": 3,
+    "max_state_history": 200,
+    "phase_budgets": {
+      "execute_tokens": 4096,
+      "memory_tokens": 256,
+      "plan_tokens": 1024,
+      "verify_tokens": 512
+    },
+    "scoped_knowledge_tools": [
+      "knowledge_save",
+      "knowledge_search",
+      "knowledge_tree",
+      "obsidian_save",
+      "obsidian_search",
+      "obsidian_tree"
+    ],
+    "transcript_budget": {
+      "result_chars": 700,
+      "verify_chars": 1200,
+      "window": 8
+    }
+  },
+  "normalization": [
+    "the absolute workspace root becomes <AGENT_ROOT>",
+    "keys named `at` are dropped (trace timestamps)",
+    "keys named `stderr` are dropped (git text is version-specific)",
+    "a string starting with 'Agent did not return valid JSON: ' keeps only that prefix"
+  ],
+  "plan_cases": [
+    "blank_goal",
+    "coerced_tail",
+    "complete",
+    "empty_steps",
+    "estimated_float",
+    "estimated_invalid",
+    "estimated_list",
+    "estimated_string",
+    "heuristic_long_message",
+    "heuristic_single_file",
+    "junk_steps",
+    "manifest_covered",
+    "manifest_empty_plan",
+    "manifest_partial",
+    "manifest_python",
+    "manifest_react",
+    "manifest_with_read",
+    "missing_goal",
+    "not_an_object",
+    "null_plan",
+    "numeric_goal",
+    "rollback_kept",
+    "steps_not_a_list",
+    "string_plan"
+  ],
+  "raw_actions": [
+    "bare_number",
+    "bare_string",
+    "broken_empty",
+    "broken_missing_value",
+    "broken_prose",
+    "broken_unclosed",
+    "broken_unquoted_key",
+    "broken_whitespace",
+    "clean",
+    "clean_with_args",
+    "double_object",
+    "fence_bare",
+    "fence_json",
+    "fence_multiline",
+    "fence_with_prose",
+    "korean_prose_slice",
+    "no_action_key",
+    "not_an_object",
+    "python_literal",
+    "python_literal_escapes",
+    "python_literal_nested",
+    "python_literal_not_dict",
+    "python_literal_trailing",
+    "python_literal_true",
+    "reasoning_tag",
+    "slice_both",
+    "slice_nested",
+    "slice_prefix",
+    "slice_suffix",
+    "think_mismatched",
+    "think_then_json",
+    "think_unclosed",
+    "think_uppercase",
+    "thinking_tag",
+    "trailing_comma_array",
+    "trailing_comma_nested",
+    "trailing_comma_object",
+    "unicode_thoughts"
+  ],
+  "scenarios": [
+    "approval_pause_strict",
+    "blocked_breaker_bypass",
+    "blocked_fail_closed_strict",
+    "clean_done_trusted",
+    "parse_budget_exhaustion",
+    "repeated_create_guard",
+    "rollback_path",
+    "strict_proposal_pause",
+    "verify_pass_no_evidence",
+    "verify_retry_then_failed"
+  ],
+  "schema": "agent-loop-parity/v1"
+}

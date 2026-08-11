@@ -1,0 +1,10 @@
+{
+  "key": "scoped_empty",
+  "result": [],
+  "spec": {
+    "allowed": [],
+    "key": "scoped_empty",
+    "query": "제안서"
+  },
+  "suite": "docgen_search"
+}

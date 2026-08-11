@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **11.5.0 — Rust Complete**.
+Current release: **11.5.1 — Rust Full Loop**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

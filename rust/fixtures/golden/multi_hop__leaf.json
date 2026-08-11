@@ -1,0 +1,48 @@
+{
+  "key": "leaf",
+  "result": {
+    "edges": [
+      {
+        "from": "deck:proposal",
+        "to": "doc:proposal",
+        "type": "MENTIONS",
+        "weight": 0.82
+      },
+      {
+        "from": "deck:proposal",
+        "to": "slide:proposal-1",
+        "type": "CONTAINS",
+        "weight": 0.81
+      }
+    ],
+    "nodes": [
+      {
+        "hop": 0,
+        "id": "slide:proposal-1",
+        "metadata": {},
+        "summary": "제안서 요약 슬라이드입니다.",
+        "title": "제안 슬라이드 1",
+        "type": "Slide"
+      },
+      {
+        "hop": 1,
+        "id": "deck:proposal",
+        "metadata": {
+          "ext": ".pptx",
+          "filename": "proposal.pptx"
+        },
+        "summary": "제안서 초안을 발표용으로 정리한 자료입니다.",
+        "title": "제안 발표자료",
+        "type": "SlideDeck"
+      }
+    ]
+  },
+  "spec": {
+    "key": "leaf",
+    "max_hops": 2,
+    "node_ids": [
+      "slide:proposal-1"
+    ]
+  },
+  "suite": "multi_hop"
+}
