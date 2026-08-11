@@ -84,3 +84,9 @@ scripts/launch-pts-grok.sh
 .coverage
 .coverage.*
 htmlcov/
+
+# CI staging dir for the generated OpenAPI drift-fix artifact (ci.yml copies
+# frontend/openapi.json + openapi.ts here before upload). Working-tree only —
+# ignoring it also keeps the untracked-file scan in check_max_file_lines.mjs
+# from counting a generated copy.
+openapi-artifacts/
