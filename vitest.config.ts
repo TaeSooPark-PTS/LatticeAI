@@ -29,7 +29,7 @@ export default defineConfig({
         "frontend/src/**/*.test.{ts,tsx}",
         "frontend/src/test/**",
         "frontend/src/api/openapi.ts", // generated
-        "frontend/src/i18n/*.ts", // copy tables, not logic
+        "frontend/src/i18n/**", // copy tables, not logic (namespaces and their domain parts)
         "frontend/src/main.tsx", // bootstrap, covered by the visual suite
       ],
       reporter: ["text-summary", "text"],

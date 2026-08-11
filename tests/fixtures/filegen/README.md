@@ -20,7 +20,7 @@ newlines (CRLF→LF, ignoring one trailing newline) — everything else is exact
 ## Changing prompts or the sanitizer? Review golden diffs deliberately.
 
 These files are the regression contract for file generation. If a change to
-`file_generation.py` (extraction, validation, repair) or to the generation
+`latticeai/core/file_generation/` (extraction, validation, repair) or to the generation
 prompts alters any sanitized output, the golden test will fail — that is the
 point. Do **not** blindly regenerate the expected files to make the test
 green: diff old vs. new expected output, confirm the new output is what a

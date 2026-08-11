@@ -253,8 +253,11 @@ def test_the_direct_path_gives_up_honestly_when_generation_raises(tmp_path, monk
     async def exploding_generate_file_content(*_args, **_kwargs):
         raise RuntimeError("content pipeline is down")
 
+    # ``_direct_file_path`` calls the generator through its own module globals,
+    # which after the v11.3.0 split is ``agent.execution``: a name rebound on
+    # the package ``__init__`` would leave that call untouched.
     monkeypatch.setattr(
-        agent_module, "generate_file_content", exploding_generate_file_content,
+        agent_module.execution, "generate_file_content", exploding_generate_file_content,
     )
     harness = _harness(
         tmp_path, replies=["still not JSON"], agent_profile=_COMPACT,

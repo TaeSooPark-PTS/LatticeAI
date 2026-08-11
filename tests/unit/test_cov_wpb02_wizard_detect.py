@@ -1,4 +1,4 @@
-"""wpb02 branch coverage — hardware detection in ``latticeai/setup/wizard.py``.
+"""wpb02 branch coverage — hardware detection in ``latticeai/setup/wizard/``.
 
 Detection is entirely host-shaped, so every branch is driven through the
 module's own seams (``setup.platform``, ``setup._cmd``, ``setup.Path``,
@@ -21,6 +21,36 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from latticeai.setup import wizard as setup
+from latticeai.setup.wizard import catalog as wizard_catalog
+from latticeai.setup.wizard import detect as wizard_detect
+from latticeai.setup.wizard import install as wizard_install
+from latticeai.setup.wizard import paths as wizard_paths
+from latticeai.setup.wizard import plans as wizard_plans
+from latticeai.setup.wizard import recommend as wizard_recommend
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/setup/wizard.py`` became a package (paths / detect / plans /
+# catalog / recommend / install). Reading a name through the package still
+# works, so the calls below are unchanged — but *patching* a name on the
+# package ``__init__`` does not reach a submodule's own global. Every stub is
+# therefore installed on every module that binds the name, which is exactly
+# the one binding the single-file module used to have.
+_WIZARD_MODULES = (
+    setup,
+    wizard_catalog,
+    wizard_detect,
+    wizard_install,
+    wizard_paths,
+    wizard_plans,
+    wizard_recommend,
+)
+
+
+def _patch(monkeypatch, name, value):
+    targets = [module for module in _WIZARD_MODULES if hasattr(module, name)]
+    assert targets, f"no wizard module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 
 
 class _ModuleShim:
@@ -67,7 +97,7 @@ def _patch_paths(monkeypatch, mapping: Dict[str, str]) -> None:
         return real_path(first, *rest)
 
     factory.home = real_path.home
-    monkeypatch.setattr(setup, "Path", factory)
+    _patch(monkeypatch, "Path", factory)
 
 
 def _patch_proc_meminfo(monkeypatch, payload: str) -> None:
@@ -82,8 +112,8 @@ def _patch_proc_meminfo(monkeypatch, payload: str) -> None:
 
 
 def _system(monkeypatch, name: str, machine: str = "x86_64", processor: str = "") -> None:
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "platform",
         _ModuleShim(
             platform,
@@ -99,7 +129,7 @@ def _system(monkeypatch, name: str, machine: str = "x86_64", processor: str = ""
 
 def test_an_unrecognized_os_falls_back_to_the_reported_processor(monkeypatch):
     _system(monkeypatch, "FreeBSD", processor="amd64-generic")
-    monkeypatch.setattr(setup, "_cmd", _fake_cmd({}))
+    _patch(monkeypatch, "_cmd", _fake_cmd({}))
 
     chip = setup._detect_chip()
 
@@ -113,7 +143,7 @@ def test_an_unrecognized_os_falls_back_to_the_reported_processor(monkeypatch):
 
 def test_a_cpuinfo_without_a_model_name_line_falls_back_to_the_processor(monkeypatch):
     _system(monkeypatch, "Linux", processor="generic")
-    monkeypatch.setattr(setup, "_cmd", _fake_cmd({}))
+    _patch(monkeypatch, "_cmd", _fake_cmd({}))
     _patch_paths(monkeypatch, {"/proc/cpuinfo": "processor\t: 0\ncpu MHz\t: 2400\n"})
 
     assert setup._detect_chip()["name"] == "generic"
@@ -124,7 +154,7 @@ def test_a_cpuinfo_without_a_model_name_line_falls_back_to_the_processor(monkeyp
 
 def test_a_cpuinfo_without_a_flags_line_reports_no_instructions(monkeypatch):
     _system(monkeypatch, "Linux", processor="generic")
-    monkeypatch.setattr(setup, "_cmd", _fake_cmd({}))
+    _patch(monkeypatch, "_cmd", _fake_cmd({}))
     _patch_paths(monkeypatch, {"/proc/cpuinfo": "processor\t: 0\ncpu MHz\t: 2400\n"})
 
     cpu = setup._detect_cpu()
@@ -135,7 +165,7 @@ def test_a_cpuinfo_without_a_flags_line_reports_no_instructions(monkeypatch):
 
 def test_an_unrecognized_os_reports_no_cpu_instructions(monkeypatch):
     _system(monkeypatch, "FreeBSD", processor="amd64-generic")
-    monkeypatch.setattr(setup, "_cmd", _fake_cmd({}))
+    _patch(monkeypatch, "_cmd", _fake_cmd({}))
 
     cpu = setup._detect_cpu()
 
@@ -149,8 +179,8 @@ def test_an_unrecognized_os_reports_no_cpu_instructions(monkeypatch):
 
 def test_windows_ram_falls_through_to_meminfo_when_wmic_says_nothing(monkeypatch):
     _system(monkeypatch, "Windows")
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "_cmd",
         _fake_cmd({"ComputerSystem": "Caption=DESKTOP\nDomain=WORKGROUP\n"}),
     )
@@ -161,8 +191,8 @@ def test_windows_ram_falls_through_to_meminfo_when_wmic_says_nothing(monkeypatch
 
 def test_macos_ram_is_zero_when_no_probe_reports_a_number(monkeypatch):
     _system(monkeypatch, "Darwin", machine="arm64")
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "_cmd",
         _fake_cmd(
             {
@@ -182,9 +212,9 @@ def test_macos_ram_is_zero_when_no_probe_reports_a_number(monkeypatch):
 
 def test_a_mac_display_report_without_a_chipset_line_finds_no_gpu(monkeypatch):
     _system(monkeypatch, "Darwin", machine="arm64")
-    monkeypatch.setattr(setup, "_which_any", lambda _binary: None)
-    monkeypatch.setattr(
-        setup,
+    _patch(monkeypatch, "_which_any", lambda _binary: None)
+    _patch(
+        monkeypatch,
         "_cmd",
         _fake_cmd({"SPDisplaysDataType": "Graphics/Displays:\n\n    Displays:\n"}),
     )
@@ -201,8 +231,8 @@ def test_a_mac_display_report_without_a_chipset_line_finds_no_gpu(monkeypatch):
 def test_a_pattern_whose_version_group_has_no_digits_is_skipped(monkeypatch):
     import re
 
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "_VERSIONED_MODEL_PATTERNS",
         (
             ("nightly", re.compile(r"\b(nightly)\b")),

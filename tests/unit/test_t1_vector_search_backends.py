@@ -18,7 +18,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from lattice_brain.graph import retrieval_vector as rv
+# ``VECTOR_SCAN_BATCH`` is a global of the search half that reads it
+# (v11.3.0 decomposition), so batching is forced there, not on the package.
+from lattice_brain.graph.retrieval_vector import search as rv
 from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.graph.vector_index import (
     BRUTE_FORCE_BACKEND,

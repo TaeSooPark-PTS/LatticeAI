@@ -4,6 +4,7 @@ import { APP_VERSION, COPY, resolveAppVersion, t } from "./i18n";
 // Namespaces register on import. The app pulls them in per lazy route; the
 // parity check needs all of them, so import every one explicitly.
 import "./i18n/brain";
+import "./i18n/chronicle";
 import "./i18n/onboarding";
 import "./i18n/workspace";
 

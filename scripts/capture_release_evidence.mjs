@@ -4,6 +4,12 @@ import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import {
+  MOCK_SERVER_ENTRY,
+  MOCK_SERVER_LABEL,
+  mockServerFingerprint,
+} from "./lib/mock_server_fingerprint.mjs";
+
 const repoRoot = process.cwd();
 const version = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version;
 const port = Number(process.env.LTCAI_RELEASE_EVIDENCE_PORT || 4936);
@@ -34,20 +40,10 @@ function assetManifestFingerprint() {
   };
 }
 
-const mockServerPath = path.join(repoRoot, "tests", "visual", "mock_server.cjs");
-
-function mockServerFingerprint() {
-  if (!fs.existsSync(mockServerPath)) {
-    return null;
-  }
-  const body = fs.readFileSync(mockServerPath);
-  const stat = fs.statSync(mockServerPath);
-  return {
-    sha256: createHash("sha256").update(body).digest("hex"),
-    mtime: stat.mtime.toISOString(),
-    bytes: body.length,
-  };
-}
+// The mock API surface is the entry file plus the route modules it composes;
+// the fingerprint covers all of them. Shared with
+// scripts/check_release_evidence_bound.mjs so the digest recorded here and the
+// digest verified there are computed by exactly one piece of code.
 
 /**
  * Refuse to overwrite published release screenshots for an already-tagged version.
@@ -99,7 +95,7 @@ function assertNotOverwritingTaggedRelease() {
  * Refuse to capture when the release lint gate is red.
  *
  * Failure mode this catches: lint is failing (e.g. ruff F841) but
- * capture still runs and writes 12 screenshots + SCREENSHOT_INDEX.md
+ * capture still runs and writes 13 screenshots + SCREENSHOT_INDEX.md
  * bound to the asset manifest — evidence that looks green while the
  * first CI stage would already have stopped. Capture is not proof that
  * the tree is releasable; lint must pass first.
@@ -253,7 +249,7 @@ fs.mkdirSync(screenshots, { recursive: true });
 fs.mkdirSync(videos, { recursive: true });
 fs.mkdirSync(gifs, { recursive: true });
 
-const server = spawn(process.execPath, ["tests/visual/mock_server.cjs"], {
+const server = spawn(process.execPath, [MOCK_SERVER_ENTRY], {
   cwd: repoRoot,
   env: { ...process.env, LTCAI_VISUAL_PORT: String(port) },
   stdio: ["ignore", "pipe", "pipe"],
@@ -444,6 +440,18 @@ async function main() {
   }
   await shot(page, "12-review-center.png");
 
+  // 연대기 (11.3.0). Waiting on the title alone would publish the loading or
+  // empty frame, which is precisely what this screen must never be caught in:
+  // "오늘부터 기록이 쌓입니다" is a true state and a useless screenshot. Wait for
+  // the drawn curve and a populated grid, both of which only exist once the
+  // overview read has landed.
+  await page.goto(`${baseURL}/app#/chronicle`, { waitUntil: "networkidle" });
+  await page.locator("h1.page-title", { hasText: "두뇌가 자라온 시간" }).waitFor();
+  await page.locator(".chronicle-growth-area[d^='M']").waitFor();
+  await page.getByTestId("chronicle-heatmap-cell").first().waitFor();
+  await page.getByTestId("chronicle-day").waitFor();
+  await shot(page, "13-chronicle.png");
+
   const video = page.video();
   await context.close();
   await browser.close();
@@ -473,13 +481,14 @@ async function main() {
   if (!fingerprint) {
     throw new Error("asset-manifest.json missing after capture — cannot bind evidence");
   }
-  const mockFp = mockServerFingerprint();
+  const mockFp = mockServerFingerprint(repoRoot);
   if (!mockFp) {
-    throw new Error("tests/visual/mock_server.cjs missing after capture — cannot bind evidence");
+    throw new Error(`${MOCK_SERVER_ENTRY} missing after capture — cannot bind evidence`);
   }
   // Post-capture binding: if a later build:assets changes the manifest hash,
-  // or mock_server.cjs changes the capture payloads, check_release_evidence_bound.mjs
-  // will refuse to trust these screenshots without a recapture.
+  // or any mock-server file changes the capture payloads,
+  // check_release_evidence_bound.mjs will refuse to trust these screenshots
+  // without a recapture.
   const index = `# v${version} Release Evidence
 
 Captured from the built React/Vite app served by the release visual API on ${new Date().toISOString()}.
@@ -487,7 +496,8 @@ Captured from the built React/Vite app served by the release visual API on ${new
 ## Build Binding
 
 Evidence is only trustworthy while this fingerprint matches
-\`static/app/asset-manifest.json\` **and** \`tests/visual/mock_server.cjs\`.
+\`static/app/asset-manifest.json\` **and** the mock API surface
+(\`${MOCK_SERVER_LABEL}\`).
 A later \`build:assets\` or mock-server edit without recapture invalidates the
 screenshots even when their mtimes look fresh.
 
@@ -497,6 +507,7 @@ screenshots even when their mtimes look fresh.
 - mock-server.sha256: \`${mockFp.sha256}\`
 - mock-server.mtime: \`${mockFp.mtime}\`
 - mock-server.bytes: ${mockFp.bytes}
+- mock-server.files: ${mockFp.files}
 
 ## Screenshots
 
@@ -514,6 +525,7 @@ screenshots even when their mtimes look fresh.
 | [10-admin-console.png](screenshots/10-admin-console.png) | Separate Admin Console |
 | [11-knowledge-journey.png](screenshots/11-knowledge-journey.png) | Material-to-memory steps |
 | [12-review-center.png](screenshots/12-review-center.png) | Automation Review Center |
+| [13-chronicle.png](screenshots/13-chronicle.png) | Brain Chronicle — growth, activity, one day's story |
 
 ## Motion Evidence
 

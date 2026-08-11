@@ -261,8 +261,11 @@ summary {
    across two different thresholds left a band showing both — and, because the
    quick links add ~110px to a row that only just fit, a band where the topbar
    overflowed its own box and clipped the menu button off the right edge.
-   960px is where the full row fits with room to spare; below it the links go
-   back to the menu, which stays reachable at every width. */
+   The threshold was 960px while the primary nav carried three links. 11.3.0's
+   연대기 adds a fourth, roughly 90px, so the seam moved out to 1120px rather
+   than letting the quick links reappear at a width where the row no longer
+   fits. Below it the links go back to the menu, which stays reachable at
+   every width. */
 .brain-utility-quick-nav {
   display: none;
   align-items: center;
@@ -270,7 +273,7 @@ summary {
   margin-right: 0.35rem;
 }
 
-@media (min-width: 960px) {
+@media (min-width: 1120px) {
   .brain-utility-quick-nav {
     display: flex;
   }

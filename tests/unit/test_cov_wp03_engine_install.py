@@ -16,6 +16,38 @@ import types
 import pytest
 
 from latticeai.services import model_engines, model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -89,7 +121,7 @@ def audit_log(monkeypatch, tmp_path):
 
 
 def test_install_engine_records_the_run_and_reports_the_outcome(monkeypatch, tmp_path, audit_log):
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda engine: True)
+    _patch_runtime(monkeypatch, "engine_installed", lambda engine: True)
     monkeypatch.setattr(model_engines, "local_binary", lambda name: None)
     calls = _install_subprocess(
         monkeypatch,
@@ -146,7 +178,7 @@ def test_install_engine_records_an_unexpected_failure_before_re_raising(
 
 
 def test_installing_ollama_leaves_a_running_daemon_alone(monkeypatch, tmp_path, audit_log):
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda engine: True)
+    _patch_runtime(monkeypatch, "engine_installed", lambda engine: True)
     monkeypatch.setattr(model_engines, "local_binary", lambda name: "/bin/ollama")
     monkeypatch.setattr(
         model_engines, "shutil", types.SimpleNamespace(which=lambda name: "/bin/brew")
@@ -171,7 +203,7 @@ def test_installing_ollama_starts_the_daemon_when_the_probe_fails(monkeypatch, t
             raise OSError("daemon not up")
         return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda engine: True)
+    _patch_runtime(monkeypatch, "engine_installed", lambda engine: True)
     monkeypatch.setattr(model_engines, "local_binary", lambda name: "/bin/ollama")
     monkeypatch.setattr(
         model_engines, "shutil", types.SimpleNamespace(which=lambda name: "/bin/brew")
@@ -199,7 +231,7 @@ def test_a_daemon_that_will_not_spawn_is_reported_not_raised(monkeypatch, tmp_pa
     def _popen(command, **kwargs):
         raise OSError("permission denied")
 
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda engine: True)
+    _patch_runtime(monkeypatch, "engine_installed", lambda engine: True)
     monkeypatch.setattr(model_engines, "local_binary", lambda name: "/bin/ollama")
     monkeypatch.setattr(
         model_engines, "shutil", types.SimpleNamespace(which=lambda name: "/bin/brew")

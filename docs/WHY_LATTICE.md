@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **11.2.0 — All Systems On**.
+Current release: **11.3.0 — Time Remembers**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

@@ -44,7 +44,7 @@ orchestrator, and the agent runtime service. Lazy-loaded so importing
     /agents/api/runtime/* , POST /agents (start via runtime.start or executor)
   api/chat.py
     from latticeai.services.tool_dispatch import build_agent_runtime
-    -> latticeai/core/agent.py:SingleAgentRuntime (별도 state/plan/transcript 머신, single-agent /agent 경로. dispatch_tool 만 공유)
+    -> latticeai/core/agent/:SingleAgentRuntime (별도 state/plan/transcript 머신, single-agent /agent 경로. dispatch_tool 만 공유)
   latticeai/services/tool_dispatch.py:14
     from latticeai.core.agent import SingleAgentRuntime
     (tool governance + core single-agent용)

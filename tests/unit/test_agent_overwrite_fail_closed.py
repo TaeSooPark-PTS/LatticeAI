@@ -378,8 +378,11 @@ def test_a_broken_target_resolver_degrades_open_instead_of_crashing(tmp_path, mo
         tmp_path, mode=PermissionMode.TRUSTED.value,
         replies=[_docx_call(RAW_FILENAME), FINAL_REPLY],
     )
+    # ``_governed_path_exists`` resolves the target through its own module
+    # globals, which after the v11.3.0 split is ``agent.runtime``: a name
+    # rebound on the package ``__init__`` would leave that read untouched.
     monkeypatch.setattr(
-        agent_module, "document_output_target",
+        agent_module.runtime, "document_output_target",
         lambda *_a, **_kw: (_ for _ in ()).throw(RuntimeError("classifier bug")),
     )
 

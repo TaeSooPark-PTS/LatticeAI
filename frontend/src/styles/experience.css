@@ -5,12 +5,15 @@
 @import "./experience/conversation-active.css";
 @import "./experience/capture.css";
 @import "./experience/graph-home.css";
+@import "./experience/graph-home-dock.css";
 /* The simplified first screen wins over the older graph-home layout. */
 @import "./experience/home-simple.css";
 /* 10.10.0's quiet-station furniture: stats badge, + menu, model pill, dock. */
 @import "./experience/home-dock.css";
 /* Measured fixes for the active conversation screen. */
 @import "./experience/conversation-fixes.css";
+/* 11.3.0's 연대기: growth curve, activity grid, day story, rewind. */
+@import "./experience/chronicle.css";
 @import "./experience/responsive.css";
 /* Last: app-wide control affordances settle over every screen. */
 @import "./experience/affordance.css";

@@ -6,7 +6,7 @@
 #   3. Adding a key here is a last resort. Every addition MUST be accompanied by
 #      a `# JUSTIFY: <one-line reason + issue/PR>` comment on the line above the key.
 #   4. Fixture growth without a JUSTIFY comment is a review reject. Raising
-#      I18N_ORPHAN_FIXTURE_CAP in tests/unit/test_layout_rebuild_apis.py is
+#      I18N_ORPHAN_FIXTURE_CAP in tests/unit/_layout_rebuild_common.py is
 #      required in the same change — that constant is the hard ceiling.
 #   5. Removing entries is always fine (and required) when keys are deleted from
 #      i18n or re-wired; the gate fails on stale fixture entries.

@@ -4,6 +4,41 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.3.0] - 2026-08-11 — Time Remembers
+
+### Added
+- **기억의 연대기 (Brain Chronicle)**: 7번째 주 화면 `#/chronicle`(별칭
+  `#/timeline`) — SVG 성장 곡선 + 키보드/터치 시간 핸들, 주×요일 활동
+  히트맵, 그날의 이야기 카드(자료·새 개념·대화·달라진 사실, 기존 화면
+  딥링크), `store.as_of()` 기반 되감기 패널. 신규 읽기 전용 API 3종:
+  `GET /api/chronicle/{overview,day/{date},as-of}` (앱 시간대 일 버킷,
+  워크스페이스 스코프, 그룹 200 상한+참값 counts). 서버 메시지 ko/en
+  등록(19번째 로컬라이즈 라우터), 신규 i18n 네임스페이스 `chronicle`,
+  릴리스 캡처 `13-chronicle.png`, visual mock 라우트 + Playwright 스펙.
+- **`scripts/check_max_file_lines.mjs`**: git 추적 1st-party 소스 전체
+  (py/ts/tsx/js/mjs/cjs/css)에 1,000줄 상한을 강제하는 lint 게이트.
+  생성물·벤더만 사유 명시 제외. 1,319개 파일 스캔, 초과 0.
+- 픽셀 게이트가 이번 릴리스에 새로 생긴 화면(베이스라인 태그에 없음)을
+  "new"로 보고하고 게이트하지 않되, 클레임된 화면의 베이스라인 누락은
+  여전히 실패로 처리.
+
+### Changed
+- **No Big Files 분해**: 1,000줄 초과 1st-party 파일 28개 전부 분해,
+  동작 변화 0 증명 동반 — `frontend/src/styles.css` 10,956→48줄
+  엔트리+core/ 20파일(빌드 산출 CSS byte-identical, cmp+sha256),
+  i18n `brain`/`workspace` 사전 → 도메인 파트 14개(key→value 맵 동일
+  증명), Python 18개 모듈 → 동명 패키지(모든 top-level 심볼 AST 동등성
+  증명, monkeypatch 대상 317+ 사이트 실위치 재표적, mypy files 목록·
+  setuptools packages 목록 갱신), `vscode-extension/extension.ts` →
+  7개 모듈, 대형 테스트 5개 + visual mock 서버 분해(576응답 동등성
+  대조). 공개 import 경로 불변.
+- 릴리스 증거 결속이 mock 서버 엔트리+라우트 모듈 전체를 지문화
+  (`scripts/lib/mock_server_fingerprint.mjs`, capture/check가 한 코드
+  경로 공유). i18n 고아 키 스캔·정의 수집이 네임스페이스 파트 파일
+  구조를 인식.
+- everyday 내비 4항목(대화·자료·기억·연대기)에 맞춰 상단바 축약
+  분기점 960px→1120px, 모바일 하단바 5탭(캡션 말줄임).
+
 ## [11.2.0] - 2026-08-11 — All Systems On
 
 ### Changed

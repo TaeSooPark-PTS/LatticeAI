@@ -17,6 +17,38 @@ import types
 import pytest
 
 from latticeai.services import model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 from latticeai.services.model_errors import ModelRuntimeError
 
 FROZEN_NOW = 2_000.0
@@ -88,8 +120,8 @@ def _install_hub(monkeypatch, *, api_cls=None, hf_hub_download=None, tqdm_cls=_B
 
 
 def _freeze_clock(monkeypatch, now=FROZEN_NOW):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "time",
         types.SimpleNamespace(time=lambda: now, monotonic=lambda: now, sleep=lambda _s: None),
     )
@@ -164,8 +196,8 @@ def test_repo_listing_logs_and_falls_back_when_the_hub_call_fails(monkeypatch, c
 
 
 def test_a_download_without_huggingface_hub_asks_for_the_runtime_first(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "importlib",
         types.SimpleNamespace(util=types.SimpleNamespace(find_spec=lambda _name: None)),
     )
@@ -184,9 +216,9 @@ def test_an_already_present_model_reports_the_cache_snapshot_and_downloads_nothi
     )
     _freeze_clock(monkeypatch)
     snapshot = tmp_path / "snapshots" / "abc"
-    monkeypatch.setattr(model_runtime, "hf_model_ready", lambda *_a, **_k: True)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(model_runtime, "hf_cache_model_dir", lambda _repo: snapshot)
+    _patch_runtime(monkeypatch, "hf_model_ready", lambda *_a, **_k: True)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(monkeypatch, "hf_cache_model_dir", lambda _repo: snapshot)
     emitted: list = []
 
     result = model_runtime.download_hf_model("org/model", "local_mlx", progress_emit=emitted.append)
@@ -198,10 +230,10 @@ def test_an_already_present_model_reports_the_cache_snapshot_and_downloads_nothi
 
 def test_a_present_non_mlx_model_reports_the_managed_directory(monkeypatch, tmp_path):
     _install_hub(monkeypatch)
-    monkeypatch.setattr(model_runtime, "hf_model_ready", lambda *_a, **_k: True)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "hf_model_ready", lambda *_a, **_k: True)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(
+        monkeypatch,
         "hf_cache_model_dir",
         lambda _repo: pytest.fail("only the MLX path consults the HF cache"),
     )
@@ -218,7 +250,7 @@ def _readiness_toggle(monkeypatch, *, ready_after=True):
     def _ready(*_a, **_k):
         return ready_after if state["downloaded"] else False
 
-    monkeypatch.setattr(model_runtime, "hf_model_ready", _ready)
+    _patch_runtime(monkeypatch, "hf_model_ready", _ready)
     return state
 
 
@@ -230,9 +262,9 @@ def test_a_sized_download_reports_aggregate_byte_progress_and_throttles_it(monke
     """
     _freeze_clock(monkeypatch)
     target = tmp_path / "target"
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: target)
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: target)
+    _patch_runtime(
+        monkeypatch,
         "hf_repo_files_with_sizes",
         lambda _repo: [{"name": "config.json", "size": 10}, {"name": "model.safetensors", "size": 90}],
     )
@@ -277,9 +309,9 @@ def test_an_unsized_download_falls_back_to_counting_files(monkeypatch, tmp_path)
     """With no sizes the bar has to be per-file, and a vanished file counts 0."""
     _freeze_clock(monkeypatch)
     target = tmp_path / "target"
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: target)
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: target)
+    _patch_runtime(
+        monkeypatch,
         "hf_repo_files_with_sizes",
         lambda _repo: [{"name": "a.bin", "size": 0}, {"name": "b.bin", "size": 0}],
     )
@@ -321,8 +353,8 @@ def test_an_unsized_download_falls_back_to_counting_files(monkeypatch, tmp_path)
 
 def test_a_download_without_a_progress_sink_still_completes(monkeypatch, tmp_path):
     _freeze_clock(monkeypatch)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(model_runtime, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(monkeypatch, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
     state = _readiness_toggle(monkeypatch)
 
     def _download(*, repo_id, filename, local_dir, tqdm_class):
@@ -337,8 +369,8 @@ def test_a_download_without_a_progress_sink_still_completes(monkeypatch, tmp_pat
 
 def test_a_missing_tqdm_degrades_to_a_download_without_a_bar(monkeypatch, tmp_path):
     _freeze_clock(monkeypatch)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(model_runtime, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(monkeypatch, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
     state = _readiness_toggle(monkeypatch)
     seen: list = []
 
@@ -355,9 +387,9 @@ def test_a_missing_tqdm_degrades_to_a_download_without_a_bar(monkeypatch, tmp_pa
 
 def test_llamacpp_picks_the_preferred_quantisation_and_downloads_only_that(monkeypatch, tmp_path):
     _freeze_clock(monkeypatch)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(
+        monkeypatch,
         "hf_repo_files_with_sizes",
         lambda _repo: [
             {"name": "README.md", "size": 1},
@@ -383,8 +415,8 @@ def test_llamacpp_picks_the_preferred_quantisation_and_downloads_only_that(monke
 
 def test_a_llamacpp_repo_with_no_gguf_is_a_clear_download_failure(monkeypatch, tmp_path):
     _freeze_clock(monkeypatch)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(model_runtime, "hf_repo_files_with_sizes", lambda _repo: [{"name": "README.md", "size": 1}])
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(monkeypatch, "hf_repo_files_with_sizes", lambda _repo: [{"name": "README.md", "size": 1}])
     _readiness_toggle(monkeypatch)
     _install_hub(monkeypatch, hf_hub_download=lambda **_kwargs: pytest.fail("nothing to download"))
 
@@ -397,8 +429,8 @@ def test_a_llamacpp_repo_with_no_gguf_is_a_clear_download_failure(monkeypatch, t
 
 def test_a_transport_failure_mid_download_is_reported_against_the_repo(monkeypatch, tmp_path):
     _freeze_clock(monkeypatch)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(model_runtime, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(monkeypatch, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
     _readiness_toggle(monkeypatch)
 
     def _download(**_kwargs):
@@ -417,8 +449,8 @@ def test_a_transport_failure_mid_download_is_reported_against_the_repo(monkeypat
 def test_a_download_that_leaves_the_model_unusable_is_not_reported_as_success(monkeypatch, tmp_path):
     """Bytes arriving is not the same as a loadable model on disk."""
     _freeze_clock(monkeypatch)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "target")
-    monkeypatch.setattr(model_runtime, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "target")
+    _patch_runtime(monkeypatch, "hf_repo_files_with_sizes", lambda _repo: [{"name": "a.bin", "size": 4}])
     _readiness_toggle(monkeypatch, ready_after=False)
     _install_hub(monkeypatch, hf_hub_download=lambda **kwargs: str(tmp_path / "target" / kwargs["filename"]))
 

@@ -18,6 +18,12 @@ import asyncio
 
 from latticeai.integrations import telegram_bot as bot
 
+# v11.3.0 package split: a stub only reaches the code that reads the name when
+# it is installed on *that code's* module. ``send_web_link``/``do_unload_model``
+# live in ``screens``; ``PUBLIC_WEB_URL`` is read by ``get_web_url`` in
+# ``helpers``. Patch targets below say so explicitly.
+from latticeai.integrations.telegram_bot import helpers, screens
+
 # ── doubles ───────────────────────────────────────────────────────────────
 
 
@@ -65,7 +71,7 @@ class _Client:
 
 
 def _server(monkeypatch, client):
-    monkeypatch.setattr(bot, "_server_client", lambda **_kwargs: client)
+    monkeypatch.setattr(screens, "_server_client", lambda **_kwargs: client)
     return client
 
 
@@ -93,12 +99,12 @@ def _unload_replies(statuses):
 
 
 def test_the_web_link_never_touches_the_server_client(monkeypatch, caplog):
-    monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "https://tunnel.example")
+    monkeypatch.setattr(helpers, "PUBLIC_WEB_URL", "https://tunnel.example")
 
     def forbidden(**_kwargs):
         raise AssertionError("send_web_link must not open the server client")
 
-    monkeypatch.setattr(bot, "_server_client", forbidden)
+    monkeypatch.setattr(screens, "_server_client", forbidden)
     client = _Client()
 
     with caplog.at_level("ERROR"):
@@ -112,7 +118,7 @@ def test_the_web_link_never_touches_the_server_client(monkeypatch, caplog):
 def test_the_web_link_is_delivered_without_a_server_session_token(monkeypatch, caplog):
     """The real ``_server_client()`` refuses to build without a bearer token."""
     monkeypatch.setenv("LATTICEAI_SERVER_SESSION_TOKEN", "")
-    monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "https://tunnel.example")
+    monkeypatch.setattr(helpers, "PUBLIC_WEB_URL", "https://tunnel.example")
     client = _Client()
 
     with caplog.at_level("ERROR"):

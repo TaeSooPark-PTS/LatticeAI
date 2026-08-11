@@ -135,6 +135,8 @@ describe("which screen the hash selects", () => {
     ["#/knowledge-graph", "page-brain"],
     ["#/admin/users", "page-admin"],
     ["#/memory", "page-brain"],
+    ["#/chronicle", "page-chronicle"],
+    ["#/timeline", "page-chronicle"],
   ])("routes %s to %s", async (hash, testId) => {
     renderApp(hash);
     expect(await screen.findByTestId(testId)).toBeTruthy();

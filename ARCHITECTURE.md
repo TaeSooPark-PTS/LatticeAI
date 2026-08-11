@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.2.0 — All Systems On**.
+Current release: **11.3.0 — Time Remembers**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -288,7 +288,7 @@ Current UX rules:
   translation table cannot become an accidental allowlist.
 - Basic mode is a plain-language surface, not a reduced one: engineering panels
   (raw payloads, node canvases, storage engines, ids) move behind the advanced
-  switch rather than disappearing. `tests/visual/v3.spec.js` sweeps ten
+  switch rather than disappearing. `tests/visual/v3.shell.spec.js` sweeps eleven
   plain-mode routes and fails on engine vocabulary reaching that reader.
 - Mobile layouts preserve the Brain and composer in the first viewport.
 - Static release assets are generated under `static/app` and must match
@@ -325,10 +325,10 @@ Important expectations:
 
 The Honest Knowledge Pipeline hardens retrieval and ingestion:
 
-- `graph/retrieval.py` `hybrid_search` blends lexical (FTS) and vector evidence
+- `graph/retrieval/` `hybrid_search` blends lexical (FTS) and vector evidence
   and reports a `context_quality` signal that chat consumes so grounding is
   honest about how strong the retrieved context is.
-- `graph/retrieval_vector.py` tracks vector freshness (embedded vs. total
+- `graph/retrieval_vector/` tracks vector freshness (embedded vs. total
   content) so the Brain can report stale embeddings and reindex on demand.
   `vector_freshness_breakdown()` splits that backlog into
   embedded / missing / stale / queued, because "12 pending" hides the
@@ -338,7 +338,7 @@ The Honest Knowledge Pipeline hardens retrieval and ingestion:
   `breakdown` key — omitted entirely when the store cannot compute it, so a
   reader never mistakes an unmeasured split for a measured zero, and the four
   keys the freshness chip pins are untouched.
-- `ingestion.py` supports folder ingestion (`ingest_folder`) with
+- `ingestion/` supports folder ingestion (`ingest_folder`) with
   `.latticeignore` filtering and resumable background jobs
   (`/api/ingestion/jobs`), plus per-source `extraction_quality` scoring and an
   observe-mode `quality_gate` that flags low-quality extractions instead of
@@ -357,7 +357,7 @@ The Honest Knowledge Pipeline hardens retrieval and ingestion:
 ### Vector index backends (11.1.0)
 
 `graph/vector_index/` is the seam between "which rows are candidates" (SQL,
-workspaces, citations — still `retrieval_vector.py`) and "which of them score
+workspaces, citations — still `retrieval_vector/`) and "which of them score
 highest" (a `VectorIndex` implementation). Three ship:
 
 | backend | approx | exhaustive | needs |
@@ -414,7 +414,7 @@ rather than copied into `self` at construction, so a settings surface can move
 it at runtime; the environment variable is still the answer for an untouched
 install, and a constructor `True` is still a permanent yes.
 
-With it on, `lattice_brain/multimodal.py` decides the modality (declared MIME
+With it on, `lattice_brain/multimodal/` decides the modality (declared MIME
 first, this module's extension tables second, `mimetypes` last) and the
 pipeline routes:
 
@@ -450,7 +450,7 @@ pipeline routes:
 Brain Core ships **no models**. Every model-backed capability arrives as an
 injected callable in `MultimodalPorts`, built by
 `latticeai/services/multimodal_ports.py` from
-`latticeai/core/embedding_providers.py`:
+`latticeai/core/embedding_providers/`:
 
 | capability | source | absent ⇒ |
 | --- | --- | --- |
@@ -550,7 +550,7 @@ subject already waiting for a decision is never proposed twice.
 `resolve_contradiction` is the single door to the graph and it opens only
 after `approve()` has returned — it then stamps the chosen outcome
 (`replace` / `keep_old` / `keep_both_temporal`) onto the pair's validity
-windows. `latticeai/services/brain_intelligence.py` exposes the loop
+windows. `latticeai/services/brain_intelligence/` exposes the loop
 (`/api/brain/synthesize`, `/api/brain/contradictions/propose|resolve`,
 `/api/brain/importance`, `/api/brain/proactive-brief`) and reports
 `available: false` when no review queue is present rather than falling back to
@@ -721,7 +721,7 @@ core/agent_state.py     AgentState, AGENT_TERMINAL_STATES
                         no imports from the other two — the shared vocabulary
         ▲                                    ▲
         │                                    │
-core/agent_helpers.py                core/agent.py
+core/agent_helpers.py                core/agent/
 pure functions:                      the state machine:
  extract_action(_details)             AgentRunContext
  normalize_plan                       AgentDeps  (the ports)
@@ -738,9 +738,9 @@ deterministic, no I/O
 Two rules hold this shape:
 
 - **`agent_state.py` depends on neither sibling.** It exists because both need
-  the enum and neither can own it: if `AgentState` lived in `agent.py`, the
-  helpers could not import it — `agent.py` imports *them* — and would fall back
-  to comparing against the literal `"EXECUTING"`. A rename of an enum value
+  the enum and neither can own it: if `AgentState` lived in `core/agent/`, the
+  helpers could not import it — `core/agent/` imports *them* — and would fall
+  back to comparing against the literal `"EXECUTING"`. A rename of an enum value
   would then stop matching silently, with no failing test.
 - **`latticeai.core.agent` re-exports every moved name** and declares the set in
   `__all__`. The import path callers have always used is the contract; the file
@@ -749,7 +749,9 @@ Two rules hold this shape:
   import from `latticeai.core.agent` and are unaffected by the split.
 
 Anything deterministic and I/O-free belongs in `agent_helpers.py`; anything that
-advances or inspects run state belongs in `agent.py`.
+advances or inspects run state belongs in the `core/agent/` package (v11.3.0
+split it into `context` / `deps` / `planning` / `execution` / `verification` /
+`recovery` / `runtime`, all re-exported from `latticeai.core.agent`).
 
 ### Agent-native workspace reorganization (11.1.0)
 
@@ -857,7 +859,7 @@ machine before a caller spends an approval on it.
 
 ### Selective subgraph share (11.1.0, opt-in)
 
-`lattice_brain/portability.py` gains a *partial* bundle beside the whole-graph
+`lattice_brain/portability/` gains a *partial* bundle beside the whole-graph
 export: `export_subgraph` takes node ids / node types / source types (optionally
 one hop out) and emits the selected nodes, their chunks, the edges *between*
 selected nodes, and their provenance. Four properties are structural rather
@@ -922,12 +924,12 @@ surface can say *why* something is off.
 
 | gate | module | environment variable | default |
 | --- | --- | --- | --- |
-| `MULTIMODAL_GATE` | `lattice_brain/ingestion.py` | `LATTICEAI_ALLOW_MULTIMODAL` | off |
-| `VIDEO_GATE` | `lattice_brain/ingestion.py` | `LATTICEAI_ALLOW_VIDEO` | on *within* multi-modal (so the effective default is still off) |
-| `BRAIN_NETWORK_GATE` | `lattice_brain/portability.py` | `LATTICEAI_BRAIN_NETWORK` | off |
+| `MULTIMODAL_GATE` | `lattice_brain/ingestion/constants.py` | `LATTICEAI_ALLOW_MULTIMODAL` | off |
+| `VIDEO_GATE` | `lattice_brain/ingestion/constants.py` | `LATTICEAI_ALLOW_VIDEO` | on *within* multi-modal (so the effective default is still off) |
+| `BRAIN_NETWORK_GATE` | `lattice_brain/portability/constants.py` | `LATTICEAI_BRAIN_NETWORK` | off |
 | `VAULT_WATCH_GATE` | `latticeai/services/folder_watch.py` | `LATTICEAI_VAULT_WATCH` | off |
 | `IMAGE_QUERY_FUSION_GATE` | `latticeai/services/search_service.py` | `LATTICEAI_TEXT_IMAGE_FUSION` | off |
-| `AUTO_VECTOR_INDEX_GATE` | `lattice_brain/ingestion.py` | `LATTICEAI_AUTO_VECTOR_INDEX` | **on** |
+| `AUTO_VECTOR_INDEX_GATE` | `lattice_brain/ingestion/constants.py` | `LATTICEAI_AUTO_VECTOR_INDEX` | **on** |
 | `SYNTHESIS_GATE` | `lattice_brain/synthesis.py` | `LATTICEAI_SYNTHESIS` | **on** (governs the automatic pass only) |
 | `FUSION_RRF_GATE` | `lattice_brain/graph/fusion.py` | `LATTICEAI_FUSION_RRF` | off |
 | `GRAPH_EXPANSION_GATE` | `lattice_brain/graph/fusion.py` | `LATTICEAI_GRAPH_EXPANSION` | off |
@@ -1033,13 +1035,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.2.0 exact artifact names:
+11.3.0 exact artifact names:
 
-- `dist/ltcai-11.2.0-py3-none-any.whl`
-- `dist/ltcai-11.2.0.tar.gz`
-- `ltcai-11.2.0.tgz`
-- `dist/ltcai-11.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.2.0_aarch64.dmg`
+- `dist/ltcai-11.3.0-py3-none-any.whl`
+- `dist/ltcai-11.3.0.tar.gz`
+- `ltcai-11.3.0.tgz`
+- `dist/ltcai-11.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.3.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

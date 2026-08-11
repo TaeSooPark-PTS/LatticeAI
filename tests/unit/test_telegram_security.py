@@ -8,6 +8,12 @@ import pytest
 
 from latticeai.integrations import telegram_bot
 
+# v11.3.0 package split: a stub reaches the code that reads the name only when
+# it is installed on that code's own module — ``dispatch`` routes callbacks and
+# owns the poll loop, ``flows`` owns the approval handshake, ``helpers`` owns
+# the chat-id registry, ``config`` owns the resolved environment.
+from latticeai.integrations.telegram_bot import config, dispatch, flows, helpers
+
 
 def test_allowlist_parsing_and_default_deny(monkeypatch):
     monkeypatch.delenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", raising=False)
@@ -23,19 +29,25 @@ def test_allowlist_parsing_and_default_deny(monkeypatch):
 
 
 def test_register_chat_id_refuses_unlisted_sender(tmp_path, monkeypatch):
-    monkeypatch.setattr(telegram_bot, "CHAT_IDS_FILE", tmp_path / "telegram_chats.json")
+    # v11.3.0 package split: ``CHAT_IDS_FILE`` is read by ``load_chat_ids`` /
+    # ``save_chat_ids`` in ``helpers``, so the stub goes on that module and the
+    # assertions read the same path directly instead of the re-export hub.
+    chats = tmp_path / "telegram_chats.json"
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", chats)
     monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "100")
 
     assert telegram_bot.register_chat_id(999) is False
-    assert not telegram_bot.CHAT_IDS_FILE.exists()
+    assert not chats.exists()
 
     assert telegram_bot.register_chat_id(100) is True
     assert telegram_bot.load_chat_ids() == {100}
-    assert telegram_bot.CHAT_IDS_FILE.stat().st_mode & 0o777 == 0o600
+    assert chats.stat().st_mode & 0o777 == 0o600
 
 
 def test_server_session_must_be_explicit_and_never_scans_session_files(tmp_path, monkeypatch):
-    monkeypatch.setattr(telegram_bot, "DATA_DIR", tmp_path)
+    # ``DATA_DIR`` is resolved once at config import; the stub documents that a
+    # sessions.json sitting there is still never read.
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
     (tmp_path / "sessions.json").write_text(
         '{"plaintext-web-session": ["admin@example.com", 9999999999]}',
         encoding="utf-8",
@@ -67,7 +79,7 @@ def test_callback_query_applies_same_chat_acl(monkeypatch):
         raise AssertionError("an unauthorized callback executed a desktop action")
 
     monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "100")
-    monkeypatch.setattr(telegram_bot, "take_screenshot", forbidden_action)
+    monkeypatch.setattr(dispatch, "take_screenshot", forbidden_action)
 
     asyncio.run(
         telegram_bot.handle_callback_query(
@@ -97,7 +109,7 @@ def test_plan_callback_is_bound_to_originating_allowed_chat(monkeypatch):
         "executing_model": None,
         "reviewing_model": None,
     }
-    monkeypatch.setattr(telegram_bot, "send_message", capture_message)
+    monkeypatch.setattr(flows, "send_message", capture_message)
 
     asyncio.run(
         telegram_bot.handle_plan_callback(
@@ -115,8 +127,8 @@ def test_bot_does_not_poll_without_acl_or_server_token(monkeypatch):
     async def unexpected_poll(*_args, **_kwargs):
         raise AssertionError("bot polled Telegram without complete security configuration")
 
-    monkeypatch.setattr(telegram_bot, "TOKEN", "telegram-token")
-    monkeypatch.setattr(telegram_bot, "get_updates", unexpected_poll)
+    monkeypatch.setattr(dispatch, "TOKEN", "telegram-token")
+    monkeypatch.setattr(dispatch, "get_updates", unexpected_poll)
     monkeypatch.delenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", raising=False)
     monkeypatch.delenv("LATTICEAI_SERVER_SESSION_TOKEN", raising=False)
 

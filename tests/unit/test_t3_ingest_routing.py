@@ -206,7 +206,7 @@ def test_the_env_flag_can_turn_multimodal_on_without_a_constructor(
 def test_video_is_recognized_and_refused_with_a_reason(store, tmp_path, monkeypatch):
     # 11.2.0 implements video; the refusal below is now a *runtime* answer, so
     # the decoder probe is pinned absent instead of trusting the test host.
-    monkeypatch.setattr("lattice_brain.multimodal._which_ffmpeg", lambda: None)
+    monkeypatch.setattr("lattice_brain.multimodal.ports._which_ffmpeg", lambda: None)
     path = tmp_path / "standup.mov"
     path.write_bytes(b"fake movie bytes")
 

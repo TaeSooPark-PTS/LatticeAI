@@ -1,0 +1,235 @@
+/* ============================================================
+   Track: Knowledge Graph intuitiveness
+   (search typeahead + match highlight, type/time filters,
+   focus/dim on neighbors). Token-native, additive only.
+   ============================================================ */
+
+.brain-graph-search-wrap {
+  position: relative;
+  width: min(100%, 16rem);
+}
+
+.brain-graph-search-wrap .brain-graph-search {
+  width: 100%;
+}
+
+.brain-graph-search-clear {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--border) / 0.5);
+  color: hsl(var(--fg-muted));
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.brain-graph-search-clear:hover,
+.brain-graph-search-clear:focus-visible {
+  background: hsl(var(--brain-core) / 0.28);
+  color: hsl(var(--fg));
+  outline: none;
+}
+
+/* Match highlight inside node labels and typeahead suggestions */
+.brain-graph-canvas mark,
+.brain-graph-typeahead mark {
+  border-radius: 6px;
+  background: hsl(var(--brain-core) / 0.34);
+  color: hsl(var(--fg));
+  padding: 0 0.08em;
+  font-weight: 700;
+}
+
+/* Typeahead suggestion list */
+.brain-graph-typeahead {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  left: 0;
+  display: grid;
+  gap: 0.12rem;
+  max-height: 14rem;
+  margin: 0;
+  padding: 0.32rem;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 10px;
+  background: hsl(var(--surface));
+  box-shadow: 0 18px 48px hsl(205 40% 3% / 0.42);
+}
+
+.brain-graph-typeahead li {
+  margin: 0;
+}
+
+.brain-graph-typeahead li.is-empty {
+  padding: 0.5rem 0.55rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.86rem;
+}
+
+.brain-graph-typeahead li button {
+  display: grid;
+  gap: 0.08rem;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  color: hsl(var(--fg));
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.brain-graph-typeahead li button:hover,
+.brain-graph-typeahead li button:focus-visible {
+  background: hsl(var(--brain-core) / 0.12);
+  outline: none;
+}
+
+.brain-graph-typeahead li button span {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.brain-graph-typeahead li button strong {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+/* Control panel: filters + time exploration */
+.brain-graph-control-panel {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.4);
+  padding: 0.6rem 0.7rem;
+}
+
+.brain-graph-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+}
+
+.brain-graph-control-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.brain-graph-type-chips,
+.brain-graph-time-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.brain-graph-chip {
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  background: hsl(var(--surface) / 0.6);
+  padding: 0.22rem 0.62rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.brain-graph-chip:hover,
+.brain-graph-chip:focus-visible {
+  border-color: hsl(var(--brain-core) / 0.6);
+  color: hsl(var(--fg));
+  outline: none;
+}
+
+.brain-graph-chip.is-active {
+  border-color: hsl(var(--brain-core) / 0.85);
+  background: hsl(var(--brain-core) / 0.16);
+  color: hsl(var(--fg));
+}
+
+.brain-graph-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.brain-graph-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin-left: auto;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0.22rem 0.5rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.brain-graph-reset:hover,
+.brain-graph-reset:focus-visible {
+  color: hsl(var(--fg));
+  outline: none;
+}
+
+/* Smooth focus transitions: focused node + neighbors stand out, rest dims */
+.brain-graph-canvas .graph-node {
+  transition:
+    opacity 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 320ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.graph-node[data-focus="true"] {
+  z-index: 6;
+  border-color: hsl(var(--brain-core) / 0.85);
+  box-shadow:
+    0 0 0 2px hsl(var(--brain-core) / 0.32),
+    0 16px 40px hsl(200 35% 3% / 0.34);
+}
+
+.graph-node[data-focus="false"] {
+  opacity: 0.34;
+  filter: saturate(0.55);
+}
+
+.graph-node[data-focus="false"]:hover,
+.graph-node[data-focus="false"]:focus-visible {
+  opacity: 0.85;
+  filter: none;
+}
+
+/* Search match emphasis on canvas */
+.graph-node.is-match {
+  border-color: hsl(var(--brain-core) / 0.7);
+}
+
+/* Recently added emphasis (time exploration) */
+.graph-node[data-recent="true"] {
+  border-color: hsl(var(--knowledge) / 0.9);
+  box-shadow: 0 0 0 1px hsl(var(--knowledge) / 0.45) inset;
+}
+

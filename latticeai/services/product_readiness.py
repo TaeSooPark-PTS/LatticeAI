@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "11.2.0"
+PRODUCT_VERSION_TARGET = "11.3.0"
 
 
 @dataclass(frozen=True)
@@ -44,7 +44,10 @@ PRODUCT_GATES: List[ProductGate] = [
             "frontend/src/features/brain/BrainHome.tsx",
             "frontend/src/App.tsx::brain-mobile-nav",
             "latticeai/setup/auto_setup.py",
-            "latticeai/setup/wizard.py",
+            # v11.3.0: the wizard is a package (paths / detect / plans /
+            # catalog / recommend / install); the recommender is the piece
+            # first-run actually shows.
+            "latticeai/setup/wizard/recommend.py",
         ],
     ),
     ProductGate(
@@ -64,8 +67,11 @@ PRODUCT_GATES: List[ProductGate] = [
             "latticeai/api/chat_intents.py::direct_write_file",
             # v9.9.2 ArtifactWritePipeline: every write path shares the same
             # extract → validate → repair guarantee, proven by the FG harness.
-            "latticeai/core/file_generation.py::sanitize_write_content",
-            "latticeai/core/agent.py::content_sanitize",
+            # v11.3.0: both modules became packages — the write-side door is
+            # its own submodule, and the agent's use of it lives in the
+            # EXECUTE phase.
+            "latticeai/core/file_generation/sanitize.py::sanitize_write_content",
+            "latticeai/core/agent/execution.py::content_sanitize",
             "tests/unit/test_artifact_write_scenarios.py::test_fg06_agent_dispatch_strips_fences_from_write_file_content",
             "tests/unit/test_chat_telegram_decoupling.py::test_chat_file_creation_intent_writes_real_file",
         ],
@@ -110,12 +116,14 @@ PRODUCT_GATES: List[ProductGate] = [
             f"docs/CHANGELOG.md::## [{PRODUCT_VERSION_TARGET}]",
             "FEATURE_STATUS.md",
             f"RELEASE_NOTES_v{PRODUCT_VERSION_TARGET}.md",
-            "latticeai/core/agent.py::SingleAgentRuntime",
+            # v11.3.0: the single-agent loop is a package; the composed
+            # class and its boundary contract live in the runtime half.
+            "latticeai/core/agent/runtime.py::SingleAgentRuntime",
             "lattice_brain/runtime/agent_runtime.py::class AgentRuntime",
             "lattice_brain/runtime/contracts.py::runtime-boundary/v1",
             "lattice_brain/runtime/contracts.py::RuntimeBoundaryProtocol",
             "lattice_brain/runtime/agent_runtime.py::def boundary",
-            "latticeai/core/agent.py::def boundary",
+            "latticeai/core/agent/runtime.py::def boundary",
             "latticeai/services/architecture_readiness.py::lattice-architecture-contract/v1",
             "latticeai/services/tool_dispatch.py::rollback_file",
         ],
@@ -148,7 +156,7 @@ PRODUCT_GATES: List[ProductGate] = [
             "scripts/brain_quality_eval.py",
             "scripts/product_readiness.py",
             "tests/unit/test_product_readiness.py",
-            "tests/visual/v3.spec.js::Brain Chat Home",
+            "tests/visual/v3.surfaces.spec.js::Brain Chat Home",
             ".github/workflows/ci.yml::scripts/product_readiness.py",
             ".github/workflows/release.yml::npm run lint",
         ],

@@ -1,0 +1,591 @@
+/* ── Change proposals panel (v9.6.0) ────────────────────────────────── */
+
+.pending-proposals-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.pending-proposal {
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.35);
+  padding: 0.6rem 0.7rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.pending-proposal header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pending-proposal header strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.86rem;
+}
+
+.pending-proposal-tier {
+  flex-shrink: 0;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+  font-size: 0.68rem;
+  color: hsl(var(--fg-muted));
+}
+
+.pending-proposal-diff {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.6);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  white-space: pre;
+}
+
+.pending-proposal-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.pending-proposal-actions .daily-briefing-action {
+  flex: 1;
+  justify-content: center;
+}
+
+.pending-proposal-reject {
+  color: hsl(var(--fg-muted));
+}
+
+/* ── 9.9.x polish wave: preview modal, drop capture, job reports, conflict
+   rebase, emotional design. All new motion is opt-in via
+   (prefers-reduced-motion: no-preference); static fallbacks stay readable. ── */
+
+/* File card inline preview modal */
+.file-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 92;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4vh 1rem;
+  background: hsl(var(--bg) / 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.file-preview-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(860px, 100%);
+  max-height: 88vh;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 16px;
+  background: hsl(var(--surface));
+  box-shadow: 0 24px 64px hsl(var(--bg) / 0.5);
+  overflow: hidden;
+}
+
+.file-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+}
+
+.file-preview-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+}
+
+.file-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.file-preview-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  background: hsl(var(--surface));
+  color: hsl(var(--fg));
+  padding: 0.28rem 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.file-preview-actions button:hover:not(:disabled) {
+  background: hsl(var(--muted));
+}
+
+.file-preview-actions .file-preview-close {
+  padding: 0.28rem 0.4rem;
+}
+
+.file-preview-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-preview-frame {
+  flex: 1;
+  width: 100%;
+  min-height: min(60vh, 480px);
+  border: 0;
+  background: #fff;
+}
+
+.file-preview-markdown {
+  padding: 0.9rem 1rem;
+}
+
+.file-preview-code {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: hsl(var(--fg));
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.file-preview-note {
+  margin: 0;
+  padding: 1rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.86rem;
+}
+
+.file-preview-note.is-error {
+  color: hsl(0 72% 60%);
+}
+
+.file-preview-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  border-top: 1px solid hsl(var(--border) / 0.6);
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+/* Global drag-and-drop capture overlay (Brain home) */
+.brain-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: hsl(var(--bg) / 0.72);
+  backdrop-filter: blur(2px);
+  /* Drop events are handled at window level — the overlay is display only. */
+  pointer-events: none;
+}
+
+.brain-drop-overlay-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  border: 2px dashed hsl(var(--accent) / 0.75);
+  border-radius: 16px;
+  background: hsl(var(--surface) / 0.96);
+  padding: 2rem 2.6rem;
+  text-align: center;
+  box-shadow: 0 24px 64px hsl(var(--bg) / 0.5);
+}
+
+.brain-drop-overlay-card strong {
+  font-size: 1.05rem;
+  color: hsl(var(--fg));
+}
+
+.brain-drop-overlay-card span {
+  font-size: 0.86rem;
+  color: hsl(var(--fg-muted));
+}
+
+/* Folder job completion report card */
+.brain-jobs-report {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid hsl(var(--success) / 0.45);
+  border-radius: 10px;
+  background: hsl(var(--success) / 0.08);
+  padding: 0.6rem 0.7rem;
+}
+
+.brain-jobs-report.is-partial {
+  border-color: hsl(var(--warning) / 0.5);
+  background: hsl(var(--warning) / 0.08);
+}
+
+.brain-jobs-report-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+}
+
+.brain-jobs-report-head svg {
+  color: hsl(var(--success));
+}
+
+.brain-jobs-report.is-partial .brain-jobs-report-head svg {
+  color: hsl(var(--warning));
+}
+
+.brain-jobs-report-dismiss {
+  margin-left: auto;
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  cursor: pointer;
+  padding: 0.1rem;
+}
+
+.brain-jobs-report-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.brain-jobs-report-stat {
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  background: hsl(var(--surface) / 0.92);
+  color: hsl(var(--fg));
+  padding: 0.14rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-jobs-report-stat.is-failed {
+  border-color: hsl(var(--danger) / 0.5);
+  color: hsl(var(--danger));
+}
+
+.brain-jobs-report-samples {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.brain-jobs-report-samples small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-jobs-report-samples ul {
+  margin: 0;
+  padding: 0 0 0 1rem;
+  display: grid;
+  gap: 0.14rem;
+}
+
+.brain-jobs-report-samples li {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+/* Proposal conflict (409) rebase note */
+.proposal-conflict-note {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  border: 1px solid hsl(var(--warning) / 0.5);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: hsl(var(--warning) / 0.1);
+  padding: 0.55rem 0.7rem;
+}
+
+.proposal-conflict-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: hsl(var(--warning));
+  font-size: 0.86rem;
+}
+
+.proposal-conflict-note p {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.proposal-conflict-note .proposal-conflict-done {
+  color: hsl(var(--success));
+  font-weight: 700;
+}
+
+.proposal-conflict-rebase {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid hsl(var(--warning) / 0.6);
+  border-radius: 999px;
+  background: hsl(var(--surface));
+  color: hsl(var(--fg));
+  padding: 0.32rem 0.8rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.proposal-conflict-rebase:hover:not(:disabled) {
+  background: hsl(var(--warning) / 0.16);
+}
+
+.proposal-conflict-rebase:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.proposal-conflict-error {
+  color: hsl(0 72% 58%);
+  font-size: 0.68rem;
+}
+
+:root[data-theme="light"] .proposal-conflict-head {
+  color: hsl(30 80% 34%);
+}
+
+/* Emotional design: one-shot success pulse + knowledge-inflow motes.
+   Both run only when the user allows motion. */
+.lattice-inflow {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lattice-success-pulse {
+    animation: lattice-success-pulse 900ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+  }
+
+  @keyframes lattice-success-pulse {
+    0% {
+      transform: scale(0.985);
+      box-shadow: 0 0 0 0 hsl(var(--success) / 0.45);
+    }
+    55% {
+      transform: scale(1.005);
+      box-shadow: 0 0 0 9px hsl(var(--success) / 0);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 hsl(var(--success) / 0);
+    }
+  }
+
+  .lattice-inflow {
+    display: inline-flex;
+    gap: 0.3rem;
+    height: 0.5rem;
+  }
+
+  .lattice-inflow i {
+    width: 0.32rem;
+    height: 0.32rem;
+    border-radius: 999px;
+    background: hsl(var(--memory));
+    opacity: 0;
+    animation: lattice-inflow-drift 1400ms ease-out 1;
+  }
+
+  .lattice-inflow i:nth-child(2) {
+    animation-delay: 160ms;
+  }
+
+  .lattice-inflow i:nth-child(3) {
+    animation-delay: 320ms;
+  }
+
+  @keyframes lattice-inflow-drift {
+    0% {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.6);
+    }
+    30% {
+      opacity: 0.9;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-0.6rem) scale(1);
+    }
+  }
+}
+
+/* Reduced-motion audit: silence the remaining always-on animations that the
+   earlier targeted blocks missed (the global kill switch in
+   experience/responsive.css stays as the backstop). */
+@media (prefers-reduced-motion: reduce) {
+  .brain-organism::after,
+  .brain-vital-ring,
+  .brain-orbit,
+  .brain-vital-spark,
+  .brain-body-motion,
+  .brain-sheen,
+  .thought-particle,
+  .brain-organism.pulse .memory-ripple,
+  .brain-message,
+  .mind-chamber,
+  .brain-exploration[data-depth="3"] .memory-orb,
+  .brain-exploration[data-depth="4"] .knowledge-node,
+  .brain-memory-ring,
+  .graph-node,
+  .relationship-weave line,
+  .thinking {
+    animation: none;
+  }
+}
+
+/* ── Interactive plan approval (backlog #2) ─────────────────────────────────
+   Governance surface for awaiting_approval agent runs: warm warning tokens
+   (same family as .brain-agent-state-note) so a paused, permission-seeking
+   run can never be mistaken for a completed one. No animation — the card is
+   a decision point, not a celebration. */
+.brain-approval-card {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+  border: 1px solid hsl(38 92% 42% / 0.5);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: hsl(38 92% 50% / 0.08);
+  padding: 0.65rem 0.8rem;
+}
+
+.brain-approval-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: hsl(38 92% 70%);
+  font-size: 0.86rem;
+}
+
+.brain-approval-summary {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.brain-approval-summary-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-approval-summary pre {
+  margin: 0;
+  max-height: 14rem;
+  overflow: auto;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 10px;
+  background: hsl(var(--surface) / 0.85);
+  color: hsl(var(--foreground));
+  padding: 0.5rem 0.6rem;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.brain-approval-expiry {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+}
+
+.brain-approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.brain-approval-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  padding: 0.34rem 0.8rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.brain-approval-actions button:hover:not(:disabled),
+.brain-approval-actions button:focus-visible {
+  border-color: hsl(38 92% 42% / 0.7);
+  background: hsl(38 92% 50% / 0.12);
+}
+
+.brain-approval-actions button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.brain-approval-actions .brain-approval-primary {
+  border-color: hsl(38 92% 42% / 0.75);
+  background: hsl(38 92% 50% / 0.18);
+  color: hsl(38 92% 74%);
+  font-weight: 700;
+}
+
+.brain-approval-editor {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.brain-approval-editor label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-approval-editor textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 10px;
+  background: hsl(var(--surface) / 0.9);
+  color: hsl(var(--foreground));
+  padding: 0.5rem 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.brain-approval-edit-error {
+  color: hsl(0 80% 72%);
+  font-size: 0.68rem;
+}
+

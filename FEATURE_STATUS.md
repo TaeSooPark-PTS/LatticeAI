@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v11.2.0)
+# Lattice AI Feature Status (v11.3.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **11.2.0 — All Systems On**.
+Current release: **11.3.0 — Time Remembers**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 9.0.0 and later in `RELEASE.md` and
@@ -99,12 +99,13 @@ work off the loop.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Brain Home | Current | The Living Brain and the composer are in the first viewport on desktop (1280×800) and mobile (390×780), asserted in `tests/visual/v3.spec.js`. The Brain Brief is **not** on that first screen: 10.10.0's quiet station moved it into the dock's 통계 drawer, so it opens on demand like the other affordances. |
+| Brain Home | Current | The Living Brain and the composer are in the first viewport on desktop (1280×800) and mobile (390×780), asserted in `tests/visual/v3.home.spec.js`. The Brain Brief is **not** on that first screen: 10.10.0's quiet station moved it into the dock's 통계 drawer, so it opens on demand like the other affordances. |
 | Automation Intelligence | Current | /api/automation mines recurring user questions (deterministic local clustering, literal-question evidence) and connected knowledge folders into one-click suggestions; installs are idempotent, disabled-draft, review-queue-gated workflows. |
 | Brain Intelligence | Current | The Brain diagnoses itself: /api/brain health scoring (freshness, connectivity, search readiness, consistency), proactive insights digest, contradiction surfacing, and consent-first duplicate consolidation, wired from the lattice_brain quality layer and covered by unit + live-boot tests. The composite is honest about what it could not measure: every unavailable dimension states its reason, a `coverage` block says how many of the four were measured, and a Brain with nothing to measure reports no score and no grade — an empty Brain never grades itself "excellent". |
 | Temporal Knowledge | Current | Nodes and edges carry `valid_from` / `valid_to` / `superseded_by`, added by an idempotent additive migration on an existing Brain (NULL means "since `created_at`" / "still true" — never an empty string, and no backfill). `store.as_of(timestamp)` returns the graph slice that was valid at that instant, and `neighbors(..., as_of=…)` takes the same slice; both default to today's behaviour when the argument is omitted. |
 | Proactive Synthesis | Current | The Brain notices on its own and asks rather than acts: contradicting memories, recurring-but-unnamed topics, always-together-never-linked pairs, and decayed episodic fragments all arrive as Review Center proposals (`kg_change_digest`) with a plain-language explanation. Deterministic — token overlap and clock arithmetic, no model needed; a model may only reword the weekly brief. Runs event-driven: the ingestion pipeline's audit seam hands every landed ingest to `BrainIntelligenceService.note_ingest`, and a pass fires every `LATTICEAI_SYNTHESIS_THRESHOLD` (25) genuinely new nodes — duplicates do not count, and a trigger that fails never fails the ingest. **Every write goes through approval**: `POST /api/brain/contradictions/resolve` approves the proposal first and only then stamps the pair's validity windows (keep / replace / keep both with time ranges), and the same pair is never proposed twice while it is still waiting. The *automatic* trigger is **toggleable from the home dock's 기능 drawer** since 11.2.0 (`LATTICEAI_SYNTHESIS`, default on); turning it off stops the Brain deciding *when*, and an explicitly requested run still works. |
 | Memory Decay | Current | `GET /api/brain/importance` scores each memory by use (ingested access counts, else the store's own read counter) plus recency decay, and names the weakest *episodic* fragments only — a decayed Decision or Document is reported as stale knowledge, never folded away. `/api/brain/quality-report` carries the same numbers plus a `tidying` flag so "the Brain is tidying up" is visible rather than a background surprise. |
+| Brain Chronicle (연대기) | Current | A seventh primary screen (`#/chronicle`, alias `#/timeline`) that turns the Brain's growth into a timeline. Read-only over existing tables — `GET /api/chronicle/overview` (day-bucketed totals + sparse activity series in the app timezone), `GET /api/chronicle/day/{date}` (the day's story: sources, new concepts, conversations, changed facts — group lists capped at 200 with true totals in `counts`), `GET /api/chronicle/as-of` (graph slice stats + top entities at any past instant, via `store.as_of()`). The UI is a hand-rolled SVG growth curve with a keyboard-operable time handle (ARIA slider), a week×weekday activity heatmap, plain-language day cards deep-linking into memory search / graph / conversations, and a rewind panel ("그때 중요했던 개념"). First surface to expose the 11.1.0 temporal columns. No writes, no schema change, no model calls; an empty Brain shows an honest empty state. |
 | Hybrid Recall | Current | /api/memory/recall and the graph-layer `hybrid_search` blend lexical evidence with vector similarity (hybrid-evidence/v2 gate) with workspace-scoped vector hits and honest lexical fallback when the vector tier fails. Chat consumes a `context_quality` signal so grounding reflects how strong the retrieved context actually is. |
 | Folder Ingestion | Current | `ingest_folder` indexes a chosen local folder with `.latticeignore` filtering; long runs execute as resumable background jobs surfaced through `/api/ingestion/jobs` rather than a single blocking request. |
 | Extraction Quality | Current | Ingestion scores per-source `extraction_quality` and runs an observe-mode `quality_gate` that flags low-quality extractions instead of silently accepting them. |
@@ -284,7 +285,7 @@ work off the loop.
   web app's setting. The popup is a separate origin and cannot read
   `lattice.language`; closing this needs a server-side preference, which does
   not exist yet.
-- The plain-mode vocabulary sweep in `tests/visual/v3.spec.js` checks a word
+- The plain-mode vocabulary sweep in `tests/visual/v3.shell.spec.js` checks a word
   list over ten routes. It catches the engine's vocabulary reaching a reader;
   it cannot catch a sentence that is jargon-free and still unclear.
 - SQLite is the live local Brain store. PostgreSQL/pgvector remains optional

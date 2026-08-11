@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**11.2.0 — All Systems On** refreshes the model catalog to verified 2025–2026 builds (no weights were downloaded to check them), adds a feature-toggle drawer on the Brain home so every opt-in capability is a live switch, completes the interop bridges (Notion export, Git history, mail/calendar), recipient public-key sharing and video ingestion, and ships a 58-row evidence audit of every documented feature. The extension surface is unchanged.
+**11.3.0 — Time Remembers** adds the Brain Chronicle (연대기) — a seventh primary screen where the Brain's growth is a timeline: a growth curve with a draggable time handle, an activity heatmap, each day's story in plain-language cards, and an as-of rewind showing what the Brain knew at any past moment. Under the hood, every first-party source file is now under 1,000 lines (28 monoliths decomposed with AST-equality proofs) and a lint gate keeps it that way. The extension surface is unchanged.
 The memory stats moved into a hover badge with a small summary graph, the six
 capture chips folded behind one + on the composer, the model banner became a
 status pill with the single accented CTA, and past conversations / stats / the

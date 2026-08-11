@@ -69,6 +69,17 @@
     height: 1.18rem;
   }
 
+  /* The bar carries five columns since 11.3.0 (four everyday links plus the
+     menu) rather than four. The grid already sizes itself from the item count,
+     but a wrapped label would grow the row and push the whole bar taller, so
+     the caption stays on one line and shrinks instead. */
+  .brain-mobile-nav-item > span {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .brain-mobile-nav-item.is-active {
     background: hsl(var(--primary) / 0.1);
     color: hsl(var(--primary));

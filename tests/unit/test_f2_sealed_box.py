@@ -289,7 +289,7 @@ def test_a_sealed_bundle_on_a_brain_with_no_receiving_key_says_so(tmp_path, enab
         node_ids=[node_ids[0]],
     )
     monkeypatch.setattr(
-        "lattice_brain.portability.load_recipient_identity", lambda _dir: None
+        "lattice_brain.portability.sharing.load_recipient_identity", lambda _dir: None
     )
     assert receiver.recipient_key() == {
         "available": False,

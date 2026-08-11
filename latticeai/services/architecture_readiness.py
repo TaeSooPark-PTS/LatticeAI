@@ -16,7 +16,7 @@ from typing import Any, Dict, List
 
 from latticeai.core.legacy_compatibility import legacy_shim_report
 
-ARCHITECTURE_VERSION_TARGET = "11.2.0"
+ARCHITECTURE_VERSION_TARGET = "11.3.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",
@@ -53,6 +53,19 @@ def _symbol_exists(dotted: str) -> bool:
         return False
 
 
+def _package_sources(root: Path, relative_package: str) -> List[str]:
+    """Every ``*.py`` in a package, as repo-relative paths.
+
+    Returns the missing marker path when the package is absent, so a gate that
+    scans a package fails the same way it would for a deleted single file.
+    """
+    directory = root / relative_package
+    sources = sorted(directory.glob("*.py")) if directory.is_dir() else []
+    if not sources:
+        return [f"{relative_package}/__init__.py"]
+    return [str(path.relative_to(root)) for path in sources]
+
+
 def _forbidden_patterns(root: Path, relative_path: str, patterns: List[str]) -> List[str]:
     path = root / relative_path
     try:
@@ -71,18 +84,26 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         "latticeai/app_factory.py",
         ["build_runtime_namespace(locals", "dict(locals())"],
     )
-    model_runtime_forbidden = _forbidden_patterns(
-        root,
-        "latticeai/services/model_runtime.py",
-        [
-            "def _sync_globals",
-            "global router",
-            "STATE = ModelRuntimeState",
-            "_STATE_EXPORTS",
-            "def __getattr__(name:",
-            "from fastapi import HTTPException",
-        ],
-    )
+    # v11.3.0: model_runtime.py became a package. The ambient-state patterns
+    # below could reappear in any of its submodules, so every file in the
+    # package is scanned — checking only __init__.py would leave the gate
+    # blind one directory down.
+    model_runtime_forbidden = [
+        finding
+        for relative_path in _package_sources(root, "latticeai/services/model_runtime")
+        for finding in _forbidden_patterns(
+            root,
+            relative_path,
+            [
+                "def _sync_globals",
+                "global router",
+                "STATE = ModelRuntimeState",
+                "_STATE_EXPORTS",
+                "def __getattr__(name:",
+                "from fastapi import HTTPException",
+            ],
+        )
+    ]
     model_runtime_forbidden.extend(
         _forbidden_patterns(
             root,
@@ -97,11 +118,19 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             ["from fastapi import HTTPException", "raise HTTPException"],
         )
     )
-    agent_alias_forbidden = _forbidden_patterns(
-        root,
-        "latticeai/core/agent.py",
-        ["AgentRuntime = SingleAgentRuntime"],
-    )
+    # v11.3.0: the single-agent loop is a package. The compatibility alias
+    # could reappear in any of its submodules, so every file in the package is
+    # scanned — checking only __init__.py would leave the gate blind one
+    # directory down.
+    agent_alias_forbidden = [
+        finding
+        for relative_path in _package_sources(root, "latticeai/core/agent")
+        for finding in _forbidden_patterns(
+            root,
+            relative_path,
+            ["AgentRuntime = SingleAgentRuntime"],
+        )
+    ]
 
     gates = [
         ArchitectureGate(
@@ -180,7 +209,7 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             evidence=[
                 "frontend/src/components/ProductFlow.tsx Wake Brain entry",
                 "frontend/src/features/brain/BrainHome.tsx memory rings",
-                "tests/visual/v3.spec.js first-run and Brain depth coverage",
+                "tests/visual/v3.home.spec.js first-run and Brain depth coverage",
             ],
         ),
         ArchitectureGate(

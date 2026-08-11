@@ -1,115 +1,33 @@
 """wp01 coverage: the Telegram conversation flows.
 
-``ask_ai`` and everything downstream of it — the approval handshake, the review
-centre, command dispatch, callback routing and the poll loop itself. The poll
-loop is driven by a scripted ``get_updates`` and a patched ``asyncio.sleep``
-that leaves the loop after a fixed number of iterations, so the test is
-deterministic and never sleeps for real.
+``ask_ai`` and everything downstream of it — the approval handshake, the
+review centre, the proposal decisions and ``process_ai_request``. Command
+dispatch, callback routing, the poll loop and the script entry are the twin
+suite, ``test_cov_wp01_telegram_polling.py``; both share the doubles in
+``_telegram_flow_common``.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
-import runpy
-from pathlib import Path
-
-import pytest
 
 from latticeai.integrations import telegram_bot as bot
 
-MODULE_PATH = Path(bot.__file__)
+# v11.3.0 package split: a stub only reaches the code that reads the name when
+# it is installed on that code's own module. ``ask_ai`` and everything it feeds
+# (the approval handshake, the review centre) live in ``flows``; the chat-id
+# store and the agent-artifact plumbing live in ``helpers``.
+from latticeai.integrations.telegram_bot import flows, helpers
 
-# ── doubles ───────────────────────────────────────────────────────────────
-
-
-class _StopLoop(Exception):
-    """Sentinel that leaves ``run_bot``'s infinite poll loop."""
-
-
-class _Res:
-    """Minimal stand-in for an ``httpx.Response``."""
-
-    def __init__(self, status_code=200, payload=None, text="", headers=None,
-                 json_error=None):
-        self.status_code = status_code
-        self.text = text
-        self.headers = headers or {}
-        self._payload = {} if payload is None else payload
-        self._json_error = json_error
-
-    def json(self):
-        if self._json_error is not None:
-            raise self._json_error
-        return self._payload
-
-
-class _Client:
-    """Async HTTP double: records every call, replies from a scripted table."""
-
-    def __init__(self, reply=None, error=None):
-        self.calls = []
-        self._reply = reply
-        self._error = error
-
-    async def _call(self, method, url, **kwargs):
-        self.calls.append((method, url, kwargs))
-        if self._error is not None:
-            raise self._error
-        if callable(self._reply):
-            return self._reply(method, url, kwargs)
-        if self._reply is None:
-            return _Res()
-        return self._reply
-
-    async def get(self, url, **kwargs):
-        return await self._call("get", url, **kwargs)
-
-    async def post(self, url, **kwargs):
-        return await self._call("post", url, **kwargs)
-
-    async def delete(self, url, **kwargs):
-        return await self._call("delete", url, **kwargs)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *_exc):
-        return False
-
-
-def _server(monkeypatch, client):
-    """Route ``_server_client()`` at a double instead of the real HTTP client."""
-    monkeypatch.setattr(bot, "_server_client", lambda **_kwargs: client)
-    return client
-
-
-def _recorder(log, name):
-    async def record(*args, **kwargs):
-        log.append((name, args, kwargs))
-
-    return record
-
-
-def _patch_handlers(monkeypatch, names):
-    """Replace the named coroutines on the module with call recorders."""
-    log = []
-    for name in names:
-        monkeypatch.setattr(bot, name, _recorder(log, name))
-    return log
-
-
-def _texts(log):
-    return [args[2] for name, args, _kwargs in log if name == "send_message"]
-
-
-def _messages(client):
-    return [
-        call[2].get("json", {}).get("text", "")
-        for call in client.calls
-        if call[1].endswith("/sendMessage")
-    ]
-
+from ._telegram_flow_common import (
+    _Client,
+    _messages,
+    _patch_ask_ai,
+    _patch_handlers,
+    _Res,
+    _server,
+    _texts,
+)
 
 # ── ask_ai ────────────────────────────────────────────────────────────────
 
@@ -254,7 +172,7 @@ def test_a_malformed_proposal_callback_is_ignored(monkeypatch):
     def unreachable(**_kwargs):
         raise AssertionError("a malformed callback must not reach the server")
 
-    monkeypatch.setattr(bot, "_server_client", unreachable)
+    monkeypatch.setattr(flows, "_server_client", unreachable)
     asyncio.run(bot.handle_proposal_callback(_Client(), 42, "proposal-approve-p1"))
     asyncio.run(bot.handle_proposal_callback(_Client(), 42, "proposal:approve:"))
 
@@ -315,16 +233,16 @@ def test_an_unreachable_server_is_reported_as_a_proposal_failure(monkeypatch):
 
 
 def test_a_plan_without_an_identifier_cannot_be_approved(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {})
+    monkeypatch.setattr(flows, "_bot_pending_plans", {})
     client = _Client()
     asyncio.run(bot.send_plan_for_approval(client, 42, {"plan": {"goal": "무언가"}}))
 
     assert "승인할 계획을 식별할 수 없습니다" in _messages(client)[0]
-    assert bot._bot_pending_plans == {}
+    assert flows._bot_pending_plans == {}
 
 
 def test_a_modern_plan_is_shown_with_its_steps_and_stored_for_resume(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {})
+    monkeypatch.setattr(flows, "_bot_pending_plans", {})
     client = _Client()
     asyncio.run(bot.send_plan_for_approval(client, 42, {
         "status": "awaiting_approval",
@@ -343,7 +261,7 @@ def test_a_modern_plan_is_shown_with_its_steps_and_stored_for_resume(monkeypatch
             payload["reply_markup"]["inline_keyboard"][0]] == [
         "plan:approve:run-1", "plan:cancel:run-1",
     ]
-    assert bot._bot_pending_plans["run-1"] == {
+    assert flows._bot_pending_plans["run-1"] == {
         "chat_id": 42, "run_id": "run-1", "context_id": None,
         "approval_token": "tok", "legacy": False,
         "executing_model": "e", "reviewing_model": "r",
@@ -351,7 +269,7 @@ def test_a_modern_plan_is_shown_with_its_steps_and_stored_for_resume(monkeypatch
 
 
 def test_a_legacy_plan_is_keyed_by_its_context_id(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {})
+    monkeypatch.setattr(flows, "_bot_pending_plans", {})
     client = _Client()
     asyncio.run(bot.send_plan_for_approval(client, 42, {
         "status": "waiting_approval",
@@ -361,7 +279,7 @@ def test_a_legacy_plan_is_keyed_by_its_context_id(monkeypatch):
     }))
 
     assert "*목표:* 레거시 목표" in client.calls[0][2]["json"]["text"]
-    assert bot._bot_pending_plans["ctx-9"]["legacy"] is True
+    assert flows._bot_pending_plans["ctx-9"]["legacy"] is True
 
 
 def test_the_resume_body_prefers_the_token_and_falls_back_to_the_context():
@@ -385,12 +303,12 @@ def test_a_malformed_plan_callback_is_ignored(monkeypatch):
     def unreachable(**_kwargs):
         raise AssertionError("a malformed callback must not reach the server")
 
-    monkeypatch.setattr(bot, "_server_client", unreachable)
+    monkeypatch.setattr(flows, "_server_client", unreachable)
     asyncio.run(bot.handle_plan_callback(_Client(), 42, "plan:approve"))
 
 
 def test_cancelling_a_plan_tells_the_server_it_was_refused(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {
+    monkeypatch.setattr(flows, "_bot_pending_plans", {
         "run-1": {"chat_id": 42, "run_id": "run-1", "approval_token": "tok",
                   "executing_model": None, "reviewing_model": None},
     })
@@ -401,11 +319,11 @@ def test_cancelling_a_plan_tells_the_server_it_was_refused(monkeypatch):
     assert server.calls[0][1] == bot.AGENT_RESUME_URL
     assert server.calls[0][2]["json"]["approved"] is False
     assert "❌ 작업이 취소되었습니다." in _messages(client)[0]
-    assert bot._bot_pending_plans == {}
+    assert flows._bot_pending_plans == {}
 
 
 def test_a_cancel_still_confirms_when_the_server_cannot_be_told(monkeypatch, caplog):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {
+    monkeypatch.setattr(flows, "_bot_pending_plans", {
         "run-1": {"chat_id": 42, "run_id": "run-1", "executing_model": None,
                   "reviewing_model": None},
     })
@@ -419,12 +337,12 @@ def test_a_cancel_still_confirms_when_the_server_cannot_be_told(monkeypatch, cap
 
 
 def test_cancelling_an_unknown_plan_does_not_call_the_server(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {})
+    monkeypatch.setattr(flows, "_bot_pending_plans", {})
 
     def unreachable(**_kwargs):
         raise AssertionError("there is nothing to cancel on the server")
 
-    monkeypatch.setattr(bot, "_server_client", unreachable)
+    monkeypatch.setattr(flows, "_server_client", unreachable)
     client = _Client()
     asyncio.run(bot.handle_plan_callback(client, 42, "plan:cancel:gone"))
 
@@ -432,12 +350,12 @@ def test_cancelling_an_unknown_plan_does_not_call_the_server(monkeypatch):
 
 
 def test_approving_an_expired_plan_reports_it_as_cancelled(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {})
+    monkeypatch.setattr(flows, "_bot_pending_plans", {})
 
     def unreachable(**_kwargs):
         raise AssertionError("an unknown plan must not be resumed")
 
-    monkeypatch.setattr(bot, "_server_client", unreachable)
+    monkeypatch.setattr(flows, "_server_client", unreachable)
     client = _Client()
     asyncio.run(bot.handle_plan_callback(client, 42, "plan:approve:gone"))
 
@@ -448,10 +366,10 @@ def test_approving_a_plan_runs_it_and_delivers_everything_it_produced(tmp_path, 
     workspace = (tmp_path / "ws").resolve()
     workspace.mkdir()
     (workspace / "out.txt").write_text("hi", encoding="utf-8")
-    monkeypatch.setattr(bot, "AGENT_WORKSPACE", workspace)
-    monkeypatch.setattr(bot, "get_lan_ip", lambda: "192.168.0.7")
-    monkeypatch.setattr(bot, "SERVER_PORT", 4825)
-    monkeypatch.setattr(bot, "_bot_pending_plans", {
+    monkeypatch.setattr(helpers, "AGENT_WORKSPACE", workspace)
+    monkeypatch.setattr(helpers, "get_lan_ip", lambda: "192.168.0.7")
+    monkeypatch.setattr(helpers, "SERVER_PORT", 4825)
+    monkeypatch.setattr(flows, "_bot_pending_plans", {
         "run-1": {"chat_id": 42, "run_id": "run-1", "approval_token": "tok",
                   "executing_model": "e", "reviewing_model": "r"},
     })
@@ -485,7 +403,7 @@ def test_approving_a_plan_runs_it_and_delivers_everything_it_produced(tmp_path, 
 
 
 def test_a_failed_resume_is_reported_with_its_status(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {
+    monkeypatch.setattr(flows, "_bot_pending_plans", {
         "run-1": {"chat_id": 42, "run_id": "run-1", "executing_model": None,
                   "reviewing_model": None},
     })
@@ -498,7 +416,7 @@ def test_a_failed_resume_is_reported_with_its_status(monkeypatch):
 
 
 def test_an_unreachable_server_is_reported_as_a_run_error(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {
+    monkeypatch.setattr(flows, "_bot_pending_plans", {
         "run-1": {"chat_id": 42, "run_id": "run-1", "executing_model": None,
                   "reviewing_model": None},
     })
@@ -511,24 +429,6 @@ def test_an_unreachable_server_is_reported_as_a_run_error(monkeypatch):
 
 
 # ── process_ai_request ────────────────────────────────────────────────────
-
-
-def _patch_ask_ai(monkeypatch, result):
-    calls = []
-
-    async def ask(_client, message, image_data=None, agent_mode=False,
-                  planning_model=None, executing_model=None, reviewing_model=None):
-        calls.append({
-            "message": message, "image_data": image_data, "agent_mode": agent_mode,
-            "planning_model": planning_model, "executing_model": executing_model,
-            "reviewing_model": reviewing_model,
-        })
-        if isinstance(result, Exception):
-            raise result
-        return result
-
-    monkeypatch.setattr(bot, "ask_ai", ask)
-    return calls
 
 
 def test_a_text_question_runs_in_agent_mode_and_delivers_its_output(monkeypatch):
@@ -615,384 +515,7 @@ def test_a_failure_that_cannot_even_be_reported_is_swallowed(monkeypatch):
     async def broken(*_args, **_kwargs):
         raise OSError("telegram unreachable")
 
-    monkeypatch.setattr(bot, "send_message", broken)
+    monkeypatch.setattr(flows, "send_message", broken)
     asyncio.run(bot.process_ai_request(_Client(), 42, "안녕"))
 
 
-# ── command dispatch ──────────────────────────────────────────────────────
-
-COMMAND_HANDLERS = [
-    "show_menu", "show_status", "show_model_info", "do_unload_model",
-    "show_graph_stats", "take_screenshot", "show_history_summary",
-    "clear_server_history", "send_web_link", "send_mcp_tools",
-    "show_review_center", "send_message", "send_chat_action",
-    "send_plan_for_approval",
-]
-
-COMMAND_ROUTES = [
-    ("/start", "", ["send_message", "show_menu"]),
-    ("/menu", "", ["show_menu"]),
-    ("/status", "", ["show_status"]),
-    ("/model", "", ["show_model_info"]),
-    ("/unload", "", ["do_unload_model"]),
-    ("/graph", "", ["show_graph_stats"]),
-    ("/ss", "", ["take_screenshot"]),
-    ("/screenshot", "", ["take_screenshot"]),
-    ("/web", "", ["send_web_link"]),
-    ("/mcp", "", ["send_mcp_tools"]),
-    ("/review", "", ["show_review_center"]),
-    ("/proposals", "", ["show_review_center"]),
-    ("/help", "", ["send_message"]),
-    ("/h", "", ["send_message"]),
-    ("/nonsense", "", ["send_message"]),
-]
-
-
-@pytest.mark.parametrize(("command", "args", "expected"), COMMAND_ROUTES)
-def test_each_command_reaches_its_own_screen(monkeypatch, command, args, expected):
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, command, args))
-    assert [name for name, _a, _k in log] == expected
-
-
-def test_an_unknown_command_points_at_the_help_text(monkeypatch):
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, "/nonsense", ""))
-    assert "알 수 없는 명령어: /nonsense" in _texts(log)[0]
-
-
-def test_help_lists_the_agent_command(monkeypatch):
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, "/help", ""))
-    assert "/agent <작업>" in _texts(log)[0]
-
-
-@pytest.mark.parametrize(("args", "expected"), [("7", 7), ("", 5), ("many", 5)])
-def test_history_takes_its_count_from_the_argument(monkeypatch, args, expected):
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, "/history", args))
-    assert log[0][1][2] == expected
-
-
-@pytest.mark.parametrize(("command", "args", "expected"),
-                         [("/clear", "3", 3), ("/clear_history", "", 0), ("/forget", "x", 0)])
-def test_clear_takes_the_number_of_entries_to_keep(monkeypatch, command, args, expected):
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, command, args))
-    assert log[0][0] == "clear_server_history"
-    assert log[0][1][2] == expected
-
-
-def test_a_bot_suffixed_command_is_still_routed(monkeypatch):
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, "/STATUS@LatticeBot", ""))
-    assert [name for name, _a, _k in log] == ["show_status"]
-
-
-def test_agent_without_a_task_prints_the_usage(monkeypatch):
-    _patch_ask_ai(monkeypatch, {"response": "never"})
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, "/agent", ""))
-
-    assert "사용법: /agent <작업 내용>" in _texts(log)[0]
-
-
-def test_agent_flags_are_parsed_out_of_the_task_text(monkeypatch):
-    calls = _patch_ask_ai(monkeypatch, {"response": "완료"})
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(
-        _Client(), 42, "/agent", "쇼핑몰 페이지 --exec openai/gpt-4o --review together:Qwen",
-    ))
-
-    assert calls[0]["message"] == "쇼핑몰 페이지"
-    assert calls[0]["executing_model"] == "openai/gpt-4o"
-    assert calls[0]["reviewing_model"] == "together:Qwen"
-    assert "완료" in _texts(log)[0]
-
-
-def test_an_agent_run_that_pauses_shows_the_approval_card(monkeypatch):
-    _patch_ask_ai(monkeypatch, {"status": "awaiting_approval", "run_id": "run-1"})
-    log = _patch_handlers(monkeypatch, COMMAND_HANDLERS)
-    asyncio.run(bot.handle_command(_Client(), 42, "/agent", "보고서"))
-
-    assert "send_plan_for_approval" in [name for name, _a, _k in log]
-
-
-# ── callback routing ──────────────────────────────────────────────────────
-
-CALLBACK_HANDLERS = [
-    "show_status", "show_model_info", "show_graph_stats", "take_screenshot",
-    "show_history_summary", "clear_server_history", "send_web_link",
-    "send_mcp_tools", "show_review_center", "show_menu", "do_unload_model",
-]
-
-CALLBACK_ROUTES = [
-    ("cmd:status", "show_status"),
-    ("cmd:model", "show_model_info"),
-    ("cmd:graph", "show_graph_stats"),
-    ("cmd:screenshot", "take_screenshot"),
-    ("cmd:history", "show_history_summary"),
-    ("cmd:clear", "clear_server_history"),
-    ("cmd:web", "send_web_link"),
-    ("cmd:mcp", "send_mcp_tools"),
-    ("cmd:review", "show_review_center"),
-    ("cmd:menu", "show_menu"),
-    ("model:unload:qwen3-8b", "do_unload_model"),
-]
-
-
-@pytest.mark.parametrize(("data", "expected"), CALLBACK_ROUTES)
-def test_each_menu_button_reaches_its_own_screen(monkeypatch, data, expected):
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
-    log = _patch_handlers(monkeypatch, CALLBACK_HANDLERS)
-    client = _Client()
-
-    asyncio.run(bot.handle_callback_query(client, {
-        "id": "cbq-1", "message": {"chat": {"id": 42}}, "data": data,
-    }))
-
-    assert client.calls[0][1].endswith("/answerCallbackQuery")
-    assert [name for name, _a, _k in log] == [expected]
-
-
-def test_the_unload_button_carries_the_model_id(monkeypatch):
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
-    log = _patch_handlers(monkeypatch, CALLBACK_HANDLERS)
-
-    asyncio.run(bot.handle_callback_query(_Client(), {
-        "id": "cbq-1", "message": {"chat": {"id": 42}}, "data": "model:unload:qwen3-8b",
-    }))
-
-    assert log[0][1][2] == "qwen3-8b"
-
-
-@pytest.mark.parametrize(("data", "handler"), [
-    ("plan:approve:run-1", "handle_plan_callback"),
-    ("proposal:approve:p1", "handle_proposal_callback"),
-])
-def test_decision_buttons_run_in_the_background(monkeypatch, data, handler):
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
-    log = _patch_handlers(monkeypatch, [handler])
-
-    async def main():
-        await bot.handle_callback_query(_Client(), {
-            "id": "cbq-1", "message": {"chat": {"id": 42}}, "data": data,
-        })
-        for _ in range(4):
-            await asyncio.sleep(0)
-
-    asyncio.run(main())
-
-    assert log == [(handler, (log[0][1][0], 42, data), {})]
-
-
-def test_an_unrecognised_callback_is_acknowledged_and_dropped(monkeypatch):
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
-    log = _patch_handlers(monkeypatch, CALLBACK_HANDLERS)
-    client = _Client()
-
-    asyncio.run(bot.handle_callback_query(client, {
-        "id": "cbq-1", "message": {"chat": {"id": 42}}, "data": "cmd:unknown",
-    }))
-
-    assert len(client.calls) == 1
-    assert log == []
-
-
-# ── poll loop ─────────────────────────────────────────────────────────────
-
-
-def test_a_tokenless_bot_never_polls(monkeypatch, caplog):
-    monkeypatch.setattr(bot, "TOKEN", "")
-
-    async def unreachable(*_args, **_kwargs):
-        raise AssertionError("a bot with no token must not poll Telegram")
-
-    monkeypatch.setattr(bot, "get_updates", unreachable)
-    with caplog.at_level("WARNING"):
-        asyncio.run(bot.run_bot())
-
-    assert any("텔레그램 봇을 시작하지 않습니다" in record.getMessage()
-               for record in caplog.records)
-
-
-def test_a_bot_without_a_server_capability_never_polls(monkeypatch, caplog):
-    monkeypatch.setattr(bot, "TOKEN", "telegram-token")
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
-    monkeypatch.delenv("LATTICEAI_SERVER_SESSION_TOKEN", raising=False)
-
-    async def unreachable(*_args, **_kwargs):
-        raise AssertionError("a bot with no server capability must not poll Telegram")
-
-    monkeypatch.setattr(bot, "get_updates", unreachable)
-    with caplog.at_level("ERROR"):
-        asyncio.run(bot.run_bot())
-
-    assert any("LATTICEAI_SERVER_SESSION_TOKEN" in record.getMessage()
-               for record in caplog.records)
-
-
-POLL_UPDATES = [
-    {"update_id": 1, "callback_query": {
-        "id": "cbq-1", "message": {"chat": {"id": 42}}, "data": "cmd:menu"}},
-    {"update_id": 2},
-    {"update_id": 3, "message": {"chat": {"id": 999}, "text": "몰래 보낸 메시지"}},
-    {"update_id": 4, "message": {
-        "chat": {"id": 42},
-        "photo": [{"file_id": "small"}, {"file_id": "large"}],
-        "caption": "이 사진 설명해줘"}},
-    {"update_id": 5, "message": {
-        "chat": {"id": 42},
-        "document": {"file_id": "img", "mime_type": "image/png", "file_name": "shot.png"}}},
-    {"update_id": 6, "message": {
-        "chat": {"id": 42},
-        "document": {"file_id": "doc", "mime_type": "application/pdf",
-                     "file_name": "report.pdf"},
-        "caption": "정리해줘"}},
-    {"update_id": 7, "message": {"chat": {"id": 42}, "voice": {"file_id": "v"}}},
-    {"update_id": 8, "message": {"chat": {"id": 42}}},
-    {"update_id": 9, "message": {"chat": {"id": 42}, "text": "/history 3"}},
-    {"update_id": 10, "message": {"chat": {"id": 42}, "text": "안녕하세요"}},
-    {},
-]
-
-
-def test_the_poll_loop_dispatches_every_update_shape(tmp_path, monkeypatch, caplog):
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
-    monkeypatch.setenv("LATTICEAI_SERVER_SESSION_TOKEN", "bot-capability")
-    monkeypatch.setattr(bot, "TOKEN", "telegram-token")
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", tmp_path / "chats.json")
-
-    script = [OSError("connection reset"), None, {"ok": True, "result": POLL_UPDATES}]
-    polls = []
-
-    async def fake_get_updates(_client, offset=None):
-        polls.append(offset)
-        item = script[len(polls) - 1]
-        if isinstance(item, Exception):
-            raise item
-        return item
-
-    monkeypatch.setattr(bot, "get_updates", fake_get_updates)
-
-    real_sleep = asyncio.sleep
-    slept = []
-
-    async def fake_sleep(delay, *_args, **_kwargs):
-        slept.append(delay)
-        for _ in range(4):
-            await real_sleep(0)
-        if len(slept) >= 3:
-            raise _StopLoop
-
-    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
-
-    async def base64_of(_client, file_id):
-        return f"b64:{file_id}"
-
-    monkeypatch.setattr(bot, "download_as_base64", base64_of)
-    log = _patch_handlers(monkeypatch, [
-        "send_message", "process_ai_request", "process_document_file",
-        "handle_command", "handle_callback_query",
-    ])
-
-    with caplog.at_level("WARNING"), pytest.raises(_StopLoop):
-        asyncio.run(bot.run_bot())
-
-    # One poll per loop pass: the failed poll, the empty poll, the real batch.
-    assert polls == [None, None, None]
-    assert slept == [1, 0.5, 0.5], "the retry backoff starts at one second"
-
-    by_name = {}
-    for name, args, _kwargs in log:
-        by_name.setdefault(name, []).append(args)
-
-    assert [args[2:] for args in by_name["process_ai_request"]] == [
-        ("이 사진 설명해줘", "b64:large"),          # photo → vision
-        ("이 이미지를 분석해줘.", "b64:img"),        # image document → vision
-        ("안녕하세요",),                             # plain text → agent
-    ]
-    assert by_name["process_document_file"][0][2:] == ("doc", "report.pdf", "정리해줘")
-    assert by_name["handle_command"][0][2:] == ("/history", "3")
-    assert by_name["handle_callback_query"][0][1]["data"] == "cmd:menu"
-
-    notices = [args[2] for args in by_name["send_message"]]
-    assert any("📸 사진을 받았습니다" in text for text in notices)
-    assert any("report.pdf 을 Knowledge Graph에 수집합니다" in text for text in notices)
-    assert any("음성 인식(Whisper)이 설정되어 있지 않습니다" in text for text in notices)
-    assert not any("몰래 보낸 메시지" in text for text in notices)
-
-    assert json.loads((tmp_path / "chats.json").read_text(encoding="utf-8")) == {
-        "chat_ids": [42]
-    }
-    logged = [record.getMessage() for record in caplog.records]
-    assert any("get_updates 실패" in text for text in logged)
-    assert any("업데이트 처리 중 예외" in text for text in logged)
-    assert any("허용되지 않은 텔레그램 메시지 차단" in text for text in logged)
-
-
-def test_a_failed_background_task_is_logged_rather_than_lost(caplog):
-    async def boom():
-        raise RuntimeError("background failure")
-
-    async def main():
-        task = asyncio.create_task(boom())
-        with pytest.raises(RuntimeError):
-            await task
-        bot._log_task_exception(task)
-
-    with caplog.at_level("ERROR"):
-        asyncio.run(main())
-
-    assert any("백그라운드 태스크 예외" in record.getMessage() for record in caplog.records)
-
-
-def test_a_successful_background_task_logs_nothing(caplog):
-    async def fine():
-        return None
-
-    async def main():
-        task = asyncio.create_task(fine())
-        await task
-        bot._log_task_exception(task)
-
-    with caplog.at_level("ERROR"):
-        asyncio.run(main())
-
-    assert not [record for record in caplog.records
-                if "백그라운드 태스크 예외" in record.getMessage()]
-
-
-# ── module entrypoint ─────────────────────────────────────────────────────
-
-
-def _run_as_script(monkeypatch, tmp_path, on_run):
-    """Execute the module with ``__name__ == "__main__"`` in an isolated cwd."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("LATTICEAI_DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.delenv("LATTICEAI_TELEGRAM_BOT_TOKEN", raising=False)
-    monkeypatch.delenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", raising=False)
-    monkeypatch.delenv("LATTICEAI_SERVER_SESSION_TOKEN", raising=False)
-    monkeypatch.setattr(asyncio, "run", on_run)
-    runpy.run_path(str(MODULE_PATH), run_name="__main__")
-
-
-def test_running_the_module_as_a_script_starts_the_bot(tmp_path, monkeypatch):
-    started = []
-
-    def fake_run(coro):
-        started.append(coro.__name__)
-        coro.close()
-
-    _run_as_script(monkeypatch, tmp_path, fake_run)
-
-    assert started == ["run_bot"]
-    assert (tmp_path / "data").is_dir(), "the data directory is provisioned at start"
-
-
-def test_ctrl_c_stops_the_script_without_a_traceback(tmp_path, monkeypatch):
-    def fake_run(coro):
-        coro.close()
-        raise KeyboardInterrupt
-
-    _run_as_script(monkeypatch, tmp_path, fake_run)  # must not propagate

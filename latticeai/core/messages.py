@@ -522,6 +522,15 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         "ko": "디렉터리를 찾을 수 없습니다.",
         "en": "That directory was not found.",
     },
+    # ── chronicle ───────────────────────────────────────────────────────
+    "chronicle.bad_date": {
+        "ko": "날짜를 읽을 수 없습니다. 2026-08-11 처럼 연-월-일로 적어 주세요.",
+        "en": "That date could not be read. Write it as year-month-day, like 2026-08-11.",
+    },
+    "chronicle.bad_timestamp": {
+        "ko": "시점을 읽을 수 없습니다. 2026-08-11T09:00:00 처럼 적어 주세요.",
+        "en": "That moment could not be read. Write it like 2026-08-11T09:00:00.",
+    },
     # ── MCP / setup ─────────────────────────────────────────────────────
     "mcp.connector_not_found": {
         "ko": "커넥터를 찾을 수 없습니다.",

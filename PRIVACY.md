@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **11.2.0 — All Systems On**.
+Current release: **11.3.0 — Time Remembers**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

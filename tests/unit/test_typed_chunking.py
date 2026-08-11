@@ -18,7 +18,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import lattice_brain.graph._kg_common as kg_common
 from lattice_brain.graph._kg_common import (
     _chunks,
     _sha256_text,
@@ -27,6 +26,7 @@ from lattice_brain.graph._kg_common import (
     pdf_page_offsets,
     typed_chunks,
 )
+from lattice_brain.graph._kg_common import extraction as kg_extraction
 from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 
@@ -50,7 +50,7 @@ def _chunk_rows(store: KnowledgeGraphStore, source_node: str):
 def _rule_based_extraction_only(monkeypatch):
     """LLM extraction is nondeterministic — force the deterministic rule path."""
     monkeypatch.setenv("LATTICEAI_LLM_EXTRACTION", "0")
-    monkeypatch.setattr(kg_common, "ENABLE_LLM_EXTRACTION", False)
+    monkeypatch.setattr(kg_extraction, "ENABLE_LLM_EXTRACTION", False)
 
 
 # ── plain: byte-compat contract with _chunks ─────────────────────────────────

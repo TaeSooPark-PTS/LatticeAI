@@ -2,7 +2,7 @@
 
 The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0 and
 operationalized in v2.2.0. It sits
-*above* the v1.x single-agent state machine ([`SingleAgentRuntime`](../latticeai/core/agent.py))
+*above* the v1.x single-agent state machine ([`SingleAgentRuntime`](../latticeai/core/agent/runtime.py))
 and coordinates a pipeline of named **roles** that hand off work to one another,
 retry on a failing review, and emit a fully observable, replayable timeline.
 

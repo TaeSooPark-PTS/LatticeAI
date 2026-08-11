@@ -1,4 +1,4 @@
-"""Optional-backend import contract for ``latticeai/models/router.py``.
+"""Optional-backend import contract for ``latticeai/models/router/loading.py``.
 
 The router imports ``openai``, ``mlx.core``, ``mlx_vlm`` and ``mlx_lm`` behind
 ``try/except`` at module scope, and ``ensure_mlx_runtime()`` retries the same
@@ -7,11 +7,17 @@ executes depends entirely on what happens to be installed on the machine
 running the suite: on an Apple Silicon dev box every import succeeds, on the
 ubuntu CI leg every one of them fails. Neither side proves the other works.
 
-These tests pin both directions everywhere by executing ``router.py`` again as
-a private module object with ``sys.modules`` prepared — present (fakes) and
+These tests pin both directions everywhere by executing that module again as a
+private module object with ``sys.modules`` prepared — present (fakes) and
 absent (``None`` entries, which make ``import`` raise). ``importlib.reload``
 is deliberately not used: it would rebind the live module's globals for the
 rest of the session.
+
+The v11.3.0 decomposition moved the guarded imports (and every method that
+reads them) into ``latticeai.models.router.loading``, so that is what is
+re-executed and what a stand-in patches — a name rebound on the package
+``__init__`` would leave the reads in ``loading`` untouched, and the package
+deliberately does not re-export the five rebindable MLX names at all.
 """
 
 from __future__ import annotations
@@ -24,8 +30,9 @@ import types
 import pytest
 
 from latticeai.models import router as router_mod
+from latticeai.models.router import loading as loading_mod
 
-ROUTER_PATH = router_mod.__file__
+ROUTER_PATH = loading_mod.__file__
 OPTIONAL_MODULES = ("openai", "mlx", "mlx.core", "mlx_vlm", "mlx_lm")
 
 
@@ -58,10 +65,15 @@ def _absent(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
 
 
 def _reimport(monkeypatch: pytest.MonkeyPatch, name: str) -> types.ModuleType:
-    spec = importlib.util.spec_from_file_location(name, ROUTER_PATH)
+    # Executed under a dotted name inside the real package so the module's own
+    # relative imports (``from .catalog import …``) resolve against the already
+    # loaded siblings — the module under test is a submodule now, not a
+    # top-level file.
+    qualified = f"{router_mod.__name__}.{name}"
+    spec = importlib.util.spec_from_file_location(qualified, ROUTER_PATH)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setitem(sys.modules, qualified, module)
     spec.loader.exec_module(module)
     return module
 
@@ -79,9 +91,10 @@ def test_router_imports_cleanly_with_no_optional_backend_installed(monkeypatch):
         assert module.VLM_AVAILABLE is False
         assert module.LM_AVAILABLE is False
         # The module still imports, so every pure helper stays usable — that
-        # is the whole point of guarding the optional imports.
-        assert module.normalize_branding("커넥트 AI 입니다") == "Lattice AI 입니다"
-        assert module.parse_model_ref("openai:gpt-4o") == ("openai", "gpt-4o")
+        # is the whole point of guarding the optional imports. They live in
+        # backend-free sibling submodules, which this import just pulled in.
+        assert router_mod.normalize_branding("커넥트 AI 입니다") == "Lattice AI 입니다"
+        assert router_mod.parse_model_ref("openai:gpt-4o") == ("openai", "gpt-4o")
     finally:
         module.executor.shutdown(wait=False)
 
@@ -121,12 +134,17 @@ def test_router_import_defaults_the_draft_kind_without_overriding_an_operator(mo
 
 
 def _clear_mlx_globals(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Put the live module in the state a fresh non-MLX import leaves behind."""
-    monkeypatch.setattr(router_mod, "mx", None)
-    monkeypatch.setattr(router_mod, "vlm_load", None)
-    monkeypatch.setattr(router_mod, "lm_load", None)
-    monkeypatch.setattr(router_mod, "VLM_AVAILABLE", False)
-    monkeypatch.setattr(router_mod, "LM_AVAILABLE", False)
+    """Put the live module in the state a fresh non-MLX import leaves behind.
+
+    ``loading`` is where the five names are defined and where every read of
+    them happens, so it is both what is cleared here and what
+    ``ensure_mlx_runtime`` rebinds.
+    """
+    monkeypatch.setattr(loading_mod, "mx", None)
+    monkeypatch.setattr(loading_mod, "vlm_load", None)
+    monkeypatch.setattr(loading_mod, "lm_load", None)
+    monkeypatch.setattr(loading_mod, "VLM_AVAILABLE", False)
+    monkeypatch.setattr(loading_mod, "LM_AVAILABLE", False)
 
 
 def test_ensure_mlx_runtime_rebinds_the_globals_after_an_install(monkeypatch):
@@ -137,13 +155,13 @@ def test_ensure_mlx_runtime_rebinds_the_globals_after_an_install(monkeypatch):
     for name, fake in fakes.items():
         monkeypatch.setitem(sys.modules, name, fake)
 
-    router_mod.ensure_mlx_runtime()
+    loading_mod.ensure_mlx_runtime()
 
-    assert router_mod.mx is fakes["mlx.core"]
-    assert router_mod.vlm_load is fakes["mlx_vlm"].load
-    assert router_mod.lm_load is fakes["mlx_lm"].load
-    assert router_mod.VLM_AVAILABLE is True
-    assert router_mod.LM_AVAILABLE is True
+    assert loading_mod.mx is fakes["mlx.core"]
+    assert loading_mod.vlm_load is fakes["mlx_vlm"].load
+    assert loading_mod.lm_load is fakes["mlx_lm"].load
+    assert loading_mod.VLM_AVAILABLE is True
+    assert loading_mod.LM_AVAILABLE is True
     # The GPU is selected as part of binding, not later at generation time.
     assert devices == [fakes["mlx.core"].gpu]
 
@@ -156,13 +174,13 @@ def test_ensure_mlx_runtime_accepts_a_text_only_install(monkeypatch):
         monkeypatch.setitem(sys.modules, name, fakes[name])
     _absent(monkeypatch, "mlx_vlm")
 
-    router_mod.ensure_mlx_runtime()
+    loading_mod.ensure_mlx_runtime()
 
-    assert router_mod.mx is fakes["mlx.core"]
-    assert router_mod.vlm_load is None
-    assert router_mod.VLM_AVAILABLE is False
-    assert router_mod.lm_load is fakes["mlx_lm"].load
-    assert router_mod.LM_AVAILABLE is True
+    assert loading_mod.mx is fakes["mlx.core"]
+    assert loading_mod.vlm_load is None
+    assert loading_mod.VLM_AVAILABLE is False
+    assert loading_mod.lm_load is fakes["mlx_lm"].load
+    assert loading_mod.LM_AVAILABLE is True
 
 
 def test_ensure_mlx_runtime_names_every_backend_it_could_not_import(monkeypatch):
@@ -170,7 +188,7 @@ def test_ensure_mlx_runtime_names_every_backend_it_could_not_import(monkeypatch)
     _absent(monkeypatch, "mlx", "mlx.core", "mlx_vlm", "mlx_lm")
 
     with pytest.raises(RuntimeError) as excinfo:
-        router_mod.ensure_mlx_runtime()
+        loading_mod.ensure_mlx_runtime()
 
     message = str(excinfo.value)
     assert "MLX runtime is not available after install" in message
@@ -179,9 +197,9 @@ def test_ensure_mlx_runtime_names_every_backend_it_could_not_import(monkeypatch)
     assert "mlx:" in message
     assert "mlx-vlm:" in message
     assert "mlx-lm:" in message
-    assert router_mod.mx is None
-    assert router_mod.VLM_AVAILABLE is False
-    assert router_mod.LM_AVAILABLE is False
+    assert loading_mod.mx is None
+    assert loading_mod.VLM_AVAILABLE is False
+    assert loading_mod.LM_AVAILABLE is False
 
 
 def test_ensure_mlx_runtime_fails_when_only_the_core_package_is_importable(monkeypatch):
@@ -193,12 +211,12 @@ def test_ensure_mlx_runtime_fails_when_only_the_core_package_is_importable(monke
     _absent(monkeypatch, "mlx_vlm", "mlx_lm")
 
     with pytest.raises(RuntimeError, match="MLX runtime is not available after install"):
-        router_mod.ensure_mlx_runtime()
+        loading_mod.ensure_mlx_runtime()
 
-    assert router_mod.mx is fakes["mlx.core"]
-    assert router_mod.vlm_load is None
-    assert router_mod.lm_load is None
+    assert loading_mod.mx is fakes["mlx.core"]
+    assert loading_mod.vlm_load is None
+    assert loading_mod.lm_load is None
 
 
 def test_mlx_sampler_defers_to_the_bundled_backend_sampler():
-    assert router_mod._mlx_sampler(0.7) is None
+    assert loading_mod._mlx_sampler(0.7) is None

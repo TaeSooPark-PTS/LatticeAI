@@ -1,0 +1,561 @@
+/* Confirmation card for files actually written to the local workspace. */
+.brain-created-files {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  border: 1px solid hsl(var(--memory) / 0.4);
+  border-radius: 10px;
+  background: hsl(var(--memory) / 0.08);
+  padding: 0.62rem 0.72rem;
+  text-align: left;
+}
+
+.brain-created-files.is-compact {
+  margin: 0.45rem 0.6rem 0.6rem;
+}
+
+.brain-created-files-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+}
+
+.brain-created-files ul {
+  display: grid;
+  gap: 0.34rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-created-files li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 10px;
+  background: hsl(var(--surface) / 0.92);
+  padding: 0.42rem 0.58rem;
+}
+
+.brain-created-file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.brain-created-files li small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+.brain-created-files li button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid hsl(var(--brain-core) / 0.55);
+  border-radius: 999px;
+  background: hsl(var(--brain-core) / 0.12);
+  color: hsl(var(--fg));
+  padding: 0.28rem 0.72rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brain-created-files li button:hover:not(:disabled) {
+  background: hsl(var(--brain-core) / 0.2);
+}
+
+.brain-created-files li button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.brain-created-files-hint {
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+}
+
+.brain-created-files-error {
+  color: hsl(0 72% 52%);
+  font-size: 0.76rem;
+}
+
+/* Honesty badge: the file was rebuilt by the deterministic repair scaffold.
+   Base colors follow the dark default theme; light overrides below. */
+.brain-created-file-repaired {
+  border: 1px solid hsl(38 92% 42% / 0.55);
+  border-radius: 999px;
+  background: hsl(38 92% 50% / 0.14);
+  color: hsl(38 92% 68%);
+  padding: 0.16rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+:root[data-theme="light"] .brain-created-file-repaired {
+  color: hsl(30 80% 34%);
+}
+
+/* Terminal non-success agent states — warm warning, never the success green. */
+.brain-agent-state-note {
+  display: block;
+  margin-top: 0.5rem;
+  border: 1px solid hsl(38 92% 42% / 0.5);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: hsl(38 92% 50% / 0.1);
+  color: hsl(38 92% 70%);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.brain-agent-state-note.is-failed {
+  border-color: hsl(0 72% 48% / 0.5);
+  background: hsl(0 72% 52% / 0.08);
+  color: hsl(0 80% 72%);
+}
+
+:root[data-theme="light"] .brain-agent-state-note {
+  color: hsl(30 70% 32%);
+}
+
+:root[data-theme="light"] .brain-agent-state-note.is-failed {
+  color: hsl(0 62% 40%);
+}
+
+.brain-answer-proof {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  border: 1px solid hsl(var(--memory) / 0.34);
+  border-radius: 10px;
+  background: hsl(var(--memory) / 0.06);
+  padding: 0.58rem;
+}
+
+.brain-answer-proof-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.brain-answer-proof-head span,
+.brain-answer-proof li span {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.brain-answer-proof-head strong {
+  overflow: hidden;
+  color: hsl(var(--fg));
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-answer-proof ol {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-answer-proof li {
+  display: grid;
+  gap: 0.1rem;
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: 6px;
+  background: hsl(var(--surface) / 0.48);
+  padding: 0.44rem;
+}
+
+.brain-answer-proof li strong,
+.brain-answer-proof li small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-answer-proof li strong {
+  font-size: 0.76rem;
+}
+
+/* 근거 설명 행 — 왜 이 출처인지: 신뢰 배지 + 일치 단어 칩 */
+/* .brain-answer-proof li span 의 uppercase 라벨 스타일을 중화한다 */
+.brain-answer-proof li span.brain-citation-why,
+.brain-citation-why {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  text-transform: none;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.brain-citation-locator {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* 멀티모달 근거 (v11.1.0) — 이미지 노드는 썸네일 + 캡션으로 보여준다.
+   썸네일은 노드에 저장된 인라인 data: URI라 외부 요청이 없다. */
+.brain-answer-proof li span.brain-citation-visual,
+.brain-citation-visual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  text-transform: none;
+}
+
+.brain-citation-thumb {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--surface) / 0.6);
+}
+
+.brain-citation-thumb.is-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: hsl(var(--fg-muted));
+}
+
+.brain-citation-visual-text {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.brain-citation-visual-text em {
+  display: block;
+  font-style: normal;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-citation-visual-text em.is-muted {
+  color: hsl(var(--fg-muted));
+}
+
+.brain-citation-confidence {
+  font-style: normal;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.brain-citation-confidence.is-high {
+  color: hsl(var(--success, 152 46% 34%));
+  background: hsl(var(--success, 152 46% 34%) / 0.12);
+}
+
+.brain-citation-confidence.is-medium {
+  color: hsl(var(--brain-core));
+  background: hsl(var(--brain-core) / 0.12);
+}
+
+.brain-citation-confidence.is-low {
+  color: hsl(var(--fg-muted));
+  background: hsl(var(--border) / 0.35);
+}
+
+.brain-citation-why-label {
+  font-size: 0.6rem;
+  color: hsl(var(--fg-muted));
+  text-transform: none !important;
+  font-weight: 600 !important;
+}
+
+.brain-citation-why mark {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: hsl(var(--fg) / 0.85);
+  background: hsl(var(--memory) / 0.18);
+  border-radius: 6px;
+  padding: 0 5px;
+}
+
+/* 근거 → 행동 (v9.9.6): 이 답변이 실제로 쓴 출처로 바로 만들 수 있는 것들 */
+.brain-evidence-actions {
+  display: grid;
+  gap: 0.32rem;
+  border-top: 1px solid hsl(var(--border) / 0.45);
+  padding-top: 0.42rem;
+}
+
+.brain-evidence-actions small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.brain-evidence-actions small.is-error {
+  color: hsl(var(--warning, 32 78% 42%));
+}
+
+.brain-evidence-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.brain-evidence-action,
+.brain-evidence-action-trigger {
+  border: 1px solid hsl(var(--memory) / 0.42);
+  border-radius: 999px;
+  background: hsl(var(--memory) / 0.1);
+  color: hsl(var(--fg));
+  cursor: pointer;
+  padding: 0.22rem 0.62rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-evidence-action:hover,
+.brain-evidence-action-trigger:hover {
+  background: hsl(var(--memory) / 0.2);
+}
+
+.brain-evidence-action:focus-visible,
+.brain-evidence-action-trigger:focus-visible {
+  outline: 2px solid hsl(var(--brain-core));
+  outline-offset: 2px;
+}
+
+.brain-answer-proof li small,
+.brain-answer-proof > small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+/* === Track: Chat inline source citations + a11y === */
+.brain-message-cited {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.brain-message-text {
+  line-height: 1.55;
+}
+
+.citation-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.18rem;
+  border: 1px solid hsl(var(--memory) / 0.4);
+  border-radius: 6px;
+  background: hsl(var(--memory) / 0.18);
+  padding: 0.04rem 0.34rem;
+  color: hsl(var(--fg));
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  vertical-align: super;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s ease, border-color 0.12s ease, outline-color 0.12s ease;
+}
+
+.citation-chip:hover {
+  border-color: hsl(var(--memory) / 0.6);
+  background: hsl(var(--memory) / 0.28);
+}
+
+.citation-chip:focus-visible {
+  outline: 2px solid hsl(var(--memory) / 0.8);
+  outline-offset: 1px;
+}
+
+.citation-chip.is-active {
+  border-color: hsl(var(--memory) / 0.7);
+  background: hsl(var(--memory) / 0.35);
+}
+
+.brain-answer-proof li.is-cited {
+  border-left: 3px solid hsl(var(--memory) / 0.8);
+  background: hsl(var(--memory) / 0.12);
+}
+
+.brain-answer-proof li[tabindex]:focus-visible {
+  outline: 2px solid hsl(var(--memory) / 0.7);
+  outline-offset: 1px;
+}
+
+.brain-citation-score {
+  color: hsl(var(--memory));
+  font-weight: 700;
+}
+
+.brain-citation-tip {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-style: italic;
+}
+/* === End track: Chat inline source citations + a11y === */
+
+@keyframes message-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.brain-composer {
+  position: relative;
+  z-index: 10;
+  margin-top: 0;
+  padding: 0.85rem 0.6rem 0.35rem;
+  background: linear-gradient(180deg, hsl(var(--bg) / 0.62), transparent);
+}
+
+.brain-composer textarea {
+  width: 100%;
+  min-height: 3.4rem;
+  max-height: 9.5rem;
+  resize: none;
+  background: hsl(var(--surface) / 0.92);
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 16px;
+  padding: 0.95rem 1.15rem;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: hsl(var(--fg));
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.brain-composer textarea:focus {
+  border-color: hsl(var(--brain-core) / 0.6);
+  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.08);
+}
+
+.brain-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+  padding: 0 0.35rem;
+}
+
+/* Progressive depths navigation — subtle, never a "sidebar" */
+.depths {
+  position: fixed;
+  bottom: calc(1.35rem + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 999px;
+  backdrop-filter: blur(18px);
+}
+
+.depth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.95rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.2px;
+  color: hsl(var(--fg-muted));
+  border-radius: 999px;
+  transition: all 160ms ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.depth:hover {
+  color: hsl(var(--fg));
+  background: hsl(var(--bg) / 0.6);
+}
+
+.depth.active {
+  color: hsl(var(--fg));
+  background: hsl(var(--brain-core) / 0.11);
+}
+
+/* Full-bleed contemplative chambers for Memory / Knowledge / Relationships / Map */
+.mind-chamber {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: hsl(var(--bg));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: chamber-enter 420ms cubic-bezier(0.23, 1.0, 0.32, 1);
+}
+
+@keyframes chamber-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+.chamber-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.35rem 2rem 0.9rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  flex-shrink: 0;
+}
+
+.chamber-head .brain-trace {
+  width: 38px;
+  height: 38px;
+  opacity: 0.6;
+}
+
+.chamber-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.chamber-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1.75rem 2rem 3.5rem;
+  max-width: 1080px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* The Map — artistic, slow, contemplative. Not a tool. */
+.mind-map-frame {
+  height: calc(100vh - 9.5rem);
+  border-radius: 16px;
+  border: 1px solid hsl(var(--border) / 0.55);
+  background: hsl(var(--bg-elevated));
+  overflow: hidden;
+  box-shadow: inset 0 0 120px hsl(0 0% 0% / 0.35);
+  position: relative;
+}
+

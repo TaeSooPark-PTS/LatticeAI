@@ -1,3 +1,13 @@
+# [v11.3.0 - Time Remembers] (2026-08-11)
+
+기억의 연대기(Brain Chronicle) — 성장 곡선·활동 히트맵·그날의 이야기·
+`as_of` 되감기를 갖춘 7번째 주 화면으로 11.1.0 temporal 데이터의 첫 UI.
+동시에 1,000줄 초과 파일 28개 전부 분해(AST 동등성·CSS byte-identical·
+i18n 키맵 동일 증명, 동작 변화 0) + 라인 상한 lint 게이트. 플로어 유지:
+6,560+1,761 테스트 · 40,488문·11,052분기 100.00% · 프론트 4지표 100%.
+
+See [RELEASE_NOTES_v11.3.0.md](RELEASE_NOTES_v11.3.0.md).
+
 # [v11.2.0 - All Systems On] (2026-08-11)
 
 모델 카탈로그 전수 최신화(HF API 무부하 검증 — 가중치 다운로드 0·실로드 0,
@@ -409,7 +419,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.2.0**.
+This repository keeps public release history from **9.0.0 through 11.3.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

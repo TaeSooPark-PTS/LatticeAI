@@ -1,0 +1,478 @@
+/* Product flow — now a quiet ritual, not a wizard */
+.product-flow-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2.5rem 1.25rem;
+  background: radial-gradient(100% 70% at 50% 15%, hsl(var(--bg-elevated)), hsl(var(--bg)));
+}
+
+.product-flow-shell .living-brain { transform: scale(0.82); }
+
+.flow-ritual {
+  width: min(100%, 620px);
+  text-align: center;
+}
+
+.flow-ritual h1 {
+  font-size: clamp(2.1rem, 5.2vw, 3.1rem);
+  font-weight: 700;
+  line-height: 1.0;
+  margin: 1.1rem 0 0.6rem;
+}
+
+.flow-ritual p {
+  color: hsl(var(--fg-muted));
+  font-size: 1.05rem;
+  max-width: 42ch;
+  margin: 0 auto;
+}
+
+.ritual-brain {
+  position: relative;
+  margin: 1.4rem auto 1.6rem;
+}
+
+/* Make old chrome and dock very quiet or hidden in main brain experience */
+.app-chrome, .primary-dock, .ambient-brain {
+  display: none !important;
+}
+
+.page-shell {
+  padding: 0;
+  max-width: none;
+  width: 100%;
+}
+
+/* Gentle empty / loading for the mind */
+.mind-empty {
+  display: grid;
+  align-content: center;
+  text-align: left;
+  min-width: 0;
+  min-height: 11.5rem;
+  padding: 0.35rem 0.2rem 0.1rem;
+  color: hsl(var(--fg-muted));
+}
+
+.mind-empty-title {
+  max-width: 34rem;
+  margin: 0 0 0.32rem;
+  color: hsl(var(--fg));
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mind-empty p {
+  max-width: 39rem;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.mind-empty-upload {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  margin-top: 1rem;
+  border: 1px solid hsl(var(--memory) / 0.46);
+  border-radius: 999px;
+  background: hsl(var(--memory) / 0.1);
+  color: hsl(var(--fg));
+  padding: 0.55rem 0.9rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.mind-empty-upload:hover,
+.mind-empty-upload:focus-within {
+  border-color: hsl(var(--memory) / 0.72);
+  background: hsl(var(--memory) / 0.16);
+  transform: translateY(-1px);
+}
+
+.mind-empty-upload-hint {
+  display: block;
+  margin-top: 0.42rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+.mind-empty-prompts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.48rem;
+  margin-top: 0.72rem;
+  min-width: 0;
+}
+
+.mind-empty-prompts button {
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid hsl(var(--border) / 0.62);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.46);
+  color: hsl(var(--fg));
+  padding: 0.62rem 0.7rem;
+  font-size: 0.76rem;
+  line-height: 1.15;
+  text-align: left;
+  overflow-wrap: anywhere;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.mind-empty-prompts button:hover,
+.mind-empty-prompts button:focus-visible {
+  border-color: hsl(var(--memory) / 0.7);
+  background: hsl(var(--memory) / 0.08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.mind-empty-trail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  margin: 1rem 0 0;
+  max-width: 40rem;
+}
+
+.mind-empty-trail span {
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg-muted));
+  padding: 0.34rem 0.62rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.mind-empty .icon {
+  opacity: 0.5;
+  margin-bottom: 0.8rem;
+}
+
+/* Loading as thinking */
+.thinking {
+  animation: thinking-subtle 1.6s ease-in-out infinite;
+}
+
+@keyframes thinking-subtle {
+  0%,100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Success is quiet */
+.brain-quiet-success {
+  font-size: 0.76rem;
+  color: hsl(var(--memory));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Responsive care */
+@media (max-width: 720px) {
+  .brain-presence { padding-top: 1.4rem; }
+  .brain-organism { width: 200px; height: 200px; }
+  .brain-conversation { padding: 0 0.75rem 5.5rem; }
+  .brain-conversation-header,
+  .brain-chat-home-head,
+  .brain-header-tools {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .brain-header-tools {
+    width: 100%;
+  }
+  .brain-chat-home-layout {
+    grid-template-columns: 1fr;
+  }
+  .brain-context-rail {
+    position: static;
+  }
+  .brain-chat-home-proof {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .brain-composer textarea {
+    min-height: 4.25rem;
+  }
+  .brain-composer-actions {
+    margin-top: 0.45rem;
+  }
+  .brain-depth-actions {
+    bottom: calc(3.55rem + env(safe-area-inset-bottom, 0px));
+    width: min(100vw - 1rem, 24rem);
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  .brain-depth-actions button {
+    flex: 0 0 auto;
+  }
+  .brain-memory-rings {
+    inset: 16% 7%;
+  }
+  .brain-memory-ring.ring-1 { --ring-size: 10rem; --ring-radius: 5rem; }
+  .brain-memory-ring.ring-2 { --ring-size: 12.5rem; --ring-radius: 6.25rem; }
+  .brain-memory-ring.ring-3 { --ring-size: 15.1rem; --ring-radius: 7.55rem; }
+  .brain-memory-ring.ring-4 { --ring-size: 17.7rem; --ring-radius: 8.85rem; }
+  .brain-memory-ring.ring-5 { --ring-size: 20.2rem; --ring-radius: 10.1rem; }
+  .brain-memory-ring strong {
+    max-width: 4.6rem;
+    font-size: 0.6rem;
+  }
+  .brain-depth-rail {
+    top: 0.35rem;
+    width: min(100vw - 1rem, 25rem);
+  }
+  .brain-depth-rail strong {
+    display: none;
+  }
+  .brain-readiness-strip {
+    grid-template-columns: 1fr;
+  }
+  .brain-overview-grid {
+    grid-template-columns: 1fr;
+  }
+  .brain-proof-strip {
+    grid-template-columns: 1fr;
+  }
+  .brain-overview-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .brain-care-summary {
+    display: grid;
+  }
+  .brain-care-proof {
+    justify-content: flex-start;
+  }
+  .brain-care-button,
+  .brain-care-archive input,
+  .brain-care-archive-actions {
+    flex-basis: 100%;
+  }
+  .brain-care-archive-actions button {
+    flex-basis: calc(50% - 0.25rem);
+  }
+  .admin-console {
+    width: min(100% - 1rem, 1180px);
+  }
+  .admin-console-header {
+    display: grid;
+  }
+  .admin-metrics,
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-list-row,
+  .admin-operation {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .admin-list-row span {
+    flex-basis: auto;
+    max-width: 100%;
+    text-align: left;
+  }
+  .mind-empty {
+    padding-inline: 0.4rem;
+  }
+  .mind-empty-prompts {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .mind-empty-prompts button {
+    width: 100%;
+    text-align: left;
+  }
+  .brain-ownership-strip { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; }
+  .depths { bottom: 0.9rem; }
+}
+
+/* Ritual / Onboarding flow — uses the same living language as the Brain experience */
+.ritual-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: radial-gradient(120% 80% at 50% 15%, hsl(var(--bg-elevated)), hsl(var(--bg)));
+}
+
+.ritual-container {
+  width: min(100%, 720px);
+  text-align: center;
+}
+
+.ritual-language {
+  margin: 0 auto 1rem;
+}
+
+.ritual-brain {
+  margin: 0 auto 1.75rem;
+}
+
+.ritual-wake {
+  display: grid;
+  gap: 1rem;
+}
+
+.ritual-wake-plan {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0 auto;
+  width: min(100%, 640px);
+}
+
+.ritual-wake-plan div {
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.46);
+  padding: 0.82rem 0.75rem;
+  text-align: left;
+}
+
+.ritual-wake-plan span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.ritual-wake-plan strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.95rem;
+  line-height: 1.22;
+}
+
+.ritual-value-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  width: min(100%, 640px);
+  margin: 0.15rem auto 0.25rem;
+}
+
+.ritual-value-card {
+  border: 1px solid hsl(var(--border) / 0.54);
+  border-radius: 10px;
+  background: hsl(var(--surface-glass));
+  padding: 0.78rem 0.82rem;
+  text-align: left;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.ritual-value-card:hover,
+.ritual-value-card:focus-within {
+  transform: translateY(-1px);
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: 0 8px 22px hsl(var(--primary) / 0.09);
+}
+
+.ritual-value-label {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: hsl(var(--primary));
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ritual-value-body {
+  margin-top: 0.24rem;
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.ritual-secondary-button {
+  min-height: 2.75rem;
+  border: 1px solid hsl(var(--border) / 0.64);
+  border-radius: 10px;
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg));
+  padding: 0 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.ritual-secondary-button:hover,
+.ritual-secondary-button:focus-visible {
+  border-color: hsl(var(--primary) / 0.55);
+  background: hsl(var(--primary) / 0.06);
+  outline: none;
+}
+
+.ritual-title {
+  font-size: clamp(1.85rem, 5vw, 2.85rem);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.05;
+  margin-bottom: 0.5rem;
+  /* keep-all stops Korean wrapping mid-word (e.g. 시/작하세요) while still
+     breaking long Latin tokens like "Brain" cleanly. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-subtitle {
+  color: hsl(var(--fg-muted));
+  font-size: 1.05rem;
+  max-width: 44ch;
+  margin: 0 auto 1.5rem;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-promise {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0 auto 1.15rem;
+  max-width: 680px;
+}
+
+.ritual-promise div {
+  border: 1px solid hsl(var(--border) / 0.54);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.42);
+  padding: 0.72rem 0.78rem;
+  text-align: left;
+}
+
+.ritual-promise span {
+  display: block;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ritual-promise strong {
+  display: block;
+  margin-top: 0.18rem;
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+

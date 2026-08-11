@@ -15,6 +15,13 @@ import pytest
 
 from latticeai.models import router as router_mod
 
+# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
+# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
+# the load path reaches through them are read in the submodule that defines
+# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
+# rebound on the package ``__init__`` would leave those reads untouched.
+from latticeai.models.router import loading as router_loading
+
 OMITTED = "<omitted>"
 
 
@@ -100,21 +107,21 @@ def _isolate_provider_env(monkeypatch) -> None:
 
 
 def test_load_cloud_model_requires_the_openai_package(monkeypatch):
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", None)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", None)
 
     with pytest.raises(RuntimeError, match="openai package is not installed"):
         router_mod.LLMRouter()._load_cloud_model("openai", "gpt-4o")
 
 
 def test_load_cloud_model_rejects_a_provider_outside_the_catalog(monkeypatch):
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", _FakeAsyncOpenAI)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
 
     with pytest.raises(RuntimeError, match="Unsupported cloud provider: mystery"):
         router_mod.LLMRouter()._load_cloud_model("mystery", "some-model")
 
 
 def test_load_cloud_model_names_the_env_var_it_needs(monkeypatch):
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", _FakeAsyncOpenAI)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
     router = router_mod.LLMRouter()
 
@@ -128,7 +135,7 @@ def test_load_cloud_model_names_the_env_var_it_needs(monkeypatch):
 
 
 def test_load_cloud_model_omits_base_url_when_none_is_configured(monkeypatch):
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", _FakeAsyncOpenAI)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
     router = router_mod.LLMRouter()
@@ -142,7 +149,7 @@ def test_load_cloud_model_omits_base_url_when_none_is_configured(monkeypatch):
 
 
 def test_load_cloud_model_uses_the_catalog_base_url_when_no_env_override(monkeypatch):
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", _FakeAsyncOpenAI)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
     router = router_mod.LLMRouter()
 
@@ -155,7 +162,7 @@ def test_load_cloud_model_uses_the_catalog_base_url_when_no_env_override(monkeyp
 
 
 def test_load_cloud_model_prefers_the_env_base_url_over_the_catalog(monkeypatch):
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", _FakeAsyncOpenAI)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
     monkeypatch.setenv("LMSTUDIO_BASE_URL", "http://127.0.0.1:9999/v1")
     router = router_mod.LLMRouter()
@@ -168,7 +175,7 @@ def test_load_cloud_model_prefers_the_env_base_url_over_the_catalog(monkeypatch)
 
 
 def test_load_cloud_model_prefers_an_explicit_key_over_the_environment(monkeypatch):
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", _FakeAsyncOpenAI)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
     monkeypatch.setenv("GROQ_API_KEY", "sk-env")
     router = router_mod.LLMRouter()
@@ -182,7 +189,7 @@ def test_load_cloud_model_prefers_an_explicit_key_over_the_environment(monkeypat
 
 def test_load_cloud_model_scopes_the_cache_key_to_its_owner(monkeypatch):
     """Two users on the same provider+model must not share one client."""
-    monkeypatch.setattr(router_mod, "AsyncOpenAI", _FakeAsyncOpenAI)
+    monkeypatch.setattr(router_loading, "AsyncOpenAI", _FakeAsyncOpenAI)
     _isolate_provider_env(monkeypatch)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
     router = router_mod.LLMRouter()

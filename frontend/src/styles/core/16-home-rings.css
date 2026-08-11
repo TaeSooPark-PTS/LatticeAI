@@ -1,0 +1,525 @@
+/* Centered Living Brain Home Screen & Concentric Memory Rings */
+.brain-centered-home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(1rem, 2.4vw, 1.6rem);
+  width: 100%;
+  min-height: min(38rem, calc(100vh - 8.5rem));
+  background: radial-gradient(circle at center, hsl(var(--brain-core) / 0.05), transparent 70%);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.brain-concentric-container {
+  position: relative;
+  width: clamp(190px, 20vw, 230px);
+  aspect-ratio: 1;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: clamp(0.85rem, 1.8vw, 1.15rem);
+}
+
+/* 궤도 필드 — 링들이 브레인 주위를 도는 기울어진 궤도로 보인다 */
+.brain-orbit-field {
+  position: absolute;
+  inset: -14%;
+  perspective: 800px;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.brain-concentric-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 1px dashed hsl(var(--border) / 0.4);
+  pointer-events: none;
+}
+
+.brain-concentric-ring.ring-1 {
+  width: 52%;
+  height: 52%;
+  border-style: solid;
+  border-color: hsl(var(--brain-core) / 0.3);
+  animation: ring-orbit 30s linear infinite;
+}
+
+.brain-concentric-ring.ring-2 {
+  width: 72%;
+  height: 72%;
+  border-color: hsl(var(--memory) / 0.4);
+  animation: ring-orbit-reverse 45s linear infinite;
+}
+
+.brain-concentric-ring.ring-3 {
+  width: 92%;
+  height: 92%;
+  border-color: hsl(var(--knowledge) / 0.35);
+  animation: ring-orbit 60s linear infinite;
+}
+
+.brain-concentric-ring.ring-4 {
+  width: 112%;
+  height: 112%;
+  border-style: solid;
+  border-color: hsl(var(--border) / 0.3);
+  animation: ring-orbit-reverse 80s linear infinite;
+}
+
+/* 링 자전 — 궤도면(rotateX 74°)을 유지한 채 돈다 */
+@keyframes ring-orbit {
+  from { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(0deg); }
+  to { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(360deg); }
+}
+
+@keyframes ring-orbit-reverse {
+  from { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(360deg); }
+  to { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(0deg); }
+}
+
+/* 링 라벨은 이제 실제 버튼 — 각 기억 층을 바로 들여다보는 peek 트리거다 */
+.ring-label {
+  position: absolute;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: inherit;
+  color: hsl(var(--fg) / 0.55);
+  background: hsl(var(--surface));
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.5);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ring-label em {
+  font-style: normal;
+  font-weight: 700;
+  color: hsl(var(--fg) / 0.4);
+}
+
+.ring-label.is-populated {
+  color: hsl(var(--fg) / 0.82);
+  border-color: hsl(var(--brain-core) / 0.5);
+}
+
+.ring-label.is-populated em {
+  color: hsl(var(--brain-core));
+}
+
+.ring-label:hover,
+.ring-label.is-active {
+  color: hsl(var(--fg));
+  border-color: hsl(var(--brain-core) / 0.75);
+  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.12);
+}
+
+.ring-label:focus-visible {
+  outline: 2px solid hsl(var(--brain-core));
+  outline-offset: 2px;
+}
+
+.ring-label-top { top: -7%; left: 50%; transform: translateX(-50%); }
+.ring-label-bottom { bottom: -7%; left: 50%; transform: translateX(-50%); }
+.ring-label-left { left: -12%; top: 50%; transform: translate(-50%, -50%); }
+.ring-label-right { right: -12%; top: 50%; transform: translate(50%, -50%); }
+
+/* 채워진 층만 빛난다 — 비어 있는 링은 은은하게 잠들어 있다 */
+.brain-concentric-ring.is-dormant {
+  opacity: 0.35;
+}
+
+.brain-concentric-ring.is-populated {
+  border-style: solid;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-concentric-ring {
+    animation: none !important;
+    transform: translate(-50%, -50%) rotateX(74deg);
+  }
+}
+
+.brain-rings {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.brain-ring-peek {
+  width: min(340px, 88vw);
+  margin-bottom: clamp(0.7rem, 1.6vw, 1rem);
+  padding: 0.7rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--surface) / 0.94);
+  text-align: left;
+  box-shadow: 0 10px 28px hsl(228 30% 8% / 0.12);
+}
+
+.brain-ring-peek header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.45rem;
+}
+
+.brain-ring-peek header strong {
+  font-size: 0.86rem;
+  color: hsl(var(--fg));
+}
+
+.brain-ring-peek header span {
+  font-size: 0.68rem;
+  color: hsl(var(--fg) / 0.55);
+  margin-right: auto;
+}
+
+.brain-ring-peek header button {
+  border: none;
+  background: transparent;
+  color: hsl(var(--fg) / 0.55);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.brain-ring-peek header button:hover {
+  color: hsl(var(--fg));
+  background: hsl(var(--border) / 0.3);
+}
+
+.brain-ring-peek ul {
+  margin: 0 0 0.55rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.brain-ring-peek li {
+  font-size: 0.76rem;
+  color: hsl(var(--fg) / 0.78);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-ring-peek li::before {
+  content: "·";
+  margin-right: 6px;
+  color: hsl(var(--brain-core));
+}
+
+.brain-ring-peek p {
+  font-size: 0.76rem;
+  color: hsl(var(--fg) / 0.6);
+  margin: 0 0 0.55rem;
+  line-height: 1.45;
+}
+
+.brain-ring-peek-deeper {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: hsl(var(--brain-core));
+  border: 1px solid hsl(var(--brain-core) / 0.4);
+  background: hsl(var(--brain-core) / 0.08);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.brain-ring-peek-deeper:hover {
+  background: hsl(var(--brain-core) / 0.16);
+}
+
+.brain-center-orb {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brain-home-presence.brain-presence {
+  padding: 0;
+}
+
+.brain-home-presence .brain-organism {
+  width: clamp(180px, 19vw, 220px);
+  height: clamp(180px, 19vw, 220px);
+}
+
+.brain-home-welcome {
+  margin-bottom: clamp(0.9rem, 2vw, 1.25rem);
+  max-width: 480px;
+}
+
+.brain-home-welcome h2 {
+  font-size: clamp(1.35rem, 2.6vw, 1.65rem);
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+  letter-spacing: 0;
+  color: hsl(var(--fg));
+}
+
+.brain-home-welcome p {
+  font-size: 0.86rem;
+  color: hsl(var(--fg) / 0.65);
+  line-height: 1.45;
+  margin-bottom: 0.85rem;
+}
+
+.brain-home-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.6);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: hsl(var(--fg-muted));
+}
+
+.brain-home-status-badge .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--brain-core));
+  box-shadow: 0 0 8px hsl(var(--brain-core));
+  animation: pulse 2s infinite;
+}
+
+/* 완전 빈 상태(quiet + 기억 0) 전용 한 줄 안내 — 첫 행동을 바로 알려준다 */
+.brain-home-waking-hint {
+  margin-top: 0.6rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: hsl(var(--fg) / 0.72);
+  background: hsl(var(--memory) / 0.1);
+  border: 1px dashed hsl(var(--memory) / 0.45);
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+}
+
+.brain-home-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+  margin-top: 0.8rem;
+  max-width: 580px;
+}
+
+.brain-home-suggestions {
+  width: min(680px, 100%);
+  margin-top: 0.95rem;
+  text-align: left;
+}
+
+.brain-home-proactive {
+  width: min(740px, 100%);
+  margin-top: 0.75rem;
+  text-align: left;
+}
+
+.brain-home-suggestions-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--brain-core));
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.brain-home-suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.brain-home-proactive-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.brain-home-suggestions-grid button,
+.brain-home-proactive-grid button {
+  min-height: 4.1rem;
+  display: grid;
+  gap: 0.18rem;
+  align-content: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border) / 0.45);
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg));
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.brain-home-proactive-grid button {
+  min-height: 4.8rem;
+  border-color: hsl(var(--brain-core) / 0.32);
+  background:
+    linear-gradient(135deg, hsl(var(--brain-core) / 0.1), transparent 62%),
+    hsl(var(--surface-glass));
+}
+
+.brain-home-suggestions-grid button:hover,
+.brain-home-proactive-grid button:hover {
+  background: hsl(var(--brain-core) / 0.08);
+  border-color: hsl(var(--brain-core) / 0.4);
+  transform: translateY(-1px);
+}
+
+.brain-home-suggestions-grid button:disabled,
+.brain-home-proactive-grid button:disabled {
+  cursor: default;
+  opacity: 0.62;
+  transform: none;
+}
+
+.brain-home-suggestions-grid strong,
+.brain-home-proactive-grid strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.brain-home-suggestions-grid span,
+.brain-home-proactive-grid span {
+  color: hsl(var(--fg) / 0.62);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.brain-proactive-trail {
+  width: min(740px, 100%);
+  margin-top: 0.7rem;
+  text-align: left;
+}
+
+.brain-proactive-trail ol {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-proactive-trail li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.18rem 0.55rem;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border) / 0.45);
+  background: hsl(var(--surface-glass));
+}
+
+.brain-proactive-trail li[data-status="running"] {
+  border-color: hsl(var(--brain-core) / 0.38);
+  background: hsl(var(--brain-core) / 0.07);
+}
+
+.brain-proactive-trail li[data-status="completed"] {
+  border-color: hsl(var(--success) / 0.35);
+}
+
+.brain-proactive-trail li[data-status="failed"] {
+  border-color: hsl(var(--danger) / 0.4);
+  background: hsl(var(--danger) / 0.06);
+}
+
+.brain-proactive-trail strong {
+  min-width: 0;
+  color: hsl(var(--fg));
+  font-size: 0.76rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.brain-proactive-trail span {
+  justify-self: end;
+  color: hsl(var(--fg) / 0.68);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-proactive-trail small {
+  color: hsl(var(--fg) / 0.58);
+  font-size: 0.68rem;
+}
+
+/* "No model yet" notice: turn the refusal into a one-click path to Models. */
+.brain-model-missing {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 640px;
+  margin: 0.4rem auto 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--brain-core) / 0.35);
+  background: hsl(var(--brain-core) / 0.08);
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+}
+
+.brain-model-missing > svg {
+  flex-shrink: 0;
+  color: hsl(var(--brain-core));
+}
+
+.brain-model-missing span {
+  flex: 1;
+  text-align: left;
+}
+
+.brain-model-missing button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.42rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--brain-core) / 0.5);
+  background: hsl(var(--brain-core) / 0.14);
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.brain-model-missing button:hover {
+  background: hsl(var(--brain-core) / 0.22);
+  border-color: hsl(var(--brain-core) / 0.7);
+}
+

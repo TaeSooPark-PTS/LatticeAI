@@ -19,6 +19,38 @@ import urllib.request
 import pytest
 
 from latticeai.services import model_engines, model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -244,8 +276,8 @@ def test_ollama_that_stays_down_times_out_as_a_500(monkeypatch):
 
 
 def test_lmstudio_listing_prefers_loaded_instance_ids_over_the_catalog_key(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "get_lmstudio_models",
         lambda: [
             {"key": "qwen", "loaded_instances": [{"id": "qwen:2"}, {"id": ""}, "junk"]},
@@ -259,14 +291,14 @@ def test_lmstudio_listing_prefers_loaded_instance_ids_over_the_catalog_key(monke
 
 
 def test_unknown_provider_without_a_base_url_lists_nothing(monkeypatch):
-    monkeypatch.setattr(model_runtime, "OPENAI_COMPATIBLE_PROVIDERS", {})
+    _patch_runtime(monkeypatch, "OPENAI_COMPATIBLE_PROVIDERS", {})
 
     assert model_engines.get_openai_compatible_server_models("nope") == []
 
 
 def test_provider_models_are_read_from_the_configured_base_url(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "OPENAI_COMPATIBLE_PROVIDERS",
         {
             "vllm": {
@@ -311,8 +343,8 @@ def test_provider_models_are_read_from_the_configured_base_url(monkeypatch):
 
 
 def test_an_unreachable_provider_lists_nothing_instead_of_raising(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "OPENAI_COMPATIBLE_PROVIDERS",
         {"vllm": {"base_url": "http://127.0.0.1:8000/v1"}},
     )
@@ -361,10 +393,10 @@ def hf_stubs(monkeypatch, tmp_path):
     """The three model_runtime download seams every server path reaches for."""
     state = {"downloaded": [], "ready": True, "dir": tmp_path / "model"}
     state["dir"].mkdir()
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda name: state["dir"])
-    monkeypatch.setattr(model_runtime, "hf_model_ready", lambda name, provider: state["ready"])
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda name: state["dir"])
+    _patch_runtime(monkeypatch, "hf_model_ready", lambda name, provider: state["ready"])
+    _patch_runtime(
+        monkeypatch,
         "download_hf_model",
         lambda name, provider: state["downloaded"].append((name, provider)),
     )

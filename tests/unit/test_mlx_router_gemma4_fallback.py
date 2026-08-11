@@ -8,6 +8,13 @@ import pytest
 
 from latticeai.models import router as router_mod
 
+# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
+# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
+# the load path reaches through them are read in the submodule that defines
+# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
+# rebound on the package ``__init__`` would leave those reads untouched.
+from latticeai.models.router import loading as router_loading
+
 
 class _FakeMx:
     gpu = object()
@@ -35,7 +42,10 @@ def test_router_import_preserves_explicit_mlx_draft_kind(monkeypatch):
 def test_router_import_sets_default_mlx_draft_kind(monkeypatch):
     monkeypatch.delenv("MLX_VLM_DRAFT_KIND", raising=False)
 
-    importlib.reload(router_mod)
+    # The default is set at import of the submodule that owns the MLX runtime
+    # bindings (v11.3.0 decomposition); reloading the package ``__init__``
+    # would re-run only re-exports.
+    importlib.reload(router_loading)
 
     assert os.environ["MLX_VLM_DRAFT_KIND"] == "mtp"
 
@@ -51,12 +61,12 @@ def test_gemma4_26b_load_retries_mlx_lm_when_mlx_vlm_fails(monkeypatch):
         calls.append(("mlx_lm", model_id))
         return object(), _FakeTokenizer()
 
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
-    monkeypatch.setattr(router_mod, "vlm_load", fake_vlm_load)
-    monkeypatch.setattr(router_mod, "lm_load", fake_lm_load)
-    monkeypatch.setattr(router_mod, "VLM_AVAILABLE", True)
-    monkeypatch.setattr(router_mod, "LM_AVAILABLE", True)
-    monkeypatch.setattr(router_mod, "_local_model_type", lambda _model_id: "gemma4")
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "vlm_load", fake_vlm_load)
+    monkeypatch.setattr(router_loading, "lm_load", fake_lm_load)
+    monkeypatch.setattr(router_loading, "VLM_AVAILABLE", True)
+    monkeypatch.setattr(router_loading, "LM_AVAILABLE", True)
+    monkeypatch.setattr(router_loading, "_local_model_type", lambda _model_id: "gemma4")
 
     llm = router_mod.LLMRouter()
     result = asyncio.run(llm.load_model("mlx-community/gemma-4-26b-a4b-it-4bit"))
@@ -79,12 +89,12 @@ def test_gemma4_12b_unified_does_not_retry_unsupported_mlx_lm(monkeypatch):
         calls.append(("mlx_lm", model_id))
         return object(), _FakeTokenizer()
 
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
-    monkeypatch.setattr(router_mod, "vlm_load", fake_vlm_load)
-    monkeypatch.setattr(router_mod, "lm_load", fake_lm_load)
-    monkeypatch.setattr(router_mod, "VLM_AVAILABLE", True)
-    monkeypatch.setattr(router_mod, "LM_AVAILABLE", True)
-    monkeypatch.setattr(router_mod, "_local_model_type", lambda _model_id: "gemma4_unified")
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "vlm_load", fake_vlm_load)
+    monkeypatch.setattr(router_loading, "lm_load", fake_lm_load)
+    monkeypatch.setattr(router_loading, "VLM_AVAILABLE", True)
+    monkeypatch.setattr(router_loading, "LM_AVAILABLE", True)
+    monkeypatch.setattr(router_loading, "_local_model_type", lambda _model_id: "gemma4_unified")
 
     llm = router_mod.LLMRouter()
     with pytest.raises(ValueError, match="gemma4_unified"):

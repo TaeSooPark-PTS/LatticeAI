@@ -101,7 +101,7 @@ before routers are mounted would otherwise pin the store to the fallback
 |--------|------|
 | `latticeai/core/permission_mode.py` | Pure decision table |
 | `latticeai/core/agent_permission.py` | Agent plan/tool gate helpers |
-| `latticeai/core/agent.py` | `SingleAgentRuntime` gates (mode-aware in-line) |
+| `latticeai/core/agent/` | `SingleAgentRuntime` gates (mode-aware in-line: `planning.py` for the plan gate, `execution.py` for the per-tool gates) |
 | `frontend/src/components/PermissionModePanel.tsx` | Settings selector |
 | `latticeai/services/permission_mode_service.py` | Persistence |
 | `latticeai/runtime/permission_mode_wiring.py` | Process-wide service + router mount |

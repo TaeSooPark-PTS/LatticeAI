@@ -72,6 +72,15 @@ describe("parseHash", () => {
     expect(parseHash()).toMatchObject({ primary: "act", tab: "review" });
   });
 
+  it("opens the chronicle from its own path and from the name it was designed under", () => {
+    // The screen has one view, so it names no tab and the page picks its own
+    // starting day. `timeline` is the word the design document uses; keeping it
+    // resolvable costs one alias and saves a dead bookmark.
+    expect(parseHashOf("#/chronicle").primary).toBe("chronicle");
+    expect(parseHashOf("#/chronicle").tab).toBeUndefined();
+    expect(parseHashOf("#/timeline").primary).toBe("chronicle");
+  });
+
   it("resolves a primary route id with no tab of its own", () => {
     setHash("#/memory");
     // `memory` is both a shell route and an alias; the shell route wins and
@@ -121,8 +130,10 @@ describe("go", () => {
 });
 
 describe("route tables", () => {
-  it("exposes six primary shell routes", () => {
-    expect(productShellRoutes).toHaveLength(6);
+  it("exposes seven primary shell routes", () => {
+    // Six through 11.2.0; 연대기 is the seventh and the fourth everyday one.
+    expect(productShellRoutes).toHaveLength(7);
+    expect(productShellRoutes.map((route) => route.id)).toContain("chronicle");
     expect(primaryRoutes).toBe(productShellRoutes);
     expect(routeAliases).toBe(compatibilityRouteAliases);
   });
@@ -154,6 +165,7 @@ describe("route tables", () => {
       "page-brain": "brain",
       "page-capture": "capture",
       "page-memory": "brain",
+      "page-chronicle": "chronicle",
       "page-library": "library",
       "page-act": "act",
       "page-review": "act",

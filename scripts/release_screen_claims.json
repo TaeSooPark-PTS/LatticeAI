@@ -21,6 +21,22 @@
     "specific, not less."
   ],
 
+  "11.3.0": {
+    "_why": [
+      "Chronicle release. 13-chronicle.png is NEW this release (no baseline",
+      "in v11.2.0 — the pixel gate reports it as 'new' and cannot diff it).",
+      "The No Big Files track proved the CSS bundle byte-identical, so the",
+      "only deliberate pixel change on existing screens is the everyday nav's",
+      "fourth item (연대기). Measured on capture: at the capture viewport the",
+      "shell nav is visible on 05-memory-graph (2.65% moved, claimed below);",
+      "the other shells render the nav collapsed or unchanged (0.00–0.07%),",
+      "so they are measured but not claimed."
+    ],
+    "05-memory-graph.png": {
+      "min_pct": 1.5
+    }
+  },
+
   "11.2.0": {
     "04-brain-chat-home.png": {
       "_why": [
@@ -92,8 +108,10 @@
       "construction. The welcome step's compaction lives under",
       "`@media (max-height: 820px)` and captures run at 1440x900; the capture",
       "pills' focus border only differs while an input inside them has focus,",
-      "which no screenshot holds. `tests/visual/v3.spec.js` asserts both",
-      "directly instead — a pixel diff is the wrong instrument for either."
+      "which no screenshot holds. The visual suite asserts both directly",
+      "instead — `tests/visual/v3.home.spec.js` pins the welcome height and",
+      "`tests/visual/v3.surfaces.spec.js` pins the focus border — because a",
+      "pixel diff is the wrong instrument for either."
     ]
   }
 }

@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.2.0 — All Systems On**.
+Current release: **11.3.0 — Time Remembers**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

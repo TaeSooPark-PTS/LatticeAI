@@ -1,4 +1,5 @@
 import type { components, operations } from "./openapi";
+import { chronicleApi } from "./chronicle";
 import {
   apiBase,
   type ApiResult,
@@ -17,6 +18,22 @@ import {
 import { readEventStream } from "./eventStream";
 
 export type { ApiResult } from "./base";
+// The chronicle reads live in their own module (they are one cohesive
+// surface, and this file has a line budget); callers keep importing them
+// from "@/api/client" as they do every other endpoint type.
+export type {
+  ChronicleAsOf,
+  ChronicleChangeCard,
+  ChronicleChangeKind,
+  ChronicleConversationCard,
+  ChronicleDay,
+  ChronicleEntityCard,
+  ChronicleLaneCounts,
+  ChronicleOverview,
+  ChronicleSeriesPoint,
+  ChronicleSourceCard,
+  ChronicleTopEntity,
+} from "./chronicle";
 
 export type AdminAuditFilters = {
   q?: string;
@@ -644,6 +661,7 @@ async function downloadWorkspaceFile(path: string, filename: string): Promise<{ 
 }
 
 export const latticeApi = {
+  ...chronicleApi,
   raw: get,
   selectFolder,
   desktopBackendStatus: async (): Promise<ApiResult<Record<string, unknown>>> => {

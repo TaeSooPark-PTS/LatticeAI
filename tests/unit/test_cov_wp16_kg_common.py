@@ -18,6 +18,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from lattice_brain.graph import _kg_common as kg
 
+# ``ENABLE_LLM_EXTRACTION`` / ``get_llm_router`` are globals of the submodule
+# that reads them (v11.3.0 decomposition), so that is where they are patched:
+# rebinding them on the package would leave the reader's own globals alone.
+from lattice_brain.graph._kg_common import extraction as kg_extraction
+
 
 class _FakeLoop:
     def __init__(self, running: bool):
@@ -44,8 +49,8 @@ class _FakeRouter:
 
 
 def _install_router(monkeypatch, router, *, loop_running: bool) -> None:
-    monkeypatch.setattr(kg, "ENABLE_LLM_EXTRACTION", True)
-    monkeypatch.setattr(kg, "get_llm_router", lambda: router)
+    monkeypatch.setattr(kg_extraction, "ENABLE_LLM_EXTRACTION", True)
+    monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: router)
     monkeypatch.setattr(
         asyncio, "get_event_loop", lambda: _FakeLoop(loop_running)
     )

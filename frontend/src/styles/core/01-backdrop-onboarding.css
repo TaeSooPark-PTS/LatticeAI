@@ -1,0 +1,601 @@
+.app-backdrop {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+  background:
+    linear-gradient(135deg, hsl(228 24% 7%) 0%, hsl(224 22% 9%) 48%, hsl(220 20% 8%) 100%),
+    repeating-linear-gradient(90deg, hsl(var(--border) / 0.16) 0 1px, transparent 1px 56px);
+}
+
+:root[data-theme="light"] .app-backdrop {
+  background:
+    linear-gradient(135deg, hsl(46 32% 96%) 0%, hsl(42 30% 95%) 52%, hsl(44 28% 96%) 100%),
+    repeating-linear-gradient(90deg, hsl(var(--border) / 0.24) 0 1px, transparent 1px 56px);
+}
+
+.ambient-brain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  opacity: 0.64;
+}
+
+.ambient-brain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.14) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, black, transparent 72%);
+}
+
+.signal-line,
+.signal-tile {
+  position: absolute;
+  display: block;
+  border: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--card) / 0.42);
+}
+
+.signal-line {
+  height: 1px;
+  transform-origin: left center;
+}
+
+.signal-line-a {
+  left: 8%;
+  top: 22%;
+  width: 42rem;
+  transform: rotate(11deg);
+}
+
+.signal-line-b {
+  right: -8%;
+  top: 42%;
+  width: 52rem;
+  transform: rotate(-15deg);
+}
+
+.signal-line-c {
+  left: 18%;
+  bottom: 18%;
+  width: 46rem;
+  transform: rotate(-8deg);
+}
+
+.signal-tile {
+  width: 5.5rem;
+  height: 3.25rem;
+  border-radius: 10px;
+}
+
+.signal-tile-a {
+  left: 12%;
+  top: 16%;
+  border-color: hsl(var(--primary) / 0.45);
+}
+
+.signal-tile-b {
+  right: 14%;
+  top: 34%;
+  border-color: hsl(var(--act) / 0.42);
+}
+
+.signal-tile-c {
+  left: 48%;
+  bottom: 12%;
+  border-color: hsl(var(--library) / 0.42);
+}
+
+.premium-surface {
+  border: 1px solid hsl(var(--border) / 0.78);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.82)),
+    linear-gradient(90deg, hsl(var(--primary) / 0.08), transparent 36%, hsl(var(--library) / 0.06));
+  box-shadow: 0 18px 52px hsl(200 22% 3% / 0.3);
+}
+
+:root[data-theme="light"] .premium-surface {
+  /* Cards sit as near-white lavender panels lifted above the lavender field. */
+  background: linear-gradient(180deg, hsl(var(--surface)), hsl(var(--surface) / 0.92));
+  border-color: hsl(var(--border) / 0.9);
+  box-shadow: 0 16px 40px hsl(266 40% 60% / 0.14);
+}
+
+.product-flow-shell {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(1rem, 3vw, 2rem);
+  background:
+    linear-gradient(135deg, hsl(168 14% 6%) 0%, hsl(215 16% 8%) 52%, hsl(262 13% 8%) 100%),
+    repeating-linear-gradient(90deg, hsl(var(--border) / 0.12) 0 1px, transparent 1px 54px);
+}
+
+.product-flow-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.12) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, black, transparent 74%);
+}
+
+.product-flow-orbit {
+  position: absolute;
+  inset: 12% 18%;
+  z-index: -1;
+  border: 1px solid hsl(var(--primary) / 0.16);
+  border-radius: 48%;
+  transform: rotate(-8deg);
+}
+
+.product-flow-orbit::before,
+.product-flow-orbit::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border: 1px solid hsl(var(--ask) / 0.14);
+  border-radius: 46%;
+  transform: rotate(18deg);
+}
+
+.product-flow-orbit::after {
+  inset: 24%;
+  border-color: hsl(var(--library) / 0.16);
+  transform: rotate(-28deg);
+}
+
+.login-screen {
+  display: grid;
+  width: min(100%, 28rem);
+  gap: 1rem;
+  justify-items: center;
+}
+
+.login-mark {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid hsl(var(--primary) / 0.46);
+  border-radius: 999px;
+  background: hsl(var(--card) / 0.72);
+  color: hsl(var(--primary));
+  box-shadow: 0 0 42px hsl(var(--primary) / 0.18);
+}
+
+.login-card,
+.flow-panel {
+  width: min(100%, 58rem);
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.82)),
+    linear-gradient(90deg, hsl(var(--primary) / 0.08), transparent 45%, hsl(var(--ask) / 0.06));
+  box-shadow: 0 28px 80px hsl(200 24% 3% / 0.46);
+}
+
+.login-card {
+  display: grid;
+  gap: 1.4rem;
+  padding: clamp(1.2rem, 4vw, 2rem);
+}
+
+.login-kicker,
+.flow-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: hsl(var(--primary));
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.login-card h1,
+.flow-panel h1,
+.install-hero h1 {
+  margin: 0.35rem 0 0;
+  font-size: clamp(2.15rem, 6vw, 4.4rem);
+  line-height: 0.96;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.login-card p,
+.flow-panel p,
+.install-hero p {
+  margin: 0.72rem 0 0;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
+.login-form {
+  display: grid;
+  gap: 0.82rem;
+}
+
+.login-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.login-form label span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.login-submit {
+  margin-top: 0.4rem;
+  width: 100%;
+}
+
+.flow-panel {
+  display: grid;
+  gap: 1.2rem;
+  padding: clamp(1rem, 3vw, 1.6rem);
+}
+
+.flow-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.analysis-grid,
+.model-recommendation-list,
+.install-steps {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.analysis-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analysis-fact,
+.recommendation-callout,
+.install-progress,
+.install-step,
+.model-recommendation-card {
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 10px;
+  background: hsl(var(--background) / 0.5);
+}
+
+.analysis-fact {
+  min-height: 8rem;
+  padding: 0.95rem;
+}
+
+.analysis-fact span,
+.analysis-fact small {
+  display: block;
+  color: hsl(var(--muted-foreground));
+}
+
+.analysis-fact span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.analysis-fact strong {
+  display: block;
+  margin-top: 0.7rem;
+  font-size: 1.2rem;
+  line-height: 1.14;
+}
+
+.analysis-fact small {
+  margin-top: 0.48rem;
+  line-height: 1.5;
+}
+
+.recommendation-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.82rem;
+  padding: 0.9rem;
+}
+
+.recommendation-callout svg {
+  flex: 0 0 auto;
+  color: hsl(var(--primary));
+}
+
+.recommendation-callout strong,
+.recommendation-callout span {
+  display: block;
+}
+
+.recommendation-callout span {
+  margin-top: 0.22rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.86rem;
+}
+
+.model-recommendation-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.model-recommendation-card {
+  display: grid;
+  min-height: 16rem;
+  align-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  text-align: left;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.model-recommendation-card:hover:not(:disabled),
+.model-recommendation-card:focus-visible {
+  border-color: hsl(var(--primary) / 0.72);
+  background: hsl(var(--primary) / 0.1);
+  transform: translateY(-2px);
+}
+
+.model-recommendation-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.model-rank {
+  color: hsl(var(--primary));
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.model-recommendation-card strong {
+  display: block;
+  font-size: clamp(1.45rem, 3vw, 2.2rem);
+  line-height: 1.02;
+}
+
+.model-recommendation-card small {
+  display: block;
+  margin-top: 0.62rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+.install-hero {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.install-hero .living-brain {
+  min-height: 20rem;
+}
+
+.install-steps {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.install-step {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3.35rem;
+  padding: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 700;
+}
+
+.install-step.is-active {
+  border-color: hsl(var(--primary) / 0.66);
+  color: hsl(var(--foreground));
+}
+
+.install-step.is-done {
+  border-color: hsl(var(--primary) / 0.54);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--foreground));
+}
+
+.install-step.is-error {
+  border-color: hsl(var(--destructive) / 0.62);
+  color: hsl(var(--destructive));
+}
+
+.install-progress {
+  padding: 0.9rem;
+}
+
+.install-progress > div:first-child,
+.flow-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.install-progress span,
+.flow-actions span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.86rem;
+}
+
+.install-bar {
+  height: 0.62rem;
+  margin-top: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+}
+
+.install-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--ask)));
+  transition: width 220ms ease;
+}
+
+.flow-actions.split {
+  justify-content: space-between;
+}
+
+.flow-error {
+  border: 1px solid hsl(var(--destructive) / 0.42);
+  border-radius: 10px;
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--foreground));
+  padding: 0.82rem;
+  line-height: 1.5;
+}
+
+.app-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: minmax(13rem, 1fr) auto minmax(13rem, 1fr);
+  align-items: center;
+  gap: 1rem;
+  min-height: 5rem;
+  padding: 0.85rem 1.15rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.72);
+  background: hsl(var(--background) / 0.78);
+  backdrop-filter: blur(22px);
+}
+
+.brand-lockup,
+.chrome-actions,
+.ribbon-meta,
+.arrival-actions,
+.journey-head,
+.command-search {
+  display: flex;
+  align-items: center;
+}
+
+.brand-lockup {
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.brand-mark,
+.mobile-menu {
+  display: grid;
+  place-items: center;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card) / 0.76);
+  color: hsl(var(--foreground));
+}
+
+.brand-mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
+  color: hsl(var(--primary));
+}
+
+.mobile-menu {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 6px;
+}
+
+.brand-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.brand-subtitle {
+  margin-top: 0.15rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.primary-dock {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.3rem;
+  border: 1px solid hsl(var(--border) / 0.78);
+  border-radius: 10px;
+  background: hsl(var(--card) / 0.66);
+}
+
+.dock-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 5.25rem;
+  min-height: 2.35rem;
+  padding: 0 0.72rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.86rem;
+  font-weight: 700;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.dock-button:hover,
+.dock-button.is-active {
+  border-color: hsl(var(--border));
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--foreground));
+}
+
+.dock-button.is-active svg {
+  color: hsl(var(--primary));
+}
+
+.chrome-actions {
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.status-chip,
+.meta-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  max-width: 100%;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--card) / 0.7);
+  color: hsl(var(--foreground));
+  padding: 0 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.status-light {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: hsl(var(--act));
+}
+
+.status-light.is-ready {
+  background: hsl(var(--primary));
+}
+

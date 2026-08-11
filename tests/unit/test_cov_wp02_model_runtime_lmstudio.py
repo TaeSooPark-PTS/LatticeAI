@@ -16,6 +16,38 @@ import urllib.error
 import pytest
 
 from latticeai.services import model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 from latticeai.services.model_errors import ModelRuntimeError
 
 BASE = "http://127.0.0.1:1234"
@@ -38,8 +70,8 @@ def _frozen_clock(monkeypatch, values, slept=None):
             state["value"] = remaining.pop(0)
         return state["value"]
 
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "time",
         types.SimpleNamespace(
             time=_time,
@@ -57,15 +89,19 @@ def _http_error(status: int, body: bytes, reason: str = "Server Error") -> urlli
 
 
 def _reset_cache(monkeypatch, entries=(), *, ts=0.0):
-    monkeypatch.setattr(model_runtime, "_LMSTUDIO_MODELS_CACHE", list(entries))
-    monkeypatch.setattr(model_runtime, "_LMSTUDIO_MODELS_CACHE_TS", ts)
+    # ``_LMSTUDIO_MODELS_CACHE``/``_TS`` are rebound by
+    # ``get_lmstudio_models``, so v11.3.0 keeps them in ``engines`` only —
+    # the package __init__ does not re-export a snapshot that would go
+    # stale. ``_patch_runtime`` finds the one live binding.
+    _patch_runtime(monkeypatch, "_LMSTUDIO_MODELS_CACHE", list(entries))
+    _patch_runtime(monkeypatch, "_LMSTUDIO_MODELS_CACHE_TS", ts)
 
 
 def test_a_fresh_cache_is_served_without_touching_lm_studio(monkeypatch):
     _reset_cache(monkeypatch, [{"key": "cached-model"}], ts=500.0)
     _frozen_clock(monkeypatch, [505.0])
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "_json_request",
         lambda *_a, **_k: pytest.fail("a fresh cache must not re-query LM Studio"),
     )
@@ -82,11 +118,11 @@ def test_force_refreshes_the_cache_and_records_the_new_timestamp(monkeypatch):
         calls.append((url, kwargs))
         return {"models": [{"key": "fresh"}]}
 
-    monkeypatch.setattr(model_runtime, "_json_request", _request)
+    _patch_runtime(monkeypatch, "_json_request", _request)
 
     assert model_runtime.get_lmstudio_models(force=True) == [{"key": "fresh"}]
-    assert model_runtime._LMSTUDIO_MODELS_CACHE == [{"key": "fresh"}]
-    assert model_runtime._LMSTUDIO_MODELS_CACHE_TS == 505.0
+    assert mr_engines._LMSTUDIO_MODELS_CACHE == [{"key": "fresh"}]
+    assert mr_engines._LMSTUDIO_MODELS_CACHE_TS == 505.0
 
     url, kwargs = calls[0]
     assert url == BASE + "/api/v1/models"
@@ -96,7 +132,7 @@ def test_force_refreshes_the_cache_and_records_the_new_timestamp(monkeypatch):
 def test_an_expired_cache_is_refetched(monkeypatch):
     _reset_cache(monkeypatch, [{"key": "stale"}], ts=100.0)
     _frozen_clock(monkeypatch, [500.0])
-    monkeypatch.setattr(model_runtime, "_json_request", lambda *_a, **_k: {"models": [{"key": "fresh"}]})
+    _patch_runtime(monkeypatch, "_json_request", lambda *_a, **_k: {"models": [{"key": "fresh"}]})
 
     assert model_runtime.get_lmstudio_models() == [{"key": "fresh"}]
 
@@ -109,16 +145,16 @@ def test_an_unreachable_lm_studio_returns_the_last_known_list(monkeypatch):
     def _boom(*_a, **_k):
         raise OSError("connection refused")
 
-    monkeypatch.setattr(model_runtime, "_json_request", _boom)
+    _patch_runtime(monkeypatch, "_json_request", _boom)
 
     assert model_runtime.get_lmstudio_models() == [{"key": "last-known"}]
-    assert model_runtime._LMSTUDIO_MODELS_CACHE_TS == 100.0, "a failed probe must not count as fresh"
+    assert mr_engines._LMSTUDIO_MODELS_CACHE_TS == 100.0, "a failed probe must not count as fresh"
 
 
 def test_a_payload_without_a_model_list_caches_an_empty_list(monkeypatch):
     _reset_cache(monkeypatch, [{"key": "stale"}], ts=100.0)
     _frozen_clock(monkeypatch, [500.0])
-    monkeypatch.setattr(model_runtime, "_json_request", lambda *_a, **_k: {"models": None})
+    _patch_runtime(monkeypatch, "_json_request", lambda *_a, **_k: {"models": None})
 
     assert model_runtime.get_lmstudio_models() == []
 
@@ -194,9 +230,9 @@ def _install_lmstudio(monkeypatch, *, models, handlers, listed_after_download=No
                 return handler(url, kwargs)
         raise AssertionError(f"unexpected LM Studio request: {url}")
 
-    monkeypatch.setattr(model_runtime, "ensure_lmstudio_server", _ensure_server)
-    monkeypatch.setattr(model_runtime, "get_lmstudio_models", _list)
-    monkeypatch.setattr(model_runtime, "_json_request", _request)
+    _patch_runtime(monkeypatch, "ensure_lmstudio_server", _ensure_server)
+    _patch_runtime(monkeypatch, "get_lmstudio_models", _list)
+    _patch_runtime(monkeypatch, "_json_request", _request)
     return recorded
 
 

@@ -19,6 +19,38 @@ import types
 import pytest
 
 from latticeai.services import model_loading, model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 
 CATALOG = {
     "local_mlx": [
@@ -65,15 +97,15 @@ class _Router:
 
 
 def _stub_probes(monkeypatch, tmp_path, *, lmstudio_models, pulled=frozenset(), ready=frozenset()):
-    monkeypatch.setattr(model_runtime, "ENGINE_MODEL_CATALOG", CATALOG)
-    monkeypatch.setattr(model_runtime, "HF_MODELS_ROOT", tmp_path / "hf-models")
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda engine: engine in {"ollama", "local_mlx"})
-    monkeypatch.setattr(model_runtime, "get_ollama_pulled_models", lambda: set(pulled))
-    monkeypatch.setattr(model_runtime, "hf_model_ready", lambda repo, _provider: repo in ready)
-    monkeypatch.setattr(model_runtime, "get_lmstudio_models", lambda: list(lmstudio_models))
-    monkeypatch.setattr(model_runtime, "engine_support_status", lambda _engine: {"supported": True, "reason": None})
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "ENGINE_MODEL_CATALOG", CATALOG)
+    _patch_runtime(monkeypatch, "HF_MODELS_ROOT", tmp_path / "hf-models")
+    _patch_runtime(monkeypatch, "engine_installed", lambda engine: engine in {"ollama", "local_mlx"})
+    _patch_runtime(monkeypatch, "get_ollama_pulled_models", lambda: set(pulled))
+    _patch_runtime(monkeypatch, "hf_model_ready", lambda repo, _provider: repo in ready)
+    _patch_runtime(monkeypatch, "get_lmstudio_models", lambda: list(lmstudio_models))
+    _patch_runtime(monkeypatch, "engine_support_status", lambda _engine: {"supported": True, "reason": None})
+    _patch_runtime(
+        monkeypatch,
         "_safe_engine_install_plan",
         lambda engine, *, base_dir: {"name": f"engine:{engine}", "cwd": str(base_dir)},
     )
@@ -250,7 +282,7 @@ def _fake_openai(monkeypatch, *, result=None, error=None):
                 raise error
             return result
 
-    monkeypatch.setattr(model_runtime, "AsyncOpenAI", _Client)
+    _patch_runtime(monkeypatch, "AsyncOpenAI", _Client)
     return created
 
 
@@ -320,8 +352,8 @@ def test_a_probe_that_raises_reports_the_reason_without_claiming_success(monkeyp
 
 
 def _freeze(monkeypatch, now=5_000.0):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "time",
         types.SimpleNamespace(time=lambda: now, monotonic=lambda: now, sleep=lambda _s: None),
     )
@@ -334,7 +366,7 @@ def _probe_recorder(monkeypatch, answers):
         probed.append(model_ref)
         return answers.get(model_ref, {"ok": True, "reason": "ok"})
 
-    monkeypatch.setattr(model_runtime, "_probe_cloud_model", _probe)
+    _patch_runtime(monkeypatch, "_probe_cloud_model", _probe)
     return probed
 
 
@@ -425,8 +457,8 @@ def test_two_services_do_not_share_a_verification_cache(monkeypatch, tmp_path):
 
 def test_the_service_installs_an_engine_with_its_own_base_dir(monkeypatch, tmp_path):
     seen: list = []
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "_install_engine",
         lambda engine, **kwargs: seen.append((engine, kwargs)) or {"returncode": 0},
     )

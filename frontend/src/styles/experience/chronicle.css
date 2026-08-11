@@ -1,0 +1,437 @@
+/*
+ * 연대기 (Brain Chronicle) — v11.3.0.
+ *
+ * Everything here is drawn from the shared token layer (잉크 + 옥빛): surfaces
+ * from `--surface`/`--border`, the curve and the heat from `--primary` and
+ * `--memory`, text from `--foreground`/`--muted-foreground`. There is not one
+ * literal colour in this file, which is the whole of what makes dark mode work
+ * — the theme flip in tokens.css redefines those triples and this sheet follows
+ * without a second rule.
+ *
+ * Unlayered, like the rest of styles/experience/*, so these rules win over any
+ * Tailwind utility that lands on the same box. The components below therefore
+ * carry `chronicle-*` classes and no layout utilities.
+ */
+
+.chronicle-page {
+  display: grid;
+  gap: var(--lt-gap-block);
+}
+
+.chronicle-stack {
+  display: grid;
+  gap: var(--lt-gap-block);
+}
+
+.chronicle-panel {
+  display: grid;
+  gap: var(--lt-space-4);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--experience-radius);
+  background: hsl(var(--surface));
+  padding: var(--lt-space-5);
+}
+
+.chronicle-panel-head {
+  display: grid;
+  gap: var(--lt-space-1);
+}
+
+.chronicle-panel-title {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: var(--lt-type-title);
+  font-weight: 700;
+}
+
+.chronicle-panel-hint {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+  line-height: 1.55;
+}
+
+.chronicle-note {
+  margin: 0;
+  border-radius: var(--lt-radius-md);
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
+  padding: var(--lt-space-3) var(--lt-space-4);
+  font-size: var(--lt-type-small);
+  line-height: 1.6;
+}
+
+/* ── growth curve + scrubber ─────────────────────────────────────────── */
+
+.chronicle-growth-plot {
+  position: relative;
+  height: 13rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: var(--lt-radius-lg);
+  background: hsl(var(--bg-elevated));
+  overflow: hidden;
+}
+
+.chronicle-growth-chart {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.chronicle-growth-area {
+  fill: hsl(var(--primary) / 0.18);
+  stroke: none;
+}
+
+.chronicle-growth-line {
+  fill: none;
+  stroke: hsl(var(--primary));
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* The track is the control, not the knob: a thumb-sized hit area is unusable
+   on a phone, so the whole plot is grabbable and the knob is only its mark. */
+.chronicle-growth-track {
+  position: absolute;
+  inset: 0;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.chronicle-growth-track:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+}
+
+.chronicle-growth-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-1px);
+  background: hsl(var(--brain-core));
+}
+
+.chronicle-growth-handle {
+  position: absolute;
+  top: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: translate(-50%, -50%);
+  border: 2px solid hsl(var(--brain-core));
+  border-radius: 999px;
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-1);
+}
+
+.chronicle-growth-track.is-dragging .chronicle-growth-handle {
+  background: hsl(var(--brain-core));
+}
+
+.chronicle-growth-axis {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lt-space-3);
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+}
+
+.chronicle-growth-axis strong {
+  color: hsl(var(--foreground));
+  font-size: var(--lt-type-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.chronicle-lane-row {
+  display: grid;
+  gap: var(--lt-space-3);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.chronicle-rewind-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chronicle-lane {
+  display: grid;
+  gap: var(--lt-space-1);
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: var(--lt-radius-md);
+  background: hsl(var(--background) / 0.6);
+  padding: var(--lt-space-3);
+}
+
+.chronicle-lane dt {
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+}
+
+.chronicle-lane dd {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: var(--lt-type-title);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── activity heat-map ───────────────────────────────────────────────── */
+
+.chronicle-heatmap-scroll {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lt-space-2);
+  overflow-x: auto;
+  padding-bottom: var(--lt-space-2);
+}
+
+.chronicle-heatmap-weekdays {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 3px;
+  grid-template-rows: repeat(7, 0.85rem);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.62rem;
+  line-height: 0.85rem;
+}
+
+.chronicle-heatmap-grid {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 3px;
+}
+
+.chronicle-heatmap-week {
+  display: grid;
+  gap: 3px;
+  grid-template-rows: repeat(7, 0.85rem);
+}
+
+.chronicle-heatmap-cell {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 3px;
+  background: hsl(var(--muted) / 0.7);
+  padding: 0;
+}
+
+.chronicle-heatmap-cell[data-level="1"] { background: hsl(var(--memory) / 0.3); }
+.chronicle-heatmap-cell[data-level="2"] { background: hsl(var(--memory) / 0.5); }
+.chronicle-heatmap-cell[data-level="3"] { background: hsl(var(--memory) / 0.72); }
+.chronicle-heatmap-cell[data-level="4"] { background: hsl(var(--memory)); }
+
+.chronicle-heatmap-cell.is-blank {
+  border-color: transparent;
+  background: transparent;
+}
+
+.chronicle-heatmap-cell[aria-pressed="true"] {
+  border-color: hsl(var(--brain-core));
+  box-shadow: 0 0 0 2px hsl(var(--brain-core) / 0.35);
+}
+
+.chronicle-heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--lt-space-2);
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+}
+
+.chronicle-heatmap-swatches {
+  display: flex;
+  gap: 3px;
+}
+
+/* ── the day's story ─────────────────────────────────────────────────── */
+
+.chronicle-day-groups {
+  display: grid;
+  gap: var(--lt-space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chronicle-group {
+  display: grid;
+  align-content: start;
+  gap: var(--lt-space-3);
+  border: 1px solid hsl(var(--border) / 0.75);
+  border-radius: var(--lt-radius-lg);
+  background: hsl(var(--background) / 0.55);
+  padding: var(--lt-space-4);
+}
+
+.chronicle-group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--lt-space-2);
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: var(--lt-type-body);
+  font-weight: 700;
+}
+
+.chronicle-group-icon {
+  display: inline-flex;
+  color: hsl(var(--primary));
+}
+
+.chronicle-group-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chronicle-group-count {
+  margin-left: auto;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  padding: 0.1rem 0.5rem;
+  font-size: var(--lt-type-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chronicle-group-empty,
+.chronicle-group-more {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+}
+
+.chronicle-group-list {
+  display: grid;
+  gap: var(--lt-space-2);
+  margin: 0;
+  list-style: none;
+  padding: 0;
+}
+
+.chronicle-item {
+  display: grid;
+  width: 100%;
+  gap: 0.15rem;
+  border: 1px solid transparent;
+  border-radius: var(--lt-radius-md);
+  background: hsl(var(--surface));
+  color: hsl(var(--foreground));
+  padding: var(--lt-space-2) var(--lt-space-3);
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.chronicle-item:hover {
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted) / 0.6);
+}
+
+.chronicle-item-title {
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: var(--lt-type-body);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chronicle-item-meta {
+  color: hsl(var(--muted-foreground));
+  font-size: var(--lt-type-small);
+}
+
+/* ── rewind ──────────────────────────────────────────────────────────── */
+
+.chronicle-rewind {
+  border-color: hsl(var(--brain-core) / 0.45);
+}
+
+.chronicle-rewind .chronicle-panel-head {
+  position: relative;
+  padding-right: 10rem;
+}
+
+.chronicle-reset {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-md);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 0.4rem 0.7rem;
+  font-size: var(--lt-type-small);
+  font-weight: 600;
+}
+
+.chronicle-reset:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.chronicle-reset svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.chronicle-rewind-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* ── narrow screens ──────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .chronicle-panel {
+    padding: var(--lt-space-4);
+  }
+
+  .chronicle-growth-plot {
+    height: 10rem;
+  }
+
+  /* Two lanes per row rather than four: at 390px the four-column row gave each
+     number about 70px, and a five-digit count wrapped under its own label. */
+  .chronicle-lane-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chronicle-day-groups,
+  .chronicle-rewind-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chronicle-rewind .chronicle-panel-head {
+    padding-right: 0;
+  }
+
+  .chronicle-reset {
+    position: static;
+    justify-self: start;
+  }
+
+  /* A 1rem cell is the smallest comfortable touch target for the grid, and the
+     row scrolls sideways rather than shrinking below it. */
+  .chronicle-heatmap-cell {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .chronicle-heatmap-weekdays,
+  .chronicle-heatmap-week {
+    display: grid;
+    grid-template-rows: repeat(7, 1rem);
+  }
+
+  .chronicle-heatmap-weekdays {
+    line-height: 1rem;
+  }
+}

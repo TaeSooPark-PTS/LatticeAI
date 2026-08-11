@@ -28,11 +28,48 @@ const NAMESPACES = readdirSync(i18nDir)
   .map((name) => name.replace(/\.ts$/, ""))
   .filter((name) => !["types", "registry"].includes(name));
 
+/**
+ * Every file that holds copy for a namespace.
+ *
+ * A namespace is one module — `brain.ts` — and that module is still the only
+ * thing that calls `registerCopy`. But a dictionary that outgrew one file keeps
+ * its domain parts in a directory beside it (`brain/home.ts`, `brain/chat.ts`,
+ * …), which `brain.ts` imports and merges. Those parts own keys; they are not
+ * namespaces of their own, and importing one does NOT make the namespace
+ * available (nothing registers). So they feed `keyOwner` below, and the
+ * availability check further down still only accepts the namespace module.
+ */
+function namespaceSources(ns) {
+  const files = [join(i18nDir, `${ns}.ts`)];
+  const partsDir = join(i18nDir, ns);
+  if (existsSync(partsDir) && statSync(partsDir).isDirectory()) {
+    const walk = (dir) => {
+      for (const name of readdirSync(dir)) {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) walk(path);
+        else if (name.endsWith(".ts")) files.push(path);
+      }
+    };
+    walk(partsDir);
+  }
+  return files;
+}
+
+/** A file inside frontend/src/i18n holds copy, never key uses to check. */
+function insideI18n(file) {
+  const rel = relative(i18nDir, file);
+  return rel !== "" && !rel.startsWith("..");
+}
+
 // key -> namespace that defines it
 const keyOwner = new Map();
+let copyFiles = 0;
 for (const ns of NAMESPACES) {
-  const text = readFileSync(join(i18nDir, `${ns}.ts`), "utf8");
-  for (const match of text.matchAll(/^\s+"([^"]+)":/gm)) keyOwner.set(match[1], ns);
+  for (const file of namespaceSources(ns)) {
+    copyFiles += 1;
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(/^\s+"([^"]+)":/gm)) keyOwner.set(match[1], ns);
+  }
 }
 
 // `shell` is registered by i18n.ts itself, so it is always available.
@@ -121,7 +158,7 @@ for (const [label, entry] of entries) {
     }
   }
   for (const file of modules) {
-    if (dirname(file) === i18nDir) continue;
+    if (insideI18n(file)) continue;
     for (const key of moduleInfo(file).keys) {
       const owner = keyOwner.get(key);
       if (!owner) {
@@ -144,5 +181,5 @@ if (errors.length) {
 
 console.log(
   `i18n namespace coverage: ${entries.size} entry chunk(s) verified against `
-  + `${NAMESPACES.length} namespaces (${keyOwner.size} keys).`,
+  + `${NAMESPACES.length} namespaces (${keyOwner.size} keys across ${copyFiles} copy file(s)).`,
 );

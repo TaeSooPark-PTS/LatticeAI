@@ -22,6 +22,38 @@ import types
 import pytest
 
 from latticeai.services import model_engines, model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -87,9 +119,9 @@ def spawned(monkeypatch: pytest.MonkeyPatch) -> list:
 def vllm_ready(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     monkeypatch.setattr(model_engines, "vllm_executable", lambda: "/bin/vllm")
     monkeypatch.setattr(model_engines, "vllm_metal_python", lambda: None)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda name: tmp_path)
-    monkeypatch.setattr(model_runtime, "hf_model_ready", lambda name, provider: True)
-    monkeypatch.setattr(model_runtime, "download_hf_model", lambda name, provider: None)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda name: tmp_path)
+    _patch_runtime(monkeypatch, "hf_model_ready", lambda name, provider: True)
+    _patch_runtime(monkeypatch, "download_hf_model", lambda name, provider: None)
 
 
 @pytest.fixture()
@@ -98,9 +130,9 @@ def llamacpp_ready(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     monkeypatch.setattr(
         model_engines, "shutil", types.SimpleNamespace(which=lambda name: "/bin/llama-server")
     )
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda name: tmp_path)
-    monkeypatch.setattr(model_runtime, "hf_model_ready", lambda name, provider: True)
-    monkeypatch.setattr(model_runtime, "download_hf_model", lambda name, provider: None)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda name: tmp_path)
+    _patch_runtime(monkeypatch, "hf_model_ready", lambda name, provider: True)
+    _patch_runtime(monkeypatch, "download_hf_model", lambda name, provider: None)
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, key: str, process) -> None:

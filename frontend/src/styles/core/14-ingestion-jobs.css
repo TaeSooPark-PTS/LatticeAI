@@ -1,0 +1,697 @@
+.react-flow__node {
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.react-flow__edge-path {
+  stroke: hsl(var(--primary));
+}
+
+@media (max-width: 1100px) {
+  .app-chrome {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .desktop-dock {
+    display: none;
+  }
+
+  .workspace-ribbon,
+  .arrival-panel,
+  .brain-conversation-grid,
+  .brain-layer-header,
+  .analysis-grid,
+  .model-recommendation-list,
+  .install-hero,
+  .install-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .ribbon-meta {
+    justify-content: flex-start;
+  }
+
+  .brain-chat-panel {
+    min-height: 44rem;
+  }
+
+  .brain-presence-column {
+    align-content: start;
+  }
+
+  .brain-layer-meter {
+    width: min(100%, 18rem);
+  }
+}
+
+@media (min-width: 1101px) {
+  .mobile-menu {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-chrome {
+    min-height: 4.4rem;
+    padding: 0.75rem;
+  }
+
+  .brand-copy,
+  .status-chip,
+  .chrome-actions .mode-switch {
+    display: none;
+  }
+
+  .page-shell {
+    width: min(100% - 1rem, 1440px);
+    padding-top: 0.7rem;
+  }
+
+  .workspace-ribbon {
+    align-items: start;
+  }
+
+  .workspace-ribbon h1 {
+    font-size: 1.2rem;
+  }
+
+  .ribbon-meta {
+    gap: 0.4rem;
+  }
+
+  .arrival-copy h2 {
+    font-size: 1.8rem;
+  }
+
+  .journey-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .page-title {
+    font-size: 1.45rem;
+  }
+
+  .page-hero {
+    padding: 0.25rem 0 0.25rem 0.85rem;
+  }
+
+  .brain-conversation-grid {
+    min-height: 0;
+  }
+
+  .brain-stage {
+    min-height: 20rem;
+  }
+
+  .product-flow-shell {
+    align-items: start;
+    padding: 1rem;
+  }
+
+  .login-card h1,
+  .flow-panel h1,
+  .install-hero h1 {
+    font-size: 2.2rem;
+  }
+
+  .flow-panel-head,
+  .install-progress > div:first-child,
+  .flow-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .model-recommendation-card {
+    min-height: 11rem;
+  }
+
+  .brain-vitals {
+    grid-template-columns: 1fr;
+  }
+
+  .brain-chat-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .brain-chat-head h1 {
+    font-size: 1.45rem;
+  }
+
+  .brain-chat-model {
+    justify-content: flex-start;
+  }
+
+  .brain-message-bubble {
+    max-width: 92%;
+  }
+
+  .brain-message-stream {
+    min-height: 22rem;
+    padding: 0.75rem;
+  }
+
+  .brain-composer {
+    padding: 0.75rem;
+  }
+
+  .brain-layer-header h1 {
+    font-size: 1.45rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-mass,
+  .brain-lobe,
+  .brain-bridge,
+  .brain-stem,
+  .brain-fold,
+  .thought-path,
+  .memory-pulse,
+  .brain-aura,
+  .brain-halo,
+  .brain-wave {
+    animation: none;
+  }
+}
+
+/* ── Onboarding: hardware visualization + time estimates + next-action CTA ── */
+/* Track: 첫 실행 온보딩 (additive, scoped to ritual onboarding screens). */
+
+.ritual-fact--visual .ritual-fact-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.ritual-hardware-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  margin-right: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.ritual-fact--visual .ritual-fact-head .ritual-fact-label {
+  margin-bottom: 0;
+  margin-right: 0;
+}
+
+.ritual-time-estimate {
+  font-size: 0.86rem;
+  color: hsl(var(--fg-muted));
+  margin-top: 0.4rem;
+}
+
+.ritual-time-note {
+  font-size: 0.76rem;
+  color: hsl(var(--fg-muted));
+  text-align: center;
+  margin-top: 0.6rem;
+  margin-bottom: 0.2rem;
+}
+
+.ritual-model-stats {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ritual-model-comparison {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+.ritual-model-choose {
+  display: inline-block;
+  margin-top: 0.55rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+
+.ritual-primary-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  margin-bottom: 0.95rem;
+}
+
+.ritual-primary-note {
+  margin-top: 0.45rem;
+}
+
+.ritual-next-hint {
+  margin-top: 0.3rem;
+  font-size: 0.86rem;
+}
+
+.ritual-expected-card {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.ritual-expected-line {
+  font-size: 0.95rem;
+  color: hsl(var(--fg));
+  margin-top: 0.25rem;
+  margin-bottom: 0.6rem;
+}
+
+.ritual-timeline {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ritual-timeline-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.5);
+}
+
+.ritual-timeline-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: hsl(var(--fg));
+}
+
+.ritual-timeline-time {
+  font-size: 0.86rem;
+  color: hsl(var(--fg-muted));
+  white-space: nowrap;
+}
+
+/* ── Brain Home ingestion progressive disclosure + emergence timeline ──
+   Track: ingestion CTA clarity + collect→parse→embed→memorize disclosure.
+   Token-native (--memory, --brain-core); additive, scoped to .brain-ingest-*
+   and .brain-emergence-* selectors. */
+.brain-ingest-tile {
+  position: relative;
+}
+
+.brain-ingest-tile.is-ingesting {
+  border-color: hsl(var(--brain-core) / 0.72);
+  background: hsl(var(--brain-core) / 0.1);
+}
+
+.brain-ingest-tile.is-emerged {
+  border-color: hsl(var(--memory) / 0.82);
+  background: hsl(var(--memory) / 0.12);
+}
+
+.brain-ingest-tile.is-failed {
+  border-color: hsl(var(--danger, 0 64% 56%) / 0.6);
+  background: hsl(var(--danger, 0 64% 56%) / 0.08);
+}
+
+.brain-ingest-cta {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.brain-ingest-progress {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.12rem;
+}
+
+.brain-ingest-stage-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+}
+
+.brain-ingest-stage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 999px;
+  background: hsl(var(--surface) / 0.6);
+  color: hsl(var(--fg-muted));
+  padding: 0.08rem 0.34rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.brain-ingest-stage-badge.is-active {
+  border-color: hsl(var(--brain-core) / 0.78);
+  background: hsl(var(--brain-core) / 0.16);
+  color: hsl(var(--fg));
+}
+
+.brain-ingest-stage-badge.is-done {
+  border-color: hsl(var(--memory) / 0.72);
+  background: hsl(var(--memory) / 0.14);
+  color: hsl(var(--fg));
+}
+
+.brain-ingest-stage-badge.is-failed {
+  border-color: hsl(var(--danger, 0 64% 56%) / 0.6);
+  color: hsl(var(--danger, 0 64% 56%));
+}
+
+.brain-ingest-spin {
+  animation: brain-ingest-spin 900ms linear infinite;
+}
+
+@keyframes brain-ingest-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-ingest-spin {
+    animation: none;
+  }
+}
+
+.brain-ingest-stage-hint {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.brain-ingest-stage-hint.is-emerged {
+  color: hsl(var(--memory));
+  font-weight: 700;
+}
+
+.brain-ingest-stage-hint.is-failed {
+  color: hsl(var(--danger, 0 64% 56%));
+}
+
+/* Low-extraction-quality heads-up: informative, not alarming. */
+.brain-ingest-quality-note {
+  margin-top: 0.35rem;
+  border: 1px solid hsl(var(--warning) / 0.32);
+  border-radius: 6px;
+  background: hsl(var(--warning) / 0.08);
+  padding: 0.42rem 0.55rem;
+}
+
+.brain-ingest-quality-note p {
+  margin: 0;
+  color: hsl(var(--fg));
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.brain-ingest-quality-note ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  line-height: 1.35;
+}
+
+/* Vector freshness: soft chip while indexing catches up. */
+.brain-freshness-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  margin: 0 0 0.6rem;
+  border: 1px solid hsl(var(--brain-core) / 0.3);
+  border-radius: 999px;
+  background: hsl(var(--brain-core) / 0.08);
+  padding: 0.3rem 0.7rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.brain-freshness-chip svg {
+  flex-shrink: 0;
+  color: hsl(var(--brain-core));
+}
+
+/* Honest answer signaling: limited graph-backed context. */
+.brain-context-quality-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  margin: 0.5rem 0 0;
+  border-top: 1px dashed hsl(var(--border) / 0.7);
+  padding-top: 0.45rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.brain-context-quality-note small {
+  font-size: 0.6rem;
+  color: hsl(var(--fg-muted) / 0.85);
+  overflow-wrap: anywhere;
+}
+
+/* Background ingestion jobs: progress, failures, resume. */
+.brain-jobs-panel {
+  margin-top: 0.6rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 10px;
+  background: hsl(var(--surface) / 0.58);
+  padding: 0.6rem 0.7rem;
+}
+
+.brain-jobs-head strong {
+  color: hsl(var(--fg));
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.brain-jobs-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-jobs-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.brain-jobs-status {
+  color: hsl(var(--fg));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-jobs-item.is-failed .brain-jobs-status,
+.brain-jobs-item.is-partial .brain-jobs-status {
+  color: hsl(var(--warning));
+}
+
+.brain-jobs-counts {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.brain-jobs-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  color: hsl(var(--warning));
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.brain-jobs-bar {
+  margin-top: 0.3rem;
+  height: 5px;
+  border-radius: 999px;
+  background: hsl(var(--border) / 0.5);
+  overflow: hidden;
+}
+
+.brain-jobs-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: hsl(var(--memory) / 0.85);
+  transition: width 320ms ease;
+}
+
+.brain-jobs-item.is-failed .brain-jobs-bar-fill,
+.brain-jobs-item.is-partial .brain-jobs-bar-fill {
+  background: hsl(var(--warning) / 0.75);
+}
+
+.brain-jobs-resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--surface));
+  padding: 0.28rem 0.6rem;
+  color: hsl(var(--fg));
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brain-jobs-resume:hover:not(:disabled) {
+  border-color: hsl(var(--brain-core) / 0.55);
+}
+
+.brain-jobs-resume:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-jobs-bar-fill {
+    transition: none;
+  }
+}
+
+.brain-emergence-timeline {
+  margin: 0 0 1rem;
+  border: 1px solid hsl(var(--memory) / 0.3);
+  border-radius: 10px;
+  background: hsl(var(--memory) / 0.05);
+  padding: 0.72rem 0.78rem;
+}
+
+.brain-emergence-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.brain-emergence-head svg {
+  color: hsl(var(--memory));
+}
+
+.brain-emergence-head strong {
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.brain-emergence-head span {
+  margin-left: auto;
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.brain-emergence-empty {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.brain-emergence-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-emergence-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.2rem 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 6px;
+  background: hsl(var(--surface) / 0.58);
+  padding: 0.42rem 0.55rem;
+  animation: brain-emergence-enter 280ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes brain-emergence-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-emergence-item {
+    animation: none;
+  }
+}
+
+.brain-emergence-type {
+  border: 1px solid hsl(var(--brain-core) / 0.5);
+  border-radius: 999px;
+  background: hsl(var(--brain-core) / 0.12);
+  color: hsl(var(--fg));
+  padding: 0.05rem 0.4rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.brain-emergence-label {
+  overflow: hidden;
+  color: hsl(var(--fg));
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-emergence-counts {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.brain-emergence-counts strong {
+  color: hsl(var(--memory));
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.brain-emergence-at {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+

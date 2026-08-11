@@ -1,7 +1,7 @@
 """model_runtime helper surface — the small decisions the load path is built on.
 
 Everything here is exercised with fakes injected into the module's own
-namespace (``monkeypatch.setattr(model_runtime, ...)``) or into
+namespace (``_patch_runtime(monkeypatch, ...)``) or into
 ``sys.modules``, so no engine binary, MLX wheel, HTTP server or subprocess is
 required. That matters twice over: the CI coverage leg is ubuntu, where the
 Apple-Silicon runtimes this module drives do not exist at all, and a test that
@@ -17,6 +17,38 @@ import urllib.request
 import pytest
 
 from latticeai.services import model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -38,8 +70,8 @@ class _Response:
 
 def _install_fake_urlopen(monkeypatch, urlopen) -> None:
     """Replace only ``model_runtime``'s view of urllib, never the stdlib's."""
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "urllib",
         types.SimpleNamespace(
             request=types.SimpleNamespace(Request=urllib.request.Request, urlopen=urlopen),
@@ -49,8 +81,8 @@ def _install_fake_urlopen(monkeypatch, urlopen) -> None:
 
 
 def _fake_time(monkeypatch, *, now: float = 1_000.0) -> None:
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "time",
         types.SimpleNamespace(time=lambda: now, monotonic=lambda: now, sleep=lambda _s: None),
     )
@@ -168,7 +200,7 @@ def test_engine_helpers_forward_their_arguments_unchanged(
         seen.append((call_args, call_kwargs))
         return sentinel
 
-    monkeypatch.setattr(model_runtime, private_name, _record)
+    _patch_runtime(monkeypatch, private_name, _record)
 
     assert getattr(model_runtime, public_name)(*args, **kwargs) is sentinel
     assert seen == [expected_call]
@@ -176,8 +208,8 @@ def test_engine_helpers_forward_their_arguments_unchanged(
 
 def test_install_engine_passes_the_applications_base_dir_not_the_process_cwd(tmp_path, monkeypatch):
     seen: list = []
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "_install_engine",
         lambda engine, **kwargs: seen.append((engine, kwargs)) or {"returncode": 0},
     )
@@ -364,7 +396,7 @@ def _hf_cache_repo(home, repo_id: str):
 def test_vllm_accepts_a_bare_huggingface_cache_snapshot(monkeypatch, tmp_path):
     """vLLM resolves repo ids itself, so a cache snapshot is enough for it."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda repo: tmp_path / "absent" / repo)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda repo: tmp_path / "absent" / repo)
     (_hf_cache_repo(tmp_path, "org/model") / "snapshots" / "abc123").mkdir(parents=True)
 
     assert model_runtime.hf_model_ready("org/model", "vllm") is True
@@ -372,7 +404,7 @@ def test_vllm_accepts_a_bare_huggingface_cache_snapshot(monkeypatch, tmp_path):
 
 def test_a_model_with_neither_a_local_dir_nor_a_cache_entry_is_not_ready(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda repo: tmp_path / "absent" / repo)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda repo: tmp_path / "absent" / repo)
 
     assert model_runtime.hf_model_ready("org/model", "local_mlx") is False
 
@@ -380,7 +412,7 @@ def test_a_model_with_neither_a_local_dir_nor_a_cache_entry_is_not_ready(monkeyp
 def test_llamacpp_needs_a_gguf_file_and_nothing_else(monkeypatch, tmp_path):
     model_dir = tmp_path / "models" / "org__model"
     (model_dir / "nested").mkdir(parents=True)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: model_dir)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: model_dir)
 
     assert model_runtime.hf_model_ready("org/model", "llamacpp") is False
 
@@ -389,7 +421,7 @@ def test_llamacpp_needs_a_gguf_file_and_nothing_else(monkeypatch, tmp_path):
 
 
 def test_llamacpp_without_any_directory_is_not_ready(monkeypatch, tmp_path):
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: tmp_path / "nope")
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: tmp_path / "nope")
 
     assert model_runtime.hf_model_ready("org/model", "llamacpp") is False
 
@@ -397,7 +429,7 @@ def test_llamacpp_without_any_directory_is_not_ready(monkeypatch, tmp_path):
 def test_a_local_mlx_dir_is_ready_only_with_config_weights_and_tokenizer(monkeypatch, tmp_path):
     model_dir = tmp_path / "models" / "org__model"
     model_dir.mkdir(parents=True)
-    monkeypatch.setattr(model_runtime, "hf_model_dir", lambda _repo: model_dir)
+    _patch_runtime(monkeypatch, "hf_model_dir", lambda _repo: model_dir)
 
     (model_dir / "config.json").write_text("{}", encoding="utf-8")
     assert model_runtime.hf_model_ready("org/model", "local_mlx") is False, "weights are still missing"
@@ -413,8 +445,8 @@ def test_a_local_mlx_dir_is_ready_only_with_config_weights_and_tokenizer(monkeyp
 
 
 def _fake_importlib(monkeypatch, present: set) -> None:
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "importlib",
         types.SimpleNamespace(
             util=types.SimpleNamespace(
@@ -439,25 +471,25 @@ def test_local_mlx_needs_mlx_plus_one_of_the_two_model_runtimes(monkeypatch):
 
 
 def test_ollama_is_installed_when_its_binary_is_on_the_path(monkeypatch):
-    monkeypatch.setattr(model_runtime, "local_binary", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
+    _patch_runtime(monkeypatch, "local_binary", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
     assert model_runtime.engine_installed("ollama") is True
 
-    monkeypatch.setattr(model_runtime, "local_binary", lambda _name: None)
+    _patch_runtime(monkeypatch, "local_binary", lambda _name: None)
     assert model_runtime.engine_installed("ollama") is False
 
 
 def test_vllm_counts_any_of_the_metal_venv_the_binary_or_the_wheel(monkeypatch):
     _fake_importlib(monkeypatch, set())
-    monkeypatch.setattr(model_runtime, "vllm_executable", lambda: None)
+    _patch_runtime(monkeypatch, "vllm_executable", lambda: None)
 
-    monkeypatch.setattr(model_runtime, "vllm_metal_python", lambda: "/home/u/.venv-vllm-metal/bin/python")
+    _patch_runtime(monkeypatch, "vllm_metal_python", lambda: "/home/u/.venv-vllm-metal/bin/python")
     assert model_runtime.engine_installed("vllm") is True
 
-    monkeypatch.setattr(model_runtime, "vllm_metal_python", lambda: None)
-    monkeypatch.setattr(model_runtime, "vllm_executable", lambda: "/usr/bin/vllm")
+    _patch_runtime(monkeypatch, "vllm_metal_python", lambda: None)
+    _patch_runtime(monkeypatch, "vllm_executable", lambda: "/usr/bin/vllm")
     assert model_runtime.engine_installed("vllm") is True
 
-    monkeypatch.setattr(model_runtime, "vllm_executable", lambda: None)
+    _patch_runtime(monkeypatch, "vllm_executable", lambda: None)
     assert model_runtime.engine_installed("vllm") is False
 
     _fake_importlib(monkeypatch, {"vllm"})
@@ -465,28 +497,28 @@ def test_vllm_counts_any_of_the_metal_venv_the_binary_or_the_wheel(monkeypatch):
 
 
 def test_lmstudio_is_installed_when_the_cli_is_found(monkeypatch):
-    monkeypatch.setattr(model_runtime, "find_lmstudio_cli", lambda: "/usr/local/bin/lms")
+    _patch_runtime(monkeypatch, "find_lmstudio_cli", lambda: "/usr/local/bin/lms")
     assert model_runtime.engine_installed("lmstudio") is True
 
 
 def test_llamacpp_is_installed_when_llama_server_is_on_the_path(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "shutil",
         types.SimpleNamespace(which=lambda name: "/usr/bin/llama-server" if name == "llama-server" else None),
     )
     assert model_runtime.engine_installed("llamacpp") is True
 
-    monkeypatch.setattr(model_runtime, "shutil", types.SimpleNamespace(which=lambda _name: None))
+    _patch_runtime(monkeypatch, "shutil", types.SimpleNamespace(which=lambda _name: None))
     assert model_runtime.engine_installed("llamacpp") is False
 
 
 @pytest.mark.parametrize("provider", ["openai", "openrouter", "groq", "together", "xai"])
 def test_cloud_providers_are_installed_exactly_when_the_openai_sdk_is(monkeypatch, provider):
-    monkeypatch.setattr(model_runtime, "AsyncOpenAI", object())
+    _patch_runtime(monkeypatch, "AsyncOpenAI", object())
     assert model_runtime.engine_installed(provider) is True
 
-    monkeypatch.setattr(model_runtime, "AsyncOpenAI", None)
+    _patch_runtime(monkeypatch, "AsyncOpenAI", None)
     assert model_runtime.engine_installed(provider) is False
 
 
@@ -499,8 +531,8 @@ def test_an_unknown_engine_is_never_reported_as_installed():
 
 def test_safe_install_plan_returns_the_plan_and_swallows_a_planning_failure(monkeypatch, tmp_path):
     seen: list = []
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "_engine_install_plan",
         lambda engine, **kwargs: seen.append((engine, kwargs)) or {"name": f"engine:{engine}"},
     )
@@ -510,7 +542,7 @@ def test_safe_install_plan_returns_the_plan_and_swallows_a_planning_failure(monk
     def _boom(_engine, **_kwargs):
         raise RuntimeError("no installer for this platform")
 
-    monkeypatch.setattr(model_runtime, "_engine_install_plan", _boom)
+    _patch_runtime(monkeypatch, "_engine_install_plan", _boom)
     assert model_runtime._safe_engine_install_plan("ollama", base_dir=tmp_path) is None, (
         "an unplannable engine must degrade to 'no plan', never break the whole listing"
     )
@@ -520,8 +552,8 @@ def test_safe_install_plan_returns_the_plan_and_swallows_a_planning_failure(monk
 
 
 def test_a_prefixed_id_resolves_through_that_providers_alias_table(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "MODEL_ENGINE_ALIASES",
         {"aliased-model": {"local_mlx": "org/aliased-model-4bit", "ollama": "org/aliased:q4"}},
     )
@@ -531,13 +563,13 @@ def test_a_prefixed_id_resolves_through_that_providers_alias_table(monkeypatch):
 
 
 def test_an_id_with_no_alias_entry_is_returned_untouched(monkeypatch):
-    monkeypatch.setattr(model_runtime, "MODEL_ENGINE_ALIASES", {"aliased-model": {"local_mlx": "org/x"}})
+    _patch_runtime(monkeypatch, "MODEL_ENGINE_ALIASES", {"aliased-model": {"local_mlx": "org/x"}})
 
     assert model_runtime._resolve_model_alias("wp02-unknown-model") == "wp02-unknown-model"
 
 
 def test_an_alias_without_an_entry_for_this_engine_is_returned_untouched(monkeypatch):
-    monkeypatch.setattr(model_runtime, "MODEL_ENGINE_ALIASES", {"aliased-model": {"local_mlx": "org/x"}})
+    _patch_runtime(monkeypatch, "MODEL_ENGINE_ALIASES", {"aliased-model": {"local_mlx": "org/x"}})
 
     assert model_runtime._resolve_model_alias("aliased-model", "ollama") == "aliased-model"
 
@@ -566,8 +598,8 @@ def test_an_unknown_engine_is_refused_before_any_install_is_considered():
 
 
 def test_an_unsupported_platform_is_refused_with_the_support_reason(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "engine_support_status",
         lambda _engine: {"supported": False, "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다."},
     )
@@ -581,10 +613,10 @@ def test_an_unsupported_platform_is_refused_with_the_support_reason(monkeypatch)
 
 def test_an_already_installed_mlx_engine_warms_the_runtime_and_installs_nothing(monkeypatch):
     warmed: list = []
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda _engine: True)
-    monkeypatch.setattr(model_runtime, "ensure_mlx_runtime", lambda: warmed.append("warm"))
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "engine_installed", lambda _engine: True)
+    _patch_runtime(monkeypatch, "ensure_mlx_runtime", lambda: warmed.append("warm"))
+    _patch_runtime(
+        monkeypatch,
         "install_engine",
         lambda *_a, **_k: pytest.fail("an installed engine must not be installed again"),
     )
@@ -597,8 +629,8 @@ def test_an_already_installed_mlx_engine_warms_the_runtime_and_installs_nothing(
 
 
 def test_a_known_provider_with_no_installer_recipe_is_refused(monkeypatch):
-    monkeypatch.setattr(model_runtime, "ENGINE_INSTALLERS", {})
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda _engine: False)
+    _patch_runtime(monkeypatch, "ENGINE_INSTALLERS", {})
+    _patch_runtime(monkeypatch, "engine_installed", lambda _engine: False)
 
     with pytest.raises(ModelRuntimeError) as err:
         model_runtime.ensure_engine_ready("openai", state=_state())
@@ -608,9 +640,9 @@ def test_a_known_provider_with_no_installer_recipe_is_refused(monkeypatch):
 
 
 def test_a_failed_install_is_reported_with_the_installers_stderr(monkeypatch):
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda _engine: False)
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "engine_installed", lambda _engine: False)
+    _patch_runtime(
+        monkeypatch,
         "install_engine",
         lambda _engine, **_kwargs: {"returncode": 1, "stderr": "brew: command not found"},
     )
@@ -624,9 +656,9 @@ def test_a_failed_install_is_reported_with_the_installers_stderr(monkeypatch):
 
 def test_an_install_that_leaves_the_engine_absent_is_still_a_failure(monkeypatch):
     """returncode 0 is the installer's opinion; presence is the fact."""
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda _engine: False)
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "engine_installed", lambda _engine: False)
+    _patch_runtime(
+        monkeypatch,
         "install_engine",
         lambda _engine, **_kwargs: {"returncode": 0, "stdout": "nothing to do"},
     )
@@ -641,14 +673,14 @@ def test_an_install_that_leaves_the_engine_absent_is_still_a_failure(monkeypatch
 def test_a_successful_install_warms_mlx_and_reports_installed_now(monkeypatch):
     installed = {"value": False}
     warmed: list = []
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda _engine: installed["value"])
-    monkeypatch.setattr(model_runtime, "ensure_mlx_runtime", lambda: warmed.append("warm"))
+    _patch_runtime(monkeypatch, "engine_installed", lambda _engine: installed["value"])
+    _patch_runtime(monkeypatch, "ensure_mlx_runtime", lambda: warmed.append("warm"))
 
     def _install(_engine, **_kwargs):
         installed["value"] = True
         return {"returncode": 0, "stdout": "installed"}
 
-    monkeypatch.setattr(model_runtime, "install_engine", _install)
+    _patch_runtime(monkeypatch, "install_engine", _install)
 
     result = model_runtime.ensure_engine_ready("local_mlx", state=_state())
 

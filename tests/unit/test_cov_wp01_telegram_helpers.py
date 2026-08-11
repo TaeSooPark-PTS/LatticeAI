@@ -18,6 +18,12 @@ import pytest
 
 from latticeai.integrations import telegram_bot as bot
 
+# v11.3.0 package split: every primitive exercised here — the chat-id registry,
+# the Telegram API calls, the LAN address, and the agent-artifact plumbing —
+# lives in ``helpers`` and reads its constants from that module's globals, so
+# the stubs below go there rather than on the re-export hub.
+from latticeai.integrations.telegram_bot import helpers
+
 # ── doubles ───────────────────────────────────────────────────────────────
 
 
@@ -99,12 +105,12 @@ def _messages(client):
 
 def test_saving_chat_ids_logs_a_write_failure_instead_of_raising(tmp_path, monkeypatch, caplog):
     """The bot must survive an unwritable data dir: registration is best-effort."""
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", tmp_path / "chats.json")
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", tmp_path / "chats.json")
 
     def boom(*_args, **_kwargs):
         raise OSError("disk full")
 
-    monkeypatch.setattr(bot, "atomic_write_json", boom)
+    monkeypatch.setattr(helpers, "atomic_write_json", boom)
 
     with caplog.at_level("ERROR"):
         bot.save_chat_ids({1, 2})
@@ -288,12 +294,12 @@ def test_lan_ip_gives_loopback_when_every_probe_fails(monkeypatch):
 
 
 def test_a_configured_public_url_wins_over_the_lan_address(monkeypatch):
-    monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "https://tunnel.example/")
+    monkeypatch.setattr(helpers, "PUBLIC_WEB_URL", "https://tunnel.example/")
 
     def unreachable():
         raise AssertionError("the LAN probe must not run when a public URL is set")
 
-    monkeypatch.setattr(bot, "get_lan_ip", unreachable)
+    monkeypatch.setattr(helpers, "get_lan_ip", unreachable)
 
     assert bot.get_web_url() == "https://tunnel.example"
     assert bot.get_graph_url() == "https://tunnel.example/graph"
@@ -303,32 +309,32 @@ def test_a_configured_public_url_wins_over_the_lan_address(monkeypatch):
 
 
 def test_broadcast_is_skipped_without_a_bot_token(monkeypatch):
-    monkeypatch.setattr(bot, "TOKEN", "")
+    monkeypatch.setattr(helpers, "TOKEN", "")
 
     async def unreachable(*_args, **_kwargs):
         raise AssertionError("a tokenless bot must not mirror web chat")
 
-    monkeypatch.setattr(bot, "send_message", unreachable)
+    monkeypatch.setattr(helpers, "send_message", unreachable)
     asyncio.run(bot.broadcast_web_chat("user", "안녕"))
 
 
 def test_broadcast_is_skipped_when_no_registered_chat_is_still_allowed(tmp_path, monkeypatch):
-    monkeypatch.setattr(bot, "TOKEN", "telegram-token")
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", tmp_path / "chats.json")
+    monkeypatch.setattr(helpers, "TOKEN", "telegram-token")
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", tmp_path / "chats.json")
     monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
     bot.save_chat_ids({999})  # a stale registration, no longer on the allowlist
 
     async def unreachable(*_args, **_kwargs):
         raise AssertionError("a de-listed chat must not receive the mirror")
 
-    monkeypatch.setattr(bot, "send_message", unreachable)
+    monkeypatch.setattr(helpers, "send_message", unreachable)
     asyncio.run(bot.broadcast_web_chat("assistant", "답변"))
 
 
 @pytest.mark.parametrize(("role", "label"), [("user", "사용자"), ("assistant", "Lattice AI")])
 def test_broadcast_mirrors_to_every_still_allowed_chat(tmp_path, monkeypatch, role, label):
-    monkeypatch.setattr(bot, "TOKEN", "telegram-token")
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", tmp_path / "chats.json")
+    monkeypatch.setattr(helpers, "TOKEN", "telegram-token")
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", tmp_path / "chats.json")
     monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42,43")
     bot.save_chat_ids({42, 999})
 
@@ -337,7 +343,7 @@ def test_broadcast_mirrors_to_every_still_allowed_chat(tmp_path, monkeypatch, ro
     async def capture(_client, chat_id, text, **_kwargs):
         sent.append((chat_id, text))
 
-    monkeypatch.setattr(bot, "send_message", capture)
+    monkeypatch.setattr(helpers, "send_message", capture)
     asyncio.run(bot.broadcast_web_chat(role, "본문"))
 
     assert sent == [(42, f"[Web] {label}\n본문")]
@@ -376,7 +382,7 @@ def test_base64_download_encodes_the_payload_and_passes_through_failure(monkeypa
     async def one(_client, _file_id):
         return b"\x00\x01binary"
 
-    monkeypatch.setattr(bot, "download_telegram_file", one)
+    monkeypatch.setattr(helpers, "download_telegram_file", one)
     assert asyncio.run(bot.download_as_base64(_Client(), "f")) == base64.b64encode(
         b"\x00\x01binary"
     ).decode()
@@ -384,7 +390,7 @@ def test_base64_download_encodes_the_payload_and_passes_through_failure(monkeypa
     async def none(_client, _file_id):
         return None
 
-    monkeypatch.setattr(bot, "download_telegram_file", none)
+    monkeypatch.setattr(helpers, "download_telegram_file", none)
     assert asyncio.run(bot.download_as_base64(_Client(), "f")) is None
 
 
@@ -448,7 +454,7 @@ def test_ram_probe_reports_na_when_the_tools_are_missing(monkeypatch):
 def test_workspace_resolution_refuses_paths_outside_the_workspace(tmp_path, monkeypatch):
     workspace = (tmp_path / "ws").resolve()
     workspace.mkdir()
-    monkeypatch.setattr(bot, "AGENT_WORKSPACE", workspace)
+    monkeypatch.setattr(helpers, "AGENT_WORKSPACE", workspace)
     (tmp_path / "secret.txt").write_text("nope", encoding="utf-8")
 
     assert bot.resolve_workspace_file("../secret.txt") is None
@@ -457,7 +463,7 @@ def test_workspace_resolution_refuses_paths_outside_the_workspace(tmp_path, monk
 def test_workspace_resolution_refuses_non_files(tmp_path, monkeypatch):
     workspace = (tmp_path / "ws").resolve()
     (workspace / "sub").mkdir(parents=True)
-    monkeypatch.setattr(bot, "AGENT_WORKSPACE", workspace)
+    monkeypatch.setattr(helpers, "AGENT_WORKSPACE", workspace)
 
     assert bot.resolve_workspace_file("absent.txt") is None
     assert bot.resolve_workspace_file("sub") is None
@@ -466,8 +472,8 @@ def test_workspace_resolution_refuses_non_files(tmp_path, monkeypatch):
 def test_workspace_resolution_refuses_a_file_telegram_cannot_carry(tmp_path, monkeypatch):
     workspace = (tmp_path / "ws").resolve()
     workspace.mkdir()
-    monkeypatch.setattr(bot, "AGENT_WORKSPACE", workspace)
-    monkeypatch.setattr(bot, "MAX_TELEGRAM_FILE_BYTES", 4)
+    monkeypatch.setattr(helpers, "AGENT_WORKSPACE", workspace)
+    monkeypatch.setattr(helpers, "MAX_TELEGRAM_FILE_BYTES", 4)
     (workspace / "big.bin").write_bytes(b"0123456789")
 
     assert bot.resolve_workspace_file("big.bin") is None
@@ -476,7 +482,7 @@ def test_workspace_resolution_refuses_a_file_telegram_cannot_carry(tmp_path, mon
 def test_workspace_resolution_returns_a_sendable_file(tmp_path, monkeypatch):
     workspace = (tmp_path / "ws").resolve()
     workspace.mkdir()
-    monkeypatch.setattr(bot, "AGENT_WORKSPACE", workspace)
+    monkeypatch.setattr(helpers, "AGENT_WORKSPACE", workspace)
     (workspace / "out.txt").write_text("hi", encoding="utf-8")
 
     assert bot.resolve_workspace_file("out.txt") == workspace / "out.txt"
@@ -485,7 +491,7 @@ def test_workspace_resolution_returns_a_sendable_file(tmp_path, monkeypatch):
 def test_generated_files_are_collected_once_from_producing_steps(tmp_path, monkeypatch):
     workspace = (tmp_path / "ws").resolve()
     workspace.mkdir()
-    monkeypatch.setattr(bot, "AGENT_WORKSPACE", workspace)
+    monkeypatch.setattr(helpers, "AGENT_WORKSPACE", workspace)
     (workspace / "out.txt").write_text("hi", encoding="utf-8")
 
     files = bot.collect_generated_files({
@@ -550,8 +556,8 @@ def test_run_explanation_is_sent_only_when_it_adds_something():
 
 
 def test_preview_urls_are_rewritten_to_the_lan_address_once(monkeypatch):
-    monkeypatch.setattr(bot, "get_lan_ip", lambda: "192.168.0.7")
-    monkeypatch.setattr(bot, "SERVER_PORT", 4825)
+    monkeypatch.setattr(helpers, "get_lan_ip", lambda: "192.168.0.7")
+    monkeypatch.setattr(helpers, "SERVER_PORT", 4825)
 
     urls = bot.collect_preview_urls({
         "steps": [
@@ -589,7 +595,7 @@ def test_no_generated_files_means_no_upload(monkeypatch):
     async def unreachable(*_args, **_kwargs):
         raise AssertionError("nothing was produced, so nothing may be uploaded")
 
-    monkeypatch.setattr(bot, "send_document", unreachable)
+    monkeypatch.setattr(helpers, "send_document", unreachable)
     asyncio.run(bot.send_generated_files(_Client(), 42, []))
 
 
@@ -601,7 +607,7 @@ def test_a_single_generated_file_is_sent_as_itself(tmp_path, monkeypatch):
     async def capture(_client, chat_id, path, caption=None, filename=None):
         sent.append((chat_id, path, caption, filename))
 
-    monkeypatch.setattr(bot, "send_document", capture)
+    monkeypatch.setattr(helpers, "send_document", capture)
     asyncio.run(bot.send_generated_files(_Client(), 42, [("out.txt", produced)]))
 
     assert sent == [(42, produced, "생성 파일: out.txt", None)]
@@ -620,7 +626,7 @@ def test_several_generated_files_are_zipped_under_their_workspace_names(tmp_path
             names.extend(archive.namelist())
         names.append(filename)
 
-    monkeypatch.setattr(bot, "send_document", capture)
+    monkeypatch.setattr(helpers, "send_document", capture)
     asyncio.run(bot.send_generated_files(
         _Client(), 42, [("docs/a.txt", first), ("docs/b.txt", second)]
     ))
@@ -631,14 +637,14 @@ def test_several_generated_files_are_zipped_under_their_workspace_names(tmp_path
 
 def test_an_oversized_archive_is_reported_rather_than_sent(tmp_path, monkeypatch):
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
-    monkeypatch.setattr(bot, "MAX_TELEGRAM_FILE_BYTES", 1)
+    monkeypatch.setattr(helpers, "MAX_TELEGRAM_FILE_BYTES", 1)
     for name in ("a.txt", "b.txt"):
         (tmp_path / name).write_text(name, encoding="utf-8")
 
     async def unreachable(*_args, **_kwargs):
         raise AssertionError("an archive over the Telegram limit must not be uploaded")
 
-    monkeypatch.setattr(bot, "send_document", unreachable)
+    monkeypatch.setattr(helpers, "send_document", unreachable)
     client = _Client()
     asyncio.run(bot.send_generated_files(client, 42, [
         ("a.txt", tmp_path / "a.txt"), ("b.txt", tmp_path / "b.txt"),

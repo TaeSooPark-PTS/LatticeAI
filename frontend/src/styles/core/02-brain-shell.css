@@ -1,0 +1,560 @@
+.status-light.is-waiting {
+  background: hsl(var(--act));
+}
+
+.page-shell {
+  width: min(100% - 2rem, 1440px);
+  margin-inline: auto;
+  padding: 1.25rem 0 4rem;
+}
+
+.workspace-ribbon {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border) / 0.62);
+  border-radius: 10px;
+  background: hsl(var(--background) / 0.54);
+  backdrop-filter: blur(18px);
+}
+
+.workspace-ribbon h1 {
+  margin: 0.35rem 0 0;
+  max-width: 52rem;
+  font-size: 1.45rem;
+  line-height: 1.18;
+  font-weight: 700;
+}
+
+.ribbon-kicker,
+.page-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: hsl(var(--primary));
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ribbon-meta {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mode-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+  min-height: 2.5rem;
+  padding: 0.22rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--card) / 0.72);
+}
+
+.mode-switch button {
+  min-width: 3.5rem;
+  border-radius: 6px;
+  padding: 0 0.65rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.mode-switch button.is-active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.arrival-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(22rem, 1.14fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid hsl(var(--border) / 0.78);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.76)),
+    linear-gradient(90deg, hsl(var(--primary) / 0.12), transparent 42%, hsl(var(--act) / 0.08));
+  box-shadow: 0 18px 52px hsl(200 22% 3% / 0.26);
+}
+
+.arrival-copy {
+  padding: 1.35rem;
+}
+
+.arrival-copy h2 {
+  margin: 0.7rem 0 0;
+  max-width: 36rem;
+  font-size: 2.2rem;
+  line-height: 1.02;
+  font-weight: 700;
+}
+
+.arrival-copy p {
+  margin: 0.85rem 0 0;
+  max-width: 39rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.arrival-actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.15rem;
+}
+
+.journey-panel {
+  margin: 0.55rem;
+  padding: 0.8rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 10px;
+  background: hsl(var(--background) / 0.5);
+}
+
+.journey-head {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.journey-progress {
+  height: 0.42rem;
+  margin: 0.8rem 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+}
+
+.journey-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--act)));
+}
+
+.journey-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.journey-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 4rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 6px;
+  background: hsl(var(--card) / 0.56);
+  padding: 0.65rem;
+  text-align: left;
+}
+
+.journey-step:hover {
+  background: hsl(var(--muted) / 0.62);
+}
+
+.journey-icon,
+.command-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  background: hsl(var(--primary) / 0.14);
+  color: hsl(var(--primary));
+}
+
+.command-scrim,
+.mobile-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.command-scrim {
+  padding: 1rem;
+  background: hsl(var(--background) / 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.command-panel {
+  width: min(100%, 42rem);
+  margin: 4.5rem auto 0;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--card) / 0.96);
+  box-shadow: 0 24px 70px hsl(200 22% 3% / 0.34);
+}
+
+.command-search {
+  gap: 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.65rem;
+}
+
+.command-list {
+  max-height: 25rem;
+  overflow: auto;
+  padding: 0.45rem;
+}
+
+.command-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.5rem;
+  border-radius: 6px;
+  padding: 0.6rem;
+  text-align: left;
+}
+
+.command-row:hover {
+  background: hsl(var(--muted) / 0.62);
+}
+
+.drawer-scrim {
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--background) / 0.72);
+}
+
+.drawer-panel {
+  position: relative;
+  width: min(22rem, calc(100vw - 2rem));
+  height: 100%;
+  padding: 1rem;
+  border-right: 1px solid hsl(var(--border));
+  background: hsl(var(--card) / 0.98);
+  box-shadow: 18px 0 48px hsl(200 22% 3% / 0.34);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DIGITAL BRAIN EXPERIENCE — Complete Immersive Redesign
+   The Brain is the product. Everything else is discovered depth.
+   Warm, private, alive, human.
+   ═══════════════════════════════════════════════════════════════ */
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", Inter, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The entire post-onboarding experience is a living room with the Brain */
+.brain-space {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(120% 80% at 50% 20%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 55%);
+  position: relative;
+  overflow: hidden;
+}
+
+.brain-shell-page {
+  position: relative;
+  z-index: 2;
+  height: 100vh;
+  height: 100dvh;
+  overflow: auto;
+  padding: 0.9rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── 단순한 셸 — 톱바에는 메뉴 버튼과 브랜드만, 나머지는 서랍으로 ────────── */
+.brain-topbar {
+  position: sticky;
+  top: 0.65rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(100%, 72rem);
+  margin: 0 auto 1.1rem;
+  border: 1px solid hsl(var(--border) / 0.66);
+  border-radius: 16px;
+  background: hsl(var(--surface-glass));
+  padding: 0.4rem 0.55rem;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 10px 32px hsl(228 30% 4% / 0.14);
+}
+
+.brain-shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.35rem;
+  color: hsl(var(--fg));
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.brain-shell-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 32% 30%, hsl(var(--brain-core) / 0.9), hsl(var(--brain-core) / 0.55)),
+    hsl(var(--surface));
+  color: hsl(228 24% 12%);
+  box-shadow: 0 0 14px hsl(var(--brain-core) / 0.35);
+}
+
+.brain-shell-brand-mark svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.brain-topbar-crumb {
+  color: hsl(var(--fg-muted));
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.brain-topbar-crumb::before {
+  content: "/";
+  margin-right: 0.5rem;
+  color: hsl(var(--border));
+}
+
+.brain-menu-button {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: hsl(var(--fg));
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.brain-menu-button:hover {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.brain-menu-button:focus-visible {
+  border-color: hsl(var(--ring) / 0.8);
+  outline: none;
+}
+
+.brain-sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: hsl(228 26% 5% / 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.brain-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: min(19rem, 88vw);
+  padding: 0.9rem 0.85rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  border-right: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--bg-elevated));
+  transform: translateX(-102%);
+  visibility: hidden;
+  transition: transform 200ms var(--ease, ease), visibility 200ms;
+  overflow-y: auto;
+}
+
+.brain-sidebar.is-open {
+  transform: none;
+  visibility: visible;
+  box-shadow: 0 24px 70px hsl(228 30% 4% / 0.35);
+}
+
+.brain-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  padding: 0 0.25rem 0 0.55rem;
+}
+
+.brain-sidebar-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: hsl(var(--fg-muted));
+}
+
+.brain-sidebar-nav {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.brain-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.8rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.brain-sidebar-item .nav-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.brain-sidebar-item:hover,
+.brain-sidebar-item:focus-visible {
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--fg));
+  outline: none;
+}
+
+.brain-sidebar-item:focus-visible {
+  border-color: hsl(var(--ring) / 0.8);
+}
+
+.brain-sidebar-item.is-active {
+  border-color: hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.14);
+  color: hsl(var(--fg));
+  font-weight: 700;
+}
+
+.brain-sidebar-item.is-active .nav-icon {
+  color: hsl(var(--primary));
+  opacity: 1;
+}
+
+.brain-sidebar-foot {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.9rem;
+  border-top: 1px solid hsl(var(--border) / 0.55);
+}
+
+.brain-sidebar-section-label {
+  padding: 0 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: hsl(var(--faint, var(--fg-muted)));
+}
+
+/* 서랍 안에서는 워크스페이스/동기화 위젯이 가로로 꽉 차게 */
+.brain-sidebar-foot .workspace-profile-switcher,
+.brain-sidebar-foot .workspace-profile-trigger,
+.brain-sidebar-foot .vscode-sync-status,
+.brain-sidebar-foot .admin-access-gate {
+  width: 100%;
+  max-width: none;
+  justify-content: flex-start;
+}
+
+.brain-shell-content {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+}
+.brain-shell-loader {
+  min-height: 18rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 10px;
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg-muted));
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+/* Subtle living field behind everything */
+.brain-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 25%, hsl(var(--brain-core) / 0.035) 0%, transparent 55%),
+    radial-gradient(circle at 72% 68%, hsl(var(--memory) / 0.03) 0%, transparent 60%);
+  transition: opacity 1200ms ease;
+}
+
+/* The living presence — large, primary, always visible, reactive */
+.brain-presence {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.25rem 1.5rem 1.5rem;
+  flex: 0 0 auto;
+}
+
+.brain-presence.large {
+  padding-top: 2.75rem;
+  padding-bottom: 1.25rem;
+}
+
+/* The actual living visual object */
+/* ── 입체 브레인 — 원근 틸트 + 볼륨 셰이딩. 스티커가 아니라 오브다. ────── */
+.brain-organism {
+  position: relative;
+  width: clamp(220px, 28vw, 320px);
+  height: clamp(220px, 28vw, 320px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transform:
+    perspective(1100px)
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg))
+    scale(calc(var(--brain-scale, 1) * var(--state-scale, 1)));
+  transition: transform 220ms ease-out, filter 400ms ease;
+  will-change: transform, filter;
+}
+

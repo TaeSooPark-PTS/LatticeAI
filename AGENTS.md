@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **11.2.0 — All Systems On**.
+Current release: **11.3.0 — Time Remembers**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above
@@ -139,7 +139,7 @@ Knowledge Graph changes must:
 
 ## Agent Loop Rules (9.6.0)
 
-The single-agent reasoning loop (`latticeai/core/agent.py`) is observable and
+The single-agent reasoning loop (`latticeai/core/agent/`) is observable and
 evaluated; changes to it must keep these invariants:
 
 - Every run carries a `LoopTrace` (`latticeai/core/agent_trace.py`): llm

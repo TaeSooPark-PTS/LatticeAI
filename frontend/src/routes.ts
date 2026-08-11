@@ -3,12 +3,20 @@ import {
   Database,
   FileSearch,
   FolderInput,
+  History,
   Library,
   Settings,
   Workflow,
 } from "lucide-react";
 
-export type PrimaryRoute = "brain" | "memory" | "capture" | "act" | "library" | "system";
+export type PrimaryRoute =
+  | "brain"
+  | "memory"
+  | "chronicle"
+  | "capture"
+  | "act"
+  | "library"
+  | "system";
 
 export type RouteTarget = { primary: PrimaryRoute; tab?: string };
 
@@ -16,6 +24,9 @@ export const productShellRoutes = [
   { id: "brain", path: "brain", labelKey: "shell.route.brain", icon: Brain, description: "Talk with your living Brain" },
   { id: "capture", path: "capture", labelKey: "shell.route.capture", icon: FolderInput, description: "Bring in files, folders, and pages" },
   { id: "memory", path: "hybrid-search", labelKey: "shell.route.memory", icon: Database, description: "Search and revisit remembered knowledge" },
+  // Fourth everyday destination (11.3.0). Sits beside 기억 on purpose: both
+  // answer "what does my Brain hold" — memory by subject, the chronicle by day.
+  { id: "chronicle", path: "chronicle", labelKey: "shell.route.chronicle", icon: History, description: "See how your Brain grew, day by day" },
   { id: "library", path: "models", labelKey: "shell.route.library", icon: Library, description: "Choose the local model powering your Brain" },
   // Points at `review`, not `agents`: the Work screen now leads with what is
   // waiting on the person, so the shell entry point has to land on the review
@@ -27,6 +38,9 @@ export const productShellRoutes = [
 export const directProductRoutes: Record<string, RouteTarget> = {
   brain: { primary: "brain", tab: "conversation" },
   capture: { primary: "capture", tab: "files" },
+  // The chronicle has one view, so it names no tab; the page picks its own
+  // starting point (the most recent day) from the data.
+  chronicle: { primary: "chronicle" },
   "knowledge-graph": { primary: "brain", tab: "graph" },
   models: { primary: "library", tab: "models" },
   settings: { primary: "system", tab: "settings" },
@@ -38,6 +52,9 @@ export const compatibilityRouteAliases: Record<string, RouteTarget> = {
   onboarding: { primary: "system", tab: "account" },
   "hybrid-search": { primary: "brain", tab: "knowledge" },
   memory: { primary: "memory", tab: "memory" },
+  // The screen was designed under this name and the plan document still uses
+  // it; keep the word working as a bookmark.
+  timeline: { primary: "chronicle" },
   ask: { primary: "brain", tab: "conversation" },
   chat: { primary: "brain", tab: "conversation" },
   files: { primary: "capture", tab: "files" },
@@ -81,6 +98,7 @@ export const commandRoutes = [
   { id: "page-brain", labelKey: "shell.route.brain", target: "/brain", icon: Brain },
   { id: "page-capture", labelKey: "shell.route.capture", target: "/capture", icon: FolderInput },
   { id: "page-memory", labelKey: "shell.route.memory", target: "/hybrid-search", icon: Database },
+  { id: "page-chronicle", labelKey: "shell.route.chronicle", target: "/chronicle", icon: History },
   { id: "page-library", labelKey: "shell.route.library", target: "/models", icon: Library },
   // Same destination as the shell's "작업" link, which now opens the review
   // inbox. Leaving this at /agents gave one label two landing places.

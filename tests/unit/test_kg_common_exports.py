@@ -14,11 +14,31 @@ from the mixins that star-import it.
 
 from __future__ import annotations
 
+from types import ModuleType
+
 import lattice_brain.graph._kg_common as kg_common
 
 
 def _computed_exports() -> set[str]:
-    return {name for name in vars(kg_common) if not name.startswith("__")}
+    """Every name `_kg_common` defines, minus its own submodules.
+
+    v11.3.0 made `_kg_common` a package, and importing `.text` / `.relations`
+    / `.extraction` binds each one as an attribute of the package. Those are
+    file names, not part of the star-import contract — exporting them would
+    push three module objects into twelve consumers. Everything else must
+    still appear in `__all__`, which is what this list is for.
+    """
+    submodules = {
+        name
+        for name, value in vars(kg_common).items()
+        if isinstance(value, ModuleType)
+        and getattr(value, "__name__", "").startswith(f"{kg_common.__name__}.")
+    }
+    return {
+        name
+        for name in vars(kg_common)
+        if not name.startswith("__") and name not in submodules
+    }
 
 
 def test_static_all_matches_computed_globals() -> None:

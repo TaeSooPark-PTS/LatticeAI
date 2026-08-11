@@ -20,7 +20,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from lattice_brain.graph import projection as projection_mod
+# ``KGStoreV2`` / ``EdgeType`` are globals of the v2_schema submodule, which
+# is where the projection code reads them from. Blanking them on the package
+# would rebind a copy nothing looks at.
+from lattice_brain.graph.projection import v2_schema as projection_mod
 from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.storage.base import StorageCapabilities
 

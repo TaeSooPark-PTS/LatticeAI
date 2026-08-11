@@ -5,6 +5,10 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from latticeai.models import router as model_router
+
+# ``hf_model_dir`` reads the root from its own module globals, so after the
+# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
+from latticeai.models.router import local_models as router_local_models
 from latticeai.services import model_runtime
 from latticeai.services.model_errors import ModelRuntimeError
 from latticeai.services.model_runtime import (
@@ -70,7 +74,7 @@ def test_local_mlx_reuses_existing_huggingface_cache(monkeypatch, tmp_path):
     """Already-downloaded HF cache snapshots should count as local MLX-ready."""
     monkeypatch.setenv("HOME", str(tmp_path))
     ltcai_root = tmp_path / ".ltcai" / "hf-models"
-    monkeypatch.setattr(model_router, "HF_MODELS_ROOT", ltcai_root)
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", ltcai_root)
 
     snapshot = (
         tmp_path

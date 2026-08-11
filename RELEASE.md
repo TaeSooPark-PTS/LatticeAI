@@ -13,6 +13,30 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.3.0 — Time Remembers (2026-08-11)
+
+시간 감각을 화면으로 꺼내고, 코드베이스에서 큰 파일을 없앤 릴리스입니다.
+
+- **기억의 연대기 (Brain Chronicle)** — 7번째 주 화면(`#/chronicle`):
+  성장 곡선+시간 핸들(ARIA 슬라이더), 활동 히트맵, 그날의 이야기 카드,
+  `store.as_of()` 기반 되감기. 11.1.0 temporal 컬럼의 첫 UI. 전부 읽기
+  전용 — 스키마 변경 0, 쓰기 0, 모델 호출 0.
+- **No Big Files** — 1,000줄 초과 1st-party 파일 28개 전부 분해
+  (styles.css 10,956→48; Python 18개 모듈 → 동명 패키지). AST 동등성
+  증명 + CSS 번들 byte-identical + i18n key맵 동일 증명으로 동작 변화 0.
+  `check_max_file_lines.mjs` 게이트가 재발을 CI에서 차단(1,319파일 스캔).
+- **게이트 강화** — 증거 결속이 mock 서버 전체 트리 지문화, 픽셀 게이트가
+  신규 화면(베이스라인 없음)을 이해, i18n 고아 스캔이 파트 파일 인식.
+- 플로어 유지: **6,560 + 1,761 테스트 · 40,488문·11,052분기 100.00% ·
+  프론트 4지표 100%** · Playwright 40/40.
+
+빌드 산출물은 `dist/ltcai-11.3.0-py3-none-any.whl`,
+`dist/ltcai-11.3.0.tar.gz`, `ltcai-11.3.0.tgz`, `dist/ltcai-11.3.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.3.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.3.0.md](RELEASE_NOTES_v11.3.0.md)
+
 ## v11.2.0 — All Systems On (2026-08-11)
 
 모든 것이 실제로 작동하고, 오늘의 모델을 싣고, 스위치를 사용자에게 준

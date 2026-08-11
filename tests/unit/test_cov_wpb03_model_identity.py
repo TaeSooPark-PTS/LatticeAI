@@ -22,6 +22,38 @@ import pytest
 
 from latticeai.core.model_resolution import ModelResolution
 from latticeai.services import model_runtime
+from latticeai.services.model_runtime import cloud as mr_cloud
+from latticeai.services.model_runtime import download as mr_download
+from latticeai.services.model_runtime import engines as mr_engines
+from latticeai.services.model_runtime import loading as mr_loading
+from latticeai.services.model_runtime import service as mr_service
+from latticeai.services.model_runtime import state as mr_state
+from latticeai.services.model_runtime import status as mr_status
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/services/model_runtime.py`` became a package (state / engines /
+# download / status / loading / cloud / service). Reading a name through the
+# package still works, so the calls below are unchanged — but *patching* a name
+# on the package ``__init__`` does not reach a submodule's own global. Every
+# stub is therefore installed on every module that binds the name, which is
+# exactly the one binding the single-file module used to have.
+_RUNTIME_MODULES = (
+    model_runtime,
+    mr_cloud,
+    mr_download,
+    mr_engines,
+    mr_loading,
+    mr_service,
+    mr_state,
+    mr_status,
+)
+
+
+def _patch_runtime(monkeypatch, name, value):
+    targets = [module for module in _RUNTIME_MODULES if hasattr(module, name)]
+    assert targets, f"no model_runtime module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 
 # ── ModelResolution.from_request ────────────────────────────────────────────
 
@@ -121,22 +153,22 @@ class _Router:
 
 
 def test_a_downloaded_lmstudio_model_is_not_listed_again_from_the_catalog(monkeypatch, tmp_path):
-    monkeypatch.setattr(model_runtime, "ENGINE_MODEL_CATALOG", CATALOG)
-    monkeypatch.setattr(model_runtime, "HF_MODELS_ROOT", tmp_path / "hf-models")
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda engine: engine == "lmstudio")
-    monkeypatch.setattr(model_runtime, "get_ollama_pulled_models", lambda: set())
-    monkeypatch.setattr(model_runtime, "hf_model_ready", lambda _repo, _provider: False)
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "ENGINE_MODEL_CATALOG", CATALOG)
+    _patch_runtime(monkeypatch, "HF_MODELS_ROOT", tmp_path / "hf-models")
+    _patch_runtime(monkeypatch, "engine_installed", lambda engine: engine == "lmstudio")
+    _patch_runtime(monkeypatch, "get_ollama_pulled_models", lambda: set())
+    _patch_runtime(monkeypatch, "hf_model_ready", lambda _repo, _provider: False)
+    _patch_runtime(
+        monkeypatch,
         "get_lmstudio_models",
         lambda: [{"key": "org/wpb03-catalog", "display_name": "WPB03 Catalog",
                   "loaded_instances": []}],
     )
-    monkeypatch.setattr(
-        model_runtime, "engine_support_status", lambda _engine: {"supported": True, "reason": None}
+    _patch_runtime(
+        monkeypatch, "engine_support_status", lambda _engine: {"supported": True, "reason": None}
     )
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(
+        monkeypatch,
         "_safe_engine_install_plan",
         lambda engine, *, base_dir: {"name": "engine:" + engine},
     )
@@ -158,8 +190,8 @@ def test_a_downloaded_lmstudio_model_is_not_listed_again_from_the_catalog(monkey
 
 
 def test_an_unknown_provider_prefix_is_treated_as_part_of_the_model_name(monkeypatch):
-    monkeypatch.setattr(
-        model_runtime, "MODEL_ENGINE_ALIASES", {"hf.co:org/model": {"local_mlx": "org/mapped"}}
+    _patch_runtime(
+        monkeypatch, "MODEL_ENGINE_ALIASES", {"hf.co:org/model": {"local_mlx": "org/mapped"}}
     )
 
     assert model_runtime._resolve_model_alias("hf.co:org/model") == "org/mapped"
@@ -169,9 +201,9 @@ def test_an_unknown_provider_prefix_is_treated_as_part_of_the_model_name(monkeyp
 
 
 def test_an_installed_non_mlx_engine_is_reported_without_warming_mlx(monkeypatch):
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda _engine: True)
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "engine_installed", lambda _engine: True)
+    _patch_runtime(
+        monkeypatch,
         "ensure_mlx_runtime",
         lambda: pytest.fail("MLX must not be warmed for an Ollama install"),
     )
@@ -185,9 +217,9 @@ def test_an_installed_non_mlx_engine_is_reported_without_warming_mlx(monkeypatch
 
 def test_a_freshly_installed_non_mlx_engine_reports_the_install_without_warming_mlx(monkeypatch):
     installed = {"value": False}
-    monkeypatch.setattr(model_runtime, "engine_installed", lambda _engine: installed["value"])
-    monkeypatch.setattr(
-        model_runtime,
+    _patch_runtime(monkeypatch, "engine_installed", lambda _engine: installed["value"])
+    _patch_runtime(
+        monkeypatch,
         "ensure_mlx_runtime",
         lambda: pytest.fail("MLX must not be warmed for an Ollama install"),
     )
@@ -196,7 +228,7 @@ def test_a_freshly_installed_non_mlx_engine_reports_the_install_without_warming_
         installed["value"] = True
         return {"returncode": 0, "stdout": "ollama installed"}
 
-    monkeypatch.setattr(model_runtime, "install_engine", _install)
+    _patch_runtime(monkeypatch, "install_engine", _install)
 
     result = model_runtime.ensure_engine_ready(
         "ollama", state=model_runtime.ModelRuntimeState()

@@ -20,6 +20,17 @@ import pytest
 
 from latticeai.models import router as router_mod
 
+# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
+# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
+# the load path reaches through them are read in the submodule that defines
+# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
+# rebound on the package ``__init__`` would leave those reads untouched.
+from latticeai.models.router import loading as router_loading
+
+# ``hf_model_dir`` reads the root from its own module globals, so after the
+# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
+from latticeai.models.router import local_models as router_local_models
+
 
 class _FakeMx:
     """Stands in for ``mlx.core`` so memory release is deterministic."""
@@ -125,7 +136,7 @@ def test_only_non_cloud_entries_count_towards_the_local_memory_budget():
 
 def test_unload_model_promotes_a_survivor_as_the_new_default(monkeypatch):
     fake_mx = _FakeMx()
-    monkeypatch.setattr(router_mod, "mx", fake_mx)
+    monkeypatch.setattr(router_loading, "mx", fake_mx)
     router = router_mod.LLMRouter()
     router._cache = {"a": _local_entry(), "b": _local_entry()}
     router._current = "a"
@@ -141,7 +152,7 @@ def test_unload_model_promotes_a_survivor_as_the_new_default(monkeypatch):
 
 
 def test_unload_model_leaves_no_default_when_the_last_model_goes(monkeypatch):
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
     router = router_mod.LLMRouter()
     router._cache = {"only": _local_entry()}
     router._current = "only"
@@ -155,7 +166,7 @@ def test_unload_model_leaves_no_default_when_the_last_model_goes(monkeypatch):
 
 
 def test_unload_model_keeps_the_default_when_another_model_is_evicted(monkeypatch):
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
     router = router_mod.LLMRouter()
     router._cache = {"keep": _local_entry(), "drop": _local_entry()}
     router._current = "keep"
@@ -167,7 +178,7 @@ def test_unload_model_keeps_the_default_when_another_model_is_evicted(monkeypatc
 
 def test_unload_all_empties_the_registry(monkeypatch):
     fake_mx = _FakeMx()
-    monkeypatch.setattr(router_mod, "mx", fake_mx)
+    monkeypatch.setattr(router_loading, "mx", fake_mx)
     router = router_mod.LLMRouter()
     router._cache = {"a": _local_entry(), "b": _cloud_entry("b")}
     router._current = "a"
@@ -192,7 +203,7 @@ def test_unload_idle_models_ignores_a_non_positive_threshold():
 
 
 def test_unload_idle_models_evicts_only_the_models_past_the_threshold(monkeypatch):
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
     router = router_mod.LLMRouter()
     router._cache = {"stale": _local_entry(), "fresh": _local_entry()}
     router._current = "stale"
@@ -235,7 +246,7 @@ def test_max_local_models_comes_from_the_environment(monkeypatch):
 
 
 def test_enforce_local_model_limit_evicts_the_least_recently_used_local_model(monkeypatch):
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
     router = router_mod.LLMRouter()
     router._max_local_models = 2
     router._cache = {
@@ -256,7 +267,7 @@ def test_enforce_local_model_limit_evicts_the_least_recently_used_local_model(mo
 
 
 def test_enforce_local_model_limit_never_evicts_the_incoming_model(monkeypatch):
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
     router = router_mod.LLMRouter()
     router._max_local_models = 1
     router._cache = {"same": _local_entry()}
@@ -272,7 +283,7 @@ def test_release_memory_ignores_a_backend_whose_cache_clear_fails(monkeypatch):
         def clear_cache(self):
             raise RuntimeError("metal command queue busy")
 
-    monkeypatch.setattr(router_mod, "mx", _AngryMx())
+    monkeypatch.setattr(router_loading, "mx", _AngryMx())
     router = router_mod.LLMRouter()
     router._cache = {"a": _local_entry()}
     router._current = "a"
@@ -283,7 +294,7 @@ def test_release_memory_ignores_a_backend_whose_cache_clear_fails(monkeypatch):
 
 
 def test_release_memory_skips_a_backend_without_a_cache_api(monkeypatch):
-    monkeypatch.setattr(router_mod, "mx", object())
+    monkeypatch.setattr(router_loading, "mx", object())
     router = router_mod.LLMRouter()
     router._cache = {"a": _local_entry()}
 
@@ -316,7 +327,7 @@ def test_load_model_hands_a_cloud_reference_to_the_cloud_loader(monkeypatch):
     def _never(*_args, **_kwargs):
         raise AssertionError("a cloud reference must not touch the MLX runtime")
 
-    monkeypatch.setattr(router_mod, "ensure_mlx_runtime", _never)
+    monkeypatch.setattr(router_loading, "ensure_mlx_runtime", _never)
     router = router_mod.LLMRouter()
     seen = {}
 
@@ -345,8 +356,8 @@ def test_load_model_refuses_a_local_model_when_mlx_never_bound(monkeypatch):
     """The guard after ``ensure_mlx_runtime`` is what stops an ``NoneType``
     crash deep inside the worker thread."""
     calls = []
-    monkeypatch.setattr(router_mod, "ensure_mlx_runtime", lambda: calls.append("ensure"))
-    monkeypatch.setattr(router_mod, "mx", None)
+    monkeypatch.setattr(router_loading, "ensure_mlx_runtime", lambda: calls.append("ensure"))
+    monkeypatch.setattr(router_loading, "mx", None)
     router = router_mod.LLMRouter()
 
     with pytest.raises(RuntimeError, match="MLX is not available in this process"):
@@ -360,10 +371,10 @@ def test_load_model_returns_the_cached_stack_without_reloading(monkeypatch):
     def _never(*_args, **_kwargs):
         raise AssertionError("a cached stack must not be loaded again")
 
-    monkeypatch.setattr(router_mod, "ensure_mlx_runtime", lambda: None)
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
-    monkeypatch.setattr(router_mod, "vlm_load", _never)
-    monkeypatch.setattr(router_mod, "lm_load", None)
+    monkeypatch.setattr(router_loading, "ensure_mlx_runtime", lambda: None)
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "vlm_load", _never)
+    monkeypatch.setattr(router_loading, "lm_load", None)
     router = router_mod.LLMRouter()
     # The cache key folds in the draft model: the same target with a different
     # assistant is a different stack.
@@ -378,9 +389,9 @@ def test_load_model_returns_the_cached_stack_without_reloading(monkeypatch):
 
 def _prepare_local_load(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", tmp_path / "hf-models")
-    monkeypatch.setattr(router_mod, "ensure_mlx_runtime", lambda: None)
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path / "hf-models")
+    monkeypatch.setattr(router_loading, "ensure_mlx_runtime", lambda: None)
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
 
 
 def test_load_model_without_mlx_vlm_still_loads_gemma4_through_mlx_lm(
@@ -388,14 +399,14 @@ def test_load_model_without_mlx_vlm_still_loads_gemma4_through_mlx_lm(
 ):
     """No mlx-vlm installed is a load *failure* the Gemma 4 path recovers from."""
     _prepare_local_load(monkeypatch, tmp_path)
-    monkeypatch.setattr(router_mod, "vlm_load", None)
+    monkeypatch.setattr(router_loading, "vlm_load", None)
     loaded = []
 
     def fake_lm_load(model_id):
         loaded.append(model_id)
         return object(), _TemplateTokenizer()
 
-    monkeypatch.setattr(router_mod, "lm_load", fake_lm_load)
+    monkeypatch.setattr(router_loading, "lm_load", fake_lm_load)
     router = router_mod.LLMRouter()
 
     result = asyncio.run(router.load_model("mlx-community/gemma-4-12b-it"))
@@ -412,9 +423,9 @@ def test_load_model_without_mlx_vlm_refuses_a_non_gemma4_model(monkeypatch, tmp_
     being silently loaded through a text-only loader that may not support it.
     """
     _prepare_local_load(monkeypatch, tmp_path)
-    monkeypatch.setattr(router_mod, "vlm_load", None)
+    monkeypatch.setattr(router_loading, "vlm_load", None)
     monkeypatch.setattr(
-        router_mod, "lm_load", lambda _model_id: (object(), _TemplateTokenizer())
+        router_loading, "lm_load", lambda _model_id: (object(), _TemplateTokenizer())
     )
     router = router_mod.LLMRouter()
 
@@ -433,8 +444,8 @@ def test_load_model_loads_a_draft_model_on_the_vlm_path(monkeypatch, tmp_path):
         requested.append(model_id)
         return (draft if "draft" in model_id else target), _TemplateTokenizer()
 
-    monkeypatch.setattr(router_mod, "vlm_load", fake_vlm_load)
-    monkeypatch.setattr(router_mod, "lm_load", None)
+    monkeypatch.setattr(router_loading, "vlm_load", fake_vlm_load)
+    monkeypatch.setattr(router_loading, "lm_load", None)
     router = router_mod.LLMRouter()
 
     result = asyncio.run(
@@ -462,8 +473,8 @@ def test_load_model_loads_a_draft_model_on_the_text_path(monkeypatch, tmp_path):
         requested.append(model_id)
         return (draft if "draft" in model_id else target), _TemplateTokenizer()
 
-    monkeypatch.setattr(router_mod, "vlm_load", fake_vlm_load)
-    monkeypatch.setattr(router_mod, "lm_load", fake_lm_load)
+    monkeypatch.setattr(router_loading, "vlm_load", fake_vlm_load)
+    monkeypatch.setattr(router_loading, "lm_load", fake_lm_load)
     router = router_mod.LLMRouter()
 
     result = asyncio.run(
@@ -479,9 +490,9 @@ def test_load_model_loads_a_draft_model_on_the_text_path(monkeypatch, tmp_path):
 def test_load_model_evicts_a_resident_local_model_to_stay_in_budget(monkeypatch, tmp_path):
     _prepare_local_load(monkeypatch, tmp_path)
     monkeypatch.setattr(
-        router_mod, "vlm_load", lambda _model_id: (object(), _TemplateTokenizer())
+        router_loading, "vlm_load", lambda _model_id: (object(), _TemplateTokenizer())
     )
-    monkeypatch.setattr(router_mod, "lm_load", None)
+    monkeypatch.setattr(router_loading, "lm_load", None)
     router = router_mod.LLMRouter()
     router._max_local_models = 1
     router._cache = {"resident": _local_entry()}

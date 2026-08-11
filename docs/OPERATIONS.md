@@ -176,7 +176,11 @@ Ctrl+C  또는  kill <pid>
    캡처 → 오래된 버전 정리 → **픽셀 델타 검사**까지 한 번에 돈다.
 4. 결속 검사 — `SCREENSHOT_INDEX.md` 의 `asset-manifest.sha256` 과
    `mock-server.sha256` 이 각각 `static/app/asset-manifest.json`,
-   `tests/visual/mock_server.cjs` 와 일치해야 `npm run lint` 가 통과한다.
+   그리고 목 API 표면 전체(`tests/visual/mock_server.cjs` +
+   `tests/visual/mock_server/*.cjs`) 와 일치해야 `npm run lint` 가 통과한다.
+   v11.3.0 부터 지문이 진입 파일 하나가 아니라 라우트 모듈까지 덮으므로,
+   v11.3.0 이전에 찍은 증거는 재캡처 전까지 불일치로 보고된다
+   (지문 계산은 `scripts/lib/mock_server_fingerprint.mjs` 한 곳에만 있다).
 
 레이아웃을 바꿨다고 보고했는데 배치는 그대로인 경우를 잡기 위해 v10.7.0 부터
 `scripts/check_screenshot_pixel_delta.py` 가 12개 캡처를 직전 버전과 대조한다

@@ -15,13 +15,13 @@ from both ends:
 * the only way for a consumer to observe the failure is to catch it —
   while output produced *before* the failure is still delivered.
 
-The last two tests are the regression fence: they read
-``latticeai/models/router.py`` and fail if a future edit reintroduces a
+The last two tests are the regression fence: they read every module of the
+``latticeai/models/router/`` package and fail if a future edit reintroduces a
 warning string as stream content, in any formatting.
 
 `document_output_target` (``latticeai/tools/documents.py``) is covered here
 too — it had no test anywhere in the suite, and the governance overwrite
-guard in ``services/tool_dispatch.py`` and ``core/agent.py`` is only
+guard in ``services/tool_dispatch.py`` and ``core/agent/`` is only
 fail-closed if this helper reports the path the creators actually write.
 """
 
@@ -39,7 +39,9 @@ from latticeai import tools
 from latticeai.models import router as router_mod
 from latticeai.tools import documents
 
-ROUTER_SOURCE = Path(router_mod.__file__).resolve()
+# Every module of the router package: the entry point alone would leave the
+# streaming halves unguarded after the v11.3.0 split.
+ROUTER_SOURCES = sorted(Path(router_mod.__file__).resolve().parent.glob("*.py"))
 
 # Real work is faked; nothing here should ever approach these ceilings. They
 # exist so a broken terminator fails the suite instead of hanging it.
@@ -360,8 +362,17 @@ def test_stream_failure_is_an_error_not_a_chunk():
 # ── Regression fence: the text-as-answer path must not come back ──────────
 
 
-def _router_tree() -> ast.Module:
-    return ast.parse(ROUTER_SOURCE.read_text(encoding="utf-8"))
+def _router_trees() -> list[ast.Module]:
+    """Every module of the router package.
+
+    v11.3.0 turned the router into a package, so a fence that parsed only the
+    entry point would quietly stop guarding the two streaming halves — which
+    are exactly the code this fence exists for.
+    """
+    return [
+        ast.parse(path.read_text(encoding="utf-8"))
+        for path in sorted(ROUTER_SOURCES)
+    ]
 
 
 def _executable_string_literals(tree: ast.Module) -> list[str]:
@@ -392,7 +403,9 @@ def _executable_string_literals(tree: ast.Module) -> list[str]:
 
 def test_router_no_longer_builds_the_error_as_stream_text():
     offenders = [
-        literal for literal in _executable_string_literals(_router_tree())
+        literal
+        for tree in _router_trees()
+        for literal in _executable_string_literals(tree)
         if "⚠️ Error" in literal
     ]
 
@@ -403,9 +416,9 @@ def test_router_no_longer_builds_the_error_as_stream_text():
 
 
 def test_no_router_stream_yields_a_warning_string():
-    tree = _router_tree()
     yields = [
         ast.unparse(node)
+        for tree in _router_trees()
         for node in ast.walk(tree)
         if isinstance(node, ast.Yield) and node.value is not None
     ]

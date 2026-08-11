@@ -162,6 +162,37 @@ def test_realtime_stream_stops_as_soon_as_the_client_disconnects():
     assert bus.subscribers[0].workspace_scope == {"org-1"}
 
 
+def test_realtime_stream_yields_frames_while_the_client_stays_connected():
+    """Companion to the disconnect test: the stay-connected arc (check → yield).
+
+    Through ``TestClient`` this arc's coverage depends on how starlette reports
+    ``is_disconnected()`` for a drained test stream — starlette 1.6 reports
+    True immediately, so the ASGI-driven tests stopped reaching the yield.
+    Driving the coroutine directly with an always-connected request pins the
+    arc on every supported stack.
+    """
+    bus = _Bus(frames=2)
+    router = _realtime_router(
+        bus,
+        require_user=lambda _request: "u@example.com",
+        allowed_scopes=lambda _user: {"org-1"},
+    )
+    route = next(r for r in router.routes if getattr(r, "path", "") == "/realtime/stream")
+
+    class _ConnectedRequest:
+        async def is_disconnected(self):
+            return False
+
+    async def drive():
+        response = await route.endpoint(_ConnectedRequest())
+        return [chunk async for chunk in response.body_iterator]
+
+    frames = asyncio.run(drive())
+
+    assert frames == ["data: frame-0\n\n", "data: frame-1\n\n"]
+    assert bus.subscribers[0].workspace_scope == {"org-1"}
+
+
 def test_realtime_presence_is_scoped_and_reports_bus_stats():
     response = _realtime_client(_Bus(frames=2)).get("/realtime/presence")
 

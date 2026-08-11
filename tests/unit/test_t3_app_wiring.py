@@ -53,7 +53,7 @@ def _clean_env(monkeypatch):
 def test_by_default_nothing_is_enabled_and_nothing_is_claimed(monkeypatch):
     # ffmpeg belongs to the machine, not the config, so it is pinned absent —
     # otherwise this assertion would read differently on a host that has it.
-    monkeypatch.setattr("lattice_brain.multimodal._which_ffmpeg", lambda: None)
+    monkeypatch.setattr("lattice_brain.multimodal.ports._which_ffmpeg", lambda: None)
     ports = build_multimodal_ports()
 
     assert multimodal_enabled() is False

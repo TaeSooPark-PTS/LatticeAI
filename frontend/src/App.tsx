@@ -25,6 +25,7 @@ const BrainHome = React.lazy(() => import("@/features/brain/BrainHome").then((mo
 const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
 const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
 const CapturePage = React.lazy(() => import("@/pages/Capture").then((module) => ({ default: module.CapturePage })));
+const ChroniclePage = React.lazy(() => import("@/pages/Chronicle").then((module) => ({ default: module.ChroniclePage })));
 const LibraryPage = React.lazy(() => import("@/pages/Library").then((module) => ({ default: module.LibraryPage })));
 const SystemPage = React.lazy(() => import("@/pages/System").then((module) => ({ default: module.SystemPage })));
 // The admin console is a rare, separate surface and carries the whole
@@ -71,6 +72,12 @@ export default function App() {
         <BrainShell active={parsed.primary}>
           <React.Suspense fallback={<PageLoader language={language} />}>
             <CapturePage initialTab={parsed.tab} />
+          </React.Suspense>
+        </BrainShell>
+      ) : parsed.primary === "chronicle" ? (
+        <BrainShell active={parsed.primary}>
+          <React.Suspense fallback={<PageLoader language={language} />}>
+            <ChroniclePage />
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "library" ? (
@@ -233,14 +240,16 @@ function BrainShell({
     });
   }, [menuOpen]);
 
-  // Three everyday destinations stay in the primary nav; the three management
+  // Four everyday destinations stay in the primary nav — 대화 · 자료 · 기억 ·
+  // 연대기, in the order `productShellRoutes` lists them; the three management
   // destinations are one list rendered twice — as topbar quick links once the
   // row is wide enough for them, and inside the menu below that. Building both
   // from a single array is what stops the two copies from drifting apart;
   // shell.css owns which one shows, from a single breakpoint, so they can never
-  // both appear or both vanish.
+  // both appear or both vanish. That breakpoint moved out with the fourth
+  // everyday link: the topbar needs ~90px more before both rows fit.
   const primaryRoutes = productShellRoutes.filter((item) => (
-    item.id === "brain" || item.id === "capture" || item.id === "memory"
+    item.id === "brain" || item.id === "capture" || item.id === "memory" || item.id === "chronicle"
   ));
   // Ordered here rather than inherited from the route table: what needs a
   // decision comes before what is merely configurable.

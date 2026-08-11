@@ -22,7 +22,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import lattice_brain.graph.retrieval as retrieval_mod  # noqa: E402
+# ``KGStoreV2`` is star-imported into the globals of the half that reads it
+# (v11.3.0 decomposition), so the "no v2 projection" patch lands there.
+from lattice_brain.graph.retrieval import maintenance as retrieval_mod  # noqa: E402
 from lattice_brain.graph.store import KnowledgeGraphStore  # noqa: E402
 
 STAMP = "2026-08-01T00:00:00Z"

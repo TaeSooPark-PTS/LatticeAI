@@ -18,6 +18,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from latticeai.integrations import telegram_bot as bot
 
+# v11.3.0 package split: ``CHAT_IDS_FILE`` and ``env_value`` are read through
+# the globals of the module that uses them — the registry functions in
+# ``helpers`` — so the stubs below target that module, not the re-export hub.
+from latticeai.integrations.telegram_bot import helpers
+
 
 # ── the allowlist ─────────────────────────────────────────────────────────
 def test_a_well_formed_allowlist_parses_to_ints():
@@ -57,13 +62,13 @@ def test_an_unparseable_chat_id_is_denied_rather_than_raising(monkeypatch):
 
 def test_with_no_allowlist_configured_every_chat_is_denied(monkeypatch):
     monkeypatch.delenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", raising=False)
-    monkeypatch.setattr(bot, "env_value", lambda *a, **k: "")
+    monkeypatch.setattr(helpers, "env_value", lambda *a, **k: "")
     assert bot.is_chat_allowed(42) is False
 
 
 # ── registration ──────────────────────────────────────────────────────────
 def test_registration_is_refused_for_a_chat_not_on_the_allowlist(tmp_path, monkeypatch):
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", tmp_path / "chats.json")
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", tmp_path / "chats.json")
     monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
 
     assert bot.register_chat_id(999) is False
@@ -72,7 +77,7 @@ def test_registration_is_refused_for_a_chat_not_on_the_allowlist(tmp_path, monke
 
 def test_registration_persists_an_allowed_chat_once(tmp_path, monkeypatch):
     store = tmp_path / "chats.json"
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", store)
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", store)
     monkeypatch.setenv("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS", "42")
 
     assert bot.register_chat_id(42) is True
@@ -81,19 +86,19 @@ def test_registration_persists_an_allowed_chat_once(tmp_path, monkeypatch):
 
 
 def test_a_missing_chat_store_reads_as_empty(tmp_path, monkeypatch):
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", tmp_path / "nope.json")
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", tmp_path / "nope.json")
     assert bot.load_chat_ids() == set()
 
 
 def test_a_corrupt_chat_store_reads_as_empty_rather_than_crashing(tmp_path, monkeypatch):
     store = tmp_path / "chats.json"
     store.write_text("{ broken", encoding="utf-8")
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", store)
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", store)
     assert bot.load_chat_ids() == set()
 
 
 def test_saving_to_an_unwritable_path_does_not_raise(tmp_path, monkeypatch):
-    monkeypatch.setattr(bot, "CHAT_IDS_FILE", tmp_path / "missing" / "chats.json")
+    monkeypatch.setattr(helpers, "CHAT_IDS_FILE", tmp_path / "missing" / "chats.json")
     bot.save_chat_ids({1, 2})  # logged, not raised
 
 

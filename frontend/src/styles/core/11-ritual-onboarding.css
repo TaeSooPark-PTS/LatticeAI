@@ -1,0 +1,613 @@
+/* Mobile collapse for the onboarding grids. Must live AFTER the base 3-column
+   rules above: the global max-width:720px block is declared earlier in the
+   file, so at equal specificity its overrides lose to these later base rules
+   and the cards stayed cramped at 3 columns on phones. */
+@media (max-width: 720px) {
+  .ritual-value-grid,
+  .ritual-wake-plan,
+  .ritual-promise {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+}
+
+.ritual-card {
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  margin-bottom: 1rem;
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.ritual-card:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  transform: translateY(-1px);
+}
+
+.ritual-card.selected {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25);
+}
+
+.ritual-form {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.ritual-field-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.ritual-field-label {
+  margin-bottom: 0.25rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ritual-error {
+  margin-top: 0.85rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid hsl(var(--destructive) / 0.4);
+  border-radius: 10px;
+  background: hsl(var(--destructive) / 0.12);
+  font-size: 0.86rem;
+}
+
+.ritual-full-button,
+.ritual-primary-model-button,
+.ritual-model-card {
+  width: 100%;
+}
+
+.ritual-full-button {
+  min-height: 2.9rem;
+  border: 1px solid hsl(var(--primary) / 0.7);
+  border-radius: 10px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 1rem;
+  box-shadow: 0 8px 24px hsl(var(--primary) / 0.2);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.ritual-full-button:hover,
+.ritual-full-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: hsl(var(--ring));
+  box-shadow: 0 12px 30px hsl(var(--primary) / 0.28);
+  outline: none;
+}
+
+.ritual-full-button:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.7);
+  outline-offset: 2px;
+}
+
+.ritual-full-button-primary,
+.ritual-primary-model-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.ritual-full-button-primary {
+  min-width: min(100%, 18rem);
+  margin-top: 0;
+  padding: 0.85rem 2.15rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.ritual-note,
+.ritual-local-note {
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+}
+
+.ritual-note {
+  margin-top: 0.6rem;
+}
+
+.ritual-local-note {
+  margin-top: 0.9rem;
+}
+
+.ritual-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.ritual-fact {
+  background: hsl(var(--bg) / 0.6);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  text-align: left;
+}
+
+.ritual-fact-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: hsl(var(--fg-muted));
+  margin-bottom: 0.25rem;
+}
+
+.ritual-fact-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: hsl(var(--fg));
+}
+
+.ritual-fact-detail,
+.ritual-muted-text,
+.ritual-muted-hint,
+.ritual-status-card {
+  color: hsl(var(--fg-muted));
+}
+
+.ritual-fact-detail {
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+}
+
+.ritual-analysis-card,
+.ritual-centered-actions {
+  margin-top: 1rem;
+}
+
+.ritual-centered-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.ritual-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ritual-core-icon {
+  color: hsl(var(--brain-core));
+}
+
+.ritual-strong-text {
+  font-weight: 600;
+}
+
+.ritual-muted-text {
+  font-size: 0.86rem;
+}
+
+.ritual-wide-button {
+  min-width: 260px;
+}
+
+.ritual-model-list {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.ritual-primary-model-button {
+  margin-bottom: 0.85rem;
+}
+
+.ritual-model-card {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.32rem;
+  position: relative;
+  overflow: hidden;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 0.7rem;
+  cursor: pointer;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 16px;
+  background: hsl(var(--surface));
+  transition: all 160ms ease;
+}
+
+.ritual-model-card::after {
+  content: "";
+  position: absolute;
+  top: -55%;
+  left: -115%;
+  width: 40%;
+  height: 210%;
+  background: linear-gradient(120deg, transparent, hsl(var(--primary) / 0.08), transparent);
+  transition: left 420ms ease;
+}
+
+.ritual-model-card:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--surface) / 0.95);
+}
+
+.ritual-model-card:hover::after,
+.ritual-model-card:focus-visible::after {
+  left: 240%;
+}
+
+.ritual-model-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  width: 100%;
+  color: hsl(var(--primary));
+}
+
+.ritual-model-card .role {
+  font-size: 0.68rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: hsl(var(--primary));
+  margin-bottom: 0;
+}
+
+.ritual-model-card .name {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.ritual-model-card .reason {
+  font-size: 0.86rem;
+  color: hsl(var(--fg-muted));
+  margin-top: 0;
+}
+
+.ritual-model-stats {
+  margin-top: 0.1rem;
+}
+
+.ritual-model-choose {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+  color: hsl(var(--primary));
+  font-weight: 700;
+}
+
+.ritual-model-warning {
+  margin-top: 0.35rem;
+  color: hsl(var(--destructive));
+  font-size: 0.86rem;
+}
+
+.ritual-action-row,
+.ritual-button-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ritual-action-row {
+  margin-top: 1.1rem;
+}
+
+.ritual-button-row-primary {
+  margin-top: 1.25rem;
+}
+
+.ritual-muted-hint {
+  font-size: 0.86rem;
+}
+
+.ritual-start-note {
+  margin-top: 0.8rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+/* ── Onboarding: reorganised login and recommendation ────────────────────
+   These rules are the layout for LoginScreen and RecommendationScreen. They
+   live here, not as Tailwind utilities in the components, because this sheet
+   is unlayered: Tailwind puts utilities in `@layer utilities`, and an
+   unlayered rule beats a layered one regardless of specificity or order. A
+   `p-4` or `justify-between` dropped on a `.ritual-*` element that this file
+   already styles is dead code, and one dropped on a property this file does
+   not set is worse — it stacks silently on top. */
+
+.ritual-login {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: min(100%, 52rem);
+  margin: 0 auto;
+  text-align: left;
+}
+
+.ritual-login-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(340px, 1.2fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.ritual-recommend {
+  width: min(100%, 34rem);
+  /* Without this the 34rem column sat flush against the left edge of the 54rem
+     shell and the screen read as though it had slid sideways: ~180px of dead
+     space down the right, greeting and card visibly off the shell's axis. */
+  margin-inline: auto;
+}
+
+/* The greeting stays centred with the rest of the shell; the surfaces under
+   it are left-aligned so the eye has one column to read down. */
+.ritual-login > header,
+.ritual-recommend > header {
+  text-align: center;
+}
+
+.ritual-login > header .ritual-title,
+.ritual-recommend > header .ritual-title {
+  font-size: clamp(1.5rem, 3.6vw, 2rem);
+  margin-bottom: 0.3rem;
+}
+
+.ritual-login > header .ritual-subtitle,
+.ritual-recommend > header .ritual-subtitle {
+  margin-bottom: 0;
+  font-size: 0.95rem;
+}
+
+/* The one raised surface on the login screen. Everything else is flat, so the
+   form is what the eye lands on without being told. */
+.ritual-login-card {
+  padding: 1.35rem 1.4rem 1.2rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 16px;
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-2, 0 10px 28px hsl(var(--fg) / 0.07));
+  text-align: left;
+}
+
+.ritual-login-card .ritual-form {
+  max-width: none;
+}
+
+.ritual-login-card .ritual-field-stack {
+  gap: 0.7rem;
+}
+
+/* `.ritual-field-label` was a div; it is a real <label> now, and inline
+   labels would sit beside their input. */
+.ritual-login-card .ritual-field-label {
+  display: block;
+  text-align: left;
+}
+
+/* Both reassurances moved below the button and became one footnote block, so
+   nothing sits between the last field and the thing you press. */
+.ritual-login-footnotes {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+}
+
+.ritual-login-footnotes .ritual-note,
+.ritual-login-footnotes .ritual-muted-hint {
+  margin-top: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+/* The promise bar in onboarding left column: vertical list with legible typography */
+.ritual-promise.is-quiet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lt-gap-tight);
+  margin: var(--lt-space-4) 0 0;
+  max-width: none;
+}
+
+.ritual-promise.is-quiet div {
+  padding: var(--lt-space-2) 0;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.ritual-promise.is-quiet div:last-child {
+  border-bottom: 0;
+}
+
+.ritual-promise.is-quiet span,
+.ritual-promise.is-quiet strong {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-promise.is-quiet span {
+  display: block;
+  font-size: var(--lt-type-small);
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.ritual-promise.is-quiet strong {
+  display: block;
+  font-size: var(--lt-type-body);
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* ── Recommendation: one hero card, then the alternatives ──────────────── */
+.ritual-primary-hero-card {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.1rem 1.25rem 1.2rem;
+  border: 1px solid hsl(var(--primary) / 0.42);
+  border-radius: 16px;
+  background: hsl(var(--surface));
+  box-shadow: 0 10px 30px hsl(var(--primary) / 0.1);
+  text-align: left;
+}
+
+.ritual-hero-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.45);
+}
+
+.ritual-hero-rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: hsl(var(--primary));
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ritual-hero-size {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.ritual-hero-name {
+  margin: 0.25rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.ritual-hero-reason {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.88rem;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-hero-time {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  margin: 0.1rem 0 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+}
+
+.ritual-hero-time .ritual-time-note {
+  opacity: 0.75;
+}
+
+/* The CTA is inside the card it belongs to, so it carries no stray margin of
+   its own — `.ritual-primary-model-button` used to sit above the list. */
+.ritual-primary-hero-card .ritual-primary-model-button {
+  min-height: 3rem;
+  margin-top: 0.55rem;
+  margin-bottom: 0;
+  font-size: 1rem;
+}
+
+.ritual-hero-next {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.ritual-alternatives {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ritual-alternatives-title {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* auto-fit rather than a fixed pair: only one alternative may be supported,
+   and a hard two-column rule left a hole beside it. */
+.ritual-alt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-top: 0.75rem;
+}
+
+.ritual-model-card.is-compact {
+  gap: 0.3rem;
+  height: 100%;
+  justify-content: flex-start;
+  margin-bottom: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+}
+
+.ritual-model-card.is-compact .ritual-model-heading {
+  justify-content: flex-start;
+  gap: 0.3rem;
+}
+
+.ritual-model-card.is-compact .ritual-alt-size {
+  margin-left: auto;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.ritual-model-card.is-compact .name {
+  font-size: 0.98rem;
+}
+
+.ritual-model-card.is-compact .reason {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ritual-alt-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+  font-size: 0.72rem;
+}
+

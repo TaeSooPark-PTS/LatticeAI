@@ -379,8 +379,8 @@
    the sentence that tells a first-time visitor what they are agreeing to — sat
    8px under the fold and the very first screen of the product opened with a
    scrollbar. Nothing is removed here; the whitespace between the pieces gives
-   up the ~25px, which is where it was hiding. `tests/visual/v3.spec.js` pins
-   the result at exactly this height. */
+   up the ~25px, which is where it was hiding. `tests/visual/v3.home.spec.js`
+   pins the result at exactly this height. */
 @media (max-height: 820px) {
   .ritual-shell {
     padding-block: 0.6rem;

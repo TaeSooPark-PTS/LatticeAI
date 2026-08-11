@@ -16,7 +16,9 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import lattice_brain.portability as portability_module
+# The atomic swaps live in the fsops submodule, so that is where ``shutil``
+# and ``os`` are looked up from.
+import lattice_brain.portability.fsops as portability_module
 from lattice_brain.graph.store import GRAPH_SCHEMA_VERSION, KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 from lattice_brain.portability import KGPortabilityService

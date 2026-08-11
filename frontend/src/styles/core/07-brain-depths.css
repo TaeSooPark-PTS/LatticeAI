@@ -1,0 +1,696 @@
+/* Brain as living entry point — progressive revelation / travel into the mind */
+.brain-exploration {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  transition: all 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.brain-field-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.brain-exploration[data-depth="1"] .brain-field-layer {
+  pointer-events: auto;
+}
+
+.memory-orb, .knowledge-node {
+  position: absolute;
+  background: hsl(var(--memory) / 0.85);
+  color: hsl(var(--bg));
+  border-radius: 999px;
+  font-size: 0.68rem;
+  padding: 0.25rem 0.6rem;
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: transform 200ms ease, opacity 400ms ease, background 200ms ease;
+  pointer-events: auto;
+  transform-origin: center;
+}
+
+.memory-orb {
+  background: hsl(var(--memory));
+  font-size: 0.68rem;
+  padding: 0.2rem 0.5rem;
+}
+
+.knowledge-node {
+  background: hsl(var(--knowledge) / 0.9);
+  border-radius: 10px;
+  font-size: 0.68rem;
+}
+
+.brain-exploration[data-depth="2"] .memory-orb,
+.brain-exploration[data-depth="3"] .memory-orb {
+  animation: emerge-from-brain 800ms ease forwards;
+}
+
+.brain-exploration[data-depth="3"] .knowledge-node,
+.brain-exploration[data-depth="4"] .knowledge-node {
+  animation: emerge-from-brain 900ms ease forwards;
+}
+
+@keyframes emerge-from-brain {
+  from { transform: scale(0.2) translateY(40px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.relationship-edge {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--connection) / 0.6), transparent);
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 400ms ease;
+}
+
+.brain-exploration[data-depth="0"] .brain-field-layer > * { opacity: 0; pointer-events: none; }
+.brain-exploration[data-depth="1"] .memory-orb { opacity: 0.9; }
+.brain-exploration[data-depth="2"] .memory-orb { opacity: 1; }
+.brain-exploration[data-depth="3"] .knowledge-node { opacity: 0.95; }
+.brain-exploration[data-depth="4"] .relationship-edge { opacity: 0.7; }
+.brain-exploration[data-depth="5"] .mind-core-graph { opacity: 1; pointer-events: auto; }
+
+.mind-core-graph {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: hsl(var(--bg) / 0.6);
+  border: 1px solid hsl(var(--brain-core) / 0.3);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 500ms ease;
+  z-index: 2;
+}
+
+.brain-surface-control {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  font-size: 0.68rem;
+  padding: 0.25rem 0.6rem;
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 150ms;
+}
+
+.brain-surface-control:hover { opacity: 1; }
+
+.brain-depth-indicator {
+  position: absolute;
+  bottom: -1.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: hsl(var(--fg-muted));
+  white-space: nowrap;
+}
+
+.brain-organism.depth-1 .thought-particle { opacity: 0.7; }
+.brain-organism.depth-3 .thought-particle.resolving,
+.brain-organism.depth-4 .thought-particle.resolving,
+.brain-organism.depth-5 .thought-particle.resolving {
+  background: hsl(var(--knowledge));
+  box-shadow: 0 0 4px hsl(var(--knowledge));
+  animation-duration: 1.8s;
+}
+
+.brain-inner-structure {
+  position: absolute;
+  inset: 22%;
+  opacity: 0.45;
+  transition: opacity 400ms ease;
+}
+
+.brain-exploration.is-exploring .brain-inner-structure {
+  opacity: 0.75;
+}
+
+.brain-surface-control {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 10;
+  font-size: 0.68rem;
+  padding: 0.2rem 0.55rem;
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 999px;
+  cursor: pointer;
+  color: hsl(var(--fg-muted));
+  transition: all 150ms;
+}
+
+.brain-surface-control:hover {
+  color: hsl(var(--fg));
+  border-color: hsl(var(--brain-core) / 0.4);
+}
+
+.mind-map-frame::before {
+  content: "The architecture of your mind";
+  position: absolute;
+  top: 1.1rem;
+  left: 1.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: hsl(var(--fg-muted) / 0.7);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.mind-map-frame .brain-trace {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  z-index: 2;
+  opacity: 0.5;
+}
+
+/* Small persistent trace of the Brain when in depths */
+.brain-trace {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 40% 32%, hsl(var(--brain-halo)), hsl(var(--brain-core)));
+  box-shadow: 0 0 0 1px hsl(var(--brain-core) / 0.3), 0 0 18px hsl(var(--brain-core) / 0.25);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: hsl(var(--bg));
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.brain-home {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.brain-product-intro {
+  width: min(100%, 44rem);
+  margin: 0.9rem auto 0.35rem;
+  padding-inline: 1rem;
+  text-align: center;
+}
+
+.brain-product-kicker {
+  color: hsl(var(--brain-core));
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.brain-product-line {
+  margin-top: 0.22rem;
+  color: hsl(var(--fg));
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.brain-organism {
+  z-index: 3;
+}
+
+.brain-exploration {
+  width: min(100%, 58rem);
+  margin-inline: auto;
+}
+
+.brain-exploration[data-depth="1"] .brain-field-layer {
+  pointer-events: none;
+}
+
+.brain-exploration[data-depth="2"] .brain-field-layer,
+.brain-exploration[data-depth="3"] .brain-field-layer,
+.brain-exploration[data-depth="4"] .brain-field-layer,
+.brain-exploration[data-depth="5"] .brain-field-layer {
+  z-index: 4;
+  pointer-events: none;
+}
+
+.brain-exploration[data-depth="5"] {
+  width: min(calc(100vw - 2rem), 980px);
+  min-height: min(62vh, 570px);
+}
+
+.brain-exploration[data-depth="5"] .brain-field-layer {
+  z-index: 7;
+}
+
+.brain-exploration[data-depth="5"] .brain-organism {
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.brain-depth-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 0.2rem;
+  z-index: 5;
+  display: grid;
+  min-width: 11rem;
+  transform: translateX(-50%);
+  justify-items: center;
+  gap: 0.18rem;
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  padding: 0.48rem 0.95rem;
+  backdrop-filter: blur(18px);
+  box-shadow: var(--elev-2);
+}
+
+.brain-depth-badge span {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.brain-depth-badge strong {
+  font-size: 0.86rem;
+  line-height: 1.05;
+}
+
+.brain-memory-rings {
+  position: absolute;
+  inset: 11.5% 13%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.brain-memory-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  transform: translate(-50%, calc(-50% - var(--ring-radius)));
+  border: 0;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0;
+  pointer-events: none;
+  opacity: 0.72;
+  animation: ring-label-breathe 5.8s ease-in-out infinite;
+  animation-delay: var(--ring-delay, 0ms);
+}
+
+.brain-memory-ring::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  transform: translate(-50%, calc(-50% + var(--ring-radius)));
+  border: 1px solid hsl(var(--border) / 0.38);
+  border-radius: 999px;
+  background: radial-gradient(circle, transparent 62%, hsl(var(--brain-core) / 0.045) 63%, transparent 70%);
+  pointer-events: none;
+}
+
+.brain-memory-ring.ring-1 { --ring-size: 14.2rem; --ring-radius: 7.1rem; }
+.brain-memory-ring.ring-2 { --ring-size: 17.9rem; --ring-radius: 8.95rem; }
+.brain-memory-ring.ring-3 { --ring-size: 21.6rem; --ring-radius: 10.8rem; }
+.brain-memory-ring.ring-4 { --ring-size: 25.3rem; --ring-radius: 12.65rem; }
+.brain-memory-ring.ring-5 { --ring-size: 29rem; --ring-radius: 14.5rem; }
+
+.brain-memory-ring span,
+.brain-memory-ring strong {
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  box-shadow: var(--elev-1);
+  backdrop-filter: blur(16px);
+}
+
+.brain-memory-ring span {
+  margin-right: 0.22rem;
+  padding: 0.14rem 0.38rem;
+  color: hsl(var(--brain-core));
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.brain-memory-ring strong {
+  max-width: 5.8rem;
+  overflow: hidden;
+  padding: 0.14rem 0.46rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-memory-ring:hover,
+.brain-memory-ring:focus-visible,
+.brain-memory-ring.is-revealed {
+  border-color: hsl(var(--brain-core) / 0.52);
+  color: hsl(var(--fg));
+  outline: none;
+  opacity: 1;
+}
+
+.brain-memory-ring[aria-current="step"] {
+  box-shadow: 0 0 0 1px hsl(var(--brain-core) / 0.32), 0 0 38px hsl(var(--brain-core) / 0.16);
+}
+
+.brain-depth-actions {
+  position: absolute;
+  left: 50%;
+  bottom: 4.15rem;
+  z-index: 6;
+  display: flex;
+  max-width: min(94vw, 31rem);
+  transform: translateX(-50%);
+  gap: 0.35rem;
+  border: 1px solid hsl(var(--border) / 0.52);
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  padding: 0.32rem;
+  box-shadow: var(--elev-2);
+  backdrop-filter: blur(18px);
+}
+
+.brain-depth-actions button {
+  min-height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0 0.68rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.brain-depth-actions button:hover,
+.brain-depth-actions button:focus-visible,
+.brain-depth-actions button.is-active {
+  background: hsl(var(--brain-core) / 0.12);
+  color: hsl(var(--fg));
+  outline: none;
+}
+
+.brain-depth-rail {
+  position: absolute;
+  left: 50%;
+  top: 0.85rem;
+  z-index: 6;
+  display: flex;
+  width: min(92vw, 35rem);
+  transform: translateX(-50%);
+  gap: 0.28rem;
+  border: 1px solid hsl(var(--border) / 0.48);
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  padding: 0.32rem;
+  box-shadow: var(--elev-2);
+  backdrop-filter: blur(18px);
+}
+
+.brain-depth-rail button {
+  display: inline-grid;
+  min-width: 0;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 0.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0.36rem 0.42rem;
+  text-align: center;
+}
+
+.brain-depth-rail span {
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.brain-depth-rail strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  line-height: 1.05;
+}
+
+.brain-depth-rail button.is-revealed {
+  background: hsl(var(--brain-core) / 0.1);
+  color: hsl(var(--fg));
+}
+
+.brain-depth-rail button[aria-current="step"] {
+  box-shadow: 0 0 0 1px hsl(var(--brain-core) / 0.38) inset;
+}
+
+.memory-fragment,
+.concept-signal,
+.graph-node {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  border: 1px solid hsl(var(--border) / 0.72);
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg));
+  text-align: left;
+  backdrop-filter: blur(16px);
+  animation: emerge-from-brain 680ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.memory-fragment {
+  display: grid;
+  min-width: 8.2rem;
+  max-width: 12.5rem;
+  gap: 0.12rem;
+  border-color: hsl(var(--memory) / 0.38);
+  border-radius: 10px;
+  padding: 0.58rem 0.7rem;
+  box-shadow:
+    0 0 0 1px hsl(var(--memory) / 0.08) inset,
+    0 14px 32px hsl(190 35% 3% / 0.24);
+}
+
+.memory-fragment span,
+.concept-signal span,
+.graph-node span,
+.brain-graph-head span,
+.brain-graph-focus span {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.memory-fragment strong {
+  overflow: hidden;
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memory-fragment:hover,
+.memory-fragment:focus-visible,
+.concept-signal:hover,
+.concept-signal:focus-visible,
+.graph-node:hover,
+.graph-node:focus-visible {
+  border-color: hsl(var(--brain-core) / 0.66);
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.08), 0 16px 38px hsl(200 35% 3% / 0.28);
+}
+
+.memory-fragment.is-empty,
+.concept-signal.is-empty {
+  left: 50%;
+  top: 78%;
+  pointer-events: none;
+  color: hsl(var(--fg-muted));
+}
+
+.concept-signal {
+  display: inline-flex;
+  max-width: 11rem;
+  align-items: center;
+  gap: 0.45rem;
+  border-color: hsl(var(--knowledge) / 0.42);
+  border-radius: 999px;
+  padding: 0.42rem 0.72rem;
+  color: hsl(var(--fg));
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.relationship-weave,
+.brain-graph-edges {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.relationship-weave line {
+  stroke: hsl(var(--connection) / 0.55);
+  stroke-linecap: round;
+  stroke-width: 0.42;
+  stroke-dasharray: 3 5;
+  animation: relationship-flow 2.8s linear infinite;
+}
+
+.mind-core-graph {
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-rows: auto minmax(18rem, 1fr) auto;
+  gap: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--brain-core) / 0.38);
+  background:
+    radial-gradient(42% 46% at 50% 42%, hsl(var(--brain-core) / 0.12), transparent 72%),
+    linear-gradient(145deg, hsl(var(--surface) / 0.92), hsl(var(--bg) / 0.84));
+  padding: 0.8rem;
+  box-shadow: 0 28px 90px hsl(205 40% 3% / 0.46);
+  backdrop-filter: blur(22px);
+  pointer-events: auto;
+}
+
+.brain-graph-head,
+.brain-graph-search,
+.brain-graph-focus {
+  display: flex;
+  align-items: center;
+}
+
+.brain-graph-head {
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.brain-graph-head strong {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 1.05rem;
+}
+
+.brain-graph-search {
+  width: min(100%, 15rem);
+  min-height: 2.25rem;
+  gap: 0.45rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 999px;
+  background: hsl(var(--bg) / 0.48);
+  padding: 0 0.68rem;
+  color: hsl(var(--fg-muted));
+}
+
+.brain-graph-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--fg));
+  outline: none;
+  font-size: 0.86rem;
+}
+
+.brain-graph-canvas {
+  position: relative;
+  min-height: 19rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at center, hsl(var(--brain-core) / 0.09), transparent 54%),
+    linear-gradient(hsl(var(--border) / 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.12) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+}
+
+.brain-graph-edges line {
+  stroke: hsl(var(--connection) / 0.52);
+  stroke-linecap: round;
+  stroke-width: calc(var(--weight, 1) * 0.28);
+}
+
+.graph-node {
+  display: grid;
+  max-width: 8.6rem;
+  min-width: 5.3rem;
+  gap: 0.08rem;
+  border-color: hsl(var(--knowledge) / 0.4);
+  border-radius: 10px;
+  padding: 0.42rem 0.55rem;
+  font-size: 0.76rem;
+  line-height: 1.14;
+}
+
+.graph-node.is-selected {
+  border-color: hsl(var(--brain-core) / 0.86);
+  background: hsl(var(--brain-core) / 0.14);
+}
+
+.brain-graph-focus {
+  min-height: 4rem;
+  align-items: flex-start;
+  gap: 0.72rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.48);
+  padding: 0.72rem;
+}
+
+.brain-graph-focus strong,
+.brain-graph-focus p {
+  display: block;
+}
+
+.brain-graph-focus strong {
+  font-size: 0.95rem;
+}
+
+.brain-graph-focus p {
+  margin: 0.18rem 0 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.brain-graph-empty {
+  display: grid;
+  min-height: 19rem;
+  place-items: center;
+  color: hsl(var(--fg-muted));
+}
+

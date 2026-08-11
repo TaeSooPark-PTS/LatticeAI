@@ -17,6 +17,10 @@ from PIL import Image
 
 from latticeai.models import router as router_mod
 
+# ``hf_model_dir`` reads the root from its own module globals, so after the
+# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
+from latticeai.models.router import local_models as router_local_models
+
 
 class _RaisingTokenizer:
     """A tokenizer whose chat template rejects the router's message shape."""
@@ -128,7 +132,7 @@ def test_is_gemma4_model_id_recognises_every_spelling(model_id, expected):
 
 
 def test_hf_model_dir_flattens_the_repo_id(monkeypatch, tmp_path):
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", tmp_path)
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path)
 
     assert router_mod.hf_model_dir("mlx-community/gemma") == tmp_path / "mlx-community__gemma"
 
@@ -169,7 +173,7 @@ def test_resolve_local_hf_model_prefers_an_existing_explicit_path(tmp_path):
 
 def test_resolve_local_hf_model_returns_the_repo_id_when_nothing_is_local(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", tmp_path / "hf-models")
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path / "hf-models")
 
     assert router_mod._resolve_local_hf_model("mlx-community/gemma") == "mlx-community/gemma"
 
@@ -183,7 +187,7 @@ def _write_config(directory, body: str) -> None:
 
 
 def test_local_model_type_reads_an_explicit_checkpoint_directory(monkeypatch, tmp_path):
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", tmp_path / "hf-models")
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path / "hf-models")
     checkpoint = tmp_path / "checkpoint"
     _write_config(checkpoint, '{"model_type": "Gemma4_Unified"}')
 
@@ -193,7 +197,7 @@ def test_local_model_type_reads_an_explicit_checkpoint_directory(monkeypatch, tm
 
 def test_local_model_type_falls_back_to_the_managed_download_directory(monkeypatch, tmp_path):
     root = tmp_path / "hf-models"
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", root)
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", root)
     _write_config(root / "mlx-community__gemma", '{"model_type": "gemma4"}')
 
     assert router_mod._local_model_type("mlx-community/gemma") == "gemma4"
@@ -201,14 +205,14 @@ def test_local_model_type_falls_back_to_the_managed_download_directory(monkeypat
 
 def test_local_model_type_is_none_when_the_config_names_no_type(monkeypatch, tmp_path):
     root = tmp_path / "hf-models"
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", root)
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", root)
     _write_config(root / "mlx-community__gemma", '{"model_type": ""}')
 
     assert router_mod._local_model_type("mlx-community/gemma") is None
 
 
 def test_local_model_type_is_none_when_no_config_exists(monkeypatch, tmp_path):
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", tmp_path / "hf-models")
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path / "hf-models")
 
     assert router_mod._local_model_type("mlx-community/gemma") is None
 
@@ -216,7 +220,7 @@ def test_local_model_type_is_none_when_no_config_exists(monkeypatch, tmp_path):
 def test_local_model_type_survives_a_corrupt_config(monkeypatch, tmp_path):
     """A truncated download must not take the load path down with it."""
     root = tmp_path / "hf-models"
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", root)
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", root)
     _write_config(root / "mlx-community__gemma", "{not json")
 
     assert router_mod._local_model_type("mlx-community/gemma") is None

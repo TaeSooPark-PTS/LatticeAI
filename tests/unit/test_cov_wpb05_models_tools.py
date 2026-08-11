@@ -21,6 +21,17 @@ import pytest
 
 from latticeai.core.model_resolution import ModelResolution
 from latticeai.models import router as router_mod
+
+# The optional-backend bindings (``mx`` / ``vlm_load`` / ``lm_load`` /
+# ``VLM_AVAILABLE`` / ``LM_AVAILABLE`` / ``AsyncOpenAI``) and the two callables
+# the load path reaches through them are read in the submodule that defines
+# them, so after the v11.3.0 split the stand-ins land on ``.loading`` — a name
+# rebound on the package ``__init__`` would leave those reads untouched.
+from latticeai.models.router import loading as router_loading
+
+# ``hf_model_dir`` reads the root from its own module globals, so after the
+# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
+from latticeai.models.router import local_models as router_local_models
 from latticeai.services import model_engines, model_loading
 from latticeai.tools import commands as commands_mod
 from latticeai.tools import filesystem as filesystem_mod
@@ -68,20 +79,21 @@ def test_a_draft_model_is_skipped_when_the_text_loader_vanishes_mid_load(
     draft rather than calling ``None``.
     """
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(router_mod, "HF_MODELS_ROOT", tmp_path / "hf-models")
-    monkeypatch.setattr(router_mod, "ensure_mlx_runtime", lambda: None)
-    monkeypatch.setattr(router_mod, "mx", _FakeMx())
-    monkeypatch.setattr(router_mod, "vlm_load", None)
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path / "hf-models")
+    monkeypatch.setattr(router_loading, "ensure_mlx_runtime", lambda: None)
+    monkeypatch.setattr(router_loading, "mx", _FakeMx())
+    monkeypatch.setattr(router_loading, "vlm_load", None)
     loaded: List[str] = []
 
     def fake_lm_load(model_id: str):
         loaded.append(model_id)
         # The runtime is torn down behind us, exactly as a concurrent
-        # ``ensure_mlx_runtime`` rebind would leave it.
-        router_mod.lm_load = None
+        # ``ensure_mlx_runtime`` rebind would leave it — which means the
+        # binding in ``.loading``, the only one the load path reads.
+        router_loading.lm_load = None
         return object(), _TemplateTokenizer()
 
-    monkeypatch.setattr(router_mod, "lm_load", fake_lm_load)
+    monkeypatch.setattr(router_loading, "lm_load", fake_lm_load)
     router = router_mod.LLMRouter()
 
     result = asyncio.run(

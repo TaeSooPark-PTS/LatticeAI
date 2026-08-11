@@ -16,6 +16,10 @@ from lattice_brain.graph import identity as identity_mod
 from lattice_brain.graph.store import KnowledgeGraphStore
 from latticeai.core import local_embeddings
 from latticeai.models import router as models_router
+
+# ``hf_model_dir`` reads the root from its own module globals, so after the
+# v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
+from latticeai.models.router import local_models as router_local_models
 from latticeai.services import p_reinforce as p_reinforce_mod
 from latticeai.services.p_reinforce import PReinforceGardener
 from latticeai.services.triggers import TriggerService
@@ -35,7 +39,7 @@ def test_device_identity_reloads_the_persisted_key_file(tmp_path):
     assert second.public_key_b64 == first.public_key_b64
 
 
-# ── lattice_brain/graph/projection.py:430 — strict edge projection re-raises ─
+# ── graph/projection/v2_schema.py:409 — strict edge projection re-raises ────
 def test_strict_edge_projection_reraises_the_underlying_failure(tmp_path):
     import sqlite3
 
@@ -58,9 +62,9 @@ def test_korean_text_produces_ko_bigram_features():
     assert "ko:국어" in features
 
 
-# ── latticeai/models/router.py:240 — locally downloaded HF model dir wins ────
+# ── models/router/local_models.py:51 — locally downloaded HF model dir wins ─
 def test_resolve_local_hf_model_finds_the_downloaded_model_dir(tmp_path, monkeypatch):
-    monkeypatch.setattr(models_router, "HF_MODELS_ROOT", tmp_path)
+    monkeypatch.setattr(router_local_models, "HF_MODELS_ROOT", tmp_path)
     model_dir = tmp_path / "org__repo"
     model_dir.mkdir()
     (model_dir / "config.json").write_text("{}", encoding="utf-8")

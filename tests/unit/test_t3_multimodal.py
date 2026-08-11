@@ -553,7 +553,7 @@ def test_audio_quality_follows_whether_there_are_words_at_all():
 def test_the_port_bundle_describes_exactly_what_is_wired(monkeypatch):
     # ffmpeg's presence is a property of the machine, not of the bundle, so it
     # is pinned here rather than left to whatever the test host happens to have.
-    monkeypatch.setattr("lattice_brain.multimodal._which_ffmpeg", lambda: None)
+    monkeypatch.setattr("lattice_brain.multimodal.ports._which_ffmpeg", lambda: None)
     empty = MultimodalPorts().describe()
     full = MultimodalPorts(
         captioner=lambda _p: "x",

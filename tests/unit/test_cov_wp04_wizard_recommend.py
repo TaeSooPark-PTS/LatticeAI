@@ -1,4 +1,4 @@
-"""wp04 — recommendation coverage for latticeai/setup/wizard.py.
+"""wp04 — recommendation coverage for latticeai/setup/wizard/.
 
 `get_recommendations` is a pure function of a scanned environment, so every
 branch (Apple/NVIDIA/AMD, engine preference, component install strategy) is
@@ -8,6 +8,36 @@ reachable by handing it a synthetic env instead of a real machine.
 import sys
 
 from latticeai.setup import wizard as setup
+from latticeai.setup.wizard import catalog as wizard_catalog
+from latticeai.setup.wizard import detect as wizard_detect
+from latticeai.setup.wizard import install as wizard_install
+from latticeai.setup.wizard import paths as wizard_paths
+from latticeai.setup.wizard import plans as wizard_plans
+from latticeai.setup.wizard import recommend as wizard_recommend
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/setup/wizard.py`` became a package (paths / detect / plans /
+# catalog / recommend / install). Reading a name through the package still
+# works, so the calls below are unchanged — but *patching* a name on the
+# package ``__init__`` does not reach a submodule's own global. Every stub is
+# therefore installed on every module that binds the name, which is exactly
+# the one binding the single-file module used to have.
+_WIZARD_MODULES = (
+    setup,
+    wizard_catalog,
+    wizard_detect,
+    wizard_install,
+    wizard_paths,
+    wizard_plans,
+    wizard_recommend,
+)
+
+
+def _patch(monkeypatch, name, value):
+    targets = [module for module in _WIZARD_MODULES if hasattr(module, name)]
+    assert targets, f"no wizard module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 
 
 class _ModuleShim:
@@ -239,7 +269,7 @@ def test_installed_components_are_reported_without_an_action():
 
 
 def test_old_python_runtimes_get_an_upgrade_component(monkeypatch):
-    monkeypatch.setattr(setup, "sys", _ModuleShim(sys, version_info=(3, 10, 4)))
+    _patch(monkeypatch, "sys", _ModuleShim(sys, version_info=(3, 10, 4)))
 
     recs = setup.get_recommendations(_env(os="Linux"))
 
@@ -263,7 +293,7 @@ def test_detected_api_keys_become_ready_cloud_engines():
 # ── models ────────────────────────────────────────────────────────────────────
 
 def test_first_fitting_model_is_promoted_when_nothing_is_checked(monkeypatch):
-    monkeypatch.setattr(setup, "_best_model_for_engine", lambda engine, ram_gb, rows: "")
+    _patch(monkeypatch, "_best_model_for_engine", lambda engine, ram_gb, rows: "")
 
     recs = setup.get_recommendations(_apple_env())
 

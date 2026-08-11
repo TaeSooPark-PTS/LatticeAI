@@ -24,7 +24,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import lattice_brain.graph._kg_common as kg_common  # noqa: E402
+from lattice_brain.graph._kg_common import extraction as kg_extraction  # noqa: E402
 from lattice_brain.graph.store import KnowledgeGraphStore  # noqa: E402
 
 CONCEPT_TEXT = (
@@ -41,7 +41,7 @@ def _rule_based_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
     the extracted concepts (and therefore the graph shape asserted here)
     depend on test ordering.
     """
-    monkeypatch.setattr(kg_common, "get_llm_router", lambda: None)
+    monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: None)
 
 
 @pytest.fixture()

@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **11.2.0 — All Systems On**.
+Current release: **11.3.0 — Time Remembers**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`
@@ -142,7 +142,7 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
   범위 없는 로컬 폴더는 개인 Brain으로 재투영하되 기존 노드 ID는 보존하며,
   같은 폴더를 다른 워크스페이스로 조용히 재할당하지 않는다.
 
-구현: `lattice_brain/ingestion.py` (`IngestionPipeline`) 가 단일 진입점이며,
+구현: `lattice_brain/ingestion/` (`IngestionPipeline`) 가 단일 진입점이며,
 파일/로컬폴더/URL/브라우저 탭/텍스트를 모두 이 형태로 정규화한다.
 
 ---

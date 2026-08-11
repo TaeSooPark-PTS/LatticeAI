@@ -28,7 +28,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import lattice_brain.multimodal as mm  # noqa: E402
+# ``_which_ffmpeg`` / ``_run_ffmpeg`` / ``subprocess`` are globals of the
+# ports submodule, which is where the code that calls them reads them from.
+# Patching the package would rebind a copy nothing looks at.
+import lattice_brain.multimodal.ports as mm  # noqa: E402
 from lattice_brain.graph.store import KnowledgeGraphStore  # noqa: E402
 from lattice_brain.ingestion import (  # noqa: E402
     ALLOW_VIDEO_ENV,

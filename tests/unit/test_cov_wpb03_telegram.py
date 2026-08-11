@@ -21,6 +21,11 @@ from typing import Any, Dict, List
 
 from latticeai.integrations import telegram_bot as bot
 
+# v11.3.0 package split: the pending-plan registry and the approval flow live
+# in ``flows``, so both the stubs and the reads below target that module — a
+# rebind on the re-export hub would leave the real dictionary untouched.
+from latticeai.integrations.telegram_bot import flows
+
 # ── doubles ─────────────────────────────────────────────────────────────────
 
 
@@ -116,7 +121,7 @@ def test_an_empty_vm_stat_reply_falls_back_to_the_default_page_size(monkeypatch)
 
 
 def test_a_plan_with_no_stated_goal_still_lists_its_steps(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {})
+    monkeypatch.setattr(flows, "_bot_pending_plans", {})
     client = _Client()
     data: Dict[str, Any] = {
         "run_id": "run-7",
@@ -132,7 +137,7 @@ def test_a_plan_with_no_stated_goal_still_lists_its_steps(monkeypatch):
     assert "*목표:*" not in text, "an empty goal is not rendered as an empty heading"
     assert "1. 파일 읽기" in text
     assert "2. 요약 쓰기" in text
-    pending = bot._bot_pending_plans["run-7"]
+    pending = flows._bot_pending_plans["run-7"]
     assert pending["chat_id"] == 4242
     assert pending["approval_token"] == "tok-7"
     assert pending["legacy"] is False
@@ -146,7 +151,7 @@ class _MappingBody(UserDict):
 
 
 def test_a_non_dict_resume_body_still_delivers_the_answer(monkeypatch):
-    monkeypatch.setattr(bot, "_bot_pending_plans", {
+    monkeypatch.setattr(flows, "_bot_pending_plans", {
         "run-9": {
             "chat_id": 77,
             "run_id": "run-9",
@@ -158,19 +163,19 @@ def test_a_non_dict_resume_body_still_delivers_the_answer(monkeypatch):
         },
     })
     server = _Client(reply=_Res(payload=_MappingBody({"response": "작업을 마쳤습니다."})))
-    monkeypatch.setattr(bot, "_server_client", lambda **_kwargs: server)
+    monkeypatch.setattr(flows, "_server_client", lambda **_kwargs: server)
 
     def _forbidden(*_args: Any, **_kwargs: Any):
         raise AssertionError("the attachment fan-out needs a dict payload")
 
-    monkeypatch.setattr(bot, "send_run_explanation", _forbidden)
-    monkeypatch.setattr(bot, "send_artifact_card", _forbidden)
+    monkeypatch.setattr(flows, "send_run_explanation", _forbidden)
+    monkeypatch.setattr(flows, "send_artifact_card", _forbidden)
 
     telegram = _Client()
     asyncio.run(bot.handle_plan_callback(telegram, 77, "plan:approve:run-9"))
 
     assert _messages(telegram) == ["⚙️ 실행 중입니다. 잠시 기다려주세요...", "작업을 마쳤습니다."]
-    assert bot._bot_pending_plans == {}, "the approved plan is consumed"
+    assert flows._bot_pending_plans == {}, "the approved plan is consumed"
     resumed = [call for call in server.calls if str(call[1]).endswith("/agent/resume")]
     assert len(resumed) == 1
     assert resumed[0][2]["json"]["approved"] is True

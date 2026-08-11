@@ -15,6 +15,12 @@ from pathlib import Path
 
 from latticeai.integrations import telegram_bot as bot
 
+# v11.3.0 package split: the screens themselves live in ``screens`` (so their
+# server client and their outbound calls are stubbed there), while the address
+# the deep links are built from is resolved by ``get_web_url``/``get_graph_url``
+# in ``helpers`` — patching the hub would reach neither.
+from latticeai.integrations.telegram_bot import helpers, screens
+
 # ── doubles ───────────────────────────────────────────────────────────────
 
 
@@ -83,7 +89,7 @@ class _Proc:
 
 def _server(monkeypatch, client):
     """Route ``_server_client()`` at a double instead of the real HTTP client."""
-    monkeypatch.setattr(bot, "_server_client", lambda **_kwargs: client)
+    monkeypatch.setattr(screens, "_server_client", lambda **_kwargs: client)
     return client
 
 
@@ -113,7 +119,7 @@ def test_status_renders_the_servers_reply(monkeypatch):
     async def ram(*_args):
         return "12.0 GB / 32 GB"
 
-    monkeypatch.setattr(bot, "_mac_ram_used_gb", ram)
+    monkeypatch.setattr(screens, "_mac_ram_used_gb", ram)
     client = _Client()
     asyncio.run(bot.show_status(client, 42))
 
@@ -129,7 +135,7 @@ def test_status_reports_offline_when_the_server_rejects_the_probe(monkeypatch):
     async def ram(*_args):
         return "N/A"
 
-    monkeypatch.setattr(bot, "_mac_ram_used_gb", ram)
+    monkeypatch.setattr(screens, "_mac_ram_used_gb", ram)
     client = _Client()
     asyncio.run(bot.show_status(client, 42))
 
@@ -144,7 +150,7 @@ def test_status_reports_offline_when_the_server_is_unreachable(monkeypatch):
     async def ram(*_args):
         return "N/A"
 
-    monkeypatch.setattr(bot, "_mac_ram_used_gb", ram)
+    monkeypatch.setattr(screens, "_mac_ram_used_gb", ram)
     client = _Client()
     asyncio.run(bot.show_status(client, 42))
 
@@ -233,9 +239,9 @@ def test_an_unreachable_server_is_reported_as_an_unload_error(monkeypatch):
 
 
 def test_graph_stats_sorts_by_count_and_links_to_the_graph(monkeypatch):
-    monkeypatch.setattr(bot, "get_lan_ip", lambda: "192.168.0.7")
-    monkeypatch.setattr(bot, "SERVER_PORT", 4825)
-    monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "")
+    monkeypatch.setattr(helpers, "get_lan_ip", lambda: "192.168.0.7")
+    monkeypatch.setattr(helpers, "SERVER_PORT", 4825)
+    monkeypatch.setattr(helpers, "PUBLIC_WEB_URL", "")
     _server(monkeypatch, _Client(reply=_Res(payload={
         "nodes": {"Document": 3, "Person": 9},
         "edges": {"MENTIONS": 4},
@@ -252,7 +258,7 @@ def test_graph_stats_sorts_by_count_and_links_to_the_graph(monkeypatch):
 
 
 def test_graph_stats_says_none_when_the_graph_is_empty(monkeypatch):
-    monkeypatch.setattr(bot, "get_lan_ip", lambda: "192.168.0.7")
+    monkeypatch.setattr(helpers, "get_lan_ip", lambda: "192.168.0.7")
     _server(monkeypatch, _Client(reply=_Res(status_code=500)))
     client = _Client()
     asyncio.run(bot.show_graph_stats(client, 42))
@@ -261,7 +267,7 @@ def test_graph_stats_says_none_when_the_graph_is_empty(monkeypatch):
 
 
 def test_graph_stats_survives_an_unreachable_server(monkeypatch):
-    monkeypatch.setattr(bot, "get_lan_ip", lambda: "192.168.0.7")
+    monkeypatch.setattr(helpers, "get_lan_ip", lambda: "192.168.0.7")
     _server(monkeypatch, _Client(error=OSError("refused")))
     client = _Client()
     asyncio.run(bot.show_graph_stats(client, 42))
@@ -291,7 +297,7 @@ def test_a_captured_screen_is_sent_as_a_photo(tmp_path, monkeypatch):
     async def capture(_client, chat_id, path, caption=""):
         sent.append((chat_id, path.read_bytes(), caption))
 
-    monkeypatch.setattr(bot, "send_photo", capture)
+    monkeypatch.setattr(screens, "send_photo", capture)
     asyncio.run(bot.take_screenshot(_Client(), 42))
 
     assert sent == [(42, b"jpeg-bytes", "현재 화면입니다.")]
@@ -350,7 +356,7 @@ def test_a_capture_that_cannot_be_deleted_does_not_break_the_reply(tmp_path, mon
     async def capture(_client, chat_id, path, caption=""):
         sent.append((chat_id, path.name, caption))
 
-    monkeypatch.setattr(bot, "send_photo", capture)
+    monkeypatch.setattr(screens, "send_photo", capture)
     asyncio.run(bot.take_screenshot(_Client(), 42))
 
     assert len(sent) == 1
@@ -428,7 +434,7 @@ def test_an_unreachable_server_is_reported_as_a_clear_error(monkeypatch):
 
 
 def test_the_web_link_carries_both_deep_links_on_the_telegram_client(monkeypatch):
-    monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "https://tunnel.example")
+    monkeypatch.setattr(helpers, "PUBLIC_WEB_URL", "https://tunnel.example")
     server = _server(monkeypatch, _Client())
     client = _Client()
     asyncio.run(bot.send_web_link(client, 42))
@@ -447,7 +453,7 @@ def test_the_web_link_carries_both_deep_links_on_the_telegram_client(monkeypatch
 
 
 def test_a_failed_web_link_send_is_logged_not_raised(monkeypatch, caplog):
-    monkeypatch.setattr(bot, "PUBLIC_WEB_URL", "https://tunnel.example")
+    monkeypatch.setattr(helpers, "PUBLIC_WEB_URL", "https://tunnel.example")
 
     with caplog.at_level("ERROR"):
         asyncio.run(bot.send_web_link(_Client(error=OSError("refused")), 42))
@@ -501,7 +507,7 @@ def _downloads(monkeypatch, payload):
     async def download(_client, _file_id):
         return payload
 
-    monkeypatch.setattr(bot, "download_telegram_file", download)
+    monkeypatch.setattr(screens, "download_telegram_file", download)
 
 
 def test_a_document_that_cannot_be_downloaded_is_reported(monkeypatch):

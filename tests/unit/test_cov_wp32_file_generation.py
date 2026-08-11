@@ -208,8 +208,11 @@ def test_bundle_validation_reports_a_reference_with_no_matching_file():
 def test_a_package_name_that_cannot_start_an_identifier_is_prefixed(monkeypatch):
     # The shipped name pattern can only capture ASCII-letter-initial names, so
     # the normalisation guard is exercised through the pattern seam.
+    # ``_python_package_manifest`` reads the pattern from its own module
+    # globals, so after the v11.3.0 split the seam is ``.inference`` — a name
+    # rebound on the package ``__init__`` would leave that read untouched.
     monkeypatch.setattr(
-        file_generation, "_PKG_NAME_RE",
+        file_generation.inference, "_PKG_NAME_RE",
         re.compile(r"([0-9A-Za-z][0-9A-Za-z_-]{1,30})\s*(?:패키지|package\b)", re.IGNORECASE),
     )
 

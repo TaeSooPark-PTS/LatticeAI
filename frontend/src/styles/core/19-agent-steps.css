@@ -1,0 +1,350 @@
+/* Terminal approval outcomes persist as small honest notes on the message. */
+.brain-approval-note {
+  display: block;
+  margin-top: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: hsl(var(--surface) / 0.8);
+  color: hsl(var(--muted-foreground));
+  padding: 0.45rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.brain-approval-note.is-approved {
+  border-color: hsl(var(--success) / 0.5);
+  color: hsl(var(--success));
+  background: hsl(var(--success) / 0.08);
+}
+
+.brain-approval-note.is-expired,
+.brain-approval-note.is-error {
+  border-color: hsl(38 92% 42% / 0.5);
+  background: hsl(38 92% 50% / 0.1);
+  color: hsl(38 92% 70%);
+}
+
+:root[data-theme="light"] .brain-approval-head,
+:root[data-theme="light"] .brain-approval-actions .brain-approval-primary {
+  color: hsl(30 80% 32%);
+}
+
+:root[data-theme="light"] .brain-approval-note.is-expired,
+:root[data-theme="light"] .brain-approval-note.is-error {
+  color: hsl(30 70% 32%);
+}
+
+:root[data-theme="light"] .brain-approval-edit-error {
+  color: hsl(0 62% 40%);
+}
+
+/* ── Answer grounding badge (근거 있음/근거 없음) ───────────────────────────
+   Tiny, unobtrusive verdict pill under the answer text. */
+.brain-grounding-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  margin-top: 0.4rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-grounding-badge.is-supported {
+  border-color: hsl(var(--success) / 0.5);
+  background: hsl(var(--success) / 0.1);
+  color: hsl(var(--success));
+}
+
+.brain-grounding-badge.is-none {
+  border-color: hsl(var(--border) / 0.9);
+  background: hsl(var(--muted) / 0.4);
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Agent step timeline ────────────────────────────────────────────────────
+   Compact per-step transparency for agent runs: live while streaming, a
+   collapsed one-line summary once done. Muted by default; success/amber/red
+   only on the state dots so the timeline never competes with the answer. */
+.brain-step-timeline {
+  margin-top: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 10px;
+  background: hsl(var(--surface) / 0.5);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.68rem;
+}
+
+.brain-step-timeline > summary {
+  cursor: pointer;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+  user-select: none;
+}
+
+.brain-step-live-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-step-list {
+  display: grid;
+  gap: 0.24rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-step-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.brain-step-dot {
+  flex: none;
+  align-self: center;
+  width: 0.44rem;
+  height: 0.44rem;
+  border-radius: 999px;
+  background: hsl(var(--fg-muted) / 0.7);
+}
+
+.brain-step-item.is-ok .brain-step-dot {
+  background: hsl(var(--success));
+}
+
+.brain-step-item.is-error .brain-step-dot,
+.brain-step-item.is-blocked .brain-step-dot {
+  background: hsl(0 72% 52%);
+}
+
+.brain-step-item.is-proposed .brain-step-dot {
+  background: hsl(38 92% 50%);
+}
+
+.brain-step-label {
+  color: hsl(var(--fg));
+  font-weight: 600;
+}
+
+.brain-step-item.is-error .brain-step-label,
+.brain-step-item.is-blocked .brain-step-label {
+  color: hsl(0 80% 72%);
+}
+
+.brain-step-item.is-proposed .brain-step-label {
+  color: hsl(38 92% 68%);
+}
+
+.brain-step-meta {
+  overflow-wrap: anywhere;
+  color: hsl(var(--fg-muted));
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+}
+
+.brain-step-detail {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+  padding-left: 0.84rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+}
+
+:root[data-theme="light"] .brain-step-item.is-error .brain-step-label,
+:root[data-theme="light"] .brain-step-item.is-blocked .brain-step-label {
+  color: hsl(0 62% 40%);
+}
+
+:root[data-theme="light"] .brain-step-item.is-proposed .brain-step-label {
+  color: hsl(30 80% 34%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brain-step-dot.is-live {
+    animation: brain-step-live-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes brain-step-live-pulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+}
+
+/* Loop transparency note ("모델 응답을 N회 보정했어요") — quiet, muted. */
+.brain-loop-repairs {
+  display: block;
+  margin: 0.4rem 0 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+/* ── 폴더별 기억 상태 (v9.9.7) ────────────────────────────────────────── */
+.folder-memory-health {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-self: start;
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  background: hsl(var(--surface) / 0.4);
+}
+
+.folder-memory-health h3 {
+  margin: 0 0 0.15rem 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.folder-memory-health > ul {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.folder-memory-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.folder-memory-head strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-memory-coverage {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.folder-memory-bar {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 999px;
+  background: hsl(var(--border) / 0.5);
+}
+
+.folder-memory-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: hsl(var(--memory));
+}
+
+.folder-memory-health small,
+.folder-memory-errors summary {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+.folder-memory-errors summary {
+  cursor: pointer;
+  color: hsl(var(--warning, 32 78% 42%));
+  font-weight: 700;
+}
+
+.folder-memory-errors ul {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0.25rem 0 0;
+  padding-left: 0.9rem;
+  font-size: 0.68rem;
+}
+
+.folder-memory-errors code {
+  margin-right: 0.3rem;
+  font-size: 0.6rem;
+}
+
+/* ── 지식 정원 (v9.9.7): 네 개의 화단 ──────────────────────────────────── */
+.brain-garden {
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  background: hsl(var(--surface) / 0.4);
+}
+
+.brain-garden > summary {
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.brain-garden-beds {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.brain-garden-beds h4 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-garden-count {
+  border-radius: 999px;
+  background: hsl(var(--memory) / 0.16);
+  padding: 0 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-garden-beds ul {
+  display: grid;
+  gap: 0.22rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-garden-beds li {
+  display: grid;
+  gap: 0.05rem;
+  border-radius: 6px;
+  background: hsl(var(--surface) / 0.5);
+  padding: 0.28rem 0.36rem;
+}
+
+.brain-garden-beds li strong {
+  overflow: hidden;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-garden-beds li em,
+.brain-garden-beds li small,
+.brain-garden p.is-muted {
+  color: hsl(var(--fg-muted));
+  font-size: 0.6rem;
+  font-style: normal;
+}
+

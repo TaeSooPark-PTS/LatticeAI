@@ -21,7 +21,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import lattice_brain.portability as portability
 from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 from lattice_brain.portability import (
@@ -89,7 +88,9 @@ def test_safe_zip_names_rejects_traversal_and_absolute_members():
 
 
 def test_pre_restore_backup_dir_suffixes_until_it_finds_a_free_name(tmp_path, monkeypatch):
-    monkeypatch.setattr(portability, "_stamp", lambda: "20260809T0000")
+    monkeypatch.setattr(
+        "lattice_brain.portability.fsops._stamp", lambda: "20260809T0000"
+    )
     anchor = tmp_path / "kg.sqlite"
     first = _pre_restore_backup_dir(anchor)
     second = _pre_restore_backup_dir(anchor)
@@ -342,7 +343,9 @@ def test_migration_refuses_to_start_when_the_pre_migration_backup_is_unverifiabl
         counter["n"] += 1
         return f"{counter['n']:064d}"
 
-    monkeypatch.setattr(portability, "_sha256_file", _drifting_hash)
+    monkeypatch.setattr(
+        "lattice_brain.portability.backups._sha256_file", _drifting_hash
+    )
     with pytest.raises(RuntimeError, match="Pre-migration backup verification failed"):
         svc.migrate_sqlite_to_postgres(dsn="postgresql://localhost/lattice", dry_run=False)
 
@@ -360,7 +363,9 @@ def test_migration_attaches_the_verified_pre_migration_backup(tmp_path, monkeypa
             seen["dry_run"] = dry_run
             return {"status": "planned" if dry_run else "migrated", "tables": 3}
 
-    monkeypatch.setattr(portability, "SQLiteToPostgresMigrator", _FakeMigrator)
+    monkeypatch.setattr(
+        "lattice_brain.portability.backups.SQLiteToPostgresMigrator", _FakeMigrator
+    )
 
     planned = svc.migrate_sqlite_to_postgres(dsn="postgresql://localhost/lattice")
     assert planned == {"status": "planned", "tables": 3}

@@ -45,6 +45,7 @@ SHOTS = [
     "10-admin-console.png",
     "11-knowledge-journey.png",
     "12-review-center.png",
+    "13-chronicle.png",
 ]
 
 # LivingBrain animation noise can hit ~7.9% with zero layout change.
@@ -183,11 +184,10 @@ def _extract_baseline_from_git(root: Path, version: str) -> Optional[Path]:
 
     cache = root / "output" / ".cache" / "screenshot-baseline" / f"v{version}" / "screenshots"
     cache.mkdir(parents=True, exist_ok=True)
-    extracted = 0
+    missing: List[str] = []
     for name in SHOTS:
         dest = cache / name
         if dest.is_file() and dest.stat().st_size > 0:
-            extracted += 1
             continue
         git_path = f"output/release/v{version}/screenshots/{name}"
         result = subprocess.run(
@@ -197,11 +197,19 @@ def _extract_baseline_from_git(root: Path, version: str) -> Optional[Path]:
             check=False,
         )
         if result.returncode != 0 or not result.stdout:
+            missing.append(name)
             continue
         dest.write_bytes(result.stdout)
-        extracted += 1
-    if extracted < len(SHOTS):
+    # A screen the baseline release never captured is a screen introduced by
+    # the current release (the comparison loop reports it as "new" and does
+    # not gate it). Only a baseline with no core capture at all is broken.
+    if "01-login.png" in missing:
         return None
+    if missing:
+        print(
+            f"pixel delta: baseline v{version} lacks {len(missing)} screen(s) "
+            f"introduced later: {', '.join(missing)}"
+        )
     return cache
 
 
@@ -450,6 +458,28 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"{name:<32} {'—':>8} {'—':>6} {'—':>6} FAIL")
             continue
         if not base.is_file():
+            # No baseline image: either the screen is new this release
+            # (legitimate — nothing to diff against, report and move on) or a
+            # claim names a screen the baseline should have had (a typo — the
+            # claim gate must fail loudly rather than skip it).
+            if claims is not None and name not in claims:
+                print(f"{name:<32} {'new':>8} {'—':>6} {'—':>6} {'—':>5} (no baseline)")
+                results.append(
+                    {
+                        "file": name,
+                        "pixel_pct": None,
+                        "height_current": None,
+                        "height_baseline": None,
+                        "height_delta": None,
+                        "min_pct": None,
+                        "living_brain": name in LIVING_BRAIN,
+                        "region": None,
+                        "claimed": False,
+                        "moved": None,
+                        "pass": True,
+                    }
+                )
+                continue
             failures.append(f"{name}: missing in baseline")
             print(f"{name:<32} {'—':>8} {'—':>6} {'—':>6} FAIL")
             continue

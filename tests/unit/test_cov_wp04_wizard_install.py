@@ -1,4 +1,4 @@
-"""wp04 — installer coverage for latticeai/setup/wizard.py.
+"""wp04 — installer coverage for latticeai/setup/wizard/.
 
 Nothing here spawns a real process or opens a real browser: the module's
 `asyncio`, `subprocess`, `shutil`, `os` and `platform` references are swapped
@@ -18,6 +18,36 @@ import pytest
 
 from latticeai.services.process_audit import CommandConfirmationError
 from latticeai.setup import wizard as setup
+from latticeai.setup.wizard import catalog as wizard_catalog
+from latticeai.setup.wizard import detect as wizard_detect
+from latticeai.setup.wizard import install as wizard_install
+from latticeai.setup.wizard import paths as wizard_paths
+from latticeai.setup.wizard import plans as wizard_plans
+from latticeai.setup.wizard import recommend as wizard_recommend
+
+# ── v11.3.0 split shim ────────────────────────────────────────────────────────
+# ``latticeai/setup/wizard.py`` became a package (paths / detect / plans /
+# catalog / recommend / install). Reading a name through the package still
+# works, so the calls below are unchanged — but *patching* a name on the
+# package ``__init__`` does not reach a submodule's own global. Every stub is
+# therefore installed on every module that binds the name, which is exactly
+# the one binding the single-file module used to have.
+_WIZARD_MODULES = (
+    setup,
+    wizard_catalog,
+    wizard_detect,
+    wizard_install,
+    wizard_paths,
+    wizard_plans,
+    wizard_recommend,
+)
+
+
+def _patch(monkeypatch, name, value):
+    targets = [module for module in _WIZARD_MODULES if hasattr(module, name)]
+    assert targets, f"no wizard module binds {name!r}"
+    for module in targets:
+        monkeypatch.setattr(module, name, value)
 
 
 class _ModuleShim:
@@ -88,7 +118,7 @@ def audit_file(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def quick_sleep(monkeypatch):
-    monkeypatch.setattr(setup, "asyncio", _ModuleShim(asyncio, sleep=_no_sleep))
+    _patch(monkeypatch, "asyncio", _ModuleShim(asyncio, sleep=_no_sleep))
 
 
 # ── _verify_action ────────────────────────────────────────────────────────────
@@ -106,7 +136,7 @@ def test_verify_action_derives_modules_from_package_names():
 
 
 def test_verify_action_delegates_to_the_binary_probe(monkeypatch):
-    monkeypatch.setattr(setup, "_verify_binary", lambda binary: (True, "ollama " + binary))
+    _patch(monkeypatch, "_verify_binary", lambda binary: (True, "ollama " + binary))
 
     assert setup._verify_action({"type": "url", "binary": "ollama"}) == (True, "ollama ollama")
 
@@ -119,8 +149,8 @@ def test_verify_action_accepts_actions_with_nothing_to_check():
 
 def test_repair_action_reports_a_path_fix(monkeypatch):
     repaired = []
-    monkeypatch.setattr(setup, "repair_path_for", lambda binary=None: repaired.append(binary) or [])
-    monkeypatch.setattr(setup, "_verify_binary", lambda binary: (True, "ollama 1.2.3"))
+    _patch(monkeypatch, "repair_path_for", lambda binary=None: repaired.append(binary) or [])
+    _patch(monkeypatch, "_verify_binary", lambda binary: (True, "ollama 1.2.3"))
 
     ok, detail = asyncio.run(setup._repair_action({"type": "url", "binary": "ollama"}))
 
@@ -130,8 +160,8 @@ def test_repair_action_reports_a_path_fix(monkeypatch):
 
 
 def test_repair_action_refuses_a_pip_retry_without_a_matching_token(monkeypatch):
-    monkeypatch.setattr(setup, "repair_path_for", lambda binary=None: [])
-    monkeypatch.setattr(setup, "_verify_binary", lambda binary: (False, "missing"))
+    _patch(monkeypatch, "repair_path_for", lambda binary=None: [])
+    _patch(monkeypatch, "_verify_binary", lambda binary: (False, "missing"))
 
     ok, detail = asyncio.run(
         setup._repair_action(
@@ -153,8 +183,8 @@ def test_repair_action_reinstalls_pip_packages_with_a_valid_token(monkeypatch):
         calls.append((package, confirmed, actor))
         return True, ""
 
-    monkeypatch.setattr(setup, "_pip_install", _install)
-    monkeypatch.setattr(setup, "_verify_action", lambda action_: (True, "import ok"))
+    _patch(monkeypatch, "_pip_install", _install)
+    _patch(monkeypatch, "_verify_action", lambda action_: (True, "import ok"))
 
     assert asyncio.run(
         setup._repair_action(action, confirmation_token=token, actor="dev@example.test")
@@ -171,7 +201,7 @@ def test_repair_action_stops_at_the_first_failed_reinstall(monkeypatch):
         calls.append(package)
         return False, "wheel build failed"
 
-    monkeypatch.setattr(setup, "_pip_install", _install)
+    _patch(monkeypatch, "_pip_install", _install)
 
     assert asyncio.run(setup._repair_action(action, confirmation_token=token)) == (False, "wheel build failed")
     assert calls == ["mlx-vlm"]
@@ -215,8 +245,8 @@ def test_install_stream_installs_pip_packages_and_verifies_them(monkeypatch):
         calls.append((package, confirmed, actor))
         return True, ""
 
-    monkeypatch.setattr(setup, "_pip_install", _install)
-    monkeypatch.setattr(setup, "_verify_action", lambda action_: (True, "import ok"))
+    _patch(monkeypatch, "_pip_install", _install)
+    _patch(monkeypatch, "_verify_action", lambda action_: (True, "import ok"))
 
     events = _events(
         [{"id": "engine_mlx", "name": "MLX", "action": action}],
@@ -241,7 +271,7 @@ def test_install_stream_refuses_a_pip_action_with_a_stale_token(monkeypatch):
     def _never(*args, **kwargs):
         raise AssertionError("no package may be installed on a stale token")
 
-    monkeypatch.setattr(setup, "_pip_install", _never)
+    _patch(monkeypatch, "_pip_install", _never)
 
     events = _events(
         [
@@ -265,7 +295,7 @@ def test_install_stream_stops_at_the_first_failing_package(monkeypatch):
         attempted.append(package)
         return False, "compiler not found " + "x" * 500
 
-    monkeypatch.setattr(setup, "_pip_install", _install)
+    _patch(monkeypatch, "_pip_install", _install)
 
     events = _events([{"id": "engine_mlx", "name": "MLX", "action": action}])
 
@@ -285,9 +315,9 @@ def test_install_stream_repairs_a_failed_pip_verification(monkeypatch):
         repairs.append((confirmation_token, actor))
         return True, "PATH 자동 보정 완료"
 
-    monkeypatch.setattr(setup, "_pip_install", _install)
-    monkeypatch.setattr(setup, "_verify_action", lambda action_: (False, "모듈 없음"))
-    monkeypatch.setattr(setup, "_repair_action", _repair)
+    _patch(monkeypatch, "_pip_install", _install)
+    _patch(monkeypatch, "_verify_action", lambda action_: (False, "모듈 없음"))
+    _patch(monkeypatch, "_repair_action", _repair)
 
     events = _events([{"id": "engine_mlx", "name": "MLX", "action": action}], user_email="dev@example.test")
 
@@ -304,9 +334,9 @@ def test_install_stream_reports_an_unrecoverable_pip_verification(monkeypatch):
     async def _repair(action_, *, confirmation_token=None, actor=None):
         return False, "자동 복구 방법을 찾지 못했습니다."
 
-    monkeypatch.setattr(setup, "_pip_install", _install)
-    monkeypatch.setattr(setup, "_verify_action", lambda action_: (False, "모듈 없음"))
-    monkeypatch.setattr(setup, "_repair_action", _repair)
+    _patch(monkeypatch, "_pip_install", _install)
+    _patch(monkeypatch, "_verify_action", lambda action_: (False, "모듈 없음"))
+    _patch(monkeypatch, "_repair_action", _repair)
 
     events = _events([{"id": "engine_mlx", "name": "MLX", "action": action}])
 
@@ -320,7 +350,7 @@ def test_install_stream_refuses_a_brew_action_with_a_stale_token(monkeypatch):
         called.append(package)
         return True, ""
 
-    monkeypatch.setattr(setup, "_brew_install", _brew)
+    _patch(monkeypatch, "_brew_install", _brew)
 
     events = _events(
         [
@@ -349,9 +379,9 @@ def test_install_stream_installs_via_brew_and_repairs_the_path(monkeypatch):
         calls.append((package, confirmed, actor))
         return True, ""
 
-    monkeypatch.setattr(setup, "_brew_install", _brew)
-    monkeypatch.setattr(setup, "repair_path_for", lambda binary=None: repaired.append(binary) or [])
-    monkeypatch.setattr(setup, "_verify_action", lambda action_: (True, "ollama 1.2.3"))
+    _patch(monkeypatch, "_brew_install", _brew)
+    _patch(monkeypatch, "repair_path_for", lambda binary=None: repaired.append(binary) or [])
+    _patch(monkeypatch, "_verify_action", lambda action_: (True, "ollama 1.2.3"))
 
     events = _events(
         [{"id": "engine_ollama", "name": "Ollama", "action": action}],
@@ -373,9 +403,9 @@ def test_install_stream_repairs_a_failed_brew_verification(monkeypatch):
     async def _repair(action_, *, confirmation_token=None, actor=None):
         return False, "자동 복구 방법을 찾지 못했습니다."
 
-    monkeypatch.setattr(setup, "_brew_install", _brew)
-    monkeypatch.setattr(setup, "_verify_action", lambda action_: (False, "감지 실패"))
-    monkeypatch.setattr(setup, "_repair_action", _repair)
+    _patch(monkeypatch, "_brew_install", _brew)
+    _patch(monkeypatch, "_verify_action", lambda action_: (False, "감지 실패"))
+    _patch(monkeypatch, "_repair_action", _repair)
 
     events = _events([{"id": "engine_ollama", "name": "Ollama", "action": action}])
 
@@ -392,8 +422,8 @@ def test_install_stream_opens_the_official_page_when_brew_fails(monkeypatch):
     async def _brew(package, *, confirmed=False, actor=None):
         return False, "brew: command failed"
 
-    monkeypatch.setattr(setup, "_brew_install", _brew)
-    monkeypatch.setattr(setup, "open_url", opened.append)
+    _patch(monkeypatch, "_brew_install", _brew)
+    _patch(monkeypatch, "open_url", opened.append)
 
     events = _events([{"id": "engine_ollama", "name": "Ollama", "action": action}])
 
@@ -409,8 +439,8 @@ def test_install_stream_reports_a_brew_failure_without_a_download_page(monkeypat
     async def _brew(package, *, confirmed=False, actor=None):
         return False, "brew: command failed"
 
-    monkeypatch.setattr(setup, "_brew_install", _brew)
-    monkeypatch.setattr(setup, "open_url", opened.append)
+    _patch(monkeypatch, "_brew_install", _brew)
+    _patch(monkeypatch, "open_url", opened.append)
 
     events = _events([{"id": "engine_ollama", "name": "Ollama", "action": action}])
 
@@ -457,7 +487,7 @@ def test_install_stream_reports_a_model_load_failure():
 
 def test_install_stream_opens_an_auth_page(monkeypatch):
     opened = []
-    monkeypatch.setattr(setup, "open_url", opened.append)
+    _patch(monkeypatch, "open_url", opened.append)
 
     events = _events(
         [
@@ -481,9 +511,9 @@ def test_install_stream_waits_for_a_binary_after_opening_a_download_page(monkeyp
     async def _wait(binary, seconds=300):
         return True, binary + " 1.2.3"
 
-    monkeypatch.setattr(setup, "open_url", opened.append)
-    monkeypatch.setattr(setup, "_wait_for_binary", _wait)
-    monkeypatch.setattr(setup, "repair_path_for", lambda binary=None: repaired.append(binary) or [])
+    _patch(monkeypatch, "open_url", opened.append)
+    _patch(monkeypatch, "_wait_for_binary", _wait)
+    _patch(monkeypatch, "repair_path_for", lambda binary=None: repaired.append(binary) or [])
 
     events = _events(
         [
@@ -505,8 +535,8 @@ def test_install_stream_reports_a_binary_that_never_appears(monkeypatch):
     async def _wait(binary, seconds=300):
         return False, binary + " 설치 완료를 제한 시간 안에 감지하지 못했습니다."
 
-    monkeypatch.setattr(setup, "open_url", lambda url: None)
-    monkeypatch.setattr(setup, "_wait_for_binary", _wait)
+    _patch(monkeypatch, "open_url", lambda url: None)
+    _patch(monkeypatch, "_wait_for_binary", _wait)
 
     events = _events(
         [{"id": "component_git", "name": "Git", "action": {"type": "url", "url": "https://git-scm.com", "binary": "git"}}]
@@ -518,7 +548,7 @@ def test_install_stream_reports_a_binary_that_never_appears(monkeypatch):
 
 def test_install_stream_url_without_a_binary_just_waits(monkeypatch):
     opened = []
-    monkeypatch.setattr(setup, "open_url", opened.append)
+    _patch(monkeypatch, "open_url", opened.append)
 
     events = _events(
         [{"id": "component_homebrew", "name": "Homebrew", "action": {"type": "url", "url": "https://brew.sh"}}]
@@ -541,8 +571,8 @@ def test_install_stream_reports_unknown_action_types():
 
 def test_pip_install_records_a_successful_run(audit_file, monkeypatch):
     calls = []
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(returncode=0), calls)),
     )
@@ -558,8 +588,8 @@ def test_pip_install_records_a_successful_run(audit_file, monkeypatch):
 
 
 def test_pip_install_returns_stderr_on_a_non_zero_exit(audit_file, monkeypatch):
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(returncode=1, stderr=b"no matching distribution"), [])),
     )
@@ -571,8 +601,8 @@ def test_pip_install_returns_stderr_on_a_non_zero_exit(audit_file, monkeypatch):
 def test_pip_install_accepts_a_matching_confirmation_token(audit_file, monkeypatch):
     command = [sys.executable, "-m", "pip", "install", "--upgrade", "demo-package"]
     token = setup.command_plan(command, name="pip:demo-package", purpose="setup_wizard_install")["confirmation_token"]
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(returncode=0), [])),
     )
@@ -585,7 +615,7 @@ def test_pip_install_refuses_to_run_without_confirmation(audit_file, monkeypatch
     def _never(*args, **kwargs):
         raise AssertionError("no process may be spawned without confirmation")
 
-    monkeypatch.setattr(setup, "asyncio", _ModuleShim(asyncio, create_subprocess_exec=_never))
+    _patch(monkeypatch, "asyncio", _ModuleShim(asyncio, create_subprocess_exec=_never))
 
     ok, detail = asyncio.run(setup._pip_install("demo-package"))
 
@@ -597,8 +627,8 @@ def test_pip_install_refuses_to_run_without_confirmation(audit_file, monkeypatch
 
 
 def test_pip_install_reports_a_timeout(audit_file, monkeypatch):
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(
             asyncio,
@@ -611,8 +641,8 @@ def test_pip_install_reports_a_timeout(audit_file, monkeypatch):
 
 
 def test_pip_install_reports_an_unexpected_failure(audit_file, monkeypatch):
-    monkeypatch.setattr(
-        setup,
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(error=OSError("exec format error")), [])),
     )
@@ -626,7 +656,7 @@ def test_pip_install_reports_an_unexpected_failure(audit_file, monkeypatch):
 # ── _brew_install ─────────────────────────────────────────────────────────────
 
 def test_brew_install_requires_homebrew(monkeypatch):
-    monkeypatch.setattr(setup, "shutil", _ModuleShim(shutil, which=lambda binary: None))
+    _patch(monkeypatch, "shutil", _ModuleShim(shutil, which=lambda binary: None))
 
     ok, detail = asyncio.run(setup._brew_install("ollama", confirmed=True))
 
@@ -636,9 +666,9 @@ def test_brew_install_requires_homebrew(monkeypatch):
 
 def test_brew_install_records_a_successful_run(audit_file, monkeypatch):
     calls = []
-    monkeypatch.setattr(setup, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
-    monkeypatch.setattr(
-        setup,
+    _patch(monkeypatch, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(returncode=0), calls)),
     )
@@ -652,9 +682,9 @@ def test_brew_install_records_a_successful_run(audit_file, monkeypatch):
 
 
 def test_brew_install_returns_stderr_on_a_non_zero_exit(audit_file, monkeypatch):
-    monkeypatch.setattr(setup, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
-    monkeypatch.setattr(
-        setup,
+    _patch(monkeypatch, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(returncode=1, stderr=b"No available formula"), [])),
     )
@@ -667,8 +697,8 @@ def test_brew_install_refuses_to_run_without_confirmation(audit_file, monkeypatc
     def _never(*args, **kwargs):
         raise AssertionError("no process may be spawned without confirmation")
 
-    monkeypatch.setattr(setup, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
-    monkeypatch.setattr(setup, "asyncio", _ModuleShim(asyncio, create_subprocess_exec=_never))
+    _patch(monkeypatch, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
+    _patch(monkeypatch, "asyncio", _ModuleShim(asyncio, create_subprocess_exec=_never))
 
     ok, detail = asyncio.run(setup._brew_install("ollama"))
 
@@ -683,9 +713,9 @@ def test_brew_install_accepts_a_matching_confirmation_token(audit_file, monkeypa
         name="brew:ollama",
         purpose="setup_wizard_install",
     )["confirmation_token"]
-    monkeypatch.setattr(setup, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
-    monkeypatch.setattr(
-        setup,
+    _patch(monkeypatch, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(returncode=0), [])),
     )
@@ -695,9 +725,9 @@ def test_brew_install_accepts_a_matching_confirmation_token(audit_file, monkeypa
 
 
 def test_brew_install_reports_a_timeout(audit_file, monkeypatch):
-    monkeypatch.setattr(setup, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
-    monkeypatch.setattr(
-        setup,
+    _patch(monkeypatch, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(error=asyncio.TimeoutError()), [])),
     )
@@ -707,9 +737,9 @@ def test_brew_install_reports_a_timeout(audit_file, monkeypatch):
 
 
 def test_brew_install_reports_an_unexpected_failure(audit_file, monkeypatch):
-    monkeypatch.setattr(setup, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
-    monkeypatch.setattr(
-        setup,
+    _patch(monkeypatch, "shutil", _ModuleShim(shutil, which=lambda binary: "/opt/homebrew/bin/brew"))
+    _patch(
+        monkeypatch,
         "asyncio",
         _ModuleShim(asyncio, create_subprocess_exec=_spawner(_FakeProcess(error=OSError("disk full")), [])),
     )
@@ -726,8 +756,8 @@ def test_confirmation_error_is_the_documented_type():
 
 def test_open_url_uses_open_on_macos(audit_file, monkeypatch):
     spawned = []
-    monkeypatch.setattr(setup, "platform", _ModuleShim(platform, system=lambda: "Darwin"))
-    monkeypatch.setattr(setup, "subprocess", _ModuleShim(subprocess, Popen=spawned.append))
+    _patch(monkeypatch, "platform", _ModuleShim(platform, system=lambda: "Darwin"))
+    _patch(monkeypatch, "subprocess", _ModuleShim(subprocess, Popen=spawned.append))
 
     setup.open_url("https://brew.sh")
 
@@ -739,8 +769,8 @@ def test_open_url_uses_open_on_macos(audit_file, monkeypatch):
 
 def test_open_url_uses_startfile_on_windows(audit_file, monkeypatch):
     started = []
-    monkeypatch.setattr(setup, "platform", _ModuleShim(platform, system=lambda: "Windows"))
-    monkeypatch.setattr(setup, "os", _ModuleShim(os, startfile=started.append))
+    _patch(monkeypatch, "platform", _ModuleShim(platform, system=lambda: "Windows"))
+    _patch(monkeypatch, "os", _ModuleShim(os, startfile=started.append))
 
     setup.open_url("https://ollama.com/download")
 
@@ -752,8 +782,8 @@ def test_open_url_uses_startfile_on_windows(audit_file, monkeypatch):
 
 def test_open_url_uses_xdg_open_elsewhere(audit_file, monkeypatch):
     spawned = []
-    monkeypatch.setattr(setup, "platform", _ModuleShim(platform, system=lambda: "Linux"))
-    monkeypatch.setattr(setup, "subprocess", _ModuleShim(subprocess, Popen=spawned.append))
+    _patch(monkeypatch, "platform", _ModuleShim(platform, system=lambda: "Linux"))
+    _patch(monkeypatch, "subprocess", _ModuleShim(subprocess, Popen=spawned.append))
 
     setup.open_url("https://lmstudio.ai/download")
 
@@ -765,8 +795,8 @@ def test_open_url_records_a_spawn_failure(audit_file, monkeypatch):
     def _boom(command):
         raise FileNotFoundError("xdg-open missing")
 
-    monkeypatch.setattr(setup, "platform", _ModuleShim(platform, system=lambda: "Linux"))
-    monkeypatch.setattr(setup, "subprocess", _ModuleShim(subprocess, Popen=_boom))
+    _patch(monkeypatch, "platform", _ModuleShim(platform, system=lambda: "Linux"))
+    _patch(monkeypatch, "subprocess", _ModuleShim(subprocess, Popen=_boom))
 
     setup.open_url("https://lmstudio.ai/download")
 
@@ -782,9 +812,9 @@ def test_open_url_stays_silent_when_auditing_itself_fails(audit_file, monkeypatc
     def _never(command):
         raise AssertionError("the browser must not be launched after the audit failed")
 
-    monkeypatch.setattr(setup, "platform", _ModuleShim(platform, system=lambda: "Darwin"))
-    monkeypatch.setattr(setup, "subprocess", _ModuleShim(subprocess, Popen=_never))
-    monkeypatch.setattr(setup, "append_process_audit_event", _audit_boom)
+    _patch(monkeypatch, "platform", _ModuleShim(platform, system=lambda: "Darwin"))
+    _patch(monkeypatch, "subprocess", _ModuleShim(subprocess, Popen=_never))
+    _patch(monkeypatch, "append_process_audit_event", _audit_boom)
 
     setup.open_url("https://brew.sh")
 

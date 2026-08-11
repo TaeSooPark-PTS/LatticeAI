@@ -234,21 +234,27 @@ def test_build_phases_module_imports_nothing_heavy() -> None:
     """Phase modules must keep their heavy imports inside the functions."""
     import ast
 
-    source = (
-        REPO_ROOT / "latticeai" / "runtime" / "build_phases.py"
-    ).read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    module_level = {
-        alias.name.split(".")[0]
-        for node in tree.body
-        if isinstance(node, (ast.Import, ast.ImportFrom))
-        for alias in (node.names if isinstance(node, ast.Import) else [])
-    } | {
-        node.module.split(".")[0]
-        for node in tree.body
-        if isinstance(node, ast.ImportFrom) and node.module
-    }
-    forbidden = {"mlx", "fastapi", "uvicorn", "keyring"}
-    assert module_level & forbidden == set(), (
-        f"heavy import moved to module scope: {module_level & forbidden}"
-    )
+    # v11.3.0 turned build_phases.py into a package (foundation / web /
+    # features). The contract is per *file*, so every source file in the
+    # package is checked — reading only __init__.py would let a heavy import
+    # hide one directory level down.
+    package_dir = REPO_ROOT / "latticeai" / "runtime" / "build_phases"
+    sources = sorted(package_dir.glob("*.py"))
+    assert len(sources) >= 2, "build_phases package lost its submodules"
+    for path in sources:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        module_level = {
+            alias.name.split(".")[0]
+            for node in tree.body
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+            for alias in (node.names if isinstance(node, ast.Import) else [])
+        } | {
+            node.module.split(".")[0]
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module
+        }
+        forbidden = {"mlx", "fastapi", "uvicorn", "keyring"}
+        assert module_level & forbidden == set(), (
+            f"heavy import moved to module scope in {path.name}: "
+            f"{module_level & forbidden}"
+        )
