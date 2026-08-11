@@ -13,6 +13,30 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.4.0 — Rust Foundation (2026-08-11)
+
+Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각부터.
+
+- **`rust/` workspace 3크레이트**: lattice-core(같은 SQLite 읽기층 +
+  임베더 bit-for-bit 포트), lattice-retrieval(하이브리드/키워드/벡터
+  네이티브 — **패리티 75/75 완전 일치, 엡실론 0** + Python측 계약
+  테스트 80개로 양방향 잠금), lattice-host(HTTP 헬스·백오프 자동
+  재시작·우아한 종료·포트 통일 수퍼바이저 + 127.0.0.1 전용 게이트웨이:
+  `/host/*`·네이티브 `/rust/search/*`·스트리밍 리버스 프록시, 옵트인).
+- **데스크톱이 올라탐**: Tauri `main.rs` 451→149줄, 5개 IPC 커맨드 계약
+  보존, 후보 해석 우선순위 버그 수정.
+- **게이트**: CI rust 잡(fmt/clippy/test), `*.rs` 라인 상한 편입,
+  버전 동기 타깃 18→25.
+- 플로어 유지: **6,643 + 1,761 테스트 · 문·분기 100.00% · 프론트 4지표
+  100% · Rust 194 테스트**. Python 서버는 전 표면을 그대로 서빙(무손상).
+
+빌드 산출물은 `dist/ltcai-11.4.0-py3-none-any.whl`,
+`dist/ltcai-11.4.0.tar.gz`, `ltcai-11.4.0.tgz`, `dist/ltcai-11.4.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.4.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.4.0.md](RELEASE_NOTES_v11.4.0.md)
+
 ## v11.3.0 — Time Remembers (2026-08-11)
 
 시간 감각을 화면으로 꺼내고, 코드베이스에서 큰 파일을 없앤 릴리스입니다.

@@ -1,0 +1,82 @@
+{
+  "engine": "keyword",
+  "key": "chunk_heavy",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "온보딩 체크리스트",
+  "result": {
+    "matches": [
+      {
+        "id": "task:onboarding-checklist",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
+        "title": "온보딩 체크리스트 정리",
+        "type": "Task",
+        "updated_at": "2026-06-30T08:20:00"
+      },
+      {
+        "id": "doc:handbook",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "source_node": "doc:handbook"
+        },
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "id": "page:onboarding",
+        "metadata": {},
+        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+        "title": "온보딩 첫 다섯 걸음",
+        "type": "Page",
+        "updated_at": "2026-06-01T12:00:00"
+      },
+      {
+        "id": "chunk:handbook:1",
+        "metadata": {
+          "heading_path": "안내서 > 온보딩",
+          "index": 0,
+          "page": 3,
+          "page_end": 4,
+          "source_node": "doc:handbook",
+          "start_char": 0
+        },
+        "summary": "온보딩 체크리스트: 첫째, 폴더를 연결합니다. 둘째, 질문을 합니다. 셋째, 근거를 확인합니다.",
+        "title": "handbook.pdf chunk 1",
+        "type": "Chunk",
+        "updated_at": "2026-06-12T10:00:01"
+      },
+      {
+        "id": "meeting:weekly",
+        "metadata": {},
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "id": "person:jiwon",
+        "metadata": {
+          "role": "owner"
+        },
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person",
+        "updated_at": "2026-04-11T10:00:00"
+      }
+    ],
+    "query": "온보딩 체크리스트"
+  }
+}

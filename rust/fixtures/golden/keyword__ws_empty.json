@@ -1,0 +1,18 @@
+{
+  "engine": "keyword",
+  "key": "ws_empty",
+  "params": {
+    "allowed_workspaces": [],
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "hybrid retrieval ranking",
+  "result": {
+    "matches": [],
+    "query": "hybrid retrieval ranking"
+  }
+}

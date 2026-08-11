@@ -1,0 +1,40 @@
+{
+  "engine": "keyword",
+  "key": "ko_code",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "빌드 실패 원인",
+  "result": {
+    "matches": [
+      {
+        "id": "code:build-failure",
+        "metadata": {
+          "ext": ".py",
+          "filename": "build_pipeline.py"
+        },
+        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
+        "title": "build_pipeline.py",
+        "type": "CodeFile",
+        "updated_at": "2026-04-22T18:05:00"
+      },
+      {
+        "id": "person:minseo",
+        "metadata": {
+          "role": "reviewer"
+        },
+        "summary": "빌드 파이프라인 담당자입니다.",
+        "title": "박민서 님",
+        "type": "Person",
+        "updated_at": "2026-04-12T10:00:00"
+      }
+    ],
+    "query": "빌드 실패 원인"
+  }
+}

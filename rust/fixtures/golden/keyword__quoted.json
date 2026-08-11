@@ -1,0 +1,118 @@
+{
+  "engine": "keyword",
+  "key": "quoted",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "said \"retrieval\" twice",
+  "result": {
+    "matches": [
+      {
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "id": "doc:retrieval-spec",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf"
+        },
+        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+        "title": "Retrieval specification",
+        "type": "Document",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "id": "sheet:metrics",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx"
+        },
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "id": "img:ocr-notes",
+        "metadata": {
+          "filename": "whiteboard-retrieval.png",
+          "ocr": true
+        },
+        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+        "title": "화이트보드 OCR 텍스트",
+        "type": "ImageText",
+        "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "id": "img:whiteboard",
+        "metadata": {
+          "ext": ".png",
+          "filename": "whiteboard-retrieval.png"
+        },
+        "summary": "Whiteboard photo from the retrieval design session.",
+        "title": "whiteboard-retrieval.png",
+        "type": "Image",
+        "updated_at": "2026-03-19T11:11:00"
+      },
+      {
+        "id": "chunk:spec:2",
+        "metadata": {
+          "index": 1,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 900
+        },
+        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
+        "title": "retrieval-spec.pdf chunk 2",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:02"
+      },
+      {
+        "id": "chunk:spec:1",
+        "metadata": {
+          "heading_path": "Retrieval > Fusion",
+          "index": 0,
+          "page": 2,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 0
+        },
+        "summary": "The lexical channel scores one over rank. The vector channel is max normalized before fusion.",
+        "title": "retrieval-spec.pdf chunk 1",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:01"
+      },
+      {
+        "id": "concept:retrieval",
+        "metadata": {},
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      }
+    ],
+    "query": "said \"retrieval\" twice"
+  }
+}

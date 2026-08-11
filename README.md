@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v11.3.0 Living Brain walkthrough](output/release/v11.3.0/gifs/v11.3.0-living-brain-walkthrough.gif)
+![v11.4.0 Living Brain walkthrough](output/release/v11.4.0/gifs/v11.4.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.3.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.3.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.3.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.3.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.3.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.3.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.3.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.3.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.4.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.4.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.4.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.4.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.4.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.4.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.4.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.4.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,57 +58,54 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v11.3.0/screenshots/01-login.png) | ![Model install](output/release/v11.3.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.3.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v11.4.0/screenshots/01-login.png) | ![Model install](output/release/v11.4.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.4.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v11.3.0/SCREENSHOT_INDEX.md](output/release/v11.3.0/SCREENSHOT_INDEX.md)
+[output/release/v11.4.0/SCREENSHOT_INDEX.md](output/release/v11.4.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **11.3.0 — Time Remembers**:
+The current release is **11.4.0 — Rust Foundation**:
 
-11.1.0 gave the Brain a sense of time; 11.3.0 makes that sense **visible —
-and rebuilds the codebase so no file is too big to read.**
+The Rust migration begins — not as a rewrite, but as **working, proven
+pieces**, while the Python server keeps serving every product surface.
 
-- **기억의 연대기 (Brain Chronicle).** A seventh primary screen
-  (`#/chronicle`) where the Brain's growth is a timeline: a cumulative
-  growth curve with a draggable, keyboard-operable time handle; a
-  week-by-weekday activity heatmap; each day's story in plain-language
-  cards (sources, new concepts, conversations, changed facts) that
-  deep-link into memory search, the graph, and past conversations; and an
-  as-of rewind showing what the Brain knew — and what mattered — at any
-  past moment. It is the first surface built on the 11.1.0 temporal
-  columns (`valid_from` / `valid_to` / `superseded_by`, `store.as_of()`).
-  Read-only end to end: no schema change, no writes, no model calls, and
-  an empty Brain says honestly that its record starts today.
-- **No Big Files.** Every first-party source file is now under 1,000
-  lines. The 28 files that exceeded it — `styles.css` alone was 10,956
-  lines — were decomposed into cohesive modules with proofs that nothing
-  changed: AST-equality for every Python function and class, a
-  byte-identical CSS bundle, identical i18n key→value maps, and a
-  576-response diff of the visual mock server. A new lint gate
-  (`scripts/check_max_file_lines.mjs`) scans all 1,300+ tracked source
-  files and fails CI on any file over the ceiling.
-- **Gates got their teeth back.** Release-evidence binding now
-  fingerprints the whole mock-server tree instead of one entry file; the
-  pixel gate understands screens that are new in a release; the i18n
-  orphan scan understands namespace part files.
+- **A `rust/` workspace with three crates.** `lattice-core` reads the
+  same `knowledge_graph.sqlite` (read-only, WAL) and carries a
+  bit-for-bit port of the local hash embedder. `lattice-retrieval` is the
+  native hybrid/keyword/vector engine — proven against committed Python
+  goldens at **75/75 exact parity, zero epsilon**, with a bidirectional
+  contract: a Python test suite re-runs the same goldens so neither side
+  can drift silently. `lattice-host` is the worker supervisor (HTTP
+  `/health` gating, crash auto-restart with backoff, graceful shutdown,
+  unified port selection) plus a loopback-only gateway: `/host/*` status,
+  native `/rust/search/*`, and a streaming reverse proxy for everything
+  else — an opt-in front door, with 194 Rust tests behind it.
+- **The desktop shell rides the new foundation.** The Tauri `main.rs`
+  shrank from 451 to 149 lines by consuming `lattice-host`; its five IPC
+  commands keep their exact contracts, a candidate-resolution
+  priority-order bug is fixed, and the TCP probe became a real health
+  check.
+- **The same discipline, extended.** CI gained a dedicated `rust` job
+  (fmt, clippy `-D warnings`, tests); the 1,000-line file ceiling now
+  covers `*.rs`; the version bump keeps the Rust workspace in lockstep
+  (25 synchronized targets). The full migration roadmap lives in
+  [docs/v11.4.0_RUST_FOUNDATION_PLAN.md](docs/v11.4.0_RUST_FOUNDATION_PLAN.md).
 
-All of it lands with the floor intact: **6,560 Python + 1,761 frontend
-tests, 100.00% of 40,488 statements and 11,052 branches, frontend at 100%
-on all four metrics**, verified on macOS 3.14 and a fresh-resolve
-python 3.11 environment; Playwright 40/40 including the new chronicle
-suite.
+All of it lands with the floor intact: **6,643 Python + 1,761 frontend
+tests at 100.00% statement and branch coverage, 194 Rust tests**, mypy
+and clippy clean, verified on macOS 3.14 and a fresh-resolve python 3.11
+environment.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 11.3.0 release must use exact filenames:
+Expected artifacts for 11.4.0 release must use exact filenames:
 
-- `dist/ltcai-11.3.0-py3-none-any.whl`
-- `dist/ltcai-11.3.0.tar.gz`
-- `ltcai-11.3.0.tgz`
-- `dist/ltcai-11.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.3.0_aarch64.dmg`
+- `dist/ltcai-11.4.0-py3-none-any.whl`
+- `dist/ltcai-11.4.0.tar.gz`
+- `ltcai-11.4.0.tgz`
+- `dist/ltcai-11.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.4.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -143,6 +140,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 11.4.0 | Rust Foundation |
 | 11.3.0 | Time Remembers |
 | 11.2.0 | All Systems On |
 | 11.1.0 | Product Intelligence |

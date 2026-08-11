@@ -1,0 +1,272 @@
+{
+  "engine": "hybrid",
+  "key": "min_vector_floor",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.95,
+    "top_k": 20
+  },
+  "query": "hybrid retrieval ranking",
+  "result": {
+    "alpha": 0.6,
+    "detail": null,
+    "fusion_strategy": "alpha",
+    "graph_expansion": {
+      "added": 0,
+      "cap": 5,
+      "enabled": false,
+      "failed_seeds": 0,
+      "seeds": 0,
+      "truncated": false
+    },
+    "matches": [
+      {
+        "fusion": "lexical",
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon"
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 1,
+        "rerank_score": 0.4,
+        "score": 0.4,
+        "scores": {
+          "lexical": 1.0,
+          "vector": 0.0
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:parity-harness",
+        "rank": 2,
+        "rerank_score": 0.2,
+        "score": 0.2,
+        "scores": {
+          "lexical": 0.5,
+          "vector": 0.0
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "code:hybrid-search",
+        "metadata": {
+          "ext": ".py",
+          "filename": "hybrid.py"
+        },
+        "node_id": "code:hybrid-search",
+        "rank": 3,
+        "rerank_score": 0.133333,
+        "score": 0.133333,
+        "scores": {
+          "lexical": 0.333333,
+          "vector": 0.0
+        },
+        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+        "title": "hybrid.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-08T09:30:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "sheet:metrics",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx"
+        },
+        "node_id": "sheet:metrics",
+        "rank": 4,
+        "rerank_score": 0.1,
+        "score": 0.1,
+        "scores": {
+          "lexical": 0.25,
+          "vector": 0.0
+        },
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "chunk:spec:2",
+        "metadata": {
+          "index": 1,
+          "source_node": "doc:retrieval-spec",
+          "start_char": 900
+        },
+        "node_id": "doc:retrieval-spec",
+        "rank": 5,
+        "rerank_score": 0.08,
+        "score": 0.08,
+        "scores": {
+          "lexical": 0.2,
+          "vector": 0.0
+        },
+        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
+        "title": "retrieval-spec.pdf chunk 2",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:02"
+      },
+      {
+        "fusion": "lexical",
+        "id": "file:ranking-notes",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md"
+        },
+        "node_id": "file:ranking-notes",
+        "rank": 6,
+        "rerank_score": 0.066667,
+        "score": 0.066667,
+        "scores": {
+          "lexical": 0.166667,
+          "vector": 0.0
+        },
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "img:ocr-notes",
+        "metadata": {
+          "filename": "whiteboard-retrieval.png",
+          "ocr": true
+        },
+        "node_id": "img:ocr-notes",
+        "rank": 7,
+        "rerank_score": 0.05,
+        "score": 0.05,
+        "scores": {
+          "lexical": 0.125,
+          "vector": 0.0
+        },
+        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+        "title": "화이트보드 OCR 텍스트",
+        "type": "ImageText",
+        "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "img:whiteboard",
+        "metadata": {
+          "ext": ".png",
+          "filename": "whiteboard-retrieval.png"
+        },
+        "node_id": "img:whiteboard",
+        "rank": 8,
+        "rerank_score": 0.044444,
+        "score": 0.044444,
+        "scores": {
+          "lexical": 0.111111,
+          "vector": 0.0
+        },
+        "summary": "Whiteboard photo from the retrieval design session.",
+        "title": "whiteboard-retrieval.png",
+        "type": "Image",
+        "updated_at": "2026-03-19T11:11:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "concept:ranking",
+        "metadata": {},
+        "node_id": "concept:ranking",
+        "rank": 9,
+        "rerank_score": 0.036364,
+        "score": 0.036364,
+        "scores": {
+          "lexical": 0.090909,
+          "vector": 0.0
+        },
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "concept:retrieval",
+        "metadata": {},
+        "node_id": "concept:retrieval",
+        "rank": 10,
+        "rerank_score": 0.033333,
+        "score": 0.033333,
+        "scores": {
+          "lexical": 0.083333,
+          "vector": 0.0
+        },
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "fusion": "lexical",
+        "id": "error:timeout",
+        "metadata": {},
+        "node_id": "error:timeout",
+        "rank": 11,
+        "rerank_score": 0.030769,
+        "score": 0.030769,
+        "scores": {
+          "lexical": 0.076923,
+          "vector": 0.0
+        },
+        "summary": "An error where the ranking took longer than the request budget.",
+        "title": "Search timeout",
+        "type": "Error",
+        "updated_at": "2026-03-04T10:00:00"
+      }
+    ],
+    "mode": "hybrid",
+    "multimodal": {
+      "images": 2,
+      "types": [
+        "ImageText",
+        "Image"
+      ]
+    },
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": "hybrid retrieval ranking"
+    },
+    "query": "hybrid retrieval ranking",
+    "query_class": "fact",
+    "rerank": {
+      "detail": null,
+      "mode": "identity",
+      "model": null
+    },
+    "sources": {
+      "lexical": 13,
+      "vector": 0
+    },
+    "top_k": 20,
+    "vector": {
+      "approx": false,
+      "backend": "bruteforce-cosine",
+      "degraded": null,
+      "embedded_rows": 44,
+      "exhaustive": true,
+      "truncated": false
+    }
+  }
+}

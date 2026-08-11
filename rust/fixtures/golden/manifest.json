@@ -1,0 +1,144 @@
+{
+  "embedding_dim": 384,
+  "embedding_model": "lattice-local-hash-v1:384",
+  "engines": [
+    "hybrid",
+    "keyword",
+    "vector"
+  ],
+  "frozen_now": "2026-08-01T12:00:00",
+  "pinned_env": {
+    "LATTICEAI_CROSS_ENCODER_RERANK": "",
+    "LATTICEAI_FUSION_RRF": "",
+    "LATTICEAI_FUSION_STRATEGY": "",
+    "LATTICEAI_FUSION_WEIGHTS": "",
+    "LATTICEAI_GRAPH_EXPANSION": "",
+    "LATTICEAI_KG_READ_V2": "1",
+    "LATTICEAI_LLM_EXTRACTION": "false",
+    "LATTICEAI_QUERY_REWRITE": "",
+    "LATTICEAI_VECTOR_DIM": "384",
+    "LATTICEAI_VECTOR_INDEX": "brute",
+    "LATTICEAI_VECTOR_MAX_CANDIDATES": "10000"
+  },
+  "queries": [
+    {
+      "key": "en_fact",
+      "query": "hybrid retrieval ranking"
+    },
+    {
+      "key": "ko_fact",
+      "query": "회의 결정 사항"
+    },
+    {
+      "key": "en_code",
+      "query": "vector_search() returns"
+    },
+    {
+      "key": "ko_code",
+      "query": "빌드 실패 원인"
+    },
+    {
+      "key": "en_person",
+      "query": "who owns the onboarding checklist"
+    },
+    {
+      "key": "ko_person",
+      "query": "담당자 누구"
+    },
+    {
+      "key": "en_recency",
+      "query": "recent decisions last week"
+    },
+    {
+      "key": "ko_recency",
+      "query": "지난주 회의 기록"
+    },
+    {
+      "key": "en_filler",
+      "query": "  what is   the retrieval specification please  "
+    },
+    {
+      "key": "ko_filler",
+      "query": "온보딩 체크리스트 좀 알려줘"
+    },
+    {
+      "key": "short_query",
+      "query": "ai"
+    },
+    {
+      "key": "no_hit",
+      "query": "zzqq wumpus nonsense"
+    },
+    {
+      "key": "tie_heavy",
+      "query": "Tie candidate"
+    },
+    {
+      "key": "chunk_heavy",
+      "query": "온보딩 체크리스트"
+    },
+    {
+      "key": "quoted",
+      "query": "said \"retrieval\" twice"
+    },
+    {
+      "key": "empty_query",
+      "query": ""
+    },
+    {
+      "allowed": [],
+      "key": "ws_empty",
+      "query": "hybrid retrieval ranking"
+    },
+    {
+      "allowed": [],
+      "key": "ws_empty_legacy",
+      "legacy": true,
+      "query": "회의 결정 사항"
+    },
+    {
+      "allowed": [
+        "ws-alpha"
+      ],
+      "key": "ws_alpha",
+      "query": "hybrid retrieval ranking"
+    },
+    {
+      "allowed": [
+        "ws-alpha"
+      ],
+      "key": "ws_alpha_legacy",
+      "legacy": true,
+      "query": "회의 결정 사항"
+    },
+    {
+      "allowed": [
+        "ws-beta"
+      ],
+      "key": "ws_beta",
+      "query": "온보딩 체크리스트"
+    },
+    {
+      "key": "min_vector_floor",
+      "min_vector": 0.95,
+      "query": "hybrid retrieval ranking"
+    },
+    {
+      "key": "top_k_small",
+      "query": "hybrid retrieval ranking",
+      "top_k": 3
+    },
+    {
+      "alpha": 0.2,
+      "key": "alpha_pinned",
+      "query": "지난주 회의 기록"
+    },
+    {
+      "key": "fts_rank_cut",
+      "limit": 2,
+      "query": "Tie candidate",
+      "top_k": 2
+    }
+  ],
+  "store": "parity_store.sqlite"
+}

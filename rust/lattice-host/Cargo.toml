@@ -1,0 +1,32 @@
+[package]
+name = "lattice-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Library first: the supervisor and the gateway are consumed by `src-tauri`
+# as a path dependency. The binary below is a thin opt-in front door.
+[lib]
+name = "lattice_host"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lattice-host"
+path = "src/main.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+reqwest = { workspace = true }
+# The native /rust/search/* lanes: the gateway answers them itself out of the
+# read-only store instead of proxying them to the Python worker.
+lattice-core = { workspace = true }
+lattice-retrieval = { workspace = true }
+# Only for kill(2)/SIGTERM on unix; every other platform falls back to the
+# std `Child::kill` path.
+libc = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

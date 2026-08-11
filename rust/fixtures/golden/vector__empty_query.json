@@ -1,0 +1,26 @@
+{
+  "engine": "vector",
+  "key": "empty_query",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "",
+  "result": {
+    "matches": [],
+    "query": "",
+    "recall": {
+      "backend": "bruteforce-cosine",
+      "candidates_scanned": 0,
+      "candidates_total": 0,
+      "detail": null,
+      "max_candidates": 10000,
+      "truncated": false
+    }
+  }
+}

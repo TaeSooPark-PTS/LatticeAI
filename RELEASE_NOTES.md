@@ -1,3 +1,14 @@
+# [v11.4.0 - Rust Foundation] (2026-08-11)
+
+Rust 전환 Phase 1: `rust/` workspace 3크레이트 — 같은 SQLite를 읽는
+lattice-core(임베더 bit-for-bit), 네이티브 검색 lattice-retrieval(패리티
+75/75 완전 일치 + Python 계약 80테스트 양방향 잠금), 수퍼바이저+게이트웨이
+lattice-host(HTTP 헬스·자동 재시작·포트 통일·SSE 프록시, 옵트인). Tauri
+셸이 수퍼바이저에 올라탐(451→149줄, IPC 계약 보존). CI rust 잡 신설.
+플로어 유지: 6,643+1,761 테스트 · 100.00% · Rust 194.
+
+See [RELEASE_NOTES_v11.4.0.md](RELEASE_NOTES_v11.4.0.md).
+
 # [v11.3.0 - Time Remembers] (2026-08-11)
 
 기억의 연대기(Brain Chronicle) — 성장 곡선·활동 히트맵·그날의 이야기·
@@ -419,7 +430,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.3.0**.
+This repository keeps public release history from **9.0.0 through 11.4.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

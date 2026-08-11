@@ -1,0 +1,31 @@
+# Lattice AI Rust workspace — the Rust Foundation (v11.4.0, Phase 1 of
+# docs/v11.4.0_RUST_FOUNDATION_PLAN.md). Deliberately independent of
+# src-tauri so CI can build and test these crates on a bare ubuntu runner;
+# src-tauri consumes lattice-host through a path dependency instead.
+[workspace]
+resolver = "2"
+members = ["lattice-core", "lattice-retrieval", "lattice-host"]
+
+[workspace.package]
+# Kept in lockstep with the product version by scripts/bump_version.py and
+# guarded by tests/unit/test_version_consistency.py.
+version = "11.4.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+lattice-core = { path = "lattice-core" }
+lattice-retrieval = { path = "lattice-retrieval" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Storage / retrieval. FTS5 must be verifiably available — lattice-core
+# carries a unit test that creates a trigram fts5 table and fails loudly if
+# the bundled build lacks the module.
+rusqlite = { version = "0.32", features = ["bundled"] }
+# Host / gateway.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process", "time", "signal", "io-util", "sync"] }
+axum = "0.7"
+reqwest = { version = "0.12", default-features = false, features = ["stream"] }
+libc = "0.2"
+# Test-only conveniences.
+tempfile = "3"

@@ -1,0 +1,20 @@
+[package]
+name = "lattice-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+# float_roundtrip: without it serde_json's fast decimal path lands 1 ULP
+# off on long literals, and a golden compared with == would fail on a
+# parser artefact rather than on a real divergence.
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+rusqlite = { workspace = true }
+# blake2b with an 8-byte digest is part of the embedding contract: the digest
+# length rides in BLAKE2's parameter block, so this is NOT a truncation of the
+# 64-byte digest and cannot be emulated by slicing one.
+blake2 = "0.10"
+
+[dev-dependencies]
+tempfile = { workspace = true }

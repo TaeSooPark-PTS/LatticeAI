@@ -1,0 +1,18 @@
+{
+  "engine": "keyword",
+  "key": "ws_empty_legacy",
+  "params": {
+    "allowed_workspaces": [],
+    "alpha": null,
+    "include_legacy_global": true,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "회의 결정 사항",
+  "result": {
+    "matches": [],
+    "query": "회의 결정 사항"
+  }
+}

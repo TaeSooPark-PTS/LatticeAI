@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v11.2.0)
+# Lattice AI — Operations Guide (v11.4.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the

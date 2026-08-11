@@ -20,6 +20,14 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 
+# The rust/ workspace crates carry `version.workspace = true`, so the workspace
+# root is the only hand-edited copy of the number. Both lockfiles still record
+# it per crate — src-tauri's too, since 11.4.0, because the desktop shell now
+# depends on lattice-host by path — and a lockfile left behind is a file the
+# next `cargo build` silently rewrites underneath a tagged release.
+RUST_CRATES = ("lattice-core", "lattice-host", "lattice-retrieval")
+RUST_LOCKFILES = ("rust/Cargo.lock", "src-tauri/Cargo.lock")
+
 # (path, kind, pattern) — pattern groups: (prefix, version)
 TARGETS = [
     ("latticeai/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
@@ -40,6 +48,12 @@ TARGETS = [
     ("src-tauri/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
     ("src-tauri/Cargo.lock", "regex", r'(name = "lattice-ai-desktop"\nversion = ")([^"]+)(")'),
     ("src-tauri/tauri.conf.json", "json", "version"),
+    ("rust/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
+    *[
+        (lock, "regex", rf'(name = "{crate}"\nversion = ")([^"]+)(")')
+        for lock in RUST_LOCKFILES
+        for crate in RUST_CRATES
+    ],
     ("static/app/asset-manifest.json", "json", "version"),
 ]
 

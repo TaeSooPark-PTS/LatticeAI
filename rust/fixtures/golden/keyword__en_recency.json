@@ -1,0 +1,18 @@
+{
+  "engine": "keyword",
+  "key": "en_recency",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "recent decisions last week",
+  "result": {
+    "matches": [],
+    "query": "recent decisions last week"
+  }
+}

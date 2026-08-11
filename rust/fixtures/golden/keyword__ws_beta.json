@@ -1,0 +1,31 @@
+{
+  "engine": "keyword",
+  "key": "ws_beta",
+  "params": {
+    "allowed_workspaces": [
+      "ws-beta"
+    ],
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "온보딩 체크리스트",
+  "result": {
+    "matches": [
+      {
+        "id": "task:onboarding-checklist",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
+        "title": "온보딩 체크리스트 정리",
+        "type": "Task",
+        "updated_at": "2026-06-30T08:20:00"
+      }
+    ],
+    "query": "온보딩 체크리스트"
+  }
+}
