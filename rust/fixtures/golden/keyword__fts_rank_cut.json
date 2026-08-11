@@ -1,0 +1,35 @@
+{
+  "engine": "keyword",
+  "key": "fts_rank_cut",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 2,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 2
+  },
+  "query": "Tie candidate",
+  "result": {
+    "matches": [
+      {
+        "id": "tie:a",
+        "metadata": {},
+        "summary": "",
+        "title": "Tie candidate A",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "tie:b",
+        "metadata": {},
+        "summary": "",
+        "title": "Tie candidate B",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      }
+    ],
+    "query": "Tie candidate"
+  }
+}

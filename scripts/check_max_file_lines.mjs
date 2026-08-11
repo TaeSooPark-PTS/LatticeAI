@@ -7,10 +7,10 @@
 // context on the 90% of the file that is irrelevant to the change, and two
 // people editing different features of the same file conflict every time.
 //
-// The rule: every git-tracked *.py *.ts *.tsx *.js *.mjs *.cjs *.css file — tests
-// included — stays at or under 1,000 lines. Split by cohesion, not by cutting at
-// line 1,000: a module that needs more than a thousand lines is doing more than
-// one job.
+// The rule: every git-tracked *.py *.ts *.tsx *.js *.mjs *.cjs *.css *.rs file —
+// tests included — stays at or under 1,000 lines. Split by cohesion, not by
+// cutting at line 1,000: a module that needs more than a thousand lines is doing
+// more than one job.
 //
 // Exit 0 clean, 1 when a file is over the limit, 2 when the check cannot run.
 import { execFileSync } from "node:child_process";
@@ -22,7 +22,10 @@ const repo = join(import.meta.dirname, "..");
 
 const MAX_LINES = 1000;
 
-const EXTENSIONS = ["*.py", "*.ts", "*.tsx", "*.js", "*.mjs", "*.cjs", "*.css"];
+// `*.rs` joined in 11.4.0 with the Rust foundation (rust/ workspace +
+// src-tauri). Build output — rust/target, src-tauri/target — is gitignored and
+// therefore never listed here in the first place.
+const EXTENSIONS = ["*.py", "*.ts", "*.tsx", "*.js", "*.mjs", "*.cjs", "*.css", "*.rs"];
 
 // Paths that are not written by hand. Each entry names why it is here; nothing
 // gets added to this list to make a hand-written file pass.

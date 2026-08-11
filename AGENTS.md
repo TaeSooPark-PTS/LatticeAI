@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **11.3.0 — Time Remembers**.
+Current release: **11.4.0 — Rust Foundation**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

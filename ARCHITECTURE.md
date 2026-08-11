@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.3.0 — Time Remembers**.
+Current release: **11.4.0 — Rust Foundation**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -19,7 +19,7 @@ flowchart TB
   subgraph surfaces["Surfaces — every one talks to the same localhost sidecar"]
     direction LR
     ui["React / Vite app<br/>lazy routes · per-route i18n<br/>ko · en switch in the top bar"]
-    desktop["Tauri<br/>desktop shell"]
+    desktop["Tauri desktop shell<br/>supervised by lattice-host"]
     editor["VS Code<br/>extension"]
     browser["Browser<br/>extension"]
     telegram["Telegram<br/>bridge"]
@@ -312,6 +312,88 @@ Important expectations:
 - keep model and tool execution behind explicit runtime boundaries.
 - keep API-specific HTTP errors at the route boundary and domain/model errors in
   services.
+
+## Rust Foundation (11.4.0)
+
+`rust/` is a cargo workspace of three crates. It is Phase 1 of
+[`docs/v11.4.0_RUST_FOUNDATION_PLAN.md`](docs/v11.4.0_RUST_FOUNDATION_PLAN.md):
+the layers that are pure computation move to Rust first, and Python keeps
+everything that is not. The workspace is deliberately **not** a member of
+`src-tauri`'s build — none of it depends on `tauri`, so a bare ubuntu CI runner
+compiles and tests all of it with no desktop system libraries installed.
+
+| Crate | Role |
+|---|---|
+| `lattice-core` | Data-directory resolution (`LATTICEAI_DATA_DIR`, else `~/.ltcai`), read-only WAL access to the shared `knowledge_graph.sqlite`, and a 1:1 port of `lattice_brain/embeddings.py` (tokenizer, blake2b-8 hashed bag of features, L2 normalization, `<f32` encoding, pure-inner-product similarity). |
+| `lattice-retrieval` | The graph-layer engines: `search()` (keyword), `vector_search()` (brute-force cosine), `hybrid_search()` (two-channel alpha fusion), including query classification, filler rewriting, recency decay, banker's rounding, and the honesty blocks. |
+| `lattice-host` | The Python worker supervisor and the loopback-only IPC/API gateway. Usable as a library (the desktop shell consumes it) and as an opt-in `lattice-host` binary. |
+
+### The parity contract runs both ways
+
+`scripts/generate_rust_parity_fixtures.py` builds `rust/fixtures/parity_store.sqlite`
+and 75 golden files through the **real Python write and read paths**, and both
+runtimes are then held to them: `tests/unit/test_rust_parity_contract.py` re-runs
+the Python engines against the committed goldens, and `rust/lattice-retrieval/tests/parity.rs`
+runs the Rust ones. Comparison is exact `serde_json::Value` equality over the
+whole response, so a drifting float, a renamed key, a missing honesty field and a
+reordered tie all fail the same way. A semantic change on the Python side cannot
+silently invalidate the goldens, and a Rust port cannot quietly narrow the claim.
+
+The clock is a parameter, not a call: `hybrid_search` takes `now_secs`, because a
+golden file that reads the wall clock is not a golden file.
+
+### Gateway topology
+
+The gateway binds 127.0.0.1 and refuses any other address outright. Three
+namespaces, no overlap:
+
+- `/host/health`, `/host/status` — the host answers itself. Anything else under
+  `/host/` is a 404 from the host, never a request leaked to the worker.
+- `/rust/search/{hybrid,keyword,vector}` (GET and POST) — served natively by
+  `lattice-retrieval` against the read-only store, with no workspace scoping:
+  that is Python's `trusted_local_owner` branch, and a loopback request on the
+  owner's own machine is exactly that caller. Bad input is a 422 naming the
+  field; a machine with no brain yet gets a 404 that says so rather than an
+  empty result set that reads like "nothing matched". SQLite work runs on
+  `spawn_blocking`, so a search never stalls an in-flight SSE stream.
+- everything else — reverse-proxied to the Python worker with the response body
+  streamed, so `/api/chat/stream` and the agent step feed keep flowing.
+
+In 11.4.0 the gateway is an **opt-in front door**: it runs when the
+`lattice-host` binary is started. The existing entry points (the `ltcai` CLI, a
+browser pointed straight at the worker) are unchanged.
+
+### The desktop shell rides the supervisor
+
+`src-tauri/src/main.rs` no longer resolves, spawns, probes or restarts anything
+itself; it consumes `lattice-host` as a path dependency and is a thin Tauri
+shell (451 lines → 144). The five commands (`backend_origin`, `backend_status`,
+`restart_backend`, `shutdown_backend`, `select_folder`) keep their names and
+their response shapes, and the webview still navigates to `{origin}/app`. What
+changed underneath is quality, not contract:
+
+- the boot gate is an HTTP `GET /health` instead of a TCP connect, which proved
+  only that *something* had bound the port;
+- a crashed worker is restarted with exponential backoff instead of staying dead
+  until the user notices;
+- shutdown is SIGTERM then SIGKILL after a grace period, so the worker closes
+  its SQLite handles;
+- the port is the unified 4825 scanned upward, instead of a hardcoded 8765 —
+  `LATTICEAI_PORT` is still honoured verbatim when set;
+- the python-candidate list is no longer `sort()`ed before `dedup()`, which used
+  to discard the declared interpreter priority.
+
+`LATTICEAI_DESKTOP_BACKEND_ORIGIN` (front an existing worker, spawn nothing) and
+`LATTICEAI_DESKTOP_NO_BACKEND` (kill switch) behave as before.
+
+### What stays Python
+
+Everything not listed above. Phase 1 explicitly does not port the three-channel
+`SearchService.hybrid_search`, the KG read APIs, ingestion, jobs/events/scheduler,
+or the agent runtime; and inside retrieval it covers only the default
+configuration (brute backend, RRF off, graph expansion off, image late fusion
+off, cross-encoder rerank off). Anything outside that envelope is proxied to the
+worker, so no capability is lost — only the fast path is native.
 
 ## Brain Core
 
@@ -1035,13 +1117,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.3.0 exact artifact names:
+11.4.0 exact artifact names:
 
-- `dist/ltcai-11.3.0-py3-none-any.whl`
-- `dist/ltcai-11.3.0.tar.gz`
-- `ltcai-11.3.0.tgz`
-- `dist/ltcai-11.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.3.0_aarch64.dmg`
+- `dist/ltcai-11.4.0-py3-none-any.whl`
+- `dist/ltcai-11.4.0.tar.gz`
+- `ltcai-11.4.0.tgz`
+- `dist/ltcai-11.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.4.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

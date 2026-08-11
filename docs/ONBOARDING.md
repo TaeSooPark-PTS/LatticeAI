@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **11.3.0 — Time Remembers**.
+Current release: **11.4.0 — Rust Foundation**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

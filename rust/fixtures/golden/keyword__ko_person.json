@@ -1,0 +1,39 @@
+{
+  "engine": "keyword",
+  "key": "ko_person",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "담당자 누구",
+  "result": {
+    "matches": [
+      {
+        "id": "person:minseo",
+        "metadata": {
+          "role": "reviewer"
+        },
+        "summary": "빌드 파이프라인 담당자입니다.",
+        "title": "박민서 님",
+        "type": "Person",
+        "updated_at": "2026-04-12T10:00:00"
+      },
+      {
+        "id": "person:jiwon",
+        "metadata": {
+          "role": "owner"
+        },
+        "summary": "검색 품질 담당자입니다. 온보딩 개선도 함께 맡고 있습니다.",
+        "title": "김지원 님",
+        "type": "Person",
+        "updated_at": "2026-04-11T10:00:00"
+      }
+    ],
+    "query": "담당자 누구"
+  }
+}

@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**11.3.0 — Time Remembers** adds the Brain Chronicle (연대기) — a seventh primary screen where the Brain's growth is a timeline: a growth curve with a draggable time handle, an activity heatmap, each day's story in plain-language cards, and an as-of rewind showing what the Brain knew at any past moment. Under the hood, every first-party source file is now under 1,000 lines (28 monoliths decomposed with AST-equality proofs) and a lint gate keeps it that way. The extension surface is unchanged.
+**11.4.0 — Rust Foundation** lays the first stone of the Rust architecture: a `rust/` cargo workspace with a native retrieval engine proven bit-for-bit against the Python engine (75/75 exact-parity goldens), and a `lattice-host` supervisor — HTTP health gating, crash auto-restart, graceful shutdown, unified ports — that the Tauri desktop shell now rides. The Python server keeps serving every product surface; the extension surface is unchanged.
 The memory stats moved into a hover badge with a small summary graph, the six
 capture chips folded behind one + on the composer, the model banner became a
 status pill with the single accented CTA, and past conversations / stats / the

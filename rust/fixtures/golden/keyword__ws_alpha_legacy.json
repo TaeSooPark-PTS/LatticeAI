@@ -1,0 +1,65 @@
+{
+  "engine": "keyword",
+  "key": "ws_alpha_legacy",
+  "params": {
+    "allowed_workspaces": [
+      "ws-alpha"
+    ],
+    "alpha": null,
+    "include_legacy_global": true,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "회의 결정 사항",
+  "result": {
+    "matches": [
+      {
+        "id": "chunk:handbook:2",
+        "metadata": {
+          "heading_path": "안내서 > 검색",
+          "index": 1,
+          "page": 7,
+          "source_node": "doc:handbook",
+          "start_char": 1200
+        },
+        "summary": "검색 화면에서는 회의 결정 사항을 한 번에 찾을 수 있습니다.",
+        "title": "handbook.pdf chunk 2",
+        "type": "Chunk",
+        "updated_at": "2026-06-12T10:00:02"
+      },
+      {
+        "id": "dec:rust-foundation",
+        "metadata": {
+          "category": "platform"
+        },
+        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+        "title": "Rust 기반 검색 이관 결정",
+        "type": "Decision",
+        "updated_at": "2026-07-18T14:30:00"
+      },
+      {
+        "id": "doc:handbook",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "source_node": "doc:handbook"
+        },
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "id": "meeting:weekly",
+        "metadata": {},
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      }
+    ],
+    "query": "회의 결정 사항"
+  }
+}

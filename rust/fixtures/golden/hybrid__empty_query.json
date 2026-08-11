@@ -1,0 +1,32 @@
+{
+  "engine": "hybrid",
+  "key": "empty_query",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "",
+  "result": {
+    "alpha": 0.6,
+    "detail": null,
+    "fusion_strategy": "alpha",
+    "matches": [],
+    "mode": "hybrid",
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": ""
+    },
+    "query": "",
+    "query_class": "fact",
+    "sources": {
+      "lexical": 0,
+      "vector": 0
+    },
+    "top_k": 20
+  }
+}

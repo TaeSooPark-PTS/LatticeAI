@@ -21,6 +21,17 @@
     "specific, not less."
   ],
 
+  "11.4.0": {
+    "_why": [
+      "Rust Foundation release: backend architecture only (rust/ workspace,",
+      "supervisor, native search gateway). No intentional change to any",
+      "captured screen — the frontend bundle is untouched. All thirteen are",
+      "measured but not gated; 13-chronicle.png now has a v11.3.0 baseline.",
+      "Known jitter: 05-memory-graph moves ~2-3% between captures from the",
+      "cytoscape layout, with zero source change (also observed at 11.3.0)."
+    ]
+  },
+
   "11.3.0": {
     "_why": [
       "Chronicle release. 13-chronicle.png is NEW this release (no baseline",

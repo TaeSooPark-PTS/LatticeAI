@@ -3,16 +3,17 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.3.0 — Time Remembers**.
+Current release: **11.4.0 — Rust Foundation**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 9.0.0 through 11.3.0. Security
+The public Git tree keeps release history from 9.0.0 through 11.4.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 11.3.x (latest) | Supported |
+| 11.4.x (latest) | Supported |
+| 11.3.x | Supported |
 | 11.2.x | Supported |
 | 11.1.x | Supported |
 | 11.0.x | Supported |

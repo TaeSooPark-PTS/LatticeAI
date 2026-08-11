@@ -1,0 +1,67 @@
+{
+  "engine": "keyword",
+  "key": "short_query",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "ai",
+  "result": {
+    "matches": [
+      {
+        "id": "task:parity-harness",
+        "metadata": {
+          "status": "open"
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "id": "doc:handbook",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "source_node": "doc:handbook"
+        },
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "id": "slide:fusion",
+        "metadata": {},
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "id": "repo:lattice",
+        "metadata": {},
+        "summary": "The monorepo holding the Python worker and the Rust workspace.",
+        "title": "lattice-ai",
+        "type": "Repository",
+        "updated_at": "2026-02-21T10:00:00"
+      },
+      {
+        "id": "source:repo",
+        "metadata": {
+          "source": "git"
+        },
+        "summary": "Source repository for the product.",
+        "title": "github.com/lattice/ai",
+        "type": "Source",
+        "updated_at": "2026-02-20T10:00:00"
+      }
+    ],
+    "query": "ai"
+  }
+}

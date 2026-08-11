@@ -1,0 +1,169 @@
+{
+  "engine": "hybrid",
+  "key": "ws_empty_legacy",
+  "params": {
+    "allowed_workspaces": [],
+    "alpha": null,
+    "include_legacy_global": true,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "회의 결정 사항",
+  "result": {
+    "alpha": 0.6,
+    "detail": null,
+    "fusion_strategy": "alpha",
+    "graph_expansion": {
+      "added": 0,
+      "cap": 5,
+      "enabled": false,
+      "failed_seeds": 0,
+      "seeds": 0,
+      "truncated": false
+    },
+    "matches": [
+      {
+        "fusion": "vector",
+        "id": "legacy:global-note",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "legacy:global-note",
+        "rank": 1,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
+        "title": "Legacy global note",
+        "type": "Document",
+        "updated_at": "2026-06-20T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "org:lattice",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Organization"
+          }
+        },
+        "node_id": "org:lattice",
+        "rank": 2,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "The organization.",
+        "title": "Lattice",
+        "type": "Organization",
+        "updated_at": "2026-02-22T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "page:onboarding",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Page"
+          }
+        },
+        "node_id": "page:onboarding",
+        "rank": 3,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+        "title": "온보딩 첫 다섯 걸음",
+        "type": "Page",
+        "updated_at": "2026-06-01T12:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "slide:fusion",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:fusion",
+        "rank": 4,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "tie:e",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:e",
+        "rank": 5,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "",
+        "title": "Tie candidate E",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      }
+    ],
+    "mode": "hybrid",
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": "회의 결정 사항"
+    },
+    "query": "회의 결정 사항",
+    "query_class": "fact",
+    "rerank": {
+      "detail": null,
+      "mode": "identity",
+      "model": null
+    },
+    "sources": {
+      "lexical": 0,
+      "vector": 5
+    },
+    "top_k": 20,
+    "vector": {
+      "approx": false,
+      "backend": "bruteforce-cosine",
+      "degraded": null,
+      "embedded_rows": 44,
+      "exhaustive": true,
+      "truncated": false
+    }
+  }
+}

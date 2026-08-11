@@ -1,0 +1,585 @@
+{
+  "engine": "hybrid",
+  "key": "en_recency",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "recent decisions last week",
+  "result": {
+    "alpha": 0.5,
+    "detail": null,
+    "fusion_strategy": "alpha",
+    "graph_expansion": {
+      "added": 0,
+      "cap": 5,
+      "enabled": false,
+      "failed_seeds": 0,
+      "seeds": 0,
+      "truncated": false
+    },
+    "matches": [
+      {
+        "fusion": "vector",
+        "id": "dec:fusion-alpha",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "category": "retrieval",
+            "node_type": "Decision",
+            "owner": "jiwon"
+          }
+        },
+        "node_id": "dec:fusion-alpha",
+        "rank": 1,
+        "rerank_score": 0.38716,
+        "score": 0.38716,
+        "scores": {
+          "age_decay": 0.774319,
+          "lexical": 0.0,
+          "vector": 1.0
+        },
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "doc:retrieval-spec",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".pdf",
+            "filename": "retrieval-spec.pdf",
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:retrieval-spec",
+        "rank": 2,
+        "rerank_score": 0.196654,
+        "score": 0.196654,
+        "scores": {
+          "age_decay": 0.520066,
+          "lexical": 0.0,
+          "vector": 0.756266
+        },
+        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+        "title": "Retrieval specification",
+        "type": "Document",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "topic:quality",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Topic"
+          }
+        },
+        "node_id": "topic:quality",
+        "rank": 3,
+        "rerank_score": 0.187067,
+        "score": 0.187067,
+        "scores": {
+          "age_decay": 0.500327,
+          "lexical": 0.0,
+          "vector": 0.747778
+        },
+        "summary": "검색 품질에 대한 주제입니다.",
+        "title": "검색 품질",
+        "type": "Topic",
+        "updated_at": "2026-03-06T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "chunk:handbook:2",
+        "metadata": {
+          "chunk": {
+            "heading_path": "안내서 > 검색",
+            "index": 1,
+            "page": 7,
+            "source_node": "doc:handbook",
+            "start_char": 1200
+          },
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "locator": "안내서 > 검색 · p.7",
+          "parent_node_id": "doc:handbook",
+          "parent_type": "Document",
+          "source_node": "doc:handbook",
+          "vector": {
+            "heading_path": "안내서 > 검색",
+            "index": 1,
+            "page": 7,
+            "parent_source_node": "doc:handbook",
+            "source_node": "doc:handbook",
+            "start_char": 1200
+          }
+        },
+        "node_id": "doc:handbook",
+        "rank": 4,
+        "rerank_score": 0.173916,
+        "score": 0.173916,
+        "scores": {
+          "age_decay": 0.541886,
+          "lexical": 0.0,
+          "vector": 0.641889
+        },
+        "summary": "검색 화면에서는 회의 결정 사항을 한 번에 찾을 수 있습니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Chunk",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "sheet:metrics",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".xlsx",
+            "filename": "retrieval-metrics.xlsx",
+            "node_type": "Spreadsheet"
+          }
+        },
+        "node_id": "sheet:metrics",
+        "rank": 5,
+        "rerank_score": 0.166566,
+        "score": 0.166566,
+        "scores": {
+          "age_decay": 0.506703,
+          "lexical": 0.0,
+          "vector": 0.65745
+        },
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "meeting:weekly",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Meeting"
+          }
+        },
+        "node_id": "meeting:weekly",
+        "rank": 6,
+        "rerank_score": 0.16653,
+        "score": 0.16653,
+        "scores": {
+          "age_decay": 0.704239,
+          "lexical": 0.0,
+          "vector": 0.472936
+        },
+        "summary": "지난주 주간 회의 기록입니다. 검색 랭킹과 온보딩을 논의했습니다.",
+        "title": "주간 회의 2026-07-14",
+        "type": "Meeting",
+        "updated_at": "2026-07-14T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "source:repo",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "git",
+          "vector": {
+            "node_type": "Source",
+            "source": "git"
+          }
+        },
+        "node_id": "source:repo",
+        "rank": 7,
+        "rerank_score": 0.158697,
+        "score": 0.158697,
+        "scores": {
+          "age_decay": 0.500164,
+          "lexical": 0.0,
+          "vector": 0.634582
+        },
+        "summary": "Source repository for the product.",
+        "title": "github.com/lattice/ai",
+        "type": "Source",
+        "updated_at": "2026-02-20T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "slide:fusion",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Slide"
+          }
+        },
+        "node_id": "slide:fusion",
+        "rank": 8,
+        "rerank_score": 0.157582,
+        "score": 0.157582,
+        "scores": {
+          "age_decay": 0.510007,
+          "lexical": 0.0,
+          "vector": 0.617959
+        },
+        "summary": "One slide explaining alpha fusion of the lexical and vector channels.",
+        "title": "Fusion slide",
+        "type": "Slide",
+        "updated_at": "2026-05-14T12:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "org:lattice",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Organization"
+          }
+        },
+        "node_id": "org:lattice",
+        "rank": 9,
+        "rerank_score": 0.152695,
+        "score": 0.152695,
+        "scores": {
+          "age_decay": 0.500181,
+          "lexical": 0.0,
+          "vector": 0.610557
+        },
+        "summary": "The organization.",
+        "title": "Lattice",
+        "type": "Organization",
+        "updated_at": "2026-02-22T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "dec:rust-foundation",
+        "metadata": {
+          "category": "platform",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "category": "platform",
+            "node_type": "Decision"
+          }
+        },
+        "node_id": "dec:rust-foundation",
+        "rank": 10,
+        "rerank_score": 0.14437,
+        "score": 0.14437,
+        "scores": {
+          "age_decay": 0.751293,
+          "lexical": 0.0,
+          "vector": 0.384324
+        },
+        "summary": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만듭니다.",
+        "title": "Rust 기반 검색 이관 결정",
+        "type": "Decision",
+        "updated_at": "2026-07-18T14:30:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "legacy:global-note",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "legacy:global-note",
+        "rank": 11,
+        "rerank_score": 0.136673,
+        "score": 0.136673,
+        "scores": {
+          "age_decay": 0.562243,
+          "lexical": 0.0,
+          "vector": 0.486171
+        },
+        "summary": "A legacy row with no workspace, visible only with include_legacy_global.",
+        "title": "Legacy global note",
+        "type": "Document",
+        "updated_at": "2026-06-20T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "task:parity-harness",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "status": "open",
+          "vector": {
+            "node_type": "Task",
+            "status": "open"
+          }
+        },
+        "node_id": "task:parity-harness",
+        "rank": 12,
+        "rerank_score": 0.127752,
+        "score": 0.127752,
+        "scores": {
+          "age_decay": 0.715049,
+          "lexical": 0.0,
+          "vector": 0.357324
+        },
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "agent:librarian",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Agent"
+          }
+        },
+        "node_id": "agent:librarian",
+        "rank": 13,
+        "rerank_score": 0.122531,
+        "score": 0.122531,
+        "scores": {
+          "age_decay": 0.500282,
+          "lexical": 0.0,
+          "vector": 0.489848
+        },
+        "summary": "An agent that files new documents into the graph.",
+        "title": "Librarian agent",
+        "type": "Agent",
+        "updated_at": "2026-03-03T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "twin:doc-a",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-a",
+        "rank": 14,
+        "rerank_score": 0.120422,
+        "score": 0.120422,
+        "scores": {
+          "age_decay": 0.500076,
+          "lexical": 0.0,
+          "vector": 0.481613
+        },
+        "summary": "동일한 시각의 문서 A",
+        "title": "Twin document A",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "twin:doc-b",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-b",
+        "rank": 15,
+        "rerank_score": 0.120422,
+        "score": 0.120422,
+        "scores": {
+          "age_decay": 0.500076,
+          "lexical": 0.0,
+          "vector": 0.481613
+        },
+        "summary": "동일한 시각의 문서 B",
+        "title": "Twin document B",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "concept:retrieval",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:retrieval",
+        "rank": 16,
+        "rerank_score": 0.115968,
+        "score": 0.115968,
+        "scores": {
+          "age_decay": 0.501246,
+          "lexical": 0.0,
+          "vector": 0.462721
+        },
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "task:onboarding-checklist",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "status": "open",
+          "vector": {
+            "node_type": "Task",
+            "status": "open"
+          }
+        },
+        "node_id": "task:onboarding-checklist",
+        "rank": 17,
+        "rerank_score": 0.1096,
+        "score": 0.1096,
+        "scores": {
+          "age_decay": 0.601769,
+          "lexical": 0.0,
+          "vector": 0.364259
+        },
+        "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
+        "title": "온보딩 체크리스트 정리",
+        "type": "Task",
+        "updated_at": "2026-06-30T08:20:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "img:whiteboard",
+        "metadata": {
+          "ext": ".png",
+          "filename": "whiteboard-retrieval.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "whiteboard-retrieval.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:whiteboard",
+        "rank": 18,
+        "rerank_score": 0.106829,
+        "score": 0.106829,
+        "scores": {
+          "age_decay": 0.500624,
+          "lexical": 0.0,
+          "vector": 0.426781
+        },
+        "summary": "Whiteboard photo from the retrieval design session.",
+        "title": "whiteboard-retrieval.png",
+        "type": "Image",
+        "updated_at": "2026-03-19T11:11:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "img:ocr-notes",
+        "metadata": {
+          "filename": "whiteboard-retrieval.png",
+          "ocr": true,
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "filename": "whiteboard-retrieval.png",
+            "node_type": "ImageText",
+            "ocr": true
+          }
+        },
+        "node_id": "img:ocr-notes",
+        "rank": 19,
+        "rerank_score": 0.088237,
+        "score": 0.088237,
+        "scores": {
+          "age_decay": 0.500624,
+          "lexical": 0.0,
+          "vector": 0.352505
+        },
+        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+        "title": "화이트보드 OCR 텍스트",
+        "type": "ImageText",
+        "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "tie:a",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:a",
+        "rank": 20,
+        "rerank_score": 0.07773,
+        "score": 0.07773,
+        "scores": {
+          "age_decay": 0.500063,
+          "lexical": 0.0,
+          "vector": 0.310879
+        },
+        "summary": "",
+        "title": "Tie candidate A",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      }
+    ],
+    "mode": "hybrid",
+    "multimodal": {
+      "images": 2,
+      "types": [
+        "Image",
+        "ImageText"
+      ]
+    },
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": "recent decisions last week"
+    },
+    "query": "recent decisions last week",
+    "query_class": "recency",
+    "rerank": {
+      "detail": null,
+      "mode": "identity",
+      "model": null
+    },
+    "sources": {
+      "lexical": 0,
+      "vector": 40
+    },
+    "top_k": 20,
+    "vector": {
+      "approx": false,
+      "backend": "bruteforce-cosine",
+      "degraded": null,
+      "embedded_rows": 44,
+      "exhaustive": true,
+      "truncated": false
+    }
+  }
+}

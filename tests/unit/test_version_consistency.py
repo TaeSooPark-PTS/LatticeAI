@@ -70,6 +70,39 @@ def test_tauri_cargo_version_agrees():
     assert m.group(1) == _canonical()
 
 
+RUST_CRATES = ("lattice-core", "lattice-host", "lattice-retrieval")
+
+
+def test_rust_workspace_version_agrees():
+    # 11.4.0 added the rust/ cargo workspace. The three crates declare
+    # `version.workspace = true`, so the workspace root is the only hand-edited
+    # copy — this asserts that too, because the moment a crate spells its own
+    # version out there are two sources of truth again.
+    v = _canonical()
+    m = re.search(r'(?m)^version\s*=\s*"([^"]+)"', _read("rust/Cargo.toml"))
+    assert m, "version not found in rust/Cargo.toml [workspace.package]"
+    assert m.group(1) == v
+    for crate in RUST_CRATES:
+        manifest = _read(f"rust/{crate}/Cargo.toml")
+        assert "version.workspace = true" in manifest, (
+            f"{crate} must inherit the workspace version, not declare its own"
+        )
+
+
+def test_rust_lockfiles_agree():
+    # Both lockfiles resolve the workspace crates by version: rust/Cargo.lock
+    # for the workspace itself, src-tauri/Cargo.lock because the desktop shell
+    # depends on lattice-host by path. A stale lock is a file the next cargo
+    # build rewrites underneath a tagged release.
+    v = _canonical()
+    for lock in ("rust/Cargo.lock", "src-tauri/Cargo.lock"):
+        text = _read(lock)
+        for crate in RUST_CRATES:
+            found = re.search(rf'name = "{crate}"\nversion = "([^"]+)"', text)
+            assert found, f"{crate} not found in {lock}"
+            assert found.group(1) == v, f"{crate} in {lock} is {found.group(1)}, expected {v}"
+
+
 def test_npm_lockfiles_agree():
     v = _canonical()
     root_lock = _json("package-lock.json")

@@ -1,0 +1,619 @@
+{
+  "engine": "vector",
+  "key": "ws_empty",
+  "params": {
+    "allowed_workspaces": [],
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "hybrid retrieval ranking",
+  "result": {
+    "embedding_dim": 384,
+    "embedding_model": "lattice-local-hash-v1:384",
+    "index": {
+      "approx": false,
+      "backend": "bruteforce-cosine",
+      "detail": null,
+      "exhaustive": true,
+      "honored": true,
+      "name": "brute",
+      "requested": "brute"
+    },
+    "matches": [
+      {
+        "id": "sheet:metrics",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".xlsx",
+          "filename": "retrieval-metrics.xlsx",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".xlsx",
+            "filename": "retrieval-metrics.xlsx",
+            "node_type": "Spreadsheet"
+          }
+        },
+        "node_id": "sheet:metrics",
+        "score": 0.539077,
+        "summary": "Recall and precision per query class for the ranking experiments.",
+        "title": "retrieval-metrics.xlsx",
+        "type": "Spreadsheet",
+        "updated_at": "2026-05-06T09:45:00"
+      },
+      {
+        "id": "dec:fusion-alpha",
+        "item_type": "node",
+        "metadata": {
+          "category": "retrieval",
+          "owner": "jiwon",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "category": "retrieval",
+            "node_type": "Decision",
+            "owner": "jiwon"
+          }
+        },
+        "node_id": "dec:fusion-alpha",
+        "score": 0.529813,
+        "summary": "We decided the ranking keeps alpha fusion: lexical rank plus max normalized vector score.",
+        "title": "Hybrid retrieval fusion stays alpha weighted",
+        "type": "Decision",
+        "updated_at": "2026-07-20T09:00:00"
+      },
+      {
+        "id": "concept:retrieval",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:retrieval",
+        "score": 0.483744,
+        "summary": "Retrieval is the act of finding the right memory for a question.",
+        "title": "Retrieval",
+        "type": "Concept",
+        "updated_at": "2026-04-02T10:00:00"
+      },
+      {
+        "id": "task:parity-harness",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "status": "open",
+          "vector": {
+            "node_type": "Task",
+            "status": "open"
+          }
+        },
+        "node_id": "task:parity-harness",
+        "score": 0.461455,
+        "summary": "Generate a golden fixture so the Rust ranking can be compared against the Python ranking.",
+        "title": "Build the retrieval parity harness",
+        "type": "Task",
+        "updated_at": "2026-07-15T11:00:00"
+      },
+      {
+        "id": "code:hybrid-search",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".py",
+          "filename": "hybrid.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".py",
+            "filename": "hybrid.py",
+            "node_type": "CodeFile"
+          }
+        },
+        "node_id": "code:hybrid-search",
+        "score": 0.436177,
+        "summary": "def hybrid_search(query): the ranking pipeline lives here and calls vector_search().",
+        "title": "hybrid.py",
+        "type": "CodeFile",
+        "updated_at": "2026-07-08T09:30:00"
+      },
+      {
+        "id": "img:whiteboard",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".png",
+          "filename": "whiteboard-retrieval.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "whiteboard-retrieval.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:whiteboard",
+        "score": 0.434924,
+        "summary": "Whiteboard photo from the retrieval design session.",
+        "title": "whiteboard-retrieval.png",
+        "type": "Image",
+        "updated_at": "2026-03-19T11:11:00"
+      },
+      {
+        "id": "concept:ranking",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:ranking",
+        "score": 0.421733,
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "id": "doc:retrieval-spec",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".pdf",
+            "filename": "retrieval-spec.pdf",
+            "node_type": "Document"
+          }
+        },
+        "node_id": "doc:retrieval-spec",
+        "score": 0.387562,
+        "summary": "The retrieval specification describes the lexical channel, the vector channel and their fusion.",
+        "title": "Retrieval specification",
+        "type": "Document",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "id": "img:ocr-notes",
+        "item_type": "node",
+        "metadata": {
+          "filename": "whiteboard-retrieval.png",
+          "ocr": true,
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "filename": "whiteboard-retrieval.png",
+            "node_type": "ImageText",
+            "ocr": true
+          }
+        },
+        "node_id": "img:ocr-notes",
+        "score": 0.31794,
+        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+        "title": "화이트보드 OCR 텍스트",
+        "type": "ImageText",
+        "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "id": "error:timeout",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Error"
+          }
+        },
+        "node_id": "error:timeout",
+        "score": 0.252101,
+        "summary": "An error where the ranking took longer than the request budget.",
+        "title": "Search timeout",
+        "type": "Error",
+        "updated_at": "2026-03-04T10:00:00"
+      },
+      {
+        "id": "file:ranking-notes",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".md",
+          "filename": "ranking-notes.md",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".md",
+            "filename": "ranking-notes.md",
+            "node_type": "File"
+          }
+        },
+        "node_id": "file:ranking-notes",
+        "score": 0.250978,
+        "summary": "Notes on ranking: lexical channel scores one over rank, vector channel is max normalized.",
+        "title": "ranking-notes.md",
+        "type": "File",
+        "updated_at": "2026-07-10T16:45:00"
+      },
+      {
+        "id": "chunk:spec:2",
+        "item_type": "chunk",
+        "metadata": {
+          "chunk": {
+            "index": 1,
+            "source_node": "doc:retrieval-spec",
+            "start_char": 900
+          },
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf",
+          "parent_node_id": "doc:retrieval-spec",
+          "parent_type": "Document",
+          "vector": {
+            "index": 1,
+            "parent_source_node": "doc:retrieval-spec",
+            "source_node": "doc:retrieval-spec",
+            "start_char": 900
+          }
+        },
+        "node_id": "doc:retrieval-spec",
+        "score": 0.24099,
+        "summary": "Ranking ties are broken by node id ascending, which keeps the answer stable across runs.",
+        "title": "Retrieval specification",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "id": "code:build-failure",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".py",
+          "filename": "build_pipeline.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".py",
+            "filename": "build_pipeline.py",
+            "node_type": "CodeFile"
+          }
+        },
+        "node_id": "code:build-failure",
+        "score": 0.115286,
+        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
+        "title": "build_pipeline.py",
+        "type": "CodeFile",
+        "updated_at": "2026-04-22T18:05:00"
+      },
+      {
+        "id": "meeting:kickoff",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Meeting"
+          }
+        },
+        "node_id": "meeting:kickoff",
+        "score": 0.111283,
+        "summary": "Kickoff meeting for the Rust foundation work.",
+        "title": "Kickoff meeting",
+        "type": "Meeting",
+        "updated_at": "2026-02-09T10:00:00"
+      },
+      {
+        "id": "source:repo",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "source": "git",
+          "vector": {
+            "node_type": "Source",
+            "source": "git"
+          }
+        },
+        "node_id": "source:repo",
+        "score": 0.093659,
+        "summary": "Source repository for the product.",
+        "title": "github.com/lattice/ai",
+        "type": "Source",
+        "updated_at": "2026-02-20T10:00:00"
+      },
+      {
+        "id": "workflow:nightly",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Workflow"
+          }
+        },
+        "node_id": "workflow:nightly",
+        "score": 0.079472,
+        "summary": "A workflow that reindexes the vector store overnight.",
+        "title": "Nightly reindex",
+        "type": "Workflow",
+        "updated_at": "2026-03-02T10:00:00"
+      },
+      {
+        "id": "tie:e",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:e",
+        "score": 0.076472,
+        "summary": "",
+        "title": "Tie candidate E",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "tie:d",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:d",
+        "score": 0.076472,
+        "summary": "",
+        "title": "Tie candidate D",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "tie:c",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:c",
+        "score": 0.076472,
+        "summary": "",
+        "title": "Tie candidate C",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "tie:b",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:b",
+        "score": 0.076472,
+        "summary": "",
+        "title": "Tie candidate B",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "tie:a",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:a",
+        "score": 0.076472,
+        "summary": "",
+        "title": "Tie candidate A",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "chunk:spec:1",
+        "item_type": "chunk",
+        "metadata": {
+          "chunk": {
+            "heading_path": "Retrieval > Fusion",
+            "index": 0,
+            "page": 2,
+            "source_node": "doc:retrieval-spec",
+            "start_char": 0
+          },
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf",
+          "locator": "Retrieval > Fusion · p.2",
+          "parent_node_id": "doc:retrieval-spec",
+          "parent_type": "Document",
+          "vector": {
+            "heading_path": "Retrieval > Fusion",
+            "index": 0,
+            "page": 2,
+            "parent_source_node": "doc:retrieval-spec",
+            "source_node": "doc:retrieval-spec",
+            "start_char": 0
+          }
+        },
+        "node_id": "doc:retrieval-spec",
+        "score": 0.076004,
+        "summary": "The lexical channel scores one over rank. The vector channel is max normalized before fusion.",
+        "title": "Retrieval specification",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "id": "page:onboarding",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Page"
+          }
+        },
+        "node_id": "page:onboarding",
+        "score": 0.074432,
+        "summary": "온보딩 페이지입니다. 체크리스트와 안내 문구를 담습니다.",
+        "title": "온보딩 첫 다섯 걸음",
+        "type": "Page",
+        "updated_at": "2026-06-01T12:00:00"
+      },
+      {
+        "id": "twin:concept-a",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "twin:concept-a",
+        "score": 0.061314,
+        "summary": "동일한 시각의 개념 A",
+        "title": "Twin concept A",
+        "type": "Concept",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "id": "twin:doc-b",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-b",
+        "score": 0.059235,
+        "summary": "동일한 시각의 문서 B",
+        "title": "Twin document B",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "id": "twin:doc-a",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Document"
+          }
+        },
+        "node_id": "twin:doc-a",
+        "score": 0.059235,
+        "summary": "동일한 시각의 문서 A",
+        "title": "Twin document A",
+        "type": "Document",
+        "updated_at": "2026-02-05T00:00:00"
+      },
+      {
+        "id": "doc:handbook",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".pdf",
+          "filename": "handbook.pdf",
+          "parent_node_id": null,
+          "parent_type": null,
+          "source_node": "doc:handbook",
+          "vector": {
+            "ext": ".pdf",
+            "filename": "handbook.pdf",
+            "node_type": "Document",
+            "source_node": "doc:handbook"
+          }
+        },
+        "node_id": "doc:handbook",
+        "score": 0.058272,
+        "summary": "제품 안내서입니다. 검색, 회의 기록, 온보딩 체크리스트를 한 곳에서 설명합니다.",
+        "title": "Lattice AI 사용 안내서",
+        "type": "Document",
+        "updated_at": "2026-06-12T10:00:00"
+      },
+      {
+        "id": "repo:lattice",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Repository"
+          }
+        },
+        "node_id": "repo:lattice",
+        "score": 0.057354,
+        "summary": "The monorepo holding the Python worker and the Rust workspace.",
+        "title": "lattice-ai",
+        "type": "Repository",
+        "updated_at": "2026-02-21T10:00:00"
+      },
+      {
+        "id": "audio:standup",
+        "item_type": "node",
+        "metadata": {
+          "ext": ".m4a",
+          "filename": "standup-2026-07-13.m4a",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".m4a",
+            "filename": "standup-2026-07-13.m4a",
+            "node_type": "Audio"
+          }
+        },
+        "node_id": "audio:standup",
+        "score": 0.054754,
+        "summary": "Standup recording where the parity harness was assigned.",
+        "title": "standup-2026-07-13.m4a",
+        "type": "Audio",
+        "updated_at": "2026-07-13T09:05:00"
+      },
+      {
+        "id": "org:lattice",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Organization"
+          }
+        },
+        "node_id": "org:lattice",
+        "score": 0.050063,
+        "summary": "The organization.",
+        "title": "Lattice",
+        "type": "Organization",
+        "updated_at": "2026-02-22T10:00:00"
+      }
+    ],
+    "query": "hybrid retrieval ranking",
+    "recall": {
+      "backend": "bruteforce-cosine",
+      "candidates_scanned": 44,
+      "candidates_total": 44,
+      "detail": null,
+      "max_candidates": 10000,
+      "truncated": false
+    }
+  }
+}

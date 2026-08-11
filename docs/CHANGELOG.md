@@ -4,6 +4,32 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.4.0] - 2026-08-11 — Rust Foundation
+
+### Added
+- **`rust/` cargo workspace** (Rust 전환 Phase 1,
+  docs/v11.4.0_RUST_FOUNDATION_PLAN.md): `lattice-core`(같은
+  `knowledge_graph.sqlite` 읽기 전용 층 + 해시 임베더 bit-for-bit 포트,
+  FTS5 trigram 프로브), `lattice-retrieval`(hybrid/keyword/vector
+  네이티브 엔진 — 커밋된 Python 골든과 25질의×3엔진 **75/75 완전
+  일치**, `tests/unit/test_rust_parity_contract.py` 80테스트가 Python
+  쪽을 상시 잠금), `lattice-host`(워커 수퍼바이저: HTTP /health 게이팅
+  ·크래시 백오프 자동 재시작·SIGTERM 유예 종료·포트 통일 4825+스캔;
+  axum 게이트웨이: `/host/*`, 네이티브 `/rust/search/*`, 스트리밍
+  리버스 프록시 — 옵트인 front-door). Rust 테스트 194개.
+- CI `rust` 잡(ubuntu: cargo fmt --check / clippy -D warnings /
+  test --workspace, SHA 핀 액션), `npm run rust:test`/`rust:lint`.
+- `check_max_file_lines.mjs`가 `*.rs` 검사(43파일, 최장 491줄).
+
+### Changed
+- Tauri 데스크톱 셸이 `lattice-host` 수퍼바이저에 올라탐: `main.rs`
+  451→149줄, IPC 커맨드 5종 계약 보존(+추가 상태 필드), 백엔드 후보
+  해석의 `sort()+dedup()` 우선순위 파괴 버그 수정, TCP 프로브 →
+  HTTP /health, 포트 기본 8765→4825(+빈 포트 탐색,
+  `LATTICEAI_PORT`/`LATTICEAI_DESKTOP_BACKEND_ORIGIN` 존중).
+- `bump_version.py`·`test_version_consistency.py`가 rust workspace
+  버전(크레이트 3종 × 락파일 2종 포함)을 동기 — 타깃 18→25.
+
 ## [11.3.0] - 2026-08-11 — Time Remembers
 
 ### Added

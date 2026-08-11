@@ -1,0 +1,21 @@
+[package]
+name = "lattice-retrieval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+lattice-core = { workspace = true }
+serde = { workspace = true }
+# float_roundtrip: without it serde_json's fast decimal path lands 1 ULP
+# off on long literals, and a golden compared with == would fail on a
+# parser artefact rather than on a real divergence.
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+rusqlite = { workspace = true }
+# fancy-regex, not regex: the Python originals this crate ports use lookbehind
+# and negative lookahead (`(?<![A-Za-z0-9_])`, `(?![\s\-]*…)`), and its
+# backtracking leftmost-first semantics are the ones `re` has.
+fancy-regex = "0.14"
+
+[dev-dependencies]
+tempfile = { workspace = true }

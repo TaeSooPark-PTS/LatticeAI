@@ -1,0 +1,72 @@
+{
+  "engine": "vector",
+  "key": "fts_rank_cut",
+  "params": {
+    "allowed_workspaces": null,
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 2,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 2
+  },
+  "query": "Tie candidate",
+  "result": {
+    "embedding_dim": 384,
+    "embedding_model": "lattice-local-hash-v1:384",
+    "index": {
+      "approx": false,
+      "backend": "bruteforce-cosine",
+      "detail": null,
+      "exhaustive": true,
+      "honored": true,
+      "name": "brute",
+      "requested": "brute"
+    },
+    "matches": [
+      {
+        "id": "tie:e",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:e",
+        "score": 1.0,
+        "summary": "",
+        "title": "Tie candidate E",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "id": "tie:d",
+        "item_type": "node",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:d",
+        "score": 1.0,
+        "summary": "",
+        "title": "Tie candidate D",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      }
+    ],
+    "query": "Tie candidate",
+    "recall": {
+      "backend": "bruteforce-cosine",
+      "candidates_scanned": 44,
+      "candidates_total": 44,
+      "detail": null,
+      "max_candidates": 10000,
+      "truncated": false
+    }
+  }
+}

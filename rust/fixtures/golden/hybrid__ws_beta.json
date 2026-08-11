@@ -1,0 +1,318 @@
+{
+  "engine": "hybrid",
+  "key": "ws_beta",
+  "params": {
+    "allowed_workspaces": [
+      "ws-beta"
+    ],
+    "alpha": null,
+    "include_legacy_global": false,
+    "limit": 30,
+    "min_score": 0.0,
+    "min_vector_score": 0.0,
+    "top_k": 20
+  },
+  "query": "온보딩 체크리스트",
+  "result": {
+    "alpha": 0.6,
+    "detail": null,
+    "fusion_strategy": "alpha",
+    "graph_expansion": {
+      "added": 0,
+      "cap": 5,
+      "enabled": false,
+      "failed_seeds": 0,
+      "seeds": 0,
+      "truncated": false
+    },
+    "matches": [
+      {
+        "fusion": "both",
+        "id": "task:onboarding-checklist",
+        "metadata": {
+          "status": "open"
+        },
+        "node_id": "task:onboarding-checklist",
+        "rank": 1,
+        "rerank_score": 1.0,
+        "score": 1.0,
+        "scores": {
+          "lexical": 1.0,
+          "vector": 1.0
+        },
+        "summary": "새로운 사용자가 처음 다섯 걸음을 마칠 수 있도록 온보딩 체크리스트를 정리합니다.",
+        "title": "온보딩 체크리스트 정리",
+        "type": "Task",
+        "updated_at": "2026-06-30T08:20:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "img:ocr-notes",
+        "metadata": {
+          "filename": "whiteboard-retrieval.png",
+          "ocr": true,
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "filename": "whiteboard-retrieval.png",
+            "node_type": "ImageText",
+            "ocr": true
+          }
+        },
+        "node_id": "img:ocr-notes",
+        "rank": 2,
+        "rerank_score": 0.14516,
+        "score": 0.14516,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.241933
+        },
+        "summary": "회의 결정 사항: 랭킹은 alpha 융합을 유지한다.",
+        "title": "화이트보드 OCR 텍스트",
+        "type": "ImageText",
+        "updated_at": "2026-03-19T11:12:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "tie:c",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "tie:c",
+        "rank": 3,
+        "rerank_score": 0.096014,
+        "score": 0.096014,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.160024
+        },
+        "summary": "",
+        "title": "Tie candidate C",
+        "type": "Concept",
+        "updated_at": "2026-02-01T00:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "agent:librarian",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Agent"
+          }
+        },
+        "node_id": "agent:librarian",
+        "rank": 4,
+        "rerank_score": 0.075644,
+        "score": 0.075644,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.126073
+        },
+        "summary": "An agent that files new documents into the graph.",
+        "title": "Librarian agent",
+        "type": "Agent",
+        "updated_at": "2026-03-03T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "chunk:spec:1",
+        "metadata": {
+          "chunk": {
+            "heading_path": "Retrieval > Fusion",
+            "index": 0,
+            "page": 2,
+            "source_node": "doc:retrieval-spec",
+            "start_char": 0
+          },
+          "ext": ".pdf",
+          "filename": "retrieval-spec.pdf",
+          "locator": "Retrieval > Fusion · p.2",
+          "parent_node_id": "doc:retrieval-spec",
+          "parent_type": "Document",
+          "vector": {
+            "heading_path": "Retrieval > Fusion",
+            "index": 0,
+            "page": 2,
+            "parent_source_node": "doc:retrieval-spec",
+            "source_node": "doc:retrieval-spec",
+            "start_char": 0
+          }
+        },
+        "node_id": "doc:retrieval-spec",
+        "rank": 5,
+        "rerank_score": 0.063618,
+        "score": 0.063618,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.10603
+        },
+        "summary": "The lexical channel scores one over rank. The vector channel is max normalized before fusion.",
+        "title": "Retrieval specification",
+        "type": "Chunk",
+        "updated_at": "2026-05-28T13:15:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "person:minseo",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "role": "reviewer",
+          "vector": {
+            "node_type": "Person",
+            "role": "reviewer"
+          }
+        },
+        "node_id": "person:minseo",
+        "rank": 6,
+        "rerank_score": 0.058796,
+        "score": 0.058796,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.097994
+        },
+        "summary": "빌드 파이프라인 담당자입니다.",
+        "title": "박민서 님",
+        "type": "Person",
+        "updated_at": "2026-04-12T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "img:whiteboard",
+        "metadata": {
+          "ext": ".png",
+          "filename": "whiteboard-retrieval.png",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".png",
+            "filename": "whiteboard-retrieval.png",
+            "node_type": "Image"
+          }
+        },
+        "node_id": "img:whiteboard",
+        "rank": 7,
+        "rerank_score": 0.05649,
+        "score": 0.05649,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.09415
+        },
+        "summary": "Whiteboard photo from the retrieval design session.",
+        "title": "whiteboard-retrieval.png",
+        "type": "Image",
+        "updated_at": "2026-03-19T11:11:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "concept:ranking",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Concept"
+          }
+        },
+        "node_id": "concept:ranking",
+        "rank": 8,
+        "rerank_score": 0.037822,
+        "score": 0.037822,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.063037
+        },
+        "summary": "Ranking orders candidates so the best answer is first.",
+        "title": "Ranking",
+        "type": "Concept",
+        "updated_at": "2026-04-03T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "workflow:nightly",
+        "metadata": {
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "node_type": "Workflow"
+          }
+        },
+        "node_id": "workflow:nightly",
+        "rank": 9,
+        "rerank_score": 0.03326,
+        "score": 0.03326,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.055434
+        },
+        "summary": "A workflow that reindexes the vector store overnight.",
+        "title": "Nightly reindex",
+        "type": "Workflow",
+        "updated_at": "2026-03-02T10:00:00"
+      },
+      {
+        "fusion": "vector",
+        "id": "code:build-failure",
+        "metadata": {
+          "ext": ".py",
+          "filename": "build_pipeline.py",
+          "parent_node_id": null,
+          "parent_type": null,
+          "vector": {
+            "ext": ".py",
+            "filename": "build_pipeline.py",
+            "node_type": "CodeFile"
+          }
+        },
+        "node_id": "code:build-failure",
+        "rank": 10,
+        "rerank_score": 0.0,
+        "score": 0.0,
+        "scores": {
+          "lexical": 0.0,
+          "vector": 0.0
+        },
+        "summary": "빌드 실패 원인을 남겨두는 파일입니다. 컴파일 오류가 나면 여기부터 확인합니다.",
+        "title": "build_pipeline.py",
+        "type": "CodeFile",
+        "updated_at": "2026-04-22T18:05:00"
+      }
+    ],
+    "mode": "hybrid",
+    "multimodal": {
+      "images": 2,
+      "types": [
+        "ImageText",
+        "Image"
+      ]
+    },
+    "policy": {
+      "rewrite_rules": [],
+      "search_query": "온보딩 체크리스트"
+    },
+    "query": "온보딩 체크리스트",
+    "query_class": "fact",
+    "rerank": {
+      "detail": null,
+      "mode": "identity",
+      "model": null
+    },
+    "sources": {
+      "lexical": 1,
+      "vector": 12
+    },
+    "top_k": 20,
+    "vector": {
+      "approx": false,
+      "backend": "bruteforce-cosine",
+      "degraded": null,
+      "embedded_rows": 44,
+      "exhaustive": true,
+      "truncated": false
+    }
+  }
+}

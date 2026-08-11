@@ -37,6 +37,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # not one. Each entry states why, so the exemption is a fact and not a mute.
 _NOT_HTTP_PATHS = {
     "/review": "Telegram bot command, not an HTTP route",
+    # 11.4.0 Rust Foundation: gateway routes served by the opt-in
+    # lattice-host process (rust/lattice-host), never by the Python app —
+    # frontend/openapi.json cannot and should not list them. Their behavior
+    # is pinned by the cargo test suite (rust/lattice-host/tests/).
+    "/host/": "lattice-host (Rust) gateway route, not a Python app route",
 }
 
 # Path parameters are named for the reader, not copied from the route table.
