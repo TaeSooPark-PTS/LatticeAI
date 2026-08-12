@@ -85,15 +85,12 @@ def test_save_users_file_normalizes_before_writing(tmp_path):
     assert written["owner@example.com"]["email"] == "owner@example.com"
 
 
-def test_user_id_and_email_lookups_are_total():
+def test_user_id_lookup_is_total():
     store = {"owner@example.com": {"id": "user:abc", "email": "owner@example.com"}}
 
     assert users.user_id_for_email(store, "owner@example.com") == "user:abc"
     # Unknown users still get their deterministic namespace id.
     assert users.user_id_for_email(store, "ghost@example.com") == users.stable_user_id("ghost@example.com")
-    assert users.email_for_user_id(store, "user:abc") == "owner@example.com"
-    assert users.email_for_user_id(store, "user:missing") is None
-    assert users.email_for_user_id(store, None) is None
 
 
 def test_kg_identity_migration_is_a_noop_without_a_database_or_mapping(tmp_path):
@@ -338,7 +335,7 @@ def test_detect_edition_requires_both_the_optin_and_a_registered_provider(monkey
     try:
         capability_registry.register_provider(_EnterpriseProvider())
         assert detect_edition() is Edition.ENTERPRISE
-        assert capability_registry.available_capabilities() == [EnterpriseCapability.SCIM]
+        assert capability_registry.is_capability_enabled(EnterpriseCapability.SCIM) is True
 
         monkeypatch.delenv("LATTICE_EDITION", raising=False)
         # Without the opt-in the registry still answers honestly.

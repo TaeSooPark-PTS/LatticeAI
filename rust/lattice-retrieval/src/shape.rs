@@ -6,8 +6,42 @@
 //! `truthy` is the one to read twice — Python's `or` chains treat `0`, `""` and
 //! `{}` as absent, and this codebase has repeatedly been bitten by a score of
 //! `0.0` disappearing because Rust would have called it `Some(0.0)`.
+//!
+//! [`haystack`] and [`json_opt`] live here for the same reason: both are the
+//! shape a `NodeRow` takes on the way into an answer, both were written twice
+//! (`keyword.rs` and `docgen.rs`), and both encode a Python detail — `None`
+//! formatting as the four characters `None`, `NULL` becoming `null` rather
+//! than a missing key — that must not be re-derived per call site.
 
+use lattice_core::read::NodeRow;
 use serde_json::{Map, Value};
+
+/// Python's `f"{row['title']} {row['summary']} {row['metadata_json']}".lower()`.
+///
+/// A NULL column formats as the four characters `None` in Python, and both the
+/// keyword re-score and the document-generation term match search *that*
+/// haystack — so a port that skipped the NULL, or wrote an empty string for it,
+/// would score differently on every row with a missing summary.
+pub fn haystack(row: &NodeRow) -> String {
+    fn field(value: &Option<String>) -> &str {
+        value.as_deref().unwrap_or("None")
+    }
+    format!(
+        "{} {} {}",
+        field(&row.title),
+        field(&row.summary),
+        field(&row.metadata_json)
+    )
+    .to_lowercase()
+}
+
+/// An optional column as JSON: the string, or `null`.
+pub fn json_opt(value: &Option<String>) -> Value {
+    value
+        .as_ref()
+        .map(|text| Value::String(text.clone()))
+        .unwrap_or(Value::Null)
+}
 
 /// `fusion.DEFAULT_EXPANSION_CAP` — reported even while expansion is off.
 pub const DEFAULT_EXPANSION_CAP: i64 = 5;

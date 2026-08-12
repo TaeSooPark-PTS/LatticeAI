@@ -32,6 +32,12 @@ class HybridSearchRequest(SearchRequest):
     image_fusion: bool = False
 
 
+class GraphSearchRequest(SearchRequest):
+    #: How far to walk out from the directly-matching nodes. The service
+    #: clamps this to 0–3; 0 means "matches only, no expansion".
+    expand_depth: int = 1
+
+
 class GraphNodeRequest(BaseModel):
     node_id: str = Field(..., min_length=1)
     include_neighbors: bool = True
@@ -161,6 +167,24 @@ def create_search_router(
     ) -> Dict[str, Any]:
         try:
             return _guarded(request).vector_search(q, limit=limit, min_score=min_score)
+        except ValueError as exc:
+            _raise_graph_error(exc)
+
+    @router.post("/api/search/graph")
+    async def graph_search(req: GraphSearchRequest, request: Request) -> Dict[str, Any]:
+        """Relationship-aware search: direct matches plus what they connect to.
+
+        The third retrieval channel. It was in ``_ScopedSearchService._SCOPED``
+        from the start — so the workspace guard was ready for it — but no
+        handler ever called it, which made the allow-list entry the only
+        evidence the channel was supposed to be reachable at all.
+        """
+        try:
+            return _guarded(request).graph_search(
+                req.query,
+                limit=req.limit,
+                expand_depth=req.expand_depth,
+            )
         except ValueError as exc:
             _raise_graph_error(exc)
 

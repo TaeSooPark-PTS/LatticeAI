@@ -47,6 +47,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from latticeai.core.module_probe import module_available
 from latticeai.core.quiet import quiet
 from latticeai.services.process_audit import (
     CommandConfirmationError,
@@ -59,6 +60,8 @@ from latticeai.services.setup_detection import (
     detect_cuda,
     detect_tools,
     detect_wsl_from_text,
+    parse_windows_cpu_info,
+    windows_processor_features,
 )
 from latticeai.services.setup_detection import (
     parse_windows_video_controllers as _parse_windows_video_controllers,
@@ -282,37 +285,23 @@ def _detect_cpu_details(prof_os: str) -> Tuple[str, int, int, List[str]]:
                 flags = line.split(":", 1)[-1].strip().lower().split()
     elif prof_os == "windows":
         raw = _run(["wmic", "cpu", "get", "Name,NumberOfCores,NumberOfLogicalProcessors", "/format:list"])
-        for line in raw.splitlines():
-            key, _, value = line.partition("=")
-            if key == "Name" and value.strip():
-                model = value.strip()
-            elif key == "NumberOfCores" and value.strip():
-                try:
-                    physical = int(value.strip())
-                except ValueError:
-                    quiet()
-            elif key == "NumberOfLogicalProcessors" and value.strip():
-                try:
-                    logical = int(value.strip())
-                except ValueError:
-                    quiet()
-        try:
-            import ctypes
-            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]  # Windows-only
-            feature_map = {6: "sse", 10: "sse2", 13: "sse3", 19: "neon", 28: "rdrand"}
-            flags.extend(name for code, name in feature_map.items() if kernel32.IsProcessorFeaturePresent(code))
-        except Exception:
-            quiet()
+        model, physical, logical = parse_windows_cpu_info(
+            raw, model=model, physical_cores=physical, logical_cores=logical,
+        )
+        flags.extend(windows_processor_features())
     interesting = {"avx", "avx2", "avx512f", "fma", "neon", "sse4_2", "sse", "sse2", "sse3", "rdrand"}
     return model, physical, logical, sorted({flag for flag in flags if flag in interesting})
 
 
 def _has_module(name: str) -> bool:
-    try:
-        __import__(name)
-        return True
-    except Exception:
-        return False
+    """Importable *and loadable*.
+
+    ``strict=True`` on purpose: this probe drives what the setup wizard offers
+    to install, and an ``mlx`` wheel built for another architecture has a
+    findable spec right up until it raises on load. Answering from the spec
+    alone would plan a runtime that cannot start.
+    """
+    return module_available(name, strict=True)
 
 
 def probe() -> SystemProfile:

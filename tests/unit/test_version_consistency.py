@@ -70,11 +70,31 @@ def test_tauri_cargo_version_agrees():
     assert m.group(1) == _canonical()
 
 
-RUST_CRATES = ("lattice-core", "lattice-host", "lattice-retrieval")
+# Every member of the rust/ workspace. Through 11.5.1 this tuple named only the
+# three Phase-1 crates, which is why the Phase-2/3/4 crates could sit at a stale
+# version in both lockfiles without a single test noticing.
+RUST_CRATES = (
+    "lattice-agent",
+    "lattice-core",
+    "lattice-host",
+    "lattice-ingest",
+    "lattice-jobs",
+    "lattice-retrieval",
+)
+
+
+def test_rust_crate_list_covers_every_workspace_member():
+    # The list above is hand-written; this is what keeps it honest. A new crate
+    # added to `members` without being added here would otherwise silently opt
+    # out of the version sync, exactly as the Phase-2/3/4 crates did.
+    members = re.search(r"(?ms)^members = \[(.*?)\]", _read("rust/Cargo.toml"))
+    assert members, "members not found in rust/Cargo.toml [workspace]"
+    declared = tuple(sorted(re.findall(r'"([^"]+)"', members.group(1))))
+    assert declared == tuple(sorted(RUST_CRATES))
 
 
 def test_rust_workspace_version_agrees():
-    # 11.4.0 added the rust/ cargo workspace. The three crates declare
+    # 11.4.0 added the rust/ cargo workspace. Every crate declares
     # `version.workspace = true`, so the workspace root is the only hand-edited
     # copy — this asserts that too, because the moment a crate spells its own
     # version out there are two sources of truth again.

@@ -1,21 +1,15 @@
-"""Phase 3 hybrid tests: policy, multimodal gate, review-queue ingest."""
+"""Phase 3 hybrid tests: policy and review-queue ingest."""
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
-import pytest
-
-from latticeai.core.network_boundary import NetworkBoundaryMode
 from latticeai.services.cloud_streaming import (
     CloudResponseIngestor,
     CloudTurnResult,
     plan_kg_expansion,
 )
-from latticeai.services.hybrid_context import MinimalContext
 from latticeai.services.hybrid_policy import HybridPolicyService
-from latticeai.services.multimodal_streaming import MultimodalStreamingBridge
 
 
 def test_policy_defaults_and_override(tmp_path: Path):
@@ -32,39 +26,6 @@ def test_policy_defaults_and_override(tmp_path: Path):
     assert updated["auto_commit"] is True
     assert updated["allow_multimodal"] is True
     assert "Secret" in updated["blocked_node_types"]
-
-
-def test_multimodal_refuses_without_policy_flag():
-    bridge = MultimodalStreamingBridge(adapter=None)
-    minimal = MinimalContext(query="make a video", node_ids=["n1"], compact_text="ctx")
-
-    async def _run():
-        with pytest.raises(PermissionError):
-            await bridge.run_turn(
-                user_message="make a video",
-                minimal=minimal,
-                mode=NetworkBoundaryMode.CLOUD_ALLOWED,
-                allow_multimodal=False,
-            )
-
-    asyncio.run(_run())
-
-
-def test_multimodal_scaffold_when_allowed():
-    bridge = MultimodalStreamingBridge(adapter=None)
-    minimal = MinimalContext(query="make a video", node_ids=["n1"], compact_text="ctx")
-
-    async def _run():
-        return await bridge.run_turn(
-            user_message="make a video",
-            minimal=minimal,
-            mode=NetworkBoundaryMode.CLOUD_ALLOWED,
-            allow_multimodal=True,
-        )
-
-    result = asyncio.run(_run())
-    assert result.sent_node_ids == ["n1"]
-    assert "adapter not configured" in result.answer_text
 
 
 class _FakeReview:

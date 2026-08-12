@@ -21,23 +21,6 @@ class _DocumentMixin(_Core):
 
     # ── Document Generation Pipeline ──────────────────────────────────────
 
-    async def generate_document(
-        self,
-        message: str,
-        system_prompt: str,
-        *,
-        max_tokens: int = 8192,
-        temperature: float = 0.3,
-    ) -> str:
-        """Generate a document using a specialized system prompt with graph context."""
-        return await self.generate_document_as(
-            None,
-            message,
-            system_prompt,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-
     async def generate_document_as(
         self,
         model_id: str | None,
@@ -97,24 +80,6 @@ class _DocumentMixin(_Core):
         except Exception as e:
             raise RuntimeError(self._local_server_error_hint(cloud, e)) from e
         return normalize_branding(response.choices[0].message.content or "")
-
-    async def stream_generate_document(
-        self,
-        message: str,
-        system_prompt: str,
-        *,
-        max_tokens: int = 8192,
-        temperature: float = 0.3,
-    ) -> AsyncIterator[str]:
-        """Stream document generation with specialized system prompt."""
-        async for chunk in self.stream_generate_document_as(
-            None,
-            message,
-            system_prompt,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        ):
-            yield chunk
 
     async def stream_generate_document_as(
         self,

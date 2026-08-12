@@ -13,6 +13,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
+from latticeai.core.config import SSO_CALLBACK_PATH
+from latticeai.core.http_origin import request_external_origin
 from latticeai.core.messages import DEFAULT_LANGUAGE, http_error, resolve_language
 from latticeai.core.oidc import (
     OIDCValidationError,
@@ -56,6 +58,10 @@ class _SSOLoginState:
     nonce: str
     code_verifier: str
     invite_authorized: bool
+    #: Exactly what was sent to ``authorize``. The token exchange must repeat
+    #: it byte for byte or the provider rejects the code, so it is carried
+    #: rather than recomputed from a second request that may differ.
+    redirect_uri: str = ""
 
 
 # The nonce and PKCE verifier bind the callback/token to this login attempt.
@@ -88,6 +94,7 @@ def create_auth_router(
     ensure_identity: Optional[Callable[[str, Dict], None]] = None,
     invite_gate_enabled: bool = False,
     invite_authorized: Optional[Callable[[Request], bool]] = None,
+    default_redirect_uri: Optional[str] = None,
     verify_id_token: Callable[..., Dict] = _default_verify_id_token,
     fetch_jwks: Callable[[str], Awaitable[Dict]] = _default_fetch_jwks,
 ) -> APIRouter:
@@ -169,6 +176,20 @@ def create_auth_router(
     async def sso_config_endpoint():
         return public_sso_config()
 
+    def _resolve_redirect_uri(request: Request, settings: Dict) -> str:
+        """Where the provider should send the browser back to.
+
+        A configured URI is registered with the provider and is used verbatim.
+        Only the *built-in default* — which names the worker's own port, and is
+        therefore unreachable whenever a gateway fronts it — is replaced by the
+        front door this login actually arrived through.
+        """
+        configured = str(settings.get("redirect_uri") or "")
+        if not default_redirect_uri or configured != default_redirect_uri:
+            return configured
+        origin = request_external_origin(request)
+        return f"{origin}{SSO_CALLBACK_PATH}" if origin else configured
+
     @router.get("/auth/sso/login")
     async def sso_login(request: Request):
         lang = resolve_language(request)
@@ -193,16 +214,18 @@ def create_auth_router(
                 and invite_authorized(request)
             )
         )
+        redirect_uri = _resolve_redirect_uri(request, settings)
         _sso_states[state] = _SSOLoginState(
             issued_at=time.time(),
             nonce=nonce,
             code_verifier=code_verifier,
             invite_authorized=invite_claim,
+            redirect_uri=redirect_uri,
         )
         params = urlencode({
             "client_id": settings["client_id"],
             "response_type": "code",
-            "redirect_uri": settings["redirect_uri"],
+            "redirect_uri": redirect_uri,
             "scope": settings.get("scopes") or "openid email profile",
             "state": state,
             "nonce": nonce,
@@ -228,7 +251,7 @@ def create_auth_router(
             r = await c.post(discovery["token_endpoint"], data={
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": settings["redirect_uri"],
+                "redirect_uri": entry.redirect_uri or settings["redirect_uri"],
                 "client_id": settings["client_id"],
                 "client_secret": settings["client_secret"],
                 "code_verifier": entry.code_verifier,

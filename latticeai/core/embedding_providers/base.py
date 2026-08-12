@@ -19,7 +19,7 @@ import struct
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
 
-from latticeai.core.local_embeddings import DEFAULT_EMBEDDING_DIM
+from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM
 
 
 class EmbeddingUnavailable(RuntimeError):

@@ -28,6 +28,8 @@ import logging
 import re
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
+from latticeai.core.messages import bilingual
+
 LOGGER = logging.getLogger(__name__)
 
 __all__ = ["EvidenceActionService", "EVIDENCE_ACTIONS"]
@@ -38,8 +40,9 @@ _EXCERPT_CHARS = 600
 _MAX_SOURCES = 8
 
 
-def _phrase(ko: str, en: str) -> Dict[str, str]:
-    return {"ko": ko, "en": en}
+
+#: Historical module-local name for the shared phrase-pair helper.
+_phrase = bilingual
 
 
 # The action catalog is closed and deterministic — the UI renders exactly

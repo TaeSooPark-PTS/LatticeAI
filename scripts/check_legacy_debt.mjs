@@ -31,7 +31,7 @@ const REMOVED_MODULES = [
 ];
 // Trees that must not import removed shims. static/app and node_modules are
 // build output; src-tauri/target is compiler output.
-const SOURCE_TREES = ["latticeai", "lattice_brain", "tests", "scripts", "bin", "desktop/electron"];
+const SOURCE_TREES = ["latticeai", "lattice_brain", "tests", "scripts", "bin"];
 
 const failures = [];
 

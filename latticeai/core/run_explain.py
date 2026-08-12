@@ -30,6 +30,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
+from latticeai.core.messages import bilingual as _bilingual
+
 __all__ = ["explain_run", "STRAIN_LEVELS"]
 
 
@@ -53,8 +55,9 @@ _REPAIR_GROUPS: Dict[str, tuple] = {
 }
 
 
-def _phrase(ko: str, en: str) -> Dict[str, str]:
-    return {"ko": ko, "en": en}
+
+#: Historical module-local name for the shared phrase-pair helper.
+_phrase = _bilingual
 
 
 def _int(value: Any) -> int:

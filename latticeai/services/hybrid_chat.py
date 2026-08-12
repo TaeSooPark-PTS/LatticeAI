@@ -13,7 +13,6 @@ auto-commit — so a headless caller stages nothing rather than writing.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any, AsyncIterator, Dict, Optional
 
@@ -21,6 +20,7 @@ from latticeai.core.network_boundary import (
     NetworkBoundaryMode,
     normalize_network_mode,
 )
+from latticeai.core.sse import sse_frame
 from latticeai.services.cloud_egress_audit import record_cloud_egress
 from latticeai.services.cloud_extraction import plan_kg_expansion_rich
 from latticeai.services.cloud_streaming import (
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 def _sse(data: Dict[str, Any]) -> str:
-    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return sse_frame(None, data)
 
 
 def _scope_key(user_email: Optional[str], workspace_id: Optional[str]) -> str:

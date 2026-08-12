@@ -1,8 +1,9 @@
-"""wp12 coverage — the deterministic hash embedder, in both of its copies.
+"""wp12 coverage — the deterministic hash embedder.
 
-``latticeai.core.local_embeddings`` and ``lattice_brain.embeddings`` ship the
-same feature-hashing model (the Brain Core package keeps its own copy so it can
-be used standalone), so every case here runs against both. The interesting
+``lattice_brain.embeddings`` is the one feature-hashing model; 11.5.2 deleted
+``latticeai.core.local_embeddings``, an executable-byte-identical second copy
+whose only difference from this one was that no parity golden pinned it, so the
+two write paths could drift apart without a test noticing. The interesting
 paths are the ones a normal sentence never reaches: text with no features, a
 vector whose features cancel out to zero, the dimension-mismatch refusal that
 10.2.0 chose over a silently truncated comparison, and the float32 codec's
@@ -16,12 +17,8 @@ import math
 import pytest
 
 import lattice_brain.embeddings as brain_embeddings
-import latticeai.core.local_embeddings as core_embeddings
 
-MODULES = [
-    pytest.param(core_embeddings, id="latticeai-core"),
-    pytest.param(brain_embeddings, id="lattice-brain"),
-]
+MODULES = [pytest.param(brain_embeddings, id="lattice-brain")]
 
 
 @pytest.mark.parametrize("module", MODULES)

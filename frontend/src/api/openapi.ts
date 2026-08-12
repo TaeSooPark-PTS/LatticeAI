@@ -2154,6 +2154,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ingestion/multimodal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ingestion Multimodal Status
+         * @description What this install will do with a picture, a recording, or a video.
+         *
+         *     FEATURE_STATUS has described this answer — including which of the three
+         *     reasons a video would be refused for — since 11.2.0, but the pipeline
+         *     method that produces it had no route, so no surface could ever show it
+         *     and "why was my video not indexed?" had no answer short of reading the
+         *     server's environment.
+         */
+        get: operations["ingestion_multimodal_status_api_ingestion_multimodal_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ingestion/obsidian": {
         parameters: {
             query?: never;
@@ -3149,6 +3175,31 @@ export interface paths {
         put?: never;
         /** Reject Proposal */
         post: operations["reject_proposal_api_proposals__item_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Graph Search
+         * @description Relationship-aware search: direct matches plus what they connect to.
+         *
+         *     The third retrieval channel. It was in ``_ScopedSearchService._SCOPED``
+         *     from the start — so the workspace guard was ready for it — but no
+         *     handler ever called it, which made the allow-list entry the only
+         *     evidence the channel was supposed to be reachable at all.
+         */
+        post: operations["graph_search_api_search_graph_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8339,6 +8390,21 @@ export interface components {
             limit: number;
             /** Node Id */
             node_id: string;
+        };
+        /** GraphSearchRequest */
+        GraphSearchRequest: {
+            /**
+             * Expand Depth
+             * @default 1
+             */
+            expand_depth: number;
+            /**
+             * Limit
+             * @default 30
+             */
+            limit: number;
+            /** Query */
+            query: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -13660,6 +13726,26 @@ export interface operations {
             };
         };
     };
+    ingestion_multimodal_status_api_ingestion_multimodal_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     ingestion_obsidian_api_ingestion_obsidian_post: {
         parameters: {
             query?: never;
@@ -15455,6 +15541,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    graph_search_api_search_graph_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraphSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

@@ -80,10 +80,6 @@ class BruteForceIndex:
         for item_id, vector, metadata in items:
             self.add(item_id, vector, metadata)
 
-    def metadata_for(self, id: str) -> Dict[str, Any]:
-        """Metadata stored alongside ``id`` (empty dict when unknown)."""
-        return dict(self._metadata.get(str(id), {}))
-
     def search(
         self,
         query: Sequence[float],

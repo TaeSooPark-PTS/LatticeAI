@@ -7,10 +7,10 @@
 > are intentionally frozen at that point in time.
 
 > v3.6.0 — **Knowledge Graph First.** Every data source converges into the graph
-> through one unified ingestion pipeline (`latticeai/services/ingestion.py`), with
+> through one unified ingestion pipeline (`lattice_brain/ingestion/pipeline.py`), with
 > formalized entities/relationships (`docs/kg-schema.md`), browser/web inputs,
 > per-node provenance, and local export/import/backup
-> (`latticeai/services/kg_portability.py`). The agent ecosystem, long-term memory,
+> (`lattice_brain/portability/`). The agent ecosystem, long-term memory,
 > and skills/hooks/tool/MCP registries are all operable from `/app`. Enterprise
 > controls remain future work.
 
@@ -158,8 +158,8 @@ Basic mode and advanced mode have the same feature access.
 | `knowledge_graph.py` | Graph storage, extraction, local folder knowledge graph context |
 | `latticeai/core/context_builder.py` | Graph context for generation |
 | `latticeai/core/workspace_os.py` | Workspace state, timeline, snapshots, durable context |
-| `latticeai/core/multi_agent.py` | Planner/executor/reviewer/researcher orchestration |
-| `latticeai/core/workflow_engine.py` | Workflow definitions and run history |
+| `lattice_brain/runtime/multi_agent.py` | Planner/executor/reviewer/researcher orchestration |
+| `lattice_brain/workflow.py` | Workflow definitions and run history |
 | `latticeai/core/plugins.py` | Plugin manifest, registry, permission boundary |
 | `latticeai/core/security.py` | Local security primitives |
 

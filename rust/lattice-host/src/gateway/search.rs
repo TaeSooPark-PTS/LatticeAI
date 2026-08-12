@@ -29,10 +29,15 @@ use axum::Json;
 use lattice_core::{open_read_only, LocalEmbeddingModel};
 use lattice_retrieval::hybrid::{hybrid_search, HybridOptions};
 use lattice_retrieval::keyword::search as keyword_search;
+// Two things this crate used to own a second copy of, both from the crate that
+// owns the engines: the 404 body for a store that does not exist, and the wall
+// clock the recency decay reads (naive local seconds, the way
+// `datetime.now().isoformat()` writes the stamps it is subtracted from). Two
+// clocks are two things a bug fix can move apart.
+use lattice_retrieval::routes::{brain_not_found, naive_local_now};
 use lattice_retrieval::vector::vector_search;
 use serde_json::Value;
 
-use super::clock::naive_local_now;
 use super::params::{ParamError, SearchParams, MAX_BODY_BYTES};
 use super::GatewayState;
 
@@ -192,21 +197,6 @@ async fn handle(
         Ok(Err(detail)) => search_failed(engine, detail),
         Err(err) => search_failed(engine, format!("the search task did not finish: {err}")),
     }
-}
-
-/// 404 — there is no brain on this machine yet, and saying "no results" would
-/// be a lie about an empty index rather than a missing one.
-fn brain_not_found(db: &Path) -> Response {
-    (
-        StatusCode::NOT_FOUND,
-        Json(serde_json::json!({
-            "error": "brain_not_found",
-            "detail": "no knowledge graph exists yet at this path; \
-                       ingest something first, or point LATTICEAI_DATA_DIR at an existing brain",
-            "path": db.display().to_string(),
-        })),
-    )
-        .into_response()
 }
 
 /// 500 — the store exists but the engine could not read it.

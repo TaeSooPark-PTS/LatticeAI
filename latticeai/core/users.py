@@ -100,15 +100,6 @@ def user_id_for_email(users: Dict[str, Any], email: Optional[str]) -> Optional[s
     return stable_user_id(normalized)
 
 
-def email_for_user_id(users: Dict[str, Any], user_id: Optional[str]) -> Optional[str]:
-    if not user_id:
-        return None
-    for email, user in (users or {}).items():
-        if isinstance(user, dict) and user.get("id") == user_id:
-            return email
-    return None
-
-
 def migrate_knowledge_graph_identity(db_path: Path, email_to_id: Dict[str, str]) -> int:
     """Rewrite KG owner/creator identity columns from email to stable UUIDs."""
     if not db_path.exists() or not email_to_id:

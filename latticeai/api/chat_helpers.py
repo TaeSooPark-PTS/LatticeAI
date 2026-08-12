@@ -1,8 +1,14 @@
 """Pure chat helpers: language/intent detection, file-action parsing,
-network-status formatting, workspace-scope extraction, and recent-context
-assembly. Split out of the chat router module so create_chat_router keeps
-only request wiring. chat.py re-imports every name, so external import
-sites (tests, app_factory) are unaffected.
+network-status formatting, and recent-context assembly. Split out of the chat
+router module so create_chat_router keeps only request wiring. chat.py
+re-imports every name, so external import sites (tests, app_factory) are
+unaffected.
+
+Workspace-scope extraction used to live here too, as a verbatim copy of the
+header/query derivation. 11.5.2 deleted it: the callers now use
+:func:`latticeai.api.workspace_scope.requested_workspace`, so a request that
+names two different workspaces is refused instead of having one selector
+silently win.
 """
 
 from __future__ import annotations
@@ -10,8 +16,6 @@ from __future__ import annotations
 import json
 import re
 from typing import Any, AsyncIterator, Dict, List, Optional
-
-from fastapi import Request
 
 
 def pair_user_history(history: List[Dict], user_email: str) -> List[Dict]:
@@ -405,13 +409,6 @@ def assess_answer_grounding(
         "reason": "답변이 검색된 출처의 내용을 사용하지 않았습니다",
     }
 
-
-def workspace_scope_from_request(request: Request) -> Optional[str]:
-    header = request.headers.get("X-Workspace-Id")
-    if header and header.strip():
-        return header.strip()
-    query = request.query_params.get("workspace_id")
-    return query.strip() if query and query.strip() else None
 
 async def single_text_stream(text: str, model: str = "system") -> AsyncIterator[str]:
     yield f"data: {json.dumps({'chunk': text, 'model': model}, ensure_ascii=False)}\n\n"

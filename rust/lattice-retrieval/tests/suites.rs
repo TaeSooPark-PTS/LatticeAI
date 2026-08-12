@@ -16,7 +16,7 @@ mod common;
 use common::{allowed_set, diff, golden, manifest, open_store, pin_environment};
 
 use lattice_core::{parse_iso, CoreError, LocalEmbeddingModel};
-use lattice_retrieval::context::{assemble_context, ContextRequest, RecentRequest};
+use lattice_retrieval::context::{assemble_context, ContextRequest};
 use lattice_retrieval::docgen::{multi_hop_context, search_for_document_generation};
 use lattice_retrieval::docgen_context::{
     format_sources_footnote, retrieve_context_for_generation, DocumentContextRequest,
@@ -25,7 +25,8 @@ use lattice_retrieval::graph_reads::{
     relationship_search, traverse, RelationshipQuery, TraverseOptions,
 };
 use lattice_retrieval::history::{
-    conversation_messages, group_conversations, history, search_history, HistoryScope,
+    conversation_messages, group_conversations, history, recent_chat, search_history, HistoryScope,
+    RecentChatOptions,
 };
 use lattice_retrieval::service::{graph_search, GraphSearchOptions, Scope};
 use lattice_retrieval::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
@@ -91,15 +92,15 @@ fn node_ids(spec: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn recent_request(spec: &Value) -> Option<RecentRequest> {
-    let recent = spec.get("recent")?;
-    Some(RecentRequest {
-        limit: recent.get("limit").and_then(Value::as_i64),
-        include_image_missing_replies: recent.get("images").and_then(Value::as_bool),
-        user_email: opt_text(recent, "user_email"),
-        conversation_id: opt_text(recent, "conversation_id"),
-        workspace_id: opt_text(recent, "workspace_id"),
-    })
+/// The recent-chat suite's spec, in the shape `build_recent_chat_context` takes.
+fn recent_chat_options(spec: &Value) -> RecentChatOptions {
+    RecentChatOptions {
+        limit: int(spec, "limit", 10),
+        include_image_missing_replies: flag(spec, "images", true),
+        user_email: opt_text(spec, "user_email"),
+        conversation_id: opt_text(spec, "conversation_id"),
+        workspace_id: opt_text(spec, "workspace_id"),
+    }
 }
 
 fn run(
@@ -180,6 +181,10 @@ fn run(
             &scoped_history(conn, spec),
             &text(spec, "conversation_id"),
         )),
+        "recent_chat" => Value::String(
+            recent_chat(conn, &recent_chat_options(spec))
+                .expect("recent chat must not fail on the fixture"),
+        ),
         "history_search" => Value::Array(search_history(
             &scoped_history(conn, spec),
             &text(spec, "query"),
@@ -235,7 +240,11 @@ fn run(
                 artifacts: spec.get("artifacts").cloned(),
                 knowledge: flag(spec, "knowledge", true),
                 notes: opt_text(spec, "notes"),
-                recent: recent_request(spec),
+                // 11.5.2: no recent seam. The production assembler supplies
+                // four seams and never this one, so a golden that pinned it
+                // claimed agreement about a path the product does not run.
+                // The transcript itself is pinned by the `recent_chat` suite.
+                recent: None,
                 user_email: opt_text(spec, "user_email"),
                 conversation_id: opt_text(spec, "conversation_id"),
                 workspace_id: opt_text(spec, "workspace_id"),
@@ -259,8 +268,8 @@ fn every_suite_spec_matches_its_python_golden() {
         .expect("the manifest must describe the v11.5.0 suites");
     assert_eq!(
         suites.len(),
-        12,
-        "twelve ported entry points; a missing suite is a missing proof"
+        13,
+        "thirteen ported entry points; a missing suite is a missing proof"
     );
 
     let mut checked = 0usize;

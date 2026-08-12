@@ -11,12 +11,10 @@ depended on one of them would be a coin flip rather than a gate.
 from __future__ import annotations
 
 import types
-import urllib.error
-import urllib.request
 
 import pytest
 
-from latticeai.services import model_runtime
+from latticeai.services import model_engines, model_runtime
 from latticeai.services.model_runtime import cloud as mr_cloud
 from latticeai.services.model_runtime import download as mr_download
 from latticeai.services.model_runtime import engines as mr_engines
@@ -52,34 +50,6 @@ def _patch_runtime(monkeypatch, name, value):
 from latticeai.services.model_errors import ModelRuntimeError
 
 
-class _Response:
-    """The minimal ``urlopen`` result ``_json_request`` consumes."""
-
-    def __init__(self, body: bytes) -> None:
-        self._body = body
-
-    def read(self) -> bytes:
-        return self._body
-
-    def __enter__(self) -> "_Response":
-        return self
-
-    def __exit__(self, *_exc: object) -> bool:
-        return False
-
-
-def _install_fake_urlopen(monkeypatch, urlopen) -> None:
-    """Replace only ``model_runtime``'s view of urllib, never the stdlib's."""
-    _patch_runtime(
-        monkeypatch,
-        "urllib",
-        types.SimpleNamespace(
-            request=types.SimpleNamespace(Request=urllib.request.Request, urlopen=urlopen),
-            error=urllib.error,
-        ),
-    )
-
-
 def _fake_time(monkeypatch, *, now: float = 1_000.0) -> None:
     _patch_runtime(
         monkeypatch,
@@ -111,99 +81,43 @@ def test_engine_install_block_is_a_409_with_the_capability_named():
     assert detail["status"] == "unavailable"
 
 
-# ── _update_env_file ─────────────────────────────────────────────────────────
-
-
-def test_update_env_file_replaces_the_key_and_keeps_every_other_line(tmp_path):
-    env_file = tmp_path / ".env"
-    env_file.write_text("OTHER=keep\nLATTICEAI_KEY=old\nTRAILING=1\n", encoding="utf-8")
-
-    model_runtime._update_env_file(env_file, "LATTICEAI_KEY", "new")
-
-    assert env_file.read_text(encoding="utf-8").splitlines() == [
-        "OTHER=keep",
-        "LATTICEAI_KEY=new",
-        "TRAILING=1",
-    ]
-
-
-def test_update_env_file_appends_when_the_key_is_absent(tmp_path):
-    env_file = tmp_path / ".env"
-    env_file.write_text("OTHER=keep\n", encoding="utf-8")
-
-    model_runtime._update_env_file(env_file, "NEW_KEY", "value")
-
-    assert env_file.read_text(encoding="utf-8") == "OTHER=keep\nNEW_KEY=value\n"
-
-
-def test_update_env_file_creates_the_file_when_it_does_not_exist(tmp_path):
-    env_file = tmp_path / "missing" / ".env"
-    env_file.parent.mkdir()
-
-    model_runtime._update_env_file(env_file, "ONLY", "one")
-
-    assert env_file.read_text(encoding="utf-8") == "ONLY=one\n"
-
-
-# ── thin delegators to model_engines ─────────────────────────────────────────
+# ── re-exports of the engine layer ───────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
-    ("public_name", "private_name", "args", "kwargs", "expected_call"),
+    "name",
     [
-        ("windows_binary_candidates", "_windows_binary_candidates", ("ollama",), {}, (("ollama",), {})),
-        ("local_binary", "_local_binary", ("ollama",), {}, (("ollama",), {})),
-        ("find_lmstudio_cli", "_find_lmstudio_cli", (), {}, ((), {})),
-        ("vllm_executable", "_vllm_executable", (), {}, ((), {})),
-        ("vllm_metal_python", "_vllm_metal_python", (), {}, ((), {})),
-        ("ensure_lmstudio_server", "_ensure_lmstudio_server", (), {}, ((), {})),
-        ("engine_support_status", "_engine_support_status", ("vllm",), {}, (("vllm",), {})),
-        (
-            "pull_ollama_model_with_progress",
-            "_pull_ollama_model_with_progress",
-            ("llama3",),
-            {},
-            (("llama3", None), {}),
-        ),
-        ("get_ollama_pulled_models", "_get_ollama_pulled_models", (), {}, ((), {})),
-        (
-            "get_openai_compatible_server_models",
-            "_get_openai_compatible_server_models",
-            ("vllm",),
-            {},
-            (("vllm",), {}),
-        ),
-        ("ensure_ollama_server", "_ensure_ollama_server", (), {}, ((), {})),
-        (
-            "wait_for_openai_compatible_server",
-            "_wait_for_openai_compatible_server",
-            ("vllm",),
-            {"model_name": "qwen", "timeout": 3},
-            (("vllm",), {"model_name": "qwen", "timeout": 3}),
-        ),
-        ("ensure_vllm_server", "_ensure_vllm_server", ("qwen",), {}, (("qwen",), {})),
-        ("ensure_llamacpp_server", "_ensure_llamacpp_server", ("qwen",), {}, (("qwen",), {})),
+        "windows_binary_candidates",
+        "local_binary",
+        "find_lmstudio_cli",
+        "vllm_executable",
+        "vllm_metal_python",
+        "ensure_lmstudio_server",
+        "engine_support_status",
+        "pull_ollama_model_with_progress",
+        "get_ollama_pulled_models",
+        "get_openai_compatible_server_models",
+        "ensure_ollama_server",
+        "wait_for_openai_compatible_server",
+        "ensure_vllm_server",
+        "ensure_llamacpp_server",
+        "lmstudio_api_base",
+        "lmstudio_native_api_base",
+        "_json_request",
     ],
 )
-def test_engine_helpers_forward_their_arguments_unchanged(
-    monkeypatch, public_name, private_name, args, kwargs, expected_call
-):
-    """These wrappers exist only to keep the historical import path alive.
+def test_every_engine_name_is_the_engine_layers_own_object(name):
+    """These names exist only to keep the historical import path alive.
 
-    The one thing that can break is the hand-off, so that is what is asserted:
-    the arguments arrive as given and the engine layer's answer comes back.
+    Until 11.5.2 each was a hand-written wrapper that forwarded its arguments,
+    so the thing that could break was the hand-off and that is what the old
+    test asserted. They are re-export bindings now, which makes a stronger
+    statement testable: ``model_runtime.X`` *is* ``model_engines.X``. A wrapper
+    that grows a second implementation — which is how the LM Studio base URL
+    ended up with two different fallbacks — cannot pass this.
     """
-    seen: list = []
-    sentinel = object()
-
-    def _record(*call_args, **call_kwargs):
-        seen.append((call_args, call_kwargs))
-        return sentinel
-
-    _patch_runtime(monkeypatch, private_name, _record)
-
-    assert getattr(model_runtime, public_name)(*args, **kwargs) is sentinel
-    assert seen == [expected_call]
+    assert getattr(model_runtime, name) is getattr(model_engines, name)
+    assert getattr(mr_engines, name) is getattr(model_engines, name)
 
 
 def test_install_engine_passes_the_applications_base_dir_not_the_process_cwd(tmp_path, monkeypatch):
@@ -227,59 +141,6 @@ def test_sse_event_frames_the_payload_without_escaping_non_ascii():
     assert frame.startswith("event: progress\ndata: ")
     assert frame.endswith("\n\n")
     assert "다운로드" in frame
-
-
-# ── _json_request ────────────────────────────────────────────────────────────
-
-
-def test_json_request_get_parses_the_body_and_sends_no_payload(monkeypatch):
-    captured: list = []
-
-    def _urlopen(req, timeout=None):
-        captured.append((req.full_url, req.get_method(), req.data, dict(req.headers), timeout))
-        return _Response(b'{"models": [{"key": "a"}]}')
-
-    _install_fake_urlopen(monkeypatch, _urlopen)
-
-    assert model_runtime._json_request(
-        "http://127.0.0.1:1234/api/v1/models",
-        headers={"Authorization": "Bearer x"},
-        timeout=2.5,
-    ) == {"models": [{"key": "a"}]}
-
-    url, method, data, headers, timeout = captured[0]
-    assert (url, method, data, timeout) == ("http://127.0.0.1:1234/api/v1/models", "GET", None, 2.5)
-    assert headers["Authorization"] == "Bearer x"
-    assert "Content-type" not in headers
-
-
-def test_json_request_post_encodes_json_and_sets_the_content_type(monkeypatch):
-    captured: list = []
-
-    def _urlopen(req, timeout=None):
-        captured.append((req.get_method(), req.data, dict(req.headers)))
-        return _Response(b'{"status": "loaded"}')
-
-    _install_fake_urlopen(monkeypatch, _urlopen)
-
-    assert model_runtime._json_request(
-        "http://127.0.0.1:1234/api/v1/models/load",
-        method="POST",
-        payload={"model": "qwen"},
-        timeout=5,
-    ) == {"status": "loaded"}
-
-    method, data, headers = captured[0]
-    assert method == "POST"
-    assert data == b'{"model": "qwen"}'
-    assert headers["Content-type"] == "application/json"
-
-
-def test_json_request_treats_a_blank_body_as_an_empty_object(monkeypatch):
-    """A 204-style empty body is a valid answer, not a JSON decode failure."""
-    _install_fake_urlopen(monkeypatch, lambda req, timeout=None: _Response(b"   \n"))
-
-    assert model_runtime._json_request("http://127.0.0.1:1234/x") == {}
 
 
 # ── LM Studio base URLs ──────────────────────────────────────────────────────

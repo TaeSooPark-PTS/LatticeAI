@@ -12,7 +12,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
 import re
@@ -21,6 +20,8 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from latticeai.core.module_probe import module_available as _module_available
 
 logger = logging.getLogger(__name__)
 
@@ -196,13 +197,6 @@ def get_model_profile(model_id: str, engine: Optional[str] = None) -> Dict[str, 
 GEMMA4_MLX_UNIFIED_MODULE = "mlx_vlm.models.gemma4_unified"
 GEMMA4_MLX_LM_MODULES = ("mlx_lm.models.gemma4", "mlx_lm.models.gemma4_text")
 GEMMA4_UNIFIED_ID_PATTERN = re.compile(r"gemma[-_/ ]?4[-_/ ]?12b", re.I)
-
-
-def _module_available(module: str) -> bool:
-    try:
-        return importlib.util.find_spec(module) is not None
-    except (ImportError, ModuleNotFoundError, AttributeError, ValueError):
-        return False
 
 
 def _is_gemma4(model_id: str) -> bool:

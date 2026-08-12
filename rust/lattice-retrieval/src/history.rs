@@ -439,6 +439,22 @@ pub fn recent_chat(conn: &Connection, options: &RecentChatOptions) -> Result<Str
     Ok(recent_chat_context(&rows, options))
 }
 
+/// Where Python's `history[-limit:]` starts.
+///
+/// Not `len - limit`. `-0 == 0`, so a **zero** limit slices from the front and
+/// keeps the whole transcript rather than none of it, and a negative limit
+/// becomes a positive start that drops rows off the front. This looks like a
+/// bug on both sides and is neither: it is what the live `/chat` prompt builder
+/// does, so the port has to do it too or the two runtimes disagree exactly
+/// where a caller passes an unvalidated limit through.
+fn python_tail_start(len: usize, limit: i64) -> usize {
+    if limit > 0 {
+        len.saturating_sub(limit as usize)
+    } else {
+        ((-limit) as usize).min(len)
+    }
+}
+
 /// `chat_helpers.build_recent_chat_context`'s narrowing and formatting half.
 pub fn recent_chat_context(history: &[Value], options: &RecentChatOptions) -> String {
     let mut rows: Vec<Value> = history.to_vec();
@@ -465,8 +481,7 @@ pub fn recent_chat_context(history: &[Value], options: &RecentChatOptions) -> St
     if let Some(user_email) = options.user_email.as_ref().filter(|v| !v.is_empty()) {
         rows = pair_user_history(&rows, user_email);
     }
-    let keep = options.limit.max(0) as usize;
-    let start = rows.len().saturating_sub(keep);
+    let start = python_tail_start(rows.len(), options.limit);
     let mut lines: Vec<String> = Vec::new();
     for item in rows.iter().skip(start) {
         let role = item
@@ -780,6 +795,9 @@ mod tests {
             },
         );
         assert_eq!(conversation, "user: three");
+        // `history[-0:]` is `history[0:]`: a zero limit keeps everything.
+        // 11.5.2 found this with a golden; the port had answered "" and no
+        // test on either side had ever asked.
         assert_eq!(
             recent_chat_context(
                 &history,
@@ -788,7 +806,19 @@ mod tests {
                     ..Default::default()
                 }
             ),
-            ""
+            "user (web): one\nassistant: two\nuser: three"
+        );
+        // `history[-(-2):]` is `history[2:]` — a negative limit drops rows
+        // off the *front*.
+        assert_eq!(
+            recent_chat_context(
+                &history,
+                &RecentChatOptions {
+                    limit: -2,
+                    ..Default::default()
+                }
+            ),
+            "user: three"
         );
     }
 

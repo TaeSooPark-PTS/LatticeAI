@@ -118,6 +118,60 @@ def test_vector_search_is_reachable_by_get_and_post_and_honours_min_score(live):
     )
 
 
+def test_graph_search_returns_matches_and_the_relationships_that_reached_them(live):
+    """The third channel, reachable at last.
+
+    ``graph_search`` was in the router's scope allow-list from the day the
+    chokepoint was written, but no handler called it: the service method was
+    only ever exercised from inside ``hybrid_search``. 11.5.2 gives it the
+    ``POST /api/search/graph`` route the allow-list already assumed.
+    """
+    response = live.post(
+        "/api/search/graph", json={"query": "graph relationships", "limit": 5}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["matches"], "a seeded store must answer the graph channel"
+    assert all(match.get("node_id") for match in body["matches"])
+    assert "graph" in body["matches"][0]["sources"]
+
+
+def test_graph_search_expand_depth_zero_keeps_only_the_direct_matches(live):
+    # depth is the whole difference between "what matched" and "what the
+    # matches are connected to"; a route that ignored it would look correct
+    # against a small fixture and quietly return the same page every time.
+    direct = live.post(
+        "/api/search/graph",
+        json={"query": "graph relationships", "limit": 5, "expand_depth": 0},
+    ).json()
+    expanded = live.post(
+        "/api/search/graph",
+        json={"query": "graph relationships", "limit": 5, "expand_depth": 3},
+    ).json()
+
+    assert direct["matches"]
+    assert len(direct["matches"]) <= len(expanded["matches"])
+
+
+def test_graph_search_is_workspace_scoped_like_its_siblings(tmp_path):
+    seen: List[Dict[str, Any]] = []
+
+    class RecordingService:
+        def graph_search(self, query, **kwargs):
+            seen.append({"query": query, **kwargs})
+            return {"matches": [], "query": query}
+
+    client = _client(
+        RecordingService(), allowed_workspaces_for=lambda user: {"ws-a"},
+    )
+    client.post("/api/search/graph", json={"query": "scoped", "limit": 4})
+
+    assert seen == [
+        {"query": "scoped", "limit": 4, "expand_depth": 1, "allowed_workspaces": {"ws-a"}}
+    ]
+
+
 def test_graph_node_post_matches_the_get_form(live):
     node_id = live.get(
         "/api/search/hybrid", params={"q": "hybrid vector graph", "limit": 3}
@@ -186,6 +240,7 @@ _DISABLED_CALLS = [
     ("GET", "/api/search/keyword", None, {"q": "q"}),
     ("POST", "/api/search/vector", {"query": "q"}, None),
     ("GET", "/api/search/vector", None, {"q": "q"}),
+    ("POST", "/api/search/graph", {"query": "q"}, None),
     ("GET", "/api/graph", None, None),
     ("GET", "/api/graph/node", None, {"node_id": "n1"}),
     ("POST", "/api/graph/node", {"node_id": "n1"}, None),

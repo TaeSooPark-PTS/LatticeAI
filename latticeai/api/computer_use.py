@@ -11,7 +11,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from lattice_brain.runtime.hooks import dispatch_tool
+from latticeai.api.workspace_scope import resolve_workspace_scope
 from latticeai.core.agent import extract_action as _extract_agent_action
+from latticeai.core.sse import sse_frame
 from latticeai.services.tool_dispatch import enforce_tool_policy
 from latticeai.tools import (
     AGENT_ROOT,
@@ -121,34 +123,24 @@ def create_computer_use_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    def _requested_workspace(request: Request) -> Optional[str]:
-        header = request.headers.get("X-Workspace-Id")
-        if header and header.strip():
-            return header.strip()
-        query = request.query_params.get("workspace_id")
-        return query.strip() if query and query.strip() else None
-
     def _write_workspace(request: Request, current_user: str) -> Optional[str]:
         """Resolve only the CU agent's durable write scope.
 
         The other ``/cu`` actions remain host operations and do not acquire a
         workspace dependency.  A no-auth local request without an explicit
-        scope preserves its legacy unscoped history behavior; explicit scopes
-        and every authenticated request go through the normal write gate.
+        scope preserves its legacy unscoped history behavior — that is exactly
+        what ``allow_unscoped_anonymous`` names in the shared resolver;
+        explicit scopes and every authenticated request go through the normal
+        write gate.
         """
 
-        requested = _requested_workspace(request)
-        if workspace_service is None:
-            return requested
-        if not current_user and requested is None:
-            return None
-        try:
-            return workspace_service.resolve_write_scope(
-                requested,
-                current_user or None,
-            )
-        except PermissionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return resolve_workspace_scope(
+            request,
+            user=current_user,
+            workspace_service=workspace_service,
+            write=True,
+            allow_unscoped_anonymous=True,
+        )
 
     def _audit_args(name: str, args: dict) -> dict:
         """Return audit-safe argument metadata without storing typed text."""
@@ -351,17 +343,14 @@ def create_computer_use_router(
             task_lower = (req.task or "").lower()
             url_match = re.search(r"(https?://[^\s]+|localhost:\d+[^\s]*|127\.0\.0\.1:\d+[^\s]*)", req.task or "")
 
-            def _send(event: str, data: dict) -> str:
-                return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
             if ("chrome" in task_lower or "크롬" in task_lower) and any(
                 word in task_lower for word in ["open", "열", "켜", "실행", "띄"]
             ):
-                yield _send("start", {"task": req.task, "max_steps": 1})
+                yield sse_frame("start", {"task": req.task, "max_steps": 1})
                 try:
                     if url_match:
                         url = url_match.group(1)
-                        yield _send(
+                        yield sse_frame(
                             "action",
                             {"step": 1, "action": "computer_open_url", "args": {"url": url, "app": "Google Chrome"}},
                         )
@@ -371,11 +360,11 @@ def create_computer_use_router(
                             lambda: computer_open_url(url, "Google Chrome"),
                             current_user=current_user,
                         )
-                        yield _send("result", {"step": 1, "action": "computer_open_url", "result": result})
+                        yield sse_frame("result", {"step": 1, "action": "computer_open_url", "result": result})
                         message = f"Google Chrome에서 {url}을 열었습니다."
                         action_name = "computer_open_url"
                     else:
-                        yield _send(
+                        yield sse_frame(
                             "action",
                             {"step": 1, "action": "computer_open_app", "args": {"app": "Google Chrome"}},
                         )
@@ -385,26 +374,26 @@ def create_computer_use_router(
                             lambda: computer_open_app("Google Chrome"),
                             current_user=current_user,
                         )
-                        yield _send("result", {"step": 1, "action": "computer_open_app", "result": result})
+                        yield sse_frame("result", {"step": 1, "action": "computer_open_app", "result": result})
                         message = "Google Chrome을 열었습니다."
                         action_name = "computer_open_app"
                     _save_completed("user", req.task)
                     _save_completed("assistant", message)
-                    yield _send("final", {"message": message, "steps": [{"step": 1, "action": action_name, "result": result}]})
+                    yield sse_frame("final", {"message": message, "steps": [{"step": 1, "action": action_name, "result": result}]})
                 except HTTPException as exc:
-                    yield _send("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc.detail)})
+                    yield sse_frame("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc.detail)})
                 except (ToolError, PermissionError) as exc:
-                    yield _send("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc)})
+                    yield sse_frame("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc)})
                 return
 
             if not model_router.current_model_id:
-                yield _send("error", {"error": "No model loaded."})
+                yield sse_frame("error", {"error": "No model loaded."})
                 return
 
             transcript: List[Dict[str, Any]] = []
             last_screenshot_b64: Optional[str] = None
             max_steps = max(1, min(req.max_steps, 20))
-            yield _send("start", {"task": req.task, "max_steps": max_steps})
+            yield sse_frame("start", {"task": req.task, "max_steps": max_steps})
 
             for step in range(max_steps):
                 context = (
@@ -423,7 +412,7 @@ def create_computer_use_router(
                 try:
                     action = _extract_agent_action(str(raw))
                 except ValueError as exc:
-                    yield _send("error", {"step": step + 1, "error": str(exc), "raw": str(raw)})
+                    yield sse_frame("error", {"step": step + 1, "error": str(exc), "raw": str(raw)})
                     break
 
                 name = action.get("action")
@@ -432,10 +421,10 @@ def create_computer_use_router(
                     message = action.get("message", "작업을 완료했습니다.")
                     _save_completed("user", req.task)
                     _save_completed("assistant", message)
-                    yield _send("final", {"message": message, "steps": transcript})
+                    yield sse_frame("final", {"message": message, "steps": transcript})
                     return
 
-                yield _send("action", {"step": step + 1, "action": name, "args": args})
+                yield sse_frame("action", {"step": step + 1, "action": name, "args": args})
                 try:
                     result = _dispatch(
                         name,
@@ -449,7 +438,7 @@ def create_computer_use_router(
                         result_summary = {k: v for k, v in result.items() if k != "screenshot_b64"}
                         result_summary["screenshot_captured"] = True
                         transcript.append({"step": step + 1, "action": name, "args": args, "result": result_summary})
-                        yield _send(
+                        yield sse_frame(
                             "screenshot",
                             {
                                 "step": step + 1,
@@ -461,17 +450,17 @@ def create_computer_use_router(
                     else:
                         last_screenshot_b64 = None
                         transcript.append({"step": step + 1, "action": name, "args": args, "result": result})
-                        yield _send("result", {"step": step + 1, "action": name, "result": result})
+                        yield sse_frame("result", {"step": step + 1, "action": name, "result": result})
                 except HTTPException as exc:
                     error_str = str(exc.detail)
                     transcript.append({"step": step + 1, "action": name, "args": args, "error": error_str})
-                    yield _send("tool_error", {"step": step + 1, "action": name, "error": error_str})
+                    yield sse_frame("tool_error", {"step": step + 1, "action": name, "error": error_str})
                 except (ToolError, PermissionError, KeyError, TypeError) as exc:
                     error_str = str(exc)
                     transcript.append({"step": step + 1, "action": name, "args": args, "error": error_str})
-                    yield _send("tool_error", {"step": step + 1, "action": name, "error": error_str})
+                    yield sse_frame("tool_error", {"step": step + 1, "action": name, "error": error_str})
 
-            yield _send("done", {"steps": len(transcript), "transcript": transcript})
+            yield sse_frame("done", {"steps": len(transcript), "transcript": transcript})
 
         return StreamingResponse(
             _stream(),

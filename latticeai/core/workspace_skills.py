@@ -6,15 +6,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .timeutil import now_iso as _now
+from .workspace_os_utils import WorkspaceStoreMixin
 
 
-class WorkspaceSkills:
-    def __init__(self, store: Any):
-        self._store = store
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._store, name)
-
+class WorkspaceSkills(WorkspaceStoreMixin):
     def list_skill_registry(self, skills_dir: Path, marketplace: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         state = self.load_state()
         registry = state.setdefault("skill_registry", {})

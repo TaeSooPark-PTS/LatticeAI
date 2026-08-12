@@ -403,3 +403,72 @@ async fn the_trajectories_between_them_reach_every_terminal_state() {
         "{states:?}"
     );
 }
+
+#[test]
+fn the_document_targets_resolve_to_the_recorded_paths() {
+    // The write-time twin of the governance check: the creators sanitize the
+    // caller's filename into their own output directory, so a "does the target
+    // exist?" test against the raw argument inspects a path nothing writes.
+    // Rust takes the basename with its own `path_name` and has its own
+    // empty-name fallback, which is exactly where the two could drift.
+    let helpers = loop_golden("helpers.json");
+    let recorded = helpers["document_targets"].as_array().expect("rows");
+    let mut failures = Vec::new();
+    for case in recorded {
+        let tool = case["tool"].as_str().expect("tool");
+        let filename = case["filename"].as_str().expect("filename");
+        let actual = json!({
+            "tool": tool,
+            "filename": filename,
+            "target": lattice_agent::documents::document_output_target(tool, filename),
+        });
+        if canonical(&actual) != canonical(case) {
+            failures.push(format!("{tool}/{filename:?}: {actual} != {case}"));
+        }
+    }
+    common::assert_no_failures(recorded.len(), failures, "document targets");
+}
+
+#[test]
+fn the_agent_profile_dial_picks_the_recorded_profile() {
+    // Two decisions per row: the parameter count parsed out of the model id
+    // (where a `4bit` quantization suffix must not read as 4 billion), and the
+    // profile that follows from it under an explicit override.
+    let helpers = loop_golden("helpers.json");
+    let recorded = helpers["agent_profiles"].as_array().expect("rows");
+    let mut failures = Vec::new();
+    for case in recorded {
+        let model_id = case["model_id"].as_str();
+        let override_name = case["override"].as_str().expect("override");
+        let profile = lattice_agent::profile::profile_with_override(model_id, override_name);
+        let actual = json!({
+            "override": override_name,
+            "model_id": model_id,
+            "size_b": lattice_agent::profile::model_size_b(model_id.unwrap_or("")),
+            "profile": {
+                "name": profile.name,
+                "transcript_window": profile.transcript_window,
+                "parse_failure_budget": profile.parse_failure_budget,
+                "escalate_after": profile.escalate_after,
+                "direct_path_fallback": profile.direct_path_fallback,
+            },
+        });
+        if canonical(&actual) != canonical(case) {
+            failures.push(format!(
+                "{override_name:?}/{model_id:?}: {actual} != {case}"
+            ));
+        }
+    }
+    common::assert_no_failures(recorded.len(), failures, "agent profiles");
+}
+
+#[test]
+fn the_manifest_pins_the_compact_profile_boundary() {
+    let manifest = loop_golden("manifest.json");
+    assert_eq!(
+        manifest["constants"]["compact_max_params_b"]
+            .as_f64()
+            .expect("compact_max_params_b"),
+        lattice_agent::profile::COMPACT_MAX_PARAMS_B,
+    );
+}

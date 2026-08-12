@@ -80,7 +80,7 @@ def test_capability_gate_rejects_a_role_without_the_capability():
 
 
 def test_module_level_facade_delegates_to_the_default_service():
-    assert td.agent_policy("read_file", {})["risk"] == "read"
+    assert td.agent_risk("read_file", {}) == "low"
     # list_dir carries no capability and is not admin-only: the gate is a no-op.
     assert td.check_tool_role("list_dir", "u@e.co") is None
 

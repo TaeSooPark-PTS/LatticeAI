@@ -22,9 +22,9 @@ from lattice_brain.runtime import hooks as hooks_mod
 from lattice_brain.runtime.hooks import (
     BUILTIN_HOOKS,
     HookContext,
+    HookResult,
     HooksRegistry,
     dispatch_tool,
-    hook_result,
 )
 
 
@@ -79,8 +79,8 @@ def test_hook_context_records_mutations_notes_and_blocks():
     assert payload["workspace_id"] == "ws-1"
 
 
-def test_hook_result_factory_stamps_a_start_time():
-    res = hook_result(hook_id="user:ping", name="Ping", kind="post_run")
+def test_hook_result_stamps_a_start_time():
+    res = HookResult(hook_id="user:ping", name="Ping", kind="post_run")
 
     assert res.as_dict()["hook_id"] == "user:ping"
     assert res.status == "ok"
@@ -233,19 +233,18 @@ def test_registering_the_same_name_twice_keeps_both_hooks(tmp_path):
 # ── execution ───────────────────────────────────────────────────────────────
 
 
-def test_register_hook_requires_a_callable_and_unregister_unbinds_it(tmp_path):
+def test_register_hook_requires_a_callable_and_binds_the_runner(tmp_path):
     registry = _registry(tmp_path)
 
     with pytest.raises(TypeError, match="runner must be callable"):
         registry.register_hook("builtin:redact-secrets", "not-callable")
 
+    assert registry.has_runner("builtin:redact-secrets") is False
+    assert registry.get("builtin:redact-secrets")["advisory"] is True
+
     assert registry.register_hook("builtin:redact-secrets", lambda _ctx: None) is registry
     assert registry.has_runner("builtin:redact-secrets") is True
     assert registry.get("builtin:redact-secrets")["executable"] is True
-
-    registry.unregister_hook("builtin:redact-secrets")
-    assert registry.has_runner("builtin:redact-secrets") is False
-    assert registry.get("builtin:redact-secrets")["advisory"] is True
 
 
 def test_a_disabled_hook_is_skipped_rather_than_run(tmp_path):

@@ -26,6 +26,7 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
 use crate::agentloop::{RunRequest, Runtime};
+use crate::bad_request;
 use crate::plan::normalize_plan;
 use crate::runbody::{finish_payload, pause_payload, ResumeBody, RunBody};
 use crate::runs::{
@@ -100,14 +101,6 @@ pub fn loop_router(workspace: Workspace, config: LoopConfig) -> Router {
         .route("/rust/agent/resume", post(resume))
         .route("/rust/agent/approvals", get(approvals))
         .with_state(Arc::new(LoopState::new(workspace, config)))
-}
-
-fn bad_request(detail: impl Into<String>) -> Response {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(json!({"error": "invalid_request", "detail": detail.into()})),
-    )
-        .into_response()
 }
 
 fn refuse(status: StatusCode, detail: Value) -> Response {

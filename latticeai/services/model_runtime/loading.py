@@ -9,10 +9,10 @@ load itself (blocking and streaming forms) and to
 
 from __future__ import annotations
 
-import json
 from typing import Any, AsyncIterator, Dict, Optional
 
 from latticeai.core.model_resolution import ModelResolution as _ModelResolution
+from latticeai.core.sse import sse_frame
 from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS, ensure_mlx_runtime
 from latticeai.services.model_catalog import ENGINE_INSTALLERS, MODEL_ENGINE_ALIASES
 from latticeai.services.model_errors import ModelRuntimeError
@@ -151,7 +151,7 @@ async def prepare_and_load_model(
 
 
 def sse_event(event: str, data: Dict[str, Any]) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return sse_frame(event, data)
 
 
 async def prepare_and_load_model_stream(

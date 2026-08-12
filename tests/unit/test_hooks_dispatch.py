@@ -17,7 +17,6 @@ from lattice_brain.runtime.hooks import (
     HookContext,
     HookResult,
     HooksRegistry,
-    hook_context,
 )
 
 # Quoted interpreter path — this checkout lives under a directory with a space,
@@ -184,8 +183,8 @@ def test_legacy_kind_aliases_map_forward(registry):
     assert custom["kind"] == "post_index"
 
 
-def test_hook_context_and_result_factories():
-    ctx = hook_context("pre_run", "agent.run", payload={"a": 1})
+def test_hook_context_and_result_carry_their_fields():
+    ctx = HookContext("pre_run", "agent.run", payload={"a": 1})
     assert ctx.kind == "pre_run" and ctx.event == "agent.run" and ctx.payload["a"] == 1
     res = HookResult(hook_id="x", status="ok")
     assert res.as_dict()["hook_id"] == "x"

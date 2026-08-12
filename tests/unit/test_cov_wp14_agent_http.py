@@ -483,6 +483,9 @@ def test_registered_approvals_route_lists_the_paused_run(tmp_path):
 # ── agent() guards ──────────────────────────────────────────────────────
 
 def test_workspace_id_conflicting_with_the_header_is_refused(tmp_path):
+    # 11.5.2 replaced this handler's hand-rolled body-vs-header comparison with
+    # the shared ``requested_workspace`` rule, so the refusal now carries the
+    # canonical wording every other router already used.
     controller = _controller(tmp_path)
     with pytest.raises(HTTPException) as excinfo:
         asyncio.run(controller.agent(
@@ -490,7 +493,21 @@ def test_workspace_id_conflicting_with_the_header_is_refused(tmp_path):
             _request(headers={"X-Workspace-Id": "ws-b"}),
         ))
     assert excinfo.value.status_code == 403
-    assert excinfo.value.detail == "workspace_id must match X-Workspace-Id."
+    assert excinfo.value.detail == "Workspace selectors must match."
+
+
+def test_workspace_id_conflicting_with_the_query_parameter_is_refused(tmp_path):
+    # The hand-rolled guard only ever compared the body against the *header*;
+    # a request naming one workspace in the body and another in the query
+    # string picked one silently. The shared rule refuses it.
+    controller = _controller(tmp_path)
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(controller.agent(
+            AgentRequest(message="hi", workspace_id="ws-a"),
+            _request(query={"workspace_id": "ws-b"}),
+        ))
+    assert excinfo.value.status_code == 403
+    assert excinfo.value.detail == "Workspace selectors must match."
 
 
 def test_agent_refuses_to_run_without_a_loaded_model(tmp_path):

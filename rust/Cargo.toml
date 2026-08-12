@@ -9,7 +9,7 @@ members = ["lattice-core", "lattice-retrieval", "lattice-host", "lattice-ingest"
 [workspace.package]
 # Kept in lockstep with the product version by scripts/bump_version.py and
 # guarded by tests/unit/test_version_consistency.py.
-version = "11.5.1"
+version = "11.5.2"
 edition = "2021"
 license = "MIT"
 

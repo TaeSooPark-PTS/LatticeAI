@@ -238,7 +238,7 @@ def test_stream_generate_as_streams_the_vlm_path_in_every_chunk_shape(monkeypatc
 
 
 def test_generate_document_reports_when_no_model_is_loaded():
-    assert asyncio.run(router_mod.LLMRouter().generate_document("보고서", "DOC")) == (
+    assert asyncio.run(router_mod.LLMRouter().generate_document_as(None, "보고서", "DOC")) == (
         "No model loaded."
     )
 
@@ -246,7 +246,7 @@ def test_generate_document_reports_when_no_model_is_loaded():
 def test_stream_generate_document_reports_when_no_model_is_loaded():
     router = router_mod.LLMRouter()
 
-    assert _collect(lambda: router.stream_generate_document("보고서", "DOC")) == [
+    assert _collect(lambda: router.stream_generate_document_as(None, "보고서", "DOC")) == [
         "No model loaded."
     ]
 
@@ -264,7 +264,7 @@ def test_generate_document_routes_a_cloud_model_to_the_cloud_backend():
     )
     router = _router_with(cloud, key="cloud")
 
-    result = asyncio.run(router.generate_document("보고서 써줘", "DOC SYSTEM"))
+    result = asyncio.run(router.generate_document_as(None, "보고서 써줘", "DOC SYSTEM"))
 
     assert result == "# Lattice AI 보고서"
     assert seen["messages"][0] == {"role": "system", "content": "DOC SYSTEM"}
@@ -281,7 +281,7 @@ def test_stream_generate_document_routes_a_cloud_model_to_the_cloud_backend():
     )
     router = _router_with(cloud, key="cloud")
 
-    chunks = _collect(lambda: router.stream_generate_document("보고서", "DOC SYSTEM"))
+    chunks = _collect(lambda: router.stream_generate_document_as(None, "보고서", "DOC SYSTEM"))
 
     assert chunks == ["# Lattice AI", " 보고서"]
 
@@ -403,7 +403,7 @@ def test_stream_generate_document_as_templates_the_document_messages(monkeypatch
     tokenizer = _TemplateTokenizer()
     router = _router_with((object(), tokenizer, None, "mlx_lm"))
 
-    assert _collect(lambda: router.stream_generate_document("보고서 써줘", "DOC SYSTEM")) == [
+    assert _collect(lambda: router.stream_generate_document_as(None, "보고서 써줘", "DOC SYSTEM")) == [
         "본문"
     ]
     assert tokenizer.messages == [

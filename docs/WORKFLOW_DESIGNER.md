@@ -8,7 +8,7 @@ node to an injected *runner* that calls the real tool registry, skill registry,
 plugin registry, or multi-agent orchestrator.
 
 The execution model lives in
-[`latticeai/core/workflow_engine.py`](../latticeai/core/workflow_engine.py)
+[`lattice_brain/workflow.py`](../lattice_brain/workflow.py)
 (pure logic with injected runners) and the HTTP surface lives in
 [`latticeai/api/workflow_designer.py`](../latticeai/api/workflow_designer.py).
 Persistence reuses the existing `WorkspaceOSStore`, so pre-2.0 workflow history

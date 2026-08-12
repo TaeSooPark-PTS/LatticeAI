@@ -50,6 +50,7 @@ for _import_root in (REPO_ROOT, Path(__file__).resolve().parent):
     if str(_import_root) not in sys.path:
         sys.path.insert(0, str(_import_root))
 
+import parity_fixture_corpus_context as context_corpus  # noqa: E402
 import parity_fixture_corpus_docgen as docgen  # noqa: E402
 
 FIXTURE_DIR = REPO_ROOT / "rust" / "fixtures"
@@ -324,23 +325,6 @@ QUERIES: List[Dict[str, Any]] = [
 
 #: Every branch of the memories section: a workspace hit, one with no kind and an
 #: empty snippet, a non-workspace row to drop, and one past the limit.
-CONTEXT_MEMORIES: Dict[str, Any] = {
-    "results": [
-        {"id": "mem-1", "kind": "preference", "snippet": "답변은 한국어로", "score": 0.91, "source": "workspace"},
-        {"id": "mem-2", "kind": None, "snippet": "", "score": 0.0, "source": "workspace"},
-        {"id": "mem-3", "kind": "decision", "snippet": "ranking keeps alpha fusion", "score": 0.4, "source": "personal"},
-        {"id": "mem-4", "kind": "fact", "snippet": "온보딩은 다섯 걸음", "score": 0.3, "source": "workspace"},
-    ]
-}
-
-#: A ledger with a pathless row, a non-dict row, and more than the ten-row cut.
-CONTEXT_ARTIFACTS: List[Any] = [
-    {"path": "notes/ranking.md", "at": "2026-07-20T09:00:00", "run_id": "run-1"},
-    {"path": "notes/onboarding.md", "run_id": "run-2"},
-    {"path": "", "at": "2026-07-20T09:00:01"},
-    "not-a-dict",
-] + [{"path": f"out/file-{index}.md", "at": None, "run_id": f"r{index}"} for index in range(10)]
-
 #: The Phase-2/3 suites: one spec list per ported entry point.
 SUITES: Dict[str, List[Dict[str, Any]]] = {
     "relationship": [
@@ -462,21 +446,7 @@ SUITES: Dict[str, List[Dict[str, Any]]] = {
         {"key": "limit_one", "query": "ranking", "limit": 1},
         {"key": "scoped_strict", "query": "ranking", "allowed": [WS_BETA], "legacy": False},
     ],
-    "context_assemble": [
-        {"key": "all_seams", "query": "회의 결정 사항", "memories": CONTEXT_MEMORIES, "artifacts": CONTEXT_ARTIFACTS, "notes": "정원 노트: 랭킹은 alpha 융합을 유지한다.", "recent": {"limit": 4}},
-        {"key": "knowledge_only", "query": "hybrid retrieval ranking"},
-        {"key": "no_seams", "query": "hybrid retrieval ranking", "knowledge": False},
-        {"key": "memories_only", "query": "온보딩", "knowledge": False, "memories": CONTEXT_MEMORIES, "memory_limit": 2},
-        {"key": "artifacts_only", "query": "온보딩", "knowledge": False, "artifacts": CONTEXT_ARTIFACTS},
-        {"key": "notes_blank", "query": "온보딩", "knowledge": False, "notes": "   "},
-        {"key": "recent_conversation", "query": "온보딩", "knowledge": False, "recent": {"conversation_id": "conv-a", "limit": 10}},
-        {"key": "recent_personal_workspace", "query": "온보딩", "knowledge": False, "recent": {"workspace_id": "personal", "limit": 6}},
-        {"key": "recent_user_scoped", "query": "온보딩", "knowledge": False, "recent": {"user_email": "jiwon@lattice.ai", "limit": 5}},
-        {"key": "budget_tiny", "query": "회의 결정 사항", "memories": CONTEXT_MEMORIES, "artifacts": CONTEXT_ARTIFACTS, "notes": "정원 노트: 랭킹은 alpha 융합을 유지한다.", "recent": {"limit": 4}, "budget": 20},
-        {"key": "budget_one", "query": "회의 결정 사항", "memories": CONTEXT_MEMORIES, "artifacts": CONTEXT_ARTIFACTS, "notes": "노트", "recent": {"limit": 4}, "budget": 1},
-        {"key": "budget_zero", "query": "회의 결정 사항", "memories": CONTEXT_MEMORIES, "notes": "노트", "budget": 0},
-        {"key": "knowledge_limit_one", "query": "hybrid retrieval ranking", "knowledge_limit": 1},
-    ],
+    **context_corpus.CONTEXT_SUITES,
     # v11.5.1: the document-generation ports, specs and runners alike.
     **docgen.DOCGEN_SUITES,
 }
@@ -799,68 +769,6 @@ def _run_history_search(h: Harness, spec: Dict[str, Any]) -> List[Dict[str, Any]
     )
 
 
-def _context_seams(h: Harness, spec: Dict[str, Any]) -> Dict[str, Any]:
-    """The seam set for one context spec — data seams plus the real engines.
-
-    ``memories`` / ``artifacts`` / ``notes`` are *data* seams: the payload is the
-    spec, so both runtimes feed the assembler the same bytes and what is under
-    test is the assembler. ``knowledge`` and ``recent`` are real engines — the
-    service-layer hybrid search and the durable history reader.
-    """
-    from latticeai.api.chat_helpers import build_recent_chat_context
-
-    # Signatures matter: the assembler inspects them to decide which context
-    # fields a seam may be handed, so each one declares exactly what it accepts.
-    seams: Dict[str, Any] = {}
-    if spec.get("memories") is not None:
-        memories = spec["memories"]
-        seams["memory_recall"] = (
-            lambda query, *, user_email=None, workspace_id=None, limit=5: memories
-        )
-    if spec.get("artifacts") is not None:
-        artifacts = spec["artifacts"]
-        seams["recent_artifacts"] = (
-            lambda *, user_email=None, conversation_id=None, workspace_id=None: artifacts
-        )
-    if spec.get("knowledge", True):
-        # Loopback trust: no workspace scoping, exactly as on the native route.
-        seams["hybrid_search"] = (
-            lambda query, *, limit=5, user_email=None, workspace_id=None:
-            h.service.hybrid_search(query, limit=limit)
-        )
-    if spec.get("notes") is not None:
-        notes = spec["notes"]
-        seams["notes_context"] = lambda query, *, user_email=None, workspace_id=None: notes
-    if spec.get("recent") is not None:
-        recent = spec["recent"]
-        seams["recent_chat"] = (
-            lambda *, user_email=None, conversation_id=None, workspace_id=None:
-            build_recent_chat_context(
-                get_history=h.history_runtime["get_history"],
-                limit=recent.get("limit", 10),
-                include_image_missing_replies=recent.get("images", True),
-                user_email=recent.get("user_email"),
-                conversation_id=recent.get("conversation_id"),
-                workspace_id=recent.get("workspace_id"),
-            )
-        )
-    return seams
-
-
-def _run_context_assemble(h: Harness, spec: Dict[str, Any]) -> Dict[str, Any]:
-    from lattice_brain.context import ContextAssembler
-
-    assembled = ContextAssembler(**_context_seams(h, spec)).assemble(
-        spec["query"], user_email=spec.get("user_email"),
-        workspace_id=spec.get("workspace_id"),
-        conversation_id=spec.get("conversation_id"), budget=spec.get("budget", 2000),
-        memory_limit=spec.get("memory_limit", 5),
-        knowledge_limit=spec.get("knowledge_limit", 5),
-    )
-    return {"text": assembled.text, "approx_tokens": assembled.approx_tokens,
-            "trace": assembled.trace()}
-
-
 SUITE_RUNNERS: Dict[str, Callable[[Harness, Dict[str, Any]], Any]] = {
     "relationship": _run_relationship,
     "traverse": _run_traverse,
@@ -870,7 +778,7 @@ SUITE_RUNNERS: Dict[str, Callable[[Harness, Dict[str, Any]], Any]] = {
     "conversations": _run_conversations,
     "conversation_messages": _run_conversation_messages,
     "history_search": _run_history_search,
-    "context_assemble": _run_context_assemble,
+    **context_corpus.CONTEXT_RUNNERS,
     **docgen.DOCGEN_RUNNERS,
 }
 

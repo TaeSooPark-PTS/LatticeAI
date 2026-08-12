@@ -326,6 +326,3 @@ def test_the_workspace_os_records_that_a_tidy_up_was_asked_for(tmp_path):
     assert asked["proposed"]["id"] in recorded
     assert asked["proposed"] is not None
     assert nothing["proposed"] is None
-    assert store.preview_reorganization(
-        root="", resolve_path=_resolver(base), graph=_brain(tmp_path)
-    )["move_count"] == 1

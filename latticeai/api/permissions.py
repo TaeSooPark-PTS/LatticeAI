@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
@@ -15,7 +14,9 @@ from typing import Any, Dict, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 
+from latticeai.core.http_origin import request_external_origin
 from latticeai.core.io_utils import atomic_write_json
+from latticeai.core.security import sha256_hex
 
 _PERMISSION_ACTION_LABELS = {
     "list": "폴더 목록 보기",
@@ -39,16 +40,32 @@ class PermissionGateway:
         self.discord_permission_channel = config.discord_permission_channel
         self.permission_monitor_secret = config.permission_monitor_secret
         self.perm_queue_file = data_dir / "permission_queue.json"
-        explicit_ui_url = os.getenv("LATTICEAI_PERMISSION_UI_URL", "").strip()
-        public_url = os.getenv("LATTICEAI_PUBLIC_URL", "").strip().rstrip("/")
-        default_ui_url = f"http://127.0.0.1:{getattr(config, 'port', 4825)}/app#/admin/permissions"
-        self.permission_ui_url = explicit_ui_url or (
-            f"{public_url}/app#/admin/permissions" if public_url else default_ui_url
-        )
+        self._explicit_ui_url = os.getenv("LATTICEAI_PERMISSION_UI_URL", "").strip()
+        self._public_url = os.getenv("LATTICEAI_PUBLIC_URL", "").strip().rstrip("/")
+        # The worker's own port. Behind the desktop gateway this is the
+        # *internal* one, which is why a notification built from it sends the
+        # approver to a door only the gateway can open — hence
+        # ``_front_door``, learned from the request that asked for approval.
+        self._loopback_ui_origin = f"http://127.0.0.1:{getattr(config, 'port', 4825)}"
+        self._front_door: Optional[str] = None
+
+    @property
+    def permission_ui_url(self) -> str:
+        """Where to send the person who has to approve this.
+
+        Operator configuration wins — an explicit URL or a public URL is a
+        deliberate statement about how this install is reached. Only when
+        nothing is configured does the front door observed on the request that
+        triggered the approval beat the worker's own loopback address.
+        """
+        if self._explicit_ui_url:
+            return self._explicit_ui_url
+        base = self._public_url or self._front_door or self._loopback_ui_origin
+        return f"{base.rstrip('/')}/app#/admin/permissions"
 
     @staticmethod
     def token_hash(token: str) -> str:
-        return hashlib.sha256(str(token or "").encode("utf-8")).hexdigest()
+        return sha256_hex(str(token or ""))
 
     @staticmethod
     def token_hint(token: str) -> str:
@@ -77,9 +94,6 @@ class PermissionGateway:
                 self._write_queue(queue)
         except Exception as exc:
             logging.warning("perm_queue_write failed: %s", exc)
-
-    def _perm_queue_remove(self, token: str) -> None:
-        self._perm_queue_remove_key(self.token_hash(token))
 
     def _perm_queue_remove_key(self, key: str) -> None:
         try:
@@ -117,7 +131,7 @@ class PermissionGateway:
 
     @staticmethod
     def content_fingerprint(content: str = "") -> str:
-        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+        return sha256_hex(content)
 
     def _notify_discord_permission_sync(self, token: str, path: str, action: str, user_email: str) -> None:
         sent = False
@@ -225,7 +239,19 @@ class PermissionGateway:
         email = self.get_current_user(request)
         if not email:
             raise HTTPException(status_code=401, detail="로컬 파일 접근은 로그인 세션이 필요합니다.")
+        # Every local-file approval passes through here immediately before the
+        # permission record (and its notification) is created, so this is the
+        # request whose front door the approver should be sent back to. The
+        # forwarded authority is only believed from a loopback or configured
+        # proxy peer — the same rule CSRF and the invite link use.
+        self.remember_front_door(request)
         return email
+
+    def remember_front_door(self, request: Request) -> None:
+        """Record the external origin this request came through, if any."""
+        origin = request_external_origin(request)
+        if origin:
+            self._front_door = origin
 
     def require_local_approval(
         self,

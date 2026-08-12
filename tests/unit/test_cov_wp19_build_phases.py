@@ -129,7 +129,7 @@ def test_config_phase_lays_out_a_private_data_directory(tmp_path):
     assert ctx.VPC_FILE == ctx.DATA_DIR / "vpc_config.json"
     assert ctx.APP_MODE == "local"
     assert ctx.APP_VERSION
-    assert ctx.produced_by["CONFIG"] == "config"
+    assert ctx._produced["CONFIG"] == "config"
     if sys.platform != "win32":
         assert ctx.DATA_DIR.stat().st_mode & 0o777 == 0o700
 
@@ -689,7 +689,7 @@ def test_domain_phase_stays_quiet_when_the_vault_imports_cleanly(monkeypatch, ca
         ctx = _domain_ctx(monkeypatch, lambda: {"imported": 4, "failed": 0})
 
     assert "garden vault import" not in caplog.text
-    assert ctx.produced_by["gardener"] == "domain"
+    assert ctx._produced["gardener"] == "domain"
 
 
 # ── phase 7: services payload closures ───────────────────────────────────────

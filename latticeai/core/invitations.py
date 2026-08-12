@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import secrets
 from datetime import datetime, timedelta
@@ -10,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from latticeai.core.quiet import quiet
+from latticeai.core.security import sha256_hex
 
 from .timeutil import local_now as _now
 
@@ -19,7 +19,8 @@ def _iso(dt: datetime) -> str:
 
 
 def _hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+    """Strict by design: an invite code is always a string by the time it lands here."""
+    return sha256_hex(token)
 
 
 def _atomic_write(path: Path, data: Dict[str, Any]) -> None:

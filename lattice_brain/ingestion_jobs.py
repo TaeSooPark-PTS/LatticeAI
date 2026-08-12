@@ -351,9 +351,6 @@ class BackgroundIngestionQueue:
     def get(self, job_id: str) -> Optional[BackgroundIngestionJob]:
         return self._jobs.get(job_id)
 
-    def list_pending(self) -> List[BackgroundIngestionJob]:
-        return [j for j in self._jobs.values() if j.status == "queued"]
-
     def list_recent(self, limit: int = 20) -> List[BackgroundIngestionJob]:
         """Most recent jobs first (insertion order is schedule order)."""
         limit = max(1, int(limit))

@@ -1,0 +1,10 @@
+{
+  "key": "personal_workspace",
+  "result": "user (web): 검색 품질을 어떻게 측정하나요? 재현율과 정밀도를 모두 보고 싶고 주간 회의에서 공유할 예정입니다.\nassistant (web): 재현율/정밀도 지표는 분기 리뷰 발표자료에 있습니다.\nassistant (web): assistant-first conversation\nuser (web): follow up question about ranking\nuser: Empty user and empty workspace row\nassistant: 회의 결정 사항을 정리했습니다.",
+  "spec": {
+    "key": "personal_workspace",
+    "limit": 6,
+    "workspace_id": "personal"
+  },
+  "suite": "recent_chat"
+}

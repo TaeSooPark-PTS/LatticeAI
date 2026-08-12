@@ -1,9 +1,11 @@
 """Wire the feature switchboard into the running app (v11.2.0).
 
-Same shape as ``permission_mode_wiring``: one process-wide service, an
-idempotent router mount guarded on ``app.state``, and explicit arguments that
-*rebind* an already-created service rather than being dropped — a lazy first
-caller must not pin the store to a fallback data dir with no audit sink.
+Same shape as ``permission_mode_wiring``: one process-wide service and an
+idempotent router mount guarded on ``app.state``. The rebinding rule that shape
+turns on — explicit arguments *rebind* an already-created service rather than
+being dropped, so a lazy first caller cannot pin the store to a fallback data
+dir with no audit sink — is shared, in
+:mod:`latticeai.runtime.service_singletons`.
 
 The one job unique to this module is :func:`bind_feature_gates`: it points each
 opt-in gate's resolver at the service, which is the step that turns a persisted
@@ -18,11 +20,14 @@ them back, and "the environment answers again" has to be reachable.
 
 from __future__ import annotations
 
-import os
 import threading
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
+from latticeai.runtime.service_singletons import (
+    rebind_singleton,
+    singleton_data_dir,
+)
 from latticeai.services.feature_toggles import FeatureToggleService
 
 _LOCK = threading.Lock()
@@ -45,13 +50,6 @@ GATE_BINDINGS: Tuple[Tuple[str, str, str], ...] = (
 
 #: The one non-boolean seam: the vector backend is a pick-one-of-three.
 CHOICE_FEATURE = "vector_backend"
-
-
-def _default_data_dir() -> Path:
-    raw = os.environ.get("LATTICEAI_DATA_DIR", "").strip()
-    if raw:
-        return Path(raw)
-    return Path.home() / ".ltcai"
 
 
 def _boolean_gates() -> List[Tuple[str, Any]]:
@@ -80,15 +78,11 @@ def get_feature_toggle_service(
     with _LOCK:
         if _SHARED is None:
             _SHARED = FeatureToggleService(
-                data_dir=Path(data_dir) if data_dir is not None else _default_data_dir(),
+                data_dir=singleton_data_dir(data_dir),
                 audit=audit,
             )
             return _SHARED
-        if data_dir is not None:
-            _SHARED.rebind_data_dir(Path(data_dir))
-        if audit is not None:
-            _SHARED.rebind_audit(audit)
-        return _SHARED
+        return rebind_singleton(_SHARED, data_dir=data_dir, audit=audit)
 
 
 def bind_feature_gates(service: Optional[FeatureToggleService] = None) -> None:

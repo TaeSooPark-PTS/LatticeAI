@@ -21,6 +21,16 @@
     "specific, not less."
   ],
 
+  "11.5.2": {
+    "_why": [
+      "Tight Ship release: deletions, consolidation and front-door fixes —",
+      "backend only. The frontend bundle is untouched; no captured screen",
+      "changes on purpose. All thirteen measured but not gated. Known",
+      "jitter: 05-memory-graph moves ~2-3% between captures from the",
+      "cytoscape layout (11.3.0-11.5.1 observed)."
+    ]
+  },
+
   "11.5.1": {
     "_why": [
       "Rust Full Loop release: agent-loop orchestrator port, worker seams,",

@@ -18,6 +18,7 @@ concept and are read dynamically at call time.
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +26,50 @@ from typing import List, Mapping, Optional
 
 from latticeai.core.security import host_is_loopback
 
-__all__ = ["Config", "_value", "_str", "_bool", "_int"]
+__all__ = [
+    "Config",
+    "SSO_CALLBACK_PATH",
+    "default_data_dir",
+    "default_sso_redirect_uri",
+    "_value",
+    "_str",
+    "_bool",
+    "_int",
+]
+
+#: The path the identity provider sends the browser back to.
+SSO_CALLBACK_PATH = "/auth/sso/callback"
+
+
+def default_sso_redirect_uri(port: int) -> str:
+    """The redirect URI when the operator has registered none.
+
+    Named rather than inlined because ``api/auth`` has to recognise it: this
+    exact string means "nobody chose a callback URL", which is the only case in
+    which the login flow may substitute the front door it was actually reached
+    through. A URI the operator *did* configure is registered with the identity
+    provider and must be sent back verbatim.
+    """
+    return f"http://localhost:{port}{SSO_CALLBACK_PATH}"
+
+
+#: Where everything durable lives when the operator names nothing.
+DEFAULT_DATA_DIR_NAME = ".ltcai"
+
+
+def default_data_dir(env: Optional[Mapping[str, str]] = None) -> Path:
+    """The data directory ``LATTICEAI_DATA_DIR`` names, else ``~/.ltcai``.
+
+    Three runtime wiring modules each carried a byte-identical copy of this,
+    which meant a lazily-initialized service could disagree with ``Config``
+    about where the store lives — and the loser writes a second, invisible
+    copy of the user's data. ``env=None`` reads the live process environment,
+    which is what the lazy wiring paths need.
+    """
+    source = os.environ if env is None else env
+    raw = (source.get("LATTICEAI_DATA_DIR") or "").strip()
+    return Path(raw) if raw else Path.home() / DEFAULT_DATA_DIR_NAME
+
 
 def _value(env: Mapping[str, str], key: str, default: str = "") -> str:
     """Mirror the legacy ``env_value``: ``getenv(key) or default or ""`` (no strip)."""
@@ -177,14 +221,14 @@ class Config:
         # download path, the on-disk cache dir and the catalog key all agree.
         local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12B-it-4bit")
 
-        data_dir = Path(_value(env, "LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
+        data_dir = default_data_dir(env)
         static_dir = Path(_value(env, "LATTICEAI_STATIC_DIR", str(base_dir / "static")))
         if not static_dir.exists():
             packaged_static = Path(sys.prefix) / "static"
             if packaged_static.exists():
                 static_dir = packaged_static
 
-        default_sso_redirect = f"http://localhost:{port}/auth/sso/callback"
+        default_sso_redirect = default_sso_redirect_uri(port)
 
         return cls(
             app_mode=app_mode,

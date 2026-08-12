@@ -72,6 +72,9 @@ pub struct BackendStatus {
     /// Whether the background jobs timer is running in this process
     /// (11.5.0, additive).
     pub jobs_running: bool,
+    /// Why the front door is not there, when this shell was supposed to serve
+    /// one and could not bind it (11.5.2, additive). `null` normally.
+    pub gateway_error: Option<String>,
 }
 
 /// The gateway this shell is serving, and how to stop it.
@@ -89,6 +92,11 @@ pub struct DesktopBackend {
     gateway: Mutex<Option<RunningGateway>>,
     /// The jobs scheduler, mounted on `/host/jobs` in the gateway topology.
     jobs: Option<Arc<lattice_jobs::Scheduler>>,
+    /// Why the front door is not there, when it could not be bound.
+    ///
+    /// `None` means "nothing went wrong" — including in the topologies that
+    /// serve no gateway at all, where the worker *is* the front door.
+    gateway_error: Mutex<Option<String>>,
 }
 
 impl DesktopBackend {
@@ -116,6 +124,7 @@ impl DesktopBackend {
             health_deadline,
             gateway: Mutex::new(None),
             jobs,
+            gateway_error: Mutex::new(None),
         })
     }
 
@@ -137,6 +146,18 @@ impl DesktopBackend {
     /// Which arrangement this shell resolved.
     pub fn topology(&self) -> Topology {
         self.plan.topology
+    }
+
+    /// Why the front door is unavailable, when it is.
+    ///
+    /// `Some` only when this shell was supposed to serve the gateway and could
+    /// not bind it — in which case [`Self::app_url`] names a port nothing will
+    /// ever listen on, and `main::boot` must not navigate the window into it.
+    pub fn gateway_error(&self) -> Option<String> {
+        self.gateway_error
+            .lock()
+            .expect("gateway error lock")
+            .clone()
     }
 
     /// Start the front door, then the worker.
@@ -171,10 +192,16 @@ impl DesktopBackend {
         let listener = match bind_loopback(addr).await {
             Ok(listener) => listener,
             Err(err) => {
-                eprintln!(
-                    "lattice-ai-desktop: the gateway could not bind {addr}: {err} — \
+                let message = format!(
+                    "the gateway could not bind {addr}: {err} — \
                      set LATTICEAI_DESKTOP_DIRECT=1 to run the worker as the front door"
                 );
+                eprintln!("lattice-ai-desktop: {message}");
+                // Recorded, not only logged: `plan.origin` names the port that
+                // just failed to bind, so navigating the window there would
+                // land on a connection refused with no explanation. The window
+                // stays on the bundled shell and reads this instead.
+                *self.gateway_error.lock().expect("gateway error lock") = Some(message);
                 return;
             }
         };
@@ -310,6 +337,7 @@ impl DesktopBackend {
                 .as_ref()
                 .map(|scheduler| scheduler.is_running())
                 .unwrap_or(false),
+            gateway_error: self.gateway_error(),
         }
     }
 
@@ -456,5 +484,51 @@ mod tests {
         let shell = backend(StaticProbe::new().with_env(DIRECT_ENV, "1"));
         shell.stop_gateway();
         shell.stop_gateway();
+    }
+
+    /// A shell that never had to bind a front door has nothing to report, and
+    /// its origin is navigable.
+    #[test]
+    fn a_healthy_shell_names_no_gateway_error() {
+        for probe in [
+            StaticProbe::new().with_env(PORT_ENV, "41844"),
+            StaticProbe::new().with_env(DIRECT_ENV, "1"),
+        ] {
+            let shell = backend(probe);
+            assert_eq!(shell.gateway_error(), None);
+            let value =
+                serde_json::to_value(shell.render(&WorkerStatus::idle(4825, true))).expect("json");
+            assert!(value["gateway_error"].is_null());
+        }
+    }
+
+    /// Binding the front door is the one failure that makes `app_url` name a
+    /// port nothing will ever answer on. The window must read the reason rather
+    /// than navigate into it.
+    #[tokio::test]
+    async fn a_gateway_that_cannot_bind_is_reported_and_not_navigated_to() {
+        // Hold the port the shell will try to bind.
+        let occupied = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = occupied.local_addr().expect("addr").port();
+        let shell = backend(StaticProbe::new().with_env(PORT_ENV, &port.to_string()));
+        assert_eq!(shell.topology(), Topology::Gateway);
+
+        shell.start_gateway().await;
+
+        let reason = shell.gateway_error().expect("the failure is recorded");
+        assert!(reason.contains("could not bind"), "{reason}");
+        assert!(
+            reason.contains("LATTICEAI_DESKTOP_DIRECT"),
+            "the way out is named: {reason}"
+        );
+        assert!(
+            shell.app_url().contains(&port.to_string()),
+            "app_url still names the port nothing bound — which is why boot must \
+             read gateway_error instead of navigating"
+        );
+        let value =
+            serde_json::to_value(shell.render(&WorkerStatus::idle(port, true))).expect("serialise");
+        assert_eq!(value["gateway_error"], reason);
+        drop(occupied);
     }
 }

@@ -12,16 +12,13 @@ Persisted under the data dir, scoped like NetworkBoundaryService
 
 from __future__ import annotations
 
-import json
-import threading
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
-from latticeai.core.io_utils import atomic_write_json
 from latticeai.core.network_boundary import (
     HARD_BLOCK_METADATA_FLAGS,
     HARD_BLOCK_NODE_TYPES,
 )
+from latticeai.services.mode_store import JsonBackedModeService
 
 DEFAULT_BLOCKED_TYPES: List[str] = []
 DEFAULT_BLOCKED_FLAGS: List[str] = sorted(HARD_BLOCK_METADATA_FLAGS)
@@ -39,51 +36,15 @@ def _default_policy() -> Dict[str, Any]:
     }
 
 
-class HybridPolicyService:
+class HybridPolicyService(JsonBackedModeService[Dict[str, Any]]):
     """Load / save hybrid cloud policy."""
 
-    def __init__(
-        self,
-        *,
-        data_dir: Path,
-        audit: Optional[Callable[..., None]] = None,
-    ) -> None:
-        self._path = Path(data_dir) / "hybrid_policy.json"
-        self._audit = audit or (lambda *a, **kw: None)
-        self._lock = threading.Lock()
+    FILENAME = "hybrid_policy.json"
 
-    def rebind_data_dir(self, data_dir: Path) -> None:
-        with self._lock:
-            self._path = Path(data_dir) / "hybrid_policy.json"
+    def _default_entry(self) -> Any:
+        return _default_policy()
 
-    def rebind_audit(self, audit: Callable[..., None]) -> None:
-        with self._lock:
-            self._audit = audit
-
-    def _read(self) -> Dict[str, Any]:
-        base = {
-            "default": _default_policy(),
-            "users": {},
-            "workspaces": {},
-        }
-        if not self._path.exists():
-            return base
-        try:
-            data = json.loads(self._path.read_text(encoding="utf-8"))
-        except Exception:
-            return base
-        if not isinstance(data, dict):
-            return base
-        data.setdefault("default", _default_policy())
-        data.setdefault("users", {})
-        data.setdefault("workspaces", {})
-        return data
-
-    def _write(self, data: Dict[str, Any]) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(self._path, data)
-
-    def _resolve_raw(
+    def _resolve_from(
         self,
         data: Dict[str, Any],
         *,
@@ -116,16 +77,6 @@ class HybridPolicyService:
             policy["min_extraction_confidence"] = 0.55
         return policy
 
-    def resolve(
-        self,
-        *,
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        with self._lock:
-            data = self._read()
-        return self._resolve_raw(data, user_email=user_email, workspace_id=workspace_id)
-
     def set_policy(
         self,
         patch: Dict[str, Any],
@@ -144,7 +95,7 @@ class HybridPolicyService:
         clean = {k: v for k, v in (patch or {}).items() if k in allowed}
         with self._lock:
             data = self._read()
-            previous = self._resolve_raw(
+            previous = self._resolve_from(
                 data, user_email=user_email, workspace_id=workspace_id
             )
             if workspace_id:

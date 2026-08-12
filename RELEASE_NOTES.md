@@ -1,3 +1,16 @@
+# [v11.5.2 - Tight Ship] (2026-08-12)
+
+정착된 11.5.1 트리 3중 감사(Rust↔Python 중복 지도 · 아크 단위 죽은 코드 ·
+라이브 front-door 패리티 192 엔드포인트)의 결과만 실행: 약 1,100줄 삭제
+(shim 6·미배선 시임·호출자 0 심볼 27·Electron 셸)와 재발 금지 가드,
+임베더/워크스페이스 선택자/SSE·sha256 헬퍼/Rust 사본 7건 단일화,
+현관문 7종 결함 수정(리다이렉트 Set-Cookie 보존·네이티브 레인 fail-closed·
+X-Forwarded-* 홉·CORS 주입), 도달 불가였던 `POST /api/search/graph`와
+멀티모달 상태 라우트 배선, `recent_chat` 골든이 잡아낸 실제 발산 수정.
+플로어: 7,022+1,761 테스트 · 100.00% · Rust 760 · 골든 251.
+
+See [RELEASE_NOTES_v11.5.2.md](RELEASE_NOTES_v11.5.2.md).
+
 # [v11.5.1 - Rust Full Loop] (2026-08-12)
 
 11.5.0의 명시적 잔여 완결: 에이전트 루프 오케스트레이터 Rust 이식(실
@@ -451,7 +464,7 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **9.0.0 through 11.5.1**.
+This repository keeps public release history from **9.0.0 through 11.5.2**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

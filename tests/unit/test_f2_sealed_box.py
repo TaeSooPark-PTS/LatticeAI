@@ -185,7 +185,8 @@ def test_the_receiving_key_is_created_once_and_then_reloaded(tmp_path):
     assert described["storage"] == "file"
     assert described["path"] == str(key_file)
     # A round trip to itself is the honest way to prove the pair matches.
-    assert first.unseal(first.seal_to_self(b"hello")) == b"hello"
+    sealed = seal(b"hello", recipient_public_key=first.public_key_b64)
+    assert first.unseal(sealed) == b"hello"
 
 
 def test_an_unusable_data_directory_is_a_state_not_a_crash(tmp_path):

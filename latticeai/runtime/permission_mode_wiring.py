@@ -15,17 +15,14 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from latticeai.core.permission_mode import DEFAULT_MODE, normalize_mode
+from latticeai.runtime.service_singletons import (
+    rebind_singleton,
+    singleton_data_dir,
+)
 from latticeai.services.permission_mode_service import PermissionModeService
 
 _LOCK = threading.Lock()
 _SHARED: Optional[PermissionModeService] = None
-
-
-def _default_data_dir() -> Path:
-    raw = os.environ.get("LATTICEAI_DATA_DIR", "").strip()
-    if raw:
-        return Path(raw)
-    return Path.home() / ".ltcai"
 
 
 def _env_default_mode() -> Any:
@@ -48,16 +45,12 @@ def get_permission_mode_service(
     with _LOCK:
         if _SHARED is None:
             _SHARED = PermissionModeService(
-                data_dir=Path(data_dir) if data_dir is not None else _default_data_dir(),
+                data_dir=singleton_data_dir(data_dir),
                 default_mode=_env_default_mode(),
                 audit=audit,
             )
             return _SHARED
-        if data_dir is not None:
-            _SHARED.rebind_data_dir(Path(data_dir))
-        if audit is not None:
-            _SHARED.rebind_audit(audit)
-        return _SHARED
+        return rebind_singleton(_SHARED, data_dir=data_dir, audit=audit)
 
 
 def resolve_active_permission_mode(

@@ -12,9 +12,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from lattice_brain import embeddings as brain_embeddings
 from lattice_brain.graph import identity as identity_mod
 from lattice_brain.graph.store import KnowledgeGraphStore
-from latticeai.core import local_embeddings
 from latticeai.models import router as models_router
 
 # ``hf_model_dir`` reads the root from its own module globals, so after the
@@ -53,9 +53,9 @@ def test_strict_edge_projection_reraises_the_underlying_failure(tmp_path):
         )
 
 
-# ── latticeai/core/local_embeddings.py:38-39 — Korean bigram features ────────
+# ── lattice_brain/embeddings.py — Korean bigram features ─────────────────────
 def test_korean_text_produces_ko_bigram_features():
-    features = local_embeddings._tokenize("한국어임베딩 검증")
+    features = brain_embeddings._tokenize("한국어임베딩 검증")
 
     assert "tok:한국어임베딩" in features
     assert "ko:한국" in features

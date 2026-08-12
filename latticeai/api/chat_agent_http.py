@@ -22,12 +22,9 @@ from latticeai.api.chat_contracts import (
     AgentRequest,
     AgentResumeRequest,
 )
-from latticeai.api.chat_helpers import (
-    _LANG_HINT,
-    detect_language,
-    workspace_scope_from_request,
-)
+from latticeai.api.chat_helpers import _LANG_HINT, detect_language
 from latticeai.api.chat_stream import agent_live_stream
+from latticeai.api.workspace_scope import requested_workspace
 from latticeai.core.agent import AgentRunContext, AgentState, normalize_plan
 from latticeai.core.messages import resolve_language
 from latticeai.core.quiet import quiet
@@ -268,14 +265,8 @@ class AgentHTTPController:
         current_user = self.require_user(request)
         self.enforce_rate_limit(current_user, "agent")
         effective_email = self.authenticated_identity(current_user, req.user_email, resolve_language(request))
-        header_workspace = workspace_scope_from_request(request)
-        if req.workspace_id and header_workspace and req.workspace_id != header_workspace:
-            raise HTTPException(
-                status_code=403,
-                detail="workspace_id must match X-Workspace-Id.",
-            )
         req.workspace_id = self.write_workspace(
-            req.workspace_id or header_workspace,
+            requested_workspace(request, body_workspace=req.workspace_id),
             current_user,
         )
         req.user_email = effective_email

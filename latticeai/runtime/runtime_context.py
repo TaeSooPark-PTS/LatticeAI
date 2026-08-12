@@ -25,7 +25,7 @@ Two properties keep it honest:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, Set
 
 
 class RuntimeContext:
@@ -257,20 +257,8 @@ class RuntimeContext:
                 f"RuntimeContext.{name} was read before it was built{hint}"
             ) from None
 
-    @property
-    def produced_by(self) -> Dict[str, str]:
-        """Attribute name → the phase that published it, for the order test."""
-        return dict(self._produced)
-
     def names(self) -> Set[str]:
         return set(self._produced)
-
-    def phases_run(self) -> List[str]:
-        seen: List[str] = []
-        for phase in self._produced.values():
-            if phase not in seen:
-                seen.append(phase)
-        return seen
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<RuntimeContext phase={self._phase!r} names={len(self._produced)}>"

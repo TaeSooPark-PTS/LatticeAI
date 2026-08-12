@@ -365,7 +365,6 @@ def test_delete_mirrors_are_no_ops_without_the_v2_schema(
     with _bare_connection(tmp_path / "bare.sqlite") as conn:
         assert store._v2_delete_nodes(conn, ["n1"]) is None
         assert store._v2_delete_edges_from(conn, "n1") is None
-    assert store._v2_sync_report() == {"available": False, "in_sync": True}
 
 
 def test_delete_mirror_ignores_an_empty_id_list(tmp_path) -> None:

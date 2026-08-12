@@ -7,6 +7,21 @@ from typing import Any, Callable, Dict, Optional
 from latticeai.core.quiet import quiet
 
 
+def is_externally_reachable(config: Any) -> bool:
+    """Whether anything but this machine can open a socket to this worker.
+
+    The single definition of the second half of ``trusted_local_owner``.  It is
+    read here (to decide who the anonymous caller is) and by the ``/health``
+    router (to *state* the posture, so the Rust front door can mirror it on its
+    own native lanes instead of guessing).  Two derivations of one fact is how
+    a gateway ends up serving a graph the worker would have refused.
+    """
+    return bool(
+        getattr(config, "is_public", False)
+        or getattr(config, "network_exposed", False)
+    )
+
+
 def build_access_runtime(
     *,
     config: Any,
@@ -29,10 +44,7 @@ def build_access_runtime(
     # but project the identity as an owner at authorization boundaries.  Never
     # extend this trust to public or non-loopback bindings, even if an invalid
     # caller constructs this runtime with ``require_auth=False`` directly.
-    externally_reachable = bool(
-        getattr(config, "is_public", False)
-        or getattr(config, "network_exposed", False)
-    )
+    externally_reachable = is_externally_reachable(config)
     trusted_local_owner = not require_auth and not externally_reachable
     effective_require_auth = bool(require_auth or externally_reachable)
 

@@ -14,12 +14,9 @@ not by this store.
 
 from __future__ import annotations
 
-import json
-import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
-from latticeai.core.io_utils import atomic_write_json
 from latticeai.core.permission_mode import (
     DEFAULT_MODE,
     PermissionMode,
@@ -27,10 +24,13 @@ from latticeai.core.permission_mode import (
     mode_contract,
     normalize_mode,
 )
+from latticeai.services.mode_store import JsonBackedModeService
 
 
-class PermissionModeService:
+class PermissionModeService(JsonBackedModeService[PermissionMode]):
     """Load / save the autonomy dial."""
+
+    FILENAME = "permission_mode.json"
 
     def __init__(
         self,
@@ -39,43 +39,11 @@ class PermissionModeService:
         default_mode: PermissionMode | str = DEFAULT_MODE,
         audit: Optional[Callable[..., None]] = None,
     ) -> None:
-        self._path = Path(data_dir) / "permission_mode.json"
+        super().__init__(data_dir=data_dir, audit=audit)
         self._default = normalize_mode(default_mode)
-        self._audit = audit or (lambda *a, **kw: None)
-        self._lock = threading.Lock()
 
-    def rebind_data_dir(self, data_dir: Path) -> None:
-        """Point the store at the app's real data dir.
-
-        The wiring may instantiate this service lazily before routers know the
-        configured data dir; rebinding keeps one file of record instead of
-        stranding writes under the fallback path.
-        """
-        with self._lock:
-            self._path = Path(data_dir) / "permission_mode.json"
-
-    def rebind_audit(self, audit: Callable[..., None]) -> None:
-        """Attach the real audit sink once app wiring provides one."""
-        with self._lock:
-            self._audit = audit
-
-    def _read(self) -> Dict[str, Any]:
-        if not self._path.exists():
-            return {"default": self._default.value, "users": {}, "workspaces": {}}
-        try:
-            data = json.loads(self._path.read_text(encoding="utf-8"))
-        except Exception:
-            return {"default": self._default.value, "users": {}, "workspaces": {}}
-        if not isinstance(data, dict):
-            return {"default": self._default.value, "users": {}, "workspaces": {}}
-        data.setdefault("default", self._default.value)
-        data.setdefault("users", {})
-        data.setdefault("workspaces", {})
-        return data
-
-    def _write(self, data: Dict[str, Any]) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(self._path, data)
+    def _default_entry(self) -> Any:
+        return self._default.value
 
     def _resolve_from(
         self,
@@ -84,11 +52,7 @@ class PermissionModeService:
         user_email: Optional[str],
         workspace_id: Optional[str],
     ) -> PermissionMode:
-        """Scope precedence: workspace → user → process default.
-
-        Pure over ``data`` and lock-free, so holders of ``_lock`` can reuse it
-        without re-entering a non-reentrant lock.
-        """
+        """Scope precedence: workspace → user → process default."""
         if workspace_id:
             ws = (data.get("workspaces") or {}).get(str(workspace_id))
             if ws:
@@ -98,18 +62,6 @@ class PermissionModeService:
             if user:
                 return normalize_mode(user)
         return normalize_mode(data.get("default") or self._default)
-
-    def resolve(
-        self,
-        *,
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-    ) -> PermissionMode:
-        with self._lock:
-            data = self._read()
-        return self._resolve_from(
-            data, user_email=user_email, workspace_id=workspace_id,
-        )
 
     def get(
         self,

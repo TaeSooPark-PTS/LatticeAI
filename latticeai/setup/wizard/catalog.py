@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Tuple
 
+from latticeai.services.model_catalog import _version_tuple as _catalog_version_tuple
+
 # ── Model Catalog ─────────────────────────────────────────────────────────────
 # (model_id, display_name, size_gb, tag, description, min_ram_gb)
 # 11.2.0: 모든 repo id 를 2026-08-10 Hugging Face API 로 확인했다 — 존재 여부,
@@ -127,8 +129,9 @@ _BEST_MODEL_TIERS: Dict[str, List[Tuple[int, str]]] = {
 }
 
 
-def _version_tuple(raw: str) -> Tuple[int, ...]:
-    return tuple(int(part) for part in raw.split(".") if part.isdigit())
+
+#: The engine catalog owns this parse; the wizard compares the same strings.
+_version_tuple = _catalog_version_tuple
 
 
 def _catalog_row_family_version(row: Tuple[str, str, float, str, str, int]) -> Tuple[str, Tuple[int, ...]] | None:

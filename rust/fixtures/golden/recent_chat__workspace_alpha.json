@@ -1,0 +1,9 @@
+{
+  "key": "workspace_alpha",
+  "result": "user (web): 온보딩 체크리스트 어떻게 시작해?\nassistant (web): 먼저 폴더를 연결하세요. 그다음 질문하면 됩니다.\nuser (web): 고마워\nuser (vscode): 빌드 실패 원인 알려줘\nassistant (vscode): 컴파일 오류 로그를 확인하세요.",
+  "spec": {
+    "key": "workspace_alpha",
+    "workspace_id": "ws-alpha"
+  },
+  "suite": "recent_chat"
+}

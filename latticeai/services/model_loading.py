@@ -6,7 +6,6 @@ Re-exports will be added in model_runtime for compat.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import queue
 import subprocess
@@ -14,6 +13,8 @@ import threading
 from functools import partial
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, Optional
+
+from latticeai.core.sse import sse_frame
 
 from .model_errors import ModelRuntimeError
 
@@ -243,7 +244,7 @@ async def prepare_and_load_model(
 
 
 def sse_event(event: str, data: Dict[str, object]) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return sse_frame(event, data)
 
 
 async def prepare_and_load_model_stream(

@@ -141,18 +141,6 @@
           ],
           "source": "notes",
           "truncated": true
-        },
-        {
-          "approx_tokens": 0,
-          "name": "Recent conversation",
-          "provenance": [
-            {
-              "conversation_id": null,
-              "user_email": null
-            }
-          ],
-          "source": "recent_chat",
-          "truncated": true
         }
       ],
       "used_approx_tokens": 20
@@ -260,10 +248,7 @@
       ]
     },
     "notes": "정원 노트: 랭킹은 alpha 융합을 유지한다.",
-    "query": "회의 결정 사항",
-    "recent": {
-      "limit": 4
-    }
+    "query": "회의 결정 사항"
   },
   "suite": "context_assemble"
 }

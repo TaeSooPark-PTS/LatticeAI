@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "11.5.1"
+version = "11.5.2"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -477,19 +477,16 @@ files = [
   "latticeai/core/file_generation/repair.py",
   "latticeai/core/file_generation/sanitize.py",
   "latticeai/core/file_generation/validation.py",
-  "latticeai/core/graph_curator.py",
-  "latticeai/core/hooks.py",
+  "latticeai/core/http_origin.py",
   "latticeai/core/invitations.py",
   "latticeai/core/io_utils.py",
   "latticeai/core/legacy_compatibility.py",
-  "latticeai/core/local_embeddings.py",
   "latticeai/core/logging_safety.py",
   "latticeai/core/marketplace.py",
   "latticeai/core/mcp_catalog.py",
   "latticeai/core/mcp_registry.py",
   "latticeai/core/model_compat.py",
   "latticeai/core/model_resolution.py",
-  "latticeai/core/multi_agent.py",
   "latticeai/core/network_boundary.py",
   "latticeai/core/oidc.py",
   "latticeai/core/permission_mode.py",
@@ -508,7 +505,6 @@ files = [
   "latticeai/core/tool_governor.py",
   "latticeai/core/tool_registry.py",
   "latticeai/core/users.py",
-  "latticeai/core/workflow_engine.py",
   "latticeai/core/workspace_graph_trace.py",
   "latticeai/core/workspace_memory.py",
   "latticeai/core/workspace_os.py",
@@ -608,9 +604,7 @@ files = [
   "latticeai/services/hybrid_chat.py",
   "latticeai/services/hybrid_context.py",
   "latticeai/services/hybrid_policy.py",
-  "latticeai/services/ingestion.py",
   "latticeai/services/interop_bridges.py",
-  "latticeai/services/kg_portability.py",
   "latticeai/services/local_knowledge.py",
   "latticeai/services/memory_service/__init__.py",
   "latticeai/services/memory_service/_contract.py",
@@ -638,7 +632,6 @@ files = [
   "latticeai/services/model_runtime/status.py",
   "latticeai/services/model_service.py",
   "latticeai/services/multimodal_ports.py",
-  "latticeai/services/multimodal_streaming.py",
   "latticeai/services/network_boundary_service.py",
   "latticeai/services/obsidian_bridge.py",
   "latticeai/services/openai_compatible_adapter.py",

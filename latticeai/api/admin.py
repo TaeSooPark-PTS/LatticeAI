@@ -8,6 +8,8 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
+from latticeai.api.workspace_scope import requested_workspace
+from latticeai.core.http_origin import request_external_origin
 from latticeai.core.messages import http_error, resolve_language
 from latticeai.core.workspace_os import DEFAULT_WORKSPACE_ID
 
@@ -65,13 +67,6 @@ def create_admin_router(
 ) -> APIRouter:
     router = APIRouter()
 
-    def _workspace_scope(request: Request) -> Optional[str]:
-        header = request.headers.get("X-Workspace-Id")
-        if header and header.strip():
-            return header.strip()
-        query = request.query_params.get("workspace_id")
-        return query.strip() if query and query.strip() else None
-
     def _matches_scope(item: Dict[str, object], workspace_id: Optional[str]) -> bool:
         if not workspace_id:
             return True
@@ -81,11 +76,11 @@ def create_admin_router(
         return str(item_scope or "") == str(workspace_id)
 
     def _scoped_history(request: Request) -> List[Dict]:
-        scope = _workspace_scope(request)
+        scope = requested_workspace(request)
         return [item for item in get_history() if _matches_scope(item, scope)]
 
     def _scoped_audit_log(request: Request) -> List[Dict]:
-        scope = _workspace_scope(request)
+        scope = requested_workspace(request)
         return [item for item in get_audit_log() if _matches_scope(item, scope)]
 
     def _filter_audit_log(
@@ -427,9 +422,14 @@ def create_admin_router(
     @router.get("/admin/invite-link")
     async def admin_invite_link(request: Request):
         require_admin(request)
-        host = request.headers.get("host", f"localhost:{default_port}")
-        scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
-        url = f"{scheme}://{host}/?code={invite_code}" if invite_gate_enabled else f"{scheme}://{host}/"
+        # The link is *mailed to a person*, so it has to name the door they can
+        # actually knock on. Behind the desktop gateway ``Host`` is the internal
+        # worker authority, which meant every invite emitted through the front
+        # door pointed at a port only the gateway can reach.
+        origin = request_external_origin(
+            request, fallback=f"http://localhost:{default_port}",
+        )
+        url = f"{origin}/?code={invite_code}" if invite_gate_enabled else f"{origin}/"
         return {"invite_url": url, "invite_code": invite_code, "gate_enabled": invite_gate_enabled}
 
     @router.get("/admin/sso")

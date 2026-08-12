@@ -310,6 +310,20 @@ def create_local_files_router(
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
+    @router.get("/api/ingestion/multimodal")
+    async def ingestion_multimodal_status(request: Request):
+        """What this install will do with a picture, a recording, or a video.
+
+        FEATURE_STATUS has described this answer — including which of the three
+        reasons a video would be refused for — since 11.2.0, but the pipeline
+        method that produces it had no route, so no surface could ever show it
+        and "why was my video not indexed?" had no answer short of reading the
+        server's environment.
+        """
+        require_user(request)
+        _require_pipeline()
+        return ingestion_pipeline.multimodal_status()
+
     @router.get("/api/ingestion/jobs")
     async def ingestion_jobs(request: Request, limit: int = 20):
         """Recent background ingestion jobs (newest first)."""

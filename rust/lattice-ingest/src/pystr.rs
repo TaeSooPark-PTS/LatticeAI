@@ -11,10 +11,10 @@
 /// `char::is_whitespace` is the Unicode `White_Space` property; Python's is
 /// that plus the C0 separators `\x1c`–`\x1f`. The difference is one character
 /// class in `_CODE_BLANK_RUN_RE` and one in the prose boundary pattern, so it
-/// is load-bearing rather than pedantic.
-pub fn is_py_space(c: char) -> bool {
-    c.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&c)
-}
+/// is load-bearing rather than pedantic — and it is the same fact `lattice-core`
+/// needs for `_clean_text`, so the definition lives there and this crate uses
+/// it rather than keeping a second copy that could be "fixed" alone.
+pub use lattice_core::pytext::is_py_space;
 
 /// Python's `str.strip()` — leading and trailing [`is_py_space`], nothing else.
 ///
@@ -73,10 +73,7 @@ pub fn decode_utf8_ignore(bytes: &[u8]) -> String {
 /// equality, so a port that rounds half-away-from-zero reports a spurious
 /// change on every file whose mtime lands on a tie.
 pub fn round3(value: f64) -> f64 {
-    if !value.is_finite() {
-        return value;
-    }
-    format!("{value:.3}").parse::<f64>().unwrap_or(value)
+    lattice_core::pytext::round_to(value, 3)
 }
 
 #[cfg(test)]

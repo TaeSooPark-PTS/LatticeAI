@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
+from lattice_brain.utils import parse_iso as parse_iso
 from latticeai.core.quiet import quiet
 
 
@@ -25,15 +25,6 @@ def atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
         # Windows and unusual filesystems may not expose POSIX mode bits; the
         # atomic write is still the safest supported fallback there.
         quiet()
-
-
-def parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value))
-    except (TypeError, ValueError):
-        return None
 
 
 def sha256_file(path: Path) -> str:

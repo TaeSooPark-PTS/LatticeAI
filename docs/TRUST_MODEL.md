@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.5.1 — Rust Full Loop**.
+Current release: **11.5.2 — Tight Ship**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

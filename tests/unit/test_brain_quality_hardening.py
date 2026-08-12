@@ -128,21 +128,5 @@ class TestBrainQualityHardening(unittest.TestCase):
         binary = br.run_fixture("binary", [{"query": "q", "relevant": ["a", "b"], "retrieved": ["a", "b"]}], top_k=3)
         self.assertEqual(binary["ndcg@5"], 1.0)
 
-    def test_full_quality_pass_end_to_end(self):
-        payload = {
-            "embeddings": [{"id": "v1", "vector": [0.1]*8}],
-            "retrieval": {"query": "quality", "candidates": [{"id":"c1","text":"quality layer","vector_score":0.92}]},
-            "memories": [{"id":"m1","content":"Test memory item"}],
-            "graph_edges": [{"id":"g1","source":"x","target":"y","type":"knows","confidence":0.88,"evidence":["e1"]}],
-            "context_items": [{"section":"Facts","content":"Test fact","known":True}]
-        }
-        out = self.q.full_quality_pass(payload)
-        self.assertEqual(out["status"], "ok")
-        self.assertIn("embedding_labels", out)
-        self.assertIn("retrieval", out)
-        self.assertIn("memory_candidates", out)
-        self.assertIn("graph_quality", out)
-        self.assertIn("structured_context", out)
-
 if __name__ == "__main__":
     unittest.main(verbosity=2)

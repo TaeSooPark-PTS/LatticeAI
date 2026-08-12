@@ -48,6 +48,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from latticeai.core.timeutil import parse_iso
 from latticeai.core.timezones import get_timezone
+from latticeai.core.workspace_os_utils import graph_scope_kwargs
 
 LOGGER = logging.getLogger(__name__)
 
@@ -249,12 +250,9 @@ def _empty_lanes() -> Dict[str, int]:
     return {lane: 0 for lane in _LANES}
 
 
-def _scope_kwargs(workspace_id: Optional[str]) -> Dict[str, Any]:
-    """The scoped-read kwargs the graph store expects (house pattern)."""
-    return {
-        "allowed_workspaces": {workspace_id} if workspace_id is not None else None,
-        "include_legacy_global": workspace_id is None,
-    }
+
+#: Historical module-local name for the shared rule.
+_scope_kwargs = graph_scope_kwargs
 
 
 def _on_day(rows: Sequence[Any], day: str) -> List[Any]:

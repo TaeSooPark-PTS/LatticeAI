@@ -87,6 +87,40 @@ def test_latticeai_internal_modules_use_physical_tools_package():
     assert offenders == []
 
 
+def test_no_module_aliases_itself_to_a_moved_implementation():
+    """11.5.2 deleted the six ``sys.modules[__name__] = _impl`` shims.
+
+    That pattern makes a module a silent alias for one that physically moved,
+    so an import path can outlive its file and both `latticeai/` and
+    `lattice_brain/` grow a second name for the same code. Real callers use
+    the physical path; this gate keeps it that way.
+    """
+    offenders = []
+    for package in ("latticeai", "lattice_brain"):
+        for path in (REPO_ROOT / package).rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Assign):
+                    continue
+                for target in node.targets:
+                    if (
+                        isinstance(target, ast.Subscript)
+                        and isinstance(target.value, ast.Attribute)
+                        and target.value.attr == "modules"
+                        and isinstance(target.value.value, ast.Name)
+                        and target.value.value.id == "sys"
+                        and isinstance(target.slice, ast.Name)
+                        and target.slice.id == "__name__"
+                    ):
+                        offenders.append(f"{path.relative_to(REPO_ROOT)}:{node.lineno}")
+
+    assert offenders == [], (
+        "moved-module shims reappeared: "
+        f"{offenders} — import the physical module instead of aliasing "
+        "sys.modules[__name__]"
+    )
+
+
 def test_internal_shim_layers_are_gone():
     """8.8.0 removed the internal-only shim layers for Brain Core extraction."""
     removed = [

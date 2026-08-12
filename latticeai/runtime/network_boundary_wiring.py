@@ -11,19 +11,16 @@ from latticeai.core.network_boundary import (
     DEFAULT_NETWORK_MODE,
     normalize_network_mode,
 )
+from latticeai.runtime.service_singletons import (
+    rebind_singleton,
+    singleton_data_dir,
+)
 from latticeai.services.hybrid_policy import HybridPolicyService
 from latticeai.services.network_boundary_service import NetworkBoundaryService
 
 _LOCK = threading.Lock()
 _SHARED: Optional[NetworkBoundaryService] = None
 _POLICY: Optional[HybridPolicyService] = None
-
-
-def _default_data_dir() -> Path:
-    raw = os.environ.get("LATTICEAI_DATA_DIR", "").strip()
-    if raw:
-        return Path(raw)
-    return Path.home() / ".ltcai"
 
 
 def _env_default_mode() -> Any:
@@ -41,16 +38,12 @@ def get_network_boundary_service(
     with _LOCK:
         if _SHARED is None:
             _SHARED = NetworkBoundaryService(
-                data_dir=Path(data_dir) if data_dir is not None else _default_data_dir(),
+                data_dir=singleton_data_dir(data_dir),
                 default_mode=_env_default_mode(),
                 audit=audit,
             )
             return _SHARED
-        if data_dir is not None:
-            _SHARED.rebind_data_dir(Path(data_dir))
-        if audit is not None:
-            _SHARED.rebind_audit(audit)
-        return _SHARED
+        return rebind_singleton(_SHARED, data_dir=data_dir, audit=audit)
 
 
 def get_hybrid_policy_service(
@@ -62,15 +55,11 @@ def get_hybrid_policy_service(
     with _LOCK:
         if _POLICY is None:
             _POLICY = HybridPolicyService(
-                data_dir=Path(data_dir) if data_dir is not None else _default_data_dir(),
+                data_dir=singleton_data_dir(data_dir),
                 audit=audit,
             )
             return _POLICY
-        if data_dir is not None:
-            _POLICY.rebind_data_dir(Path(data_dir))
-        if audit is not None:
-            _POLICY.rebind_audit(audit)
-        return _POLICY
+        return rebind_singleton(_POLICY, data_dir=data_dir, audit=audit)
 
 
 def resolve_active_network_mode(

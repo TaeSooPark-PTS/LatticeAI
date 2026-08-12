@@ -30,11 +30,6 @@ from latticeai.services.hybrid_context import (
     build_minimal_context,
 )
 from latticeai.services.hybrid_policy import HybridPolicyService
-from latticeai.services.multimodal_streaming import (
-    MultimodalAdapter,
-    MultimodalStreamingBridge,
-    MultimodalTurnResult,
-)
 from latticeai.services.network_boundary_service import NetworkBoundaryService
 
 
@@ -323,54 +318,6 @@ def test_ingestor_without_any_sink_explains_itself():
 
     assert result["status"] == "staged"
     assert result["reason"] == "no store or review_queue bound"
-
-
-# ── multimodal_streaming ──────────────────────────────────────────────────────
-
-
-def test_multimodal_result_to_dict_and_protocol_declaration():
-    result = MultimodalTurnResult(user_message="u", media_urls=["file:///a.mp4"])
-
-    assert result.to_dict()["media_urls"] == ["file:///a.mp4"]
-    assert MultimodalAdapter.stream_media(None, prompt="p", context="c") is None
-
-
-def test_multimodal_refuses_while_local_only():
-    with pytest.raises(PermissionError, match="local_only"):
-        asyncio.run(
-            MultimodalStreamingBridge().run_turn(
-                user_message="a video please",
-                minimal=MinimalContext(query="a video please"),
-                mode="local_only",
-                allow_multimodal=True,
-            )
-        )
-
-
-def test_multimodal_streams_media_and_ignores_malformed_events():
-    class Adapter:
-        provider_name = "fake-media"
-        default_model = "fake-v1"
-
-        async def stream_media(self, *, prompt, context, model=None):
-            yield "not-a-dict"
-            yield {"text": "rendering"}
-            yield {"media_url": "file:///out.mp4", "text": "done"}
-
-    result = asyncio.run(
-        MultimodalStreamingBridge(Adapter()).run_turn(
-            user_message="a video please",
-            minimal=MinimalContext(query="a video please", node_ids=["n1"]),
-            mode=NetworkBoundaryMode.CLOUD_ALLOWED,
-            allow_multimodal=True,
-        )
-    )
-
-    assert result.media_urls == ["file:///out.mp4"]
-    assert result.answer_text == "rendering\ndone"
-    assert result.provider == "fake-media"
-    assert result.model == "fake-v1"
-    assert result.sent_node_ids == ["n1"]
 
 
 # ── cloud_extraction ──────────────────────────────────────────────────────────

@@ -181,16 +181,6 @@ class HookResult:
         }
 
 
-def hook_context(kind: str, event: str = "", **kwargs: Any) -> HookContext:
-    """Factory for a :class:`HookContext` (matches the public hook vocabulary)."""
-    return HookContext(kind, event, **kwargs)
-
-
-def hook_result(**kwargs: Any) -> HookResult:
-    """Factory for a :class:`HookResult`."""
-    return HookResult(**kwargs)
-
-
 def dispatch_tool(
     hooks: Any,
     tool_name: str,
@@ -524,9 +514,6 @@ class HooksRegistry:
 
     # Alias — descriptive name used by the wiring layer.
     register_runtime_hook = register_hook
-
-    def unregister_hook(self, hook_id: str) -> None:
-        self._runtime_runners.pop(hook_id, None)
 
     def has_runner(self, hook_id: str) -> bool:
         return hook_id in self._runtime_runners

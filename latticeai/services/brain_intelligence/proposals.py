@@ -31,11 +31,6 @@ class BrainProposalsMixin(_Core):
     # is absent they report ``available: False`` rather than falling back to a
     # direct write.
 
-    def attach_review_queue(self, review_queue: Any) -> None:
-        """Bind the review queue proposals are written to (composition root)."""
-        self._review_queue_service = review_queue
-        self._synthesizer = None
-
     def _review_queue(self) -> Any:
         """The queue to propose into, or ``None`` when there is none.
 

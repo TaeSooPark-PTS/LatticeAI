@@ -29,6 +29,12 @@ Threat model, stated so the exemptions are checkable rather than vibes:
   the desktop shell, the VS Code extension). That is trusted only while the
   server is bound to loopback, where "not a browser" and "already on this
   machine" coincide. On a reachable bind it fails closed.
+* **Behind a proxy, ``Host`` is not the front door.** The desktop gateway
+  replaces it with the worker's internal authority, so the ``Origin == Host``
+  fallback below compared a browser's real origin against a port the browser
+  has never heard of and refused every write. The front door's own name comes
+  from :mod:`latticeai.core.http_origin`, which believes ``X-Forwarded-Host``
+  only from a peer that may forward.
 """
 
 from __future__ import annotations
@@ -47,6 +53,11 @@ from typing import (
     Tuple,
 )
 from urllib.parse import urlsplit
+
+from latticeai.core.http_origin import (
+    FORWARDED_HOST_HEADER,
+    effective_host,
+)
 
 __all__ = [
     "CSRFDecision",
@@ -176,6 +187,8 @@ class CSRFOriginPolicy:
         self,
         origin: Tuple[str, str, Optional[int]],
         host_header: Optional[str],
+        forwarded_host: Optional[str] = None,
+        peer: Optional[str] = None,
     ) -> bool:
         if any(_same_site(origin, trusted) for trusted in self._trusted):
             return True
@@ -184,7 +197,13 @@ class CSRFOriginPolicy:
         # page this server actually served — which is precisely "not cross
         # site". This is what keeps reverse-proxied hostnames working without
         # every operator having to enumerate them.
-        own = normalize_origin(host_header)
+        #
+        # "The request's own Host" is the *front door's*, not the internal one a
+        # proxy hop rewrote it to, which is why the forwarded authority is
+        # resolved first (and only from a peer that may forward).
+        own = normalize_origin(
+            effective_host(host=host_header, forwarded_host=forwarded_host, peer=peer)
+        )
         return own is not None and _same_site(origin, own)
 
     def evaluate(
@@ -196,6 +215,8 @@ class CSRFOriginPolicy:
         host: Optional[str],
         cookie_header: Optional[str],
         authorization: Optional[str],
+        forwarded_host: Optional[str] = None,
+        peer: Optional[str] = None,
     ) -> CSRFDecision:
         """Allow/deny one request. Pure: no I/O, no app state."""
         if method.upper() in SAFE_METHODS:
@@ -219,7 +240,7 @@ class CSRFOriginPolicy:
                     return CSRFDecision(True, "no-origin-loopback-bind")
                 return CSRFDecision(False, "no-origin-reachable-bind")
 
-        if self._origin_is_trusted(stated, host):
+        if self._origin_is_trusted(stated, host, forwarded_host, peer):
             return CSRFDecision(True, "same-site-or-trusted-origin")
         return CSRFDecision(False, "cross-site-origin")
 
@@ -261,6 +282,9 @@ class CSRFOriginGuardMiddleware:
             key.decode("latin-1").lower(): value.decode("latin-1")
             for key, value in scope.get("headers") or []
         }
+        # ``client`` is ``(host, port)`` under every ASGI server, and absent
+        # under a test transport that does not model a socket.
+        client = scope.get("client") or ()
         decision = self.policy.evaluate(
             method=str(scope.get("method") or "GET"),
             origin=headers.get("origin"),
@@ -268,6 +292,8 @@ class CSRFOriginGuardMiddleware:
             host=headers.get("host"),
             cookie_header=headers.get("cookie"),
             authorization=headers.get("authorization"),
+            forwarded_host=headers.get(FORWARDED_HOST_HEADER),
+            peer=client[0] if client else None,
         )
         if decision.allowed:
             await self.app(scope, receive, send)

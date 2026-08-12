@@ -362,10 +362,6 @@ def configure_tool_dispatch(
     )
 
 
-def agent_policy(action_name: str, args: dict) -> ToolPolicy:
-    return DEFAULT_TOOL_DISPATCH_SERVICE.policy_for(action_name, args)
-
-
 def agent_risk(action_name: str, args: dict) -> str:
     return DEFAULT_TOOL_DISPATCH_SERVICE.risk_level(action_name, args)
 

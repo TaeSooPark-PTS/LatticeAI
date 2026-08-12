@@ -1,4 +1,978 @@
 {
+  "agent_profiles": [
+    {
+      "model_id": "mlx-community/gemma-4-12B-it-4bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 12.0
+    },
+    {
+      "model_id": "qwen2.5-1.5b",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "llama-3.2-3B",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "phi-4-mini-3.8b-8bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.8
+    },
+    {
+      "model_id": "some-model-4b",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.0b",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.1b",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 4.1
+    },
+    {
+      "model_id": "gpt-4o",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "claude-sonnet",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "   ",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "model-8bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "abc123b",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "7b-and-1.5b-mixed",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "Model-70B-Instruct",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 70.0
+    },
+    {
+      "model_id": "mlx-community/gemma-4-12B-it-4bit",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 12.0
+    },
+    {
+      "model_id": "qwen2.5-1.5b",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "llama-3.2-3B",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "phi-4-mini-3.8b-8bit",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 3.8
+    },
+    {
+      "model_id": "some-model-4b",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.0b",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.1b",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 4.1
+    },
+    {
+      "model_id": "gpt-4o",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "claude-sonnet",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "   ",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "model-8bit",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "abc123b",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "7b-and-1.5b-mixed",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "Model-70B-Instruct",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 70.0
+    },
+    {
+      "model_id": "mlx-community/gemma-4-12B-it-4bit",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 12.0
+    },
+    {
+      "model_id": "qwen2.5-1.5b",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "llama-3.2-3B",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "phi-4-mini-3.8b-8bit",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.8
+    },
+    {
+      "model_id": "some-model-4b",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.0b",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.1b",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.1
+    },
+    {
+      "model_id": "gpt-4o",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "claude-sonnet",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "   ",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "model-8bit",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "abc123b",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "7b-and-1.5b-mixed",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "Model-70B-Instruct",
+      "override": "compact",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 70.0
+    },
+    {
+      "model_id": "mlx-community/gemma-4-12B-it-4bit",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 12.0
+    },
+    {
+      "model_id": "qwen2.5-1.5b",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "llama-3.2-3B",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "phi-4-mini-3.8b-8bit",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.8
+    },
+    {
+      "model_id": "some-model-4b",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.0b",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.1b",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.1
+    },
+    {
+      "model_id": "gpt-4o",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "claude-sonnet",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "   ",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "model-8bit",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "abc123b",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "7b-and-1.5b-mixed",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "Model-70B-Instruct",
+      "override": "COMPACT",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 70.0
+    },
+    {
+      "model_id": "mlx-community/gemma-4-12B-it-4bit",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 12.0
+    },
+    {
+      "model_id": "qwen2.5-1.5b",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "llama-3.2-3B",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.0
+    },
+    {
+      "model_id": "phi-4-mini-3.8b-8bit",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 3.8
+    },
+    {
+      "model_id": "some-model-4b",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.0b",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0
+    },
+    {
+      "model_id": "some-model-4.1b",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 4.1
+    },
+    {
+      "model_id": "gpt-4o",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "claude-sonnet",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "   ",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "model-8bit",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "abc123b",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    },
+    {
+      "model_id": "7b-and-1.5b-mixed",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 1.5
+    },
+    {
+      "model_id": "Model-70B-Instruct",
+      "override": "nonsense",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 70.0
+    },
+    {
+      "model_id": null,
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": null
+    }
+  ],
   "budgets": {
     "phase": {
       "execute_tokens": 4096,
@@ -12,6 +986,88 @@
       "window": 8
     }
   },
+  "document_targets": [
+    {
+      "filename": "notes.md",
+      "target": null,
+      "tool": "write_file"
+    },
+    {
+      "filename": "report.docx",
+      "target": "generated_documents/report.docx",
+      "tool": "create_docx"
+    },
+    {
+      "filename": "report",
+      "target": "generated_documents/report.docx",
+      "tool": "create_docx"
+    },
+    {
+      "filename": "report.pdf",
+      "target": "generated_documents/report.pdf.docx",
+      "tool": "create_docx"
+    },
+    {
+      "filename": "budget.xlsx",
+      "target": "generated_spreadsheets/budget.xlsx",
+      "tool": "create_xlsx"
+    },
+    {
+      "filename": "deck",
+      "target": "generated_presentations/deck.pptx",
+      "tool": "create_pptx"
+    },
+    {
+      "filename": "invoice",
+      "target": "generated_pdfs/invoice.pdf",
+      "tool": "create_pdf"
+    },
+    {
+      "filename": "sub/dir/invoice.pdf",
+      "target": "generated_pdfs/invoice.pdf",
+      "tool": "create_pdf"
+    },
+    {
+      "filename": "../../escape.pdf",
+      "target": "generated_pdfs/escape.pdf",
+      "tool": "create_pdf"
+    },
+    {
+      "filename": "회의 기록.docx",
+      "target": "generated_documents/회의 기록.docx",
+      "tool": "create_docx"
+    },
+    {
+      "filename": "a/b*c?d.docx",
+      "target": "generated_documents/b_c_d.docx",
+      "tool": "create_docx"
+    },
+    {
+      "filename": "",
+      "target": "generated_documents/artifact.docx",
+      "tool": "create_docx"
+    },
+    {
+      "filename": "   ",
+      "target": "generated_presentations/.pptx",
+      "tool": "create_pptx"
+    },
+    {
+      "filename": "REPORT.XLSX",
+      "target": "generated_spreadsheets/REPORT.XLSX",
+      "tool": "create_xlsx"
+    },
+    {
+      "filename": ".pdf",
+      "target": "generated_pdfs/.pdf",
+      "tool": "create_pdf"
+    },
+    {
+      "filename": "x.docx",
+      "target": null,
+      "tool": "unknown_tool"
+    }
+  ],
   "extract_action_details": [
     {
       "action": {

@@ -6,21 +6,13 @@ import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from fastapi import HTTPException, Request, UploadFile
 
 from lattice_brain.ingestion import IngestionItem
+from latticeai.api.workspace_scope import resolve_workspace_scope
 from latticeai.core.quiet import quiet
 from latticeai.tools import ToolError, read_document
-
-
-def _workspace_scope_from_request(request: Request) -> Optional[str]:
-    header = request.headers.get("X-Workspace-Id")
-    if header and header.strip():
-        return header.strip()
-    query = request.query_params.get("workspace_id")
-    return query.strip() if query and query.strip() else None
 
 
 async def process_uploaded_document(
@@ -39,17 +31,12 @@ async def process_uploaded_document(
     workspace_service=None,
 ) -> dict:
     enforce_rate_limit(current_user, "upload")
-    requested_workspace = _workspace_scope_from_request(request)
-    if workspace_service is not None:
-        try:
-            workspace_id = workspace_service.resolve_write_scope(
-                requested_workspace,
-                current_user or None,
-            )
-        except PermissionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
-    else:
-        workspace_id = requested_workspace
+    workspace_id = resolve_workspace_scope(
+        request,
+        user=current_user,
+        workspace_service=workspace_service,
+        write=True,
+    )
     suffix = Path(file.filename or "upload").suffix.lower()
     allowed = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"}
     if suffix not in allowed:

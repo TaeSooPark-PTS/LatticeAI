@@ -310,6 +310,7 @@ def phase_web(ctx: RuntimeContext) -> None:
         create_security_router as _create_security_router,
     )
     from latticeai.api.static_routes import create_static_routes_router
+    from latticeai.core.config import default_sso_redirect_uri
     from latticeai.core.policy import policy_matrix
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.core.security import hash_password
@@ -408,6 +409,7 @@ def phase_web(ctx: RuntimeContext) -> None:
 
     foundation_router_bundle = build_auth_admin_security_router_bundle(
         create_auth_router=create_auth_router,
+        sso_default_redirect_uri=default_sso_redirect_uri(ctx.DEFAULT_PORT),
         load_users=ctx.load_users,
         save_users=ctx.save_users,
         hash_password=hash_password,

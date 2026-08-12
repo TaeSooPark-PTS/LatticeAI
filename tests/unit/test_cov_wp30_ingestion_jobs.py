@@ -40,7 +40,8 @@ def test_memory_only_queue_says_so_and_saving_is_a_no_op():
         "detail": "no database configured; job state is in-memory only",
     }
     queue.save(job)  # no store: nothing to mirror, nothing to fail
-    assert queue.list_pending() == [job]
+    assert queue.get(job.job_id) is job
+    assert job.status == "queued"
     assert queue.list_recent()[0].job_id == job.job_id
 
 

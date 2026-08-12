@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional
 
 from latticeai.core.timeutil import local_now, parse_iso
 from latticeai.core.timeutil import now_iso as _now
+from latticeai.core.workspace_os_utils import graph_scope_kwargs
 
 LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +47,8 @@ _HYGIENE_STALE_DAYS = 7
 def _clip(text: Any, limit: int = 160) -> str:
     value = str(text or "").strip()
     return value[:limit]
+
+
 
 
 class CommandCenterService:
@@ -73,10 +76,7 @@ class CommandCenterService:
     # ── scoped reads ─────────────────────────────────────────────────────
 
     def _scope_kwargs(self, workspace_id: Optional[str]) -> Dict[str, Any]:
-        return {
-            "allowed_workspaces": {workspace_id} if workspace_id is not None else None,
-            "include_legacy_global": workspace_id is None,
-        }
+        return graph_scope_kwargs(workspace_id)
 
     def _history(
         self, *, user_email: Optional[str], workspace_id: Optional[str], limit: int

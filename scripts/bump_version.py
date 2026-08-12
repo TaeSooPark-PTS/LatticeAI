@@ -25,7 +25,20 @@ REPO = Path(__file__).resolve().parents[1]
 # it per crate — src-tauri's too, since 11.4.0, because the desktop shell now
 # depends on lattice-host by path — and a lockfile left behind is a file the
 # next `cargo build` silently rewrites underneath a tagged release.
-RUST_CRATES = ("lattice-core", "lattice-host", "lattice-retrieval")
+#
+# 11.5.2: this tuple listed only the three Phase-1 crates, so every bump since
+# 11.5.0 left `lattice-agent`, `lattice-ingest` and `lattice-jobs` at the
+# previous version in both lockfiles — and the first `cargo` invocation of the
+# test suite rewrote them, dirtying the tree mid-release. Every workspace
+# member belongs here.
+RUST_CRATES = (
+    "lattice-agent",
+    "lattice-core",
+    "lattice-host",
+    "lattice-ingest",
+    "lattice-jobs",
+    "lattice-retrieval",
+)
 RUST_LOCKFILES = ("rust/Cargo.lock", "src-tauri/Cargo.lock")
 
 # (path, kind, pattern) — pattern groups: (prefix, version)

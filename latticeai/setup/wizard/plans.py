@@ -8,15 +8,15 @@ plan and therefore nothing to confirm.
 
 from __future__ import annotations
 
-import json as _json
 import sys
 from typing import Any, Dict, List
 
+from latticeai.core.sse import sse_frame
 from latticeai.services.process_audit import command_plan_for_commands
 
 
 def _sse(data: Dict) -> str:
-    return f"data: {_json.dumps(data, ensure_ascii=False)}\n\n"
+    return sse_frame(None, data)
 
 
 def _action_commands(action: Dict[str, Any]) -> List[List[str]]:

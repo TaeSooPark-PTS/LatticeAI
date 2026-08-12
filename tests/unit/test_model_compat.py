@@ -134,7 +134,7 @@ def test_gemma4_12b_unified_requires_runtime_update(monkeypatch):
             return object()
         return None
 
-    monkeypatch.setattr("latticeai.core.model_compat.importlib.util.find_spec", fake_find_spec)
+    monkeypatch.setattr("latticeai.core.module_probe.importlib.util.find_spec", fake_find_spec)
     monkeypatch.setattr("latticeai.core.model_compat._local_model_type", lambda _model_id: "gemma4_unified")
     result = model_runtime_compatibility("mlx-community/gemma-4-12b-it-4bit", "local_mlx")
 
@@ -151,7 +151,7 @@ def test_gemma4_26b_standard_is_supported_without_unified_module(monkeypatch):
             return object()
         return None
 
-    monkeypatch.setattr("latticeai.core.model_compat.importlib.util.find_spec", fake_find_spec)
+    monkeypatch.setattr("latticeai.core.module_probe.importlib.util.find_spec", fake_find_spec)
     monkeypatch.setattr("latticeai.core.model_compat._local_model_type", lambda _model_id: "gemma4")
     result = model_runtime_compatibility("mlx-community/gemma-4-26b-a4b-it-4bit", "local_mlx")
 
@@ -166,7 +166,7 @@ def test_gemma4_runtime_error_is_friendly(monkeypatch):
             return object()
         return None
 
-    monkeypatch.setattr("latticeai.core.model_compat.importlib.util.find_spec", fake_find_spec)
+    monkeypatch.setattr("latticeai.core.module_probe.importlib.util.find_spec", fake_find_spec)
     monkeypatch.setattr("latticeai.core.model_compat._local_model_type", lambda _model_id: "gemma4_unified")
     detail = friendly_model_runtime_error(
         "Model type gemma4_unified not supported.",
@@ -186,7 +186,7 @@ def test_gemma4_unified_error_without_model_id_is_runtime_update(monkeypatch):
             return object()
         return None
 
-    monkeypatch.setattr("latticeai.core.model_compat.importlib.util.find_spec", fake_find_spec)
+    monkeypatch.setattr("latticeai.core.module_probe.importlib.util.find_spec", fake_find_spec)
 
     detail = friendly_model_runtime_error("Model type gemma4_unified not supported.", engine="local_mlx")
 

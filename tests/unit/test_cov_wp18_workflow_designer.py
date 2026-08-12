@@ -13,7 +13,6 @@ events — never on "it did not raise".
 
 from __future__ import annotations
 
-import importlib
 from typing import Any, Dict, List, Optional
 
 import pytest
@@ -195,17 +194,6 @@ def _client(store, *, run_executor=None, trigger_service=None, runners=None,
     client.audit = audit  # type: ignore[attr-defined]
     client.built_for = built_for  # type: ignore[attr-defined]
     return client
-
-
-# ── legacy import path ──────────────────────────────────────────────────
-
-def test_core_workflow_engine_shim_aliases_the_physical_module():
-    """``latticeai.core.workflow_engine`` must still resolve to the real module."""
-    import lattice_brain.workflow as physical
-
-    shim = importlib.import_module("latticeai.core.workflow_engine")
-    assert shim is physical
-    assert shim.WorkflowEngine is physical.WorkflowEngine
 
 
 # ── page + definition CRUD ──────────────────────────────────────────────

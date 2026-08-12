@@ -14,16 +14,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from .timeutil import now_iso as _now
-from .workspace_os_utils import _json_hash, _listify
+from .workspace_os_utils import WorkspaceStoreMixin, _json_hash, _listify
 
 
-class WorkspaceReviewItems:
-    def __init__(self, store: Any):
-        self._store = store
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._store, name)
-
+class WorkspaceReviewItems(WorkspaceStoreMixin):
     def create_review_item(
         self,
         *,

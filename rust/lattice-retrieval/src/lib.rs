@@ -27,6 +27,17 @@
 //! prompt is assembled with, and [`docgen_context`] the budgeted context builder
 //! that composes them — behind `POST /rust/context/document`.
 
+/// Compile a pattern ported verbatim from a Python original.
+///
+/// `expect`, not a `Result`: every pattern in this crate is a literal copied
+/// out of `lattice_brain`, so a failure here is a typo in the port rather than
+/// a runtime condition — and the first test that touches the module finds it.
+/// `policy` and `concepts` each had their own copy of this line; one is enough,
+/// and one means the panic message cannot drift.
+pub(crate) fn build_pattern(pattern: &str) -> fancy_regex::Regex {
+    fancy_regex::Regex::new(pattern).expect("ported pattern must compile")
+}
+
 pub mod concepts;
 pub mod context;
 pub mod docgen;

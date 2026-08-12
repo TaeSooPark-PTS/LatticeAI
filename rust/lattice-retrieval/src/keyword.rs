@@ -15,6 +15,7 @@ use rusqlite::Connection;
 use serde_json::{Map, Value};
 
 use crate::concepts::topic_candidates;
+use crate::shape::{haystack, json_opt};
 
 /// Node types `search()` gives a +1 relevance boost. Fixed list, not a config.
 pub const TYPE_BOOST: [&str; 12] = [
@@ -72,23 +73,6 @@ fn query_nodes(
     Ok(rows.filter_map(Result::ok).collect())
 }
 
-/// Python's `f"{row['title']} {row['summary']} {row['metadata_json']}"`.
-///
-/// A NULL column formats as the four characters `None` in Python, and the
-/// re-score searches that haystack, so the port has to say `None` too.
-fn haystack(row: &NodeRow) -> String {
-    fn field(value: &Option<String>) -> &str {
-        value.as_deref().unwrap_or("None")
-    }
-    format!(
-        "{} {} {}",
-        field(&row.title),
-        field(&row.summary),
-        field(&row.metadata_json)
-    )
-    .to_lowercase()
-}
-
 fn score_key(row: &NodeRow, terms: &BTreeSet<String>) -> (usize, u8, String) {
     let hay = haystack(row);
     let hits = terms
@@ -116,13 +100,6 @@ fn as_match(row: &NodeRow) -> Map<String, Value> {
     );
     item.insert("updated_at".into(), json_opt(&row.updated_at));
     item
-}
-
-fn json_opt(value: &Option<String>) -> Value {
-    value
-        .as_ref()
-        .map(|v| Value::String(v.clone()))
-        .unwrap_or(Value::Null)
 }
 
 /// `KnowledgeGraphStore.search(query, limit, allowed_workspaces=…)`.

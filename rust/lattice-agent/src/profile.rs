@@ -45,6 +45,9 @@ pub const COMPACT: AgentProfile = AgentProfile {
 /// At or below this parameter count, the compact profile applies.
 pub const COMPACT_MAX_PARAMS_B: f64 = 4.0;
 
+/// The environment variable that pins a profile regardless of model size.
+pub const PROFILE_OVERRIDE_ENV: &str = "LATTICEAI_AGENT_PROFILE";
+
 fn size_pattern() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
@@ -75,11 +78,20 @@ pub fn model_size_b(model_id: &str) -> Option<f64> {
 
 /// Pick the loop profile for a model: explicit override → size → `standard`.
 pub fn profile_for_model(model_id: Option<&str>) -> AgentProfile {
-    let override_name = std::env::var("LATTICEAI_AGENT_PROFILE")
-        .unwrap_or_default()
-        .trim()
-        .to_lowercase();
-    match override_name.as_str() {
+    profile_with_override(
+        model_id,
+        &std::env::var(PROFILE_OVERRIDE_ENV).unwrap_or_default(),
+    )
+}
+
+/// [`profile_for_model`] with the override supplied instead of read.
+///
+/// Python's `profile_for_model` already took its environment as an argument;
+/// this is the same seam, and it is what the parity golden drives — a fixture
+/// that had to mutate process-global environment state to check the override
+/// rows would be a test that breaks whenever the suite runs in parallel.
+pub fn profile_with_override(model_id: Option<&str>, override_name: &str) -> AgentProfile {
+    match override_name.trim().to_lowercase().as_str() {
         "standard" => return STANDARD,
         "compact" => return COMPACT,
         // An unrecognised override falls through to the heuristic.

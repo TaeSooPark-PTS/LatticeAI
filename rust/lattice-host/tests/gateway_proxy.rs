@@ -5,7 +5,7 @@ mod common;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use common::{client, json, FakeWorker, FixedProvider, TestGateway};
+use common::{client, client_no_redirect, json, FakeWorker, FixedProvider, TestGateway};
 
 async fn harness(worker: &FakeWorker) -> TestGateway {
     TestGateway::start(Arc::new(FixedProvider::new(worker.origin(), worker.port()))).await
@@ -201,6 +201,131 @@ async fn post_bodies_are_forwarded_and_responses_echoed() {
     assert_eq!(
         seen[0].body_text(),
         serde_json::to_string(&payload).expect("serialise")
+    );
+
+    gateway.stop().await;
+    worker.shutdown();
+}
+
+/// The invite gate, and every other credential a redirect carries.
+///
+/// Before 11.5.2 the proxy's client followed the 3xx itself and answered with
+/// the *final* response, so `Set-Cookie` and `Location` were both destroyed:
+/// `GET /?code=…` came back as the "no invite" page and the gate was a hard
+/// dead end through the front door.
+#[tokio::test]
+async fn a_redirect_reaches_the_caller_with_its_cookie_and_location_intact() {
+    let worker = FakeWorker::start().await;
+    let gateway = harness(&worker).await;
+
+    let response = client_no_redirect()
+        .get(gateway.url("/redirect"))
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(response.status(), 308, "the redirect is passed through");
+    assert_eq!(
+        response
+            .headers()
+            .get("location")
+            .and_then(|v| v.to_str().ok()),
+        Some("/app#/account"),
+        "a relative Location is the browser's to resolve, untouched"
+    );
+    assert!(
+        response
+            .headers()
+            .get("set-cookie")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+            .contains("lattice_invite=granted"),
+        "the credential the redirect carried must survive the hop"
+    );
+
+    gateway.stop().await;
+    worker.shutdown();
+}
+
+/// Starlette answers `/app` and `/static` with an *absolute* redirect built
+/// from the Host it saw — which, after this hop replaced it, is the worker's
+/// private port. Handed to the browser unchanged it would route around the
+/// front door.
+#[tokio::test]
+async fn an_absolute_location_naming_the_worker_is_rewritten_to_the_front_door() {
+    let worker = FakeWorker::start().await;
+    let gateway = harness(&worker).await;
+
+    let response = client_no_redirect()
+        .get(gateway.url("/redirect-absolute"))
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(response.status(), 308);
+    let location = response
+        .headers()
+        .get("location")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
+    assert_eq!(
+        location,
+        format!("{}/app/", gateway.base),
+        "the browser is sent back to the gateway, not to the worker's own port"
+    );
+    assert!(
+        !location.contains(&worker.port().to_string()),
+        "the internal port must not leak into a browser redirect: {location}"
+    );
+
+    // …and a redirect that names somewhere else entirely is left alone.
+    let response = client_no_redirect()
+        .get(gateway.url("/redirect-external"))
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(response.status(), 302);
+    assert_eq!(
+        response
+            .headers()
+            .get("location")
+            .and_then(|v| v.to_str().ok()),
+        Some("https://idp.example/authorize?x=1")
+    );
+
+    gateway.stop().await;
+    worker.shutdown();
+}
+
+/// The worker's only way to know the front door's name: `Host` is hop-by-hop
+/// and is replaced with the worker's own authority on the way out.
+#[tokio::test]
+async fn proxied_requests_state_who_asked_and_where() {
+    let worker = FakeWorker::start().await;
+    let gateway = harness(&worker).await;
+
+    let response = client()
+        .get(gateway.url("/api/notes"))
+        // A caller's own claim must not be believed — the gateway states what
+        // it observed.
+        .header("x-forwarded-for", "203.0.113.9")
+        .header("x-forwarded-host", "evil.example")
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(response.status(), 200);
+
+    let seen = worker.requests();
+    let proxied = seen.last().expect("a request reached the worker");
+    assert_eq!(
+        proxied.header("x-forwarded-host"),
+        Some(gateway.base.trim_start_matches("http://")),
+        "the authority the caller actually asked for"
+    );
+    assert_eq!(proxied.header("x-forwarded-proto"), Some("http"));
+    assert_eq!(
+        proxied.header("x-forwarded-for"),
+        Some("127.0.0.1"),
+        "the peer the gateway observed, not the one the caller claimed"
     );
 
     gateway.stop().await;

@@ -108,7 +108,9 @@ def test_a_queue_write_failure_never_blocks_the_request(tmp_path, monkeypatch, c
         approval = gateway.local_permission_response(
             str(tmp_path / "note.md"), "read", REQUESTER
         )
-        gateway._perm_queue_remove(approval["approval_token"])
+        gateway._perm_queue_remove_key(
+            gateway.token_hash(approval["approval_token"])
+        )
 
     assert approval["approval_token"]
     assert gateway.token_hash(approval["approval_token"]) in gateway.local_approvals
@@ -125,7 +127,7 @@ def test_removing_by_token_clears_the_queue_entry(tmp_path):
     )["approval_token"]
 
     before = json.loads((tmp_path / "permission_queue.json").read_text(encoding="utf-8"))
-    gateway._perm_queue_remove(token)
+    gateway._perm_queue_remove_key(gateway.token_hash(token))
     after = json.loads((tmp_path / "permission_queue.json").read_text(encoding="utf-8"))
 
     assert list(before) == [gateway.token_hash(token)]

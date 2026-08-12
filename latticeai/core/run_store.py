@@ -21,7 +21,6 @@ Design constraints (deliberate, matching :mod:`latticeai.services.funnel_metrics
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
@@ -34,6 +33,7 @@ from typing import Any, Dict, List, Optional
 from latticeai.core.agent import AgentRunContext, AgentState
 from latticeai.core.agent_trace import LoopTrace
 from latticeai.core.quiet import quiet
+from latticeai.core.security import sha256_hex
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ _RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
 def hash_approval_token(token: str) -> str:
     """Stable digest used both at save and at resume comparison time."""
-    return hashlib.sha256(str(token or "").encode("utf-8")).hexdigest()
+    return sha256_hex(str(token or ""))
 
 
 def serialize_run_context(ctx: AgentRunContext) -> Dict[str, Any]:

@@ -12,6 +12,8 @@ use std::sync::OnceLock;
 
 use fancy_regex::{escape, Regex};
 
+use crate::build_pattern as build;
+
 /// `lattice_brain.graph._kg_common.extraction._CONCEPT_STOP`.
 pub const CONCEPT_STOP: [&str; 109] = [
     "all",
@@ -163,10 +165,6 @@ fn patterns() -> &'static Patterns {
         hyphenated: build(r"\b([a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9.]+)+)\b"),
         fallback_token: build(r"[A-Za-z][A-Za-z0-9_.:-]{2,}|[가-힣]{2,12}"),
     })
-}
-
-fn build(pattern: &str) -> Regex {
-    Regex::new(pattern).expect("ported pattern must compile")
 }
 
 /// `re.findall` for a pattern whose only group is group 1.

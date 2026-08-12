@@ -15,7 +15,6 @@ from latticeai.services.model_capability_registry import (
     get_all_capabilities,
     get_capability,
     get_legacy_capabilities,
-    get_recommended_capabilities,
     get_verified_models,
 )
 from latticeai.services.model_catalog import (
@@ -27,8 +26,13 @@ from latticeai.services.model_catalog import (
 )
 
 
+def _recommended():
+    """Current-generation slice, derived from the lifecycle field."""
+    return [c for c in get_all_capabilities() if c.lifecycle == RECOMMENDED]
+
+
 def test_registry_has_core_models_and_verification():
-    ids = {c.id for c in get_recommended_capabilities()}
+    ids = {c.id for c in _recommended()}
     # one entry per RAM tier, newest generation only
     assert "mlx-community/LFM2.5-2.6B-4bit" in ids            # ultralight, text
     assert "mlx-community/gemma-4-e2b-it-4bit" in ids         # ultralight, vision

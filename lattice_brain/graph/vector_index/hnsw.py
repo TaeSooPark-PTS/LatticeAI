@@ -150,9 +150,6 @@ class HnswIndex:
             self.add(item_id, vector, metadata)
         self._dirty = True
 
-    def metadata_for(self, id: str) -> Dict[str, Any]:
-        return dict(self._metadata.get(str(id), {}))
-
     # ── graph construction ───────────────────────────────────────────────────
     def _new_graph(self, module: Any, capacity: int) -> Any:
         graph = module.Index(space=self._space, dim=self._dim)

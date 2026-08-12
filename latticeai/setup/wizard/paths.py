@@ -20,6 +20,8 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List
 
+from latticeai.core.module_probe import module_available as _module_available
+
 OFFICIAL_DOWNLOADS: Dict[str, str] = {
     "homebrew": "https://brew.sh",
     "python": "https://www.python.org/downloads/",
@@ -147,11 +149,6 @@ def _which_any(binary: str) -> str | None:
 def _which_detail(binary: str) -> Dict[str, Any]:
     path = _which_any(binary)
     return {"installed": path is not None, "path": path}
-
-
-def _module_available(module_name: str) -> bool:
-    import importlib.util
-    return importlib.util.find_spec(module_name) is not None
 
 
 def _package_module(package: str) -> str:

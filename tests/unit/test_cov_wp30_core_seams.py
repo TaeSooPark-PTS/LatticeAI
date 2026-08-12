@@ -104,8 +104,6 @@ def test_brain_memory_available_follows_pipeline():
 
 def test_brain_memory_requires_titles():
     memory = BrainMemory(_StubPipeline())
-    with pytest.raises(ValueError, match="decision needs a title"):
-        memory.record_decision("   ")
     with pytest.raises(ValueError, match="experience needs a title"):
         memory.record_experience("", detail="ran something")
 

@@ -636,11 +636,6 @@ def get_all_capabilities() -> List[ModelCapability]:
     return [*_REGISTRY, *_LEGACY_REGISTRY]
 
 
-def get_recommended_capabilities() -> List[ModelCapability]:
-    """Current-generation entries: catalog, download and recommendation input."""
-    return list(_REGISTRY)
-
-
 def get_legacy_capabilities() -> List[ModelCapability]:
     """Recognised-only entries: never offered, never recommended, still named."""
     return list(_LEGACY_REGISTRY)
@@ -661,12 +656,6 @@ def is_recognized_model(model_id: str) -> bool:
     its generation stops being offered.
     """
     return get_capability(model_id) is not None
-
-
-def is_recommended_model(model_id: str) -> bool:
-    """True only for current-generation entries — the download/offer gate."""
-    cap = get_capability(model_id)
-    return cap is not None and cap.lifecycle == RECOMMENDED
 
 
 def build_engine_model_catalog() -> Dict[str, List[Dict[str, Any]]]:
@@ -717,7 +706,3 @@ def get_verified_models() -> List[Dict[str, Any]]:
         if c.verification.hf_exists and c.verification.has_config and c.verification.has_tokenizer
     ]
 
-
-# Back-compat: expose a simple list mirroring the old top-level for mlx.
-# Recommended entries only — same reasoning as build_engine_model_catalog.
-LOCAL_MLX_MODELS = [c.to_legacy_dict() for c in _REGISTRY if "local_mlx" in c.provider_hints]

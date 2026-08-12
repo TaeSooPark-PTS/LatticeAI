@@ -109,19 +109,6 @@ def test_switch_model_sets_the_default_and_marks_it_used():
     assert "loaded" in router.model_memory_policy()["last_used"]
 
 
-def test_is_cloud_current_distinguishes_the_two_backend_shapes():
-    router = router_mod.LLMRouter()
-    router._cache = {"cloud": _cloud_entry("cloud"), "local": _local_entry()}
-
-    assert router._is_cloud_current() is False  # nothing selected yet
-
-    router._current = "cloud"
-    assert router._is_cloud_current() is True
-
-    router._current = "local"
-    assert router._is_cloud_current() is False
-
-
 def test_only_non_cloud_entries_count_towards_the_local_memory_budget():
     router = router_mod.LLMRouter()
     router._cache = {"local": _local_entry(), "cloud": _cloud_entry("cloud")}

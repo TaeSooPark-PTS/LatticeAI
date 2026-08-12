@@ -189,4 +189,8 @@ def test_the_real_registry_projects_an_mlx_catalog_without_the_fallback():
 
     assert catalog["local_mlx"]
     assert all(entry.get("id") for entry in catalog["local_mlx"])
-    assert len(catalog["local_mlx"]) == len(registry.get_recommended_capabilities())
+    recommended = [
+        cap for cap in registry.get_all_capabilities()
+        if cap.lifecycle == registry.RECOMMENDED
+    ]
+    assert len(catalog["local_mlx"]) == len(recommended)

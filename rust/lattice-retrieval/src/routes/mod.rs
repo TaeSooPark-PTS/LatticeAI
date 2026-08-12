@@ -163,7 +163,11 @@ async fn handle(
 
 /// 404 — there is no brain on this machine yet, and answering "no results"
 /// would be a lie about an empty index rather than a missing one.
-fn brain_not_found(db: &Path) -> Response {
+///
+/// Public because the host's own P1 search lanes answer the *same* question
+/// about the *same* store and must answer it identically; a second copy of this
+/// body was two error contracts one edit apart.
+pub fn brain_not_found(db: &Path) -> Response {
     (
         StatusCode::NOT_FOUND,
         Json(serde_json::json!({

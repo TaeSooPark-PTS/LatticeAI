@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-agent"
-version = "11.5.0"
+version = "11.5.2"
 dependencies = [
  "axum",
  "base64",
@@ -596,7 +596,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-core"
-version = "11.5.1"
+version = "11.5.2"
 dependencies = [
  "blake2",
  "rusqlite",
@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-host"
-version = "11.5.1"
+version = "11.5.2"
 dependencies = [
  "axum",
  "lattice-agent",
@@ -625,7 +625,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-ingest"
-version = "11.5.0"
+version = "11.5.2"
 dependencies = [
  "axum",
  "lattice-core",
@@ -639,7 +639,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-jobs"
-version = "11.5.0"
+version = "11.5.2"
 dependencies = [
  "axum",
  "lattice-core",
@@ -653,7 +653,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-retrieval"
-version = "11.5.1"
+version = "11.5.2"
 dependencies = [
  "axum",
  "fancy-regex",

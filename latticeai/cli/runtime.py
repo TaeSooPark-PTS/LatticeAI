@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-import importlib.util
 import os
 from pathlib import Path
+
+from latticeai.core.module_probe import module_available
+
+#: Historical name. ``cli.entrypoint`` imports it from here and the suite
+#: monkeypatches it there, so the binding has to exist on this module.
+_has_module = module_available
 
 
 def _load_env_file(path: Path) -> None:
@@ -33,5 +38,4 @@ def _apply_extra_path() -> None:
     os.environ["PATH"] = os.pathsep.join(current)
 
 
-def _has_module(name: str) -> bool:
-    return importlib.util.find_spec(name) is not None
+

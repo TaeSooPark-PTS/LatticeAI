@@ -1,9 +1,16 @@
 """Local engine discovery, server hand-off, and the LM Studio HTTP client.
 
-Thin wrappers over ``latticeai.services.model_engines`` that keep the historical
+Re-exports from ``latticeai.services.model_engines`` that keep the historical
 ``model_runtime`` import path alive, plus the one piece of real logic that never
 belonged in the engine layer: the LM Studio native API (list / download / load)
 and its short-lived model cache.
+
+Until 11.5.2 the re-exports were fifteen hand-written one-line functions that
+forwarded their arguments, next to second copies of ``_json_request`` and the
+LM Studio base-URL pair. A forwarding wrapper is a place two implementations
+can drift — one of the copies had already grown a different fallback — so the
+names are now bound directly to the engine layer's and there is nothing left to
+disagree with.
 
 ``_LMSTUDIO_MODELS_CACHE`` and ``_LMSTUDIO_MODELS_CACHE_TS`` are rebindable
 module state and therefore live here and nowhere else — the package
@@ -15,7 +22,6 @@ the live value.
 from __future__ import annotations
 
 import importlib.util
-import json
 import os
 import shutil
 import time
@@ -24,131 +30,55 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS, AsyncOpenAI
+from latticeai.models.router import AsyncOpenAI
 from latticeai.services.model_engines import (
     LOCAL_SERVER_PROCESSES as _LOCAL_SERVER_PROCESSES,
+)
+from latticeai.services.model_engines import (
+    _json_request as _json_request,
 )
 from latticeai.services.model_engines import (
     engine_install_plan as _engine_install_plan,
 )
 from latticeai.services.model_engines import (
-    engine_support_status as _engine_support_status,
+    engine_support_status as engine_support_status,
 )
 from latticeai.services.model_engines import (
-    ensure_llamacpp_server as _ensure_llamacpp_server,
+    ensure_llamacpp_server as ensure_llamacpp_server,
 )
 from latticeai.services.model_engines import (
-    ensure_lmstudio_server as _ensure_lmstudio_server,
+    ensure_lmstudio_server as ensure_lmstudio_server,
 )
 from latticeai.services.model_engines import (
-    ensure_ollama_server as _ensure_ollama_server,
+    ensure_ollama_server as ensure_ollama_server,
+)
+from latticeai.services.model_engines import ensure_vllm_server as ensure_vllm_server
+from latticeai.services.model_engines import find_lmstudio_cli as find_lmstudio_cli
+from latticeai.services.model_engines import (
+    get_ollama_pulled_models as get_ollama_pulled_models,
 )
 from latticeai.services.model_engines import (
-    ensure_vllm_server as _ensure_vllm_server,
+    get_openai_compatible_server_models as get_openai_compatible_server_models,
+)
+from latticeai.services.model_engines import lmstudio_api_base as lmstudio_api_base
+from latticeai.services.model_engines import (
+    lmstudio_native_api_base as lmstudio_native_api_base,
+)
+from latticeai.services.model_engines import local_binary as local_binary
+from latticeai.services.model_engines import (
+    pull_ollama_model_with_progress as pull_ollama_model_with_progress,
+)
+from latticeai.services.model_engines import vllm_executable as vllm_executable
+from latticeai.services.model_engines import vllm_metal_python as vllm_metal_python
+from latticeai.services.model_engines import (
+    wait_for_openai_compatible_server as wait_for_openai_compatible_server,
 )
 from latticeai.services.model_engines import (
-    find_lmstudio_cli as _find_lmstudio_cli,
-)
-from latticeai.services.model_engines import (
-    get_ollama_pulled_models as _get_ollama_pulled_models,
-)
-from latticeai.services.model_engines import (
-    get_openai_compatible_server_models as _get_openai_compatible_server_models,
-)
-from latticeai.services.model_engines import (
-    local_binary as _local_binary,
-)
-from latticeai.services.model_engines import (
-    pull_ollama_model_with_progress as _pull_ollama_model_with_progress,
-)
-from latticeai.services.model_engines import (
-    vllm_executable as _vllm_executable,
-)
-from latticeai.services.model_engines import (
-    vllm_metal_python as _vllm_metal_python,
-)
-from latticeai.services.model_engines import (
-    wait_for_openai_compatible_server as _wait_for_openai_compatible_server,
-)
-from latticeai.services.model_engines import (
-    windows_binary_candidates as _windows_binary_candidates,
+    windows_binary_candidates as windows_binary_candidates,
 )
 from latticeai.services.model_errors import ModelRuntimeError
 
-
-def _update_env_file(env_file: Path, key: str, value: str) -> None:
-    lines = []
-    found = False
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            if line.startswith(f"{key}="):
-                lines.append(f"{key}={value}")
-                found = True
-            else:
-                lines.append(line)
-    if not found:
-        lines.append(f"{key}={value}")
-    env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
 LOCAL_SERVER_PROCESSES = _LOCAL_SERVER_PROCESSES
-VLLM_METAL_ENV = Path.home() / ".venv-vllm-metal"
-VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
-VLLM_METAL_PYTHON = VLLM_METAL_ENV / "bin" / "python"
-LMSTUDIO_BUNDLED_CLI = Path("/Applications/LM Studio.app/Contents/Resources/app/.webpack/lms")
-
-def windows_binary_candidates(binary: str) -> List[Path]:
-    return _windows_binary_candidates(binary)
-
-
-def local_binary(binary: str) -> Optional[str]:
-    return _local_binary(binary)
-
-
-def find_lmstudio_cli() -> Optional[str]:
-    return _find_lmstudio_cli()
-
-
-def vllm_executable() -> Optional[str]:
-    return _vllm_executable()
-
-
-def vllm_metal_python() -> Optional[str]:
-    return _vllm_metal_python()
-
-
-def _json_request(
-    url: str,
-    *,
-    method: str = "GET",
-    payload: Optional[Dict[str, Any]] = None,
-    headers: Optional[Dict[str, str]] = None,
-    timeout: float = 10.0,
-) -> Dict[str, Any]:
-    data = None
-    req_headers = dict(headers or {})
-    if payload is not None:
-        data = json.dumps(payload).encode("utf-8")
-        req_headers.setdefault("Content-Type", "application/json")
-    req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
-    with urllib.request.urlopen(req, timeout=timeout) as res:
-        raw = res.read().decode("utf-8", errors="replace")
-    if not raw.strip():
-        return {}
-    return json.loads(raw)
-
-
-def lmstudio_api_base() -> str:
-    return (os.getenv("LMSTUDIO_BASE_URL") or OPENAI_COMPATIBLE_PROVIDERS["lmstudio"]["base_url"]).rstrip("/")
-
-
-def lmstudio_native_api_base() -> str:
-    base = lmstudio_api_base()
-    return base[:-3] if base.endswith("/v1") else base
-
-
-def ensure_lmstudio_server() -> None:
-    return _ensure_lmstudio_server()
 
 
 _LMSTUDIO_MODELS_CACHE: List[Dict[str, Any]] = []
@@ -279,37 +209,6 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, Any]:
         "server_ready": True,
         "cached": False,
     }
-
-def engine_support_status(engine: str) -> Dict[str, Any]:
-    return _engine_support_status(engine)
-
-def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, Any]:
-    return _pull_ollama_model_with_progress(model_name, progress_emit)
-
-
-def get_ollama_pulled_models() -> set:
-    return _get_ollama_pulled_models()
-
-
-def get_openai_compatible_server_models(provider: str) -> List[str]:
-    return _get_openai_compatible_server_models(provider)
-
-
-def ensure_ollama_server() -> None:
-    return _ensure_ollama_server()
-
-
-def wait_for_openai_compatible_server(provider: str, model_name: Optional[str] = None, timeout: int = 45) -> bool:
-    return _wait_for_openai_compatible_server(provider, model_name=model_name, timeout=timeout)
-
-
-def ensure_vllm_server(model_name: str) -> None:
-    return _ensure_vllm_server(model_name)
-
-
-def ensure_llamacpp_server(model_name: str) -> None:
-    return _ensure_llamacpp_server(model_name)
-
 
 def _safe_engine_install_plan(
     engine: str,

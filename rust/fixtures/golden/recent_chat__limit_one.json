@@ -1,0 +1,9 @@
+{
+  "key": "limit_one",
+  "result": "assistant: 회의 결정 사항을 정리했습니다.",
+  "spec": {
+    "key": "limit_one",
+    "limit": 1
+  },
+  "suite": "recent_chat"
+}

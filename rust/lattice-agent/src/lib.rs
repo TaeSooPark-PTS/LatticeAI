@@ -52,6 +52,32 @@ pub mod trace;
 pub mod transcript;
 pub mod worker;
 
+/// Membership in a **sorted** `&[&str]` table.
+///
+/// Every tool-name set in this crate is a sorted literal copied from the Python
+/// constant it mirrors, so the lookup is a binary search rather than a scan —
+/// and because the sortedness is what makes it correct, there is exactly one
+/// place that assumes it. `governor` and `mode` each had their own copy.
+pub(crate) fn in_set(set: &[&str], name: &str) -> bool {
+    set.binary_search(&name).is_ok()
+}
+
+/// The 422-shaped 400 both routers answer for a body they cannot read.
+///
+/// One body for `/rust/agent/{preflight,exec}` and `/rust/agent/{run,resume}`:
+/// a client that parses one parses the other.
+pub(crate) fn bad_request(detail: impl Into<String>) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    (
+        axum::http::StatusCode::BAD_REQUEST,
+        axum::Json(serde_json::json!({
+            "error": "invalid_request",
+            "detail": detail.into(),
+        })),
+    )
+        .into_response()
+}
+
 pub use breaker::is_circuit_breaker;
 pub use command::{validate, Validated};
 pub use exec::{execute, Execution, NATIVE_EXECUTABLES, SAFE_EXECUTABLE_PATH};

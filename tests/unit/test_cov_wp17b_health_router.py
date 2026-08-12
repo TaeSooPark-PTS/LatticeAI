@@ -38,7 +38,7 @@ class _StatusService:
 ENGINES = [{"engine": "mlx", "installed": True}]
 
 
-def _client(*, require_auth: bool):
+def _client(*, require_auth: bool, externally_reachable: bool = False):
     calls: Dict[str, int] = {"engine_status": 0}
 
     def engine_status() -> List[Dict[str, Any]]:
@@ -52,6 +52,7 @@ def _client(*, require_auth: bool):
             engine_status=engine_status,
             get_current_user=lambda request: request.headers.get("X-Test-User"),
             require_auth=require_auth,
+            externally_reachable=externally_reachable,
             app_version="11.0.0-test",
             app_mode="local",
         )
@@ -87,6 +88,25 @@ def test_health_for_an_anonymous_caller_skips_the_engine_sweep():
 
     body = client.get("/health").json()
 
-    assert body == {"status": "ok", "version": "11.0.0-test", "mode": "local"}
+    assert body == {
+        "status": "ok",
+        "version": "11.0.0-test",
+        "mode": "local",
+        # Stated even on the cheap payload: the Rust front door gates its own
+        # native lanes on this and never authenticates.
+        "access": {"require_auth": True, "externally_reachable": False},
+    }
     assert "engines" not in body
     assert calls["engine_status"] == 0
+
+
+def test_the_access_posture_is_stated_on_every_health_answer():
+    """Both facts, both directions, on the authenticated payload too."""
+    client, _ = _client(require_auth=False, externally_reachable=True)
+    body = client.get("/health").json()
+    assert body["access"] == {"require_auth": False, "externally_reachable": True}
+    assert body["engines"] == ENGINES, "the posture rides along, it does not replace"
+
+    client, _ = _client(require_auth=True, externally_reachable=True)
+    body = client.get("/health", headers={"X-Test-User": "u@example.com"}).json()
+    assert body["access"] == {"require_auth": True, "externally_reachable": True}

@@ -21,7 +21,6 @@ change audit log. The classification itself lives in
 from __future__ import annotations
 
 import difflib
-import hashlib
 import logging
 import os
 import tempfile
@@ -30,6 +29,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from latticeai.core.quiet import quiet
+from latticeai.core.security import sha256_hex
 from latticeai.core.tool_governor import classify_tool_call
 from latticeai.core.workspace_reorganization import (
     REORG_KIND,
@@ -90,7 +90,7 @@ class ProposalConflictError(ValueError):
 
 
 def _sha256_text(content: str) -> str:
-    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return sha256_hex(content)
 
 
 def _unified_diff(before: str, after: str, path: str) -> List[str]:
@@ -269,40 +269,6 @@ class ChangeProposalService:
         self._audit(
             "change_proposal_created", user_email=user_email,
             proposal_id=item.get("id"), path=path, kind="file_update", tier=tier,
-        )
-        return item
-
-    def propose_file_delete(
-        self,
-        *,
-        path: str,
-        proposed_by: str = "agent",
-        reason: str = "",
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        base_exists, before = self._snapshot(path)
-        item = self._review_queue.create(
-            title=f"파일 삭제 제안: {path}",
-            summary=reason or "기존 파일을 삭제하는 작업이라 검토 후 적용됩니다.",
-            source="change_proposal",
-            kind="file_delete",
-            payload={
-                "path": path,
-                "diff": _unified_diff(before, "", path),
-                "tier": "large",
-                "before_bytes": len(before.encode("utf-8")),
-                "after_bytes": 0,
-                "base_exists": base_exists,
-                "base_sha256": _sha256_text(before) if base_exists else "",
-            },
-            provenance={"proposed_by": proposed_by, "reason": reason},
-            user_email=user_email,
-            workspace_id=workspace_id,
-        )
-        self._audit(
-            "change_proposal_created", user_email=user_email,
-            proposal_id=item.get("id"), path=path, kind="file_delete", tier="large",
         )
         return item
 

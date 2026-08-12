@@ -82,9 +82,19 @@ fn boot(app: &tauri::App) {
             // Waiting in both places would double the worst case.
             shell.wait_until_serving().await;
         }
-        // Navigate either way, as the shell always has: a window showing the
-        // browser's own "cannot connect" is more use than a window showing
-        // nothing while a worker that will never arrive is waited for.
+        // One reason not to navigate, and it is not "the worker is slow": if
+        // this shell was supposed to serve the front door and could not bind
+        // it, `app_url` names a port nothing will ever listen on, and sending
+        // the window there replaces a readable failure with a blank "cannot
+        // connect". The bundled shell stays up and reads `gateway_error` out of
+        // `desktopBackendStatus` instead.
+        if let Some(reason) = shell.gateway_error() {
+            eprintln!("lattice-ai-desktop: staying on the bundled shell — {reason}");
+            return;
+        }
+        // Otherwise navigate either way, as the shell always has: a window
+        // showing the browser's own "cannot connect" is more use than a window
+        // showing nothing while a worker that will never arrive is waited for.
         if let Ok(url) = tauri::Url::parse(&shell.app_url()) {
             let _ = window.navigate(url);
         }

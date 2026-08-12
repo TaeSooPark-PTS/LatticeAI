@@ -167,10 +167,6 @@ class KGPortabilitySharingMixin(_Core):
                 quiet()
         return result
 
-    def import_from_file(self, path, *, mode: str = "merge", dry_run: bool = False) -> Dict[str, Any]:
-        artifact = json.loads(Path(path).read_text(encoding="utf-8"))
-        return self.import_data(artifact, mode=mode, dry_run=dry_run)
-
     # ── selective subgraph share (opt-in prototype, off by default) ──────────
     def share_status(self) -> Dict[str, Any]:
         """Honest read of the share surface. Safe to call while it is off.

@@ -1532,6 +1532,30 @@
         "title": "GraphNodeRequest",
         "type": "object"
       },
+      "GraphSearchRequest": {
+        "properties": {
+          "expand_depth": {
+            "default": 1,
+            "title": "Expand Depth",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 30,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "GraphSearchRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5181,7 +5205,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "11.5.1"
+    "version": "11.5.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -9186,6 +9210,23 @@
         "summary": "Ingestion Job Resume"
       }
     },
+    "/api/ingestion/multimodal": {
+      "get": {
+        "description": "What this install will do with a picture, a recording, or a video.\n\nFEATURE_STATUS has described this answer \u2014 including which of the three\nreasons a video would be refused for \u2014 since 11.2.0, but the pipeline\nmethod that produces it had no route, so no surface could ever show it\nand \"why was my video not indexed?\" had no answer short of reading the\nserver's environment.",
+        "operationId": "ingestion_multimodal_status_api_ingestion_multimodal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ingestion Multimodal Status"
+      }
+    },
     "/api/ingestion/obsidian": {
       "post": {
         "description": "Ingest an approved external Obsidian vault through the one gate.\n\nEvery ``.md`` note goes through the same pipeline door as files and\nfolders; on top of that, in-vault links become ``REFERENCES`` edges\nbetween the note nodes and frontmatter tags become ``Topic`` links. A\nlink whose target is missing or ambiguous is reported in\n``links.unresolved`` rather than guessed at. Re-running is idempotent.\n\nReads local disk, so it follows the standard approval dance: without\n``approved`` + ``approval_token`` the answer is a ``permission_required``\npayload.",
@@ -11278,6 +11319,47 @@
           }
         },
         "summary": "Reject Proposal"
+      }
+    },
+    "/api/search/graph": {
+      "post": {
+        "description": "Relationship-aware search: direct matches plus what they connect to.\n\nThe third retrieval channel. It was in ``_ScopedSearchService._SCOPED``\nfrom the start \u2014 so the workspace guard was ready for it \u2014 but no\nhandler ever called it, which made the allow-list entry the only\nevidence the channel was supposed to be reachable at all.",
+        "operationId": "graph_search_api_search_graph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph Search Api Search Graph Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Search"
       }
     },
     "/api/search/hybrid": {

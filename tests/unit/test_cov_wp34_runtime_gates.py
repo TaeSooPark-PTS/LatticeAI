@@ -13,12 +13,15 @@ from types import SimpleNamespace
 import pytest
 from fastapi import FastAPI, HTTPException
 
+from latticeai.core.config import default_data_dir
+from latticeai.runtime import feature_toggle_wiring as ftw
 from latticeai.runtime import network_boundary_wiring as nbw
 from latticeai.runtime import permission_mode_wiring as pmw
 from latticeai.runtime.access_runtime import build_access_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
 )
+from latticeai.runtime.service_singletons import rebind_singleton, singleton_data_dir
 from latticeai.runtime.user_key_runtime import build_user_key_runtime
 from latticeai.services import cloud_egress_audit
 
@@ -171,20 +174,28 @@ def test_keyring_write_failure_with_plaintext_opt_in_persists_to_the_user_store(
 # ── permission_mode_wiring / network_boundary_wiring singletons ──────────────
 
 
-def test_permission_mode_default_data_dir_follows_the_env_then_home(monkeypatch, tmp_path):
+def test_the_default_data_dir_follows_the_env_then_home(monkeypatch, tmp_path):
+    # 11.5.2 deleted three byte-identical private copies of this; the wiring
+    # modules now share ``Config``'s resolver, so there is one answer to "where
+    # does the store live" instead of four that merely happened to agree.
     monkeypatch.setenv("LATTICEAI_DATA_DIR", str(tmp_path))
-    assert pmw._default_data_dir() == tmp_path
+    assert default_data_dir() == tmp_path
+
+    monkeypatch.setenv("LATTICEAI_DATA_DIR", "   ")
+    assert default_data_dir() == Path.home() / ".ltcai"
 
     monkeypatch.delenv("LATTICEAI_DATA_DIR", raising=False)
-    assert pmw._default_data_dir() == Path.home() / ".ltcai"
+    assert default_data_dir() == Path.home() / ".ltcai"
 
 
-def test_network_boundary_default_data_dir_follows_the_env_then_home(monkeypatch, tmp_path):
-    monkeypatch.setenv("LATTICEAI_DATA_DIR", str(tmp_path))
-    assert nbw._default_data_dir() == tmp_path
-
-    monkeypatch.delenv("LATTICEAI_DATA_DIR", raising=False)
-    assert nbw._default_data_dir() == Path.home() / ".ltcai"
+def test_every_lazy_wiring_module_resolves_the_data_dir_through_the_shared_helper():
+    # The failure this guards is silent: a re-grown local copy keeps every
+    # route test green while the lazily-created service writes to a second,
+    # invisible store directory.
+    assert singleton_data_dir(None) == default_data_dir()
+    for module in (pmw, nbw, ftw):
+        assert module.singleton_data_dir is singleton_data_dir
+        assert module.rebind_singleton is rebind_singleton
 
 
 def test_permission_mode_service_rebinds_a_lazily_created_singleton(monkeypatch, tmp_path):
@@ -297,6 +308,7 @@ def _bundle(*, get_audit_log, knowledge_graph=None, enable_graph=False):
         secure_cookies=False,
         invite_authorized=lambda request: True,
         ensure_identity=lambda email, user: None,
+        sso_default_redirect_uri="http://localhost:4825/auth/sso/callback",
         create_admin_router=_capture("admin"),
         require_admin=lambda request: ("admin@example.com", {}),
         get_history=lambda *a, **k: [],

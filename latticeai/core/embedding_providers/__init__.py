@@ -15,7 +15,7 @@ swapped behind a single interface as long as every implementation agrees on:
 holds the five concrete text implementations:
 
 1. :class:`HashEmbeddingProvider`  — deterministic, offline, always-available
-   fallback (wraps the legacy :class:`~latticeai.core.local_embeddings.LocalEmbeddingModel`).
+   fallback (wraps :class:`~lattice_brain.embeddings.LocalEmbeddingModel`).
 2. :class:`MLXEmbeddingProvider`   — local Apple-Silicon embedding models.
 3. :class:`OllamaEmbeddingProvider` — a local/remote Ollama server.
 4. :class:`OpenAICompatibleEmbeddingProvider` — any ``/v1/embeddings`` endpoint
@@ -65,10 +65,8 @@ from __future__ import annotations
 # the two names it imported for its own use were part of its surface, and the
 # suite imports them from here. Re-exported in the redundant-alias form so they
 # read as deliberate rather than as leftover imports.
-from latticeai.core.local_embeddings import (
-    DEFAULT_EMBEDDING_DIM as DEFAULT_EMBEDDING_DIM,
-)
-from latticeai.core.local_embeddings import LocalEmbeddingModel as LocalEmbeddingModel
+from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM as DEFAULT_EMBEDDING_DIM
+from lattice_brain.embeddings import LocalEmbeddingModel as LocalEmbeddingModel
 
 from .base import _KNOWN_DIMS as _KNOWN_DIMS
 from .base import EmbeddingProvider as EmbeddingProvider

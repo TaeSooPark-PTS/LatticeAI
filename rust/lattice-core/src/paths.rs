@@ -1,4 +1,4 @@
-//! Data directory resolution — the Rust half of `latticeai.runtime.*._default_data_dir`.
+//! Data directory resolution — the Rust half of `latticeai.core.config.default_data_dir`.
 //!
 //! Python: `LATTICEAI_DATA_DIR` (stripped; empty counts as unset) else
 //! `Path.home() / ".ltcai"`. The graph itself is always `knowledge_graph.sqlite`

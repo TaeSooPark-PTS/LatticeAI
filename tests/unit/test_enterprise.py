@@ -17,7 +17,6 @@ def test_community_is_default_and_disables_all_capabilities():
     assert registry.edition() is Edition.COMMUNITY
     for capability in EnterpriseCapability:
         assert registry.is_capability_enabled(capability) is False
-    assert registry.available_capabilities() == []
 
 
 def test_shared_registry_default_is_community():
@@ -50,7 +49,6 @@ def test_enterprise_provider_can_attach_via_seam():
     assert registry.edition() is Edition.ENTERPRISE
     assert registry.is_capability_enabled(EnterpriseCapability.SCIM) is True
     assert registry.is_capability_enabled(EnterpriseCapability.DLP_POLICY) is False
-    assert registry.available_capabilities() == [EnterpriseCapability.SCIM]
 
     registry.reset()
     assert registry.edition() is Edition.COMMUNITY

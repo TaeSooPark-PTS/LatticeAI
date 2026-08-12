@@ -1,0 +1,10 @@
+{
+  "key": "user_scoped",
+  "result": "user (web): 고마워\nuser (web): 이전 대화 기록입니다\nassistant (web): 네, 확인했습니다.\nuser (web): Ranking ties are broken by node id\nassistant (web): Yes — id ascending keeps it stable.",
+  "spec": {
+    "key": "user_scoped",
+    "limit": 5,
+    "user_email": "jiwon@lattice.ai"
+  },
+  "suite": "recent_chat"
+}

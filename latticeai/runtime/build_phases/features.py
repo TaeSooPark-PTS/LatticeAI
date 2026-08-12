@@ -305,6 +305,7 @@ def phase_interaction(ctx: RuntimeContext) -> None:
     from latticeai.core.model_compat import (
         list_cached_profiles as _list_compat_profiles,
     )
+    from latticeai.runtime.access_runtime import is_externally_reachable
     from latticeai.runtime.chat_wiring import build_interaction_contexts
     from latticeai.runtime.model_wiring import register_model_runtime_routers
     from latticeai.runtime.platform_services_runtime import build_brain_network
@@ -340,6 +341,7 @@ def phase_interaction(ctx: RuntimeContext) -> None:
             engine_status=service.engine_status,
             get_current_user=ctx.get_current_user,
             require_auth=ctx.REQUIRE_AUTH,
+            externally_reachable=is_externally_reachable(ctx.CONFIG),
             app_version=ctx.APP_VERSION,
             app_mode=ctx.APP_MODE,
             require_user=ctx.require_user,

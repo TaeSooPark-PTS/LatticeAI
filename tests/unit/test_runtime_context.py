@@ -139,8 +139,11 @@ from latticeai.app_factory import build_context
 
 ctx = build_context()
 print(json.dumps({
-    "produced_by": ctx.produced_by,
-    "phases_run": ctx.phases_run(),
+    # ``_produced`` is the phase ledger itself: name -> publishing phase, in
+    # insertion order. Reading it directly keeps the contract test honest
+    # without the product carrying accessors only a test ever called.
+    "produced_by": dict(ctx._produced),
+    "phases_run": list(dict.fromkeys(ctx._produced.values())),
     "name_count": len(ctx.names()),
 }))
 """
@@ -192,12 +195,12 @@ def test_set_records_the_current_phase() -> None:
     ctx.set(CONFIG=object(), DATA_DIR=object())
     ctx.enter("identity")
     ctx.set(load_users=lambda: {})
-    assert ctx.produced_by == {
+    assert ctx._produced == {
         "CONFIG": "config",
         "DATA_DIR": "config",
         "load_users": "identity",
     }
-    assert ctx.phases_run() == ["config", "identity"]
+    assert list(dict.fromkeys(ctx._produced.values())) == ["config", "identity"]
 
 
 def test_adopt_copies_named_keys_from_a_stage_mapping() -> None:

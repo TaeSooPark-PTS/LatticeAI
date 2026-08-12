@@ -144,7 +144,7 @@ def test_manifest_describes_the_current_suite_set(manifest):
     """Every ported entry point and its specs, as the Rust suite enumerates them."""
     recorded = manifest["suites"]
     assert set(recorded) == set(fixtures.SUITES) == set(fixtures.SUITE_RUNNERS)
-    assert len(recorded) == 12, "twelve ported entry points; a missing suite is a missing proof"
+    assert len(recorded) == 13, "thirteen ported entry points; a missing suite is a missing proof"
     # The v11.5.1 document-generation trio, named so a dropped suite is loud.
     assert {"docgen_search", "multi_hop", "context_document"} <= set(recorded)
     for suite, specs in recorded.items():

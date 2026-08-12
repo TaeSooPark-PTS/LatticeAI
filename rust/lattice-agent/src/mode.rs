@@ -13,6 +13,7 @@
 
 use serde_json::{json, Value};
 
+use crate::in_set;
 use crate::policy::ToolPolicy;
 
 /// The autonomy dial.
@@ -92,10 +93,6 @@ pub const WORKSPACE_WRITE_TOOLS: [&str; 11] = [
 /// Python constant; the enforcement lives in [`effective_auto_approve`]'s
 /// bypass branch and in the upstream blocked-prefix guard.
 pub const HARD_BLOCK_SANDBOXES: [&str; 1] = ["system"];
-
-fn in_set(set: &[&str], name: &str) -> bool {
-    set.binary_search(&name).is_ok()
-}
 
 /// Parse user/API/env input into a mode; unknown → strict.
 ///

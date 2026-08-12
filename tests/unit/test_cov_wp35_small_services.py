@@ -25,19 +25,6 @@ from latticeai.services.evidence_actions import EvidenceActionService
 from latticeai.services.permission_mode_service import PermissionModeService
 from latticeai.services.workspace_service import WorkspaceService
 
-# ── latticeai/services/ingestion.py + kg_portability.py (moved-module shims) ──
-
-
-def test_moved_module_shims_alias_to_their_physical_modules():
-    import lattice_brain.ingestion as ingestion_impl
-    import lattice_brain.portability as portability_impl
-    import latticeai.services.ingestion as ingestion_shim
-    import latticeai.services.kg_portability as portability_shim
-
-    assert ingestion_shim is ingestion_impl
-    assert portability_shim is portability_impl
-
-
 # ── setup_detection ───────────────────────────────────────────────────────────
 
 
@@ -89,16 +76,14 @@ class _PermStore:
         return {"workspaces": self._workspaces}
 
 
-def test_workspace_service_can_read_can_write_and_readable_workspaces():
+def test_workspace_service_gates_reads_and_lists_readable_workspaces():
     store = _PermStore(
         permissions={("team", "read"), ("personal", "read"), ("personal", "write")},
         workspaces={"team": {}, "personal": {}, "locked": {}},
     )
     service = WorkspaceService(store)
 
-    assert service.can_read("team", "user:a") is True
-    assert service.can_write("team", "user:a") is False
-    assert service.can_write("personal", "user:a") is True
+    assert service.resolve_read_scope("team", "user:a") == "team"
     assert sorted(service.readable_workspaces("user:a")) == ["personal", "team"]
 
 

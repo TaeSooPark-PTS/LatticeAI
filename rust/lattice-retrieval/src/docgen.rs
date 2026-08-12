@@ -36,6 +36,7 @@ use serde_json::{Map, Value};
 use crate::concepts::topic_candidates;
 use crate::keyword::search;
 use crate::service::Scope;
+use crate::shape::{haystack, json_opt};
 
 /// The fifteen node types `search_for_document_generation` will look at, as the
 /// SQL literal Python spells inline.
@@ -51,28 +52,6 @@ const NODE_COLUMNS: &str = "id, type, title, summary, metadata_json, updated_at"
 
 /// Half-life of the recency term, in days. Fixed, not a policy knob.
 const RECENCY_HALF_LIFE_DAYS: f64 = 14.0;
-
-fn json_opt(value: &Option<String>) -> Value {
-    value
-        .as_ref()
-        .map(|text| Value::String(text.clone()))
-        .unwrap_or(Value::Null)
-}
-
-/// Python's `f"{title} {summary} {metadata_json}".lower()` — a NULL column
-/// contributes the four characters `None`, and the term match searches that.
-fn haystack(row: &NodeRow) -> String {
-    fn field(value: &Option<String>) -> &str {
-        value.as_deref().unwrap_or("None")
-    }
-    format!(
-        "{} {} {}",
-        field(&row.title),
-        field(&row.summary),
-        field(&row.metadata_json)
-    )
-    .to_lowercase()
-}
 
 fn candidate_rows(
     conn: &Connection,

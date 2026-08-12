@@ -83,6 +83,7 @@ def build_auth_admin_security_router_bundle(
     secure_cookies: bool,
     invite_authorized: Any,
     ensure_identity: Any,
+    sso_default_redirect_uri: str,
     create_admin_router: Any,
     require_admin: Any,
     get_history: Any,
@@ -138,6 +139,7 @@ def build_auth_admin_security_router_bundle(
         invite_gate_enabled=invite_gate_enabled,
         invite_authorized=invite_authorized,
         ensure_identity=ensure_identity,
+        default_redirect_uri=sso_default_redirect_uri,
     )
 
     def graph_stats_safe() -> dict[str, Any]:
@@ -376,6 +378,7 @@ def register_health_and_model_routers(
     engine_status: Any,
     get_current_user: Any,
     require_auth: bool,
+    externally_reachable: bool,
     app_version: str,
     app_mode: str,
     create_models_router: Any,
@@ -411,6 +414,7 @@ def register_health_and_model_routers(
             engine_status=engine_status,
             get_current_user=get_current_user,
             require_auth=require_auth,
+            externally_reachable=externally_reachable,
             app_version=app_version,
             app_mode=app_mode,
         ),

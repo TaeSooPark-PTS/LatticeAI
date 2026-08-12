@@ -18,7 +18,12 @@ pub fn round4(value: f64) -> f64 {
     round_to(value, 4)
 }
 
-fn round_to(value: f64, digits: usize) -> f64 {
+/// `round(value, digits)` with CPython's semantics.
+///
+/// Public because `lattice-ingest` rounds the watch snapshot's mtimes to three
+/// places and must round them the *same* way: half-away-from-zero would report
+/// a spurious change on every file whose mtime lands on a tie.
+pub fn round_to(value: f64, digits: usize) -> f64 {
     if !value.is_finite() {
         return value;
     }
@@ -29,7 +34,7 @@ fn round_to(value: f64, digits: usize) -> f64 {
 ///
 /// `char::is_whitespace` is the Unicode White_Space property; Python's is that
 /// plus the C0 separators `\x1c`–`\x1f`, which `str.isspace()` reports as space.
-fn is_py_space(c: char) -> bool {
+pub fn is_py_space(c: char) -> bool {
     c.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&c)
 }
 

@@ -4,6 +4,60 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.5.2] - 2026-08-12 — Tight Ship
+
+### Added
+- `POST /api/search/graph` — 세 번째 검색 채널의 라우트. 허용 목록에는
+  있었지만 도달 경로가 없었습니다(감사 산출).
+- `GET /api/ingestion/multimodal` — FEATURE_STATUS가 사용자 표면으로
+  기술하던 멀티모달 상태 조회를 실제 라우트에 배선.
+- 골든 신규 2계열(코퍼스 총 **251 파일**): 실제 `/chat`이 호출하는
+  `build_recent_chat_context`를 못박는 `recent_chat`, 그리고
+  `document_targets`/`agent_profiles` 헬퍼 97행.
+- 재발 금지 가드: `latticeai/` 아래 `sys.modules[__name__]` shim 패턴
+  금지(legacy-debt 게이트 확장).
+- `scripts/bump_version.py`가 rust workspace **여섯 크레이트 전부**를
+  두 Cargo.lock에서 동기화합니다(11.5.0 이후 Phase 2/3/4 크레이트 세
+  개가 매 bump마다 스테일로 남아 테스트 실행이 트리를 더럽혔습니다).
+
+### Changed
+- **워크스페이스 선택자 통합(동작 변경, 의도됨)**: chat/agent/upload/
+  computer-use/admin의 축자 재구현이 정본 규칙을 사용합니다 — 헤더와
+  쿼리가 불일치하면 조용히 헤더를 택하는 대신 **403**.
+- 임베더 byte-identical 쌍을 골든에 못박힌 사본으로 단일화(두 쓰기
+  경로 사이의 조용한 벡터 드리프트가 실패 양식이었습니다).
+- sha256 헬퍼·SSE 프레임 빌더(출력 byte-identical)·데이터 디렉터리
+  기본값·모드 서비스 삼형제·모듈 임포트 프로브를 각각 한 곳으로.
+- Rust byte-identical 사본 7건 통합(통째로 복사돼 있던 `clock.rs` 포함).
+  `lattice-agent`의 독립 `pystr`는 의도된 경계로 유지.
+- `recent_chat` 골든이 실제 발산을 잡아냄: Python의 `limit=0` 꼬리
+  슬라이스는 전부를 남기는데 Rust는 빈 결과를 돌려주고 있었습니다.
+  **Python이 기준**이며 Rust를 수정했습니다.
+
+### Fixed
+- **프록시 리다이렉트**: 3xx가 `Set-Cookie`·`Location`을 온전히 달고
+  통과합니다. 초대 게이트의 막다른 길, SSO 로그인이 조용히 인증되지
+  않던 문제, 딥링크 12개의 프래그먼트 분실이 함께 해소됩니다. 내부
+  워커 오리진을 가리키는 절대 `Location`은 게이트웨이 오리진으로
+  재작성됩니다.
+- **네이티브 레인 posture 게이팅(fail-closed)**: `/rust/*`와
+  `/host/status|jobs`는 워커가 인증을 요구하는 상태에서 그래프 전체를
+  무인증으로 서빙하고 있었습니다. posture가 닫힘/알 수 없음이면 401.
+- **프록시 신원**: `X-Forwarded-For/Proto/Host`가 홉을 건너가고, 루프백
+  또는 `LATTICEAI_TRUSTED_PROXIES` 피어에서 온 것만 존중됩니다.
+  `--no-spawn` CSRF 거절과 내부 워커 포트를 적어 보내던 초대 링크·
+  권한 알림·SSO 리다이렉트 URL이 고쳐집니다.
+- 수퍼바이저가 CSRF 오리진과 나란히 CORS 오리진도 주입합니다.
+- 존재하지 않는 WebSocket 엔드포인트를 가리키던 CSP `ws://` 항목 제거.
+- 게이트웨이 바인드 실패 시 Tauri 셸이 죽은 오리진으로 이동하지 않습니다.
+
+### Removed
+- 이사 간 모듈 shim 6종, 배선된 적 없는 멀티모달 스트리밍 시임,
+  호출자 0 심볼 약 27개(삭제마다 테스트 수술 동반), 소비자 없는
+  `metadata_for` 인터페이스(ABC + 구현 4곳), 죽은 측정 스크립트,
+  그리고 npm tarball에 아직 실려 나가던 **레거시 Electron 셸**
+  (Tauri가 대체) — 약 1,100줄.
+
 ## [11.5.1] - 2026-08-12 — Rust Full Loop
 
 ### Added

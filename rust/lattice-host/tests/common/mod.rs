@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use lattice_host::gateway::posture::Posture;
 use lattice_host::gateway::{bind_loopback, serve_gateway, GatewayState, StatusProvider};
 use lattice_host::supervisor::WorkerStatus;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -48,12 +49,17 @@ impl RecordedRequest {
 
 /// A minimal HTTP/1.1 server standing in for the Python worker.
 ///
-/// Routes: `/health` (200 or 503 depending on [`FakeWorker::set_healthy`]),
-/// `/echo` (mirrors the request body), `/sse` (two events with a gap between
-/// them, so buffering is observable), anything else → 200 text.
+/// Routes: `/health` (200 or 503 depending on [`FakeWorker::set_healthy`],
+/// carrying the access posture the real worker states), `/echo` (mirrors the
+/// request body), `/sse` (two events with a gap between them, so buffering is
+/// observable), `/redirect` (a 308 with a `Set-Cookie` and a relative
+/// `Location`), `/redirect-absolute` (a 308 whose `Location` names this
+/// worker's own origin, as Starlette's directory redirects do), anything else →
+/// 200 text.
 pub struct FakeWorker {
     addr: SocketAddr,
     healthy: Arc<AtomicBool>,
+    posture: Arc<Mutex<Option<(bool, bool)>>>,
     requests: Arc<Mutex<Vec<RecordedRequest>>>,
     handle: JoinHandle<()>,
 }
@@ -71,15 +77,20 @@ impl FakeWorker {
             .expect("bind fake worker");
         let addr = listener.local_addr().expect("fake worker addr");
         let healthy = Arc::new(AtomicBool::new(healthy));
+        // The default is the product's default: a loopback worker with optional
+        // authentication, i.e. Python's `trusted_local_owner`.
+        let posture = Arc::new(Mutex::new(Some((false, false))));
         let requests = Arc::new(Mutex::new(Vec::new()));
         let handle = tokio::spawn(accept_loop(
             listener,
             Arc::clone(&healthy),
+            Arc::clone(&posture),
             Arc::clone(&requests),
         ));
         Self {
             addr,
             healthy,
+            posture,
             requests,
             handle,
         }
@@ -97,12 +108,37 @@ impl FakeWorker {
         self.healthy.store(healthy, Ordering::SeqCst);
     }
 
+    /// State `access.require_auth` / `access.externally_reachable` on `/health`.
+    pub fn set_posture(&self, require_auth: bool, externally_reachable: bool) {
+        *self.posture.lock().expect("posture") = Some((require_auth, externally_reachable));
+    }
+
+    /// Answer `/health` with no `access` block at all — an older worker.
+    pub fn drop_posture(&self) {
+        *self.posture.lock().expect("posture") = None;
+    }
+
     pub fn requests(&self) -> Vec<RecordedRequest> {
         self.requests.lock().expect("requests").clone()
     }
 
     pub fn request_count(&self) -> usize {
         self.requests.lock().expect("requests").len()
+    }
+
+    /// Requests that were **proxied** — everything except `GET /health`.
+    ///
+    /// The gateway asks the worker for its access posture before it answers a
+    /// native lane, and that question is not a proxy hop. Counting it as one
+    /// would make "nothing crossed to the worker" unassertable for exactly the
+    /// routes that most need it asserted.
+    pub fn proxied_count(&self) -> usize {
+        self.requests
+            .lock()
+            .expect("requests")
+            .iter()
+            .filter(|request| request.path() != "/health")
+            .count()
     }
 
     /// Stop listening; further connections are refused.
@@ -114,16 +150,23 @@ impl FakeWorker {
 async fn accept_loop(
     listener: TcpListener,
     healthy: Arc<AtomicBool>,
+    posture: Arc<Mutex<Option<(bool, bool)>>>,
     requests: Arc<Mutex<Vec<RecordedRequest>>>,
 ) {
+    let origin = listener
+        .local_addr()
+        .map(|addr| format!("http://{addr}"))
+        .unwrap_or_default();
     loop {
         let Ok((stream, _)) = listener.accept().await else {
             return;
         };
         let healthy = Arc::clone(&healthy);
+        let posture = Arc::clone(&posture);
         let requests = Arc::clone(&requests);
+        let origin = origin.clone();
         tokio::spawn(async move {
-            handle_connection(stream, healthy, requests).await;
+            handle_connection(stream, healthy, posture, requests, origin).await;
         });
     }
 }
@@ -226,10 +269,24 @@ fn dechunk(raw: &[u8]) -> Vec<u8> {
     out
 }
 
+/// The `/health` body, with the access posture the real worker states.
+fn health_body(posture: Option<(bool, bool)>) -> Vec<u8> {
+    let Some((require_auth, externally_reachable)) = posture else {
+        return b"{\"status\":\"ok\"}".to_vec();
+    };
+    format!(
+        "{{\"status\":\"ok\",\"access\":{{\"require_auth\":{require_auth},\
+         \"externally_reachable\":{externally_reachable}}}}}"
+    )
+    .into_bytes()
+}
+
 async fn handle_connection(
     mut stream: TcpStream,
     healthy: Arc<AtomicBool>,
+    posture: Arc<Mutex<Option<(bool, bool)>>>,
     requests: Arc<Mutex<Vec<RecordedRequest>>>,
+    origin: String,
 ) {
     let Some(request) = read_request(&mut stream).await else {
         return;
@@ -240,14 +297,8 @@ async fn handle_connection(
     match path.as_str() {
         "/health" => {
             if healthy.load(Ordering::SeqCst) {
-                respond(
-                    &mut stream,
-                    200,
-                    "application/json",
-                    b"{\"status\":\"ok\"}",
-                    &[],
-                )
-                .await;
+                let body = health_body(*posture.lock().expect("posture"));
+                respond(&mut stream, 200, "application/json", &body, &[]).await;
             } else {
                 respond(
                     &mut stream,
@@ -258,6 +309,44 @@ async fn handle_connection(
                 )
                 .await;
             }
+        }
+        // The invite gate's shape: a redirect that *carries* the credential.
+        "/redirect" => {
+            respond(
+                &mut stream,
+                308,
+                "text/plain",
+                b"",
+                &[
+                    ("location", "/app#/account"),
+                    ("set-cookie", "lattice_invite=granted; Path=/; HttpOnly"),
+                ],
+            )
+            .await;
+        }
+        // Starlette's directory redirect: absolute, built from the Host the
+        // worker saw — which is its own internal authority.
+        "/redirect-absolute" => {
+            let location = format!("{origin}/app/");
+            respond(
+                &mut stream,
+                308,
+                "text/plain",
+                b"",
+                &[("location", location.as_str())],
+            )
+            .await;
+        }
+        // An absolute redirect somewhere else entirely (an identity provider).
+        "/redirect-external" => {
+            respond(
+                &mut stream,
+                302,
+                "text/plain",
+                b"",
+                &[("location", "https://idp.example/authorize?x=1")],
+            )
+            .await;
         }
         "/echo" => {
             let content_type = request
@@ -312,6 +401,8 @@ async fn respond(
 ) {
     let reason = match status {
         200 => "OK",
+        302 => "Found",
+        308 => "Permanent Redirect",
         418 => "I'm a teapot",
         503 => "Service Unavailable",
         _ => "Unknown",
@@ -379,11 +470,19 @@ pub fn test_agent_root(name: &str) -> std::path::PathBuf {
 impl TestGateway {
     /// A gateway whose native search routes read the environment-resolved
     /// store (`LATTICEAI_DATA_DIR`, else `~/.ltcai`).
+    ///
+    /// The posture is pinned open. Several suites deliberately point the
+    /// provider at a port nothing listens on — that is how they prove a native
+    /// lane never became a proxy hop — and an unreachable worker states no
+    /// posture, so without the pin those suites would be testing the guard
+    /// instead of the lane. The guard has its own suite
+    /// (`gateway_posture.rs`), which pins nothing.
     pub async fn start(provider: Arc<dyn StatusProvider>) -> Self {
         Self::serve(
             GatewayState::new(provider)
                 .expect("gateway state")
-                .with_agent_root(test_agent_root("default")),
+                .with_agent_root(test_agent_root("default"))
+                .with_pinned_posture(Posture::Open),
         )
         .await
     }
@@ -398,7 +497,8 @@ impl TestGateway {
             GatewayState::new(provider)
                 .expect("gateway state")
                 .with_db_path(db)
-                .with_agent_root(test_agent_root("default")),
+                .with_agent_root(test_agent_root("default"))
+                .with_pinned_posture(Posture::Open),
         )
         .await
     }
@@ -445,6 +545,16 @@ impl TestGateway {
 pub fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .no_proxy()
+        .build()
+        .expect("test client")
+}
+
+/// The same, but standing in for a browser that is asked to *see* the redirect
+/// rather than follow it — which is the only way to assert what a 3xx carried.
+pub fn client_no_redirect() -> reqwest::Client {
+    reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("test client")
 }

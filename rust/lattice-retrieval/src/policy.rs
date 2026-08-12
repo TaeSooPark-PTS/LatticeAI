@@ -10,6 +10,8 @@ use std::sync::OnceLock;
 
 use fancy_regex::Regex;
 
+use crate::build_pattern as build;
+
 /// `LATTICEAI_QUERY_REWRITE` — anything falsy disables rewriting entirely.
 pub const QUERY_REWRITE_ENV: &str = "LATTICEAI_QUERY_REWRITE";
 /// `retrieval_policy.RECENCY_HALF_LIFE_DAYS`.
@@ -66,10 +68,6 @@ fn patterns() -> &'static Patterns {
         ),
         en_filler_tail: build(r"(?i)[,\s]*\bplease\b\s*[?!.]*\s*$"),
     })
-}
-
-fn build(pattern: &str) -> Regex {
-    Regex::new(pattern).expect("ported pattern must compile")
 }
 
 /// `fusion.classify_query` — code → recency → person → fact, in that order.

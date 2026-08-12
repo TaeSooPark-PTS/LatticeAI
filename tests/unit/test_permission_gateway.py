@@ -55,7 +55,7 @@ def test_discord_bot_notification_contains_only_hint_and_ui_deeplink(tmp_path, m
     gateway = _gateway(tmp_path)
     gateway.discord_bot_token = "discord-bot-token"
     gateway.discord_permission_channel = "channel-1"
-    gateway.permission_ui_url = "https://lattice.example/app#/admin/permissions"
+    gateway._explicit_ui_url = "https://lattice.example/app#/admin/permissions"
     captured = {}
 
     class Response:
@@ -89,7 +89,7 @@ def test_discord_bot_notification_contains_only_hint_and_ui_deeplink(tmp_path, m
 def test_discord_webhook_notification_contains_only_hint_and_ui_deeplink(tmp_path, monkeypatch):
     gateway = _gateway(tmp_path)
     gateway.discord_permission_webhook_url = "https://discord.example/webhook"
-    gateway.permission_ui_url = "https://lattice.example/app#/admin/permissions"
+    gateway._explicit_ui_url = "https://lattice.example/app#/admin/permissions"
     captured = {}
 
     class Response:

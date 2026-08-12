@@ -26,13 +26,19 @@ pub use command::{
     resolve_worker_command, CommandOrigin, HostProbe, ResolveError, StaticProbe, SystemProbe,
     WorkerCommand,
 };
-pub use health::{check_health, http_client, wait_for_health, HealthTimeout};
+pub use health::{
+    check_health, http_client, probe_health, proxy_client, wait_for_health, HealthReport,
+    HealthTimeout,
+};
 pub use port::{
     find_free_port, is_port_free, preferred_port, PortError, DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS,
 };
 pub use process::SignalOutcome;
 pub use status::{origin_for, WorkerStatus};
-pub use worker_env::{csrf_trusted_origins, worker_env, CSRF_TRUSTED_ORIGINS_ENV};
+pub use worker_env::{
+    cors_allowed_origins, csrf_trusted_origins, worker_env, CORS_ALLOWED_ORIGINS_ENV,
+    CSRF_TRUSTED_ORIGINS_ENV,
+};
 
 use monitor::{run_health_poller, run_monitor, Shared};
 

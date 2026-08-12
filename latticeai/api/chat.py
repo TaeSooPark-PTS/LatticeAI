@@ -42,7 +42,6 @@ from latticeai.api.chat_helpers import (
     pair_user_history,
     single_text_stream,
     strip_generated_file_content,
-    workspace_scope_from_request,
 )
 from latticeai.api.chat_history import HistoryRouteDependencies, register_history_routes
 from latticeai.api.chat_hybrid import (
@@ -51,6 +50,7 @@ from latticeai.api.chat_hybrid import (
 )
 from latticeai.api.chat_intents import ChatIntentController
 from latticeai.api.chat_stream import stream_chat
+from latticeai.api.workspace_scope import requested_workspace
 from latticeai.core.messages import DEFAULT_LANGUAGE, resolve_language, translate
 from latticeai.core.project_sessions import ProjectSessionStore
 from latticeai.core.run_store import AgentRunStore
@@ -84,7 +84,7 @@ __all__ = [
     "is_clear_command",
     "format_network_status",
     "strip_generated_file_content",
-    "workspace_scope_from_request",
+    "requested_workspace",
     "single_text_stream",
 ]
 
@@ -272,7 +272,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         )
         effective_email = authenticated_identity(current_user, req.user_email, resolve_language(request))
         workspace_id = write_workspace(
-            workspace_scope_from_request(request),
+            requested_workspace(request),
             current_user,
         )
         history_user = chat_service.history_user(

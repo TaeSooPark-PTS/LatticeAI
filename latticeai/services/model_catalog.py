@@ -15,10 +15,6 @@ import re
 import sys
 from typing import Any, Dict, List, Optional
 
-from latticeai.services.model_capability_registry import (
-    LOCAL_MLX_MODELS as _LOCAL_MLX_MODELS,
-)
-
 # 5.2.0: Delegate catalog data to the structured capability registry (rich + verified).
 # This keeps backward compat for every `from ...model_catalog import ENGINE_MODEL_CATALOG`.
 from latticeai.services.model_capability_registry import (
@@ -177,9 +173,6 @@ MODEL_ENGINE_ALIASES: Dict[str, Dict[str, str]] = {
 get_all_capabilities = _get_all_capabilities
 get_capability = _get_capability
 get_verified_models = _get_verified_models
-
-# Convenience re-export for tests / places that did `from ...model_catalog import LOCAL_MLX_MODELS`
-LOCAL_MLX_MODELS = _LOCAL_MLX_MODELS  # type: ignore[name-defined]
 
 _VERSIONED_MODEL_PATTERNS = (
     ("gemma", re.compile(r"\bgemma[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),

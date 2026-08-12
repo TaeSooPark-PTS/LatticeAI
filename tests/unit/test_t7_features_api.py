@@ -128,14 +128,6 @@ def test_a_value_the_feature_cannot_take_is_a_400_that_keeps_the_reason(tmp_path
 
 
 # ── the singleton ────────────────────────────────────────────────────────────
-def test_the_default_data_dir_follows_the_env_then_home(monkeypatch, tmp_path):
-    monkeypatch.setenv("LATTICEAI_DATA_DIR", str(tmp_path))
-    assert ftw._default_data_dir() == tmp_path
-
-    monkeypatch.delenv("LATTICEAI_DATA_DIR", raising=False)
-    assert ftw._default_data_dir() == Path.home() / ".ltcai"
-
-
 def test_an_early_lazy_caller_does_not_pin_the_store_to_the_fallback(tmp_path):
     """The failure this guards: a gate asked before routers mount."""
     early = ftw.get_feature_toggle_service()

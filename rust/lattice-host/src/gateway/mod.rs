@@ -4,9 +4,9 @@
 //! exposes the worker's whole API surface, and the product's promise is that
 //! the brain never leaves the machine.
 
-pub mod clock;
 pub mod mounts;
 pub mod params;
+pub mod posture;
 pub mod proxy;
 pub mod routes;
 pub mod search;
@@ -15,14 +15,16 @@ use std::fmt;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use axum::routing::get;
 use axum::Router;
 use lattice_jobs::Scheduler;
 use tokio::net::TcpListener;
 
-use crate::supervisor::{check_health, http_client, Supervisor, WorkerStatus};
+use crate::supervisor::{http_client, probe_health, proxy_client, Supervisor, WorkerStatus};
+use posture::{Posture, POSTURE_TTL};
 
 /// What the gateway needs to know about the worker it fronts.
 ///
@@ -49,10 +51,13 @@ impl StatusProvider for Supervisor {
 pub struct GatewayState {
     provider: Arc<dyn StatusProvider>,
     client: reqwest::Client,
+    proxy_client: reqwest::Client,
     db_path: PathBuf,
     agent_root: PathBuf,
     agent_runs_dir: Option<PathBuf>,
     jobs: Option<Arc<Scheduler>>,
+    pinned_posture: Option<Posture>,
+    observed_posture: Mutex<Option<(Instant, Posture)>>,
 }
 
 impl GatewayState {
@@ -64,10 +69,17 @@ impl GatewayState {
 
     /// Build state reusing an existing client (the supervisor's, so the
     /// connection pool is shared).
+    ///
+    /// The *proxy* client is always this state's own: the shared one follows
+    /// redirects, which is right for an API caller and destroys a proxied
+    /// `Set-Cookie` (see [`proxy`]). Should that builder ever fail, the shared
+    /// client is a worse front door but still a working one.
     pub fn with_client(provider: Arc<dyn StatusProvider>, client: reqwest::Client) -> Self {
+        let proxy_client = proxy_client().unwrap_or_else(|_| client.clone());
         Self {
             provider,
             client,
+            proxy_client,
             // Resolved once, here, so the whole process agrees on which brain it
             // is reading; whether that file exists is re-checked per request,
             // because a brain can appear at any time.
@@ -75,7 +87,20 @@ impl GatewayState {
             agent_root: mounts::default_agent_root(),
             agent_runs_dir: None,
             jobs: None,
+            pinned_posture: None,
+            observed_posture: Mutex::new(None),
         }
+    }
+
+    /// Pin the worker's access posture instead of reading it from `/health`.
+    ///
+    /// For tests, and for a caller that owns the worker's environment outright.
+    /// The product leaves it unset: the worker is the single source of truth
+    /// about who may talk to it, and a pinned "open" is a promise this process
+    /// cannot keep on its own.
+    pub fn with_pinned_posture(mut self, posture: Posture) -> Self {
+        self.pinned_posture = Some(posture);
+        self
     }
 
     /// Point the native search routes at a specific store.
@@ -156,14 +181,57 @@ impl GatewayState {
         self.provider.worker_origin()
     }
 
-    /// The HTTP client used for probes and proxying.
+    /// The HTTP client used for health probes and for the mounted crates.
     pub fn client(&self) -> &reqwest::Client {
         &self.client
     }
 
+    /// The client the reverse proxy forwards with — redirects **not** followed.
+    pub fn proxy_client(&self) -> &reqwest::Client {
+        &self.proxy_client
+    }
+
     /// A live `GET /health` against the worker.
+    ///
+    /// The same answer carries the worker's access posture, so the probe
+    /// `/host/health` already makes on every call keeps the posture cache warm
+    /// and the guard below rarely has to ask for itself.
     pub async fn probe_worker_health(&self) -> bool {
-        check_health(&self.client, &self.worker_origin()).await
+        let report = probe_health(&self.client, &self.worker_origin()).await;
+        self.remember_posture(Posture::from_report(&report));
+        report.healthy
+    }
+
+    /// The worker's access posture, from the cache or from the worker.
+    ///
+    /// Fails closed in every direction: an unreachable worker, an answer with
+    /// no posture in it, and a worker that says "authentication required" all
+    /// come back not-open, and the native lanes refuse.
+    pub async fn worker_posture(&self) -> Posture {
+        if let Some(pinned) = self.pinned_posture {
+            return pinned;
+        }
+        if let Some(fresh) = self.cached_posture() {
+            return fresh;
+        }
+        let report = probe_health(&self.client, &self.worker_origin()).await;
+        let posture = Posture::from_report(&report);
+        self.remember_posture(posture);
+        posture
+    }
+
+    /// The observed posture while it is still within [`POSTURE_TTL`].
+    fn cached_posture(&self) -> Option<Posture> {
+        let cache = self.observed_posture.lock().ok()?;
+        cache
+            .filter(|(at, _)| at.elapsed() < POSTURE_TTL)
+            .map(|(_, posture)| posture)
+    }
+
+    fn remember_posture(&self, posture: Posture) {
+        if let Ok(mut cache) = self.observed_posture.lock() {
+            *cache = Some((Instant::now(), posture));
+        }
     }
 }
 
@@ -230,6 +298,12 @@ pub fn ensure_loopback(addr: &SocketAddr) -> Result<(), GatewayError> {
 /// Order of assembly is deliberate: the host's routes and the mounted crates
 /// are real routes, and the proxy is only the fallback, so nothing native can
 /// be shadowed by the reverse proxy.
+///
+/// Everything answered *natively* — every `/rust/*` lane, `/host/status` and
+/// `/host/jobs` — sits behind [`posture::require_open_posture`], because those
+/// handlers read the store with no credential at all. `/host/health` and the
+/// proxy fallback stay outside it: liveness is not a secret, and a proxied
+/// request is the worker's own decision to make.
 pub fn build_router(state: Arc<GatewayState>) -> Router {
     let db = state.db_path();
     let agent_root = state.agent_root();
@@ -237,8 +311,7 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
     // The loop orchestrator talks to the worker this host supervises, over the
     // client it already pools.
     let agent = state.agent_loop_config();
-    Router::new()
-        .route("/host/health", get(routes::host_health))
+    let native = Router::new()
         .route("/host/status", get(routes::host_status))
         .route(
             "/rust/search/hybrid",
@@ -252,9 +325,17 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
             "/rust/search/vector",
             get(search::vector).post(search::vector),
         )
+        .with_state(Arc::clone(&state))
+        .merge(mounts::native_router(db, &agent_root, agent, jobs))
+        .layer(axum::middleware::from_fn_with_state(
+            Arc::clone(&state),
+            posture::require_open_posture,
+        ));
+    Router::new()
+        .route("/host/health", get(routes::host_health))
         .fallback(routes::gateway_fallback)
         .with_state(state)
-        .merge(mounts::native_router(db, &agent_root, agent, jobs))
+        .merge(native)
 }
 
 /// Bind a loopback listener, refusing anything else.
@@ -266,6 +347,10 @@ pub async fn bind_loopback(addr: SocketAddr) -> Result<TcpListener, GatewayError
 }
 
 /// Serve the gateway on an already-bound listener until `shutdown` resolves.
+///
+/// Served *with connect info*: the proxy states the peer's address in
+/// `X-Forwarded-For`, and a peer it was never told about is one it would have
+/// to invent.
 pub async fn serve_gateway<F>(
     listener: TcpListener,
     state: Arc<GatewayState>,
@@ -277,10 +362,13 @@ where
     if let Ok(addr) = listener.local_addr() {
         ensure_loopback(&addr)?;
     }
-    axum::serve(listener, build_router(state))
-        .with_graceful_shutdown(shutdown)
-        .await
-        .map_err(|err| GatewayError::Serve(err.to_string()))
+    axum::serve(
+        listener,
+        build_router(state).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown)
+    .await
+    .map_err(|err| GatewayError::Serve(err.to_string()))
 }
 
 #[cfg(test)]
@@ -355,6 +443,54 @@ mod tests {
             pinned.db(),
             Path::new("/tmp/elsewhere/knowledge_graph.sqlite")
         );
+    }
+
+    #[tokio::test]
+    async fn an_unreachable_worker_leaves_the_posture_unknown_and_caches_it() {
+        struct Dead;
+        impl StatusProvider for Dead {
+            fn status(&self) -> WorkerStatus {
+                WorkerStatus::idle(1, true)
+            }
+            fn worker_origin(&self) -> String {
+                // Port 1 on loopback: reserved, nothing listens there.
+                "http://127.0.0.1:1".into()
+            }
+        }
+        let state = GatewayState::new(Arc::new(Dead)).expect("state");
+        assert_eq!(
+            state.cached_posture(),
+            None,
+            "nothing is known before anything is asked"
+        );
+        assert_eq!(state.worker_posture().await, Posture::Unknown);
+        assert_eq!(
+            state.cached_posture(),
+            Some(Posture::Unknown),
+            "the failure is cached too, so a dead worker is not re-probed per request"
+        );
+        assert!(!state.probe_worker_health().await);
+    }
+
+    #[tokio::test]
+    async fn a_pinned_posture_short_circuits_the_probe() {
+        let state = GatewayState::new(Arc::new(Stub))
+            .expect("state")
+            .with_pinned_posture(Posture::Open);
+        assert_eq!(state.worker_posture().await, Posture::Open);
+        assert_eq!(
+            state.cached_posture(),
+            None,
+            "a pinned posture never consults the worker, so nothing is observed"
+        );
+    }
+
+    #[test]
+    fn the_proxy_client_is_this_state_s_own() {
+        let shared = http_client().expect("client");
+        let state = GatewayState::with_client(Arc::new(Stub), shared);
+        // Distinct handles: the shared one follows redirects, this one must not.
+        assert!(!std::ptr::eq(state.client(), state.proxy_client()));
     }
 
     #[test]

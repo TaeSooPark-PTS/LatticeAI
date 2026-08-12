@@ -90,6 +90,11 @@ from latticeai.core.agent_helpers import (  # noqa: E402
     normalize_plan,
     requirement_coverage,
 )
+from latticeai.core.agent_profiles import (  # noqa: E402
+    COMPACT_MAX_PARAMS_B,
+    model_size_b,
+    profile_for_model,
+)
 from latticeai.core.agent_trace import LoopTrace  # noqa: E402
 from latticeai.core.file_generation import (  # noqa: E402
     infer_file_target,
@@ -107,6 +112,7 @@ from latticeai.core.tool_registry import (  # noqa: E402
     TOOL_GOVERNANCE,
     TOOL_GOVERNANCE_DEFAULT,
 )
+from latticeai.tools.documents import document_output_target  # noqa: E402
 
 FIXTURE_DIR = REPO_ROOT / "rust" / "fixtures" / "agent_loop"
 GOLDEN_DIR = FIXTURE_DIR / "golden"
@@ -260,6 +266,59 @@ INFERENCE_MESSAGES: List[str] = [
     "웹사이트 css js 만들어줘", "마크다운 파일 작성해줘", "yaml 만들어줘",
 ]
 
+#: ``(tool_name, filename)`` pairs for the document-target resolver. Chosen for
+#: the branches they reach, not for realism: a tool that is not a document
+#: creator, each of the four that are, a name that already carries its suffix,
+#: one that carries the wrong one, a path that must be reduced to its basename,
+#: characters the sanitizer replaces, and the empty names that fall back to
+#: ``artifact<suffix>``. The Rust port takes the basename with its own
+#: ``path_name`` and has its own empty-name fallback, so those two are exactly
+#: where the two implementations could disagree unnoticed.
+DOCUMENT_TARGET_CASES: List[Dict[str, str]] = [
+    {"tool": "write_file", "filename": "notes.md"},
+    {"tool": "create_docx", "filename": "report.docx"},
+    {"tool": "create_docx", "filename": "report"},
+    {"tool": "create_docx", "filename": "report.pdf"},
+    {"tool": "create_xlsx", "filename": "budget.xlsx"},
+    {"tool": "create_pptx", "filename": "deck"},
+    {"tool": "create_pdf", "filename": "invoice"},
+    {"tool": "create_pdf", "filename": "sub/dir/invoice.pdf"},
+    {"tool": "create_pdf", "filename": "../../escape.pdf"},
+    {"tool": "create_docx", "filename": "회의 기록.docx"},
+    {"tool": "create_docx", "filename": "a/b*c?d.docx"},
+    {"tool": "create_docx", "filename": ""},
+    {"tool": "create_pptx", "filename": "   "},
+    {"tool": "create_xlsx", "filename": "REPORT.XLSX"},
+    {"tool": "create_pdf", "filename": ".pdf"},
+    {"tool": "unknown_tool", "filename": "x.docx"},
+]
+
+#: Model ids for the profile dial. The interesting ones are the quantization
+#: suffixes (``4bit`` is not a parameter count), the multi-size ids where the
+#: *smallest* wins, and the boundary at ``COMPACT_MAX_PARAMS_B`` itself.
+PROFILE_MODEL_IDS: List[str] = [
+    "mlx-community/gemma-4-12B-it-4bit",
+    "qwen2.5-1.5b",
+    "llama-3.2-3B",
+    "mlx-community/Llama-3.2-3B-Instruct-4bit",
+    "phi-4-mini-3.8b-8bit",
+    "some-model-4b",
+    "some-model-4.0b",
+    "some-model-4.1b",
+    "gpt-4o",
+    "claude-sonnet",
+    "",
+    "   ",
+    "model-8bit",
+    "abc123b",
+    "7b-and-1.5b-mixed",
+    "Model-70B-Instruct",
+]
+
+#: ``LATTICEAI_AGENT_PROFILE`` values, including the two that must fall through
+#: to the size heuristic rather than failing the run.
+PROFILE_OVERRIDES: List[str] = ["", "standard", "compact", "COMPACT", "nonsense"]
+
 #: Transcripts the artifact/coverage helpers are asked about.
 TRANSCRIPT_CASES: Dict[str, Dict[str, Any]] = {
     "empty": {"message": "todo 앱 html css js 만들어줘", "transcript": []},
@@ -382,6 +441,31 @@ def helper_rows() -> Dict[str, Any]:
         {"input": case, "kept": filter_learnings(case)} for case in LEARNING_CASES
     ]
 
+    documents = [
+        {**case, "target": document_output_target(case["tool"], case["filename"])}
+        for case in DOCUMENT_TARGET_CASES
+    ]
+
+    # ``env`` is passed explicitly: the Rust twin reads the ambient process
+    # environment, and a golden that inherited this machine's would be a
+    # machine-specific value in a committed fixture.
+    profiles = []
+    for override in PROFILE_OVERRIDES:
+        env = {"LATTICEAI_AGENT_PROFILE": override} if override else {}
+        for model_id in PROFILE_MODEL_IDS:
+            profiles.append({
+                "override": override,
+                "model_id": model_id,
+                "size_b": model_size_b(model_id),
+                "profile": profile_for_model(model_id, env=env).__dict__,
+            })
+    profiles.append({
+        "override": "",
+        "model_id": None,
+        "size_b": model_size_b(""),
+        "profile": profile_for_model(None, env={}).__dict__,
+    })
+
     return normalize({
         "schema": SCHEMA,
         "extract_action_details": actions,
@@ -390,6 +474,8 @@ def helper_rows() -> Dict[str, Any]:
         "transcript_helpers": transcripts,
         "truncate_strings": truncated,
         "filter_learnings": learnings,
+        "document_targets": documents,
+        "agent_profiles": profiles,
         "budgets": {
             "phase": PhaseBudgets().__dict__,
             "transcript": TranscriptBudget().__dict__,
@@ -858,6 +944,7 @@ def manifest_payload() -> Dict[str, Any]:
             "transcript_budget": TranscriptBudget().__dict__,
             "max_state_history": 200,
             "max_retry": 3,
+            "compact_max_params_b": COMPACT_MAX_PARAMS_B,
         },
     }
 

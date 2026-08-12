@@ -73,12 +73,6 @@ class WorkspaceService:
         self._ensure_permission(workspace_id, user_id, "write")
         return workspace_id
 
-    def can_read(self, workspace_id: str, user_id: Optional[str]) -> bool:
-        return self.store.has_permission(workspace_id, self._identity(user_id), "read")
-
-    def can_write(self, workspace_id: str, user_id: Optional[str]) -> bool:
-        return self.store.has_permission(workspace_id, self._identity(user_id), "write")
-
     def readable_workspaces(self, user_id: Optional[str]) -> list[str]:
         """Return workspace ids the caller can read.
 

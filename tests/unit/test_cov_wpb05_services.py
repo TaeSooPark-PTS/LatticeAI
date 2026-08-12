@@ -27,9 +27,7 @@ from latticeai.services.chat_service import ChatService
 from latticeai.services.command_center import CommandCenterService
 from latticeai.services.evidence_actions import EvidenceActionService
 from latticeai.services.funnel_metrics import FunnelMetricsService
-from latticeai.services.hybrid_context import MinimalContext
 from latticeai.services.model_catalog import _model_family_version
-from latticeai.services.multimodal_streaming import MultimodalStreamingBridge
 from latticeai.services.review_queue import _extract_run_id, enqueue_from_automation
 from latticeai.services.run_executor import RunExecutor
 from latticeai.services.tool_dispatch import collect_created_files
@@ -408,38 +406,6 @@ def test_family_version_reads_the_first_pattern_that_matches():
     assert _model_family_version({"id": "mlx/gemma-3.1-it"}) == ("gemma", (3,))
     assert _model_family_version({"id": "mlx/Qwen3.6-27B"}) == ("qwen", (3,))
     assert _model_family_version({"name": "phi-4"}) is None
-
-
-# ── multimodal_streaming ─────────────────────────────────────────────────────
-
-
-class _MediaAdapter:
-    provider_name = "wpb05-media"
-    default_model = "wpb05-video"
-
-    def stream_media(self, *, prompt, context, model=None):
-        async def _gen():
-            yield {"media_url": "https://example.invalid/a.mp4"}
-            yield {"media_url": "https://example.invalid/b.mp4", "text": "두 번째"}
-
-        return _gen()
-
-
-def test_media_events_without_a_text_note_contribute_only_their_url():
-    result = asyncio.run(
-        MultimodalStreamingBridge(_MediaAdapter()).run_turn(
-            user_message="영상 만들어줘",
-            minimal=MinimalContext(query="영상", node_ids=["n1"], compact_text="근거"),
-            mode=NetworkBoundaryMode.CLOUD_ALLOWED,
-            allow_multimodal=True,
-        )
-    )
-
-    assert result.media_urls == [
-        "https://example.invalid/a.mp4",
-        "https://example.invalid/b.mp4",
-    ]
-    assert result.answer_text == "두 번째"
 
 
 # ── run_executor ─────────────────────────────────────────────────────────────

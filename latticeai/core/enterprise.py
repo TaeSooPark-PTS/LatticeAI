@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 from enum import Enum
-from typing import Dict, List, Protocol, runtime_checkable
+from typing import Dict, Protocol, runtime_checkable
 
 
 class Edition(str, Enum):
@@ -114,9 +114,6 @@ class CapabilityRegistry:
         except Exception:
             # A misbehaving plugin must never break a Community request.
             return False
-
-    def available_capabilities(self) -> List[EnterpriseCapability]:
-        return [cap for cap in EnterpriseCapability if self.is_capability_enabled(cap)]
 
     def describe(self) -> Dict[str, object]:
         """Edition + capability matrix for ``/workspace/editions`` and admin UI."""

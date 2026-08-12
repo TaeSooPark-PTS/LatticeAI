@@ -53,7 +53,6 @@ from .workspace_permissions import (  # type: ignore
 from .workspace_plugins import WorkspacePluginManager
 from .workspace_relationships import WorkspaceRelationships
 from .workspace_relationships import shortest_path as _shortest_path
-from .workspace_reorganization import plan_reorganization
 from .workspace_review_items import WorkspaceReviewItems
 from .workspace_runs import WorkspaceRuns
 from .workspace_skills import WorkspaceSkills
@@ -843,15 +842,6 @@ class WorkspaceOSStore:
     # ------------------------------------------------------------------
     # Agent-native workspace: folder reorganization (v11.1.0)
     # ------------------------------------------------------------------
-
-    def preview_reorganization(
-        self, *, root: str = "", resolve_path: Callable[[str], Any], graph: Any = None,
-        max_moves: int = 20,
-    ) -> Dict[str, Any]:
-        """What a reorganization would do — read-only, nothing is staged."""
-        return plan_reorganization(
-            root=root, resolve_path=resolve_path, graph=graph, max_moves=max_moves
-        )
 
     def propose_reorganization(
         self, *, root: str = "", change_proposals: Any, graph: Any = None,

@@ -50,6 +50,64 @@ def parse_windows_video_controllers(raw: str) -> List[Dict[str, Any]]:
     return controllers
 
 
+
+def parse_windows_cpu_info(
+    raw: str,
+    *,
+    model: str,
+    physical_cores: int,
+    logical_cores: int,
+) -> Tuple[str, int, int]:
+    """Read ``wmic cpu get Name,NumberOfCores,NumberOfLogicalProcessors``.
+
+    Whatever the output does not say keeps the value the caller already had —
+    ``wmic`` is absent on modern Windows images and prints nothing there, and
+    "0 cores" would be a worse answer than ``os.cpu_count()``'s guess.
+    """
+    for line in raw.splitlines():
+        key, _, value = line.partition("=")
+        if key == "Name" and value.strip():
+            model = value.strip()
+        elif key == "NumberOfCores" and value.strip():
+            try:
+                physical_cores = int(value.strip())
+            except ValueError:
+                quiet()
+        elif key == "NumberOfLogicalProcessors" and value.strip():
+            try:
+                logical_cores = int(value.strip())
+            except ValueError:
+                quiet()
+    return model, physical_cores, logical_cores
+
+
+#: ``IsProcessorFeaturePresent`` codes worth reporting, by instruction name.
+WINDOWS_PROCESSOR_FEATURES: Dict[int, str] = {
+    6: "sse", 10: "sse2", 13: "sse3", 19: "neon", 28: "rdrand",
+}
+
+
+def windows_processor_features() -> List[str]:
+    """Instruction-set flags from the Win32 API, or none anywhere else.
+
+    ``ctypes.windll`` exists only on Windows, so on every other platform this
+    raises and answers "nothing known" — which is the honest reading, since the
+    flags are unobtainable rather than absent.
+    """
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]  # Windows-only
+        return [
+            name
+            for code, name in WINDOWS_PROCESSOR_FEATURES.items()
+            if kernel32.IsProcessorFeaturePresent(code)
+        ]
+    except Exception:
+        quiet()
+        return []
+
+
 def detect_cuda(which: WhichFn, run: RunFn) -> Tuple[bool, str, Optional[str], Optional[str]]:
     nvidia_smi = which("nvidia-smi")
     nvcc = which("nvcc")
@@ -78,4 +136,12 @@ def detect_tools(which: WhichFn, binaries: Iterable[str]) -> Dict[str, Optional[
     return {binary: which(binary) for binary in binaries}
 
 
-__all__ = ["detect_cuda", "detect_tools", "detect_wsl_from_text", "parse_windows_video_controllers"]
+__all__ = [
+    "WINDOWS_PROCESSOR_FEATURES",
+    "detect_cuda",
+    "detect_tools",
+    "detect_wsl_from_text",
+    "parse_windows_cpu_info",
+    "parse_windows_video_controllers",
+    "windows_processor_features",
+]

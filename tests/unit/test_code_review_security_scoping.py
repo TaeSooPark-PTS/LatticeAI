@@ -254,6 +254,7 @@ def test_sensitive_status_mode_and_engine_routes_require_auth():
             engine_status=lambda: [{"engine": "private-engine"}],
             get_current_user=lambda request: request.headers.get("X-Test-User"),
             require_auth=True,
+            externally_reachable=True,
             app_version="test",
             app_mode="public",
         )

@@ -375,15 +375,6 @@ class GraphEdgeQualityManager:
                 seen[key] = e.get("id")
         return dups
 
-    def merge_duplicate_edges(self, edges: List[Dict]) -> List[Dict]:
-        # keep highest confidence
-        best: Dict[Any, Dict[str, Any]] = {}
-        for e in edges:
-            key = (e.get("source"), e.get("target"), e.get("type"))
-            if key not in best or e.get("confidence", 0) > best[key].get("confidence", 0):
-                best[key] = e
-        return list(best.values())
-
     def compute_quality_metrics(self, edges: List[Dict]) -> Dict[str, float]:
         if not edges:
             return {"avg_conf": 0.0, "avg_evidence": 0.0, "dup_rate": 0.0}
@@ -531,46 +522,6 @@ class LatticeBrainQuality:
         self.graph_mgr = GraphEdgeQualityManager()
         self.context_assembler = StructuredContextAssembler()
         self.benchmark = RetrievalBenchmarkRunner()
-
-    def full_quality_pass(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """End-to-end quality pipeline (non-destructive)"""
-        result = {"status": "ok", "timestamp": time.time()}
-
-        # embedding
-        if "embeddings" in payload:
-            labels = [self.embed_labeller.label(e["id"], e.get("vector")) for e in payload["embeddings"]]
-            result["embedding_labels"] = [label.__dict__ for label in labels]
-            result["reindex_plan"] = self.embed_labeller.generate_reindex_plan()
-
-        # hybrid retrieval
-        if "retrieval" in payload:
-            fused = self.hybrid.fuse(payload["retrieval"]["query"], payload["retrieval"]["candidates"])
-            reranked = self.reranker.rerank(payload["retrieval"]["query"], fused)
-            result["retrieval"] = {"fused": fused, "reranked": reranked}
-
-        # memory
-        if "memories" in payload:
-            cands = self.memory_mgr.extract_candidates(payload["memories"])
-            cands = self.memory_mgr.score_candidates(cands, payload.get("query", ""))
-            cands = self.memory_mgr.dedupe(cands)
-            cands = self.memory_mgr.merge(cands)
-            cands = self.memory_mgr.detect_conflicts(cands)
-            cands = self.memory_mgr.apply_retention(cands)
-            result["memory_candidates"] = [c.__dict__ for c in cands]
-
-        # graph
-        if "graph_edges" in payload:
-            eqs = [self.graph_mgr.validate_edge(e) for e in payload["graph_edges"]]
-            result["graph_quality"] = [q.__dict__ for q in eqs]
-            result["graph_metrics"] = self.graph_mgr.compute_quality_metrics(payload["graph_edges"])
-
-        # context
-        if "context_items" in payload:
-            ctx = self.context_assembler.assemble(payload["context_items"])
-            ctx = self.context_assembler.apply_guardrails(ctx)
-            result["structured_context"] = ctx
-
-        return result
 
 
 __all__ = [

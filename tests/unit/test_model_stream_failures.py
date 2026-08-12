@@ -263,7 +263,7 @@ def test_mlx_document_stream_failure_reaches_the_consumer_as_an_exception(monkey
     chunks: list[str] = []
 
     with pytest.raises(router_mod.ModelStreamError) as excinfo:
-        _consume(lambda: router.stream_generate_document("질문", "system"), chunks)
+        _consume(lambda: router.stream_generate_document_as(None, "질문", "system"), chunks)
 
     assert chunks == ["# 보고서"]
     assert not any("⚠️ Error" in chunk for chunk in chunks)
@@ -321,13 +321,13 @@ def test_cloud_document_stream_raises_instead_of_yielding_a_warning_chunk():
 
 
 def test_cloud_document_stream_failure_propagates_through_the_public_api():
-    """`stream_generate_document` must not swallow or re-text the failure."""
+    """`stream_generate_document_as` must not swallow or re-text the failure."""
     boom = _BackendExploded("gateway timeout")
     router = _cloud_router(boom)
     chunks: list[str] = []
 
     with pytest.raises(router_mod.ModelStreamError):
-        _consume(lambda: router.stream_generate_document("질문", "system"), chunks)
+        _consume(lambda: router.stream_generate_document_as(None, "질문", "system"), chunks)
 
     assert chunks == []
 

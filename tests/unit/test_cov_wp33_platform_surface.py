@@ -1,15 +1,13 @@
 """Coverage for the platform-side core modules: project sessions, the realtime
 bus, the template marketplace, product-hardening status, the cloud network
-boundary, the artifact ledger, document context rendering, the tool policy
-factory and the moved-module compatibility shims.
+boundary, the artifact ledger, document context rendering and the tool policy
+factory.
 """
 
 from __future__ import annotations
 
 import asyncio
-import importlib
 import json
-import sys
 from pathlib import Path
 
 import pytest
@@ -392,28 +390,6 @@ def test_first_document_request_uses_the_plain_generation_prompt():
 
     session.clear()
     assert session.get_system_prompt("graph context here") == first
-
-
-# ── moved-module compatibility shims ───────────────────────────────────────
-
-
-@pytest.mark.parametrize(
-    ("shim", "target"),
-    [
-        ("latticeai.core.graph_curator", "lattice_brain.graph.curator"),
-        ("latticeai.core.hooks", "lattice_brain.runtime.hooks"),
-        ("latticeai.core.multi_agent", "lattice_brain.runtime.multi_agent"),
-    ],
-)
-def test_legacy_import_paths_alias_the_physical_module(shim, target, monkeypatch):
-    physical = importlib.import_module(target)
-    monkeypatch.delitem(sys.modules, shim, raising=False)
-
-    reloaded = importlib.import_module(shim)
-
-    # Identity — not a copy — so module-level state and monkeypatching still work.
-    assert reloaded is physical
-    assert sys.modules[shim] is physical
 
 
 # ── json round-trip guard for the SSE frame encoder ────────────────────────

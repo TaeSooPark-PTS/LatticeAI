@@ -13,6 +13,47 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.5.2 — Tight Ship (2026-08-12)
+
+정착된 11.5.1 트리를 3중 감사하고 그 결과만 실행한 정리·정합성 릴리스.
+
+- **삭제 약 1,100줄**: 이사 간 모듈 shim 6종, 배선된 적 없는 멀티모달
+  스트리밍 시임, 호출자 0 심볼 약 27개(테스트 수술 동반), 소비자 없는
+  `metadata_for` 인터페이스, npm tarball에 아직 실려 나가던 레거시
+  Electron 셸, 죽은 측정 스크립트. `sys.modules[__name__]` shim 패턴은
+  게이트가 재발을 막습니다. 커버리지 WP 테스트 183개는 **전수 하중
+  검증**(10개가 79 분기 아크의 유일 소유자), 중복 기능 테스트 7개는
+  회귀 가치로 의도적 보존.
+- **통합**: 임베더 쌍을 골든에 못박힌 사본으로 단일화(조용한 벡터
+  드리프트 차단), 워크스페이스 선택자 5표면이 정본 규칙으로 —
+  **불일치 시 403**(의도된 동작 변경), sha256/SSE 프레임/데이터 디렉터리/
+  모드 서비스/모듈 프로브 헬퍼 각 1곳, Rust byte-identical 사본 7건
+  (`clock.rs` 통째 포함) 통합.
+- **현관문(라이브 전/후 증거)**: 프록시 리다이렉트가 `Set-Cookie`·
+  `Location`을 온전히 통과(초대 게이트 막다른 길, SSO 무인증, 딥링크
+  12개 프래그먼트 분실 해소), 워커 오리진 절대 `Location` 재작성,
+  `/rust/*`·`/host/status|jobs` **posture fail-closed**(이전엔 무인증
+  그래프 서빙), `X-Forwarded-For/Proto/Host` 홉 통과(루프백·신뢰
+  프록시만 존중), 수퍼바이저 CORS 오리진 주입, CSP `ws://` 제거,
+  바인드 실패 시 Tauri 죽은 오리진 이동 제거.
+- **감사가 드러낸 기능**: `POST /api/search/graph`(허용 목록에 있었으나
+  도달 불가), `GET /api/ingestion/multimodal`(문서화됐으나 미배선),
+  골든 신규 2계열 — `recent_chat`이 **실제 발산**을 잡음(Python
+  `limit=0` 꼬리 슬라이스는 전부 보존, Rust는 빈 결과 → Python 기준으로
+  Rust 수정) + `document_targets`/`agent_profiles` 97행. 골든 **251 파일**.
+- 정직한 경계 명시: 네이티브 레인은 열린 posture·단일 로컬 소유자 표면,
+  recent-chat 시임 소유권은 아직 `/chat`의 임시 prepend(마이너 항목),
+  `workspace_scope_from_request` 자체는 남은 두 호출자에 대해 관대,
+  프록시 홉은 장수 SSE 때문에 의도적으로 타임아웃 없음.
+- 플로어: **7,022 + 1,761 테스트 · 100.00% · Rust 760 · OpenAPI 421 paths**.
+
+빌드 산출물은 `dist/ltcai-11.5.2-py3-none-any.whl`,
+`dist/ltcai-11.5.2.tar.gz`, `ltcai-11.5.2.tgz`, `dist/ltcai-11.5.2.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.5.2_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.5.2.md](RELEASE_NOTES_v11.5.2.md)
+
 ## v11.5.1 — Rust Full Loop (2026-08-12)
 
 11.5.0의 명시적 잔여 2건 완결 — 다이어그램의 모든 Rust 박스가 구현됨.

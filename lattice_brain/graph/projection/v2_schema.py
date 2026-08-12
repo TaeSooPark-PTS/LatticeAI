@@ -516,31 +516,3 @@ class KnowledgeGraphV2SchemaMixin(_Core):
         except Exception as ex:
             logging.debug("knowledge_graph: v2 edge delete mirror skipped: %s", ex)
 
-    def _v2_sync_report(self) -> Dict[str, Any]:
-        """Diagnose the dual-write invariant: legacy node/edge id sets must equal
-        the v2 projection's. Returns counts + any drift (ids missing from / extra
-        in v2). ``in_sync`` is True only when both id sets match exactly.
-
-        All legacy writes go through _upsert_node/_upsert_edge (which dual-write)
-        and every legacy delete is mirrored, so a non-empty drift signals a
-        bypassed write path — this is the runtime guard for that invariant.
-        """
-        if KGStoreV2 is None:
-            return {"available": False, "in_sync": True}
-        with self._connect() as conn:
-            legacy_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes")}
-            v2_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes_v2")}
-            legacy_edges = {r[0] for r in conn.execute("SELECT id FROM edges")}
-            v2_edges = {r[0] for r in conn.execute("SELECT id FROM edges_v2")}
-        return {
-            "available": True,
-            "in_sync": legacy_nodes == v2_nodes and legacy_edges == v2_edges,
-            "nodes_legacy": len(legacy_nodes),
-            "nodes_v2": len(v2_nodes),
-            "edges_legacy": len(legacy_edges),
-            "edges_v2": len(v2_edges),
-            "nodes_missing_from_v2": sorted(legacy_nodes - v2_nodes),
-            "nodes_extra_in_v2": sorted(v2_nodes - legacy_nodes),
-            "edges_missing_from_v2": sorted(legacy_edges - v2_edges),
-            "edges_extra_in_v2": sorted(v2_edges - legacy_edges),
-        }

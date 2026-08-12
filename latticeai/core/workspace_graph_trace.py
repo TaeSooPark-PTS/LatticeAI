@@ -6,16 +6,10 @@ from typing import Any, Dict, List, Optional
 from latticeai.core.quiet import quiet
 
 from .timeutil import now_iso as _now
-from .workspace_os_utils import _json_hash, _listify
+from .workspace_os_utils import WorkspaceStoreMixin, _json_hash, _listify
 
 
-class WorkspaceGraphTrace:
-    def __init__(self, store: Any):
-        self._store = store
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._store, name)
-
+class WorkspaceGraphTrace(WorkspaceStoreMixin):
     def build_graph_trace(
         self,
         question: str,

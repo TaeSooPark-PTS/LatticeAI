@@ -8,16 +8,10 @@ from lattice_brain.runtime.contracts import run_record_contract, workflow_run_co
 from lattice_brain.runtime.statuses import RUN_ACTIVE_STATUSES, RUN_TERMINAL_STATUSES
 
 from .timeutil import now_iso as _now
-from .workspace_os_utils import _json_hash, _listify
+from .workspace_os_utils import WorkspaceStoreMixin, _json_hash, _listify
 
 
-class WorkspaceRuns:
-    def __init__(self, store: Any):
-        self._store = store
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._store, name)
-
+class WorkspaceRuns(WorkspaceStoreMixin):
     def list_agents(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         state = self.load_state()
         runs = self._scoped(_listify(state.get("agent_runs")), workspace_id)

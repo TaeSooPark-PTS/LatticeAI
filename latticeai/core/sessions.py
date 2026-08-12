@@ -6,7 +6,6 @@ holding raw tokens are migrated transparently on load (sessions survive the
 upgrade; the raw token never touches disk again).
 """
 
-import hashlib
 import json
 import logging
 import secrets
@@ -16,6 +15,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from latticeai.core.io_utils import atomic_write_json
+from latticeai.core.security import sha256_hex
 
 SESSION_TTL = 60 * 60 * 24  # 24 hours
 SESSION_REFRESH_THRESHOLD = 60 * 15  # only persist if >15 min since last bump
@@ -25,7 +25,8 @@ _HEX64 = frozenset("0123456789abcdef")
 
 
 def _hash_token(token: str) -> str:
-    return hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+    """Session keys are hashed at rest; a missing token hashes the empty string."""
+    return sha256_hex(token or "")
 
 
 def _looks_hashed(key: str) -> bool:

@@ -1,0 +1,8 @@
+{
+  "key": "everything",
+  "result": "user (vscode): 빌드 실패 원인 알려줘\nassistant (vscode): 컴파일 오류 로그를 확인하세요.\nuser (web): Ranking ties are broken by node id\nassistant (web): Yes — id ascending keeps it stable.\nuser (web): 검색 품질을 어떻게 측정하나요? 재현율과 정밀도를 모두 보고 싶고 주간 회의에서 공유할 예정입니다.\nassistant (web): 재현율/정밀도 지표는 분기 리뷰 발표자료에 있습니다.\nassistant (web): assistant-first conversation\nuser (web): follow up question about ranking\nuser: Empty user and empty workspace row\nassistant: 회의 결정 사항을 정리했습니다.",
+  "spec": {
+    "key": "everything"
+  },
+  "suite": "recent_chat"
+}

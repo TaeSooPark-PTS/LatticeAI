@@ -81,10 +81,9 @@ def test_a_memory_service_without_a_usable_store_is_not_mistaken_for_a_queue(tmp
     assert service.propose_contradictions()["available"] is False
 
 
-def test_an_explicitly_attached_queue_wins(tmp_path):
+def test_an_explicitly_injected_queue_wins(tmp_path):
     queue = RecordingReviewQueue()
-    _store, service = _service(tmp_path)
-    service.attach_review_queue(queue)
+    _store, service = _service(tmp_path, queue=queue)
     assert service.propose_contradictions()["proposed_count"] >= 1
     assert queue.created
 

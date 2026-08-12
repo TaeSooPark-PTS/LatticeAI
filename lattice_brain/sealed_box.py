@@ -212,10 +212,6 @@ class RecipientIdentity:
             "path": str(self._key_file),
         }
 
-    def seal_to_self(self, plaintext: bytes) -> Dict[str, Any]:
-        """Seal to this Brain's own key — the honest way to test a round trip."""
-        return seal(plaintext, recipient_public_key=self.public_key_b64)
-
     def unseal(self, block: Dict[str, Any]) -> bytes:
         return unseal(block, self._private)
 

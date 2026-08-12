@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "11.5.1",
+  "version": "11.5.2",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -52,7 +52,6 @@
     "desktop:tauri:check": "cd src-tauri && cargo check",
     "rust:test": "cd rust && cargo test --workspace",
     "rust:lint": "cd rust && cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings",
-    "desktop:electron": "electron desktop/electron/main.cjs",
     "package:vsix": "node scripts/build_vsix.mjs",
     "check:screenshot-delta": "node scripts/run_python.mjs scripts/check_screenshot_pixel_delta.py",
     "release:evidence": "node scripts/capture_release_evidence.mjs && node scripts/prune_release_evidence.mjs && npm run check:screenshot-delta",
@@ -124,7 +123,6 @@
     "!src-tauri/gen/**",
     "!src-tauri/target/",
     "!src-tauri/target/**",
-    "desktop/electron/",
     "docs/*.md",
     "!docs/assets/",
     "!docs/images/"
@@ -150,7 +148,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cytoscape": "^3.34.0",
-    "electron": "^42.4.0",
     "jsdom": "^29.1.1",
     "lucide-react": "^1.17.0",
     "openapi-fetch": "^0.17.0",

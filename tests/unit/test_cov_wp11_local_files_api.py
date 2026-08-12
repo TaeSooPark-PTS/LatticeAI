@@ -111,6 +111,16 @@ class _Pipeline:
     def resume_background_job(self, job_id, user_email=None):
         self.resumed.append((job_id, user_email))
 
+    def multimodal_status(self):
+        return {
+            "enabled": True,
+            "image": True,
+            "audio": True,
+            "video": False,
+            "video_detail": "ffmpeg is not installed on this machine",
+            "gates": {"multimodal": {"enabled": True}, "video": {"enabled": True}},
+        }
+
 
 def _require_admin(request: Request):
     if request.headers.get("X-Test-Admin") != "true":
@@ -336,6 +346,37 @@ def test_ingestion_routes_report_503_without_a_pipeline(tmp_path):
     # This guard predates per-request language resolution and answers in the
     # product default language.
     assert response.json()["detail"] == "지식 그래프 수집이 꺼져 있습니다."
+
+
+def test_multimodal_status_is_reachable_and_reports_the_refusal_reason(tmp_path):
+    """FEATURE_STATUS promised this answer; until 11.5.2 nothing could ask for it.
+
+    The pipeline has produced the payload since 11.2.0 — including *which* of
+    the three reasons a video would be refused for — but no route called it, so
+    "why was my video not indexed?" was unanswerable from the product.
+    """
+    pipeline = _Pipeline()
+    client, _ = _client(tmp_path, ingestion_pipeline=pipeline)
+
+    response = client.get("/api/ingestion/multimodal", headers=EN)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["enabled"] is True
+    assert body["video"] is False
+    assert body["video_detail"] == "ffmpeg is not installed on this machine"
+    assert set(body["gates"]) == {"multimodal", "video"}
+
+
+def test_multimodal_status_reports_503_without_a_pipeline(tmp_path):
+    # Same guard as its sibling job routes: with ingestion off there is no
+    # routing decision to describe, and saying "multi-modal is off" would be a
+    # different, misleading claim.
+    client, _ = _client(tmp_path)
+
+    response = client.get("/api/ingestion/multimodal", headers=EN)
+
+    assert response.status_code == 503
 
 
 def test_ingestion_folder_refuses_conflicting_workspace_selectors(tmp_path):

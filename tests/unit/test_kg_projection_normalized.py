@@ -35,6 +35,26 @@ def _insert_edge(conn, eid, a, b, etype, w, meta):
     )
 
 
+def _v2_counts(store):
+    """Legacy vs. v2 id sets read straight from the tables.
+
+    The dual-write invariant is that both id sets match exactly; a difference
+    means a write path bypassed ``_upsert_*`` or a delete was not mirrored.
+    """
+    with store._connect() as conn:
+        legacy_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes")}
+        v2_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes_v2")}
+        legacy_edges = {r[0] for r in conn.execute("SELECT id FROM edges")}
+        v2_edges = {r[0] for r in conn.execute("SELECT id FROM edges_v2")}
+    return {
+        "in_sync": legacy_nodes == v2_nodes and legacy_edges == v2_edges,
+        "nodes_legacy": len(legacy_nodes),
+        "nodes_v2": len(v2_nodes),
+        "edges_legacy": len(legacy_edges),
+        "edges_v2": len(v2_edges),
+    }
+
+
 @pytest.fixture()
 def store(tmp_path):
     return kg.KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
@@ -298,8 +318,8 @@ def test_view_is_byte_faithful_to_legacy(store):
 
 def test_dual_write_invariant_holds_through_writes_and_deletes(store):
     """Every legacy write goes through _upsert_* (dual-write) and every delete is
-    mirrored, so legacy and v2 id-sets stay identical. _v2_sync_report is the
-    runtime guard for a bypassed write path."""
+    mirrored, so legacy and v2 id-sets stay identical. Comparing the id sets
+    directly is the guard for a bypassed write path."""
     with store._connect() as conn:
         store._upsert_node(conn, "conv:1", "Conversation", "c1", "", {})
         store._upsert_node(conn, "concept:x", "Concept", "X", "about x", {"k": "v"})
@@ -307,14 +327,14 @@ def test_dual_write_invariant_holds_through_writes_and_deletes(store):
         store._upsert_edge(conn, "conv:1", "concept:x", "contains", 1.0, {})
         store._upsert_edge(conn, "concept:x", "concept:y", "mentions", 0.8, {})
 
-    rep = store._v2_sync_report()
+    rep = _v2_counts(store)
     assert rep["in_sync"], f"dual-write drift: {rep}"
     assert rep["nodes_legacy"] == rep["nodes_v2"] == 3
     assert rep["edges_legacy"] == rep["edges_v2"] == 2
 
     # deletes are mirrored too → still in sync
     store.clear_all()
-    rep = store._v2_sync_report()
+    rep = _v2_counts(store)
     assert rep["in_sync"], f"delete mirror drift: {rep}"
     assert rep["nodes_v2"] == 0 and rep["edges_v2"] == 0
 
@@ -346,7 +366,7 @@ def test_migration_is_atomic_on_failure(tmp_path, monkeypatch):
     assert version == "0", "projection_version stayed stale (rolled back) so next startup retries"
 
     healed = kg.KnowledgeGraphStore(db, blobs)         # clean restart heals
-    assert healed._v2_sync_report()["in_sync"]
+    assert _v2_counts(healed)["in_sync"]
 
 
 def test_projection_version_migration_rebuilds_old_shape(tmp_path):

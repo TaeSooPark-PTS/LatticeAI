@@ -61,6 +61,7 @@ def _admin_client(
     default_port: int = 4825,
     vpc: Optional[Dict[str, Any]] = None,
     sso: Optional[Dict[str, Any]] = None,
+    peer: str = "testclient",
 ):
     """Build the admin router over fakes. Returns ``(client, state)``."""
 
@@ -130,7 +131,10 @@ def _admin_client(
 
     app = FastAPI()
     app.include_router(create_admin_router(**kwargs))
-    return TestClient(app), state
+    # ``peer`` is the *direct* socket address, which is what decides whether an
+    # ``X-Forwarded-*`` claim may be believed. The default is deliberately not
+    # loopback so the forwarded path has to be asked for explicitly.
+    return TestClient(app, client=(peer, 51000)), state
 
 
 # ── scoping helpers ────────────────────────────────────────────────────────
@@ -319,6 +323,24 @@ def test_admin_sensitivity_returns_the_scoped_report():
     assert body["scanned"] == 1
 
 
+def test_admin_scoped_reads_refuse_two_disagreeing_workspace_selectors():
+    # The admin router derived its own scope from header-then-query, so a
+    # request naming one workspace in the header and another in the query
+    # silently reported on the header's. 11.5.2 uses the shared rule instead.
+    history = [
+        {"role": "user", "timestamp": "2026-06-01T00:00:00", "workspace_id": "org-a"},
+        {"role": "user", "timestamp": "2026-06-01T00:00:01", "workspace_id": "org-b"},
+    ]
+    client, _ = _admin_client(history=history)
+
+    response = client.get(
+        "/admin/summary?workspace_id=org-b", headers={"X-Workspace-Id": "org-a"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Workspace selectors must match."
+
+
 @pytest.mark.parametrize("gate", [True, False])
 def test_admin_policies_reflect_the_invite_gate(gate):
     client, _ = _admin_client(invite_gate_enabled=gate)
@@ -492,8 +514,10 @@ def test_invite_link_carries_the_code_only_while_the_gate_is_on():
     assert open_body["gate_enabled"] is False
 
 
-def test_invite_link_honours_forwarded_https():
-    client, _ = _admin_client(invite_gate_enabled=True, invite_code="CODE-9")
+def test_invite_link_honours_a_forwarded_proto_from_a_loopback_proxy():
+    client, _ = _admin_client(
+        invite_gate_enabled=True, invite_code="CODE-9", peer="127.0.0.1",
+    )
 
     body = client.get(
         "/admin/invite-link",
@@ -501,6 +525,50 @@ def test_invite_link_honours_forwarded_https():
     ).json()
 
     assert body["invite_url"] == "https://lattice.example/?code=CODE-9"
+
+
+def test_invite_link_names_the_gateway_not_the_internal_worker_port():
+    """The bug this fixes: the link named a door the recipient cannot open.
+
+    Behind the desktop gateway the worker's ``Host`` is its own internal
+    authority, so every invite issued through the front door pointed at a port
+    only the gateway can reach. ``X-Forwarded-Host`` states what the browser
+    actually asked for.
+    """
+    client, _ = _admin_client(
+        invite_gate_enabled=True, invite_code="CODE-9", peer="127.0.0.1",
+    )
+
+    body = client.get(
+        "/admin/invite-link",
+        headers={
+            "host": "127.0.0.1:4899",           # the internal worker
+            "x-forwarded-host": "127.0.0.1:4825",  # the front door
+            "x-forwarded-proto": "http",
+        },
+    ).json()
+
+    assert body["invite_url"] == "http://127.0.0.1:4825/?code=CODE-9"
+
+
+def test_invite_link_ignores_forwarded_headers_from_an_untrusted_peer():
+    # Anyone off-loopback who is not a configured trusted proxy can claim any
+    # authority they like; believing it would mint invite links pointing at a
+    # host of the caller's choosing.
+    client, _ = _admin_client(
+        invite_gate_enabled=True, invite_code="CODE-9", peer="203.0.113.7",
+    )
+
+    body = client.get(
+        "/admin/invite-link",
+        headers={
+            "host": "lattice.example",
+            "x-forwarded-host": "attacker.example",
+            "x-forwarded-proto": "https",
+        },
+    ).json()
+
+    assert body["invite_url"] == "http://lattice.example/?code=CODE-9"
 
 
 def test_admin_sso_get_returns_the_public_projection():

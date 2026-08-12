@@ -107,10 +107,6 @@ class _RegistryMixin(_Core):
                 self.unload_model(victim)
                 local_ids = [model_id for model_id in self._cache if self._is_local_model(model_id)]
 
-    def _is_cloud_current(self) -> bool:
-        with self._lock:
-            return bool(self._current and isinstance(self._cache.get(self._current), CloudModel))
-
     def _local_server_error_hint(self, cloud: CloudModel, error: Exception) -> str:
         raw = str(error)
         if cloud.provider == "lmstudio":

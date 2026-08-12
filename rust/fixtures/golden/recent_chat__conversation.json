@@ -1,0 +1,9 @@
+{
+  "key": "conversation",
+  "result": "user (web): 온보딩 체크리스트 어떻게 시작해?\nassistant (web): 먼저 폴더를 연결하세요. 그다음 질문하면 됩니다.\nuser (web): 고마워",
+  "spec": {
+    "conversation_id": "conv-a",
+    "key": "conversation"
+  },
+  "suite": "recent_chat"
+}

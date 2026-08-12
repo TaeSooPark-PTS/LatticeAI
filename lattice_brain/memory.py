@@ -27,33 +27,6 @@ class BrainMemory:
     def available(self) -> bool:
         return self._pipeline is not None and self._pipeline.available()
 
-    def record_decision(
-        self,
-        title: str,
-        detail: str = "",
-        *,
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        decided_by: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        if not str(title or "").strip():
-            raise ValueError("a decision needs a title")
-        result = self._pipeline.ingest(
-            IngestionItem(
-                source_type="decision",
-                title=title.strip(),
-                text=detail,
-                owner=user_email,
-                workspace_id=workspace_id,
-                conversation_id=conversation_id,
-                metadata={"decided_by": decided_by or user_email, **(metadata or {})},
-            ),
-            user_email=user_email,
-        )
-        return result.as_dict()
-
     def record_experience(
         self,
         title: str,

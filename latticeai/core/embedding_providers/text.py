@@ -14,7 +14,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
-from latticeai.core.local_embeddings import DEFAULT_EMBEDDING_DIM, LocalEmbeddingModel
+from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM, LocalEmbeddingModel
 
 from .base import (
     EmbeddingProvider,

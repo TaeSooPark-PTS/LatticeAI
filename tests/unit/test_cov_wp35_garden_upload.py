@@ -373,6 +373,28 @@ def test_a_workspace_service_rejection_becomes_a_403():
     assert "cannot write to 'team'" in excinfo.value.detail
 
 
+def test_an_upload_naming_two_different_workspaces_is_refused():
+    # 11.5.2 deleted this module's verbatim copy of the header/query derivation
+    # in favour of ``resolve_workspace_scope``. The copy preferred the header
+    # and dropped the disagreeing query value on the floor, which is how a
+    # scoped upload lands in a vault the caller did not ask for; the shared
+    # rule refuses a request that names two workspaces, before any file is read.
+    class NeverCalled:
+        def resolve_write_scope(self, requested, user):
+            raise AssertionError("a mismatched request must not reach the gate")
+
+    with pytest.raises(HTTPException) as excinfo:
+        _run(_upload(
+            request=FakeRequest(
+                headers={"X-Workspace-Id": "team"}, query={"workspace_id": "other"}
+            ),
+            workspace_service=NeverCalled(),
+        ))
+
+    assert excinfo.value.status_code == 403
+    assert excinfo.value.detail == "Workspace selectors must match."
+
+
 def test_pipeline_ingest_records_provenance(monkeypatch):
     _stub_read_document(monkeypatch)
     pipeline = FakePipeline()

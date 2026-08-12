@@ -26,6 +26,7 @@ use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
+use crate::bad_request;
 use crate::breaker::is_circuit_breaker;
 use crate::command::validate;
 use crate::exec::{execute, is_natively_executable};
@@ -155,14 +156,6 @@ fn run_command_fallback_policy() -> ToolPolicy {
         rollback: "none".into(),
         ..ToolPolicy::default()
     }
-}
-
-fn bad_request(detail: impl Into<String>) -> Response {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(json!({"error": "invalid_request", "detail": detail.into()})),
-    )
-        .into_response()
 }
 
 // ── handlers ─────────────────────────────────────────────────────────────────

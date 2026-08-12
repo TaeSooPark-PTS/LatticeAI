@@ -5,12 +5,29 @@
 //! body is *streamed* — SSE endpoints (`/api/chat/stream`, the agent step
 //! feed) must deliver each event as it happens, so nothing here may buffer a
 //! response.
+//!
+//! Two things this hop must **not** do, both learned the hard way in 11.5.2:
+//!
+//! * **Follow a redirect.** A client that follows a 3xx internally answers with
+//!   the final response only, so the redirect's own headers are destroyed: the
+//!   invite gate's `Set-Cookie` (which made `GET /?code=…` a dead end through
+//!   the gateway), the SSO login cookie, and the `Location: /app#/route` of the
+//!   twelve legacy deep links. The proxy therefore forwards with
+//!   [`crate::supervisor::proxy_client`], whose redirect policy is `none`, and
+//!   passes the 3xx through untouched.
+//! * **Hide who is asking.** `Host` is hop-by-hop and is replaced on the way
+//!   out, so the worker used to see only its own internal authority — which is
+//!   why every cookie-authenticated write through an adopted worker was
+//!   rejected as `csrf_origin_rejected`. The proxy states the facts it knows in
+//!   `X-Forwarded-For` / `-Proto` / `-Host`, and the worker honours them only
+//!   from a peer it trusts (`latticeai/core/http_origin.py`).
 
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::body::Body;
-use axum::extract::{Request, State};
-use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING};
+use axum::extract::{ConnectInfo, Request, State};
+use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE, HOST, LOCATION, TRANSFER_ENCODING};
 use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 
@@ -45,6 +62,17 @@ pub const HOP_BY_HOP: [&str; 9] = [
 /// `Content-Length`; anything larger (or of unknown length) is streamed.
 pub const BUFFERED_REQUEST_LIMIT: usize = 1024 * 1024;
 
+/// The immediate client's address.
+pub const FORWARDED_FOR: &str = "x-forwarded-for";
+/// The scheme the client used to reach the gateway.
+pub const FORWARDED_PROTO: &str = "x-forwarded-proto";
+/// The authority the client asked for — the worker's only way to know the
+/// front door's name, because `Host` is rewritten on the way out.
+pub const FORWARDED_HOST: &str = "x-forwarded-host";
+
+/// The gateway is loopback-only and terminates plain HTTP.
+pub const FORWARDED_PROTO_VALUE: &str = "http";
+
 fn is_hop_by_hop(name: &HeaderName) -> bool {
     let lower = name.as_str().to_ascii_lowercase();
     HOP_BY_HOP.contains(&lower.as_str())
@@ -73,6 +101,80 @@ pub fn forwardable_headers(src: &HeaderMap) -> HeaderMap {
         out.append(name.clone(), value.clone());
     }
     out
+}
+
+/// State the three forwarded facts on an outbound header map.
+///
+/// Every value is **replaced**, never appended to. The gateway refuses to bind
+/// anywhere but loopback, so the peer it observed *is* the client and there is
+/// no legitimate upstream chain to preserve; taking a client-supplied
+/// `X-Forwarded-For` on trust would hand a local caller the ability to write
+/// someone else's address into the worker's rate-limit keys and audit log.
+///
+/// `host` is the authority the caller asked for, captured before
+/// [`forwardable_headers`] drops the hop-by-hop `Host`. When the request
+/// carried none (HTTP/1.0, a hand-written client) nothing is stated, because
+/// the honest answer is "unknown" and the worker's fallback is its own bind.
+pub fn apply_forwarded(
+    headers: &mut HeaderMap,
+    host: Option<&HeaderValue>,
+    peer: Option<SocketAddr>,
+) {
+    for name in [FORWARDED_FOR, FORWARDED_PROTO, FORWARDED_HOST] {
+        headers.remove(name);
+    }
+    if let Some(peer) = peer {
+        if let Ok(value) = HeaderValue::from_str(&peer.ip().to_string()) {
+            headers.insert(HeaderName::from_static(FORWARDED_FOR), value);
+        }
+    }
+    headers.insert(
+        HeaderName::from_static(FORWARDED_PROTO),
+        HeaderValue::from_static(FORWARDED_PROTO_VALUE),
+    );
+    if let Some(host) = host {
+        headers.insert(HeaderName::from_static(FORWARDED_HOST), host.clone());
+    }
+}
+
+/// The gateway origin a caller reached us on, from its `Host` header.
+///
+/// Echoing a client-supplied `Host` back in a `Location` is safe here in a way
+/// it is not on a public server: the redirect goes to the caller that sent the
+/// header, this hop caches nothing, and the gateway binds loopback only — so
+/// there is no third party to poison and no other host to impersonate.
+pub fn gateway_origin(host: Option<&HeaderValue>) -> Option<String> {
+    let host = host?.to_str().ok()?.trim();
+    (!host.is_empty()).then(|| format!("{FORWARDED_PROTO_VALUE}://{host}"))
+}
+
+/// Rewrite a `Location` that names the internal worker so it names the front
+/// door instead.
+///
+/// Starlette answers a directory request (`/app`, `/static`) with an *absolute*
+/// redirect built from the `Host` it saw — which, after this hop replaced it, is
+/// the worker's private `127.0.0.1:<worker port>`. Handing that to the browser
+/// would send it around the gateway and straight at a port the product does not
+/// promise is reachable. Anything else (a relative `Location`, an absolute one
+/// pointing somewhere else entirely — an external OIDC provider, say) is left
+/// exactly as the worker wrote it.
+///
+/// Without a `Host` to rebuild from, the origin is simply dropped: a relative
+/// `Location` resolves against whatever origin the browser used, which is the
+/// front door by definition.
+pub fn rewrite_location(value: &str, worker_origin: &str, gateway: Option<&str>) -> Option<String> {
+    let worker = worker_origin.trim_end_matches('/');
+    let rest = value.strip_prefix(worker)?;
+    // `http://127.0.0.1:4899evil.example` must not match `http://127.0.0.1:4899`.
+    if !(rest.is_empty() || rest.starts_with('/') || rest.starts_with('?') || rest.starts_with('#'))
+    {
+        return None;
+    }
+    let rest = if rest.is_empty() { "/" } else { rest };
+    Some(match gateway {
+        Some(origin) => format!("{}{rest}", origin.trim_end_matches('/')),
+        None => rest.to_string(),
+    })
 }
 
 /// The upstream URL for an inbound request.
@@ -160,7 +262,13 @@ pub async fn proxy_handler(State(state): State<Arc<GatewayState>>, request: Requ
         Err(detail) => return worker_unavailable(&state, detail),
     };
 
+    let inbound_host = parts.headers.get(HOST).cloned();
+    let peer = parts
+        .extensions
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ConnectInfo(addr)| *addr);
     let mut headers = forwardable_headers(&parts.headers);
+    apply_forwarded(&mut headers, inbound_host.as_ref(), peer);
     let plan = body_plan(&parts.headers);
     let upstream_body = match plan {
         BodyPlan::Empty => {
@@ -187,7 +295,10 @@ pub async fn proxy_handler(State(state): State<Arc<GatewayState>>, request: Requ
         }
     };
 
-    let mut request = state.client().request(parts.method, url).headers(headers);
+    let mut request = state
+        .proxy_client()
+        .request(parts.method, url)
+        .headers(headers);
     if let Some(body) = upstream_body {
         request = request.body(body);
     }
@@ -204,10 +315,25 @@ pub async fn proxy_handler(State(state): State<Arc<GatewayState>>, request: Requ
 
     let status = StatusCode::from_u16(response.status().as_u16())
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    let gateway = gateway_origin(inbound_host.as_ref());
     let mut builder = Response::builder().status(status);
     for (name, value) in response.headers().iter() {
         if is_hop_by_hop(name) {
             continue;
+        }
+        // A 3xx is passed through whole — status, `Set-Cookie`, `Location` —
+        // and only an absolute `Location` naming the internal worker is
+        // rewritten, so the browser is sent back to the front door.
+        if name == LOCATION {
+            if let Some(rewritten) = value
+                .to_str()
+                .ok()
+                .and_then(|raw| rewrite_location(raw, &origin, gateway.as_deref()))
+                .and_then(|rewritten| HeaderValue::from_str(&rewritten).ok())
+            {
+                builder = builder.header(LOCATION, rewritten);
+                continue;
+            }
         }
         builder = builder.header(name.clone(), value.clone());
     }
@@ -332,6 +458,102 @@ mod tests {
             "application/json"
         )])));
         assert!(!needs_buffering_hint(&HeaderMap::new()));
+    }
+
+    #[test]
+    fn the_forwarded_facts_replace_whatever_the_caller_claimed() {
+        let mut out = headers(&[
+            ("x-forwarded-for", "203.0.113.9"),
+            ("x-forwarded-host", "evil.example"),
+            ("x-forwarded-proto", "https"),
+        ]);
+        apply_forwarded(
+            &mut out,
+            Some(&header_value("127.0.0.1:4825")),
+            Some("127.0.0.1:51000".parse().expect("addr")),
+        );
+        assert_eq!(
+            out.get_all(FORWARDED_FOR).iter().count(),
+            1,
+            "the claimed chain is replaced, not appended to"
+        );
+        assert_eq!(
+            out.get(FORWARDED_FOR).and_then(|v| v.to_str().ok()),
+            Some("127.0.0.1")
+        );
+        assert_eq!(
+            out.get(FORWARDED_HOST).and_then(|v| v.to_str().ok()),
+            Some("127.0.0.1:4825")
+        );
+        assert_eq!(
+            out.get(FORWARDED_PROTO).and_then(|v| v.to_str().ok()),
+            Some("http")
+        );
+    }
+
+    #[test]
+    fn an_unknowable_fact_is_left_unstated_rather_than_invented() {
+        let mut out = HeaderMap::new();
+        apply_forwarded(&mut out, None, None);
+        assert!(!out.contains_key(FORWARDED_FOR), "no peer, no claim");
+        assert!(!out.contains_key(FORWARDED_HOST), "no Host, no claim");
+        assert_eq!(
+            out.get(FORWARDED_PROTO).and_then(|v| v.to_str().ok()),
+            Some("http"),
+            "the gateway does know its own scheme"
+        );
+        assert_eq!(gateway_origin(None), None);
+        assert_eq!(gateway_origin(Some(&header_value("  "))), None);
+        assert_eq!(
+            gateway_origin(Some(&header_value("localhost:4825"))),
+            Some("http://localhost:4825".to_string())
+        );
+    }
+
+    #[test]
+    fn only_a_location_naming_the_worker_is_rewritten() {
+        let worker = "http://127.0.0.1:4899";
+        let gateway = Some("http://localhost:4825");
+        assert_eq!(
+            rewrite_location("http://127.0.0.1:4899/app/", worker, gateway).as_deref(),
+            Some("http://localhost:4825/app/")
+        );
+        assert_eq!(
+            rewrite_location("http://127.0.0.1:4899", worker, gateway).as_deref(),
+            Some("http://localhost:4825/"),
+            "a bare origin still names a path"
+        );
+        assert_eq!(
+            rewrite_location("http://127.0.0.1:4899/a?b=1", worker, gateway).as_deref(),
+            Some("http://localhost:4825/a?b=1")
+        );
+        // A trailing slash on the configured origin must not change the answer.
+        assert_eq!(
+            rewrite_location(
+                "http://127.0.0.1:4899/app/",
+                "http://127.0.0.1:4899/",
+                gateway
+            )
+            .as_deref(),
+            Some("http://localhost:4825/app/")
+        );
+        // Relative — the browser already resolves it against the front door.
+        assert_eq!(rewrite_location("/app#/chat", worker, gateway), None);
+        // Somewhere else entirely (an OIDC provider): not this hop's business.
+        assert_eq!(
+            rewrite_location("https://idp.example/authorize", worker, gateway),
+            None
+        );
+        // A prefix that is not an origin boundary must not match.
+        assert_eq!(
+            rewrite_location("http://127.0.0.1:48990/app", worker, gateway),
+            None
+        );
+        // No Host to rebuild from: drop the origin, keep the target.
+        assert_eq!(
+            rewrite_location("http://127.0.0.1:4899/app/", worker, None).as_deref(),
+            Some("/app/")
+        );
     }
 
     #[test]

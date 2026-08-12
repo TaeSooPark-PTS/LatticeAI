@@ -10,6 +10,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::in_set;
 use crate::policy::ToolPolicy;
 
 pub const CHANGE_READ: &str = "read";
@@ -85,10 +86,6 @@ pub const MUTATING_TOOL_INVENTORY: [(&str, &str); 26] = [
 /// Tools whose existing-content update the proposal service can stage *and*
 /// apply. A `proposal_required` tool outside this set is blocked, not applied.
 pub const PROPOSAL_CAPABLE_TOOLS: [&str; 2] = ["edit_file", "write_file"];
-
-fn in_set(set: &[&str], name: &str) -> bool {
-    set.binary_search(&name).is_ok()
-}
 
 /// One call's change class and proposal requirement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

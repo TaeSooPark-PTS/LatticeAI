@@ -22,6 +22,24 @@ def _store(tmp_path: Path) -> KnowledgeGraphStore:
     return KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
 
 
+def _v2_drift(store: KnowledgeGraphStore) -> dict:
+    """Legacy vs. v2 id sets, read straight from the tables.
+
+    The dual-write invariant is that both id sets match exactly; a non-empty
+    difference means some write path bypassed ``_upsert_node``/``_upsert_edge``
+    or a delete was not mirrored.
+    """
+    with store._connect() as conn:
+        legacy_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes")}
+        v2_nodes = {r[0] for r in conn.execute("SELECT id FROM nodes_v2")}
+        legacy_edges = {r[0] for r in conn.execute("SELECT id FROM edges")}
+        v2_edges = {r[0] for r in conn.execute("SELECT id FROM edges_v2")}
+    return {
+        "nodes": legacy_nodes ^ v2_nodes,
+        "edges": legacy_edges ^ v2_edges,
+    }
+
+
 def test_local_folder_index_emits_scoped_brain_ingestion_event():
     events = []
     indexed = {}
@@ -377,8 +395,8 @@ def test_index_local_folder_marks_missing_files_deleted(tmp_path):
 
     assert result["counts"]["deleted"] == 1
     assert store.stats()["local_file_status"]["deleted"] == 1
-    rep = store._v2_sync_report()
-    assert rep.get("in_sync", False), f"v2 drift after reindex-delete: {rep}"
+    drift = _v2_drift(store)
+    assert drift == {"nodes": set(), "edges": set()}, f"v2 drift after reindex-delete: {drift}"
 
 
 def test_set_local_source_watch_updates_source(tmp_path):
@@ -411,5 +429,7 @@ def test_remove_local_source_removes_only_derived_index(tmp_path):
     assert store.stats()["local_sources"] == 0
 
     # explicit drift assertion for local-folder delete/reindex/remove paths
-    rep = store._v2_sync_report()
-    assert rep.get("in_sync", False), f"v2 drift after remove_local_source: {rep}"
+    drift = _v2_drift(store)
+    assert drift == {"nodes": set(), "edges": set()}, (
+        f"v2 drift after remove_local_source: {drift}"
+    )

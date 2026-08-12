@@ -8,7 +8,7 @@
 진입점: app_factory.py:AGENT_RUNTIME (wiring root), api/agents.py, RunExecutor.
 
 Before this module the agent concern was spread across three places: the
-:class:`~latticeai.core.multi_agent.MultiAgentOrchestrator` (role pipeline),
+:class:`~lattice_brain.runtime.multi_agent.MultiAgentOrchestrator` (role pipeline),
 the :class:`~latticeai.services.platform_runtime.PlatformRuntime` (cross-system
 wiring + an ad-hoc ``run_agent``), and ``api/agents.py`` (HTTP transport that
 also owned orchestration + persistence + audit). The frontend reached past all

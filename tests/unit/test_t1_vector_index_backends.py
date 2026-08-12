@@ -196,8 +196,7 @@ def test_brute_force_uses_the_injected_similarity():
 def test_brute_force_add_returns_metadata_and_remove_forgets_it():
     index = BruteForceIndex()
     index.add("a", [1.0], {"item_type": "chunk"})
-    assert index.metadata_for("a") == {"item_type": "chunk"}
-    assert index.metadata_for("missing") == {}
+    assert index._metadata["a"] == {"item_type": "chunk"}
     index.remove("a")
     index.remove("a")  # removing twice is not an error
     assert index.search([1.0], 5) == []
@@ -248,7 +247,7 @@ def test_quantized_is_exhaustive_but_admits_its_scores_are_estimates():
     )
     assert stats.size == 1 and stats.dim == 2
     assert "8-bit" in (stats.detail or "")
-    assert index.metadata_for("a") == {"item_type": "node"}
+    assert index._metadata["a"] == {"item_type": "node"}
 
 
 def test_quantized_honours_the_floor_and_forgets_removed_ids():
@@ -309,7 +308,7 @@ def test_hnsw_ranks_neighbours_and_reports_approximation(fake_hnswlib):
     assert index.available is True
     assert (index.approx, index.exhaustive) == (True, False)
     assert index.stats().size == 2
-    assert index.metadata_for("near") == {"item_type": "node"}
+    assert index._metadata["near"] == {"item_type": "node"}
 
 
 def test_hnsw_honours_the_score_floor(fake_hnswlib):

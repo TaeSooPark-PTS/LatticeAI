@@ -28,6 +28,11 @@ pub const SAFETY_OFF_FLAGS: [&str; 6] = [
 /// (`latticeai/core/config.py`, parsed as a comma-separated list).
 pub const CSRF_TRUSTED_ORIGINS_ENV: &str = "LATTICEAI_CSRF_TRUSTED_ORIGINS";
 
+/// Browser origins the worker will answer *cross-origin* requests from
+/// (`latticeai/core/config.py` → `cors_extra_origins`, additive to the
+/// worker's own origin).
+pub const CORS_ALLOWED_ORIGINS_ENV: &str = "LATTICEAI_CORS_ALLOWED_ORIGINS";
+
 /// Opens the worker's AI-worker seam (`/agent/llm`, `/agent/tool`,
 /// `/agent/change-proposal`) for the native loop orchestrator.
 ///
@@ -51,6 +56,28 @@ pub const AGENT_TOOL_SEAM_ENV: &str = "LATTICEAI_AGENT_TOOL_SEAM";
 /// spellings a browser can produce for loopback.
 pub fn csrf_trusted_origins(gateway_port: u16) -> String {
     format!("http://127.0.0.1:{gateway_port},http://localhost:{gateway_port}")
+}
+
+/// The origins a worker must answer *cross-origin* requests from to be usable
+/// through a front door.
+///
+/// The CSRF injection above fixes cookie-authenticated writes from a page the
+/// gateway served. This fixes the other half: a caller on a **different**
+/// origin — the browser extension, the VS Code extension, any local tool —
+/// sends a preflight, and `CORSMiddleware`'s allowlist is built from the
+/// *worker's* own port, so the gateway port it was pointed at was rejected with
+/// no `Access-Control-Allow-Origin` at all. In the desktop topology the gateway
+/// owns 4825, the port those clients have always used, so this is the one that
+/// makes them keep working.
+///
+/// Three spellings, because all three are what a browser can produce for
+/// loopback: `[::1]` is added here and not in the CSRF list only because the
+/// worker folds its CORS allowlist into the CSRF trust set anyway
+/// (`runtime/web_runtime.py`), so naming it once covers both.
+pub fn cors_allowed_origins(gateway_port: u16) -> String {
+    format!(
+        "http://127.0.0.1:{gateway_port},http://localhost:{gateway_port},http://[::1]:{gateway_port}"
+    )
 }
 
 /// `~/.ltcai`, the directory that holds logs and the desktop runtime.
@@ -148,6 +175,10 @@ pub fn worker_env(
         env.push((
             CSRF_TRUSTED_ORIGINS_ENV.into(),
             csrf_trusted_origins(gateway_port),
+        ));
+        env.push((
+            CORS_ALLOWED_ORIGINS_ENV.into(),
+            cors_allowed_origins(gateway_port),
         ));
     }
     env.push(("PATH".into(), worker_path(probe)));
@@ -254,6 +285,11 @@ mod tests {
             None,
             "the direct topology has no second origin to trust"
         );
+        assert_eq!(
+            lookup(&env, CORS_ALLOWED_ORIGINS_ENV),
+            None,
+            "…and no second origin to answer cross-origin either"
+        );
     }
 
     #[test]
@@ -262,6 +298,29 @@ mod tests {
             csrf_trusted_origins(41234),
             "http://127.0.0.1:41234,http://localhost:41234"
         );
+    }
+
+    /// The other half of the front-door unblocker: a preflight from the gateway
+    /// origin used to come back 400 with no `Access-Control-Allow-Origin`,
+    /// which in the desktop topology means the browser extension and the VS
+    /// Code extension — both pointed at 4825, the port the *gateway* now owns.
+    #[test]
+    fn a_fronted_worker_answers_cross_origin_calls_from_the_gateway() {
+        let env = worker_env(&command(), 4899, Some(4825), None, &StaticProbe::new());
+        assert_eq!(
+            lookup(&env, CORS_ALLOWED_ORIGINS_ENV),
+            Some("http://127.0.0.1:4825,http://localhost:4825,http://[::1]:4825"),
+            "every spelling a browser can produce for the gateway port"
+        );
+        assert_eq!(
+            cors_allowed_origins(41234),
+            "http://127.0.0.1:41234,http://localhost:41234,http://[::1]:41234"
+        );
+        assert!(
+            !SAFETY_OFF_FLAGS.contains(&CORS_ALLOWED_ORIGINS_ENV),
+            "this names loopback origins; LATTICEAI_CORS_ALLOW_NETWORK stays off"
+        );
+        assert_eq!(lookup(&env, "LATTICEAI_CORS_ALLOW_NETWORK"), Some("false"));
     }
 
     #[test]

@@ -197,9 +197,10 @@ def test_export_to_file_roundtrips_through_import_from_file(tmp_path):
     assert Path(explicit["path"]) == tmp_path / "explicit.json"
 
     dst = KnowledgeGraphStore(tmp_path / "dst.sqlite", tmp_path / "dst-blobs")
+    artifact = json.loads((tmp_path / "explicit.json").read_text(encoding="utf-8"))
     result = KGPortabilityService(
         knowledge_graph=dst, data_dir=tmp_path / "dst-data"
-    ).import_from_file(tmp_path / "explicit.json")
+    ).import_data(artifact)
     assert result["imported"] is True
     assert result["origin"] == "unsigned-legacy"
     assert sum(dst.stats().get("nodes", {}).values()) >= 1

@@ -76,6 +76,7 @@ def test_the_manifest_still_describes_the_current_grid(rebuilt: dict):
     assert len(manifest["normalization"]) == 4, "both sides apply four rules"
     assert manifest["constants"]["max_state_history"] == 200
     assert manifest["constants"]["max_retry"] == 3
+    assert manifest["constants"]["compact_max_params_b"] == 4.0
 
 
 def test_the_grid_is_wide_enough_to_be_worth_running():
@@ -85,6 +86,9 @@ def test_the_grid_is_wide_enough_to_be_worth_running():
     assert len(fixtures.PLAN_CASES) >= 20
     assert len(fixtures.INFERENCE_MESSAGES) >= 20
     assert len(fixtures.SCENARIOS) >= 7
+    assert len(fixtures.DOCUMENT_TARGET_CASES) >= 15
+    assert len(fixtures.PROFILE_MODEL_IDS) >= 15
+    assert len(fixtures.PROFILE_OVERRIDES) >= 5
     assert len(_golden("verification.json")["cases"]) >= 88
     assert len(_golden("helpers.json")["extract_action_details"]) == len(fixtures.RAW_ACTIONS)
 
@@ -115,6 +119,8 @@ def test_the_policy_table_is_the_real_registry(rebuilt: dict):
         "transcript_helpers",
         "truncate_strings",
         "filter_learnings",
+        "document_targets",
+        "agent_profiles",
         "budgets",
     ],
 )

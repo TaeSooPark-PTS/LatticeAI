@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v11.5.1 Living Brain walkthrough](output/release/v11.5.1/gifs/v11.5.1-living-brain-walkthrough.gif)
+![v11.5.2 Living Brain walkthrough](output/release/v11.5.2/gifs/v11.5.2-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.5.1/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.5.1/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.5.1/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.5.1/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.5.1/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.5.1/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.5.1/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.5.1/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.5.2/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.5.2/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.5.2/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.5.2/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.5.2/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.5.2/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.5.2/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.5.2/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,63 +58,94 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v11.5.1/screenshots/01-login.png) | ![Model install](output/release/v11.5.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.5.1/screenshots/07-model-library.png) |
+| ![Login](output/release/v11.5.2/screenshots/01-login.png) | ![Model install](output/release/v11.5.2/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.5.2/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v11.5.1/SCREENSHOT_INDEX.md](output/release/v11.5.1/SCREENSHOT_INDEX.md)
+[output/release/v11.5.2/SCREENSHOT_INDEX.md](output/release/v11.5.2/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **11.5.1 — Rust Full Loop**:
+The current release is **11.5.2 — Tight Ship**:
 
-The two explicitly-remaining items are done: the agent loop orchestrator
-now runs in Rust — proven by replaying the real Python runtime on scripted
-LLM transcripts (**10 trajectories, byte-identical**) and by a live smoke
-against the real worker — and the document-generation context builder is
-native (53 new goldens, 247 total). Every Rust box in the target diagram
-is implemented; Python remains exactly the AI Worker that diagram draws:
-LLM inference, tool-handler execution, and all graph writes behind three
-new fully-covered worker seams with server-side circuit breakers intact.
+A cleanup-and-correctness release built from three audits of the settled
+11.5.1 tree — a Rust↔Python duplication map, an arc-level dead-code and
+test audit, and a live front-door parity sweep across 192 endpoints
+(gateway vs. direct worker). The duplication map's verdict was that the
+boundary itself is sound: **zero cross-boundary deletions**, because every
+twin is either the live Python-direct surface or a copy pinned by a parity
+golden. The real duplication was inside each language, and that is what
+this release removes.
 
-- **The desktop's front door is now the Rust gateway.** The Tauri shell
-  boots the supervisor + gateway topology by default and the webview
-  lives at the gateway origin. The one real blocker — a CSRF policy
-  bound to the worker's own port — is dissolved by environment
-  injection, proven live against the real Python worker (trusted
-  origins 200, foreign origins 403). Three escape hatches preserve the
-  previous topologies.
-- **The native surface grew fourfold.** `lattice-retrieval` now serves
-  the three-channel service search, graph reads (search /
-  relationships / traverse), the full history read family, and the
-  chat context assembler — **191/191 exact-parity goldens, zero
-  epsilon**. `lattice-ingest` carries the typed chunker (332 golden
-  chunks, and a 26/26 mutation-test pass proving every constant
-  load-bearing) plus the polling folder watcher; writes stay delegated
-  to the worker, the single writer. `lattice-agent` carries the
-  permission kernel — **2,452 exact decision-table verdicts** — and
-  natively executes only validated read-only commands in a replaced
-  environment. `lattice-jobs` closes a documented gap: the durable
-  embed queue now has a scheduler (60s ticks, honest backoff,
-  `/host/jobs` status) driving a new fully-covered drain endpoint.
-- **The honest boundary, stated.** The Python worker keeps the document
-  parser matrix, embedding production, LLM inference, mutating tool
-  execution, and all graph writes. The agent loop orchestration port
-  remains for a future release, for reasons written down in the plan.
+- **About 1,100 lines gone.** Six moved-module shims, a multimodal
+  streaming seam that was never wired, roughly 27 zero-caller symbols
+  whose only callers were their own tests, an interface method
+  (`metadata_for`) no consumer ever called, a dead measurement script,
+  and the **legacy Electron shell** — superseded by Tauri, yet still
+  shipping inside the npm tarball. Every deletion came with per-assertion
+  test surgery so the 100% line **and** branch floor never moved, and a
+  new guard forbids the `sys.modules[__name__]` shim pattern from coming
+  back. The 183 coverage work-package test files were all verified
+  load-bearing (ten of them are the sole owners of 79 branch arcs); seven
+  coverage-redundant feature tests were deliberately kept for their
+  regression value.
+- **One home per thing.** The byte-identical embedder pair is
+  single-sourced on the golden-pinned copy — silent vector drift between
+  two write paths was the failure mode. The workspace selector's four
+  verbatim re-derivations now use the canonical rule, an intended
+  behaviour change: chat, agent, upload, computer-use and admin **403 on
+  disagreement** where the copies silently preferred the header. sha256,
+  SSE frame builders, the data-dir default, the mode services and the
+  module-importability probe each collapsed to one implementation, and
+  seven byte-identical Rust copies were consolidated (including a
+  wholesale duplicate of `clock.rs`).
+- **The front door, fixed with live before/after proof.** Proxied
+  redirects now pass through with `Set-Cookie` and `Location` intact —
+  the invite gate was a hard dead-end, SSO login silently never
+  authenticated, and twelve deep links lost their fragment. Absolute
+  `Location` values naming the internal worker are rewritten to the
+  gateway origin. The native `/rust/*` and `/host/status|jobs` lanes are
+  **posture-gated fail-closed**: they used to serve the whole graph
+  unauthenticated while the worker required auth. `X-Forwarded-For/Proto/
+  Host` cross the hop and are honoured only from a loopback or listed
+  trusted-proxy peer, which fixes `--no-spawn` CSRF refusals and the
+  invite links, notifications and SSO URLs that named the internal worker
+  port. The supervisor injects CORS origins alongside the CSRF ones,
+  stale `ws://` CSP entries are gone, and the Tauri shell no longer
+  navigates to a dead origin when the gateway fails to bind.
+- **What the audits surfaced.** `POST /api/search/graph` was allow-listed
+  but unreachable until now; `GET /api/ingestion/multimodal` was
+  documented but unwired. Two golden families were added: a `recent_chat`
+  family pinning the `build_recent_chat_context` the live `/chat` path
+  actually calls — it caught a real divergence, where Python's `limit=0`
+  tail slice keeps everything and Rust returned empty (**Python is the
+  reference; Rust was fixed**) — plus `document_targets` and
+  `agent_profiles` helper goldens, 97 rows. The corpus stands at **251
+  golden files**.
+- **The boundaries, stated plainly.** The native lanes are an
+  open-posture, single-local-owner surface (a closed or unknown posture
+  answers 401). The recent-chat context seam is still owned by the ad-hoc
+  prepends in `/chat` rather than the assembler — wiring it changes the
+  shape of a live prompt, which is a minor-release item, not something to
+  ship quietly here. `workspace_scope_from_request` itself remains
+  lenient for its two remaining callers. And the proxy hop deliberately
+  carries no request timeout: a blanket timeout would kill long-lived SSE.
 
-All of it lands with the floor intact: **6,861 Python + 1,761 frontend
-tests at 100.00% statement and branch coverage — now 7,006 Python +
-1,761 frontend — and 739 Rust workspace tests**, four bidirectional golden families, mypy/ruff/clippy clean,
-verified on macOS 3.14 and a fresh-resolve python 3.11 environment.
+The floor holds: **7,022 Python tests (11 skipped) at 100.00% statement
+and branch coverage — 40,307 statements, 10,970 branches, `fail_under=100`
+with the pragma budget untouched — 1,761 frontend tests across 101 files
+at 100% on all four metrics, and 760 Rust workspace tests**, with the
+OpenAPI schema regenerated at 421 paths and the whole suite re-verified in
+a fresh-resolve Python 3.11 environment.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 11.5.1 release must use exact filenames:
+Expected artifacts for 11.5.2 release must use exact filenames:
 
-- `dist/ltcai-11.5.1-py3-none-any.whl`
-- `dist/ltcai-11.5.1.tar.gz`
-- `ltcai-11.5.1.tgz`
-- `dist/ltcai-11.5.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.1_aarch64.dmg`
+- `dist/ltcai-11.5.2-py3-none-any.whl`
+- `dist/ltcai-11.5.2.tar.gz`
+- `ltcai-11.5.2.tgz`
+- `dist/ltcai-11.5.2.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.2_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -149,6 +180,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 11.5.2 | Tight Ship |
 | 11.5.1 | Rust Full Loop |
 | 11.5.0 | Rust Complete |
 | 11.4.0 | Rust Foundation |

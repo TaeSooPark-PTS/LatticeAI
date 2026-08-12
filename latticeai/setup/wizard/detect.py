@@ -21,6 +21,8 @@ from latticeai.services.setup_detection import (
     detect_cuda,
     detect_tools,
     detect_wsl_from_text,
+    parse_windows_cpu_info,
+    windows_processor_features,
 )
 from latticeai.services.setup_detection import (
     parse_windows_video_controllers as _parse_windows_video_controllers,
@@ -98,33 +100,10 @@ def _detect_cpu() -> Dict[str, Any]:
             quiet()
     elif platform.system() == "Windows":
         raw = _cmd(["wmic", "cpu", "get", "Name,NumberOfCores,NumberOfLogicalProcessors", "/format:list"], timeout=5)
-        for line in raw.splitlines():
-            key, _, value = line.partition("=")
-            if key == "Name" and value.strip():
-                model = value.strip()
-            elif key == "NumberOfCores" and value.strip():
-                try:
-                    physical_cores = int(value.strip())
-                except ValueError:
-                    quiet()
-            elif key == "NumberOfLogicalProcessors" and value.strip():
-                try:
-                    logical_cores = int(value.strip())
-                except ValueError:
-                    quiet()
-        try:
-            import ctypes
-            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]  # Windows-only
-            feature_map = {
-                6: "sse",
-                10: "sse2",
-                13: "sse3",
-                19: "neon",
-                28: "rdrand",
-            }
-            flags.extend(name for code, name in feature_map.items() if kernel32.IsProcessorFeaturePresent(code))
-        except Exception:
-            quiet()
+        model, physical_cores, logical_cores = parse_windows_cpu_info(
+            raw, model=model, physical_cores=physical_cores, logical_cores=logical_cores,
+        )
+        flags.extend(windows_processor_features())
     interesting = {"avx", "avx2", "avx512f", "fma", "neon", "sse4_2"}
     if platform.system() == "Windows":
         interesting.update({"sse", "sse2", "sse3", "rdrand"})

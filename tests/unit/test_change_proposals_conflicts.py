@@ -68,6 +68,28 @@ def _service(tmp_path):
     return ChangeProposalService(review_queue=queue, resolve_path=resolve), queue
 
 
+def _stage_delete(queue, path: str, base_content: str):
+    """Stage a ``file_delete`` proposal the way a client does.
+
+    There is no Python-side factory for delete proposals: they are created
+    through ``POST /automation/reviews`` (the frontend's proposal-rebase flow
+    is the live producer), so the tests stage them at that same seam — base
+    snapshot included, since the conflict check is what is under test.
+    """
+    return queue.create(
+        title=f"파일 삭제 제안: {path}",
+        summary="",
+        source="change_proposal",
+        kind="file_delete",
+        payload={
+            "path": path,
+            "tier": "large",
+            "base_exists": True,
+            "base_sha256": _sha(base_content),
+        },
+    )
+
+
 # ── base snapshot stored at propose time ─────────────────────────────────
 
 def test_update_proposal_stores_base_snapshot(tmp_path):
@@ -87,15 +109,6 @@ def test_new_file_proposal_marks_base_missing_explicitly(tmp_path):
     # explicit sentinel — not the hash of the empty string
     assert payload["base_sha256"] == ""
     assert payload["base_sha256"] != _sha("")
-
-
-def test_delete_proposal_stores_base_snapshot(tmp_path):
-    (tmp_path / "gone.txt").write_text("bye", encoding="utf-8")
-    service, _ = _service(tmp_path)
-    item = service.propose_file_delete(path="gone.txt")
-    payload = item["payload"]
-    assert payload["base_exists"] is True
-    assert payload["base_sha256"] == _sha("bye")
 
 
 # ── approve-time conflict detection (update) ─────────────────────────────
@@ -182,7 +195,7 @@ def test_new_file_proposal_conflicts_when_file_appeared(tmp_path):
 def test_delete_proposal_conflicts_when_modified_after_proposal(tmp_path):
     (tmp_path / "gone.txt").write_text("bye", encoding="utf-8")
     service, queue = _service(tmp_path)
-    item = service.propose_file_delete(path="gone.txt")
+    item = _stage_delete(queue, "gone.txt", "bye")
     (tmp_path / "gone.txt").write_text("actually keep me", encoding="utf-8")
 
     with pytest.raises(ProposalConflictError) as excinfo:
@@ -194,8 +207,8 @@ def test_delete_proposal_conflicts_when_modified_after_proposal(tmp_path):
 
 def test_delete_proposal_unchanged_still_applies(tmp_path):
     (tmp_path / "gone.txt").write_text("bye", encoding="utf-8")
-    service, _ = _service(tmp_path)
-    item = service.propose_file_delete(path="gone.txt")
+    service, queue = _service(tmp_path)
+    item = _stage_delete(queue, "gone.txt", "bye")
     result = service.approve_and_apply(item["id"])
     assert result["applied"] is True
     assert not (tmp_path / "gone.txt").exists()

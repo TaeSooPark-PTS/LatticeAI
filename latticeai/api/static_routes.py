@@ -25,7 +25,10 @@ PRODUCTION_CSP = (
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob: http://127.0.0.1:*; "
     "font-src 'self' data:; "
-    "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; "
+    # No `ws:`: this product has no WebSocket endpoint anywhere. The live
+    # surfaces (chat, agent steps, index progress) are server-sent events, read
+    # with fetch/ReadableStream, which `connect-src` already covers over http.
+    "connect-src 'self' http://127.0.0.1:*; "
     "frame-src 'none'; "
     "object-src 'none'; "
     "base-uri 'none'; "

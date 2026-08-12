@@ -1,7 +1,8 @@
 """wp32 coverage — model compatibility: family detection, the Gemma 4 runtime
 signal, output post-processing, and smoke-test classification.
 
-Every runtime probe goes through ``importlib.util.find_spec``, which is patched
+Every runtime probe goes through ``module_probe.module_available``, whose
+``importlib.util.find_spec`` is patched
 per test: the MLX stack is darwin-only, so a test that asked the real
 interpreter would pass on a laptop and skip on CI. Patching the probe makes
 each branch execute identically everywhere.
@@ -13,7 +14,7 @@ import json
 
 import pytest
 
-from latticeai.core import model_compat
+from latticeai.core import model_compat, module_probe
 from latticeai.core.model_compat import (
     DEFAULT_STOP,
     _local_model_type,
@@ -76,7 +77,7 @@ def test_local_model_type_survives_an_unreadable_config(tmp_path):
 
 
 def test_compatibility_normalizes_the_engine_and_strips_the_load_prefix(monkeypatch):
-    monkeypatch.setattr(model_compat.importlib.util, "find_spec", _find_spec())
+    monkeypatch.setattr(module_probe.importlib.util, "find_spec", _find_spec())
     monkeypatch.setattr(model_compat, "_local_model_type", lambda _model_id: None)
 
     payload = model_runtime_compatibility("mlx:mlx-community/gemma-4-12b-it-4bit", "mlx")
@@ -87,7 +88,7 @@ def test_compatibility_normalizes_the_engine_and_strips_the_load_prefix(monkeypa
 
 
 def test_compatibility_reports_runtime_not_installed_and_offers_gguf(monkeypatch):
-    monkeypatch.setattr(model_compat.importlib.util, "find_spec", _find_spec())
+    monkeypatch.setattr(module_probe.importlib.util, "find_spec", _find_spec())
     monkeypatch.setattr(model_compat, "_local_model_type", lambda _model_id: None)
 
     payload = model_runtime_compatibility("mlx-community/gemma-4-12b-it-4bit", "local_mlx")
@@ -103,7 +104,7 @@ def test_compatibility_reports_runtime_not_installed_and_offers_gguf(monkeypatch
 
 def test_compatibility_falls_back_to_mlx_lm_when_only_vlm_is_missing(monkeypatch):
     monkeypatch.setattr(
-        model_compat.importlib.util, "find_spec",
+        module_probe.importlib.util, "find_spec",
         _find_spec("mlx", "mlx_lm", "mlx_lm.models.gemma4"),
     )
     monkeypatch.setattr(model_compat, "_local_model_type", lambda _model_id: "gemma4")
@@ -119,7 +120,7 @@ def test_compatibility_falls_back_to_mlx_lm_when_only_vlm_is_missing(monkeypatch
 
 
 def test_a_supported_model_reports_a_plain_load_failure(monkeypatch):
-    monkeypatch.setattr(model_compat.importlib.util, "find_spec", _find_spec())
+    monkeypatch.setattr(module_probe.importlib.util, "find_spec", _find_spec())
 
     detail = friendly_model_runtime_error(
         RuntimeError("weights not found"), model_id="ollama:llama3.1", engine="ollama",

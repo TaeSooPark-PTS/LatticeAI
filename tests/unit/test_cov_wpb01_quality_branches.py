@@ -1,14 +1,13 @@
 """wpb01 branch coverage — ``lattice_brain.quality``.
 
-Drives the never-taken direction of five decisions in the quality layer:
+Drives the never-taken direction of the quality layer's decisions:
 
 * the reranker's "candidate already carries a ``score``" path (no fused_score
   back-fill),
-* the *losing* side of the two keep-the-best reducers (``merge`` by content
-  prefix and ``merge_duplicate_edges`` by (source, target, type)), which are
-  the branches that actually prove the reducers keep the winner,
-* and the empty-payload walk through :meth:`LatticeBrainQuality.full_quality_pass`,
-  where every optional section is absent.
+* the *losing* side of the keep-the-best ``merge`` reducer (by content
+  prefix), which is the branch that actually proves the reducer keeps the
+  winner,
+* and the duplicate-hit side of ``detect_duplicate_edges``.
 """
 
 from __future__ import annotations
@@ -20,7 +19,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from lattice_brain.quality import (  # noqa: E402
     GraphEdgeQualityManager,
-    LatticeBrainQuality,
     MemoryCandidate,
     MemoryQualityManager,
     RerankerInterface,
@@ -53,29 +51,12 @@ def test_merge_keeps_the_higher_scoring_candidate_for_a_shared_prefix() -> None:
     assert merged[0].score == 0.9
 
 
-def test_merge_duplicate_edges_discards_the_lower_confidence_duplicate() -> None:
+def test_detect_duplicate_edges_flags_the_second_edge_on_a_shared_key() -> None:
     edges = [
         {"id": "e1", "source": "a", "target": "b", "type": "rel", "confidence": 0.9},
         {"id": "e2", "source": "a", "target": "b", "type": "rel", "confidence": 0.3},
     ]
 
     manager = GraphEdgeQualityManager()
-    merged = manager.merge_duplicate_edges(edges)
 
-    assert [e["id"] for e in merged] == ["e1"]
     assert manager.detect_duplicate_edges(edges) == ["e2"]
-
-
-def test_full_quality_pass_on_an_empty_payload_returns_only_the_envelope() -> None:
-    """No optional section present: every stage is skipped, status stays ok."""
-    result = LatticeBrainQuality().full_quality_pass({})
-
-    assert result["status"] == "ok"
-    assert isinstance(result["timestamp"], float)
-    assert set(result) == {"status", "timestamp"}
-
-
-def test_full_quality_pass_ignores_unrelated_payload_keys() -> None:
-    result = LatticeBrainQuality().full_quality_pass({"unrelated": [1, 2, 3]})
-
-    assert set(result) == {"status", "timestamp"}

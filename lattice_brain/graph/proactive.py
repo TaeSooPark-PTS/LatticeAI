@@ -644,7 +644,7 @@ def gate_ingest_candidate(
     """Score whether new content should be ingested into the graph.
 
     Pure function — no store access, no side effects. Intended adoption point
-    for the ingestion pipeline (``services/ingestion.py`` /
+    for the ingestion pipeline (``lattice_brain.ingestion`` /
     ``lattice_brain.graph.ingest``), which passes a closure over its own
     scoped search, e.g.::
 

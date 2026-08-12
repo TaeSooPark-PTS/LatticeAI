@@ -142,9 +142,6 @@ class VectorIndex(Protocol):
     def rebuild(self, items: Iterable[IndexItem]) -> None:
         raise NotImplementedError
 
-    def metadata_for(self, id: str) -> Dict[str, Any]:
-        raise NotImplementedError
-
     def search(
         self,
         query: Sequence[float],

@@ -18,10 +18,18 @@ from latticeai.services.model_capability_registry import (
     get_all_capabilities,
     get_capability,
     get_legacy_capabilities,
-    get_recommended_capabilities,
     is_recognized_model,
-    is_recommended_model,
 )
+
+
+def _recommended():
+    """The current-generation slice of the registry.
+
+    The registry exposes the whole list and the legacy list; "recommended" is
+    the lifecycle field, so the tests derive it rather than the product
+    carrying an accessor only tests called.
+    """
+    return [c for c in get_all_capabilities() if c.lifecycle == RECOMMENDED]
 
 # ── the two lists ─────────────────────────────────────────────────────────────
 
@@ -46,7 +54,7 @@ def test_deleted_models_are_gone_from_every_list():
 
 
 def test_recognized_and_recommended_are_separate_lists():
-    recommended = get_recommended_capabilities()
+    recommended = _recommended()
     legacy = get_legacy_capabilities()
 
     assert all(c.lifecycle == RECOMMENDED for c in recommended)
@@ -57,14 +65,14 @@ def test_recognized_and_recommended_are_separate_lists():
     # A superseded model already on disk stays recognised but is never offered.
     superseded = "mlx-community/Qwen3-VL-8B-Instruct-4bit"
     assert is_recognized_model(superseded) is True
-    assert is_recommended_model(superseded) is False
+    assert get_capability(superseded).lifecycle == LEGACY
 
     current = "mlx-community/gemma-4-12B-it-4bit"
     assert is_recognized_model(current) is True
-    assert is_recommended_model(current) is True
+    assert get_capability(current).lifecycle == RECOMMENDED
 
     assert is_recognized_model("nobody/never-existed") is False
-    assert is_recommended_model("nobody/never-existed") is False
+    assert get_capability("nobody/never-existed") is None
 
 
 def test_every_entry_pins_an_architecture_and_a_measured_size():

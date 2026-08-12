@@ -12,12 +12,9 @@ ack is audited. Hard node filters remain in ``latticeai.core.network_boundary``.
 
 from __future__ import annotations
 
-import json
-import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
-from latticeai.core.io_utils import atomic_write_json
 from latticeai.core.network_boundary import (
     DEFAULT_NETWORK_MODE,
     NetworkBoundaryMode,
@@ -25,10 +22,13 @@ from latticeai.core.network_boundary import (
     network_mode_contract,
     normalize_network_mode,
 )
+from latticeai.services.mode_store import JsonBackedModeService
 
 
-class NetworkBoundaryService:
+class NetworkBoundaryService(JsonBackedModeService[NetworkBoundaryMode]):
     """Load / save the network boundary dial."""
+
+    FILENAME = "network_boundary.json"
 
     def __init__(
         self,
@@ -37,36 +37,11 @@ class NetworkBoundaryService:
         default_mode: NetworkBoundaryMode | str = DEFAULT_NETWORK_MODE,
         audit: Optional[Callable[..., None]] = None,
     ) -> None:
-        self._path = Path(data_dir) / "network_boundary.json"
+        super().__init__(data_dir=data_dir, audit=audit)
         self._default = normalize_network_mode(default_mode)
-        self._audit = audit or (lambda *a, **kw: None)
-        self._lock = threading.Lock()
 
-    def rebind_data_dir(self, data_dir: Path) -> None:
-        with self._lock:
-            self._path = Path(data_dir) / "network_boundary.json"
-
-    def rebind_audit(self, audit: Callable[..., None]) -> None:
-        with self._lock:
-            self._audit = audit
-
-    def _read(self) -> Dict[str, Any]:
-        if not self._path.exists():
-            return {"default": self._default.value, "users": {}, "workspaces": {}}
-        try:
-            data = json.loads(self._path.read_text(encoding="utf-8"))
-        except Exception:
-            return {"default": self._default.value, "users": {}, "workspaces": {}}
-        if not isinstance(data, dict):
-            return {"default": self._default.value, "users": {}, "workspaces": {}}
-        data.setdefault("default", self._default.value)
-        data.setdefault("users", {})
-        data.setdefault("workspaces", {})
-        return data
-
-    def _write(self, data: Dict[str, Any]) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(self._path, data)
+    def _default_entry(self) -> Any:
+        return self._default.value
 
     def _resolve_from(
         self,
@@ -84,18 +59,6 @@ class NetworkBoundaryService:
             if user:
                 return normalize_network_mode(user)
         return normalize_network_mode(data.get("default") or self._default)
-
-    def resolve(
-        self,
-        *,
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-    ) -> NetworkBoundaryMode:
-        with self._lock:
-            data = self._read()
-        return self._resolve_from(
-            data, user_email=user_email, workspace_id=workspace_id,
-        )
 
     def get(
         self,

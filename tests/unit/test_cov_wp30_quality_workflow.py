@@ -107,15 +107,13 @@ def test_reranker_falls_back_to_fused_order_when_the_shared_helper_fails(monkeyp
 
 # ── graph edge quality ───────────────────────────────────────────────────────
 
-def test_merge_duplicate_edges_keeps_the_most_confident_edge():
+def test_detect_duplicate_edges_reports_only_the_repeated_key():
     manager = GraphEdgeQualityManager()
     edges = [
         {"id": "e1", "source": "a", "target": "b", "type": "rel", "confidence": 0.2},
         {"id": "e2", "source": "a", "target": "b", "type": "rel", "confidence": 0.9},
         {"id": "e3", "source": "b", "target": "c", "type": "rel"},
     ]
-    merged = manager.merge_duplicate_edges(edges)
-    assert [edge["id"] for edge in merged] == ["e2", "e3"]
     assert manager.detect_duplicate_edges(edges) == ["e2"]
 
 

@@ -1,4 +1,4 @@
-"""T5: Memory System (typed Decision/Experience records) + Context System.
+"""T5: Memory System (typed Experience records) + Context System.
 
 Memory records flow through the unified pipeline (provenance, typed nodes);
 simulation runs are refused at the memory boundary. The ContextAssembler
@@ -19,24 +19,6 @@ def _brain(tmp_path):
 
 
 # ── Memory System ──────────────────────────────────────────────────────────
-
-def test_decision_record_is_typed_node_with_provenance(tmp_path):
-    kg, pipe = _brain(tmp_path)
-    memory = BrainMemory(pipe)
-    result = memory.record_decision(
-        "Use SQLite for the brain store", "evaluated alternatives; local-first wins",
-        user_email="a@b.c", conversation_id="c1",
-    )
-    assert result["status"] == "ok"
-    node_id = result["node_id"]
-    with kg._connect() as conn:
-        row = conn.execute("SELECT type FROM nodes WHERE id=?", (node_id,)).fetchone()
-        v2 = conn.execute("SELECT type FROM nodes_v2 WHERE id=?", (node_id,)).fetchone()
-    assert row["type"] == "Decision"
-    assert v2["type"] == "DECISION"
-    prov = kg.get_provenance(node_id)
-    assert prov is not None and prov["source_type"] == "decision"
-
 
 def test_real_run_becomes_experience(tmp_path):
     kg, pipe = _brain(tmp_path)
@@ -62,10 +44,10 @@ def test_simulation_run_is_refused_as_experience(tmp_path):
     assert "simulation" in result["detail"]
 
 
-def test_decision_requires_title(tmp_path):
+def test_experience_requires_title(tmp_path):
     _, pipe = _brain(tmp_path)
     with pytest.raises(ValueError):
-        BrainMemory(pipe).record_decision("   ")
+        BrainMemory(pipe).record_experience("   ")
 
 
 # ── Context System ─────────────────────────────────────────────────────────

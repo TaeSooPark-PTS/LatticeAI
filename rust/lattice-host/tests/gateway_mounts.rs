@@ -112,7 +112,7 @@ async fn the_graph_namespace_is_answered_natively() {
     assert_eq!(context.status(), 200);
 
     assert_eq!(
-        worker.request_count(),
+        worker.proxied_count(),
         0,
         "nothing under /rust may reach the worker"
     );
@@ -146,7 +146,7 @@ async fn the_ingest_namespace_chunks_without_touching_the_worker() {
         .unwrap_or_default()
         .starts_with("chunk:"));
 
-    assert_eq!(worker.request_count(), 0, "chunking is a local computation");
+    assert_eq!(worker.proxied_count(), 0, "chunking is a local computation");
     gateway.stop().await;
     worker.shutdown();
 }
@@ -186,7 +186,7 @@ async fn the_agent_kernel_answers_its_contract_and_refuses_mutation() {
     assert_eq!(calls.len(), 1, "{decisions}");
     assert!(calls[0].get("auto_approve").is_some(), "{decisions}");
 
-    assert_eq!(worker.request_count(), 0, "the kernel is native");
+    assert_eq!(worker.proxied_count(), 0, "the kernel is native");
     gateway.stop().await;
     worker.shutdown();
 }
@@ -229,7 +229,7 @@ async fn the_agent_loop_routes_are_mounted_and_answer_natively() {
         .expect("request");
     assert_eq!(invalid.status(), 400);
 
-    assert_eq!(worker.request_count(), 0, "the loop routes are native");
+    assert_eq!(worker.proxied_count(), 0, "the loop routes are native");
     gateway.stop().await;
     worker.shutdown();
 }
@@ -337,7 +337,7 @@ async fn an_unmounted_native_path_is_a_404_that_names_the_families() {
     assert_eq!(json(jobs).await["error"], "unknown_host_route");
 
     assert_eq!(
-        worker.request_count(),
+        worker.proxied_count(),
         0,
         "no namespace leaked to the worker"
     );

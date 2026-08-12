@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.5.1 — Rust Full Loop**.
+Current release: **11.5.2 — Tight Ship**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -28,7 +28,7 @@ flowchart TB
 
   subgraph host["Lattice Host — Rust front door (desktop default · opt-in binary)"]
     direction TB
-    gateway["Gateway (axum, loopback-only)<br/>/host/* · /rust/* native · streaming reverse proxy"]
+    gateway["Gateway (axum, loopback-only)<br/>/host/* · /rust/* native — open-posture gated, fail closed<br/>streaming reverse proxy · 3xx + cookies pass intact"]
     subgraph crates["Native crates — every port pinned by bidirectional parity goldens"]
       direction LR
       core_c["lattice-core<br/>storage reads · hash embedder<br/>(bit-for-bit)"]
@@ -38,7 +38,7 @@ flowchart TB
       agentc["lattice-agent<br/>loop orchestrator ·<br/>permission kernel (2,452 verdicts) ·<br/>sandbox · read-only exec"]
       core_c ~~~ retr ~~~ ingest ~~~ jobs ~~~ agentc
     end
-    supervisor["Supervisor<br/>spawn · /health gate · backoff restart ·<br/>graceful stop · unified ports · CSRF origin injection"]
+    supervisor["Supervisor<br/>spawn · /health gate · backoff restart ·<br/>graceful stop · unified ports · CSRF + CORS origin injection"]
     gateway --> crates
     gateway --> supervisor
   end
@@ -72,7 +72,7 @@ flowchart TB
 
   user --> surfaces
   surfaces --> host
-  gateway -- "everything not native<br/>(streaming, SSE)" --> gates
+  gateway -- "everything not native<br/>(streaming, SSE, X-Forwarded-*)" --> gates
   gates --> worker
   agentc -- "plan · execute · verify turns<br/>via the worker seams" --> worker
   jobs -- "drain ticks" --> worker
@@ -131,8 +131,8 @@ Key boundaries:
   `brain_intelligence`, `change_proposals`, ...). The hybrid path is a
   self-contained group inside it (`hybrid_chat`, `hybrid_context`,
   `hybrid_policy`, `cloud_streaming`, `cloud_extraction`, `cloud_token_guard`,
-  `openai_compatible_adapter`, `multimodal_streaming`,
-  `network_boundary_service`) so the local path carries none of it.
+  `openai_compatible_adapter`, `network_boundary_service`) so the local path
+  carries none of it.
 - `latticeai.core` owns lower-level registries and helpers (`agent`,
   `agent_state`, `agent_helpers`, `agent_eval`, `tool_governor`,
   `network_boundary`, `context_builder`, `workspace_os`, `mcp_registry`,
@@ -355,15 +355,16 @@ whole response, so a drifting float, a renamed key, a missing honesty field and 
 reordered tie all fail the same way. A semantic change on the Python side cannot
 silently invalidate the goldens, and a Rust port cannot quietly narrow the claim.
 
-Four golden families exist, each generated from the real Python original and
+Five golden families exist, each generated from the real Python original and
 asserted from both sides:
 
 | Family | What is pinned | Generator |
 |---|---|---|
-| Retrieval | 191 goldens: keyword / vector / hybrid answers, the service-layer three-channel fusion, graph search, relationship search and traversal | `scripts/generate_rust_parity_fixtures.py` |
+| Retrieval | 142 goldens: keyword / vector / hybrid answers, the service-layer three-channel fusion, graph search, relationship search and traversal | `scripts/generate_rust_parity_fixtures.py` |
 | Chunking | The four typed strategies over boundary cases, Korean and English, and the PDF page-offset arithmetic | `scripts/generate_chunking_parity_fixtures.py` |
 | Agent kernel | 2,358 decisions: mode normalization, effective auto-approve, circuit breakers, proposal staging, tool classification, and the `run_command` validator verdicts | `scripts/generate_agent_parity_fixtures.py` |
-| Context / history | The assembler's section order and greedy budget truncation, and the history reads with their scoping and grouping | `scripts/generate_rust_parity_fixtures.py` |
+| Context / history | 109 goldens: the assembler's section order and greedy budget truncation, the live `build_recent_chat_context` (a family added in 11.5.2 — it caught Rust returning empty for Python's keep-everything `limit=0` tail slice), the history reads with their scoping and grouping, doc-gen search and multi-hop context | `scripts/generate_rust_parity_fixtures.py` + `scripts/parity_fixture_corpus_{docgen,context}.py` |
+| Agent loop | Ten scripted trajectories replayed byte-identically against the real Python runtime (audit trail included), plus the helper tables — plan normalization, action extraction, and since 11.5.2 `document_targets` and `agent_profiles` (97 rows), the last two `/agent` hot-path twins | `scripts/generate_agent_loop_fixtures.py` |
 
 The clock is a parameter, not a call: `hybrid_search` takes `now_secs`, because a
 golden file that reads the wall clock is not a golden file.
@@ -373,31 +374,43 @@ golden file that reads the wall clock is not a golden file.
 The gateway binds 127.0.0.1 and refuses any other address outright. Two host
 namespaces and one fallthrough, no overlap:
 
-- `/host/health`, `/host/status` — the host answers itself; `/host/jobs` and
-  `/host/jobs/tick` are added by `lattice-jobs` when a scheduler is wired.
-  Anything else under `/host/` is a 404 from the host, never a request leaked to
-  the worker.
-- `/rust/...` — served natively by the mounted crates, with no workspace
-  scoping: that is Python's `trusted_local_owner` branch, and a loopback request
-  on the owner's own machine is exactly that caller. Bad input is a 422 naming
-  the field; a machine with no brain yet gets a 404 that says so rather than an
-  empty result set that reads like "nothing matched". SQLite work runs on
-  `spawn_blocking`, so a search never stalls an in-flight SSE stream. An unknown
-  path under `/rust/` is a 404 that lists the families that exist.
+- `/host/health` — the host answers itself, always: liveness only, no data.
+  `/host/status` and `/host/jobs` (added by `lattice-jobs` when a scheduler is
+  wired) share the native lanes' posture gate below. Anything else under
+  `/host/` is a 404 from the host, never a request leaked to the worker.
+- `/rust/...` — served natively by the mounted crates, and gated on the same
+  rule Python calls `trusted_local_owner`: the lanes answer only while the
+  worker reports an open posture (auth not required, loopback-only bind). The
+  gateway reads those facts from the worker's `/health` payload, caches them
+  briefly, and **fails closed** — posture closed *or unknown* is a 401
+  `native_lane_requires_open_posture`, never an unauthenticated graph read.
+  Within an open posture: bad input is a 422 naming the field; a machine with
+  no brain yet gets a 404 that says so rather than an empty result set that
+  reads like "nothing matched". SQLite work runs on `spawn_blocking`, so a
+  search never stalls an in-flight SSE stream. An unknown path under `/rust/`
+  is a 404 that lists the families that exist.
 - everything else — reverse-proxied to the Python worker with the response body
   streamed, so `/api/chat/stream` and the agent step feed keep flowing. A
   proxied `text/event-stream` response also picks up `X-Accel-Buffering: no`
   when the worker did not set it, so a buffering proxy in front of the desktop
-  cannot turn a live stream into one late burst.
+  cannot turn a live stream into one late burst. The proxy never follows a
+  redirect on the app's behalf: a 3xx passes through with its `Set-Cookie` and
+  `Location` intact (the invite gate and SSO login both set cookies on
+  redirects), and an absolute `Location` naming the internal worker origin is
+  rewritten to the gateway origin so the worker port never leaks. Every proxied
+  request carries `X-Forwarded-For`, `X-Forwarded-Proto`, and
+  `X-Forwarded-Host`, which the worker honours only from a loopback peer or a
+  listed trusted proxy.
 
 The mount map (`rust/lattice-host/src/gateway/mounts.rs`) is one screen:
 
 | Route family | Crate |
 |---|---|
 | `rust/search/{hybrid,keyword,vector}` | `lattice-host` (the Phase 1 lanes, unmoved — the committed hybrid goldens are asserted through these handlers) |
-| `rust/search/service-hybrid`, `rust/graph/*`, `rust/history*`, `rust/context/assemble` | `lattice-retrieval` |
+| `rust/search/service-hybrid`, `rust/graph/*`, `rust/history*`, `rust/context/assemble`, `rust/context/document` | `lattice-retrieval` |
 | `rust/ingest/{plan,chunk}` | `lattice-ingest` |
 | `rust/agent/{preflight,exec,contract}` | `lattice-agent` |
+| `rust/agent/{run,resume,approvals}` | `lattice-agent` (the 11.5.1 loop orchestrator) |
 | `host/jobs`, `host/jobs/tick` | `lattice-jobs` |
 
 ### The desktop is the front door
@@ -408,14 +421,23 @@ supervises the worker on an internal port behind it, `backend_origin` returns
 the gateway origin, and the webview navigates there once health answers through
 the proxy. That is what makes the native surfaces reachable from the app at all.
 
-One thing had to be fixed for the origin switch to be safe, and it is the whole
-of the change: the worker's CSRF guard builds its trust set from **its own**
-host and port, and a proxy strips `Host` as hop-by-hop, so a page served on the
-gateway port would have every cookie-authenticated write rejected. The
-supervisor therefore injects
+One thing had to be fixed for the origin switch to be safe: the worker's CSRF
+guard builds its trust set from **its own** host and port, and a proxy strips
+`Host` as hop-by-hop, so a page served on the gateway port would have every
+cookie-authenticated write rejected. The supervisor therefore injects
 `LATTICEAI_CSRF_TRUSTED_ORIGINS=http://127.0.0.1:{gateway},http://localhost:{gateway}`
-into the worker environment — and only when a gateway port exists, because the
-direct topology has no second origin to trust.
+into the worker environment — and, since 11.5.2, the matching
+`LATTICEAI_CORS_ALLOWED_ORIGINS`, so a browser-side caller on the gateway
+origin gets real preflight answers too. Both are injected only when a gateway
+port exists, because the direct topology has no second origin to trust. An
+*adopted* worker (`--no-spawn`) gets neither injection; that topology works
+because the proxy sends `X-Forwarded-Host` and the worker's CSRF fallback
+compares `Origin` against the effective external host when the peer is
+loopback or a listed trusted proxy — a browser cannot set `X-Forwarded-Host`,
+and a local non-browser caller could already forge `Origin`, so the fallback
+widens nothing. The same effective-origin rule feeds every absolute URL the
+product hands out (invite links, permission notifications, the SSO redirect
+default), which used to name the internal worker port when fronted.
 
 Escape hatches, resolved in `src-tauri/src/topology.rs`:
 
@@ -454,10 +476,12 @@ diagram, and two rules keep the split honest:
   read-only, allow-listed commands; everything else comes back as a verdict.
 
 Python still serves every product surface. The native routes are a proven
-alternative path, not a replacement, and the Rust port of the agent loop's
-orchestration remains explicitly outstanding (plan §4c: the decision kernel is
-locked, the loop is not, and porting twelve `AgentDeps` seams without a wiring
-proof would be a rewrite without evidence).
+alternative path, not a replacement. The agent loop's orchestration — the last
+explicitly outstanding port — shipped in 11.5.1: the Rust loop replays the
+same scripted trajectories as the real Python runtime byte-for-byte (ten
+golden trajectories, audit trail included) and drives a live worker through
+the three seams, ending a model-less turn in the same fail-closed
+`NEEDS_REVIEW` Python produces.
 
 ## Brain Core
 
@@ -1181,13 +1205,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.5.1 exact artifact names:
+11.5.2 exact artifact names:
 
-- `dist/ltcai-11.5.1-py3-none-any.whl`
-- `dist/ltcai-11.5.1.tar.gz`
-- `ltcai-11.5.1.tgz`
-- `dist/ltcai-11.5.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.1_aarch64.dmg`
+- `dist/ltcai-11.5.2-py3-none-any.whl`
+- `dist/ltcai-11.5.2.tar.gz`
+- `ltcai-11.5.2.tgz`
+- `dist/ltcai-11.5.2.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.2_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

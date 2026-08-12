@@ -388,6 +388,25 @@ def test_cu_agent_rejects_an_unauthorised_workspace(tmp_path, policy):
     assert response.json()["detail"] == "workspace write denied"
 
 
+def test_cu_agent_refuses_a_request_naming_two_different_workspaces(tmp_path, policy):
+    # This router carried its own copy of the header/query derivation, which
+    # preferred the header and silently ignored a disagreeing query parameter.
+    # 11.5.2 routes it through ``resolve_workspace_scope``, so the request is
+    # refused before the write gate is consulted at all.
+    class _NeverCalled:
+        def resolve_write_scope(self, requested, user):
+            raise AssertionError("a mismatched request must not reach the gate")
+
+    response = _client(tmp_path, workspace_service=_NeverCalled()).post(
+        "/cu/agent?workspace_id=org:query",
+        headers={"X-Workspace-Id": "org:header"},
+        json={"task": "크롬 띄워줘"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Workspace selectors must match."
+
+
 def test_cu_agent_resolves_the_workspace_from_the_query_string(tmp_path, monkeypatch, policy):
     class _Resolver:
         def __init__(self):

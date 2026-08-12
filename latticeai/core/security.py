@@ -13,6 +13,19 @@ from fastapi import HTTPException
 from latticeai.core.quiet import quiet
 
 
+def sha256_hex(text: str) -> str:
+    """The one UTF-8 SHA-256 hex digest.
+
+    Six modules each carried this three-token expression, and they did not
+    agree on what to do with ``None``: two coerced it away, one raised. The
+    helper stays **strict** on purpose — coercing here would silently give
+    every caller the digest of the empty string, which is a valid-looking
+    token hash for "no token at all". Each call site keeps the contract it
+    already had, stated in its own body where a reader can see it.
+    """
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
     key = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1)

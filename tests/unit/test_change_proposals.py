@@ -7,6 +7,7 @@ mutations of existing files become review proposals instead of writes.
 """
 
 import asyncio
+import hashlib
 
 from latticeai.core.agent import (
     AgentDeps,
@@ -63,6 +64,27 @@ def _service(tmp_path):
         return candidate
 
     return ChangeProposalService(review_queue=queue, resolve_path=resolve), queue
+
+
+def _stage_delete(queue, path: str, base_sha256: str):
+    """Stage a ``file_delete`` proposal the way a client does.
+
+    There is no Python-side factory for delete proposals: they are created
+    through ``POST /automation/reviews`` (the frontend's proposal-rebase flow
+    is the live producer), so the tests stage them at that same seam.
+    """
+    return queue.create(
+        title=f"파일 삭제 제안: {path}",
+        summary="",
+        source="change_proposal",
+        kind="file_delete",
+        payload={
+            "path": path,
+            "tier": "large",
+            "base_exists": True,
+            "base_sha256": base_sha256,
+        },
+    )
 
 
 # ── governor classification ─────────────────────────────────────────────
@@ -188,7 +210,9 @@ def test_reject_discards_without_touching_disk(tmp_path):
 def test_delete_proposal_applies_on_approve(tmp_path):
     (tmp_path / "gone.txt").write_text("bye", encoding="utf-8")
     service, queue = _service(tmp_path)
-    item = service.propose_file_delete(path="gone.txt", reason="cleanup")
+    item = _stage_delete(
+        queue, "gone.txt", hashlib.sha256(b"bye").hexdigest()
+    )
     assert (tmp_path / "gone.txt").exists()
     service.approve_and_apply(item["id"])
     assert not (tmp_path / "gone.txt").exists()

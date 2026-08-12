@@ -43,10 +43,14 @@ POST /api/network-boundary/policy
 Users approve cloud-derived memory growth in the existing Review Center.
 
 ### Multimodal / video
-`latticeai/services/multimodal_streaming.py`:
-- Same `NetworkBoundaryMode.CLOUD_ALLOWED` gate
-- Additional `allow_multimodal` policy flag
-- Adapter protocol for future Runway/Luma/Veo-compatible providers
+There is no cloud multi-modal *streaming* path. A `multimodal_streaming` module
+was written to a provider-adapter shape and never wired to a provider or a
+route; 11.5.2 deleted it rather than keep a design sketch reading as a feature.
+
+Multi-modal ingestion itself is local and unrelated to this document's cloud
+boundary — see `lattice_brain/ingestion/routing.py` and the `allow_multimodal`
+gate. If a cloud video provider ever lands, the module is recoverable from git
+history (`latticeai/services/multimodal_streaming.py`, removed in 11.5.2).
 
 ### UI
 `NetworkBoundaryPanel` (React) + `GET /api/network-boundary/ui-state`:

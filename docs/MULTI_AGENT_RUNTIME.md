@@ -6,7 +6,7 @@ operationalized in v2.2.0. It sits
 and coordinates a pipeline of named **roles** that hand off work to one another,
 retry on a failing review, and emit a fully observable, replayable timeline.
 
-- **Source of truth:** `latticeai/core/multi_agent.py`
+- **Source of truth:** `lattice_brain/runtime/multi_agent.py`
 - **HTTP surface:** `latticeai/api/agents.py`
 - **Persistence / Knowledge Graph integration:** `latticeai/core/workspace_os.py`
   (`WorkspaceOSStore.record_agent_run`, `replay_agent_run`, `list_handoffs`)
