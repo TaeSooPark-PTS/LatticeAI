@@ -6,11 +6,12 @@ license.workspace = true
 
 [dependencies]
 lattice-core = { workspace = true }
+lattice-auth = { workspace = true }
 serde = { workspace = true }
 # float_roundtrip: without it serde_json's fast decimal path lands 1 ULP
 # off on long literals, and a golden compared with == would fail on a
 # parser artefact rather than on a real divergence.
-serde_json = { workspace = true, features = ["float_roundtrip"] }
+serde_json = { workspace = true, features = ["float_roundtrip", "preserve_order"] }
 rusqlite = { workspace = true }
 # The mountable `/rust/*` router lives in this crate, so the crate that owns the
 # engines also owns their HTTP contract; the host only mounts it.
@@ -23,6 +24,11 @@ libc = { workspace = true }
 # and negative lookahead (`(?<![A-Za-z0-9_])`, `(?![\s\-]*…)`), and its
 # backtracking leftmost-first semantics are the ones `re` has.
 fancy-regex = "0.14"
+# WP-R5: the vector index keys freshness on sha256(clean_text(item)); the
+# port has to compute the same digest to tell "indexed" from "stale".
+sha2 = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+# Fixture replay talks to a real loopback listener (WP-R5/R6).
+reqwest = { workspace = true }

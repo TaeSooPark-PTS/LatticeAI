@@ -9,6 +9,7 @@ license.workspace = true
 # lattice-core; re-porting them here would be a second copy of the same
 # contract, which is exactly the drift this crate exists to prevent.
 lattice-core = { workspace = true }
+lattice-auth = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 # Chunk ids and content hashes are sha256 over UTF-8 bytes; the digest *is* the
@@ -19,6 +20,10 @@ tokio = { workspace = true }
 axum = { workspace = true }
 # Delegation to the Python worker: this crate never writes the graph itself.
 reqwest = { workspace = true }
+# Job / source / file-index reads go through lattice-core::db::Store; the
+# closure names rusqlite::Connection, which is the same workspace pin the
+# other route crates already use.
+rusqlite = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

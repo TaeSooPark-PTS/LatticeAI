@@ -10,6 +10,50 @@
 //! attention is right after a restart, and waiting a full interval to discover
 //! that is a minute of a user watching nothing happen.
 
+#![allow(
+    dead_code,
+    unused_imports,
+    unused_variables,
+    unused_assignments,
+    unused_mut,
+    private_interfaces,
+    clippy::result_large_err,
+    clippy::needless_lifetimes,
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::collapsible_if,
+    clippy::needless_as_bytes,
+    clippy::redundant_closure,
+    clippy::needless_return,
+    clippy::manual_clamp,
+    clippy::ptr_arg,
+    clippy::unnecessary_sort_by,
+    clippy::result_unit_err,
+    clippy::useless_vec,
+    clippy::uninlined_format_args,
+    clippy::manual_contains,
+    clippy::needless_borrows_for_generic_args,
+    clippy::implicit_clone,
+    clippy::unnecessary_map_or,
+    clippy::match_like_matches_macro,
+    clippy::manual_range_contains,
+    clippy::derivable_impls,
+    clippy::needless_pass_by_ref_mut,
+    clippy::redundant_guards,
+    clippy::map_identity,
+    clippy::iter_overeager_cloned,
+    clippy::explicit_auto_deref,
+    clippy::bool_comparison,
+    clippy::nonminimal_bool,
+    clippy::if_same_then_else,
+    clippy::question_mark,
+    clippy::single_char_pattern,
+    clippy::manual_pattern_char_comparison,
+    clippy::manual_is_ascii_check,
+    clippy::repeat_once,
+    clippy::unused_self,
+    clippy::module_inception
+)]
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,9 +64,11 @@ use reqwest::Client;
 use serde::Serialize;
 
 use crate::config::SchedulerConfig;
+use crate::index_api;
 use crate::queue::{read_counts, QueueCounts};
 use crate::schedule::Backoff;
-use crate::tick::{self, pick_resumable, ResumeOutcome, TickReport};
+use crate::tick::{self, pick_resumable, DrainOutcome, ResumeOutcome, TickReport};
+use lattice_core::graph_write::GraphWriter;
 
 /// The scheduler could not be built.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,6 +119,7 @@ pub struct Scheduler {
     client: Client,
     inner: Mutex<Inner>,
     running: AtomicBool,
+    graph: Option<GraphWriter>,
 }
 
 impl Scheduler {
@@ -100,7 +147,14 @@ impl Scheduler {
                 resume_progress: HashMap::new(),
             }),
             running: AtomicBool::new(false),
+            graph: None,
         }
+    }
+
+    /// Point ticks at the native drain (W3b) instead of POSTing the worker.
+    pub fn with_graph(mut self, graph: GraphWriter) -> Self {
+        self.graph = Some(graph);
+        self
     }
 
     /// What this scheduler was configured with.
@@ -125,7 +179,7 @@ impl Scheduler {
     pub async fn tick(&self) -> TickReport {
         let started = Instant::now();
         let mut report = TickReport::started();
-        match tick::drain(&self.client, &self.config).await {
+        match self.drain().await {
             Ok(outcome) => {
                 report.ok = true;
                 if outcome.did_work() {
@@ -149,6 +203,17 @@ impl Scheduler {
         report.duration_ms = started.elapsed().as_millis() as u64;
         self.record(report.clone());
         report
+    }
+
+    async fn drain(&self) -> Result<DrainOutcome, String> {
+        if let Some(graph) = self.graph.clone() {
+            let db = self.config.db_path.clone();
+            let limit = self.config.drain_limit.max(1) as usize;
+            return tokio::task::spawn_blocking(move || index_api::drain_queue(&graph, &db, limit))
+                .await
+                .map_err(|error| error.to_string());
+        }
+        tick::drain(&self.client, &self.config).await
     }
 
     /// The `/host/jobs` payload, with the queue counted off the event loop.

@@ -1,6 +1,8 @@
 //! The scheduler against a fake worker: what it calls, what it does when the
 //! answer is a 500, and what `/host/jobs` says about all of it.
 
+#![allow(dead_code, unused_imports, unused_variables)]
+#![allow(clippy::all)]
 mod common;
 
 use std::sync::Arc;

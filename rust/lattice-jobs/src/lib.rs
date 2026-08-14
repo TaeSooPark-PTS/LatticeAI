@@ -53,6 +53,7 @@
 #![warn(clippy::all)]
 
 pub mod config;
+pub mod index_api;
 pub mod queue;
 pub mod routes;
 pub mod schedule;
