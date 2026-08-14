@@ -35,11 +35,9 @@
 //! `tests/unit/test_chunking_parity_contract.py` re-asserts from the Python side.
 
 pub mod api;
-pub mod browser_api;
 pub mod chunk;
 pub mod filters;
 pub mod hashes;
-pub mod local_files_api;
 pub mod pages;
 pub mod pystr;
 pub mod strategy;

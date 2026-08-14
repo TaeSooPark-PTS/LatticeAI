@@ -8,12 +8,6 @@
 //!
 //! Regenerate with `.venv/bin/python scripts/generate_rust_parity_fixtures.py`.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code)]
-
-pub mod brain;
-
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::OnceLock;

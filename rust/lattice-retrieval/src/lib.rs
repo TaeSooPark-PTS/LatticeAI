@@ -38,24 +38,16 @@ pub(crate) fn build_pattern(pattern: &str) -> fancy_regex::Regex {
     fancy_regex::Regex::new(pattern).expect("ported pattern must compile")
 }
 
-pub mod brain_api;
-pub mod chronicle_api;
-pub mod command_center_api;
 pub mod concepts;
 pub mod context;
 pub mod docgen;
 pub mod docgen_context;
-pub mod evidence_api;
-pub mod garden_api;
 pub mod graph_reads;
 pub mod history;
 pub mod hybrid;
 pub mod keyword;
-pub mod knowledge_graph_api;
-pub mod memory_api;
 pub mod policy;
 pub mod routes;
-pub mod search_api;
 pub mod self_model;
 pub mod service;
 pub mod service_hybrid;

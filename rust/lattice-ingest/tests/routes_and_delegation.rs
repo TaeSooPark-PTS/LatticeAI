@@ -10,8 +10,6 @@
 //!   throwaway axum app on a loopback port, so nothing depends on a real
 //!   install being up.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
