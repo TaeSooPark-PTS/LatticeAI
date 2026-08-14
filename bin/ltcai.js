@@ -12,6 +12,10 @@ const managedPython = process.platform === "win32"
   : path.join(managedVenv, "bin", "python");
 const hostName = process.platform === "win32" ? "lattice-host.exe" : "lattice-host";
 const WORKER_MODULE = "latticeai.worker_app";
+// Mirrors rust/lattice-host/src/supervisor/command.rs::WORKER_FACTORY — the
+// supervisor appends `--host`/`--port` itself, so this is the whole of what a
+// launcher can name.
+const WORKER_FACTORY = `-m uvicorn ${WORKER_MODULE}:create_worker_app --factory`;
 
 const USAGE = `\
 ltcai — Lattice AI front door (lattice-host)
@@ -30,8 +34,9 @@ OPTIONS:
     -V, --version          Print the version
 
 lattice-host is the only front door. It supervises the Python AI worker
-(\`python -m latticeai.worker_app\`). LATTICEAI_* environment variables are
-passed through. Pin the host binary with LATTICEAI_HOST_BIN or LTCAI_HOST.
+(\`python ${WORKER_FACTORY}\`, with the port it chose).
+LATTICEAI_* environment variables are passed through. Pin the host binary with
+LATTICEAI_HOST_BIN or LTCAI_HOST, and the worker interpreter with LTCAI_PYTHON.
 `;
 
 function loadDotEnv(file) {
@@ -203,10 +208,47 @@ function parseArgs(argv) {
   return parsed;
 }
 
-function pinWorkerCommand() {
+/**
+ * The interpreter, as an absolute path.
+ *
+ * `lattice-host` spawns the worker with `PATH` prefixed by
+ * `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`
+ * (supervisor/worker_env.rs — GUI processes inherit a minimal PATH), so a bare
+ * `python3` is looked up against a different PATH than the one this launcher
+ * validated it on and can land on an interpreter with none of the deps.
+ * `sys.executable` is what keeps it the same interpreter on both sides.
+ */
+function absoluteInterpreter(python) {
+  const probe = spawnSync(python, ["-c", "import sys; print(sys.executable)"], { encoding: "utf8" });
+  const resolved = probe.status === 0 ? String(probe.stdout || "").trim() : "";
+  return resolved && fs.existsSync(resolved) ? resolved : python;
+}
+
+/**
+ * Tell the supervisor *which interpreter*, and let it build the command.
+ *
+ * This used to pin `LATTICEAI_DESKTOP_BACKEND_CMD = "<python> -m
+ * latticeai.worker_app"`, and that command serves nothing: `worker_app` exports
+ * `main()` but has no `if __name__ == "__main__"` guard, so the module form
+ * imports and exits 0 without binding a port — the supervisor restarts it,
+ * forever, and the front door answers 502 on every proxied route.
+ *
+ * The fix is not to pin the uvicorn string instead. `LATTICEAI_DESKTOP_BACKEND_CMD`
+ * is the supervisor's rule 1, whose args are passed **verbatim**; `--host` and
+ * `--port` are appended only by the module rules (`command.rs::module_args`),
+ * and the worker port is chosen at runtime by a free-port scan. A statically
+ * pinned `-m uvicorn … --factory` would therefore bind uvicorn's default 8000
+ * while the supervisor health-probes the port it actually picked.
+ *
+ * So pin the input the launcher genuinely knows — the interpreter — and let
+ * rule 2 produce its own canonical command (`command.rs::WORKER_FACTORY`):
+ * `<python> -m uvicorn latticeai.worker_app:create_worker_app --factory --host
+ * 127.0.0.1 --port <chosen>`. An explicit `LATTICEAI_DESKTOP_BACKEND_CMD` from
+ * the caller still wins, untouched.
+ */
+function pinWorkerInterpreter() {
   if (process.env.LATTICEAI_DESKTOP_BACKEND_CMD) return;
-  const python = resolveWorkerPython(true);
-  process.env.LATTICEAI_DESKTOP_BACKEND_CMD = `${python} -m ${WORKER_MODULE}`;
+  process.env.LTCAI_PYTHON = absoluteInterpreter(resolveWorkerPython(true));
 }
 
 function doctor() {
@@ -218,9 +260,9 @@ function doctor() {
     console.log("[MISS] lattice-host: not built (run without doctor to cargo-build it)");
     ok = false;
   }
-  const python = resolveWorkerPython(false);
+  const python = absoluteInterpreter(resolveWorkerPython(false));
   if (canImport(python, WORKER_MODULE)) {
-    console.log(`[OK] worker: ${python} -m ${WORKER_MODULE}`);
+    console.log(`[OK] worker: ${python} ${WORKER_FACTORY}`);
   } else {
     console.log(`[MISS] worker: cannot import ${WORKER_MODULE} (${python})`);
     ok = false;
@@ -269,5 +311,5 @@ if (parsed.doctor) {
 if (parsed.host) process.env.LATTICEAI_HOST = parsed.host;
 if (parsed.port) process.env.LATTICEAI_PORT = parsed.port;
 
-pinWorkerCommand();
+pinWorkerInterpreter();
 launchHost(ensureHostBinary(), parsed.hostArgs);

@@ -66,3 +66,52 @@ def test_integration_runner_and_ci_use_disposable_state():
 
     assert "run: npm run test:integration" in workflow
     assert "python -m uvicorn server:app" not in workflow
+
+
+def test_launchers_never_pin_the_guardless_module_form():
+    """`ltcai` and start_ai.sh must not pin a worker command that serves nothing.
+
+    `latticeai/worker_app.py` exports `main()` but has no
+    `if __name__ == "__main__"` guard, so `python -m latticeai.worker_app`
+    imports and exits 0 without binding: the supervisor restarts it forever and
+    the front door 502s. Pinning the uvicorn string instead is not the fix —
+    `LATTICEAI_DESKTOP_BACKEND_CMD` is the supervisor's rule 1, whose args are
+    passed verbatim, and the worker port is chosen at runtime. Both launchers
+    name the *interpreter* (`LTCAI_PYTHON`) and let the supervisor build its own
+    command (rust/lattice-host/src/supervisor/command.rs::WORKER_FACTORY).
+    """
+    for name in ("bin/ltcai.js", "start_ai.sh"):
+        launcher = (ROOT / name).read_text(encoding="utf-8")
+        assert "LTCAI_PYTHON" in launcher, name
+        assert 'LATTICEAI_DESKTOP_BACKEND_CMD = `' not in launcher, name
+        assert 'export LATTICEAI_DESKTOP_BACKEND_CMD="' not in launcher, name
+
+
+def test_one_door_runners_pin_an_absolute_worker_interpreter():
+    """Both live-server harnesses must hand `lattice-host` a real path.
+
+    `LTCAI_PYTHON` reaches the supervisor, which spawns the worker with `PATH`
+    **prefixed** by `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`
+    (rust/lattice-host/src/supervisor/worker_env.rs). A bare `python3` is
+    therefore looked up against a different `PATH` than the runner validated it
+    on: on GitHub Actions the interpreter `pip install -e "."` populated lives
+    under /opt/hostedtoolcache, but the child found /usr/bin/python3 first and
+    died with "No module named uvicorn" — the worker exit 1 that turned every
+    proxied route into a 502. Resolving to `sys.executable` is what keeps the
+    interpreter the same one on both sides of the process boundary.
+
+    The second half is the diagnostics: the worker's stderr goes to
+    `$HOME/.ltcai/desktop-sidecar.err.log`, and both runners rewrite `HOME`
+    into a sandbox they delete on the way out, so a dead worker took its only
+    explanation with it and CI showed nothing but a timeout.
+    """
+    for name in ("run_integration_tests.mjs", "run_sidecar_e2e.mjs"):
+        runner = (ROOT / "scripts" / name).read_text(encoding="utf-8")
+        assert "import sys; print(sys.executable)" in runner, name
+        assert "LTCAI_PYTHON: python," in runner, name
+        assert "desktop-sidecar.err.log" in runner, name
+        assert "dumpWorkerLogs()" in runner, name
+        # The front door is the binary, not a Python ASGI app: what these
+        # runners spawn is whatever resolveHostBinary() returned.
+        assert "const hostBinary = resolveHostBinary();" in runner, name
+        assert "spawn(\n    hostBinary," in runner, name

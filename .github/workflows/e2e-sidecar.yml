@@ -40,6 +40,14 @@ jobs:
           node-version: "20"
           cache: npm
 
+      # The runner builds `lattice-host` from this checkout (One Door: the
+      # front door is the binary, not `uvicorn server:app`). Without this a
+      # cold cargo build burns 5–10 minutes of every nightly run.
+      - name: Cache cargo registry and build output
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: rust
+
       - name: Install dependencies
         run: |
           pip install -e "."

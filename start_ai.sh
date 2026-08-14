@@ -38,10 +38,22 @@ resolve_host() {
 
 HOST_BIN="$(resolve_host || true)"
 
-if [ -z "${LATTICEAI_DESKTOP_BACKEND_CMD:-}" ]; then
+# Name the interpreter, not the command line. This used to export
+# LATTICEAI_DESKTOP_BACKEND_CMD="$py -m latticeai.worker_app", which serves
+# nothing: worker_app has no `if __name__ == "__main__"` guard, so it imports
+# and exits 0 without binding, and the front door 502s forever. Pinning the
+# uvicorn string instead is not the fix either — that variable is the
+# supervisor's rule 1, whose args are passed verbatim, and the worker port is
+# chosen at runtime, so a static string cannot carry --port. LTCAI_PYTHON lets
+# the supervisor build its own command (command.rs::WORKER_FACTORY) with the
+# port it actually picked. `sys.executable` keeps the interpreter from changing
+# identity when the supervisor re-resolves a bare name against its own PATH.
+if [ -z "${LATTICEAI_DESKTOP_BACKEND_CMD:-}" ] && [ -z "${LTCAI_PYTHON:-}" ]; then
     for py in "$PROJECT_DIR/.venv/bin/python" "$PROJECT_DIR/venv/bin/python" python3; do
         if [ -x "$py" ] || command -v "$py" >/dev/null 2>&1; then
-            export LATTICEAI_DESKTOP_BACKEND_CMD="$py -m latticeai.worker_app"
+            resolved="$("$py" -c 'import sys; print(sys.executable)' 2>/dev/null || true)"
+            [ -x "$resolved" ] || resolved="$py"
+            export LTCAI_PYTHON="$resolved"
             break
         fi
     done

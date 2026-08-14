@@ -12,7 +12,7 @@
  * the developer's real HOME / ~/.ltcai / Brain vault.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -26,7 +26,33 @@ if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
 }
 const baseUrl = `http://${host}:${port}`;
 const venvPython = join(process.cwd(), ".venv", "bin", "python");
-const python = process.env.PYTHON || (existsSync(venvPython) ? venvPython : "python3");
+const requestedPython = process.env.PYTHON || (existsSync(venvPython) ? venvPython : "python3");
+
+/**
+ * The interpreter, as an absolute path.
+ *
+ * `LTCAI_PYTHON` is handed to `lattice-host`, which spawns the worker with a
+ * `PATH` **prefixed** by `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`
+ * (supervisor/worker_env.rs — GUI processes inherit a minimal PATH). A bare
+ * name like `python3` is therefore looked up against a different PATH than the
+ * one this runner validated it on: on GitHub Actions the interpreter that
+ * `pip install -e "."` populated lives under /opt/hostedtoolcache, but the
+ * child finds /usr/bin/python3 first and dies with "No module named uvicorn"
+ * — the worker exit 1 that turned every proxied route into a 502. Resolving to
+ * `sys.executable` means the interpreter cannot change identity when it
+ * crosses the process boundary.
+ */
+function resolveInterpreter(candidate) {
+  const probe = spawnSync(candidate, ["-c", "import sys; print(sys.executable)"], {
+    encoding: "utf8",
+  });
+  const resolved = probe.status === 0 ? String(probe.stdout || "").trim() : "";
+  // An unresolvable candidate is passed through untouched so the supervisor
+  // reports the failure in its own words rather than this helper's.
+  return resolved && existsSync(resolved) ? resolved : candidate;
+}
+
+const python = resolveInterpreter(requestedPython);
 
 /**
  * The `lattice-host` binary this run should exercise.
@@ -111,6 +137,30 @@ function cleanupSandbox() {
 }
 process.once("exit", cleanupSandbox);
 
+/**
+ * The supervised worker's own stdout/stderr.
+ *
+ * `lattice-host` redirects them into `$HOME/.ltcai/desktop-sidecar.log` and
+ * `.err.log` (supervisor/worker_env.rs), and this runner rewrites HOME into a
+ * sandbox it deletes on the way out — so a worker that dies takes the only
+ * explanation with it and CI shows nothing but a 502. Print the tail before
+ * cleanup: those lines are the difference between "the gateway returned 502"
+ * and "that interpreter has no uvicorn".
+ */
+function dumpWorkerLogs() {
+  for (const name of ["desktop-sidecar.err.log", "desktop-sidecar.log"]) {
+    const path = join(sandbox.home, ".ltcai", name);
+    if (!existsSync(path)) {
+      console.error(`[e2e] ${name}: not written`);
+      continue;
+    }
+    const lines = readFileSync(path, "utf8").replace(/\n+$/, "").split("\n");
+    const tail = lines.slice(-80);
+    console.error(`[e2e] ---- ${name} (last ${tail.length} of ${lines.length} lines) ----`);
+    console.error(tail.join("\n") || "(empty)");
+  }
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -153,6 +203,7 @@ function stop(child) {
 
 async function main() {
   console.log(`[e2e] sandbox ${sandboxRoot}`);
+  console.log(`[e2e] worker interpreter ${python}`);
   const hostBinary = resolveHostBinary();
   console.log(`[e2e] starting ${hostBinary} at ${baseUrl}`);
   // The shipped topology: lattice-host serves the product on `port` and
@@ -191,6 +242,7 @@ async function main() {
     console.error("[e2e] failed:", error);
     exitCode = 1;
   } finally {
+    if (exitCode !== 0) dumpWorkerLogs();
     await stop(server);
     cleanupSandbox();
   }
