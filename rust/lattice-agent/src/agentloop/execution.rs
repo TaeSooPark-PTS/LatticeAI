@@ -491,13 +491,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_seam_refusal_is_an_error_step_not_a_crash() {
-        let mut harness = harness(&[&write_action("a.md", "x"), FINAL]).await;
+    async fn a_native_refusal_is_an_error_step_not_a_crash() {
+        // The write runs in-process now, so this is the tool's own refusal —
+        // and it lands on the transcript exactly where a seam error did.
+        let mut harness = harness(&[&write_action("../escape.md", "x"), FINAL]).await;
         harness.request.permission_mode = Some("trusted".into());
-        harness.worker.tool_bodies.lock().expect("lock").insert(
-            "write_file".into(),
-            json!({"error": "Path escapes the agent workspace."}),
-        );
         let mut ctx = harness.context();
         harness
             .runtime
@@ -508,6 +506,41 @@ mod tests {
             ctx.transcript[0]["error"],
             "Path escapes the agent workspace."
         );
+        assert!(ctx.transcript[0].get("result").is_none());
+        assert_eq!(ctx.trace.summary()["tool_outcomes"], json!({"error": 1}));
+        assert!(
+            !harness
+                .root
+                .parent()
+                .expect("parent")
+                .join("escape.md")
+                .exists(),
+            "nothing was written outside the workspace"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_seam_refusal_is_an_error_step_not_a_crash() {
+        // A compute-only tool is still a worker call, and its refusal is
+        // recorded the same way a native one is.
+        let mut harness = harness(&[
+            &json!({"action": "read_file", "args": {"path": "missing.md"}}).to_string(),
+            FINAL,
+        ])
+        .await;
+        harness
+            .worker
+            .tool_bodies
+            .lock()
+            .expect("lock")
+            .insert("read_file".into(), json!({"error": "File does not exist."}));
+        let mut ctx = harness.context();
+        harness
+            .runtime
+            .execute(&mut ctx, &harness.request)
+            .await
+            .expect("execute");
+        assert_eq!(ctx.transcript[0]["error"], "File does not exist.");
         assert!(ctx.transcript[0].get("result").is_none());
         assert_eq!(ctx.trace.summary()["tool_outcomes"], json!({"error": 1}));
     }
@@ -609,20 +642,29 @@ mod tests {
     async fn strict_stages_a_governed_mutation_as_a_proposal() {
         let mut harness = harness(&[&write_action("a.md", "new"), FINAL]).await;
         std::fs::write(harness.root.join("a.md"), b"old").expect("file");
-        *harness.worker.proposal.lock().expect("lock") = Some(json!({
-            "decision": "proposed",
-            "proposal": {"id": "prop-1"},
-            "classification": {"change_class": "mutation"},
-        }));
         let mut ctx = harness.context();
         harness
             .runtime
             .execute(&mut ctx, &harness.request)
             .await
             .expect("execute");
+        // The proposal is staged **here** now (v11.6.0 §P1c), so the id on the
+        // transcript is a real review item's and the item is on disk.
+        let items = harness.staged_items();
+        assert_eq!(items.len(), 1, "one staged proposal");
+        let proposal_id = items[0]["id"].as_str().expect("id").to_string();
+        assert_eq!(items[0]["source"], "change_proposal");
+        assert_eq!(items[0]["status"], "pending");
+        assert_eq!(items[0]["payload"]["path"], "a.md");
+        assert_eq!(items[0]["payload"]["new_content"], "new");
+        assert_eq!(
+            items[0]["payload"]["base_sha256"],
+            json!(crate::proposals::sha256_text("old"))
+        );
+
         let staged = &ctx.transcript[0];
         assert_eq!(staged["result"]["proposed"], true);
-        assert_eq!(staged["result"]["proposal_id"], "prop-1");
+        assert_eq!(staged["result"]["proposal_id"], json!(proposal_id));
         assert!(
             staged["args"].get("content").is_none(),
             "the payload is stripped"
@@ -633,6 +675,39 @@ mod tests {
         );
         assert_eq!(harness.runtime.audit[0]["event"], "agent_change_proposed");
         assert_eq!(harness.runtime.audit[0]["change_class"], "mutation");
+        assert_eq!(harness.runtime.audit[0]["proposal_id"], json!(proposal_id));
+        // Nothing crossed the seam: the retired `/agent/change-proposal` hop is
+        // gone, and the write never ran.
+        assert!(harness.tool_calls().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_staging_failure_is_an_error_step_not_a_silent_fallthrough() {
+        let mut harness = harness(&[&write_action("a.md", "new"), FINAL]).await;
+        std::fs::write(harness.root.join("a.md"), b"old").expect("file");
+        // A data directory that cannot hold a file: the store's write fails.
+        std::fs::write(&harness.data_dir, b"not a directory").expect("block");
+        let mut ctx = harness.context();
+        harness
+            .runtime
+            .execute(&mut ctx, &harness.request)
+            .await
+            .expect("execute");
+        let error = ctx.transcript[0]["error"].as_str().expect("error");
+        assert!(error.starts_with("PROPOSAL_FAILED: "), "{error}");
+        assert!(ctx.transcript[0].get("result").is_none());
+        assert_eq!(
+            harness.runtime.audit[0]["event"],
+            "agent_change_proposal_failed"
+        );
+        assert_eq!(harness.runtime.audit[0]["path"], "a.md");
+        // The file is untouched: a change that could not be staged is not a
+        // change that gets applied.
+        assert_eq!(
+            std::fs::read_to_string(harness.root.join("a.md")).expect("read"),
+            "old"
+        );
+        assert!(harness.tool_calls().is_empty());
     }
 
     #[tokio::test]
@@ -655,15 +730,10 @@ mod tests {
             "agent_change_auto_applied"
         );
         // The governor was never consulted, so no orphan proposal was left.
-        let proposals = harness
-            .worker
-            .calls
-            .lock()
-            .expect("lock")
-            .iter()
-            .filter(|call| call["seam"] == json!("proposal"))
-            .count();
-        assert_eq!(proposals, 0, "reviewing first would persist an orphan");
+        assert!(
+            harness.staged_items().is_empty(),
+            "reviewing first would persist an orphan"
+        );
         // The snapshot captured the pre-run bytes, so rollback has something.
         assert_eq!(ctx.rollback_log[0]["content"], "old");
         assert_eq!(ctx.rollback_log[0]["existed"], true);

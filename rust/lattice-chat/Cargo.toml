@@ -1,0 +1,42 @@
+[package]
+name = "lattice-chat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+# float_roundtrip for the same reason lattice-retrieval takes it: chat echoes
+# retrieval scores back to the client, and a 1 ULP parser artefact in a trace
+# would read as a divergence.
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+tokio = { workspace = true }
+axum = { workspace = true }
+rusqlite = { workspace = true }
+reqwest = { workspace = true }
+lattice-core = { workspace = true }
+lattice-auth = { workspace = true }
+# The chat pipeline assembles context with the native engines rather than a
+# second copy of them (plan §설계 결정 6), and reuses the agent kernel's
+# workspace sandbox + file-target inference for the direct file-action branch.
+lattice-retrieval = { workspace = true }
+lattice-agent = { workspace = true }
+# WP-W3a: the chat-turn audit row is written by **R2's** helper, not a second
+# copy of it — `admin::{append_audit_event, classify_sensitive_message}` are the
+# format `audit_log.json` already holds, parity-tested there. A path dependency
+# (as `lattice-platform` itself takes on `lattice-auth`) so the shared
+# `rust/Cargo.toml` stays the integrator's file.
+lattice-platform = { path = "../lattice-platform" }
+# The Python originals lean on lookbehind (`(?<![\w.-])`), which `regex`
+# refuses; `fancy-regex` has `re`'s backtracking semantics.
+fancy-regex = "0.14"
+# `_json_hash` is sha256 over a `json.dumps(..., sort_keys=True)` payload; the
+# answer-trace id is that digest's first 16 hex characters.
+sha2 = { workspace = true }
+# Naming the item type of the SSE passthrough stream, exactly as lattice-core
+# does for `stream_sse`.
+bytes = "1"
+futures-core = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

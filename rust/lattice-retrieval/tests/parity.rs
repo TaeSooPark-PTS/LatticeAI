@@ -4,6 +4,8 @@
 //! `tests/unit/test_rust_parity_contract.py` re-asserts against the Python
 //! engines. Comparison is exact; the shared plumbing lives in `common`.
 
+#![allow(dead_code, unused_imports, unused_variables)]
+#![allow(clippy::all)]
 mod common;
 
 use common::{allowed_set, diff, golden, manifest, open_store, pin_environment};

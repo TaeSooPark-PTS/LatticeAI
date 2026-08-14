@@ -16,7 +16,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use common::{client, json, test_agent_root, FakeWorker, FixedProvider, TestGateway};
+use common::{
+    client, fake_worker_allowlist, json, test_agent_root, FakeWorker, FixedProvider, TestGateway,
+};
 use lattice_host::gateway::{mounts, GatewayState};
 
 /// `rust/fixtures` — the committed parity store the retrieval routes read.
@@ -45,6 +47,10 @@ fn store_copy(name: &str) -> PathBuf {
 async fn gateway(worker: &FakeWorker, name: &str, jobs: bool) -> TestGateway {
     let mut state = GatewayState::new(Arc::new(FixedProvider::new(worker.origin(), worker.port())))
         .expect("gateway state")
+        // The fake worker's own surface: since v11.6.0 the fall-through is an
+        // allowlist, and these suites test the proxy's mechanics rather than
+        // which paths the real worker owns (`binary_frontdoor.rs` does that).
+        .with_allowlist(fake_worker_allowlist())
         .with_db_path(store_copy(name))
         .with_agent_root(test_agent_root(name))
         // Never the real `~/.ltcai/rust_agent_runs`: a paused approval is a
@@ -265,6 +271,10 @@ async fn a_spawned_scheduler_reports_enabled_and_records_its_tick() {
     let scheduler = mounts::scheduler(&worker.origin(), client());
     let state = GatewayState::new(Arc::new(FixedProvider::new(worker.origin(), worker.port())))
         .expect("gateway state")
+        // The fake worker's own surface: since v11.6.0 the fall-through is an
+        // allowlist, and these suites test the proxy's mechanics rather than
+        // which paths the real worker owns (`binary_frontdoor.rs` does that).
+        .with_allowlist(fake_worker_allowlist())
         .with_db_path(store_copy("jobs-running"))
         .with_agent_root(test_agent_root("jobs-running"))
         .with_jobs(Arc::clone(&scheduler));

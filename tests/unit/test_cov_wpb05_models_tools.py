@@ -4,8 +4,8 @@ The MLX loader, the Ollama pull reader and the model-preparation SSE loop are
 all driven through their module seams (``monkeypatch.setattr`` on the module's
 own names), never against a real GPU, a real ``ollama`` binary or a real
 subprocess — so the arcs behave the same on the ubuntu coverage leg as they do
-on Apple Silicon. The two tool tests run entirely inside ``tmp_path`` with
-``AGENT_ROOT`` rebound to it.
+on Apple Silicon. The remaining tool test runs entirely inside ``tmp_path``
+with ``AGENT_ROOT`` rebound to it.
 """
 
 from __future__ import annotations
@@ -16,8 +16,6 @@ import types
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List
-
-import pytest
 
 from latticeai.core.model_resolution import ModelResolution
 from latticeai.models import router as router_mod
@@ -33,7 +31,6 @@ from latticeai.models.router import loading as router_loading
 # v11.3.0 split the temp-dir stand-in lands on ``.local_models``.
 from latticeai.models.router import local_models as router_local_models
 from latticeai.services import model_engines, model_loading
-from latticeai.tools import commands as commands_mod
 from latticeai.tools import filesystem as filesystem_mod
 
 STREAM_TIMEOUT = 10.0
@@ -122,7 +119,7 @@ class _PullProcess:
     def wait(self) -> int:
         return self._returncode
 
-    def kill(self) -> None:  # pragma: no cover - only used by the timeout path
+    def kill(self) -> None:  # only used by the timeout path
         return None
 
 
@@ -222,44 +219,6 @@ def test_an_unrecognised_worker_frame_is_ignored_instead_of_ending_the_stream(mo
 
     assert any("event: done" in frame for frame in frames)
     assert not any("wpb05-unknown" in frame for frame in frames)
-
-
-# ── tools/commands ───────────────────────────────────────────────────────────
-
-
-def test_a_find_command_with_only_allowed_flags_runs(monkeypatch, tmp_path: Path):
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    monkeypatch.setattr("latticeai.tools.AGENT_ROOT", workspace)
-    monkeypatch.setattr(commands_mod.tools, "AGENT_ROOT", workspace)
-    monkeypatch.setattr(commands_mod.shutil, "which", lambda name, path=None: "/usr/bin/find")
-    ran: List[Any] = []
-
-    def _run(command, **kwargs):
-        ran.append((list(command), kwargs))
-        return SimpleNamespace(returncode=0, stdout="./a.md\n", stderr="")
-
-    monkeypatch.setattr(
-        commands_mod,
-        "subprocess",
-        SimpleNamespace(run=_run, TimeoutExpired=RuntimeError),
-    )
-
-    result = commands_mod.run_command("find . -name *.md")
-
-    assert result["returncode"] == 0
-    assert result["stdout"] == "./a.md\n"
-    assert ran[0][0] == ["/usr/bin/find", ".", "-name", "*.md"]
-
-
-def test_find_still_refuses_a_flag_that_would_execute_something(monkeypatch, tmp_path: Path):
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    monkeypatch.setattr("latticeai.tools.AGENT_ROOT", workspace)
-    monkeypatch.setattr(commands_mod.tools, "AGENT_ROOT", workspace)
-
-    with pytest.raises(commands_mod.ToolError, match="find flags are not allowed"):
-        commands_mod.run_command("find . -delete")
 
 
 # ── tools/filesystem ─────────────────────────────────────────────────────────

@@ -1,87 +1,50 @@
-"""lattice-brain — independent Brain Core package for Lattice AI.
+"""lattice-brain — the compute half of the Brain Core.
 
-Physically hosts the knowledge graph (``lattice_brain.graph``), memory,
-context assembly, conversations, ingestion, agent/hook runtime
-(``lattice_brain.runtime``), workflow engine, portability (backup/restore and
-``.latticebrain`` archives), and the storage abstraction.
+This package hosted the knowledge graph, memory, context assembly,
+conversations, the ingest write door, the agent/hook runtime, the workflow
+engine, portability and the storage abstraction. v11.6.0 §Wave 2.5 made Rust
+the single writer of every one of those, and WP-P1 deleted the Python side.
 
-The package never imports ``latticeai``; FastAPI and the desktop product
-import this package, not the other way around. Heavy graph modules are
-lazy-loaded so storage and archive utilities remain usable without creating
-runtime globals.
+What remains is what a **pure compute worker** needs, and it is deliberately
+small: the always-on hash embedder, the document parser matrix, chunking,
+concept/triple extraction, the multi-modal fact readers, and the ingestion
+vocabulary both sides hash against. The package still never imports
+``latticeai``.
+
+Nothing here is lazy any more, because nothing here is heavy: the modules that
+justified the lazy table (the store, the ANN index, the workflow engine) are
+gone.
 """
 
-from .archive import BrainArchivePaths, EncryptedBrainArchive
-from .core import BrainCore, BrainCoreConfig
-from .storage import (
-    DockerPostgresPlan,
-    DockerPostgresWizard,
-    PostgresConfig,
-    PostgresEngine,
-    SQLiteEngine,
-    SQLiteToPostgresMigrator,
-    StorageCapabilities,
-    StorageEngine,
-    StorageUnavailable,
-    storage_from_env,
+from .embeddings import LocalEmbeddingModel
+from .multimodal import (
+    AudioFacts,
+    ImageFacts,
+    MultimodalPorts,
+    VideoFacts,
+    detect_modality,
+    extract_image_facts,
+    extract_keyframes,
+    ffmpeg_available,
+    parse_subtitles,
+    read_video_facts,
+    transcribe_audio,
 )
 
-__version__ = "11.5.2"
+__version__ = "11.6.0"
 
 __all__ = [
-    "AgentRuntime",
-    "AssembledContext",
-    "BrainArchivePaths",
-    "BrainCore",
-    "BrainCoreConfig",
-    "BrainMemory",
-    "ContextAssembler",
-    "ContextSection",
-    "ConversationStore",
-    "DockerPostgresPlan",
-    "DockerPostgresWizard",
-    "EncryptedBrainArchive",
-    "IngestionItem",
-    "IngestionPipeline",
-    "KGPortabilityService",
-    "KnowledgeGraphStore",
-    "LatticeBrainQuality",
-    "MultiAgentOrchestrator",
-    "PostgresConfig",
-    "PostgresEngine",
-    "SQLiteEngine",
-    "SQLiteToPostgresMigrator",
-    "StorageCapabilities",
-    "StorageEngine",
-    "StorageUnavailable",
-    "WorkflowEngine",
-    "storage_from_env",
+    "AudioFacts",
+    "ImageFacts",
+    "LocalEmbeddingModel",
+    "MultimodalPorts",
+    "VideoFacts",
+    "detect_modality",
+    "extract_image_facts",
+    "extract_keyframes",
+    "ffmpeg_available",
+    "parse_subtitles",
+    "read_video_facts",
+    "transcribe_audio",
     "__version__",
 ]
-
-_LAZY = {
-    "AssembledContext": ("context", "AssembledContext"),
-    "ContextAssembler": ("context", "ContextAssembler"),
-    "ContextSection": ("context", "ContextSection"),
-    "ConversationStore": ("conversations", "ConversationStore"),
-    "BrainMemory": ("memory", "BrainMemory"),
-    "KnowledgeGraphStore": ("graph.store", "KnowledgeGraphStore"),
-    "LatticeBrainQuality": ("quality", "LatticeBrainQuality"),
-    "IngestionItem": ("ingestion", "IngestionItem"),
-    "IngestionPipeline": ("ingestion", "IngestionPipeline"),
-    "KGPortabilityService": ("portability", "KGPortabilityService"),
-    "WorkflowEngine": ("workflow", "WorkflowEngine"),
-    "AgentRuntime": ("runtime.agent_runtime", "AgentRuntime"),
-    "MultiAgentOrchestrator": ("runtime.multi_agent", "MultiAgentOrchestrator"),
-}
-
-
-def __getattr__(name: str):
-    target = _LAZY.get(name)
-    if target is None:
-        raise AttributeError(name)
-    module_path, attr = target
-    import importlib
-
-    module = importlib.import_module(f".{module_path}", __name__)
-    return getattr(module, attr)

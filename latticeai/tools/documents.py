@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-from latticeai.core.quiet import quiet
 from latticeai.tools import (
-    _CJK_FONT_CANDIDATES,
     _SUPPORTED_READ_EXTENSIONS,
     DOCUMENT_MAX_READ_BYTES,
     DOCUMENT_OUTPUT_DIR,
@@ -15,8 +13,6 @@ from latticeai.tools import (
     PRESENTATION_OUTPUT_DIR,
     SPREADSHEET_OUTPUT_DIR,
     ToolError,
-    _relative,
-    _resolve_path,
 )
 
 
@@ -57,139 +53,10 @@ def document_output_target(tool_name: str, filename: str) -> Optional[str]:
     return f"{output_dir}/{_safe_filename(filename, suffix)}"
 
 
-def _document_target(tool_name: str, filename: str) -> Path:
-    """Resolved, workspace-confined target for a document creator."""
-    relative = document_output_target(tool_name, filename)
-    if relative is None:  # pragma: no cover — every creator is in the table
-        raise ToolError(f"'{tool_name}' has no document output target.")
-    target = _resolve_path(relative)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    return target
-
-
 def _body_to_str(body) -> str:
     if isinstance(body, list):
         return "\n\n".join(str(item) for item in body)
     return str(body or "")
-
-
-def create_docx(title: str, body, filename: str = "document.docx") -> Dict[str, Any]:
-    try:
-        from docx import Document
-    except Exception as exc:
-        raise ToolError("python-docx is not installed. Run `pip install -r requirements.txt`.") from exc
-
-    target = _document_target("create_docx", filename)
-
-    document = Document()
-    if title:
-        document.add_heading(str(title), level=1)
-    for block in _body_to_str(body).split("\n\n"):
-        text = block.strip()
-        if text:
-            document.add_paragraph(text)
-    document.save(str(target))
-    return {"path": _relative(target), "bytes": target.stat().st_size}
-
-
-def create_xlsx(rows: List[List[Any]], filename: str = "spreadsheet.xlsx", sheet_name: str = "Sheet1") -> Dict[str, Any]:
-    try:
-        from openpyxl import Workbook
-    except Exception as exc:
-        raise ToolError("openpyxl is not installed. Run `pip install -r requirements.txt`.") from exc
-
-    if not isinstance(rows, list) or not all(isinstance(row, list) for row in rows):
-        raise ToolError("Rows must be a list of lists.")
-
-    target = _document_target("create_xlsx", filename)
-
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = (sheet_name or "Sheet1")[:31]
-    for row in rows:
-        sheet.append(row)
-    workbook.save(target)
-    return {"path": _relative(target), "rows": len(rows), "bytes": target.stat().st_size}
-
-
-def create_pptx(title: str, slides: List[Dict[str, Any]], filename: str = "presentation.pptx") -> Dict[str, Any]:
-    try:
-        from pptx import Presentation
-    except Exception as exc:
-        raise ToolError("python-pptx is not installed. Run `pip install -r requirements.txt`.") from exc
-
-    target = _document_target("create_pptx", filename)
-
-    presentation = Presentation()
-    first_layout = presentation.slide_layouts[0]
-    first = presentation.slides.add_slide(first_layout)
-    first.shapes.title.text = title or "Presentation"
-    first.placeholders[1].text = ""
-
-    content_layout = presentation.slide_layouts[1]
-    for slide_data in slides or []:
-        slide = presentation.slides.add_slide(content_layout)
-        slide.shapes.title.text = str(slide_data.get("title") or "Slide")
-        body = slide.placeholders[1].text_frame
-        body.clear()
-        bullets = slide_data.get("bullets") or []
-        if isinstance(bullets, str):
-            bullets = [bullets]
-        for index, bullet in enumerate(bullets):
-            paragraph = body.paragraphs[0] if index == 0 else body.add_paragraph()
-            paragraph.text = str(bullet)
-            paragraph.level = 0
-
-    presentation.save(str(target))
-    return {"path": _relative(target), "slides": len(presentation.slides), "bytes": target.stat().st_size}
-
-
-
-
-def create_pdf(title: str, body, filename: str = "document.pdf") -> Dict[str, Any]:
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import ParagraphStyle
-        from reportlab.lib.units import mm
-        from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-    except Exception as exc:
-        raise ToolError("reportlab is not installed. Run `pip install reportlab`.") from exc
-
-    target = _document_target("create_pdf", filename)
-
-    # CJK 폰트 등록
-    font_name = "Helvetica"
-    for font_path in _CJK_FONT_CANDIDATES:
-        if Path(font_path).exists():
-            try:
-                pdfmetrics.registerFont(TTFont("KoreanFont", font_path))
-                font_name = "KoreanFont"
-            except Exception:
-                quiet()
-            break
-
-    title_style = ParagraphStyle("Title", fontName=font_name, fontSize=18, spaceAfter=8, leading=24)
-    body_style  = ParagraphStyle("Body",  fontName=font_name, fontSize=11, spaceAfter=6, leading=16)
-
-    story = []
-    if title:
-        story.append(Paragraph(str(title), title_style))
-        story.append(Spacer(1, 4 * mm))
-
-    for block in _body_to_str(body).split("\n\n"):
-        text = block.strip()
-        if text:
-            safe_text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            story.append(Paragraph(safe_text, body_style))
-            story.append(Spacer(1, 2 * mm))
-
-    doc = SimpleDocTemplate(str(target), pagesize=A4,
-                             leftMargin=20*mm, rightMargin=20*mm,
-                             topMargin=20*mm, bottomMargin=20*mm)
-    doc.build(story)
-    return {"path": _relative(target), "bytes": target.stat().st_size}
 
 
 def read_document(path: str) -> Dict[str, Any]:

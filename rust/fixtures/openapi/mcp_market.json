@@ -1,0 +1,3659 @@
+{
+  "components": {
+    "schemas": {
+      "AgentConfigRequest": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Config",
+            "type": "object"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          }
+        },
+        "title": "AgentConfigRequest",
+        "type": "object"
+      },
+      "AgentRegisterRequest": {
+        "properties": {
+          "capabilities": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "config": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Config",
+            "type": "object"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "default": "custom",
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "default": "1.0.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AgentRegisterRequest",
+        "type": "object"
+      },
+      "AgentRunRequest": {
+        "properties": {
+          "goal": {
+            "title": "Goal",
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Inputs",
+            "type": "object"
+          },
+          "max_retries": {
+            "default": 2,
+            "title": "Max Retries",
+            "type": "integer"
+          },
+          "roles": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "goal"
+        ],
+        "title": "AgentRunRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "McpCallRequest": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "args": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Args",
+            "type": "object"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "McpCallRequest",
+        "type": "object"
+      },
+      "McpCustomRequest": {
+        "properties": {
+          "category": {
+            "default": "custom",
+            "title": "Category",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "env_vars": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Env Vars",
+            "type": "array"
+          },
+          "icon": {
+            "default": "\ud83d\udd0c",
+            "title": "Icon",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "package": {
+            "title": "Package",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "package"
+        ],
+        "title": "McpCustomRequest",
+        "type": "object"
+      },
+      "McpInstallRequest": {
+        "properties": {
+          "mcp_id": {
+            "title": "Mcp Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mcp_id"
+        ],
+        "title": "McpInstallRequest",
+        "type": "object"
+      },
+      "McpRecommendRequest": {
+        "properties": {
+          "limit": {
+            "default": 5,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "McpRecommendRequest",
+        "type": "object"
+      },
+      "MemorySnapshotRequest": {
+        "properties": {
+          "label": {
+            "default": "agent memory snapshot",
+            "title": "Label",
+            "type": "string"
+          },
+          "memory_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Memory Ids",
+            "type": "array"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "MemorySnapshotRequest",
+        "type": "object"
+      },
+      "PluginActionRequest": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "plugin_id": {
+            "title": "Plugin Id",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "plugin_id"
+        ],
+        "title": "PluginActionRequest",
+        "type": "object"
+      },
+      "PluginExecuteRequest": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "args": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Args",
+            "type": "object"
+          },
+          "plugin_id": {
+            "title": "Plugin Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plugin_id",
+          "action"
+        ],
+        "title": "PluginExecuteRequest",
+        "type": "object"
+      },
+      "PluginValidateRequest": {
+        "properties": {
+          "manifest": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Manifest",
+            "type": "object"
+          }
+        },
+        "title": "PluginValidateRequest",
+        "type": "object"
+      },
+      "SkillInstallRequest": {
+        "properties": {
+          "plugin": {
+            "title": "Plugin",
+            "type": "string"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plugin",
+          "skill"
+        ],
+        "title": "SkillInstallRequest",
+        "type": "object"
+      },
+      "TemplateCloneRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "TemplateCloneRequest",
+        "type": "object"
+      },
+      "TemplateImportRequest": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "TemplateImportRequest",
+        "type": "object"
+      },
+      "TemplateInstallRequest": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "TemplateInstallRequest",
+        "type": "object"
+      },
+      "ToolClearHistoryRequest": {
+        "properties": {
+          "keep_last": {
+            "default": 0,
+            "title": "Keep Last",
+            "type": "integer"
+          }
+        },
+        "title": "ToolClearHistoryRequest",
+        "type": "object"
+      },
+      "ToolEditFileRequest": {
+        "properties": {
+          "new_string": {
+            "title": "New String",
+            "type": "string"
+          },
+          "old_string": {
+            "title": "Old String",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "replace_all": {
+            "default": false,
+            "title": "Replace All",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "old_string",
+          "new_string"
+        ],
+        "title": "ToolEditFileRequest",
+        "type": "object"
+      },
+      "ToolGitDiffRequest": {
+        "properties": {
+          "cwd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": ".",
+            "title": "Cwd"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "title": "ToolGitDiffRequest",
+        "type": "object"
+      },
+      "ToolGitLogRequest": {
+        "properties": {
+          "cwd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": ".",
+            "title": "Cwd"
+          },
+          "max_count": {
+            "default": 5,
+            "title": "Max Count",
+            "type": "integer"
+          }
+        },
+        "title": "ToolGitLogRequest",
+        "type": "object"
+      },
+      "ToolGitShowRequest": {
+        "properties": {
+          "cwd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": ".",
+            "title": "Cwd"
+          },
+          "revision": {
+            "default": "HEAD",
+            "title": "Revision",
+            "type": "string"
+          }
+        },
+        "title": "ToolGitShowRequest",
+        "type": "object"
+      },
+      "ToolGrepRequest": {
+        "properties": {
+          "case_insensitive": {
+            "default": false,
+            "title": "Case Insensitive",
+            "type": "boolean"
+          },
+          "context_lines": {
+            "default": 0,
+            "title": "Context Lines",
+            "type": "integer"
+          },
+          "glob": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glob"
+          },
+          "max_results": {
+            "default": 50,
+            "title": "Max Results",
+            "type": "integer"
+          },
+          "path": {
+            "default": ".",
+            "title": "Path",
+            "type": "string"
+          },
+          "pattern": {
+            "title": "Pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ],
+        "title": "ToolGrepRequest",
+        "type": "object"
+      },
+      "ToolKnowledgeSaveRequest": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "folder": {
+            "default": "00_Raw",
+            "title": "Folder",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ToolKnowledgeSaveRequest",
+        "type": "object"
+      },
+      "ToolKnowledgeSearchRequest": {
+        "properties": {
+          "max_results": {
+            "default": 5,
+            "title": "Max Results",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "ToolKnowledgeSearchRequest",
+        "type": "object"
+      },
+      "ToolPathRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "path": {
+            "default": ".",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "title": "ToolPathRequest",
+        "type": "object"
+      },
+      "ToolReadFileRequest": {
+        "properties": {
+          "limit": {
+            "default": 0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "line_numbers": {
+            "default": true,
+            "title": "Line Numbers",
+            "type": "boolean"
+          },
+          "offset": {
+            "default": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "ToolReadFileRequest",
+        "type": "object"
+      },
+      "ToolRunCommandRequest": {
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "cwd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": ".",
+            "title": "Cwd"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "title": "ToolRunCommandRequest",
+        "type": "object"
+      },
+      "ToolScriptRequest": {
+        "properties": {
+          "cwd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": ".",
+            "title": "Cwd"
+          },
+          "script": {
+            "default": "build",
+            "title": "Script",
+            "type": "string"
+          }
+        },
+        "title": "ToolScriptRequest",
+        "type": "object"
+      },
+      "ToolSearchFilesRequest": {
+        "properties": {
+          "max_results": {
+            "default": 20,
+            "title": "Max Results",
+            "type": "integer"
+          },
+          "path": {
+            "default": ".",
+            "title": "Path",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "ToolSearchFilesRequest",
+        "type": "object"
+      },
+      "ToolTodoWriteRequest": {
+        "properties": {
+          "todos": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Todos",
+            "type": "array"
+          }
+        },
+        "title": "ToolTodoWriteRequest",
+        "type": "object"
+      },
+      "ToolWorkspaceTreeRequest": {
+        "properties": {
+          "max_depth": {
+            "default": 3,
+            "title": "Max Depth",
+            "type": "integer"
+          },
+          "path": {
+            "default": ".",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "title": "ToolWorkspaceTreeRequest",
+        "type": "object"
+      },
+      "ToolWriteFileRequest": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ],
+        "title": "ToolWriteFileRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "family": "mcp_market",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {
+    "DELETE /agents/api/registry/{agent_id}": "agent_id",
+    "DELETE /mcp/custom/{mcp_id}": "mcp_id",
+    "GET /agents/api/registry/{agent_id}": "agent_id",
+    "PATCH /agents/api/registry/{agent_id}": "agent_id"
+  },
+  "operation_count": 86,
+  "operation_order": [
+    "GET /agents/api/handoffs",
+    "GET /agents/api/memory/snapshots",
+    "POST /agents/api/memory/snapshots",
+    "GET /agents/api/registry",
+    "POST /agents/api/registry",
+    "GET /agents/api/registry/capabilities",
+    "GET /agents/api/registry/discover",
+    "DELETE /agents/api/registry/{agent_id}",
+    "GET /agents/api/registry/{agent_id}",
+    "PATCH /agents/api/registry/{agent_id}",
+    "GET /agents/api/roles",
+    "POST /agents/api/run",
+    "POST /agents/api/run/preview",
+    "GET /agents/api/runs",
+    "GET /agents/api/runs/{run_id}",
+    "GET /agents/api/runs/{run_id}/events",
+    "GET /agents/api/runs/{run_id}/replay",
+    "POST /agents/api/runs/{run_id}/stop",
+    "GET /agents/api/runtime/config",
+    "GET /agents/api/runtime/health",
+    "GET /agents/api/runtime/status",
+    "GET /marketplace/interop/bridges",
+    "GET /marketplace/templates",
+    "POST /marketplace/templates/import",
+    "POST /marketplace/templates/install",
+    "GET /marketplace/templates/registry",
+    "POST /marketplace/templates/{kind}/{template_id}/clone",
+    "GET /marketplace/templates/{kind}/{template_id}/export",
+    "POST /mcp/call",
+    "GET /mcp/claude-code-servers",
+    "GET /mcp/connectors/{mcp_id}",
+    "GET /mcp/custom",
+    "POST /mcp/custom",
+    "DELETE /mcp/custom/{mcp_id}",
+    "POST /mcp/install",
+    "GET /mcp/installed",
+    "POST /mcp/recommend",
+    "POST /mcp/registry/refresh",
+    "GET /mcp/tools",
+    "GET /obsidian/status",
+    "GET /plugins/directory",
+    "POST /plugins/directory/refresh",
+    "POST /plugins/disable",
+    "POST /plugins/enable",
+    "POST /plugins/execute",
+    "POST /plugins/install",
+    "GET /plugins/registry",
+    "GET /plugins/registry/{plugin_id}",
+    "GET /plugins/sdk",
+    "POST /plugins/uninstall",
+    "POST /plugins/validate",
+    "POST /skills/install",
+    "GET /skills/list",
+    "GET /skills/marketplace",
+    "POST /skills/marketplace/refresh",
+    "POST /tools/build_project",
+    "POST /tools/clear_history",
+    "POST /tools/deploy_project",
+    "GET /tools/download",
+    "GET /tools/download_zip",
+    "POST /tools/edit_file",
+    "POST /tools/git_diff",
+    "POST /tools/git_log",
+    "POST /tools/git_show",
+    "GET /tools/git_status",
+    "POST /tools/grep",
+    "POST /tools/inspect_html",
+    "POST /tools/knowledge_save",
+    "POST /tools/knowledge_search",
+    "GET /tools/knowledge_tree",
+    "POST /tools/list_dir",
+    "GET /tools/network_status",
+    "POST /tools/obsidian_save",
+    "POST /tools/obsidian_search",
+    "GET /tools/obsidian_tree",
+    "GET /tools/permissions",
+    "POST /tools/preview_url",
+    "POST /tools/read_file",
+    "GET /tools/registry",
+    "GET /tools/registry/diagnostics",
+    "POST /tools/run_command",
+    "POST /tools/search_files",
+    "POST /tools/todo_read",
+    "POST /tools/todo_write",
+    "POST /tools/workspace_tree",
+    "POST /tools/write_file"
+  ],
+  "path_count": 81,
+  "path_order": [
+    "/agents/api/handoffs",
+    "/agents/api/memory/snapshots",
+    "/agents/api/registry",
+    "/agents/api/registry/capabilities",
+    "/agents/api/registry/discover",
+    "/agents/api/registry/{agent_id}",
+    "/agents/api/roles",
+    "/agents/api/run",
+    "/agents/api/run/preview",
+    "/agents/api/runs",
+    "/agents/api/runs/{run_id}",
+    "/agents/api/runs/{run_id}/events",
+    "/agents/api/runs/{run_id}/replay",
+    "/agents/api/runs/{run_id}/stop",
+    "/agents/api/runtime/config",
+    "/agents/api/runtime/health",
+    "/agents/api/runtime/status",
+    "/marketplace/interop/bridges",
+    "/marketplace/templates",
+    "/marketplace/templates/import",
+    "/marketplace/templates/install",
+    "/marketplace/templates/registry",
+    "/marketplace/templates/{kind}/{template_id}/clone",
+    "/marketplace/templates/{kind}/{template_id}/export",
+    "/mcp/call",
+    "/mcp/claude-code-servers",
+    "/mcp/connectors/{mcp_id}",
+    "/mcp/custom",
+    "/mcp/custom/{mcp_id}",
+    "/mcp/install",
+    "/mcp/installed",
+    "/mcp/recommend",
+    "/mcp/registry/refresh",
+    "/mcp/tools",
+    "/obsidian/status",
+    "/plugins/directory",
+    "/plugins/directory/refresh",
+    "/plugins/disable",
+    "/plugins/enable",
+    "/plugins/execute",
+    "/plugins/install",
+    "/plugins/registry",
+    "/plugins/registry/{plugin_id}",
+    "/plugins/sdk",
+    "/plugins/uninstall",
+    "/plugins/validate",
+    "/skills/install",
+    "/skills/list",
+    "/skills/marketplace",
+    "/skills/marketplace/refresh",
+    "/tools/build_project",
+    "/tools/clear_history",
+    "/tools/deploy_project",
+    "/tools/download",
+    "/tools/download_zip",
+    "/tools/edit_file",
+    "/tools/git_diff",
+    "/tools/git_log",
+    "/tools/git_show",
+    "/tools/git_status",
+    "/tools/grep",
+    "/tools/inspect_html",
+    "/tools/knowledge_save",
+    "/tools/knowledge_search",
+    "/tools/knowledge_tree",
+    "/tools/list_dir",
+    "/tools/network_status",
+    "/tools/obsidian_save",
+    "/tools/obsidian_search",
+    "/tools/obsidian_tree",
+    "/tools/permissions",
+    "/tools/preview_url",
+    "/tools/read_file",
+    "/tools/registry",
+    "/tools/registry/diagnostics",
+    "/tools/run_command",
+    "/tools/search_files",
+    "/tools/todo_read",
+    "/tools/todo_write",
+    "/tools/workspace_tree",
+    "/tools/write_file"
+  ],
+  "paths": {
+    "/agents/api/handoffs": {
+      "get": {
+        "operationId": "agent_handoffs_agents_api_handoffs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Handoffs"
+      }
+    },
+    "/agents/api/memory/snapshots": {
+      "get": {
+        "operationId": "agent_memory_snapshots_agents_api_memory_snapshots_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Memory Snapshots"
+      },
+      "post": {
+        "operationId": "agent_memory_snapshot_agents_api_memory_snapshots_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemorySnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Memory Snapshot"
+      }
+    },
+    "/agents/api/registry": {
+      "get": {
+        "operationId": "list_registry_agents_api_registry_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Registry"
+      },
+      "post": {
+        "operationId": "register_agent_agents_api_registry_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Agent"
+      }
+    },
+    "/agents/api/registry/capabilities": {
+      "get": {
+        "operationId": "registry_capabilities_agents_api_registry_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Registry Capabilities"
+      }
+    },
+    "/agents/api/registry/discover": {
+      "get": {
+        "operationId": "registry_discover_agents_api_registry_discover_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "capability",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Capability",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Registry Discover"
+      }
+    },
+    "/agents/api/registry/{agent_id}": {
+      "delete": {
+        "operationId": "remove_agent_agents_api_registry__agent_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Agent"
+      },
+      "get": {
+        "operationId": "get_agent_agents_api_registry__agent_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent"
+      },
+      "patch": {
+        "operationId": "update_agent_agents_api_registry__agent_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Agent"
+      }
+    },
+    "/agents/api/roles": {
+      "get": {
+        "operationId": "agent_roles_agents_api_roles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Roles"
+      }
+    },
+    "/agents/api/run": {
+      "post": {
+        "operationId": "agent_run_agents_api_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run"
+      }
+    },
+    "/agents/api/run/preview": {
+      "post": {
+        "operationId": "agent_run_preview_agents_api_run_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run Preview"
+      }
+    },
+    "/agents/api/runs": {
+      "get": {
+        "operationId": "agent_runs_agents_api_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Runs"
+      }
+    },
+    "/agents/api/runs/{run_id}": {
+      "get": {
+        "operationId": "agent_run_detail_agents_api_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run Detail"
+      }
+    },
+    "/agents/api/runs/{run_id}/events": {
+      "get": {
+        "operationId": "agent_run_events_agents_api_runs__run_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run Events"
+      }
+    },
+    "/agents/api/runs/{run_id}/replay": {
+      "get": {
+        "operationId": "agent_run_replay_agents_api_runs__run_id__replay_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run Replay"
+      }
+    },
+    "/agents/api/runs/{run_id}/stop": {
+      "post": {
+        "operationId": "agent_run_stop_agents_api_runs__run_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run Stop"
+      }
+    },
+    "/agents/api/runtime/config": {
+      "get": {
+        "operationId": "agent_runtime_config_agents_api_runtime_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Runtime Config"
+      }
+    },
+    "/agents/api/runtime/health": {
+      "get": {
+        "operationId": "agent_runtime_health_agents_api_runtime_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Runtime Health"
+      }
+    },
+    "/agents/api/runtime/status": {
+      "get": {
+        "operationId": "agent_runtime_status_agents_api_runtime_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Runtime Status"
+      }
+    },
+    "/marketplace/interop/bridges": {
+      "get": {
+        "operationId": "list_interop_bridges_marketplace_interop_bridges_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Interop Bridges"
+      }
+    },
+    "/marketplace/templates": {
+      "get": {
+        "operationId": "list_templates_marketplace_templates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Templates"
+      }
+    },
+    "/marketplace/templates/import": {
+      "post": {
+        "operationId": "import_template_marketplace_templates_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Template"
+      }
+    },
+    "/marketplace/templates/install": {
+      "post": {
+        "operationId": "install_template_marketplace_templates_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Install Template"
+      }
+    },
+    "/marketplace/templates/registry": {
+      "get": {
+        "operationId": "template_registry_marketplace_templates_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Template Registry"
+      }
+    },
+    "/marketplace/templates/{kind}/{template_id}/clone": {
+      "post": {
+        "operationId": "clone_template_marketplace_templates__kind___template_id__clone_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateCloneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clone Template"
+      }
+    },
+    "/marketplace/templates/{kind}/{template_id}/export": {
+      "get": {
+        "operationId": "export_template_marketplace_templates__kind___template_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Template"
+      }
+    },
+    "/mcp/call": {
+      "post": {
+        "operationId": "mcp_call_mcp_call_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Call"
+      }
+    },
+    "/mcp/claude-code-servers": {
+      "get": {
+        "description": "Read ~/.claude/settings.json mcpServers and return them as Lattice MCP items.",
+        "operationId": "mcp_claude_code_servers_mcp_claude_code_servers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Claude Code Servers"
+      }
+    },
+    "/mcp/connectors/{mcp_id}": {
+      "get": {
+        "operationId": "mcp_connector_mcp_connectors__mcp_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mcp_id",
+            "required": true,
+            "schema": {
+              "title": "Mcp Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Connector"
+      }
+    },
+    "/mcp/custom": {
+      "get": {
+        "description": "Return user-added custom MCP entries.",
+        "operationId": "mcp_custom_list_mcp_custom_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Custom List"
+      },
+      "post": {
+        "description": "Save a custom MCP entry (admin-only).",
+        "operationId": "mcp_custom_add_mcp_custom_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpCustomRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Custom Add"
+      }
+    },
+    "/mcp/custom/{mcp_id}": {
+      "delete": {
+        "description": "Remove a custom MCP entry.",
+        "operationId": "mcp_custom_delete_mcp_custom__mcp_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mcp_id",
+            "required": true,
+            "schema": {
+              "title": "Mcp Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Custom Delete"
+      }
+    },
+    "/mcp/install": {
+      "post": {
+        "operationId": "mcp_install_mcp_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Install"
+      }
+    },
+    "/mcp/installed": {
+      "get": {
+        "operationId": "mcp_installed_mcp_installed_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Installed"
+      }
+    },
+    "/mcp/recommend": {
+      "post": {
+        "operationId": "mcp_recommend_mcp_recommend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpRecommendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Recommend"
+      }
+    },
+    "/mcp/registry/refresh": {
+      "post": {
+        "operationId": "mcp_registry_refresh_mcp_registry_refresh_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Registry Refresh"
+      }
+    },
+    "/mcp/tools": {
+      "get": {
+        "operationId": "mcp_tools_mcp_tools_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Tools"
+      }
+    },
+    "/obsidian/status": {
+      "get": {
+        "operationId": "obsidian_status_obsidian_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Obsidian Status"
+      }
+    },
+    "/plugins/directory": {
+      "get": {
+        "operationId": "plugins_directory_plugins_directory_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "license",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "License"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugins Directory"
+      }
+    },
+    "/plugins/directory/refresh": {
+      "post": {
+        "operationId": "plugins_directory_refresh_plugins_directory_refresh_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plugins Directory Refresh"
+      }
+    },
+    "/plugins/disable": {
+      "post": {
+        "operationId": "plugin_disable_plugins_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugin Disable"
+      }
+    },
+    "/plugins/enable": {
+      "post": {
+        "operationId": "plugin_enable_plugins_enable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugin Enable"
+      }
+    },
+    "/plugins/execute": {
+      "post": {
+        "operationId": "plugin_execute_plugins_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugin Execute"
+      }
+    },
+    "/plugins/install": {
+      "post": {
+        "operationId": "plugin_install_plugins_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugin Install"
+      }
+    },
+    "/plugins/registry": {
+      "get": {
+        "operationId": "plugins_registry_plugins_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plugins Registry"
+      }
+    },
+    "/plugins/registry/{plugin_id}": {
+      "get": {
+        "operationId": "plugin_detail_plugins_registry__plugin_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plugin_id",
+            "required": true,
+            "schema": {
+              "title": "Plugin Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugin Detail"
+      }
+    },
+    "/plugins/sdk": {
+      "get": {
+        "operationId": "plugins_sdk_page_plugins_sdk_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plugins Sdk Page"
+      }
+    },
+    "/plugins/uninstall": {
+      "post": {
+        "operationId": "plugin_uninstall_plugins_uninstall_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugin Uninstall"
+      }
+    },
+    "/plugins/validate": {
+      "post": {
+        "operationId": "plugin_validate_plugins_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plugin Validate"
+      }
+    },
+    "/skills/install": {
+      "post": {
+        "operationId": "skills_install_skills_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skills Install"
+      }
+    },
+    "/skills/list": {
+      "get": {
+        "operationId": "skills_list_skills_list_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Skills List"
+      }
+    },
+    "/skills/marketplace": {
+      "get": {
+        "operationId": "skills_marketplace_skills_marketplace_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skills Marketplace"
+      }
+    },
+    "/skills/marketplace/refresh": {
+      "post": {
+        "operationId": "skills_marketplace_refresh_skills_marketplace_refresh_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Skills Marketplace Refresh"
+      }
+    },
+    "/tools/build_project": {
+      "post": {
+        "operationId": "tools_build_project_tools_build_project_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolScriptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Build Project"
+      }
+    },
+    "/tools/clear_history": {
+      "post": {
+        "operationId": "tools_clear_history_tools_clear_history_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolClearHistoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Clear History"
+      }
+    },
+    "/tools/deploy_project": {
+      "post": {
+        "operationId": "tools_deploy_project_tools_deploy_project_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolScriptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Deploy Project"
+      }
+    },
+    "/tools/download": {
+      "get": {
+        "description": "Serve a generated file from agent workspace for download.",
+        "operationId": "tools_download_tools_download_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Download"
+      }
+    },
+    "/tools/download_zip": {
+      "get": {
+        "description": "Serve a generated project directory from the agent workspace as a zip.\n\nThe multi-file artifact loop writes bundles like ``todo-app/`` \u2014\nthis is their one-click download. Path confinement mirrors\n``/tools/download``: anything outside the workspace is refused.",
+        "operationId": "tools_download_zip_tools_download_zip_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Download Zip"
+      }
+    },
+    "/tools/edit_file": {
+      "post": {
+        "operationId": "tools_edit_file_tools_edit_file_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolEditFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Edit File"
+      }
+    },
+    "/tools/git_diff": {
+      "post": {
+        "operationId": "tools_git_diff_tools_git_diff_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolGitDiffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Git Diff"
+      }
+    },
+    "/tools/git_log": {
+      "post": {
+        "operationId": "tools_git_log_tools_git_log_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolGitLogRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Git Log"
+      }
+    },
+    "/tools/git_show": {
+      "post": {
+        "operationId": "tools_git_show_tools_git_show_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolGitShowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Git Show"
+      }
+    },
+    "/tools/git_status": {
+      "get": {
+        "operationId": "tools_git_status_tools_git_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Git Status"
+      }
+    },
+    "/tools/grep": {
+      "post": {
+        "operationId": "tools_grep_tools_grep_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolGrepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Grep"
+      }
+    },
+    "/tools/inspect_html": {
+      "post": {
+        "operationId": "tools_inspect_html_tools_inspect_html_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolPathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Inspect Html"
+      }
+    },
+    "/tools/knowledge_save": {
+      "post": {
+        "operationId": "tools_knowledge_save_tools_knowledge_save_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolKnowledgeSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Knowledge Save"
+      }
+    },
+    "/tools/knowledge_search": {
+      "post": {
+        "operationId": "tools_knowledge_search_tools_knowledge_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolKnowledgeSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Knowledge Search"
+      }
+    },
+    "/tools/knowledge_tree": {
+      "get": {
+        "operationId": "tools_knowledge_tree_tools_knowledge_tree_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Knowledge Tree"
+      }
+    },
+    "/tools/list_dir": {
+      "post": {
+        "operationId": "tools_list_dir_tools_list_dir_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolPathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools List Dir"
+      }
+    },
+    "/tools/network_status": {
+      "get": {
+        "operationId": "tools_network_status_tools_network_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Network Status"
+      }
+    },
+    "/tools/obsidian_save": {
+      "post": {
+        "operationId": "tools_obsidian_save_tools_obsidian_save_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolKnowledgeSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Obsidian Save"
+      }
+    },
+    "/tools/obsidian_search": {
+      "post": {
+        "operationId": "tools_obsidian_search_tools_obsidian_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolKnowledgeSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Obsidian Search"
+      }
+    },
+    "/tools/obsidian_tree": {
+      "get": {
+        "operationId": "tools_obsidian_tree_tools_obsidian_tree_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Obsidian Tree"
+      }
+    },
+    "/tools/permissions": {
+      "get": {
+        "description": "Compact tool permission view (tool / risk / requires_approval / network).\n\nA simpler authorization-layer summary derived from TOOL_GOVERNANCE.\nUse /mcp/tools for the full 7-dimensional governance object.",
+        "operationId": "tools_permissions_tools_permissions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Permissions"
+      }
+    },
+    "/tools/preview_url": {
+      "post": {
+        "operationId": "tools_preview_url_tools_preview_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolPathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Preview Url"
+      }
+    },
+    "/tools/read_file": {
+      "post": {
+        "operationId": "tools_read_file_tools_read_file_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolReadFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Read File"
+      }
+    },
+    "/tools/registry": {
+      "get": {
+        "description": "Full ToolRegistry contract: handlers, governance, catalog, diagnostics.",
+        "operationId": "tools_registry_tools_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Registry"
+      }
+    },
+    "/tools/registry/diagnostics": {
+      "get": {
+        "description": "Small drift check for CI/admin runtime readiness views.",
+        "operationId": "tools_registry_diagnostics_tools_registry_diagnostics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Registry Diagnostics"
+      }
+    },
+    "/tools/run_command": {
+      "post": {
+        "operationId": "tools_run_command_tools_run_command_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolRunCommandRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Run Command"
+      }
+    },
+    "/tools/search_files": {
+      "post": {
+        "operationId": "tools_search_files_tools_search_files_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolSearchFilesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Search Files"
+      }
+    },
+    "/tools/todo_read": {
+      "post": {
+        "operationId": "tools_todo_read_tools_todo_read_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Todo Read"
+      }
+    },
+    "/tools/todo_write": {
+      "post": {
+        "operationId": "tools_todo_write_tools_todo_write_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolTodoWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Todo Write"
+      }
+    },
+    "/tools/workspace_tree": {
+      "post": {
+        "operationId": "tools_workspace_tree_tools_workspace_tree_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolWorkspaceTreeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Workspace Tree"
+      }
+    },
+    "/tools/write_file": {
+      "post": {
+        "operationId": "tools_write_file_tools_write_file_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolWriteFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Write File"
+      }
+    }
+  },
+  "schema_count": 33,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "MCP, marketplace, plugin SDK, agent registry, multi-agent runtime and the direct tool surface.",
+  "target": "lattice-platform / lattice-agent",
+  "wp": "R8"
+}

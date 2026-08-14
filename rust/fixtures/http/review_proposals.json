@@ -1,0 +1,5248 @@
+{
+  "$schema_note": "Golden HTTP fixtures captured from the Python implementation before it is deleted in v11.6.0. Each record is one (route, branch) exchange: replay the request against the Rust front door and the answer must match after the token substitutions below.",
+  "generated_by": "scripts/gen_http_fixtures_ecosystem.py FROZEN at commit fc65e60 — last generating tree; do not regenerate.",
+  "work_package": "WP-F3",
+  "title": "Review queue, change proposals, automation intelligence, hooks",
+  "grouping": "The Review Center and the Act hooks/automation surfaces: the suggestion inbox, the change-proposal lifecycle (including the contractual 409 base-SHA conflict), question-driven automations, and the hooks registry.",
+  "families": [
+    "latticeai/api/review_queue.py",
+    "latticeai/api/change_proposals.py",
+    "latticeai/api/automation_intelligence.py",
+    "latticeai/api/hooks.py"
+  ],
+  "family_route_counts": {
+    "review_queue.py": 52,
+    "change_proposals.py": 22,
+    "hooks.py": 39,
+    "automation_intelligence.py": 25
+  },
+  "families_present": [
+    "automation_intelligence.py",
+    "change_proposals.py",
+    "hooks.py",
+    "review_queue.py"
+  ],
+  "profile": {
+    "note": "The app under capture, built by latticeai.app_factory.create_app().",
+    "env": {
+      "LATTICEAI_ADMIN_EMAILS": "",
+      "LATTICEAI_AGENT_ROOT": "<AGENT_ROOT>",
+      "LATTICEAI_AGENT_TOOL_SEAM": "0",
+      "LATTICEAI_ALLOW_LOCAL_MODELS": "0",
+      "LATTICEAI_ALLOW_MODEL_DOWNLOADS": "0",
+      "LATTICEAI_AUTOLOAD_MODELS": "0",
+      "LATTICEAI_AUTOMATION_RUN_NOW_WAIT": "0",
+      "LATTICEAI_BRAIN_DIR": "<SANDBOX>/brain",
+      "LATTICEAI_BRAIN_NETWORK": "",
+      "LATTICEAI_CSRF_TRUSTED_ORIGINS": "",
+      "LATTICEAI_DATA_DIR": "<DATA_DIR>",
+      "LATTICEAI_DISCORD_BOT_TOKEN": "",
+      "LATTICEAI_DISCORD_PERMISSION_WEBHOOK": "",
+      "LATTICEAI_EMBEDDING_PROVIDER": "hash",
+      "LATTICEAI_ENABLE_GRAPH": "1",
+      "LATTICEAI_ENABLE_HOOKS": "1",
+      "LATTICEAI_ENABLE_TELEGRAM": "0",
+      "LATTICEAI_HOST": "127.0.0.1",
+      "LATTICEAI_INVITE_CODE": "",
+      "LATTICEAI_INVITE_GATE_ENABLED": "0",
+      "LATTICEAI_LLM_EXTRACTION": "false",
+      "LATTICEAI_MODE": "local",
+      "LATTICEAI_OPEN_REGISTRATION": "1",
+      "LATTICEAI_PERMISSION_SECRET": "",
+      "LATTICEAI_PERMISSION_UI_URL": "",
+      "LATTICEAI_PORT": "4825",
+      "LATTICEAI_PUBLIC_URL": "",
+      "LATTICEAI_RATE_LIMIT": "0",
+      "LATTICEAI_REQUIRE_AUTH": "1",
+      "LATTICEAI_VECTOR_DIM": "384",
+      "LATTICEAI_VECTOR_INDEX": "brute",
+      "LATTICE_TZ": "UTC"
+    },
+    "auth": "LATTICEAI_REQUIRE_AUTH=1, so require_user answers 401 and require_admin answers 403 for an anonymous caller.",
+    "origin": "http://127.0.0.1:4825",
+    "sessions": {
+      "session:owner": "owner@lattice.test — the first registered account, therefore admin",
+      "session:member": "member@lattice.test — a non-admin account",
+      "session:invalid": "a syntactically valid cookie carrying an unknown token",
+      "absent": "no Cookie header at all"
+    }
+  },
+  "tokens": {
+    "@ts": "an ISO-8601 timestamp (any precision, with or without offset)",
+    "@uuid": "a UUID",
+    "@id": "an opaque generated identifier (workflow-…, review-…, agent-run-…)",
+    "@any": "a machine- or environment-dependent value, or a value deliberately not pinned (see `gaps`)",
+    "@version": "the product version string",
+    "$name": "a value bound by a `setup` step; the Rust test binds its own and substitutes it into the path/body before replaying",
+    "<DATA_DIR>": "the data directory prefix (LATTICEAI_DATA_DIR)",
+    "<HOME>": "the home directory prefix",
+    "<SANDBOX>": "the throwaway root that held the data dir during capture",
+    "<REPO>": "the repository root prefix",
+    "<AGENT_ROOT>": "the agent workspace prefix (LATTICEAI_AGENT_ROOT)",
+    "<SYSTMP>": "the process tempfile directory (upload spool, etc.)",
+    "@tmpname": "a NamedTemporaryFile basename",
+    "@hostname": "this machine's hostname",
+    "@text:{'@text': …}": "a non-JSON text body",
+    "@binary:{'@binary': …}": "a binary body: size and digest are '@any', the leading magic bytes are pinned"
+  },
+  "symbols": {
+    "$agent_id": "bound by a setup step",
+    "$automation_workflow_id": "bound by a setup step",
+    "$custom_mcp_id": "bound by a setup step",
+    "$docx_path": "bound by a setup step",
+    "$hook_id": "bound by a setup step",
+    "$hook_id_b": "bound by a setup step",
+    "$pdf_path": "bound by a setup step",
+    "$pptx_path": "bound by a setup step",
+    "$presence_client": "bound by a setup step",
+    "$project_created": "bound by a setup step",
+    "$project_id": "bound by a setup step",
+    "$proposal_apply": "bound by a setup step",
+    "$proposal_conflict": "bound by a setup step",
+    "$proposal_reject": "bound by a setup step",
+    "$review_bulk": "bound by a setup step",
+    "$review_dismiss": "bound by a setup step",
+    "$review_item": "bound by a setup step",
+    "$review_snooze": "bound by a setup step",
+    "$workflow_id": "bound by a setup step",
+    "$workflow_run_id": "bound by a setup step",
+    "$xlsx_path": "bound by a setup step"
+  },
+  "setup": [
+    {
+      "kind": "http",
+      "note": "register the first account — the first user registered becomes admin",
+      "method": "POST",
+      "path": "/register",
+      "session": "absent",
+      "request_body": {
+        "email": "owner@lattice.test",
+        "password": "Fixture0wner1",
+        "name": "Fixture Owner",
+        "nickname": "owner"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "register a second, non-admin account (the wrong-role / policy denials use it)",
+      "method": "POST",
+      "path": "/register",
+      "session": "absent",
+      "request_body": {
+        "email": "member@lattice.test",
+        "password": "Fixture0member1",
+        "name": "Fixture Member",
+        "nickname": "member"
+      }
+    },
+    {
+      "kind": "login",
+      "note": "POST /login for both accounts; the session_token cookie of each becomes 'session:owner' / 'session:member' in the fixtures",
+      "accounts": [
+        "owner@lattice.test",
+        "member@lattice.test"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "workspace file the read/edit/download fixtures use",
+      "method": "POST",
+      "path": "/tools/write_file",
+      "session": "session:owner",
+      "request_body": {
+        "path": "fixture-note.md",
+        "content": "Fixture original line.\n"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "file a change proposal will be approved against",
+      "method": "POST",
+      "path": "/tools/write_file",
+      "session": "session:owner",
+      "request_body": {
+        "path": "fixture-apply.md",
+        "content": "Apply me as reviewed.\n"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "file a change proposal will be rejected against",
+      "method": "POST",
+      "path": "/tools/write_file",
+      "session": "session:owner",
+      "request_body": {
+        "path": "fixture-reject.md",
+        "content": "Reject me.\n"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "file a change proposal will 409 against after drift",
+      "method": "POST",
+      "path": "/tools/write_file",
+      "session": "session:owner",
+      "request_body": {
+        "path": "fixture-conflict.md",
+        "content": "Conflict base.\n"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "a nested path so workspace_tree / grep have something",
+      "method": "POST",
+      "path": "/tools/write_file",
+      "session": "session:owner",
+      "request_body": {
+        "path": "subdir/nested.txt",
+        "content": "nested\n"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "a regular review-queue item (not a change proposal) so approve/dismiss/snooze/run_now have a non-proposal target",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "session": "session:owner",
+      "request_body": {
+        "title": "Fixture review item",
+        "summary": "A suggestion the Review Center can act on.",
+        "source": "chat_followup",
+        "kind": "suggestion",
+        "payload": {
+          "hint": "fixture"
+        },
+        "provenance": {
+          "origin": "fixture-generator"
+        }
+      },
+      "binds": [
+        "$review_item"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a second review item, dismissed by a fixture",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "session": "session:owner",
+      "request_body": {
+        "title": "Fixture review to dismiss",
+        "summary": "Will be dismissed.",
+        "source": "workflow_run",
+        "kind": "suggestion"
+      },
+      "binds": [
+        "$review_dismiss"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a third review item, snoozed / unsnoozed / bulk-acted by fixtures",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "session": "session:owner",
+      "request_body": {
+        "title": "Fixture review to snooze",
+        "summary": "Will be snoozed.",
+        "source": "agent_followup",
+        "kind": "suggestion"
+      },
+      "binds": [
+        "$review_snooze"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a fourth review item reserved for bulk approve",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "session": "session:owner",
+      "request_body": {
+        "title": "Fixture review to bulk-approve",
+        "summary": "Bulk.",
+        "source": "chat_followup",
+        "kind": "suggestion"
+      },
+      "binds": [
+        "$review_bulk"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "change proposal that a fixture will approve (applies staged content to fixture-apply.md exactly as reviewed)",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "session": "session:owner",
+      "request_body": {
+        "title": "파일 수정 제안: fixture-apply.md",
+        "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+        "source": "change_proposal",
+        "kind": "file_update",
+        "payload": {
+          "path": "fixture-apply.md",
+          "diff": [
+            "--- a/fixture-apply.md",
+            "+++ b/fixture-apply.md",
+            "@@ -1 +1,2 @@",
+            " Apply me as reviewed.",
+            "+Plus the approved edit."
+          ],
+          "new_content": "Apply me as reviewed.\nPlus the approved edit.\n",
+          "tier": "small",
+          "before_bytes": 22,
+          "after_bytes": 46,
+          "base_exists": true,
+          "base_sha256": "c6556d7b4ba2c2b9ffa8b4e3811ad306fc905b60198a8a8bbc37baf90cc92585"
+        },
+        "provenance": {
+          "proposed_by": "fixture",
+          "reason": "seed approve"
+        }
+      },
+      "binds": [
+        "$proposal_apply"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "change proposal that a fixture will reject",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "session": "session:owner",
+      "request_body": {
+        "title": "파일 수정 제안: fixture-reject.md",
+        "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+        "source": "change_proposal",
+        "kind": "file_update",
+        "payload": {
+          "path": "fixture-reject.md",
+          "diff": [
+            "--- a/fixture-reject.md",
+            "+++ b/fixture-reject.md",
+            "@@ -1 +1,2 @@",
+            " Reject me.",
+            "+Would have changed."
+          ],
+          "new_content": "Reject me.\nWould have changed.\n",
+          "tier": "small",
+          "before_bytes": 11,
+          "after_bytes": 31,
+          "base_exists": true,
+          "base_sha256": "03e3fc26cf883e2dd6d05c83de440c6eb9244f51f86c81407031ad01871a4961"
+        },
+        "provenance": {
+          "proposed_by": "fixture",
+          "reason": "seed reject"
+        }
+      },
+      "binds": [
+        "$proposal_reject"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "change proposal whose base file a fixture will drift, so approve 409s",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "session": "session:owner",
+      "request_body": {
+        "title": "파일 수정 제안: fixture-conflict.md",
+        "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+        "source": "change_proposal",
+        "kind": "file_update",
+        "payload": {
+          "path": "fixture-conflict.md",
+          "diff": [
+            "--- a/fixture-conflict.md",
+            "+++ b/fixture-conflict.md",
+            "@@ -1 +1,2 @@",
+            " Conflict base.",
+            "+Staged edit."
+          ],
+          "new_content": "Conflict base.\nStaged edit.\n",
+          "tier": "small",
+          "before_bytes": 15,
+          "after_bytes": 28,
+          "base_exists": true,
+          "base_sha256": "02144a1a31f074d8ddce084a828c44391caca288bd9764dd1b220abd06db95e8"
+        },
+        "provenance": {
+          "proposed_by": "fixture",
+          "reason": "seed conflict"
+        }
+      },
+      "binds": [
+        "$proposal_conflict"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "register a user hook the list/inspect/enable/disable/reorder fixtures use",
+      "method": "POST",
+      "path": "/api/hooks/register",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture Hook",
+        "kind": "pre_tool",
+        "description": "A canned hook. Command is empty so /run cannot shell out.",
+        "command": "",
+        "enabled": true
+      },
+      "binds": [
+        "$hook_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a second hook so reorder has two ids of the same kind",
+      "method": "POST",
+      "path": "/api/hooks/register",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture Hook Two",
+        "kind": "pre_tool",
+        "description": "Second canned hook.",
+        "command": "",
+        "enabled": false
+      },
+      "binds": [
+        "$hook_id_b"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a workflow definition the designer / run-list fixtures read",
+      "method": "POST",
+      "path": "/workflows/api/definitions",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture workflow",
+        "nodes": [
+          {
+            "id": "trigger",
+            "type": "trigger",
+            "name": "Manual start",
+            "config": {
+              "trigger": "manual"
+            },
+            "next": "output"
+          },
+          {
+            "id": "output",
+            "type": "output",
+            "name": "Output",
+            "config": {},
+            "next": null
+          }
+        ],
+        "metadata": {
+          "origin": "fixture"
+        }
+      },
+      "binds": [
+        "$workflow_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a project session the /api/projects fixtures read. A second session is created by the create_project happy fixture so the list order stays stable (one row at list time).",
+      "method": "POST",
+      "path": "/api/projects",
+      "session": "session:owner",
+      "request_body": {
+        "title": "Fixture project",
+        "goal": "Capture the project-session contract."
+      },
+      "binds": [
+        "$project_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "register a custom agent so registry get/patch/delete have a real id",
+      "method": "POST",
+      "path": "/agents/api/registry",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture Reviewer",
+        "type": "custom",
+        "description": "A canned agent.",
+        "capabilities": [
+          "review"
+        ],
+        "config": {
+          "note": "fixture"
+        },
+        "version": "1.0.0"
+      },
+      "binds": [
+        "$agent_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "install the daily-memory-digest recipe so automation run-now has a real target",
+      "method": "POST",
+      "path": "/workflows/api/automation/recipes/daily-memory-digest",
+      "session": "session:owner",
+      "request_body": {
+        "enabled": false
+      },
+      "binds": [
+        "$automation_workflow_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "join realtime presence so /realtime/presence is not an empty list",
+      "method": "POST",
+      "path": "/realtime/presence/join",
+      "session": "session:owner",
+      "request_body": {
+        "client_id": "fixture-client",
+        "workspace_id": "personal"
+      },
+      "binds": [
+        "$presence_client"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a custom MCP entry the list/delete fixtures use",
+      "method": "POST",
+      "path": "/mcp/custom",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture Custom MCP",
+        "package": "npx fixture-mcp",
+        "description": "Canned custom MCP.",
+        "category": "custom"
+      },
+      "binds": [
+        "$custom_mcp_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "drift fixture-conflict.md so the pending proposal's base SHA no longer matches",
+      "method": "POST",
+      "path": "/tools/write_file",
+      "session": "session:owner",
+      "request_body": {
+        "path": "fixture-conflict.md",
+        "content": "Conflict drifted.\n"
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "route": "POST /api/hooks/run (successful dispatch of an enabled hook)",
+      "reason": "A live run of a built-in pre_tool hook can block subsequent tool fixtures. Only the missing-selector 400 and unknown-hook 404 are captured. fire is the same handler."
+    },
+    {
+      "route": "POST /api/automation/install (real suggestion id)",
+      "reason": "Suggestions are derived from the user's question history. The seeded sandbox has no chat history that matches an intent rule, so the list is empty and only the unknown-id 404 is captured."
+    },
+    {
+      "route": "POST /api/automation/run-now dry_run=false",
+      "reason": "A live execution goes through the async run executor and may call the LLM. Only dry-run (the SPA default) is captured."
+    },
+    {
+      "route": "POST /automation/reviews (source=change_proposal) via the governor / /agent/change-proposal seam",
+      "reason": "HTTP cannot create a change proposal through the governor (agent_worker_seam is KEEP_WORKER and gated on LATTICEAI_AGENT_TOOL_SEAM). Seeding posts a review item with the same payload shape ChangeProposalService writes, which is what approve/409 actually consume."
+    },
+    {
+      "route": "POST /api/proposals/{id}/approve — 409 status",
+      "reason": "The change_proposals router catches ProposalConflictError as ValueError and answers 400 with a string detail. The structured 409 (error=change_proposal_conflict, rebase_hint) is only on POST /automation/reviews/{id}/approve. Both oracles are captured. VS Code keys on 409 for this path; that is a pre-existing client/oracle mismatch, not rewritten."
+    }
+  ],
+  "fixture_count": 138,
+  "fixtures": [
+    {
+      "family": "review_queue.py",
+      "name": "list_items",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "items": [
+          {
+            "id": "$proposal_conflict",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-conflict.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-conflict.md",
+              "diff": [
+                "--- a/fixture-conflict.md",
+                "+++ b/fixture-conflict.md",
+                "@@ -1 +1,2 @@",
+                " Conflict base.",
+                "+Staged edit."
+              ],
+              "new_content": "Conflict base.\nStaged edit.\n",
+              "tier": "small",
+              "before_bytes": 15,
+              "after_bytes": 28,
+              "base_exists": true,
+              "base_sha256": "02144a1a31f074d8ddce084a828c44391caca288bd9764dd1b220abd06db95e8"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed conflict"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$proposal_reject",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-reject.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-reject.md",
+              "diff": [
+                "--- a/fixture-reject.md",
+                "+++ b/fixture-reject.md",
+                "@@ -1 +1,2 @@",
+                " Reject me.",
+                "+Would have changed."
+              ],
+              "new_content": "Reject me.\nWould have changed.\n",
+              "tier": "small",
+              "before_bytes": 11,
+              "after_bytes": 31,
+              "base_exists": true,
+              "base_sha256": "03e3fc26cf883e2dd6d05c83de440c6eb9244f51f86c81407031ad01871a4961"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed reject"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$proposal_apply",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-apply.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-apply.md",
+              "diff": [
+                "--- a/fixture-apply.md",
+                "+++ b/fixture-apply.md",
+                "@@ -1 +1,2 @@",
+                " Apply me as reviewed.",
+                "+Plus the approved edit."
+              ],
+              "new_content": "Apply me as reviewed.\nPlus the approved edit.\n",
+              "tier": "small",
+              "before_bytes": 22,
+              "after_bytes": 46,
+              "base_exists": true,
+              "base_sha256": "c6556d7b4ba2c2b9ffa8b4e3811ad306fc905b60198a8a8bbc37baf90cc92585"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed approve"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_bulk",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review to bulk-approve",
+            "summary": "Bulk.",
+            "source": "chat_followup",
+            "kind": "suggestion",
+            "payload": {},
+            "provenance": {},
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_snooze",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review to snooze",
+            "summary": "Will be snoozed.",
+            "source": "agent_followup",
+            "kind": "suggestion",
+            "payload": {},
+            "provenance": {},
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_dismiss",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review to dismiss",
+            "summary": "Will be dismissed.",
+            "source": "workflow_run",
+            "kind": "suggestion",
+            "payload": {},
+            "provenance": {},
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_item",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review item",
+            "summary": "A suggestion the Review Center can act on.",
+            "source": "chat_followup",
+            "kind": "suggestion",
+            "payload": {
+              "hint": "fixture"
+            },
+            "provenance": {
+              "origin": "fixture-generator"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          }
+        ]
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "list_items",
+      "branch": "filtered_status",
+      "method": "GET",
+      "path": "/automation/reviews",
+      "query": {
+        "status": "pending"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "items": [
+          {
+            "id": "$proposal_conflict",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-conflict.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-conflict.md",
+              "diff": [
+                "--- a/fixture-conflict.md",
+                "+++ b/fixture-conflict.md",
+                "@@ -1 +1,2 @@",
+                " Conflict base.",
+                "+Staged edit."
+              ],
+              "new_content": "Conflict base.\nStaged edit.\n",
+              "tier": "small",
+              "before_bytes": 15,
+              "after_bytes": 28,
+              "base_exists": true,
+              "base_sha256": "02144a1a31f074d8ddce084a828c44391caca288bd9764dd1b220abd06db95e8"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed conflict"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$proposal_reject",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-reject.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-reject.md",
+              "diff": [
+                "--- a/fixture-reject.md",
+                "+++ b/fixture-reject.md",
+                "@@ -1 +1,2 @@",
+                " Reject me.",
+                "+Would have changed."
+              ],
+              "new_content": "Reject me.\nWould have changed.\n",
+              "tier": "small",
+              "before_bytes": 11,
+              "after_bytes": 31,
+              "base_exists": true,
+              "base_sha256": "03e3fc26cf883e2dd6d05c83de440c6eb9244f51f86c81407031ad01871a4961"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed reject"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$proposal_apply",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-apply.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-apply.md",
+              "diff": [
+                "--- a/fixture-apply.md",
+                "+++ b/fixture-apply.md",
+                "@@ -1 +1,2 @@",
+                " Apply me as reviewed.",
+                "+Plus the approved edit."
+              ],
+              "new_content": "Apply me as reviewed.\nPlus the approved edit.\n",
+              "tier": "small",
+              "before_bytes": 22,
+              "after_bytes": 46,
+              "base_exists": true,
+              "base_sha256": "c6556d7b4ba2c2b9ffa8b4e3811ad306fc905b60198a8a8bbc37baf90cc92585"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed approve"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_bulk",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review to bulk-approve",
+            "summary": "Bulk.",
+            "source": "chat_followup",
+            "kind": "suggestion",
+            "payload": {},
+            "provenance": {},
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_snooze",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review to snooze",
+            "summary": "Will be snoozed.",
+            "source": "agent_followup",
+            "kind": "suggestion",
+            "payload": {},
+            "provenance": {},
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_dismiss",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review to dismiss",
+            "summary": "Will be dismissed.",
+            "source": "workflow_run",
+            "kind": "suggestion",
+            "payload": {},
+            "provenance": {},
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$review_item",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "Fixture review item",
+            "summary": "A suggestion the Review Center can act on.",
+            "source": "chat_followup",
+            "kind": "suggestion",
+            "payload": {
+              "hint": "fixture"
+            },
+            "provenance": {
+              "origin": "fixture-generator"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          }
+        ]
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "list_items",
+      "branch": "filtered_source",
+      "method": "GET",
+      "path": "/automation/reviews",
+      "query": {
+        "source": "change_proposal"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "items": [
+          {
+            "id": "$proposal_conflict",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-conflict.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-conflict.md",
+              "diff": [
+                "--- a/fixture-conflict.md",
+                "+++ b/fixture-conflict.md",
+                "@@ -1 +1,2 @@",
+                " Conflict base.",
+                "+Staged edit."
+              ],
+              "new_content": "Conflict base.\nStaged edit.\n",
+              "tier": "small",
+              "before_bytes": 15,
+              "after_bytes": 28,
+              "base_exists": true,
+              "base_sha256": "02144a1a31f074d8ddce084a828c44391caca288bd9764dd1b220abd06db95e8"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed conflict"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$proposal_reject",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-reject.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-reject.md",
+              "diff": [
+                "--- a/fixture-reject.md",
+                "+++ b/fixture-reject.md",
+                "@@ -1 +1,2 @@",
+                " Reject me.",
+                "+Would have changed."
+              ],
+              "new_content": "Reject me.\nWould have changed.\n",
+              "tier": "small",
+              "before_bytes": 11,
+              "after_bytes": 31,
+              "base_exists": true,
+              "base_sha256": "03e3fc26cf883e2dd6d05c83de440c6eb9244f51f86c81407031ad01871a4961"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed reject"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "$proposal_apply",
+            "status": "pending",
+            "effective_status": "pending",
+            "title": "파일 수정 제안: fixture-apply.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-apply.md",
+              "diff": [
+                "--- a/fixture-apply.md",
+                "+++ b/fixture-apply.md",
+                "@@ -1 +1,2 @@",
+                " Apply me as reviewed.",
+                "+Plus the approved edit."
+              ],
+              "new_content": "Apply me as reviewed.\nPlus the approved edit.\n",
+              "tier": "small",
+              "before_bytes": 22,
+              "after_bytes": 46,
+              "base_exists": true,
+              "base_sha256": "c6556d7b4ba2c2b9ffa8b4e3811ad306fc905b60198a8a8bbc37baf90cc92585"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed approve"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          }
+        ]
+      },
+      "note": "the Review Center filters the inbox by source; change_proposal items must keep their full payload shape"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "list_items",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "list_items",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "review_counts",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/automation/reviews/counts",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "pending": 7,
+        "snoozed": 0,
+        "pending_by_source": {
+          "change_proposal": 3,
+          "chat_followup": 2,
+          "agent_followup": 1,
+          "workflow_run": 1
+        }
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "review_counts",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/automation/reviews/counts",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "review_counts",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/automation/reviews/counts",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "create_item",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "title": "Created during capture",
+        "summary": "Posted by the happy-path fixture.",
+        "source": "chat_followup",
+        "kind": "suggestion"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "@id",
+        "status": "pending",
+        "effective_status": "pending",
+        "title": "Created during capture",
+        "summary": "Posted by the happy-path fixture.",
+        "source": "chat_followup",
+        "kind": "suggestion",
+        "payload": {},
+        "provenance": {},
+        "snoozed_until": null,
+        "user_email": "owner@lattice.test",
+        "workspace_id": "personal",
+        "created_at": "@ts",
+        "updated_at": "@ts"
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "create_item",
+      "branch": "error_unknown_source",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "title": "bad",
+        "source": "not-a-source"
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "source must be one of ['agent_followup', 'change_proposal', 'chat_followup', 'kg_change_digest', 'trigger', 'workflow_run']"
+      },
+      "note": "source must be one of REVIEW_SOURCES — 422"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "create_item",
+      "branch": "error_missing_title",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "summary": "no title"
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "title"
+            ],
+            "msg": "Field required",
+            "input": {
+              "summary": "no title"
+            }
+          }
+        ]
+      },
+      "note": "FastAPI 422 — title is required"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "create_item",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "title": "x",
+        "source": "chat_followup"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "create_item",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "title": "x",
+        "source": "chat_followup"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "get_item",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/automation/reviews/$review_item",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "$review_item",
+        "status": "pending",
+        "effective_status": "pending",
+        "title": "Fixture review item",
+        "summary": "A suggestion the Review Center can act on.",
+        "source": "chat_followup",
+        "kind": "suggestion",
+        "payload": {
+          "hint": "fixture"
+        },
+        "provenance": {
+          "origin": "fixture-generator"
+        },
+        "snoozed_until": null,
+        "user_email": "owner@lattice.test",
+        "workspace_id": "personal",
+        "created_at": "@ts",
+        "updated_at": "@ts"
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "get_item",
+      "branch": "error_not_found",
+      "method": "GET",
+      "path": "/automation/reviews/review-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "검토 항목을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "get_item",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/automation/reviews/$review_item",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "get_item",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/automation/reviews/$review_item",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "approve_item",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews/$review_item/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "$review_item",
+        "status": "approved",
+        "effective_status": "approved",
+        "title": "Fixture review item",
+        "summary": "A suggestion the Review Center can act on.",
+        "source": "chat_followup",
+        "kind": "suggestion",
+        "payload": {
+          "hint": "fixture"
+        },
+        "provenance": {
+          "origin": "fixture-generator"
+        },
+        "snoozed_until": null,
+        "user_email": "owner@lattice.test",
+        "workspace_id": "personal",
+        "created_at": "@ts",
+        "updated_at": "@ts"
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "approve_item",
+      "branch": "error_already_approved",
+      "method": "POST",
+      "path": "/automation/reviews/$review_item/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 409,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "cannot 'approve' a review item in status 'approved'"
+      },
+      "note": "a second approve of a terminal item is 409"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "approve_item",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/automation/reviews/review-missing/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "검토 항목을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "approve_item",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews/$review_item/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "approve_item",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews/$review_item/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "dismiss_item",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews/$review_dismiss/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "reason": "not useful"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "$review_dismiss",
+        "status": "dismissed",
+        "effective_status": "dismissed",
+        "title": "Fixture review to dismiss",
+        "summary": "Will be dismissed.",
+        "source": "workflow_run",
+        "kind": "suggestion",
+        "payload": {},
+        "provenance": {
+          "dismiss_reason": "not useful"
+        },
+        "snoozed_until": null,
+        "user_email": "owner@lattice.test",
+        "workspace_id": "personal",
+        "created_at": "@ts",
+        "updated_at": "@ts"
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "dismiss_item",
+      "branch": "error_already_dismissed",
+      "method": "POST",
+      "path": "/automation/reviews/$review_dismiss/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 409,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "cannot 'dismiss' a review item in status 'dismissed'"
+      },
+      "note": "a second dismiss is 409"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "dismiss_item",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/automation/reviews/review-missing/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "검토 항목을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "dismiss_item",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews/$review_dismiss/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "dismiss_item",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews/$review_dismiss/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "snooze_item",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/snooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "until": "@ts"
+      },
+      "status": 500,
+      "response_headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "response_body": {
+        "@text": "Internal Server Error"
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "snooze_item",
+      "branch": "error_missing_until",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/snooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "until"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      },
+      "note": "until is required"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "snooze_item",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/automation/reviews/review-missing/snooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "until": "@ts"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "검토 항목을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "snooze_item",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/snooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "until": "@ts"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "snooze_item",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/snooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "until": "@ts"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "unsnooze_item",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/unsnooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "$review_snooze",
+        "status": "pending",
+        "effective_status": "pending",
+        "title": "Fixture review to snooze",
+        "summary": "Will be snoozed.",
+        "source": "agent_followup",
+        "kind": "suggestion",
+        "payload": {},
+        "provenance": {},
+        "snoozed_until": null,
+        "user_email": "owner@lattice.test",
+        "workspace_id": "personal",
+        "created_at": "@ts",
+        "updated_at": "@ts"
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "unsnooze_item",
+      "branch": "error_not_snoozed",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/unsnooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 409,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "cannot 'unsnooze' a review item in status 'pending'"
+      },
+      "note": "unsnooze of a pending (not snoozed) item is 409"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "unsnooze_item",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/automation/reviews/review-missing/unsnooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "검토 항목을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "unsnooze_item",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/unsnooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "unsnooze_item",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/unsnooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "run_now_item",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/run_now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 409,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "review item has no workflow to run"
+      },
+      "note": "run_now is a preview: it does not change status"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "run_now_item",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/automation/reviews/review-missing/run_now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "검토 항목을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "run_now_item",
+      "branch": "error_already_resolved",
+      "method": "POST",
+      "path": "/automation/reviews/$review_item/run_now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 409,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "cannot 'run_now' a review item in status 'approved'"
+      },
+      "note": "run_now on an already-approved item is 409"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "run_now_item",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/run_now",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "run_now_item",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews/$review_snooze/run_now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_approve",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": [
+          "$review_bulk"
+        ]
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "action": "approve",
+        "requested": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "results": [
+          {
+            "id": "$review_bulk",
+            "status": "ok",
+            "item_status": "approved",
+            "detail": null
+          }
+        ]
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_approve",
+      "branch": "error_empty_ids",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": []
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "한꺼번에 처리할 검토 항목을 하나 이상 골라 주세요."
+      },
+      "note": "ids is required and never defaults to everything pending"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_approve",
+      "branch": "partial_not_found",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": [
+          "review-missing",
+          "$review_item"
+        ]
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "action": "approve",
+        "requested": 2,
+        "succeeded": 0,
+        "failed": 2,
+        "results": [
+          {
+            "id": "review-missing",
+            "status": "not_found",
+            "item_status": null,
+            "detail": null
+          },
+          {
+            "id": "$review_item",
+            "status": "conflict",
+            "item_status": null,
+            "detail": "cannot 'approve' a review item in status 'approved'"
+          }
+        ]
+      },
+      "note": "a missing id is reported per-item; it does not abort the rest"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_approve",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": [
+          "$review_bulk"
+        ]
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_approve",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": [
+          "$review_bulk"
+        ]
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_dismiss",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": [
+          "$review_snooze"
+        ],
+        "reason": "bulk dismiss"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "action": "dismiss",
+        "requested": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "results": [
+          {
+            "id": "$review_snooze",
+            "status": "ok",
+            "item_status": "dismissed",
+            "detail": null
+          }
+        ]
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_dismiss",
+      "branch": "error_empty_ids",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": []
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "한꺼번에 처리할 검토 항목을 하나 이상 골라 주세요."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_dismiss",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": [
+          "$review_snooze"
+        ]
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "review_queue.py",
+      "name": "bulk_dismiss",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/automation/reviews/bulk/dismiss",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ids": [
+          "$review_snooze"
+        ]
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "list_proposals",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/proposals",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "items": [
+          {
+            "id": "$proposal_conflict",
+            "status": "pending",
+            "title": "파일 수정 제안: fixture-conflict.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-conflict.md",
+              "diff": [
+                "--- a/fixture-conflict.md",
+                "+++ b/fixture-conflict.md",
+                "@@ -1 +1,2 @@",
+                " Conflict base.",
+                "+Staged edit."
+              ],
+              "new_content": "Conflict base.\nStaged edit.\n",
+              "tier": "small",
+              "before_bytes": 15,
+              "after_bytes": 28,
+              "base_exists": true,
+              "base_sha256": "02144a1a31f074d8ddce084a828c44391caca288bd9764dd1b220abd06db95e8"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed conflict"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts",
+            "effective_status": "pending"
+          },
+          {
+            "id": "$proposal_reject",
+            "status": "pending",
+            "title": "파일 수정 제안: fixture-reject.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-reject.md",
+              "diff": [
+                "--- a/fixture-reject.md",
+                "+++ b/fixture-reject.md",
+                "@@ -1 +1,2 @@",
+                " Reject me.",
+                "+Would have changed."
+              ],
+              "new_content": "Reject me.\nWould have changed.\n",
+              "tier": "small",
+              "before_bytes": 11,
+              "after_bytes": 31,
+              "base_exists": true,
+              "base_sha256": "03e3fc26cf883e2dd6d05c83de440c6eb9244f51f86c81407031ad01871a4961"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed reject"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts",
+            "effective_status": "pending"
+          },
+          {
+            "id": "$proposal_apply",
+            "status": "pending",
+            "title": "파일 수정 제안: fixture-apply.md",
+            "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+            "source": "change_proposal",
+            "kind": "file_update",
+            "payload": {
+              "path": "fixture-apply.md",
+              "diff": [
+                "--- a/fixture-apply.md",
+                "+++ b/fixture-apply.md",
+                "@@ -1 +1,2 @@",
+                " Apply me as reviewed.",
+                "+Plus the approved edit."
+              ],
+              "new_content": "Apply me as reviewed.\nPlus the approved edit.\n",
+              "tier": "small",
+              "before_bytes": 22,
+              "after_bytes": 46,
+              "base_exists": true,
+              "base_sha256": "c6556d7b4ba2c2b9ffa8b4e3811ad306fc905b60198a8a8bbc37baf90cc92585"
+            },
+            "provenance": {
+              "proposed_by": "fixture",
+              "reason": "seed approve"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@lattice.test",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts",
+            "effective_status": "pending"
+          }
+        ],
+        "count": 3,
+        "contract": {
+          "additive_writes": "auto",
+          "mutations": "proposal",
+          "deletions": "proposal",
+          "applied_content": "exactly_as_reviewed"
+        }
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "list_proposals",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/proposals",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "list_proposals",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/proposals",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "proposal_counts",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/proposals/counts",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "pending": 3
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "proposal_counts",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/proposals/counts",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "proposal_counts",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/proposals/counts",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "get_proposal",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/proposals/$proposal_apply",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "$proposal_apply",
+        "status": "pending",
+        "title": "파일 수정 제안: fixture-apply.md",
+        "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+        "source": "change_proposal",
+        "kind": "file_update",
+        "payload": {
+          "path": "fixture-apply.md",
+          "diff": [
+            "--- a/fixture-apply.md",
+            "+++ b/fixture-apply.md",
+            "@@ -1 +1,2 @@",
+            " Apply me as reviewed.",
+            "+Plus the approved edit."
+          ],
+          "new_content": "Apply me as reviewed.\nPlus the approved edit.\n",
+          "tier": "small",
+          "before_bytes": 22,
+          "after_bytes": 46,
+          "base_exists": true,
+          "base_sha256": "c6556d7b4ba2c2b9ffa8b4e3811ad306fc905b60198a8a8bbc37baf90cc92585"
+        },
+        "provenance": {
+          "proposed_by": "fixture",
+          "reason": "seed approve"
+        },
+        "snoozed_until": null,
+        "user_email": "owner@lattice.test",
+        "workspace_id": "personal",
+        "created_at": "@ts",
+        "updated_at": "@ts",
+        "effective_status": "pending"
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "get_proposal",
+      "branch": "error_not_found",
+      "method": "GET",
+      "path": "/api/proposals/review-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "review-missing"
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "get_proposal",
+      "branch": "error_not_a_proposal",
+      "method": "GET",
+      "path": "/api/proposals/$review_snooze",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "'not a change proposal: $review_snooze'"
+      },
+      "note": "a review item that is not source=change_proposal is 404, so this surface cannot leak the rest of the inbox"
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "get_proposal",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/proposals/$proposal_apply",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "get_proposal",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/proposals/$proposal_apply",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "approve_proposal",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_apply/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "item": {
+          "id": "$proposal_apply",
+          "status": "approved",
+          "title": "파일 수정 제안: fixture-apply.md",
+          "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+          "source": "change_proposal",
+          "kind": "file_update",
+          "payload": {
+            "path": "fixture-apply.md",
+            "diff": [
+              "--- a/fixture-apply.md",
+              "+++ b/fixture-apply.md",
+              "@@ -1 +1,2 @@",
+              " Apply me as reviewed.",
+              "+Plus the approved edit."
+            ],
+            "new_content": "Apply me as reviewed.\nPlus the approved edit.\n",
+            "tier": "small",
+            "before_bytes": 22,
+            "after_bytes": 46,
+            "base_exists": true,
+            "base_sha256": "c6556d7b4ba2c2b9ffa8b4e3811ad306fc905b60198a8a8bbc37baf90cc92585"
+          },
+          "provenance": {
+            "proposed_by": "fixture",
+            "reason": "seed approve"
+          },
+          "snoozed_until": null,
+          "user_email": "owner@lattice.test",
+          "workspace_id": "personal",
+          "created_at": "@ts",
+          "updated_at": "@ts",
+          "effective_status": "approved"
+        },
+        "applied": true,
+        "path": "fixture-apply.md",
+        "kind": "file_update"
+      },
+      "note": "applies the staged content to fixture-apply.md exactly as reviewed"
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "approve_proposal",
+      "branch": "error_already_resolved",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_apply/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "change proposal conflict (already_approved): fixture-apply.md"
+      },
+      "note": "a second approve is 400/409 — already applied"
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "approve_proposal",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/api/proposals/review-missing/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "review-missing"
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "approve_proposal",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_apply/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "approve_proposal",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_apply/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "reject_proposal",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_reject/reject",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "reason": "not the change we wanted"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "item": {
+          "id": "$proposal_reject",
+          "status": "dismissed",
+          "title": "파일 수정 제안: fixture-reject.md",
+          "summary": "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
+          "source": "change_proposal",
+          "kind": "file_update",
+          "payload": {
+            "path": "fixture-reject.md",
+            "diff": [
+              "--- a/fixture-reject.md",
+              "+++ b/fixture-reject.md",
+              "@@ -1 +1,2 @@",
+              " Reject me.",
+              "+Would have changed."
+            ],
+            "new_content": "Reject me.\nWould have changed.\n",
+            "tier": "small",
+            "before_bytes": 11,
+            "after_bytes": 31,
+            "base_exists": true,
+            "base_sha256": "03e3fc26cf883e2dd6d05c83de440c6eb9244f51f86c81407031ad01871a4961"
+          },
+          "provenance": {
+            "proposed_by": "fixture",
+            "reason": "seed reject",
+            "dismiss_reason": "not the change we wanted"
+          },
+          "snoozed_until": null,
+          "user_email": "owner@lattice.test",
+          "workspace_id": "personal",
+          "created_at": "@ts",
+          "updated_at": "@ts",
+          "effective_status": "dismissed"
+        },
+        "applied": false,
+        "reason": "not the change we wanted"
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "reject_proposal",
+      "branch": "error_already_rejected",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_reject/reject",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "reason": "again"
+      },
+      "status": 500,
+      "response_headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "response_body": {
+        "@text": "Internal Server Error"
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "reject_proposal",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/api/proposals/review-missing/reject",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "reason": "x"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "review-missing"
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "reject_proposal",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_reject/reject",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "reason": "x"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "reject_proposal",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_reject/reject",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "reason": "x"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "change_proposals.py",
+      "name": "approve_proposal",
+      "branch": "error_base_sha_conflict",
+      "method": "POST",
+      "path": "/api/proposals/$proposal_conflict/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "change proposal conflict (file_modified_since_proposal): fixture-conflict.md"
+      },
+      "note": "THIS surface catches ProposalConflictError as ValueError → 400 with a string detail. The structured 409 lives on POST /automation/reviews/{id}/approve (captured next). The VS Code client inspects status==409 on THIS path; the oracle today answers 400 — recorded honestly, not rewritten"
+    },
+    {
+      "family": "review_queue.py",
+      "name": "approve_item",
+      "branch": "error_base_sha_conflict",
+      "method": "POST",
+      "path": "/automation/reviews/$proposal_conflict/approve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 409,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": {
+          "error": "change_proposal_conflict",
+          "conflict": true,
+          "reason": "file_modified_since_proposal",
+          "path": "fixture-conflict.md",
+          "kind": "file_update",
+          "base_sha256": "02144a1a31f074d8ddce084a828c44391caca288bd9764dd1b220abd06db95e8",
+          "current_sha256": "a8c813091c9ea33efc863d69dded9fb11c77416cf1d7b4e4452c72bb80ad0d73",
+          "rebase_hint": "제안 생성 이후 파일 상태가 바뀌었습니다. 이 제안을 거부하고 현재 파일 내용을 기준으로 제안을 다시 생성하세요."
+        }
+      },
+      "note": "the same 409, through the Review Center approve path that delegates to ChangeProposalService"
+    },
+    {
+      "family": "hooks.py",
+      "name": "list_hooks",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/hooks",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "hooks": [
+          {
+            "id": "builtin:redact-secrets",
+            "name": "Redact secrets",
+            "kind": "pre_run",
+            "order": 10,
+            "description": "Strip secret-like fields (token, password, api_key…) from agent context packets before a run.",
+            "binding": "lattice_brain.runtime.multi_agent._redact",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "builtin:audit-agent-run",
+            "name": "Audit agent run",
+            "kind": "post_run",
+            "order": 10,
+            "description": "Append every completed agent run to the workspace audit log.",
+            "binding": "lattice_brain.runtime.agent_runtime.AgentRuntime.start",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "order": 10,
+            "description": "Require explicit approval for tools whose governance policy is not auto-approve.",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "order": 20,
+            "description": "Classify outgoing content for sensitive data before tool execution.",
+            "binding": "server_app.classify_sensitive_message",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "$hook_id",
+            "name": "Fixture Hook",
+            "kind": "pre_tool",
+            "description": "A canned hook. Command is empty so /run cannot shell out.",
+            "command": "",
+            "order": 100,
+            "enabled": true,
+            "managed": "user",
+            "binding": "advisory",
+            "created_at": "@ts",
+            "source": "user",
+            "removable": true,
+            "executable": false,
+            "advisory": true
+          },
+          {
+            "id": "$hook_id_b",
+            "name": "Fixture Hook Two",
+            "kind": "pre_tool",
+            "description": "Second canned hook.",
+            "command": "",
+            "order": 100,
+            "enabled": false,
+            "managed": "user",
+            "binding": "advisory",
+            "created_at": "@ts",
+            "source": "user",
+            "removable": true,
+            "executable": false,
+            "advisory": true
+          },
+          {
+            "id": "user:brain-event-triggers",
+            "name": "brain-event-triggers",
+            "kind": "post_tool",
+            "description": "Fires brain_event workflow triggers when knowledge enters the brain.",
+            "command": "",
+            "order": 100,
+            "enabled": true,
+            "managed": "user",
+            "binding": "advisory",
+            "created_at": "@ts",
+            "source": "user",
+            "removable": true,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "builtin:workflow-replay-log",
+            "name": "Workflow replay log",
+            "kind": "post_workflow",
+            "order": 10,
+            "description": "Record each workflow run's timeline so it can be replayed step by step.",
+            "binding": "latticeai.api.workflow_designer",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "builtin:pipeline-index-status",
+            "name": "Pipeline index status",
+            "kind": "post_index",
+            "order": 10,
+            "description": "Publish ingest / embed / graph-build pipeline state to the retrieval index status.",
+            "binding": "latticeai.api.search",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "builtin:research-memory-snapshot",
+            "name": "Research memory snapshot",
+            "kind": "agent",
+            "order": 20,
+            "description": "Capture a short-term memory snapshot after the researcher stage gathers context.",
+            "binding": "lattice_brain.runtime.multi_agent.default_role_runner",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          }
+        ],
+        "kinds": [
+          "pre_run",
+          "post_run",
+          "pre_tool",
+          "post_tool",
+          "pre_workflow",
+          "post_workflow",
+          "pre_upload",
+          "post_upload",
+          "pre_index",
+          "post_index",
+          "agent"
+        ],
+        "counts": {
+          "pre_run": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_run": {
+            "total": 1,
+            "enabled": 1
+          },
+          "pre_tool": {
+            "total": 4,
+            "enabled": 3
+          },
+          "post_tool": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_workflow": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_index": {
+            "total": 1,
+            "enabled": 1
+          },
+          "agent": {
+            "total": 1,
+            "enabled": 1
+          }
+        },
+        "total": 10,
+        "enabled": 9,
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "list_hooks",
+      "branch": "filtered_kind",
+      "method": "GET",
+      "path": "/api/hooks",
+      "query": {
+        "kind": "pre_tool"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "hooks": [
+          {
+            "id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "order": 10,
+            "description": "Require explicit approval for tools whose governance policy is not auto-approve.",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "order": 20,
+            "description": "Classify outgoing content for sensitive data before tool execution.",
+            "binding": "server_app.classify_sensitive_message",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "$hook_id",
+            "name": "Fixture Hook",
+            "kind": "pre_tool",
+            "description": "A canned hook. Command is empty so /run cannot shell out.",
+            "command": "",
+            "order": 100,
+            "enabled": true,
+            "managed": "user",
+            "binding": "advisory",
+            "created_at": "@ts",
+            "source": "user",
+            "removable": true,
+            "executable": false,
+            "advisory": true
+          },
+          {
+            "id": "$hook_id_b",
+            "name": "Fixture Hook Two",
+            "kind": "pre_tool",
+            "description": "Second canned hook.",
+            "command": "",
+            "order": 100,
+            "enabled": false,
+            "managed": "user",
+            "binding": "advisory",
+            "created_at": "@ts",
+            "source": "user",
+            "removable": true,
+            "executable": false,
+            "advisory": true
+          }
+        ],
+        "kinds": [
+          "pre_run",
+          "post_run",
+          "pre_tool",
+          "post_tool",
+          "pre_workflow",
+          "post_workflow",
+          "pre_upload",
+          "post_upload",
+          "pre_index",
+          "post_index",
+          "agent"
+        ],
+        "counts": {
+          "pre_run": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_run": {
+            "total": 1,
+            "enabled": 1
+          },
+          "pre_tool": {
+            "total": 4,
+            "enabled": 3
+          },
+          "post_tool": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_workflow": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_index": {
+            "total": 1,
+            "enabled": 1
+          },
+          "agent": {
+            "total": 1,
+            "enabled": 1
+          }
+        },
+        "total": 4,
+        "enabled": 3,
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "list_hooks",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/hooks",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "list_hooks",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/hooks",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "hook_runs",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/hooks/runs",
+      "query": {
+        "limit": "20"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "runs": [
+          {
+            "hook_id": "user:brain-event-triggers",
+            "name": "brain-event-triggers",
+            "kind": "post_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "not an ingestion event",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "user",
+            "binding": "advisory",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "post_tool"
+          },
+          {
+            "hook_id": "$hook_id",
+            "name": "Fixture Hook",
+            "kind": "pre_tool",
+            "status": "advisory",
+            "detail": "",
+            "output": "",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "user",
+            "binding": "advisory",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "sensitivity=none labels=none",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "server_app.classify_sensitive_message",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "policy[write_file]: risk=medium approval=True",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "user:brain-event-triggers",
+            "name": "brain-event-triggers",
+            "kind": "post_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "not an ingestion event",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "user",
+            "binding": "advisory",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "post_tool"
+          },
+          {
+            "hook_id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "sensitivity=none labels=none",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "server_app.classify_sensitive_message",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "policy[write_file]: risk=medium approval=True",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "user:brain-event-triggers",
+            "name": "brain-event-triggers",
+            "kind": "post_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "not an ingestion event",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "user",
+            "binding": "advisory",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "post_tool"
+          },
+          {
+            "hook_id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "sensitivity=none labels=none",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "server_app.classify_sensitive_message",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "policy[write_file]: risk=medium approval=True",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "user:brain-event-triggers",
+            "name": "brain-event-triggers",
+            "kind": "post_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "not an ingestion event",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "user",
+            "binding": "advisory",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "post_tool"
+          },
+          {
+            "hook_id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "sensitivity=none labels=none",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "server_app.classify_sensitive_message",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "policy[write_file]: risk=medium approval=True",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "user:brain-event-triggers",
+            "name": "brain-event-triggers",
+            "kind": "post_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "not an ingestion event",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "user",
+            "binding": "advisory",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "post_tool"
+          },
+          {
+            "hook_id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "sensitivity=none labels=none",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "server_app.classify_sensitive_message",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "policy[write_file]: risk=medium approval=True",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "user:brain-event-triggers",
+            "name": "brain-event-triggers",
+            "kind": "post_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "not an ingestion event",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "user",
+            "binding": "advisory",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "post_tool"
+          },
+          {
+            "hook_id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "sensitivity=none labels=none",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "server_app.classify_sensitive_message",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          },
+          {
+            "hook_id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "status": "ok",
+            "detail": "",
+            "output": "policy[write_file]: risk=medium approval=True",
+            "duration_ms": "@any",
+            "blocked": false,
+            "source": "builtin",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "started_at": "@ts",
+            "target_event": "tool.write_file",
+            "target_kind": "pre_tool"
+          }
+        ],
+        "total": 19,
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "hook_runs",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/hooks/runs",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "hook_runs",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/hooks/runs",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "inspect_hook",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/hooks/$hook_id",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "hook": {
+          "id": "$hook_id",
+          "name": "Fixture Hook",
+          "kind": "pre_tool",
+          "description": "A canned hook. Command is empty so /run cannot shell out.",
+          "command": "",
+          "order": 100,
+          "enabled": true,
+          "managed": "user",
+          "binding": "advisory",
+          "created_at": "@ts",
+          "source": "user",
+          "removable": true,
+          "executable": false,
+          "advisory": true,
+          "note": "User-registered hook: listed, ordered and inspectable; runs advisory in this build."
+        }
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "inspect_hook",
+      "branch": "error_not_found",
+      "method": "GET",
+      "path": "/api/hooks/user:does-not-exist",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Hook not found: user:does-not-exist"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "inspect_hook",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/hooks/$hook_id",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "inspect_hook",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/hooks/$hook_id",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "disable_hook",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/hooks/disable",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "$hook_id"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "hook": {
+          "id": "$hook_id",
+          "name": "Fixture Hook",
+          "kind": "pre_tool",
+          "description": "A canned hook. Command is empty so /run cannot shell out.",
+          "command": "",
+          "order": 100,
+          "enabled": false,
+          "managed": "user",
+          "binding": "advisory",
+          "created_at": "@ts",
+          "source": "user",
+          "removable": true,
+          "executable": false,
+          "advisory": true
+        }
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "disable_hook",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/api/hooks/disable",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "user:does-not-exist"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Hook not found: user:does-not-exist"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "disable_hook",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/api/hooks/disable",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "$hook_id"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "disable_hook",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/hooks/disable",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "$hook_id"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "disable_hook",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/api/hooks/disable",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "$hook_id"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "enable_hook",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/hooks/enable",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "$hook_id",
+        "enabled": true
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "hook": {
+          "id": "$hook_id",
+          "name": "Fixture Hook",
+          "kind": "pre_tool",
+          "description": "A canned hook. Command is empty so /run cannot shell out.",
+          "command": "",
+          "order": 100,
+          "enabled": true,
+          "managed": "user",
+          "binding": "advisory",
+          "created_at": "@ts",
+          "source": "user",
+          "removable": true,
+          "executable": false,
+          "advisory": true
+        }
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "enable_hook",
+      "branch": "error_not_found",
+      "method": "POST",
+      "path": "/api/hooks/enable",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "user:does-not-exist"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Hook not found: user:does-not-exist"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "enable_hook",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/api/hooks/enable",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "$hook_id"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "enable_hook",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/hooks/enable",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "$hook_id"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "reorder_hooks",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/hooks/reorder",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "kind": "pre_tool",
+        "ordered_ids": [
+          "$hook_id_b",
+          "$hook_id"
+        ]
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "hooks": [
+          {
+            "id": "builtin:tool-permission-gate",
+            "name": "Tool permission gate",
+            "kind": "pre_tool",
+            "order": 10,
+            "description": "Require explicit approval for tools whose governance policy is not auto-approve.",
+            "binding": "latticeai.core.tool_registry.ToolRegistry.permission",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "$hook_id_b",
+            "name": "Fixture Hook Two",
+            "kind": "pre_tool",
+            "description": "Second canned hook.",
+            "command": "",
+            "order": 10,
+            "enabled": false,
+            "managed": "user",
+            "binding": "advisory",
+            "created_at": "@ts",
+            "source": "user",
+            "removable": true,
+            "executable": false,
+            "advisory": true
+          },
+          {
+            "id": "builtin:sensitive-data-guard",
+            "name": "Sensitive-data guard",
+            "kind": "pre_tool",
+            "order": 20,
+            "description": "Classify outgoing content for sensitive data before tool execution.",
+            "binding": "server_app.classify_sensitive_message",
+            "managed": "platform",
+            "source": "builtin",
+            "enabled": true,
+            "removable": false,
+            "executable": true,
+            "advisory": false
+          },
+          {
+            "id": "$hook_id",
+            "name": "Fixture Hook",
+            "kind": "pre_tool",
+            "description": "A canned hook. Command is empty so /run cannot shell out.",
+            "command": "",
+            "order": 20,
+            "enabled": true,
+            "managed": "user",
+            "binding": "advisory",
+            "created_at": "@ts",
+            "source": "user",
+            "removable": true,
+            "executable": false,
+            "advisory": true
+          }
+        ],
+        "kinds": [
+          "pre_run",
+          "post_run",
+          "pre_tool",
+          "post_tool",
+          "pre_workflow",
+          "post_workflow",
+          "pre_upload",
+          "post_upload",
+          "pre_index",
+          "post_index",
+          "agent"
+        ],
+        "counts": {
+          "pre_run": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_run": {
+            "total": 1,
+            "enabled": 1
+          },
+          "pre_tool": {
+            "total": 4,
+            "enabled": 3
+          },
+          "post_tool": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_workflow": {
+            "total": 1,
+            "enabled": 1
+          },
+          "post_index": {
+            "total": 1,
+            "enabled": 1
+          },
+          "agent": {
+            "total": 1,
+            "enabled": 1
+          }
+        },
+        "total": 4,
+        "enabled": 3,
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "reorder_hooks",
+      "branch": "error_missing_kind",
+      "method": "POST",
+      "path": "/api/hooks/reorder",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "ordered_ids": [
+          "$hook_id"
+        ]
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "kind"
+            ],
+            "msg": "Field required",
+            "input": {
+              "ordered_ids": [
+                "$hook_id"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "reorder_hooks",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/api/hooks/reorder",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "kind": "pre_tool",
+        "ordered_ids": [
+          "$hook_id"
+        ]
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "reorder_hooks",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/hooks/reorder",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "kind": "pre_tool",
+        "ordered_ids": [
+          "$hook_id"
+        ]
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "register_hook",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/hooks/register",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "Capture Hook",
+        "kind": "post_tool",
+        "description": "Registered by a fixture.",
+        "command": ""
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "hook": {
+          "id": "user:capture-hook",
+          "name": "Capture Hook",
+          "kind": "post_tool",
+          "description": "Registered by a fixture.",
+          "command": "",
+          "order": 100,
+          "enabled": true,
+          "managed": "user",
+          "binding": "advisory",
+          "created_at": "@ts"
+        }
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "register_hook",
+      "branch": "error_unknown_kind",
+      "method": "POST",
+      "path": "/api/hooks/register",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "Bad",
+        "kind": "not-a-kind"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "kind must be one of pre_run, post_run, pre_tool, post_tool, pre_workflow, post_workflow, pre_upload, post_upload, pre_index, post_index, agent"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "register_hook",
+      "branch": "error_missing_name",
+      "method": "POST",
+      "path": "/api/hooks/register",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "",
+        "kind": "pre_tool"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "name is required"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "register_hook",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/api/hooks/register",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "x",
+        "kind": "pre_tool"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "register_hook",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/hooks/register",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "x",
+        "kind": "pre_tool"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "run_hooks",
+      "branch": "error_missing_selector",
+      "method": "POST",
+      "path": "/api/hooks/run",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Provide a 'kind' or a 'hook_id' to run."
+      },
+      "note": "must provide kind or hook_id — 400. A successful run is not captured: built-in pre_tool hooks can block tool dispatch"
+    },
+    {
+      "family": "hooks.py",
+      "name": "run_hooks",
+      "branch": "error_unknown_hook",
+      "method": "POST",
+      "path": "/api/hooks/run",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "hook_id": "user:does-not-exist"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Hook not found: 'user:does-not-exist'"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "run_hooks",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/api/hooks/run",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "kind": "pre_tool"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "run_hooks",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/hooks/run",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "kind": "pre_tool"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "fire_hooks",
+      "branch": "error_missing_selector",
+      "method": "POST",
+      "path": "/api/hooks/fire",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Provide a 'kind' or a 'hook_id' to run."
+      },
+      "note": "fire is an alias of run"
+    },
+    {
+      "family": "hooks.py",
+      "name": "fire_hooks",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/hooks/fire",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "kind": "pre_tool"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "remove_hook",
+      "branch": "error_not_found",
+      "method": "DELETE",
+      "path": "/api/hooks/user:does-not-exist",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Hook not found: user:does-not-exist"
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "remove_hook",
+      "branch": "wrong_role",
+      "method": "DELETE",
+      "path": "/api/hooks/$hook_id_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "remove_hook",
+      "branch": "auth_denied",
+      "method": "DELETE",
+      "path": "/api/hooks/$hook_id_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "hooks.py",
+      "name": "remove_hook",
+      "branch": "happy",
+      "method": "DELETE",
+      "path": "/api/hooks/$hook_id_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "removed": "$hook_id_b"
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_patterns",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/automation/patterns",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "questions_scanned": 0,
+        "patterns": [],
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_patterns",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/automation/patterns",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_patterns",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/automation/patterns",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_suggestions",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/automation/suggestions",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "suggestions": [],
+        "questions_scanned": 0,
+        "quality": {
+          "min_confidence": 0.35,
+          "low_confidence_threshold": 0.5,
+          "suppressed_low_confidence": 0,
+          "suppressed_duplicates": 0
+        },
+        "consent": {
+          "default_state": "draft_disabled",
+          "local_only": true,
+          "external_actions": false,
+          "requires_user_enable": true,
+          "review_before_run": true
+        },
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_suggestions",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/automation/suggestions",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_suggestions",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/automation/suggestions",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_overview",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/automation/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "suggestions": [],
+        "questions_scanned": 0,
+        "installed": [
+          {
+            "id": "$automation_workflow_id",
+            "name": "Daily Memory Digest",
+            "created_from": "brain_automation_recipe",
+            "suggestion_id": null,
+            "recipe_id": "daily-memory-digest",
+            "enabled": false,
+            "requires_user_enable": true,
+            "creates": [
+              "memory digest",
+              "decision summary",
+              "next-action suggestions"
+            ],
+            "last_execution": null
+          }
+        ],
+        "quality": {
+          "min_confidence": 0.35,
+          "low_confidence_threshold": 0.5,
+          "suppressed_low_confidence": 0,
+          "suppressed_duplicates": 0
+        },
+        "consent": {
+          "default_state": "draft_disabled",
+          "local_only": true,
+          "external_actions": false,
+          "requires_user_enable": true,
+          "review_before_run": true
+        },
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_overview",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/automation/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_overview",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/automation/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "activity_runs",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/activity/runs",
+      "query": {
+        "limit": "20"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "runs": [],
+        "total": 0,
+        "truncated": false
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "activity_runs",
+      "branch": "error_limit_out_of_range",
+      "method": "GET",
+      "path": "/api/activity/runs",
+      "query": {
+        "limit": "0"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "runs": [],
+        "total": 0,
+        "truncated": false
+      },
+      "note": "limit is clamped server-side; 0 becomes 1"
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "activity_runs",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/activity/runs",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "activity_runs",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/api/activity/runs",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automations_runs_combined",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/automations/runs/combined",
+      "query": {
+        "limit": "20"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "runs": [],
+        "total": 0,
+        "truncated": false
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automations_runs_combined",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/automations/runs/combined",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automations_runs_combined",
+      "branch": "invalid_session",
+      "method": "GET",
+      "path": "/automations/runs/combined",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_install",
+      "branch": "error_unknown_suggestion",
+      "method": "POST",
+      "path": "/api/automation/install",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "suggestion_id": "suggestion-does-not-exist"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Automation suggestion not found: suggestion-does-not-exist"
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_install",
+      "branch": "error_missing_id",
+      "method": "POST",
+      "path": "/api/automation/install",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "suggestion_id"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_install",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/automation/install",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "suggestion_id": "suggestion-does-not-exist"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_install",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/api/automation/install",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "suggestion_id": "suggestion-does-not-exist"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_run_now",
+      "branch": "happy_dry_run",
+      "method": "POST",
+      "path": "/api/automation/run-now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workflow_id": "$automation_workflow_id",
+        "dry_run": true
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "workflow_id": "$automation_workflow_id",
+        "dry_run": true,
+        "status": "ok",
+        "report": {
+          "mode": "dry_run",
+          "status": "ok",
+          "steps": [
+            {
+              "node": "trigger",
+              "type": "trigger",
+              "name": "User-enabled schedule",
+              "would": "skipped in a manual run (wait for the user-enabled schedule)"
+            },
+            {
+              "node": "draft",
+              "type": "agent",
+              "name": "Draft Brain review",
+              "would": "ask the local agent to draft: Review today's new Brain memories and draft a concise digest with important decisions, unresolved questions, and suggested next actions. Do not contact external"
+            },
+            {
+              "node": "output",
+              "type": "output",
+              "name": "Review before saving",
+              "would": "deliver the draft to the review inbox"
+            }
+          ],
+          "summary": "1 step(s) would run locally and produce a reviewable draft (memory digest, decision summary, next-action suggestions); no external actions, nothing is written until you approve.",
+          "side_effects": false,
+          "validation_errors": []
+        },
+        "last_execution": {
+          "mode": "dry_run",
+          "status": "ok",
+          "summary": "1 step(s) would run locally and produce a reviewable draft (memory digest, decision summary, next-action suggestions); no external actions, nothing is written until you approve.",
+          "run_id": null,
+          "finished_at": "@ts"
+        }
+      },
+      "note": "dry-run is the default and the SPA's first click; nothing executes"
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_run_now",
+      "branch": "error_unknown_workflow",
+      "method": "POST",
+      "path": "/api/automation/run-now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workflow_id": "workflow-missing",
+        "dry_run": true
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Automation not found: workflow-missing"
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_run_now",
+      "branch": "error_not_an_automation",
+      "method": "POST",
+      "path": "/api/automation/run-now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workflow_id": "$workflow_id",
+        "dry_run": true
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Workflow is not an installed automation: $workflow_id"
+      },
+      "note": "a designer workflow that was not installed from a suggestion/recipe is 404, not a surprise execution"
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_run_now",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/automation/run-now",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workflow_id": "$automation_workflow_id",
+        "dry_run": true
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "automation_intelligence.py",
+      "name": "automation_run_now",
+      "branch": "invalid_session",
+      "method": "POST",
+      "path": "/api/automation/run-now",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:invalid",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workflow_id": "$automation_workflow_id",
+        "dry_run": true
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    }
+  ]
+}

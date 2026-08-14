@@ -1,69 +1,29 @@
-"""Agent-loop permission-mode gates (v9.9.8).
+"""Agent-loop permission-mode gates (v9.9.8) — the two the parity fixtures pin.
 
-Kept separate from ``agent.py`` so the large state-machine module stays
-stable; ``SingleAgentRuntime`` and ``build_agent_runtime`` call these
-helpers instead of inlining mode tables.
+These were the Python loop's mode tables, called by ``SingleAgentRuntime`` and
+``build_agent_runtime``. Orchestration moved to ``lattice-agent`` in v11.6.0 and
+the Python loop is gone, so **nothing in the worker imports this module**.
+
+It survives for one reason, stated so it is not read as a leftover:
+``scripts/generate_agent_parity_fixtures.py`` produces the committed goldens
+``rust/fixtures`` holds for the Rust loop's permission gates, and it derives
+them from :func:`block_reason_for_tool` and :func:`non_auto_plan_steps` here.
+Deleting these two would leave the Rust side asserting against fixtures no
+Python could regenerate — the fixtures would still pass, and would stop meaning
+anything. The rest of the module (``call_mode_source``, ``resolve_deps_mode``,
+``approval_requirements_for``) went with the loop that called it.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, List, Mapping, Optional, Sequence
 
 from latticeai.core.permission_mode import (
-    DEFAULT_MODE,
     PermissionMode,
     effective_auto_approve,
     is_circuit_breaker,
     normalize_mode,
-    plan_requires_approval,
 )
-
-
-def call_mode_source(
-    raw: Any,
-    *,
-    user_email: Optional[str] = None,
-    workspace_id: Optional[str] = None,
-) -> Any:
-    """Resolve a mode source that may be a value, or a callable that either
-    accepts ``user_email``/``workspace_id`` scope kwargs or takes no arguments.
-
-    Scoped resolution is what makes per-user and per-workspace overrides real:
-    an unscoped call always collapses to the process-wide default.
-    """
-    if not callable(raw):
-        return raw
-    try:
-        return raw(user_email=user_email, workspace_id=workspace_id)
-    except TypeError:
-        # Legacy zero-arg resolver (or a static callable) — fall back.
-        try:
-            return raw()
-        except Exception:
-            return DEFAULT_MODE
-    except Exception:
-        return DEFAULT_MODE
-
-
-def resolve_deps_mode(
-    deps: Any,
-    ctx: Any = None,
-    *,
-    user_email: Optional[str] = None,
-    workspace_id: Optional[str] = None,
-) -> PermissionMode:
-    """Mode for this run: explicit context stamp wins, else the scoped resolver
-    on ``deps``, else strict."""
-    if ctx is not None:
-        override = getattr(ctx, "permission_mode", None)
-        if override is not None:
-            return normalize_mode(override)
-    raw = call_mode_source(
-        getattr(deps, "permission_mode", None),
-        user_email=user_email,
-        workspace_id=workspace_id,
-    )
-    return normalize_mode(raw if raw is not None else DEFAULT_MODE)
 
 
 def non_auto_plan_steps(
@@ -94,38 +54,6 @@ def non_auto_plan_steps(
     return non_auto
 
 
-def approval_requirements_for(
-    mode: PermissionMode | str,
-    plan: Mapping[str, Any],
-    tool_governance: Mapping[str, Mapping[str, Any]],
-    *,
-    governed_tools: Optional[Any] = None,
-) -> Dict[str, Any]:
-    steps = plan.get("steps") or []
-    non_auto = non_auto_plan_steps(
-        mode, steps, tool_governance, governed_tools=governed_tools,
-    )
-    requires = plan_requires_approval(
-        mode,
-        non_auto_steps=non_auto,
-        plan_flag=bool(plan.get("requires_approval", False)),
-    )
-    lines = [
-        f"{index}. {step.get('description') or step.get('action') or '?'}"
-        for index, step in enumerate(steps, start=1)
-        if isinstance(step, dict)
-    ]
-    summary = str(plan.get("goal") or "").strip()
-    if lines:
-        summary = (summary + "\n" if summary else "") + "\n".join(lines)
-    return {
-        "requires_approval": requires,
-        "non_auto_steps": non_auto,
-        "plan_summary": summary,
-        "permission_mode": normalize_mode(mode).value,
-    }
-
-
 def block_reason_for_tool(
     mode: PermissionMode | str,
     name: str,
@@ -152,9 +80,6 @@ def block_reason_for_tool(
 
 
 __all__ = [
-    "call_mode_source",
-    "resolve_deps_mode",
-    "non_auto_plan_steps",
-    "approval_requirements_for",
     "block_reason_for_tool",
+    "non_auto_plan_steps",
 ]

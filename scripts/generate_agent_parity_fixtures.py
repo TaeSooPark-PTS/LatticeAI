@@ -47,7 +47,6 @@ from __future__ import annotations
 import json
 import os
 import shlex
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -386,7 +385,8 @@ def validation_only() -> Iterator[List[str]]:
     the caller can assert the fixed PATH was the one searched.
     """
     searched: List[str] = []
-    real_subprocess, real_shutil = command_tools.subprocess, command_tools.shutil
+    real_subprocess = command_tools.subprocess
+    real_shutil = getattr(command_tools, "shutil", None)
 
     class _SubprocessShim:
         TimeoutExpired = subprocess.TimeoutExpired
@@ -407,7 +407,10 @@ def validation_only() -> Iterator[List[str]]:
         yield searched
     finally:
         command_tools.subprocess = real_subprocess
-        command_tools.shutil = real_shutil
+        if real_shutil is None:
+            delattr(command_tools, "shutil")
+        else:
+            command_tools.shutil = real_shutil
 
 
 def _error(exc: BaseException) -> Dict[str, str]:
@@ -690,8 +693,16 @@ def _dump_grid(path: Path, header: Dict[str, Any], groups: Dict[str, List[Any]])
 
 
 def build(root: Path) -> Dict[str, Callable[[], None]]:
-    """Every golden, keyed by filename, as a thunk that writes it."""
-    commands, spawn_env, searched = command_rows(root)
+    """Every golden, keyed by filename, as a thunk that writes it.
+
+    """
+    # run_command left the worker (WP-P1). commands.json / execution.json
+    # stay FROZEN at fc65e60; only rewrite them when the last generating
+    # commands module is still importable (recovery / historical tree).
+    if hasattr(command_tools, "run_command"):
+        commands, spawn_env, searched = command_rows(root)
+    else:
+        commands, spawn_env, searched = None, None, [command_tools._SAFE_EXECUTABLE_PATH]
     return {
         "manifest.json": lambda: _dump(GOLDEN_DIR / "manifest.json", manifest(searched)),
         "policies.json": lambda: _dump(GOLDEN_DIR / "policies.json", policy_table()),
@@ -705,14 +716,22 @@ def build(root: Path) -> Dict[str, Callable[[], None]]:
         "shlex.json": lambda: _dump_grid(
             GOLDEN_DIR / "shlex.json", {"schema": SCHEMA}, {"cases": shlex_rows()},
         ),
-        "commands.json": lambda: _dump_grid(
-            GOLDEN_DIR / "commands.json",
-            {"schema": SCHEMA, "spawn_env": spawn_env},
-            {"cases": commands},
+        "commands.json": (
+            (lambda: _dump_grid(
+                GOLDEN_DIR / "commands.json",
+                {"schema": SCHEMA, "spawn_env": spawn_env},
+                {"cases": commands},
+            ))
+            if commands is not None
+            else (lambda: None)
         ),
-        "execution.json": lambda: _dump_grid(
-            GOLDEN_DIR / "execution.json", {"schema": SCHEMA},
-            {"cases": execution_rows(root)},
+        "execution.json": (
+            (lambda: _dump_grid(
+                GOLDEN_DIR / "execution.json", {"schema": SCHEMA},
+                {"cases": execution_rows(root)},
+            ))
+            if commands is not None
+            else (lambda: None)
         ),
         "paths.json": lambda: _dump_grid(
             GOLDEN_DIR / "paths.json", {"schema": SCHEMA}, {"cases": path_rows(root)},
@@ -733,8 +752,8 @@ def build(root: Path) -> Dict[str, Callable[[], None]]:
 
 
 def main() -> int:
-    if GOLDEN_DIR.exists():
-        shutil.rmtree(GOLDEN_DIR)
+    # Never rmtree: commands.json / execution.json are FROZEN at fc65e60
+    # once run_command leaves the worker. Write other goldens in place.
     GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
     with pinned_environment(), tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp) / "agent_workspace"

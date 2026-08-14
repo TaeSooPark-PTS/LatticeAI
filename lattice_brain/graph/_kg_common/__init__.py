@@ -1,9 +1,15 @@
-"""
-SQLite knowledge graph for Lattice AI workspace memory.
+"""The graph's *compute* vocabulary, in one importable place.
 
-The graph keeps raw event JSON, normalized node metadata, and edges in one
-portable database so it can later migrate to Neo4j/Postgres without changing
-the ingestion contract.
+This package was the shared surface of the SQLite knowledge graph: constants,
+path/hash helpers, chunking, concept and triple extraction, and the schema
+handles the write mixins composed into ``KnowledgeGraphStore``. v11.6.0 moved
+every write into ``lattice-core``, and the store went with them.
+
+What is left is the half that produces *structures*: chunk a document, pull the
+concepts and triples out of a passage, classify a node type, infer an edge verb,
+hash a file. ``POST /worker/parse``, ``POST /worker/embed`` and
+``POST /worker/extract`` are the routes that answer with them; Rust decides what
+to write.
 """
 
 # ruff: noqa: F401,F841
@@ -26,21 +32,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
-try:
-    from ..schema import EdgeType, KGStoreV2, NodeType, _exec_script
-except Exception:  # pragma: no cover - v2 schema is optional at import time
-    KGStoreV2 = None  # type: ignore[assignment,misc]
-    NodeType = None  # type: ignore[assignment,misc]
-    EdgeType = None  # type: ignore[assignment,misc]
-    _exec_script = None  # type: ignore[assignment]
-
 from ...embeddings import LocalEmbeddingModel
-from ..json_utils import _json, _safe_loads
-from ..runtime import get_llm_router, set_llm_router
-
-# Default read source for the graph queries: v2 reconstruction views.
-# Override with LATTICEAI_KG_READ_V2=0 to fall back to the legacy tables.
-_READ_FROM_V2_DEFAULT = os.getenv("LATTICEAI_KG_READ_V2", "1") != "0"
 
 # Static constants (projection/format versions, local-ingestion classification
 # tables, OS exclusion lists) live in ._kg_constants; re-exported here so every
@@ -96,6 +88,8 @@ from .._kg_fsutil import (  # noqa: E402,F401
     _size_limit_for_category,
     _slug,
 )
+from ..json_utils import _json, _safe_loads
+from ..runtime import get_llm_router, set_llm_router
 
 # The logic this module used to hold inline lives in three cohesive submodules
 # (v11.3.0 decomposition). Every name is re-exported below, so the twelve
@@ -172,11 +166,9 @@ __all__ = [
     "Dict",
     "EDGE_VERB",
     "ENABLE_LLM_EXTRACTION",
-    "EdgeType",
     "GRAPH_SCHEMA_VERSION",
     "Iterable",
     "Iterator",
-    "KGStoreV2",
     "LINUX_EXCLUDED_PREFIXES",
     "LOCAL_CODE_EXTENSIONS",
     "LOCAL_DOCUMENT_EXTENSIONS",
@@ -189,7 +181,6 @@ __all__ = [
     "List",
     "LocalEmbeddingModel",
     "MACOS_EXCLUDED_PREFIXES",
-    "NodeType",
     "Optional",
     "Path",
     "SENSITIVE_PATH_KEYWORDS",
@@ -214,7 +205,6 @@ __all__ = [
     "_PROSE_MIN_SPAN_RATIO",
     "_PROSE_STRONG_BOUNDARY_RE",
     "_PROSE_WEAK_BOUNDARY_RE",
-    "_READ_FROM_V2_DEFAULT",
     "_V2_WRITE_MASTER_KEY",
     "_chunks",
     "_classify_node_type",
@@ -224,7 +214,6 @@ __all__ = [
     "_current_os_type",
     "_drive_id_for_path",
     "_excluded_directory_reason",
-    "_exec_script",
     "_extract_concepts",
     "_extract_concepts_rules",
     "_extract_triples",

@@ -2,14 +2,21 @@
 
 The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0 and
 operationalized in v2.2.0. It sits
-*above* the v1.x single-agent state machine ([`SingleAgentRuntime`](../latticeai/core/agent/runtime.py))
+*above* the single-agent state machine, which since 11.6.0 is the Rust loop
+orchestrator ([`lattice_agent::agentloop`](../rust/lattice-agent/src/agentloop/mod.rs))
 and coordinates a pipeline of named **roles** that hand off work to one another,
 retry on a failing review, and emit a fully observable, replayable timeline.
 
-- **Source of truth:** `lattice_brain/runtime/multi_agent.py`
-- **HTTP surface:** `latticeai/api/agents.py`
-- **Persistence / Knowledge Graph integration:** `latticeai/core/workspace_os.py`
-  (`WorkspaceOSStore.record_agent_run`, `replay_agent_run`, `list_handoffs`)
+- **Source of truth:** `rust/lattice-platform/src/agents.rs` (the orchestration
+  routes) over `rust/lattice-agent/src/agentloop/` (the state machine)
+- **HTTP surface:** the `agents` family, mounted by `lattice-platform`
+- **Persistence:** `rust/lattice-platform/src/review_queue.rs` — the same
+  `workspace_os.json` document the Review Center reads
+
+> **Moved in 11.6.0.** The Python modules this page used to name
+> (`lattice_brain/runtime/multi_agent.py`, `latticeai/api/agents.py`,
+> `latticeai/core/workspace_os.py`) were deleted when the product server became
+> Rust. The behaviour described below is served natively.
 
 ```python
 MULTI_AGENT_VERSION = "2.2.0"

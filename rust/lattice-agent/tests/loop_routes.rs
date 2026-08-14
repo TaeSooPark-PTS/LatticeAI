@@ -85,6 +85,12 @@ async fn harness(name: &str, completions: &[&str]) -> Harness {
             worker_origin: server.origin.clone(),
             runs_dir: runs_dir.clone(),
             client: None,
+            // Scratch, never the ambient `$HOME/.ltcai`: these runs are not
+            // `strict`, but the default store must not be one flag away from
+            // the developer's own Review Center.
+            proposals: Some(std::sync::Arc::new(
+                lattice_agent::proposals::JsonProposalStore::new(dir.join("data")),
+            )),
         },
     );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -443,6 +449,9 @@ async fn an_unreachable_worker_ends_the_run_as_a_bad_gateway() {
             worker_origin: "http://127.0.0.1:1".into(),
             runs_dir: dir.join("rust_agent_runs"),
             client: None,
+            proposals: Some(std::sync::Arc::new(
+                lattice_agent::proposals::JsonProposalStore::new(dir.join("data")),
+            )),
         },
     );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")

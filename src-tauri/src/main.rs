@@ -9,13 +9,14 @@
 //! stops the worker.
 //!
 //! Since 11.5.0 the shell also *serves* that front door: the gateway runs
-//! in-process on the public port and the worker sits behind it (see
-//! [`topology`] for the arrangement and its escape hatches).
+//! in-process on the public port and the worker sits behind it. 11.6.0 One
+//! Door drops the Python-direct escape hatches — see [`topology`].
 //!
 //! The five command names and their response shapes are unchanged — the
 //! frontend (`frontend/src/api/base.ts`, `frontend/src/api/client.ts`) invokes
-//! them by name and reads `backend_status` as a plain record. The fields added
-//! in 11.5.0 are additive; nothing was renamed or removed.
+//! `backend_origin`, `backend_status` and `select_folder` by name and reads
+//! `backend_status` as a plain record. The fields added in 11.5.0 are
+//! additive; nothing was renamed or removed.
 
 mod backend;
 mod folder;
@@ -60,11 +61,12 @@ fn select_folder() -> Option<String> {
     folder::select_folder()
 }
 
-/// Bring the worker up, then point the webview at `{origin}/app`.
+/// Bring the host up, then point the webview at `{origin}/app`.
 ///
-/// The navigation waits on the worker's own `GET /health` rather than on a TCP
-/// connect: a bound socket only proves something is listening, and landing on
-/// `/app` before the routes exist is what used to show a blank window.
+/// The navigation waits on the **host's** `GET /health` at the same origin the
+/// window loads — never a bare Python worker. A bound socket only proves
+/// something is listening, and landing on `/app` before the host answers is
+/// what used to show a blank window.
 fn boot(app: &tauri::App) {
     let Some(window) = app.get_webview_window("main") else {
         return;
@@ -75,13 +77,7 @@ fn boot(app: &tauri::App) {
 
     let shell = Arc::clone(&app.state::<Arc<DesktopBackend>>());
     tauri::async_runtime::spawn(async move {
-        let status = shell.start().await;
-        if !status.healthy && !shell.supervised() {
-            // A supervised worker already had its health gate inside `start`;
-            // an adopted one (LATTICEAI_DESKTOP_BACKEND_ORIGIN) still needs it.
-            // Waiting in both places would double the worst case.
-            shell.wait_until_serving().await;
-        }
+        shell.start().await;
         // One reason not to navigate, and it is not "the worker is slow": if
         // this shell was supposed to serve the front door and could not bind
         // it, `app_url` names a port nothing will ever listen on, and sending
@@ -92,9 +88,13 @@ fn boot(app: &tauri::App) {
             eprintln!("lattice-ai-desktop: staying on the bundled shell — {reason}");
             return;
         }
-        // Otherwise navigate either way, as the shell always has: a window
-        // showing the browser's own "cannot connect" is more use than a window
-        // showing nothing while a worker that will never arrive is waited for.
+        // Host /health at the origin the window is about to load. An attached
+        // host (LATTICEAI_DESKTOP_BACKEND_ORIGIN) never ran start_gateway, so
+        // this is also the first time we wait for it.
+        shell.wait_until_serving().await;
+        // Navigate either way: a window showing the browser's own "cannot
+        // connect" is more use than a window showing nothing while a host that
+        // will never arrive is waited for.
         if let Ok(url) = tauri::Url::parse(&shell.app_url()) {
             let _ = window.navigate(url);
         }

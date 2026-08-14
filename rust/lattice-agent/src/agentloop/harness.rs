@@ -5,6 +5,13 @@
 //! existence check — see the workspace a real worker would have left behind.
 //! A fake that only returned JSON would let a snapshot test pass while
 //! snapshotting nothing.
+//!
+//! Since W4 the mutating tools are native, so "really writes" is no longer a
+//! fake at all: [`RecordingHost`] wraps the **real** [`NativeTools`] and records
+//! what it executed into the same ordered log the fake worker uses. A test
+//! therefore reads one list of dispatches whichever side ran them, and the
+//! knowledge tools are pointed at a temporary brain directory so no test can
+//! write into the developer's actual vault.
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -17,6 +24,7 @@ use serde_json::{json, Value};
 use super::{LoopDeps, RunRequest, Runtime};
 use crate::sandbox::Workspace;
 use crate::state::AgentRunContext;
+use crate::tools::{NativeCall, NativeTools, ToolConfig, ToolFuture, ToolHost};
 use crate::trace::LoopTrace;
 use crate::worker::WorkerClient;
 
@@ -37,12 +45,11 @@ pub(crate) fn runtime(workspace: Workspace) -> Runtime {
 /// The seam, faked: a scripted reasoner and a tool handler that really
 /// writes, so the loop's own disk reads (snapshot, overwrite guard) see the
 /// same workspace the "worker" changed.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct FakeWorker {
     pub completions: Mutex<VecDeque<String>>,
     /// Tool name → the exact body `/agent/tool` answers with.
     pub tool_bodies: Mutex<std::collections::BTreeMap<String, Value>>,
-    pub proposal: Mutex<Option<Value>>,
     pub calls: Mutex<Vec<Value>>,
     pub root: Mutex<PathBuf>,
 }
@@ -74,12 +81,53 @@ impl FakeWorker {
     }
 }
 
+/// The real native tool set, logging each dispatch beside the worker's.
+#[derive(Debug)]
+pub(crate) struct RecordingHost {
+    inner: NativeTools,
+    log: Arc<FakeWorker>,
+}
+
+impl ToolHost for RecordingHost {
+    fn handles(&self, tool: &str) -> bool {
+        self.inner.handles(tool)
+    }
+
+    fn execute<'a>(&'a self, call: NativeCall<'a>) -> ToolFuture<'a> {
+        let mut body = json!({"tool": call.tool, "args": Value::Object(call.args.clone())});
+        if let Some(workspace_id) = &call.scope.workspace_id {
+            body["workspace_id"] = json!(workspace_id);
+        }
+        self.log.record("tool", &body);
+        self.inner.execute(call)
+    }
+}
+
 pub(crate) struct Harness {
     pub runtime: Runtime,
     pub request: RunRequest,
     pub worker: Arc<FakeWorker>,
     pub root: PathBuf,
+    /// The scratch data directory the proposal store writes into. A test that
+    /// stages must never reach `$HOME`, and reading the staged item back is
+    /// how "it was staged" is proved rather than assumed.
+    pub data_dir: PathBuf,
     _dir: tempfile::TempDir,
+}
+
+impl Harness {
+    /// The review items the loop staged, in order.
+    pub fn staged_items(&self) -> Vec<Value> {
+        let path = self.data_dir.join("workspace_os.json");
+        let Ok(text) = std::fs::read_to_string(path) else {
+            return Vec::new();
+        };
+        serde_json::from_str::<Value>(&text)
+            .ok()
+            .and_then(|document| document.get("review_items").cloned())
+            .and_then(|rows| rows.as_array().cloned())
+            .unwrap_or_default()
+    }
 }
 
 impl Harness {
@@ -153,20 +201,6 @@ pub(crate) async fn harness(completions: &[&str]) -> Harness {
                     }
                 }
             }),
-        )
-        .route(
-            "/agent/change-proposal",
-            post({
-                let state = Arc::clone(&state);
-                move |Json(body): Json<Value>| {
-                    let state = Arc::clone(&state);
-                    async move {
-                        state.record("proposal", &body);
-                        let verdict = state.proposal.lock().expect("lock").clone();
-                        Json(verdict.unwrap_or_else(|| json!({"decision": "none"})))
-                    }
-                }
-            }),
         );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
@@ -177,7 +211,25 @@ pub(crate) async fn harness(completions: &[&str]) -> Harness {
     });
 
     let root = workspace.root().to_path_buf();
-    let mut deps = LoopDeps::new(WorkerClient::new(&origin), workspace);
+    let data_dir = dir.path().join("data");
+    let mut deps = LoopDeps::new(WorkerClient::new(&origin), workspace.clone());
+    // Never `JsonProposalStore::from_env()` here: that would stage into the
+    // developer's own `$HOME/.ltcai/workspace_os.json`.
+    deps.proposals = Arc::new(crate::proposals::JsonProposalStore::new(&data_dir));
+    // The real tools, with the vault pointed at the test's own directory and
+    // the owner role, so the loop's gates are what decides — not `check_role`.
+    deps.native = Arc::new(RecordingHost {
+        inner: NativeTools::new(
+            workspace,
+            ToolConfig {
+                brain_dir: dir.path().join("brain"),
+                role: "owner".into(),
+                ..ToolConfig::default()
+            },
+            WorkerClient::new(&origin),
+        ),
+        log: Arc::clone(&fake),
+    });
     deps.tool_names = vec!["read_file".into(), "write_file".into()];
     deps.policies.tools.insert(
         "write_file".into(),
@@ -197,6 +249,7 @@ pub(crate) async fn harness(completions: &[&str]) -> Harness {
         },
         worker: fake,
         root,
+        data_dir,
         _dir: dir,
     }
 }

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "11.5.2"
+version = "11.6.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,6 +31,25 @@ classifiers = [
 ]
 # Bounded constraints: lower bounds from the verified dev environment,
 # upper bounds at the next major (next minor for fastapi/uvicorn pre-1.0).
+#
+# v11.6.0 (WP-P1) removed four required dependencies with the code that was
+# their only importer — every one verified by grep over the surviving tree,
+# not by reasoning about what a worker "should" need:
+#   authlib          — `latticeai/api/auth.py` + the SSO flows. The worker's
+#                      route table has no /auth/* at all; sessions are
+#                      lattice-auth's.
+#   cryptography     — `latticeai/core/oidc.py`'s JWT verification, and only
+#                      that. It stays reachable transitively through keyring
+#                      on the platforms whose backend needs it.
+#   watchdog         — the folder watcher, which watches a corpus this process
+#                      no longer ingests.
+#   psycopg[binary]  — `lattice_brain/storage/postgres.py`, gone with the
+#                      graph writer. A worker owns zero state, so it opens no
+#                      database of any kind.
+#   python-multipart — FastAPI only needs this for UploadFile / File() / Form().
+#                      WP-P1a left it as directed; WP-P1b grepped the surviving
+#                      tree and found zero of those constructors (voice upload
+#                      is native, compute seams take base64 JSON).
 dependencies = [
   "fastapi>=0.110,<1",
   "uvicorn>=0.29,<1",
@@ -41,26 +60,39 @@ dependencies = [
   "python-docx>=1.1,<2",
   "openpyxl>=3.1,<4",
   "python-pptx>=0.6.23,<2",
-  "python-multipart>=0.0.9,<0.1",
   "keyring>=24,<26",
-  "authlib>=1.3,<2",
-  "cryptography>=42,<49",
   "pdfplumber>=0.11,<0.12",
   "pypdfium2>=4.30,<6",
-  "watchdog>=4,<7",
-  "psycopg[binary]>=3.2,<4",
+  # `POST /worker/render/pdf` lazy-imports reportlab. v11.6.0 first declared it
+  # as a `pdf` extra; that was wrong twice over — the render seam is one of the
+  # nine compute paths this worker exists to serve, so an install without it is
+  # a worker that 500s on a route its own allowlist promises, and
+  # `tests/unit/test_worker_compute.py` imports reportlab at module scope to
+  # locate `Vera.ttf`, so a CI leg without the extra died at collection.
+  "reportlab>=4,<5",
+  # `latticeai/services/model_runtime/download.py` — `HfApi`, `model_info`,
+  # `list_repo_files`, `hf_hub_download` — behind `POST /engines/pull-model`,
+  # the one route that is the worker's box precisely because the download runs
+  # in *this* interpreter. Undeclared until now: the module guards with
+  # `find_spec` and answered "install the MLX runtime first", which read like a
+  # deliberate opt-in and was really a missing dependency. Floor at the 1.0
+  # line (the API above is unchanged across it), ceiling at the next major.
+  "huggingface_hub>=1.0,<2",
 ]
 
 [project.optional-dependencies]
-ann = ["sqlite-vec>=0.1,<1"]
-# Approximate nearest-neighbour vector index (LATTICEAI_VECTOR_INDEX=hnsw).
-# Compiled extension, deliberately optional: without it the exact scan is
-# used and index_status() reports why.
-hnsw = ["hnswlib>=0.8,<1"]
-postgres = ["psycopg[binary]>=3.2,<4"]
+# The `ann`, `hnsw` and `postgres` extras went with v11.6.0's write flip: the
+# vector index and the store are Rust's, and there is no Python code left that
+# could import sqlite-vec, hnswlib or psycopg.
 local = ["mlx-vlm>=0.6.3", "mlx-lm"]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
-all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub", "sqlite-vec>=0.1,<1", "psycopg[binary]>=3.2,<4", "hnswlib>=0.8,<1"]
+# Deliberately empty. reportlab moved into `[project.dependencies]` above, so
+# there is nothing left for this extra to install — but `pip install
+# "ltcai[pdf]"` is a published line (README, v11.6.0 release notes), and an
+# extra that no longer exists makes pip warn at people who follow it. An empty
+# alias keeps that command a silent no-op, which is now the truth.
+pdf = []
+all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub"]
 # Development-only checkers. Coverage became measurable in 10.2.0: before the
 # connection-leak fix, running under a tracer exhausted file descriptors and
 # ~400 tests failed, so the real number was unknown.
@@ -77,10 +109,10 @@ Issues = "https://github.com/TaeSooPark-PTS/LatticeAI/issues"
 Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md"
 
 [tool.setuptools]
-py-modules = [
-  "server",
-]
-packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.graph._kg_common", "lattice_brain.graph.discovery_index", "lattice_brain.graph.projection", "lattice_brain.graph.retrieval", "lattice_brain.graph.retrieval_vector", "lattice_brain.graph.vector_index", "lattice_brain.ingestion", "lattice_brain.multimodal", "lattice_brain.portability", "lattice_brain.runtime", "lattice_brain.storage", "latticeai", "latticeai.core", "latticeai.core.agent", "latticeai.core.embedding_providers", "latticeai.core.file_generation", "latticeai.api", "latticeai.cli", "latticeai.integrations", "latticeai.integrations.telegram_bot", "latticeai.models", "latticeai.models.router", "latticeai.runtime", "latticeai.runtime.build_phases", "latticeai.services", "latticeai.services.brain_intelligence", "latticeai.services.memory_service", "latticeai.services.model_runtime", "latticeai.setup", "latticeai.setup.wizard", "latticeai.tools"]
+# ``server.py`` (the ``server:app`` compatibility shim) went with
+# ``latticeai/server_app.py``: the product application it proxied is
+# ``lattice-host`` now, and the worker is an ASGI factory, not a module global.
+packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.graph._kg_common", "lattice_brain.ingestion", "lattice_brain.multimodal", "lattice_brain.runtime", "latticeai", "latticeai.api", "latticeai.cli", "latticeai.core", "latticeai.core.embedding_providers", "latticeai.models", "latticeai.models.router", "latticeai.runtime", "latticeai.runtime.build_phases", "latticeai.services", "latticeai.services.model_runtime", "latticeai.tools"]
 include-package-data = true
 
 [tool.setuptools.package-data]
@@ -247,11 +279,10 @@ max-complexity = 30
 "lattice_brain/runtime/*.py" = ["SIM", "B007"]
 
 [tool.mypy]
-# Gradual adoption, ratcheted. 10.2.0 started with 13 hand-picked modules;
-# 10.3.0 measured the whole tree one file at a time and adopted every module
-# that already type-checks — 193 of 270. The rest are listed in
-# docs/MYPY_BACKLOG.md with what each needs, so the boundary is a fact rather
-# than a vague "we'll get to it".
+# Every file that ships. 10.2.0 started with 13 hand-picked modules and 10.4.0
+# closed the backlog to zero, so the list stopped being a boundary and became
+# an inventory. WP-P1 pruned it to the surviving tree; a path here that no
+# longer exists is a mypy error, which is how the list stays honest.
 #
 # `follow_imports = silent` keeps analysis inside the adopted set: imported
 # modules resolve for types but their own errors stay quiet, so adding a file
@@ -267,10 +298,6 @@ strict_equality = true
 check_untyped_defs = true
 files = [
   "lattice_brain/__init__.py",
-  "lattice_brain/archive.py",
-  "lattice_brain/context.py",
-  "lattice_brain/conversations.py",
-  "lattice_brain/core.py",
   "lattice_brain/embeddings.py",
   "lattice_brain/gates.py",
   "lattice_brain/graph/__init__.py",
@@ -279,254 +306,66 @@ files = [
   "lattice_brain/graph/_kg_common/relations.py",
   "lattice_brain/graph/_kg_common/text.py",
   "lattice_brain/graph/_kg_constants.py",
-  "lattice_brain/graph/_kg_contract.py",
   "lattice_brain/graph/_kg_fsutil.py",
-  "lattice_brain/graph/curator.py",
-  "lattice_brain/graph/discovery.py",
-  "lattice_brain/graph/discovery_index/__init__.py",
-  "lattice_brain/graph/discovery_index/cleanup.py",
-  "lattice_brain/graph/discovery_index/extract.py",
-  "lattice_brain/graph/discovery_index/scan.py",
-  "lattice_brain/graph/discovery_index/upsert.py",
-  "lattice_brain/graph/documents.py",
-  "lattice_brain/graph/fusion.py",
-  "lattice_brain/graph/identity.py",
-  "lattice_brain/graph/image_vectors.py",
-  "lattice_brain/graph/ingest.py",
   "lattice_brain/graph/json_utils.py",
-  "lattice_brain/graph/network.py",
-  "lattice_brain/graph/proactive.py",
-  "lattice_brain/graph/projection/__init__.py",
-  "lattice_brain/graph/projection/curation.py",
-  "lattice_brain/graph/projection/v2_schema.py",
-  "lattice_brain/graph/provenance.py",
-  "lattice_brain/graph/rerank.py",
-  "lattice_brain/graph/retrieval/__init__.py",
-  "lattice_brain/graph/retrieval/context.py",
-  "lattice_brain/graph/retrieval/graph_view.py",
-  "lattice_brain/graph/retrieval/hybrid.py",
-  "lattice_brain/graph/retrieval/maintenance.py",
-  "lattice_brain/graph/retrieval/signals.py",
-  "lattice_brain/graph/retrieval_docgen.py",
-  "lattice_brain/graph/retrieval_policy.py",
-  "lattice_brain/graph/retrieval_reads.py",
-  "lattice_brain/graph/retrieval_vector/__init__.py",
-  "lattice_brain/graph/retrieval_vector/fingerprint.py",
-  "lattice_brain/graph/retrieval_vector/indexing.py",
-  "lattice_brain/graph/retrieval_vector/search.py",
-  "lattice_brain/graph/retrieval_vector/status.py",
   "lattice_brain/graph/runtime.py",
-  "lattice_brain/graph/schema.py",
-  "lattice_brain/graph/store.py",
-  "lattice_brain/graph/vector_index/__init__.py",
-  "lattice_brain/graph/vector_index/base.py",
-  "lattice_brain/graph/vector_index/brute_force.py",
-  "lattice_brain/graph/vector_index/hnsw.py",
-  "lattice_brain/graph/vector_index/jobs.py",
-  "lattice_brain/graph/vector_index/quantized.py",
-  "lattice_brain/graph/vector_index/selector.py",
-  "lattice_brain/graph/write_master.py",
   "lattice_brain/ingestion/__init__.py",
-  "lattice_brain/ingestion/_contract.py",
   "lattice_brain/ingestion/constants.py",
-  "lattice_brain/ingestion/folder_scan.py",
-  "lattice_brain/ingestion/folders.py",
   "lattice_brain/ingestion/hashing.py",
-  "lattice_brain/ingestion/jobs_api.py",
   "lattice_brain/ingestion/models.py",
   "lattice_brain/ingestion/pipeline.py",
   "lattice_brain/ingestion/quality.py",
-  "lattice_brain/ingestion/routing.py",
-  "lattice_brain/ingestion_jobs.py",
-  "lattice_brain/memory.py",
   "lattice_brain/multimodal/__init__.py",
   "lattice_brain/multimodal/audio.py",
   "lattice_brain/multimodal/common.py",
   "lattice_brain/multimodal/images.py",
   "lattice_brain/multimodal/ports.py",
   "lattice_brain/multimodal/video.py",
-  "lattice_brain/portability/__init__.py",
-  "lattice_brain/portability/_contract.py",
-  "lattice_brain/portability/backups.py",
-  "lattice_brain/portability/bundles.py",
-  "lattice_brain/portability/constants.py",
-  "lattice_brain/portability/fsops.py",
-  "lattice_brain/portability/service.py",
-  "lattice_brain/portability/sharing.py",
-  "lattice_brain/quality.py",
   "lattice_brain/quiet.py",
-  "lattice_brain/retrieval_benchmark_fixtures.py",
   "lattice_brain/runtime/__init__.py",
-  "lattice_brain/runtime/agent_runtime.py",
-  "lattice_brain/runtime/contracts.py",
   "lattice_brain/runtime/hooks.py",
-  "lattice_brain/runtime/multi_agent.py",
-  "lattice_brain/runtime/statuses.py",
-  "lattice_brain/sealed_box.py",
-  "lattice_brain/self_model.py",
-  "lattice_brain/sensitivity.py",
-  "lattice_brain/storage/__init__.py",
-  "lattice_brain/storage/base.py",
-  "lattice_brain/storage/docker.py",
-  "lattice_brain/storage/factory.py",
-  "lattice_brain/storage/migration.py",
-  "lattice_brain/storage/postgres.py",
-  "lattice_brain/storage/sqlite.py",
-  "lattice_brain/synthesis.py",
   "lattice_brain/utils.py",
-  "lattice_brain/workflow.py",
   "latticeai/__init__.py",
   "latticeai/api/__init__.py",
-  "latticeai/api/admin.py",
-  "latticeai/api/agent_registry.py",
   "latticeai/api/agent_worker_seam.py",
-  "latticeai/api/agents.py",
-  "latticeai/api/auth.py",
-  "latticeai/api/automation_intelligence.py",
-  "latticeai/api/brain_intelligence.py",
-  "latticeai/api/browser.py",
-  "latticeai/api/change_proposals.py",
-  "latticeai/api/chat.py",
-  "latticeai/api/chat_agent_http.py",
-  "latticeai/api/chat_contracts.py",
-  "latticeai/api/chat_documents.py",
-  "latticeai/api/chat_helpers.py",
-  "latticeai/api/chat_history.py",
-  "latticeai/api/chat_hybrid.py",
-  "latticeai/api/chat_intents.py",
-  "latticeai/api/chat_stream.py",
-  "latticeai/api/chronicle.py",
-  "latticeai/api/command_center.py",
-  "latticeai/api/computer_use.py",
-  "latticeai/api/evidence_actions.py",
-  "latticeai/api/features.py",
-  "latticeai/api/funnel_metrics.py",
-  "latticeai/api/garden.py",
   "latticeai/api/health.py",
-  "latticeai/api/hooks.py",
-  "latticeai/api/index_jobs.py",
-  "latticeai/api/invitations.py",
-  "latticeai/api/knowledge_graph.py",
   "latticeai/api/local_files.py",
-  "latticeai/api/marketplace.py",
-  "latticeai/api/mcp.py",
-  "latticeai/api/memory.py",
   "latticeai/api/models.py",
-  "latticeai/api/network.py",
-  "latticeai/api/network_boundary.py",
-  "latticeai/api/permission_mode.py",
-  "latticeai/api/permissions.py",
-  "latticeai/api/plugins.py",
-  "latticeai/api/portability.py",
-  "latticeai/api/project_sessions.py",
-  "latticeai/api/realtime.py",
-  "latticeai/api/review_queue.py",
   "latticeai/api/search.py",
-  "latticeai/api/security_dashboard.py",
-  "latticeai/api/setup.py",
-  "latticeai/api/static_routes.py",
   "latticeai/api/tools.py",
-  "latticeai/api/ui_redirects.py",
   "latticeai/api/voice_capture.py",
-  "latticeai/api/workflow_designer.py",
-  "latticeai/api/workspace.py",
-  "latticeai/api/workspace_scope.py",
+  "latticeai/api/worker_compute.py",
+  "latticeai/api/worker_seams.py",
   "latticeai/app_factory.py",
   "latticeai/cli/__init__.py",
   "latticeai/cli/entrypoint.py",
   "latticeai/cli/runtime.py",
   "latticeai/core/__init__.py",
-  "latticeai/core/agent/__init__.py",
-  "latticeai/core/agent/_contract.py",
-  "latticeai/core/agent/context.py",
-  "latticeai/core/agent/deps.py",
-  "latticeai/core/agent/execution.py",
-  "latticeai/core/agent/planning.py",
-  "latticeai/core/agent/recovery.py",
-  "latticeai/core/agent/runtime.py",
-  "latticeai/core/agent/verification.py",
-  "latticeai/core/agent_eval.py",
-  "latticeai/core/agent_helpers.py",
   "latticeai/core/agent_permission.py",
-  "latticeai/core/agent_profiles.py",
-  "latticeai/core/agent_prompts.py",
-  "latticeai/core/agent_registry.py",
-  "latticeai/core/agent_state.py",
-  "latticeai/core/agent_trace.py",
-  "latticeai/core/artifact_ledger.py",
-  "latticeai/core/audit.py",
-  "latticeai/core/builtin_hooks.py",
   "latticeai/core/config.py",
-  "latticeai/core/context_builder.py",
   "latticeai/core/csrf.py",
-  "latticeai/core/document_generator.py",
   "latticeai/core/embedding_providers/__init__.py",
   "latticeai/core/embedding_providers/base.py",
   "latticeai/core/embedding_providers/captions.py",
   "latticeai/core/embedding_providers/profiles.py",
   "latticeai/core/embedding_providers/text.py",
   "latticeai/core/embedding_providers/vision.py",
-  "latticeai/core/enterprise.py",
-  "latticeai/core/enterprise_admin.py",
-  "latticeai/core/file_generation/__init__.py",
-  "latticeai/core/file_generation/bundles.py",
-  "latticeai/core/file_generation/extraction.py",
-  "latticeai/core/file_generation/inference.py",
-  "latticeai/core/file_generation/orchestration.py",
-  "latticeai/core/file_generation/prompting.py",
-  "latticeai/core/file_generation/repair.py",
-  "latticeai/core/file_generation/sanitize.py",
-  "latticeai/core/file_generation/validation.py",
   "latticeai/core/http_origin.py",
-  "latticeai/core/invitations.py",
   "latticeai/core/io_utils.py",
-  "latticeai/core/legacy_compatibility.py",
-  "latticeai/core/logging_safety.py",
-  "latticeai/core/marketplace.py",
-  "latticeai/core/mcp_catalog.py",
-  "latticeai/core/mcp_registry.py",
+  "latticeai/core/messages.py",
   "latticeai/core/model_compat.py",
   "latticeai/core/model_resolution.py",
-  "latticeai/core/network_boundary.py",
-  "latticeai/core/oidc.py",
+  "latticeai/core/module_probe.py",
   "latticeai/core/permission_mode.py",
-  "latticeai/core/plugins.py",
   "latticeai/core/policy.py",
-  "latticeai/core/product_hardening.py",
-  "latticeai/core/project_sessions.py",
   "latticeai/core/quiet.py",
-  "latticeai/core/realtime.py",
-  "latticeai/core/run_explain.py",
-  "latticeai/core/run_store.py",
   "latticeai/core/security.py",
   "latticeai/core/sessions.py",
+  "latticeai/core/sse.py",
   "latticeai/core/timeutil.py",
-  "latticeai/core/timezones.py",
   "latticeai/core/tool_governor.py",
   "latticeai/core/tool_registry.py",
   "latticeai/core/users.py",
-  "latticeai/core/workspace_graph_trace.py",
-  "latticeai/core/workspace_memory.py",
-  "latticeai/core/workspace_os.py",
-  "latticeai/core/workspace_reorganization.py",
-  "latticeai/core/workspace_os_constants.py",
-  "latticeai/core/workspace_os_state.py",
-  "latticeai/core/workspace_os_utils.py",
-  "latticeai/core/workspace_permissions.py",
-  "latticeai/core/workspace_plugins.py",
-  "latticeai/core/workspace_review_items.py",
-  "latticeai/core/workspace_runs.py",
-  "latticeai/core/workspace_skills.py",
-  "latticeai/core/workspace_snapshots.py",
-  "latticeai/core/workspace_timeline.py",
-  "latticeai/integrations/__init__.py",
-  "latticeai/integrations/telegram_bot/__init__.py",
-  "latticeai/integrations/telegram_bot/__main__.py",
-  "latticeai/integrations/telegram_bot/config.py",
-  "latticeai/integrations/telegram_bot/dispatch.py",
-  "latticeai/integrations/telegram_bot/flows.py",
-  "latticeai/integrations/telegram_bot/helpers.py",
-  "latticeai/integrations/telegram_bot/screens.py",
   "latticeai/models/__init__.py",
   "latticeai/models/model_providers.py",
   "latticeai/models/router/__init__.py",
@@ -541,89 +380,26 @@ files = [
   "latticeai/models/router/registry.py",
   "latticeai/runtime/__init__.py",
   "latticeai/runtime/access_runtime.py",
-  "latticeai/runtime/audit_runtime.py",
-  "latticeai/runtime/automation_runtime.py",
   "latticeai/runtime/bootstrap.py",
   "latticeai/runtime/brain_runtime.py",
   "latticeai/runtime/build_phases/__init__.py",
   "latticeai/runtime/build_phases/features.py",
   "latticeai/runtime/build_phases/foundation.py",
   "latticeai/runtime/build_phases/web.py",
-  "latticeai/runtime/chat_wiring.py",
+  "latticeai/runtime/build_phases/worker_profile.py",
   "latticeai/runtime/config_runtime.py",
-  "latticeai/runtime/context_runtime.py",
-  "latticeai/runtime/history_runtime.py",
-  "latticeai/runtime/history_writer.py",
-  "latticeai/runtime/hooks_runtime.py",
   "latticeai/runtime/lifespan_runtime.py",
-  "latticeai/runtime/feature_toggle_wiring.py",
-  "latticeai/runtime/model_wiring.py",
-  "latticeai/runtime/namespace_runtime.py",
-  "latticeai/runtime/network_boundary_wiring.py",
-  "latticeai/runtime/network_config_runtime.py",
-  "latticeai/runtime/permission_mode_wiring.py",
-  "latticeai/runtime/persistence_runtime.py",
-  "latticeai/runtime/platform_runtime_wiring.py",
   "latticeai/runtime/platform_services_runtime.py",
-  "latticeai/runtime/review_wiring.py",
-  "latticeai/runtime/router_registration.py",
   "latticeai/runtime/runtime_context.py",
   "latticeai/runtime/security_runtime.py",
-  "latticeai/runtime/sso_config_runtime.py",
   "latticeai/runtime/stages.py",
-  "latticeai/runtime/user_key_runtime.py",
-  "latticeai/runtime/web_runtime.py",
-  "latticeai/server_app.py",
   "latticeai/services/__init__.py",
-  "latticeai/services/app_context.py",
-  "latticeai/services/architecture_readiness.py",
-  "latticeai/services/automation_execution.py",
-  "latticeai/services/automation_intelligence.py",
-  "latticeai/services/brain_automation.py",
-  "latticeai/services/brain_intelligence/__init__.py",
-  "latticeai/services/brain_intelligence/_contract.py",
-  "latticeai/services/brain_intelligence/consistency.py",
-  "latticeai/services/brain_intelligence/constants.py",
-  "latticeai/services/brain_intelligence/digest.py",
-  "latticeai/services/brain_intelligence/health.py",
-  "latticeai/services/brain_intelligence/proposals.py",
-  "latticeai/services/brain_intelligence/sampling.py",
-  "latticeai/services/brain_intelligence/service.py",
-  "latticeai/services/change_proposals.py",
-  "latticeai/services/chat_service.py",
-  "latticeai/services/chronicle.py",
-  "latticeai/services/cloud_egress_audit.py",
-  "latticeai/services/cloud_extraction.py",
-  "latticeai/services/cloud_streaming.py",
-  "latticeai/services/cloud_token_guard.py",
-  "latticeai/services/command_center.py",
-  "latticeai/services/evidence_actions.py",
-  "latticeai/services/feature_toggles.py",
-  "latticeai/services/folder_watch.py",
-  "latticeai/services/funnel_metrics.py",
-  "latticeai/services/hybrid_chat.py",
-  "latticeai/services/hybrid_context.py",
-  "latticeai/services/hybrid_policy.py",
-  "latticeai/services/interop_bridges.py",
-  "latticeai/services/local_knowledge.py",
-  "latticeai/services/memory_service/__init__.py",
-  "latticeai/services/memory_service/_contract.py",
-  "latticeai/services/memory_service/brief.py",
-  "latticeai/services/memory_service/constants.py",
-  "latticeai/services/memory_service/maintenance.py",
-  "latticeai/services/memory_service/manager.py",
-  "latticeai/services/memory_service/proof.py",
-  "latticeai/services/memory_service/recall.py",
-  "latticeai/services/memory_service/service.py",
-  "latticeai/services/memory_service/stores.py",
   "latticeai/services/model_capability_registry.py",
   "latticeai/services/model_catalog.py",
   "latticeai/services/model_engines.py",
   "latticeai/services/model_errors.py",
   "latticeai/services/model_loading.py",
-  "latticeai/services/model_recommendation.py",
   "latticeai/services/model_runtime/__init__.py",
-  "latticeai/services/model_runtime/cloud.py",
   "latticeai/services/model_runtime/download.py",
   "latticeai/services/model_runtime/engines.py",
   "latticeai/services/model_runtime/loading.py",
@@ -632,35 +408,13 @@ files = [
   "latticeai/services/model_runtime/status.py",
   "latticeai/services/model_service.py",
   "latticeai/services/multimodal_ports.py",
-  "latticeai/services/network_boundary_service.py",
-  "latticeai/services/obsidian_bridge.py",
-  "latticeai/services/openai_compatible_adapter.py",
+  "latticeai/services/architecture_readiness.py",
   "latticeai/services/p_reinforce.py",
-  "latticeai/services/permission_mode_service.py",
-  "latticeai/services/platform_runtime.py",
   "latticeai/services/process_audit.py",
   "latticeai/services/product_readiness.py",
-  "latticeai/services/review_queue.py",
-  "latticeai/services/router_context.py",
-  "latticeai/services/run_executor.py",
   "latticeai/services/search_service.py",
-  "latticeai/services/self_model_service.py",
-  "latticeai/services/setup_detection.py",
   "latticeai/services/tool_dispatch.py",
-  "latticeai/services/triggers.py",
-  "latticeai/services/upload_service.py",
   "latticeai/services/voice_capture.py",
-  "latticeai/services/workspace_service.py",
-  "latticeai/setup/__init__.py",
-  "latticeai/setup/auto_setup.py",
-  "latticeai/setup/demo_corpus.py",
-  "latticeai/setup/wizard/__init__.py",
-  "latticeai/setup/wizard/catalog.py",
-  "latticeai/setup/wizard/detect.py",
-  "latticeai/setup/wizard/install.py",
-  "latticeai/setup/wizard/paths.py",
-  "latticeai/setup/wizard/plans.py",
-  "latticeai/setup/wizard/recommend.py",
   "latticeai/tools/__init__.py",
   "latticeai/tools/commands.py",
   "latticeai/tools/computer.py",
@@ -669,6 +423,7 @@ files = [
   "latticeai/tools/knowledge.py",
   "latticeai/tools/local_files.py",
   "latticeai/tools/network.py",
+  "latticeai/worker_app.py"
 ]
 
 [tool.coverage.run]

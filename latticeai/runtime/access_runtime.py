@@ -148,24 +148,10 @@ def build_access_runtime(
                     quiet()
         raise http_exception(status_code=403, detail="관리자 권한이 필요합니다.")
 
-    def public_user(email: str, user: Dict, users: Dict) -> Dict:
-        role = get_user_role(email, users)
-        user_id = user.get("id") or user_id_for_email(users, email)
-        return {
-            "id": user_id,
-            "email": email,
-            "identity": user_id,
-            "name": user.get("name", ""),
-            "nickname": user.get("nickname", ""),
-            "role": role,
-            "disabled": bool(user.get("disabled", False)),
-        }
-
     return {
         "get_user_role": get_user_role,
         "_extract_bearer_token": extract_bearer_token,
         "get_current_user": get_current_user,
         "require_user": require_user,
         "require_admin": require_admin,
-        "public_user": public_user,
     }

@@ -1,0 +1,1572 @@
+{
+  "components": {
+    "schemas": {
+      "AgentChangeProposalRequest": {
+        "description": "A governor consultation for a write that may touch existing content.\n\n``policy`` is optional: the Rust kernel already holds the policy it\npreflighted with, and passing it back keeps the two sides deciding on the\nsame facts. Omitted, the registry's own policy for this call is used.",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "title": "AgentChangeProposalRequest",
+        "type": "object"
+      },
+      "AgentLLMRequest": {
+        "description": "One completion, with the model chosen per call.\n\n``model_id`` omitted means the router's current default; a model that is\nnot cached makes ``generate_as`` answer ``\"No model.\"``, which is returned\nverbatim rather than dressed up as an error \u2014 the loop records it as the\nstep's text and re-plans, exactly as the Python loop does.",
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "max_tokens": {
+            "default": 4096,
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "temperature": {
+            "default": 0.2,
+            "title": "Temperature",
+            "type": "number"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "AgentLLMRequest",
+        "type": "object"
+      },
+      "AgentToolRequest": {
+        "description": "One governed tool call on behalf of the authenticated user.",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "title": "AgentToolRequest",
+        "type": "object"
+      },
+      "Body_upload_document_upload_document_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_upload_document_post",
+        "type": "object"
+      },
+      "Body_voice_capture_api_capture_voice_post": {
+        "properties": {
+          "conversation_id": {
+            "default": "",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "transcript": {
+            "default": "",
+            "title": "Transcript",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_voice_capture_api_capture_voice_post",
+        "type": "object"
+      },
+      "DrainRequest": {
+        "description": "How many queued nodes one drain may claim.\n\nOmitted (or a body-less POST) means the queue's own tick size, so a caller\nwith no opinion inherits the number the queue was designed around.",
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          }
+        },
+        "title": "DrainRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IndexRebuildRequest": {
+        "properties": {
+          "full": {
+            "default": false,
+            "title": "Full",
+            "type": "boolean"
+          },
+          "include_chunks": {
+            "default": true,
+            "title": "Include Chunks",
+            "type": "boolean"
+          },
+          "include_nodes": {
+            "default": true,
+            "title": "Include Nodes",
+            "type": "boolean"
+          }
+        },
+        "title": "IndexRebuildRequest",
+        "type": "object"
+      },
+      "KnowledgeGraphIngestRequest": {
+        "properties": {
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          },
+          "user_nickname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Nickname"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "KnowledgeGraphIngestRequest",
+        "type": "object"
+      },
+      "LoadModelRequest": {
+        "properties": {
+          "adapter_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Path"
+          },
+          "allow_download": {
+            "default": false,
+            "title": "Allow Download",
+            "type": "boolean"
+          },
+          "draft_model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Model Id"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          }
+        },
+        "required": [
+          "model_id"
+        ],
+        "title": "LoadModelRequest",
+        "type": "object"
+      },
+      "PrepareModelRequest": {
+        "properties": {
+          "allow_download": {
+            "default": false,
+            "title": "Allow Download",
+            "type": "boolean"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "PrepareModelRequest",
+        "type": "object"
+      },
+      "PullModelRequest": {
+        "properties": {
+          "allow_download": {
+            "default": false,
+            "title": "Allow Download",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "PullModelRequest",
+        "type": "object"
+      },
+      "ToolDocxRequest": {
+        "properties": {
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "filename": {
+            "default": "document.docx",
+            "title": "Filename",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "ToolDocxRequest",
+        "type": "object"
+      },
+      "ToolPathRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "path": {
+            "default": ".",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "title": "ToolPathRequest",
+        "type": "object"
+      },
+      "ToolPdfRequest": {
+        "properties": {
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "filename": {
+            "default": "document.pdf",
+            "title": "Filename",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "ToolPdfRequest",
+        "type": "object"
+      },
+      "ToolPptxRequest": {
+        "properties": {
+          "filename": {
+            "default": "presentation.pptx",
+            "title": "Filename",
+            "type": "string"
+          },
+          "slides": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Slides",
+            "type": "array"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "ToolPptxRequest",
+        "type": "object"
+      },
+      "ToolXlsxRequest": {
+        "properties": {
+          "filename": {
+            "default": "spreadsheet.xlsx",
+            "title": "Filename",
+            "type": "string"
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "items": {},
+              "type": "array"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sheet_name": {
+            "default": "Sheet1",
+            "title": "Sheet Name",
+            "type": "string"
+          }
+        },
+        "title": "ToolXlsxRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "family": "worker_keep",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {
+    "DELETE /models/unload/{model_id}": "model_id",
+    "POST /models/switch/{model_id}": "model_id"
+  },
+  "operation_count": 27,
+  "operation_order": [
+    "POST /agent/change-proposal",
+    "POST /agent/llm",
+    "POST /agent/tool",
+    "POST /api/capture/voice",
+    "GET /api/capture/voice/status",
+    "GET /api/embeddings/providers",
+    "GET /api/embeddings/status",
+    "POST /api/index/drain",
+    "POST /api/index/rebuild",
+    "GET /api/ingestion/multimodal",
+    "POST /engines/prepare-model",
+    "POST /engines/prepare-model/stream",
+    "POST /engines/pull-model",
+    "GET /health",
+    "POST /knowledge-graph/ingest",
+    "GET /models",
+    "POST /models/load",
+    "POST /models/switch/{model_id}",
+    "DELETE /models/unload-all",
+    "DELETE /models/unload/{model_id}",
+    "POST /tools/create_docx",
+    "POST /tools/create_pdf",
+    "POST /tools/create_pptx",
+    "POST /tools/create_xlsx",
+    "GET /tools/pdf_pages",
+    "POST /tools/read_document",
+    "POST /upload/document"
+  ],
+  "path_count": 27,
+  "path_order": [
+    "/agent/change-proposal",
+    "/agent/llm",
+    "/agent/tool",
+    "/api/capture/voice",
+    "/api/capture/voice/status",
+    "/api/embeddings/providers",
+    "/api/embeddings/status",
+    "/api/index/drain",
+    "/api/index/rebuild",
+    "/api/ingestion/multimodal",
+    "/engines/prepare-model",
+    "/engines/prepare-model/stream",
+    "/engines/pull-model",
+    "/health",
+    "/knowledge-graph/ingest",
+    "/models",
+    "/models/load",
+    "/models/switch/{model_id}",
+    "/models/unload-all",
+    "/models/unload/{model_id}",
+    "/tools/create_docx",
+    "/tools/create_pdf",
+    "/tools/create_pptx",
+    "/tools/create_xlsx",
+    "/tools/pdf_pages",
+    "/tools/read_document",
+    "/upload/document"
+  ],
+  "paths": {
+    "/agent/change-proposal": {
+      "post": {
+        "description": "Ask the governor what should happen to this write.\n\nThe verdict is returned verbatim \u2014 ``{\"decision\": \"allow_additive\"}``\nor ``{\"decision\": \"proposed\", \"proposal\": {...}}`` \u2014 because the Rust\nloop has to act on the same facts the Review Center will show.\n\n``review`` answers ``None`` for \"I have nothing to say about this call:\nfall through to the normal gates\". Three different situations collapse\ninto that one ``None`` (not a governed tool; no proposal required; the\nedit could not be computed deterministically) and the service does not\ndistinguish them, so neither does this payload: ``{\"decision\": \"none\"}``\nand nothing invented about why.\n\nNo mode-invariant guard here, because nothing executes: staging a\nproposal writes a review item, and the write itself still has to come\nback through ``/agent/tool`` \u2014 where the guards are.",
+        "operationId": "agent_change_proposal_agent_change_proposal_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentChangeProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Change Proposal"
+      }
+    },
+    "/agent/llm": {
+      "post": {
+        "description": "Generate once. Writes nothing, remembers nothing.\n\nNot gated by ``LATTICEAI_AGENT_TOOL_SEAM``: a completion has no side\neffect to gate, and the Rust loop is not the only caller that wants one\n(``/rust/context/document`` composes a prompt the same way). Auth and\nthe per-step rate limit are the whole ceremony.\n\nStructural problems in the body \u2014 a missing ``message``, a string where\na number belongs \u2014 answer with FastAPI's own 422, uniform with every\nother router. Semantic ones answer in the caller's language.",
+        "operationId": "agent_llm_agent_llm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentLLMRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Llm"
+      }
+    },
+    "/agent/tool": {
+      "post": {
+        "description": "Run one tool through the same lifecycle the Python loop uses.\n\nThe answer shape mirrors the loop's own catch (``execution.py``): a\n``ToolError``/``KeyError``/``TypeError``/``PermissionError`` is the\n*step's* outcome, not the request's, so it comes back 200 with\n``{\"error\": ...}`` for the transcript. A denial \u2014 role, circuit\nbreaker, fail-closed governance \u2014 is the request's outcome and comes\nback 4xx, because retrying it would be pointless.",
+        "operationId": "agent_tool_agent_tool_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentToolRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Tool"
+      }
+    },
+    "/api/capture/voice": {
+      "post": {
+        "operationId": "voice_capture_api_capture_voice_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_voice_capture_api_capture_voice_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Voice Capture"
+      }
+    },
+    "/api/capture/voice/status": {
+      "get": {
+        "operationId": "voice_status_api_capture_voice_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Voice Status"
+      }
+    },
+    "/api/embeddings/providers": {
+      "get": {
+        "operationId": "embeddings_providers_api_embeddings_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Embeddings Providers Api Embeddings Providers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Embeddings Providers"
+      }
+    },
+    "/api/embeddings/status": {
+      "get": {
+        "operationId": "embeddings_status_api_embeddings_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Refresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Embeddings Status Api Embeddings Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Embeddings Status"
+      }
+    },
+    "/api/index/drain": {
+      "post": {
+        "description": "Run one background-embedding tick and report what it did.\n\nOff the event loop: the tick opens SQLite and calls the embedder, and\nthis server has one loop for every user (10.9.0).",
+        "operationId": "drain_index_queue_api_index_drain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DrainRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Drain Index Queue"
+      }
+    },
+    "/api/index/rebuild": {
+      "post": {
+        "operationId": "index_rebuild_api_index_rebuild_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndexRebuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Index Rebuild Api Index Rebuild Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Index Rebuild"
+      }
+    },
+    "/api/ingestion/multimodal": {
+      "get": {
+        "description": "What this install will do with a picture, a recording, or a video.\n\nFEATURE_STATUS has described this answer \u2014 including which of the three\nreasons a video would be refused for \u2014 since 11.2.0, but the pipeline\nmethod that produces it had no route, so no surface could ever show it\nand \"why was my video not indexed?\" had no answer short of reading the\nserver's environment.",
+        "operationId": "ingestion_multimodal_status_api_ingestion_multimodal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ingestion Multimodal Status"
+      }
+    },
+    "/engines/prepare-model": {
+      "post": {
+        "operationId": "engines_prepare_model_engines_prepare_model_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Engines Prepare Model"
+      }
+    },
+    "/engines/prepare-model/stream": {
+      "post": {
+        "operationId": "engines_prepare_model_stream_engines_prepare_model_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Engines Prepare Model Stream"
+      }
+    },
+    "/engines/pull-model": {
+      "post": {
+        "operationId": "pull_ollama_model_engines_pull_model_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PullModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pull Ollama Model"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/knowledge-graph/ingest": {
+      "post": {
+        "operationId": "knowledge_graph_ingest_knowledge_graph_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeGraphIngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Ingest"
+      }
+    },
+    "/models": {
+      "get": {
+        "operationId": "list_models_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Models"
+      }
+    },
+    "/models/load": {
+      "post": {
+        "operationId": "load_model_models_load_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Load Model"
+      }
+    },
+    "/models/switch/{model_id}": {
+      "post": {
+        "operationId": "switch_model_models_switch__model_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Switch Model"
+      }
+    },
+    "/models/unload-all": {
+      "delete": {
+        "operationId": "unload_all_models_models_unload_all_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Unload All Models"
+      }
+    },
+    "/models/unload/{model_id}": {
+      "delete": {
+        "operationId": "unload_model_models_unload__model_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unload Model"
+      }
+    },
+    "/tools/create_docx": {
+      "post": {
+        "operationId": "tools_create_docx_tools_create_docx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolDocxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Create Docx"
+      }
+    },
+    "/tools/create_pdf": {
+      "post": {
+        "operationId": "tools_create_pdf_tools_create_pdf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolPdfRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Create Pdf"
+      }
+    },
+    "/tools/create_pptx": {
+      "post": {
+        "operationId": "tools_create_pptx_tools_create_pptx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolPptxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Create Pptx"
+      }
+    },
+    "/tools/create_xlsx": {
+      "post": {
+        "operationId": "tools_create_xlsx_tools_create_xlsx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolXlsxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Create Xlsx"
+      }
+    },
+    "/tools/pdf_pages": {
+      "get": {
+        "description": "Render PDF pages as base64 PNG images using pypdfium2 (Apache-2.0).",
+        "operationId": "tools_pdf_pages_tools_pdf_pages_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "approval_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Approval Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Pdf Pages"
+      }
+    },
+    "/tools/read_document": {
+      "post": {
+        "operationId": "tools_read_document_tools_read_document_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolPathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Read Document"
+      }
+    },
+    "/upload/document": {
+      "post": {
+        "operationId": "upload_document_upload_document_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_upload_document_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Document"
+      }
+    }
+  },
+  "schema_count": 18,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "The 25 KEEP_WORKER routes from scout_routes.md, the graph single-writer seam, and POST /engines/pull-model: the surface whose handler stays inside the Python worker's interpreter.",
+  "target": "Python AI worker (proxy allowlist)",
+  "wp": "\u2014"
+}

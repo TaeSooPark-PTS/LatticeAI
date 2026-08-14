@@ -51,8 +51,12 @@
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
+// `index_api` answers `Result<T, axum::response::Response>` — the error is the
+// rendered refusal, the convention `lattice-auth` set. Allowed once here.
+#![allow(clippy::result_large_err)]
 
 pub mod config;
+pub mod index_api;
 pub mod queue;
 pub mod routes;
 pub mod schedule;

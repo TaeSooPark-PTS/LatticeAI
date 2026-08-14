@@ -10,7 +10,9 @@ mod common;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use common::{client, json, test_agent_root, FakeWorker, FixedProvider, TestGateway};
+use common::{
+    client, fake_worker_allowlist, json, test_agent_root, FakeWorker, FixedProvider, TestGateway,
+};
 use lattice_host::gateway::{mounts, GatewayState};
 
 /// Every native path the guard must cover, one per mounted family plus the two
@@ -30,6 +32,10 @@ async fn gateway(worker: &FakeWorker, name: &str) -> TestGateway {
     let root = test_agent_root(name);
     let state = GatewayState::new(Arc::new(FixedProvider::new(worker.origin(), worker.port())))
         .expect("gateway state")
+        // The fake worker's own surface: since v11.6.0 the fall-through is an
+        // allowlist, and these suites test the proxy's mechanics rather than
+        // which paths the real worker owns (`binary_frontdoor.rs` does that).
+        .with_allowlist(fake_worker_allowlist())
         // A path that does not exist: the guard must answer before anything
         // touches the store, so what is (not) in it cannot change the verdict.
         .with_db_path(PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("no-such-brain.sqlite"))

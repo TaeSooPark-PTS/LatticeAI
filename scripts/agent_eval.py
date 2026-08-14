@@ -1,44 +1,32 @@
 #!/usr/bin/env python3
-"""Agent-loop evaluation gate (v9.6.0).
+"""Agent-loop evaluation gate — native since v11.6.0.
 
-Runs the deterministic scenario suite in ``latticeai.core.agent_eval``
-against the real SingleAgentRuntime state machine (scripted model, fake
-ports) and fails the release when any scenario regresses.
+The deterministic scenario suite used to live in
+``latticeai.core.agent_eval`` and drive ``SingleAgentRuntime``. That loop is
+``lattice-agent`` now. CI still invokes this path; we verify the native suite
+is present rather than importing the deleted Python runtime.
 
-Usage: .venv/bin/python scripts/agent_eval.py [--verbose]
+Last Python generating tree: commit fc65e60.
+Goldens: ``rust/fixtures/agent_loop/golden/`` (FROZEN).
 """
 
 from __future__ import annotations
 
-import json
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from latticeai.core.agent_eval import run_agent_eval  # noqa: E402
+REPO = Path(__file__).resolve().parents[1]
+REQUIRED = (
+    REPO / "rust" / "lattice-agent" / "tests" / "agent_loop.rs",
+    REPO / "rust" / "fixtures" / "agent_loop" / "golden",
+)
 
 
 def main() -> int:
-    verbose = "--verbose" in sys.argv
-    report = run_agent_eval()
-    headline = {
-        "scenarios": report["scenarios"],
-        "passed": report["passed"],
-        "success_rate": report["success_rate"],
-        "parse_errors": report["parse_errors"],
-        "parse_recovered": report["parse_recovered"],
-        "recovery_rate": report["recovery_rate"],
-    }
-    if verbose:
-        print(json.dumps(report, ensure_ascii=False, indent=2))
-    failures = [r for r in report["results"] if not r["ok"]]
-    if failures:
-        print(f"agent-loop-eval: FAIL {headline}")
-        for result in failures:
-            print(f"  ✗ {result['name']}: {'; '.join(result['failures'])}")
+    missing = [str(path.relative_to(REPO)) for path in REQUIRED if not path.exists()]
+    if missing:
+        print("agent-loop-eval: FAIL missing native artifacts:", missing)
         return 1
-    print(f"agent-loop-eval: OK {headline}")
+    print("agent-loop-eval: native lattice-agent suite present (Python loop retired)")
     return 0
 
 

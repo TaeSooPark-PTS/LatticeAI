@@ -1,10 +1,8 @@
 """Legacy debt gate — the root shim layer stays removed.
 
-9.9.1 deleted every root compatibility shim except ``server.py`` (kept for
-``uvicorn server:app``, the Docker CMD, and launch scripts). This suite is the
-regression gate: removed shims must stay unimportable, no new root modules may
-appear, and the managed registry in ``latticeai.core.legacy_compatibility``
-must keep matching reality.
+9.9.1 deleted every root compatibility shim except ``server.py``. WP-P1
+deleted ``server.py`` too: the product server is ``lattice-host`` and the
+worker boots ``latticeai.worker_app:create_worker_app``.
 """
 
 from __future__ import annotations
@@ -15,8 +13,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# The only Python modules allowed at the repository root.
-ALLOWED_ROOT_MODULES = {"server.py"}
+# No Python modules are allowed at the repository root.
+ALLOWED_ROOT_MODULES: set[str] = set()
 
 REMOVED_ROOT_MODULES = [
     "ltcai_cli",
@@ -31,6 +29,7 @@ REMOVED_ROOT_MODULES = [
     "p_reinforce",
     "telegram_bot",
     "tools",
+    "server",
 ]
 
 
@@ -56,18 +55,14 @@ def test_repo_root_contains_no_new_python_modules():
 def test_canonical_replacements_still_import():
     for module_name in (
         "latticeai.cli.entrypoint",
-        "latticeai.setup.auto_setup",
-        "latticeai.setup.wizard",
-        "latticeai.core.mcp_registry",
-        "lattice_brain.graph.schema",
-        "lattice_brain.graph.store",
-        "latticeai.api.knowledge_graph",
-        "latticeai.services.local_knowledge",
+        "latticeai.worker_app",
+        "latticeai.app_factory",
         "latticeai.models.router",
         "latticeai.services.p_reinforce",
-        "latticeai.integrations.telegram_bot",
         "latticeai.tools",
         "latticeai.tools.knowledge",
+        "lattice_brain.embeddings",
+        "lattice_brain.ingestion",
     ):
         importlib.import_module(module_name)
 
@@ -88,13 +83,7 @@ def test_latticeai_internal_modules_use_physical_tools_package():
 
 
 def test_no_module_aliases_itself_to_a_moved_implementation():
-    """11.5.2 deleted the six ``sys.modules[__name__] = _impl`` shims.
-
-    That pattern makes a module a silent alias for one that physically moved,
-    so an import path can outlive its file and both `latticeai/` and
-    `lattice_brain/` grow a second name for the same code. Real callers use
-    the physical path; this gate keeps it that way.
-    """
+    """11.5.2 deleted the six ``sys.modules[__name__] = _impl`` shims."""
     offenders = []
     for package in ("latticeai", "lattice_brain"):
         for path in (REPO_ROOT / package).rglob("*.py"):
@@ -141,24 +130,17 @@ def test_internal_shim_layers_are_gone():
 
 
 def test_legacy_shim_report_matches_reality():
-    from latticeai.core.legacy_compatibility import legacy_shim_report
+    from latticeai.services.architecture_readiness import legacy_shim_report
 
     report = legacy_shim_report()
     assert report["status"] == "managed"
     assert report["missing"] == []
     assert report["lingering"] == []
-    assert report["remaining_count"] == 1
+    assert report["remaining_count"] == 0
     live_paths = {shim["path"] for shim in report["shims"]}
-    assert live_paths == {"server.py"}
+    assert live_paths == set()
     removed_paths = {shim["path"] for shim in report["removed"]}
     for module_name in REMOVED_ROOT_MODULES:
         expected = "tools/" if module_name == "tools" else f"{module_name}.py"
         assert expected in removed_paths, f"registry is missing removed shim {expected}"
     assert live_paths.isdisjoint(removed_paths)
-
-
-def test_server_root_stays_lazy_until_app_attribute_access():
-    server = importlib.import_module("server")
-
-    assert "app" in dir(server)
-    assert callable(server.main)

@@ -15,6 +15,27 @@ rusqlite = { workspace = true }
 # length rides in BLAKE2's parameter block, so this is NOT a truncation of the
 # 64-byte digest and cannot be emulated by slicing one.
 blake2 = "0.10"
+# One Door (v11.6.0). `db::Store` dispatches its blocking pool work onto
+# tokio's blocking threads, and `worker` is the seam client every ported route
+# family calls; reqwest is pinned by the workspace without TLS or the `json`
+# feature, so bodies are serialized and parsed with serde_json by hand.
+tokio = { workspace = true }
+reqwest = { workspace = true }
+# Naming the item type of `Response::bytes_stream()` so `stream_sse` can hand a
+# passthrough back without buffering. Both resolve to the same crate versions
+# reqwest already links.
+bytes = "1"
+futures-core = { workspace = true }
+# Wave 2.5 (`graph_write`): the ids the Brain's write path derives are sha256
+# over Python-shaped JSON, and `_now()` is naive *local* time — `localtime_r`
+# is how the offset is read without pulling in a date library that would have
+# its own opinion about what "now" means.
+sha2 = { workspace = true }
+libc = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+# The worker-seam tests answer with a real axum server on a real loopback port
+# rather than a mock, so the client is proven against HTTP and not against an
+# assumption about it.
+axum = { workspace = true }

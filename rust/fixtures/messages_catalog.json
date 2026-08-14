@@ -1,0 +1,1049 @@
+{
+  "catalog": {
+    "agent_seam.disabled": {
+      "en": "The worker seam is off. It opens only in a worker the host started itself.",
+      "ko": "워커 시임이 꺼져 있습니다. 호스트가 직접 띄운 워커에서만 열립니다."
+    },
+    "agent_seam.max_tokens_out_of_range": {
+      "en": "Ask for between {min} and {max} tokens in one completion.",
+      "ko": "한 번에 만들 길이는 {min}에서 {max} 사이여야 합니다."
+    },
+    "agent_seam.message_required": {
+      "en": "Write the message to send to the model.",
+      "ko": "모델에 보낼 내용을 적어주세요."
+    },
+    "agent_seam.temperature_out_of_range": {
+      "en": "Temperature has to be between {min} and {max}.",
+      "ko": "온도는 {min}에서 {max} 사이여야 합니다."
+    },
+    "agent_seam.tool_blocked": {
+      "en": "'{tool}' is blocked in every mode ({reason}).",
+      "ko": "'{tool}' 도구는 어떤 모드에서도 차단됩니다 ({reason})."
+    },
+    "agent_seam.tool_fail_closed": {
+      "en": "'{tool}' would change existing content but cannot be staged as a reviewable proposal, so it is blocked ({reason}).",
+      "ko": "'{tool}' 도구는 기존 내용을 바꾸지만 검토할 수 있는 제안으로 만들 수 없어 차단했습니다 ({reason})."
+    },
+    "agent_seam.tool_required": {
+      "en": "A tool name to run is required.",
+      "ko": "실행할 도구 이름이 필요합니다."
+    },
+    "auth.user_not_found": {
+      "en": "No such user.",
+      "ko": "사용자를 찾을 수 없습니다."
+    },
+    "chat.model_not_loaded": {
+      "en": "Model '{model}' is not loaded.",
+      "ko": "'{model}' 모델이 아직 준비되지 않았습니다."
+    },
+    "common.file_not_found": {
+      "en": "File not found.",
+      "ko": "파일을 찾을 수 없습니다."
+    },
+    "models.download_consent_required": {
+      "en": "Model downloads require explicit consent (allow_download=true).",
+      "ko": "모델 내려받기는 사용자가 직접 동의해야 시작됩니다."
+    },
+    "models.download_not_automated": {
+      "en": "Model downloads for the {provider} engine are not automated yet.",
+      "ko": "{provider} 엔진의 모델 내려받기는 아직 자동화되지 않았습니다."
+    },
+    "models.download_timeout": {
+      "en": "The model download timed out.",
+      "ko": "모델 내려받기 시간이 초과되었습니다."
+    },
+    "models.identifier_empty": {
+      "en": "The model identifier is empty.",
+      "ko": "모델 식별자가 비어 있습니다."
+    },
+    "models.name_empty": {
+      "en": "The model name is empty.",
+      "ko": "모델 이름이 비어 있습니다."
+    },
+    "models.ollama_missing": {
+      "en": "Ollama is not installed.",
+      "ko": "Ollama가 설치되어 있지 않습니다."
+    },
+    "models.other_user_credentials": {
+      "en": "You cannot use another user's model credentials.",
+      "ko": "다른 사용자의 모델 자격 증명을 사용할 수 없습니다."
+    },
+    "models.public_mode_blocks_local": {
+      "en": "Public mode does not load local MLX models. Use an openai:, openrouter:, groq: or together: model, or set LATTICEAI_ALLOW_LOCAL_MODELS=true.",
+      "ko": "공개 모드에서는 로컬 MLX 모델을 불러올 수 없습니다. openai:, openrouter:, groq:, together: 모델을 쓰거나 LATTICEAI_ALLOW_LOCAL_MODELS=true 로 설정하세요."
+    },
+    "models.pull_failed": {
+      "en": "The model download failed.",
+      "ko": "모델 내려받기에 실패했습니다."
+    },
+    "tools.path_outside_workspace": {
+      "en": "That path is outside the workspace.",
+      "ko": "경로가 작업 공간 밖입니다."
+    },
+    "tools.pdf_render_failed": {
+      "en": "The PDF could not be rendered: {reason}",
+      "ko": "PDF를 그리지 못했습니다: {reason}"
+    },
+    "worker_compute.audio_too_large": {
+      "en": "The audio is {size} bytes; the limit is {limit} bytes.",
+      "ko": "오디오가 {size} bytes 입니다. 한도는 {limit} bytes 입니다."
+    },
+    "worker_compute.audio_unsupported": {
+      "en": "'{suffix}' is not a supported audio container. Supported: {allowed}.",
+      "ko": "'{suffix}' 은(는) 지원하는 오디오 형식이 아닙니다. {allowed} 만 가능합니다."
+    },
+    "worker_compute.content_invalid": {
+      "en": "The payload is not valid base64: {reason}",
+      "ko": "본문을 base64로 읽지 못했습니다: {reason}"
+    },
+    "worker_compute.embedder_unavailable": {
+      "en": "No embedding provider is connected to this worker.",
+      "ko": "임베딩 공급자가 연결되어 있지 않습니다."
+    },
+    "worker_compute.extract_kind_invalid": {
+      "en": "'{kind}' is not an extraction kind. Use one of {allowed}.",
+      "ko": "'{kind}' 은(는) 추출 종류가 아닙니다. {allowed} 중 하나여야 합니다."
+    },
+    "worker_compute.kind_invalid": {
+      "en": "'{kind}' is not an embedding kind. Use one of {allowed}.",
+      "ko": "'{kind}' 은(는) 임베딩 종류가 아닙니다. {allowed} 중 하나여야 합니다."
+    },
+    "worker_compute.parse_failed": {
+      "en": "The document could not be parsed: {reason}",
+      "ko": "문서를 읽지 못했습니다: {reason}"
+    },
+    "worker_compute.render_failed": {
+      "en": "Rendering the '{kind}' document failed: {reason}",
+      "ko": "'{kind}' 문서 생성이 실패했습니다: {reason}"
+    },
+    "worker_compute.render_unavailable": {
+      "en": "This worker cannot render '{kind}' documents: {reason}",
+      "ko": "이 워커는 '{kind}' 문서를 만들 수 없습니다: {reason}"
+    }
+  },
+  "default_language": "ko",
+  "language_header": "x-lattice-language",
+  "renders": [
+    {
+      "args": {},
+      "http_error": {
+        "detail": "워커 시임이 꺼져 있습니다. 호스트가 직접 띄운 워커에서만 열립니다."
+      },
+      "id": "agent_seam.disabled",
+      "lang": "ko",
+      "text": "워커 시임이 꺼져 있습니다. 호스트가 직접 띄운 워커에서만 열립니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "The worker seam is off. It opens only in a worker the host started itself."
+      },
+      "id": "agent_seam.disabled",
+      "lang": "en",
+      "text": "The worker seam is off. It opens only in a worker the host started itself."
+    },
+    {
+      "args": {
+        "max": "100",
+        "min": "1"
+      },
+      "http_error": {
+        "detail": "한 번에 만들 길이는 1에서 100 사이여야 합니다."
+      },
+      "id": "agent_seam.max_tokens_out_of_range",
+      "lang": "ko",
+      "text": "한 번에 만들 길이는 1에서 100 사이여야 합니다."
+    },
+    {
+      "args": {
+        "max": "100",
+        "min": "1"
+      },
+      "http_error": {
+        "detail": "Ask for between 1 and 100 tokens in one completion."
+      },
+      "id": "agent_seam.max_tokens_out_of_range",
+      "lang": "en",
+      "text": "Ask for between 1 and 100 tokens in one completion."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "모델에 보낼 내용을 적어주세요."
+      },
+      "id": "agent_seam.message_required",
+      "lang": "ko",
+      "text": "모델에 보낼 내용을 적어주세요."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "Write the message to send to the model."
+      },
+      "id": "agent_seam.message_required",
+      "lang": "en",
+      "text": "Write the message to send to the model."
+    },
+    {
+      "args": {
+        "max": "100",
+        "min": "1"
+      },
+      "http_error": {
+        "detail": "온도는 1에서 100 사이여야 합니다."
+      },
+      "id": "agent_seam.temperature_out_of_range",
+      "lang": "ko",
+      "text": "온도는 1에서 100 사이여야 합니다."
+    },
+    {
+      "args": {
+        "max": "100",
+        "min": "1"
+      },
+      "http_error": {
+        "detail": "Temperature has to be between 1 and 100."
+      },
+      "id": "agent_seam.temperature_out_of_range",
+      "lang": "en",
+      "text": "Temperature has to be between 1 and 100."
+    },
+    {
+      "args": {
+        "reason": "no-gpu",
+        "tool": "write_file"
+      },
+      "http_error": {
+        "detail": "'write_file' 도구는 어떤 모드에서도 차단됩니다 (no-gpu)."
+      },
+      "id": "agent_seam.tool_blocked",
+      "lang": "ko",
+      "text": "'write_file' 도구는 어떤 모드에서도 차단됩니다 (no-gpu)."
+    },
+    {
+      "args": {
+        "reason": "no-gpu",
+        "tool": "write_file"
+      },
+      "http_error": {
+        "detail": "'write_file' is blocked in every mode (no-gpu)."
+      },
+      "id": "agent_seam.tool_blocked",
+      "lang": "en",
+      "text": "'write_file' is blocked in every mode (no-gpu)."
+    },
+    {
+      "args": {
+        "reason": "no-gpu",
+        "tool": "write_file"
+      },
+      "http_error": {
+        "detail": "'write_file' 도구는 기존 내용을 바꾸지만 검토할 수 있는 제안으로 만들 수 없어 차단했습니다 (no-gpu)."
+      },
+      "id": "agent_seam.tool_fail_closed",
+      "lang": "ko",
+      "text": "'write_file' 도구는 기존 내용을 바꾸지만 검토할 수 있는 제안으로 만들 수 없어 차단했습니다 (no-gpu)."
+    },
+    {
+      "args": {
+        "reason": "no-gpu",
+        "tool": "write_file"
+      },
+      "http_error": {
+        "detail": "'write_file' would change existing content but cannot be staged as a reviewable proposal, so it is blocked (no-gpu)."
+      },
+      "id": "agent_seam.tool_fail_closed",
+      "lang": "en",
+      "text": "'write_file' would change existing content but cannot be staged as a reviewable proposal, so it is blocked (no-gpu)."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "실행할 도구 이름이 필요합니다."
+      },
+      "id": "agent_seam.tool_required",
+      "lang": "ko",
+      "text": "실행할 도구 이름이 필요합니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "A tool name to run is required."
+      },
+      "id": "agent_seam.tool_required",
+      "lang": "en",
+      "text": "A tool name to run is required."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "사용자를 찾을 수 없습니다."
+      },
+      "id": "auth.user_not_found",
+      "lang": "ko",
+      "text": "사용자를 찾을 수 없습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "No such user."
+      },
+      "id": "auth.user_not_found",
+      "lang": "en",
+      "text": "No such user."
+    },
+    {
+      "args": {
+        "model": "gemma-4"
+      },
+      "http_error": {
+        "detail": "'gemma-4' 모델이 아직 준비되지 않았습니다."
+      },
+      "id": "chat.model_not_loaded",
+      "lang": "ko",
+      "text": "'gemma-4' 모델이 아직 준비되지 않았습니다."
+    },
+    {
+      "args": {
+        "model": "gemma-4"
+      },
+      "http_error": {
+        "detail": "Model 'gemma-4' is not loaded."
+      },
+      "id": "chat.model_not_loaded",
+      "lang": "en",
+      "text": "Model 'gemma-4' is not loaded."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "파일을 찾을 수 없습니다."
+      },
+      "id": "common.file_not_found",
+      "lang": "ko",
+      "text": "파일을 찾을 수 없습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "File not found."
+      },
+      "id": "common.file_not_found",
+      "lang": "en",
+      "text": "File not found."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "모델 내려받기는 사용자가 직접 동의해야 시작됩니다."
+      },
+      "id": "models.download_consent_required",
+      "lang": "ko",
+      "text": "모델 내려받기는 사용자가 직접 동의해야 시작됩니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "Model downloads require explicit consent (allow_download=true)."
+      },
+      "id": "models.download_consent_required",
+      "lang": "en",
+      "text": "Model downloads require explicit consent (allow_download=true)."
+    },
+    {
+      "args": {
+        "provider": "mlx"
+      },
+      "http_error": {
+        "detail": "mlx 엔진의 모델 내려받기는 아직 자동화되지 않았습니다."
+      },
+      "id": "models.download_not_automated",
+      "lang": "ko",
+      "text": "mlx 엔진의 모델 내려받기는 아직 자동화되지 않았습니다."
+    },
+    {
+      "args": {
+        "provider": "mlx"
+      },
+      "http_error": {
+        "detail": "Model downloads for the mlx engine are not automated yet."
+      },
+      "id": "models.download_not_automated",
+      "lang": "en",
+      "text": "Model downloads for the mlx engine are not automated yet."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "모델 내려받기 시간이 초과되었습니다."
+      },
+      "id": "models.download_timeout",
+      "lang": "ko",
+      "text": "모델 내려받기 시간이 초과되었습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "The model download timed out."
+      },
+      "id": "models.download_timeout",
+      "lang": "en",
+      "text": "The model download timed out."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "모델 식별자가 비어 있습니다."
+      },
+      "id": "models.identifier_empty",
+      "lang": "ko",
+      "text": "모델 식별자가 비어 있습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "The model identifier is empty."
+      },
+      "id": "models.identifier_empty",
+      "lang": "en",
+      "text": "The model identifier is empty."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "모델 이름이 비어 있습니다."
+      },
+      "id": "models.name_empty",
+      "lang": "ko",
+      "text": "모델 이름이 비어 있습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "The model name is empty."
+      },
+      "id": "models.name_empty",
+      "lang": "en",
+      "text": "The model name is empty."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "Ollama가 설치되어 있지 않습니다."
+      },
+      "id": "models.ollama_missing",
+      "lang": "ko",
+      "text": "Ollama가 설치되어 있지 않습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "Ollama is not installed."
+      },
+      "id": "models.ollama_missing",
+      "lang": "en",
+      "text": "Ollama is not installed."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "다른 사용자의 모델 자격 증명을 사용할 수 없습니다."
+      },
+      "id": "models.other_user_credentials",
+      "lang": "ko",
+      "text": "다른 사용자의 모델 자격 증명을 사용할 수 없습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "You cannot use another user's model credentials."
+      },
+      "id": "models.other_user_credentials",
+      "lang": "en",
+      "text": "You cannot use another user's model credentials."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "공개 모드에서는 로컬 MLX 모델을 불러올 수 없습니다. openai:, openrouter:, groq:, together: 모델을 쓰거나 LATTICEAI_ALLOW_LOCAL_MODELS=true 로 설정하세요."
+      },
+      "id": "models.public_mode_blocks_local",
+      "lang": "ko",
+      "text": "공개 모드에서는 로컬 MLX 모델을 불러올 수 없습니다. openai:, openrouter:, groq:, together: 모델을 쓰거나 LATTICEAI_ALLOW_LOCAL_MODELS=true 로 설정하세요."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "Public mode does not load local MLX models. Use an openai:, openrouter:, groq: or together: model, or set LATTICEAI_ALLOW_LOCAL_MODELS=true."
+      },
+      "id": "models.public_mode_blocks_local",
+      "lang": "en",
+      "text": "Public mode does not load local MLX models. Use an openai:, openrouter:, groq: or together: model, or set LATTICEAI_ALLOW_LOCAL_MODELS=true."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "모델 내려받기에 실패했습니다."
+      },
+      "id": "models.pull_failed",
+      "lang": "ko",
+      "text": "모델 내려받기에 실패했습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "The model download failed."
+      },
+      "id": "models.pull_failed",
+      "lang": "en",
+      "text": "The model download failed."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "경로가 작업 공간 밖입니다."
+      },
+      "id": "tools.path_outside_workspace",
+      "lang": "ko",
+      "text": "경로가 작업 공간 밖입니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "That path is outside the workspace."
+      },
+      "id": "tools.path_outside_workspace",
+      "lang": "en",
+      "text": "That path is outside the workspace."
+    },
+    {
+      "args": {
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "PDF를 그리지 못했습니다: no-gpu"
+      },
+      "id": "tools.pdf_render_failed",
+      "lang": "ko",
+      "text": "PDF를 그리지 못했습니다: no-gpu"
+    },
+    {
+      "args": {
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "The PDF could not be rendered: no-gpu"
+      },
+      "id": "tools.pdf_render_failed",
+      "lang": "en",
+      "text": "The PDF could not be rendered: no-gpu"
+    },
+    {
+      "args": {
+        "limit": "26214400",
+        "size": "31457280"
+      },
+      "http_error": {
+        "detail": "오디오가 31457280 bytes 입니다. 한도는 26214400 bytes 입니다."
+      },
+      "id": "worker_compute.audio_too_large",
+      "lang": "ko",
+      "text": "오디오가 31457280 bytes 입니다. 한도는 26214400 bytes 입니다."
+    },
+    {
+      "args": {
+        "limit": "26214400",
+        "size": "31457280"
+      },
+      "http_error": {
+        "detail": "The audio is 31457280 bytes; the limit is 26214400 bytes."
+      },
+      "id": "worker_compute.audio_too_large",
+      "lang": "en",
+      "text": "The audio is 31457280 bytes; the limit is 26214400 bytes."
+    },
+    {
+      "args": {
+        "allowed": "user, assistant",
+        "suffix": ".ogg"
+      },
+      "http_error": {
+        "detail": "'.ogg' 은(는) 지원하는 오디오 형식이 아닙니다. user, assistant 만 가능합니다."
+      },
+      "id": "worker_compute.audio_unsupported",
+      "lang": "ko",
+      "text": "'.ogg' 은(는) 지원하는 오디오 형식이 아닙니다. user, assistant 만 가능합니다."
+    },
+    {
+      "args": {
+        "allowed": "user, assistant",
+        "suffix": ".ogg"
+      },
+      "http_error": {
+        "detail": "'.ogg' is not a supported audio container. Supported: user, assistant."
+      },
+      "id": "worker_compute.audio_unsupported",
+      "lang": "en",
+      "text": "'.ogg' is not a supported audio container. Supported: user, assistant."
+    },
+    {
+      "args": {
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "본문을 base64로 읽지 못했습니다: no-gpu"
+      },
+      "id": "worker_compute.content_invalid",
+      "lang": "ko",
+      "text": "본문을 base64로 읽지 못했습니다: no-gpu"
+    },
+    {
+      "args": {
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "The payload is not valid base64: no-gpu"
+      },
+      "id": "worker_compute.content_invalid",
+      "lang": "en",
+      "text": "The payload is not valid base64: no-gpu"
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "임베딩 공급자가 연결되어 있지 않습니다."
+      },
+      "id": "worker_compute.embedder_unavailable",
+      "lang": "ko",
+      "text": "임베딩 공급자가 연결되어 있지 않습니다."
+    },
+    {
+      "args": {},
+      "http_error": {
+        "detail": "No embedding provider is connected to this worker."
+      },
+      "id": "worker_compute.embedder_unavailable",
+      "lang": "en",
+      "text": "No embedding provider is connected to this worker."
+    },
+    {
+      "args": {
+        "allowed": "user, assistant",
+        "kind": "docx"
+      },
+      "http_error": {
+        "detail": "'docx' 은(는) 추출 종류가 아닙니다. user, assistant 중 하나여야 합니다."
+      },
+      "id": "worker_compute.extract_kind_invalid",
+      "lang": "ko",
+      "text": "'docx' 은(는) 추출 종류가 아닙니다. user, assistant 중 하나여야 합니다."
+    },
+    {
+      "args": {
+        "allowed": "user, assistant",
+        "kind": "docx"
+      },
+      "http_error": {
+        "detail": "'docx' is not an extraction kind. Use one of user, assistant."
+      },
+      "id": "worker_compute.extract_kind_invalid",
+      "lang": "en",
+      "text": "'docx' is not an extraction kind. Use one of user, assistant."
+    },
+    {
+      "args": {
+        "allowed": "user, assistant",
+        "kind": "docx"
+      },
+      "http_error": {
+        "detail": "'docx' 은(는) 임베딩 종류가 아닙니다. user, assistant 중 하나여야 합니다."
+      },
+      "id": "worker_compute.kind_invalid",
+      "lang": "ko",
+      "text": "'docx' 은(는) 임베딩 종류가 아닙니다. user, assistant 중 하나여야 합니다."
+    },
+    {
+      "args": {
+        "allowed": "user, assistant",
+        "kind": "docx"
+      },
+      "http_error": {
+        "detail": "'docx' is not an embedding kind. Use one of user, assistant."
+      },
+      "id": "worker_compute.kind_invalid",
+      "lang": "en",
+      "text": "'docx' is not an embedding kind. Use one of user, assistant."
+    },
+    {
+      "args": {
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "문서를 읽지 못했습니다: no-gpu"
+      },
+      "id": "worker_compute.parse_failed",
+      "lang": "ko",
+      "text": "문서를 읽지 못했습니다: no-gpu"
+    },
+    {
+      "args": {
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "The document could not be parsed: no-gpu"
+      },
+      "id": "worker_compute.parse_failed",
+      "lang": "en",
+      "text": "The document could not be parsed: no-gpu"
+    },
+    {
+      "args": {
+        "kind": "docx",
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "'docx' 문서 생성이 실패했습니다: no-gpu"
+      },
+      "id": "worker_compute.render_failed",
+      "lang": "ko",
+      "text": "'docx' 문서 생성이 실패했습니다: no-gpu"
+    },
+    {
+      "args": {
+        "kind": "docx",
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "Rendering the 'docx' document failed: no-gpu"
+      },
+      "id": "worker_compute.render_failed",
+      "lang": "en",
+      "text": "Rendering the 'docx' document failed: no-gpu"
+    },
+    {
+      "args": {
+        "kind": "docx",
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "이 워커는 'docx' 문서를 만들 수 없습니다: no-gpu"
+      },
+      "id": "worker_compute.render_unavailable",
+      "lang": "ko",
+      "text": "이 워커는 'docx' 문서를 만들 수 없습니다: no-gpu"
+    },
+    {
+      "args": {
+        "kind": "docx",
+        "reason": "no-gpu"
+      },
+      "http_error": {
+        "detail": "This worker cannot render 'docx' documents: no-gpu"
+      },
+      "id": "worker_compute.render_unavailable",
+      "lang": "en",
+      "text": "This worker cannot render 'docx' documents: no-gpu"
+    }
+  ],
+  "resolve_language": [
+    {
+      "accept_language": "de,fr",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_de_fr_defaults",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "de,fr,ko",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_de_fr_ko",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_empty_defaults",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "en-GB,en;q=0.9,ko;q=0.8",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_en_gb_then_ko",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "en-GB;q=0.8",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_en_gb_with_q",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "EN-us",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_en_us_mixed_case",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "en_US",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_en_us_underscore",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "en;q=0.9",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_en_with_q",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "fr;q=1,en;q=0.1",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_fr_then_low_q_en",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "ja-JP,zh-CN,ko-KR",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_ja_zh_then_ko",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "ko-KR,ko;q=0.9",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_ko_kr",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "ko-kr;q=0.8,en",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_ko_kr_then_en",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": ",en",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_leading_comma",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": ";q=0.9",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_only_semicolon",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "ko;q=0.1,en;q=0.9",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_order_not_qvalue",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "  en  ",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_padded_en",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "en-US, en;q=0.9",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_space_after_comma",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "*",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_star_defaults",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "\t",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_tab_defaults",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "en,",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_trailing_comma",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "fr-FR,fr;q=0.9,en;q=0.8",
+      "bare": false,
+      "expected": "en",
+      "id": "accept_unsupported_then_en",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "   ",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_whitespace_defaults",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "xx",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_xx_defaults",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "zh-CN",
+      "bare": false,
+      "expected": "ko",
+      "id": "accept_zh_cn_defaults",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": null,
+      "bare": true,
+      "expected": "ko",
+      "id": "bare_request",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "ko",
+      "id": "empty_headers",
+      "x_lattice_language": null
+    },
+    {
+      "accept_language": "en",
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_empty_falls_through",
+      "x_lattice_language": ""
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_en",
+      "x_lattice_language": "en"
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_en_gb",
+      "x_lattice_language": "en-GB"
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_en_uppercase",
+      "x_lattice_language": "EN"
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_en_us_underscore",
+      "x_lattice_language": "en_US"
+    },
+    {
+      "accept_language": "ko",
+      "bare": false,
+      "expected": "ko",
+      "id": "explicit_english_word_falls_through",
+      "x_lattice_language": "english"
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "ko",
+      "id": "explicit_ko",
+      "x_lattice_language": "ko"
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "ko",
+      "id": "explicit_ko_kr",
+      "x_lattice_language": "ko-KR"
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "ko",
+      "id": "explicit_ko_kr_underscore",
+      "x_lattice_language": "ko_kr"
+    },
+    {
+      "accept_language": "en",
+      "bare": false,
+      "expected": "ko",
+      "id": "explicit_ko_wins_over_accept_en",
+      "x_lattice_language": "ko"
+    },
+    {
+      "accept_language": "ko",
+      "bare": false,
+      "expected": "ko",
+      "id": "explicit_qvalue_not_stripped",
+      "x_lattice_language": "en;q=1"
+    },
+    {
+      "accept_language": "en",
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_star_falls_through",
+      "x_lattice_language": "*"
+    },
+    {
+      "accept_language": "en",
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_unsupported_falls_through",
+      "x_lattice_language": "fr"
+    },
+    {
+      "accept_language": null,
+      "bare": false,
+      "expected": "ko",
+      "id": "explicit_unsupported_no_accept_defaults",
+      "x_lattice_language": "fr"
+    },
+    {
+      "accept_language": "en",
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_whitespace_falls_through",
+      "x_lattice_language": "  "
+    },
+    {
+      "accept_language": "ko-KR,ko;q=0.9",
+      "bare": false,
+      "expected": "en",
+      "id": "explicit_wins_over_accept",
+      "x_lattice_language": "en"
+    }
+  ],
+  "schema": "messages-catalog-parity/v1",
+  "supported_languages": [
+    "ko",
+    "en"
+  ]
+}

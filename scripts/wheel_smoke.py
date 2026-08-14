@@ -8,6 +8,10 @@ class of "works only with ``pip install -e .`` from the repo root" failures
 (e.g. the v3.x wheels that omitted the root ``setup.py`` wizard module while
 ``latticeai.server_app`` imported it).
 
+v11.6.0: the app it boots is the AI-Worker (``create_worker_app``), because
+that is the only application this package builds — the product server is the
+``lattice-host`` binary.
+
 Usage:
     python scripts/wheel_smoke.py                 # build + install + import + /health
     python scripts/wheel_smoke.py --wheel dist/ltcai-X.Y.Z-py3-none-any.whl
@@ -30,39 +34,45 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Every importable module the wheel ships (pyproject py-modules + packages).
+# Every importable module the wheel ships. v11.6.0 (WP-P1) reduced the package
+# to the AI-Worker: the product application, the graph store, the agent loop,
+# the telegram bridge and the setup wizard are `lattice-host`'s now, so the
+# names below are the compute surface plus the two entrypoints a bundle starts.
 WHEEL_MODULES = [
     "lattice_brain",
-    "lattice_brain.graph",
-    "lattice_brain.graph.store",
-    "lattice_brain.runtime",
-    "lattice_brain.runtime.agent_runtime",
-    "lattice_brain.storage",
-    "lattice_brain.archive",
+    "lattice_brain.embeddings",
+    "lattice_brain.graph._kg_common",
     "lattice_brain.ingestion",
-    "lattice_brain.portability",
-    "lattice_brain.workflow",
+    "lattice_brain.multimodal",
+    "lattice_brain.runtime",
     "latticeai",
-    "latticeai.server_app",
     "latticeai.app_factory",
+    "latticeai.worker_app",
     "latticeai.cli.entrypoint",
-    "latticeai.integrations",
-    "latticeai.integrations.telegram_bot",
+    "latticeai.api.worker_compute",
+    "latticeai.api.worker_seams",
     "latticeai.models.router",
-    "latticeai.core.mcp_registry",
-    "latticeai.api.knowledge_graph",
+    "latticeai.runtime.build_phases.worker_profile",
+    "latticeai.services.model_runtime",
     "latticeai.services.p_reinforce",
     "latticeai.tools",
     "latticeai.tools.knowledge",
-    "latticeai.setup.auto_setup",
-    "latticeai.setup.wizard",
-    "latticeai.services.local_knowledge",
-    "lattice_brain.graph.schema",
-    "server",
 ]
 
-# Root shims removed in 9.9.1 — the wheel must NOT ship them anymore.
+# Root shims removed in 9.9.1, plus the product modules WP-P1 deleted: the
+# wheel must NOT ship any of them. ``server`` and ``latticeai.server_app`` are
+# on this list for the same reason the shims are — a bundle that still imports
+# them is a bundle running an application that no longer exists.
 REMOVED_ROOT_MODULES = [
+    "server",
+    "latticeai.server_app",
+    "latticeai.api.chat",
+    "latticeai.core.agent",
+    "latticeai.integrations.telegram_bot",
+    "latticeai.setup.wizard",
+    "lattice_brain.graph.store",
+    "lattice_brain.storage",
+    "lattice_brain.workflow",
     "ltcai_cli",
     "auto_setup",
     "setup_wizard",
@@ -96,9 +106,9 @@ else:
 
 HEALTH_CHECK = """
 from fastapi.testclient import TestClient
-from latticeai.app_factory import create_app
+from latticeai.worker_app import create_worker_app
 
-app = create_app()
+app = create_worker_app()
 response = TestClient(app).get("/health")
 assert response.status_code == 200, f"/health returned {response.status_code}"
 payload = response.json()

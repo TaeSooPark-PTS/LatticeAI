@@ -4,12 +4,12 @@
 # src-tauri consumes lattice-host through a path dependency instead.
 [workspace]
 resolver = "2"
-members = ["lattice-core", "lattice-retrieval", "lattice-host", "lattice-ingest", "lattice-jobs", "lattice-agent"]
+members = ["lattice-core", "lattice-retrieval", "lattice-host", "lattice-ingest", "lattice-jobs", "lattice-agent", "lattice-auth", "lattice-platform", "lattice-chat"]
 
 [workspace.package]
 # Kept in lockstep with the product version by scripts/bump_version.py and
 # guarded by tests/unit/test_version_consistency.py.
-version = "11.5.2"
+version = "11.6.0"
 edition = "2021"
 license = "MIT"
 
@@ -22,6 +22,11 @@ lattice-retrieval = { path = "lattice-retrieval" }
 lattice-ingest = { path = "lattice-ingest" }
 lattice-jobs = { path = "lattice-jobs" }
 lattice-agent = { path = "lattice-agent" }
+# One Door (v11.6.0) crates: native identity, platform routes, chat
+# orchestration. Mounted by lattice-host like the Phase 2-4 crates.
+lattice-auth = { path = "lattice-auth" }
+lattice-platform = { path = "lattice-platform" }
+lattice-chat = { path = "lattice-chat" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Storage / retrieval. FTS5 must be verifiably available — lattice-core

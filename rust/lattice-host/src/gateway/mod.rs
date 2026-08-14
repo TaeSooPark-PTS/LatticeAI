@@ -4,11 +4,16 @@
 //! exposes the worker's whole API surface, and the product's promise is that
 //! the brain never leaves the machine.
 
+pub mod allowlist;
+pub mod identity;
 pub mod mounts;
+pub mod onedoor;
 pub mod params;
 pub mod posture;
+pub mod product;
 pub mod proxy;
 pub mod routes;
+pub mod scopes;
 pub mod search;
 
 use std::fmt;
@@ -58,6 +63,8 @@ pub struct GatewayState {
     jobs: Option<Arc<Scheduler>>,
     pinned_posture: Option<Posture>,
     observed_posture: Mutex<Option<(Instant, Posture)>>,
+    product: Option<Arc<onedoor::OneDoorState>>,
+    allowlist: Option<Arc<allowlist::Allowlist>>,
 }
 
 impl GatewayState {
@@ -89,7 +96,60 @@ impl GatewayState {
             jobs: None,
             pinned_posture: None,
             observed_posture: Mutex::new(None),
+            product: None,
+            allowlist: None,
         }
+    }
+
+    /// Front a worker whose surface is not the product's.
+    ///
+    /// The default is [`allowlist::Allowlist::shared`] — the committed
+    /// projection of `worker_route_keys()`, which is the only one a drift gate
+    /// watches. This exists for a harness whose fake worker serves fixture
+    /// paths, and for a host supervising a worker built from another profile.
+    pub fn with_allowlist(mut self, allowlist: Arc<allowlist::Allowlist>) -> Self {
+        self.allowlist = Some(allowlist);
+        self
+    }
+
+    /// The allowlist this gateway forwards by.
+    pub fn allowlist(&self) -> &allowlist::Allowlist {
+        match &self.allowlist {
+            Some(custom) => custom,
+            None => allowlist::Allowlist::shared(),
+        }
+    }
+
+    /// Assemble the product surface and mount it on this gateway.
+    ///
+    /// Separate from [`GatewayState::new`] and fallible on purpose. Everything
+    /// below is a real dependency on the machine — a data directory that can be
+    /// opened, a schema that can be bootstrapped, an agent workspace that can
+    /// be created — and a front door that half-exists is worse than one that
+    /// says why it cannot open. Callers that only want the supervisor and the
+    /// `/rust/*` lanes (`src-tauri`'s smoke, the test suites) simply do not call
+    /// this, and the router is the pre-v11.6.0 one.
+    pub fn open_product(mut self) -> Result<Self, GatewayError> {
+        let product = onedoor::OneDoorState::open(
+            &self.worker_origin(),
+            self.client.clone(),
+            &self.agent_root.clone(),
+            self.agent_loop_config(),
+        )?;
+        self.product = Some(Arc::new(product));
+        Ok(self)
+    }
+
+    /// Mount an already-built product state (tests, and a caller that wants to
+    /// pin the data directory before anything is created).
+    pub fn with_product(mut self, product: Arc<onedoor::OneDoorState>) -> Self {
+        self.product = Some(product);
+        self
+    }
+
+    /// The product state, when the One Door surface is mounted.
+    pub fn product(&self) -> Option<&Arc<onedoor::OneDoorState>> {
+        self.product.as_ref()
     }
 
     /// Pin the worker's access posture instead of reading it from `/health`.
@@ -152,9 +212,27 @@ impl GatewayState {
         self
     }
 
+    /// Where a paused run stages its change proposal.
+    ///
+    /// The product's own `GovernanceState` when the One Door surface is mounted
+    /// — the Review Center routes were built from that same handle, so a staged
+    /// proposal is visible to them immediately. With no product mounted there is
+    /// no Review Center in this process to disagree with, and the standalone
+    /// JSON store is the documented writer for that case.
+    fn proposal_store(&self) -> Arc<dyn lattice_agent::proposals::ProposalStore> {
+        match self.product() {
+            Some(product) => Arc::new(product.governance.clone()),
+            None => Arc::new(lattice_agent::proposals::JsonProposalStore::from_env()),
+        }
+    }
+
     /// The loop orchestrator's configuration for this gateway.
     pub fn agent_loop_config(&self) -> lattice_agent::LoopConfig {
-        let mut config = mounts::agent_loop_config(&self.worker_origin(), self.client.clone());
+        let mut config = mounts::agent_loop_config(
+            &self.worker_origin(),
+            self.client.clone(),
+            self.proposal_store(),
+        );
         if let Some(dir) = &self.agent_runs_dir {
             config.runs_dir = dir.clone();
         }
@@ -242,6 +320,7 @@ impl fmt::Debug for GatewayState {
             .field("db_path", &self.db_path)
             .field("agent_root", &self.agent_root)
             .field("jobs", &self.jobs.is_some())
+            .field("product", &self.product.is_some())
             .finish()
     }
 }
@@ -257,6 +336,11 @@ pub enum GatewayError {
     Serve(String),
     /// The HTTP client could not be built.
     Client(String),
+    /// The product state could not be assembled — no brain, no workspace, no
+    /// schema. Named separately from [`GatewayError::Bind`] because it is the
+    /// one failure that means "this machine cannot host the product", and the
+    /// caller's answer to it is different from "that port is taken".
+    State(String),
 }
 
 impl fmt::Display for GatewayError {
@@ -268,7 +352,8 @@ impl fmt::Display for GatewayError {
             ),
             GatewayError::Bind(message)
             | GatewayError::Serve(message)
-            | GatewayError::Client(message) => f.write_str(message),
+            | GatewayError::Client(message)
+            | GatewayError::State(message) => f.write_str(message),
         }
     }
 }
@@ -311,7 +396,7 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
     // The loop orchestrator talks to the worker this host supervises, over the
     // client it already pools.
     let agent = state.agent_loop_config();
-    let native = Router::new()
+    let mut native = Router::new()
         .route("/host/status", get(routes::host_status))
         .route(
             "/rust/search/hybrid",
@@ -326,16 +411,39 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
             get(search::vector).post(search::vector),
         )
         .with_state(Arc::clone(&state))
-        .merge(mounts::native_router(db, &agent_root, agent, jobs))
-        .layer(axum::middleware::from_fn_with_state(
-            Arc::clone(&state),
-            posture::require_open_posture,
+        .merge(mounts::native_router(db, &agent_root, agent, jobs));
+    if let Some(product) = state.product() {
+        // `RunBody.user_role` is the server's to state, not the caller's
+        // (§4c). Applied *inside* the posture gate below, so an unauthorised
+        // request is refused before this layer buffers its body.
+        native = native.layer(axum::middleware::from_fn_with_state(
+            Arc::clone(&product.auth),
+            identity::inject_user_role,
         ));
-    Router::new()
+    }
+    let native = native.layer(axum::middleware::from_fn_with_state(
+        Arc::clone(&state),
+        posture::require_open_posture,
+    ));
+
+    let mut app = Router::new()
         .route("/host/health", get(routes::host_health))
         .fallback(routes::gateway_fallback)
-        .with_state(state)
-        .merge(native)
+        .with_state(Arc::clone(&state))
+        .merge(native);
+    if let Some(product) = state.product() {
+        // The Origin guard goes outside everything the front door serves
+        // (WP-I2 §1), including the proxy: a browser write that reaches the
+        // worker through this hop was let through *here*, and the worker's own
+        // guard is defence in depth rather than the decision.
+        app = app.merge(product::product_router(product)).layer(
+            axum::middleware::from_fn_with_state(
+                Arc::clone(&product.auth),
+                lattice_auth::csrf_guard,
+            ),
+        );
+    }
+    app
 }
 
 /// Bind a loopback listener, refusing anything else.

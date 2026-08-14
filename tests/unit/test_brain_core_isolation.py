@@ -50,5 +50,5 @@ def test_lattice_brain_declares_version_and_public_surface():
     assert lattice_brain.__version__
     # The lazy public surface must stay resolvable — a stale _LAZY entry would
     # break the standalone package at import time for downstream users.
-    for name in ("BrainCore", "KnowledgeGraphStore", "IngestionPipeline", "AgentRuntime", "MultiAgentOrchestrator"):
+    for name in ("LocalEmbeddingModel", "MultimodalPorts", "extract_image_facts"):
         assert getattr(lattice_brain, name) is not None

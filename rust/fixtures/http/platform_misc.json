@@ -1,0 +1,3977 @@
+{
+  "$schema_note": "Golden HTTP fixtures captured from the Python implementation before it is deleted in v11.6.0. Each record is one (route, branch) exchange: replay the request against the Rust front door and the answer must match after the token substitutions below.",
+  "generated_by": "scripts/gen_http_fixtures_platform.py FROZEN at commit fc65e60 — last generating tree; do not regenerate.",
+  "work_package": "WP-F1",
+  "title": "Feature switchboard, autonomy dial, network boundary, peer network, setup wizard",
+  "grouping": "The remaining platform routers: the two per-person dials the SPA renders on the Brain home (features, permission mode), the local/cloud boundary and its hybrid policy, peer-device pairing and exchange, and the setup wizard plus the demo corpus.",
+  "families": [
+    "latticeai/api/features.py",
+    "latticeai/api/permission_mode.py",
+    "latticeai/api/network_boundary.py",
+    "latticeai/api/network.py",
+    "latticeai/api/setup.py"
+  ],
+  "family_route_counts": {
+    "features.py": 10,
+    "permission_mode.py": 13,
+    "network_boundary.py": 24,
+    "network.py": 20,
+    "setup.py": 22
+  },
+  "families_present": [
+    "features.py",
+    "network.py",
+    "network_boundary.py",
+    "permission_mode.py",
+    "setup.py"
+  ],
+  "profile": {
+    "note": "The app under capture, built by latticeai.app_factory.create_app().",
+    "env": {
+      "LATTICEAI_ADMIN_EMAILS": "",
+      "LATTICEAI_AGENT_ROOT": "<SANDBOX>/agent_workspace",
+      "LATTICEAI_ALLOW_LOCAL_MODELS": "0",
+      "LATTICEAI_ALLOW_MODEL_DOWNLOADS": "0",
+      "LATTICEAI_AUTOLOAD_MODELS": "0",
+      "LATTICEAI_BRAIN_DIR": "<SANDBOX>/brain",
+      "LATTICEAI_CSRF_TRUSTED_ORIGINS": "",
+      "LATTICEAI_DATA_DIR": "<DATA_DIR>",
+      "LATTICEAI_DISCORD_BOT_TOKEN": "",
+      "LATTICEAI_DISCORD_PERMISSION_WEBHOOK": "",
+      "LATTICEAI_EMBEDDING_PROVIDER": "hash",
+      "LATTICEAI_ENABLE_GRAPH": "1",
+      "LATTICEAI_ENABLE_TELEGRAM": "0",
+      "LATTICEAI_HOST": "127.0.0.1",
+      "LATTICEAI_INVITE_CODE": "",
+      "LATTICEAI_INVITE_GATE_ENABLED": "0",
+      "LATTICEAI_LLM_EXTRACTION": "false",
+      "LATTICEAI_MODE": "local",
+      "LATTICEAI_OPEN_REGISTRATION": "1",
+      "LATTICEAI_PERMISSION_SECRET": "",
+      "LATTICEAI_PERMISSION_UI_URL": "",
+      "LATTICEAI_PORT": "4825",
+      "LATTICEAI_PUBLIC_URL": "",
+      "LATTICEAI_RATE_LIMIT": "0",
+      "LATTICEAI_REQUIRE_AUTH": "1",
+      "LATTICEAI_VECTOR_DIM": "384",
+      "LATTICEAI_VECTOR_INDEX": "brute",
+      "LATTICE_TZ": "UTC"
+    },
+    "auth": "LATTICEAI_REQUIRE_AUTH=1, so require_user answers 401 and require_admin answers 403 for an anonymous caller. The shipped desktop default (the variable unset, bound to loopback) makes an anonymous caller the trusted local owner instead; that profile is recorded in `trusted_local_owner_fixtures`.",
+    "origin": "http://127.0.0.1:4825",
+    "sessions": {
+      "session:owner": "owner@lattice.test — the first registered account, therefore admin",
+      "session:member": "member@lattice.test — a non-admin account",
+      "session:invalid": "a syntactically valid cookie carrying an unknown token",
+      "absent": "no Cookie header at all"
+    }
+  },
+  "tokens": {
+    "@ts": "an ISO-8601 timestamp (any precision, with or without offset)",
+    "@uuid": "a UUID",
+    "@id": "an opaque generated identifier (workflow-…, event:…, agent-run-…)",
+    "@any": "a machine- or environment-dependent value, or a value deliberately not pinned (see `gaps`)",
+    "@version": "the product version string",
+    "$name": "a value bound by a `setup` step; the Rust test binds its own and substitutes it into the path/body before replaying",
+    "<DATA_DIR>": "the data directory prefix (LATTICEAI_DATA_DIR)",
+    "<HOME>": "the home directory prefix",
+    "<SANDBOX>": "the throwaway root that held the data dir during capture",
+    "<REPO>": "the repository root prefix",
+    "@text:{'@text': …}": "a non-JSON text body",
+    "@binary:{'@binary': …}": "a binary body: size and digest are '@any', the leading magic bytes are pinned"
+  },
+  "symbols": {
+    "$acceptable_invitation_token": "bound by a setup step",
+    "$agent_run_id": "bound by a setup step",
+    "$approval_hint": "bound by a setup step",
+    "$approval_hint_b": "bound by a setup step",
+    "$approval_token": "bound by a setup step",
+    "$approval_token_b": "bound by a setup step",
+    "$device_public_key": "bound by a setup step",
+    "$invitation_id": "bound by a setup step",
+    "$invitation_token": "bound by a setup step",
+    "$invitation_token_c": "bound by a setup step",
+    "$invitation_token_d": "bound by a setup step",
+    "$memory_id": "bound by a setup step",
+    "$peer_id": "bound by a setup step",
+    "$snapshot_a": "bound by a setup step",
+    "$snapshot_b": "bound by a setup step",
+    "$workflow_id": "bound by a setup step"
+  },
+  "setup": [
+    {
+      "kind": "file",
+      "note": "two chat turns the security console reads — one carries a secret and a resident registration number, so the redaction branch has something to redact. Imported into the durable conversation store at construction.",
+      "file": "chat_history.json",
+      "append_records": [
+        {
+          "role": "user",
+          "content": "배포 키는 sk-fixture1234567890abcdefghij 이고 주민번호는 900101-1234567 이야",
+          "timestamp": "2026-08-01T09:00:00+00:00",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "conversation_id": "conv-fixture-001",
+          "model": "local:test"
+        },
+        {
+          "role": "assistant",
+          "content": "민감정보는 저장하지 않겠습니다.",
+          "timestamp": "2026-08-01T09:00:05+00:00",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "conversation_id": "conv-fixture-001",
+          "model": "local:test"
+        }
+      ]
+    },
+    {
+      "kind": "file",
+      "note": "a document_upload audit record — the file monitor derives its rows from it",
+      "file": "audit_log.json",
+      "append_records": [
+        {
+          "event_type": "document_upload",
+          "timestamp": "2026-08-01T09:05:00+00:00",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "filename": "fixture-contract.txt",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key: sk-fixture1234567890abcdefghij",
+          "extracted_text": "API key: sk-fixture1234567890abcdefghij / 계약 조건"
+        }
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "register the first account — the first user registered becomes admin",
+      "method": "POST",
+      "path": "/register",
+      "session": "absent",
+      "request_body": {
+        "email": "owner@lattice.test",
+        "password": "Fixture0wner1",
+        "name": "Fixture Owner",
+        "nickname": "owner"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "register a second, non-admin account (the wrong-role denials use it)",
+      "method": "POST",
+      "path": "/register",
+      "session": "absent",
+      "request_body": {
+        "email": "member@lattice.test",
+        "password": "Fixture0member1",
+        "name": "Fixture Member",
+        "nickname": "member"
+      }
+    },
+    {
+      "kind": "login",
+      "note": "POST /login for both accounts; the session_token cookie of each becomes 'session:owner' / 'session:member' in the fixtures",
+      "accounts": [
+        "owner@lattice.test",
+        "member@lattice.test"
+      ]
+    },
+    {
+      "kind": "note",
+      "note": "user ids are stable_user_id(email) — uuid5, not random",
+      "owner_user_id": "user:fa484c1e-1b5a-50ef-9c18-b73ca89368d7",
+      "member_user_id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4"
+    },
+    {
+      "kind": "http",
+      "note": "create the organization workspace the scoped routes act on",
+      "method": "POST",
+      "path": "/workspace/orgs",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture Team",
+        "settings": {
+          "tier": "team"
+        }
+      }
+    },
+    {
+      "kind": "http",
+      "note": "a second organization workspace, archived by one of the fixtures",
+      "method": "POST",
+      "path": "/workspace/orgs",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Archive Target",
+        "settings": {}
+      }
+    },
+    {
+      "kind": "http",
+      "note": "add the non-admin account to the organization workspace",
+      "method": "POST",
+      "path": "/workspace/orgs/org-Fixture-Team/members",
+      "session": "session:owner",
+      "request_body": {
+        "user_id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+        "role": "member"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "snapshot A of the personal workspace",
+      "method": "POST",
+      "path": "/workspace/snapshots",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture snapshot A"
+      },
+      "binds": [
+        "$snapshot_a"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "snapshot B, so the compare route has two records",
+      "method": "POST",
+      "path": "/workspace/snapshots",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture snapshot B"
+      },
+      "binds": [
+        "$snapshot_b"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a workspace memory (kind 'decisions')",
+      "method": "POST",
+      "path": "/workspace/memories",
+      "session": "session:owner",
+      "request_body": {
+        "kind": "decisions",
+        "content": "결정: 하이브리드 검색의 알파 융합을 유지한다.",
+        "tags": [
+          "decision",
+          "retrieval"
+        ]
+      },
+      "binds": [
+        "$memory_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a workspace workflow (the event route needs one)",
+      "method": "POST",
+      "path": "/workspace/workflows",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture workflow",
+        "steps": [
+          {
+            "action": "note",
+            "detail": "첫 단계"
+          }
+        ],
+        "metadata": {
+          "origin": "fixture"
+        }
+      },
+      "binds": [
+        "$workflow_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a recorded agent run, so the agents listing is not empty",
+      "method": "POST",
+      "path": "/workspace/agents/runs",
+      "session": "session:owner",
+      "request_body": {
+        "agent_id": "agent:executor",
+        "status": "ok",
+        "input": "요약해줘",
+        "output": "요약했습니다.",
+        "timeline": [],
+        "relationships": []
+      },
+      "binds": [
+        "$agent_run_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "an invitation into the organization workspace",
+      "method": "POST",
+      "path": "/invitations",
+      "session": "session:owner",
+      "request_body": {
+        "email": "invitee@lattice.test",
+        "workspace_id": "org-Fixture-Team",
+        "role": "member",
+        "expires_hours": 168
+      },
+      "binds": [
+        "$invitation_id",
+        "$invitation_token"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a second invitation, accepted by the member account in a fixture",
+      "method": "POST",
+      "path": "/invitations",
+      "session": "session:owner",
+      "request_body": {
+        "email": "member@lattice.test",
+        "role": "viewer",
+        "expires_hours": 24
+      },
+      "binds": [
+        "$acceptable_invitation_token"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "report a VS Code presence so the status route has a live record",
+      "method": "POST",
+      "path": "/workspace/vscode/status",
+      "session": "session:owner",
+      "request_body": {
+        "status": "connected",
+        "index_status": "ok",
+        "workspace_folder": "/workspace/fixture",
+        "extension_version": "11.5.2",
+        "active_file": "src/main.rs",
+        "detail": ""
+      }
+    },
+    {
+      "kind": "http",
+      "note": "ask the local-file router for read permission — the only producer of an approval token, which /permissions/{approve,deny,status} consume",
+      "method": "POST",
+      "path": "/local/read",
+      "session": "session:owner",
+      "request_body": {
+        "path": "~/fixture-notes.txt",
+        "approved": false
+      }
+    },
+    {
+      "kind": "http",
+      "note": "a second approval request, denied by a fixture",
+      "method": "POST",
+      "path": "/local/read",
+      "session": "session:owner",
+      "request_body": {
+        "path": "~/fixture-second.txt",
+        "approved": false
+      }
+    },
+    {
+      "kind": "http",
+      "note": "read the peer-network device identity — the keypair is generated per install, so its public key is named rather than pinned",
+      "method": "GET",
+      "path": "/network/identity",
+      "session": "session:owner",
+      "request_body": null,
+      "binds": [
+        "$device_public_key"
+      ]
+    },
+    {
+      "kind": "note",
+      "note": "URLs the stubbed open_url() would have launched during the capture",
+      "opened_urls": [
+        "https://github.com/apps",
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "route": "GET /setup/scan, GET /setup/auto",
+      "reason": "Probe the host machine (OS, chip, RAM, disk, package manager, internet reachability). Pinned to depth 2."
+    },
+    {
+      "route": "POST /setup/install (non-empty item list)",
+      "reason": "Runs real installs (pip/brew/huggingface downloads) on the machine running the generator. Only the empty-plan SSE stream is captured."
+    },
+    {
+      "route": "POST /network/push/{peer_id} (reachable peer)",
+      "reason": "Needs a second Lattice instance to receive the push. Only the unknown-peer 404 and the denial branches are captured."
+    },
+    {
+      "route": "POST /network/receive (validly signed)",
+      "reason": "Needs a paired device's Ed25519 private key and a signed envelope; the identity keypair is generated per install. Only the missing-signature 403 is captured."
+    },
+    {
+      "route": "POST /api/network-boundary/node-sensitivity (existing node)",
+      "reason": "Needs a graph node to mark, which belongs to WP R6. The unknown-node 404 is captured."
+    },
+    {
+      "route": "GET|POST /api/network-boundary/policy — policy_service absent",
+      "reason": "The 501 arm needs the router built without a HybridPolicyService; create_app() always supplies one."
+    },
+    {
+      "route": "POST /api/setup/demo-corpus — 503 ingestion disabled",
+      "reason": "Needs an app built without an ingestion pipeline or knowledge graph. The captured profile has both."
+    }
+  ],
+  "fixture_count": 89,
+  "fixtures": [
+    {
+      "family": "features.py",
+      "name": "list_features",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/features",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "features": [
+          {
+            "id": "allow_multimodal",
+            "kind": "toggle",
+            "label": "사진·녹음도 기억하기",
+            "summary": "폴더를 읽을 때 글뿐 아니라 사진과 녹음도 함께 저장합니다.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_ALLOW_MULTIMODAL",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "video_ingest",
+            "kind": "toggle",
+            "label": "영상도 함께",
+            "summary": "사진·녹음을 켠 상태에서, 영상은 장면과 자막으로 저장합니다.",
+            "default": true,
+            "current": true,
+            "source": "default",
+            "env_var": "LATTICEAI_ALLOW_VIDEO",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": "allow_multimodal",
+            "choices": []
+          },
+          {
+            "id": "vault_watch",
+            "kind": "toggle",
+            "label": "노트 보관함 지켜보기",
+            "summary": "밖에 있는 노트 보관함이 바뀌면 알아서 다시 읽어옵니다.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_VAULT_WATCH",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "brain_network",
+            "kind": "toggle",
+            "label": "골라서 나누기",
+            "summary": "내가 고른 기억 묶음만 다른 기기로 내보내고 받아올 수 있습니다.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_BRAIN_NETWORK",
+            "live": true,
+            "restart_required": false,
+            "caution": "이 기능만 기억을 이 컴퓨터 밖으로 내보냅니다. 받은 내용은 바로 합쳐지지 않고 검토함으로 갑니다.",
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "synthesis",
+            "kind": "toggle",
+            "label": "스스로 정리하기",
+            "summary": "자료가 쌓이면 알아서 훑어보고, 고칠 거리를 검토함에 제안합니다.",
+            "default": true,
+            "current": true,
+            "source": "default",
+            "env_var": "LATTICEAI_SYNTHESIS",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "auto_vector_index",
+            "kind": "toggle",
+            "label": "넣자마자 검색 준비",
+            "summary": "새 자료를 넣으면 바로 의미 검색까지 준비합니다. 끄면 나중에 한 번에 만듭니다.",
+            "default": true,
+            "current": true,
+            "source": "default",
+            "env_var": "LATTICEAI_AUTO_VECTOR_INDEX",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "auto_late_fusion",
+            "kind": "toggle",
+            "label": "글로 사진 찾기",
+            "summary": "글로 물어봐도 사진까지 함께 찾습니다. 사진을 읽는 모델이 있어야 켜집니다.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_TEXT_IMAGE_FUSION",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "fusion_rrf",
+            "kind": "toggle",
+            "label": "검색 결과 합치는 방식 바꾸기",
+            "summary": "점수 대신 순위로 합칩니다. 검색 채널마다 점수 크기가 달라도 흔들리지 않습니다.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_FUSION_RRF",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "graph_expansion",
+            "kind": "toggle",
+            "label": "옆에 있는 기억까지 보기",
+            "summary": "찾은 기억과 바로 이어진 기억도 후보로 넣습니다. 답은 넓어지고 조금 흐려집니다.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_GRAPH_EXPANSION",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "vector_backend",
+            "kind": "choice",
+            "label": "의미 검색 방식",
+            "summary": "빠르기와 정확함 사이에서 고릅니다. 기본값은 전부 훑어보는 정확한 방식입니다.",
+            "default": "brute",
+            "current": "brute",
+            "source": "env",
+            "env_var": "LATTICEAI_VECTOR_INDEX",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": [
+              {
+                "id": "brute",
+                "label": "전부 비교 (정확)",
+                "available": true,
+                "detail": null
+              },
+              {
+                "id": "quantized",
+                "label": "간추려 비교 (빠름)",
+                "available": true,
+                "detail": null
+              },
+              {
+                "id": "hnsw",
+                "label": "근사 검색 (가장 빠름)",
+                "available": true,
+                "detail": null
+              }
+            ]
+          }
+        ],
+        "note": "모두 지금 바로 적용됩니다. 다시 시작하지 않아도 됩니다."
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "list_features",
+      "branch": "happy_english",
+      "method": "GET",
+      "path": "/api/features",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "x-lattice-language": "en"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "features": [
+          {
+            "id": "allow_multimodal",
+            "kind": "toggle",
+            "label": "Remember pictures and recordings",
+            "summary": "A folder scan stores pictures and recordings too, not just text.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_ALLOW_MULTIMODAL",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "video_ingest",
+            "kind": "toggle",
+            "label": "Include videos",
+            "summary": "With the switch above on, videos are stored as keyframes and subtitles.",
+            "default": true,
+            "current": true,
+            "source": "default",
+            "env_var": "LATTICEAI_ALLOW_VIDEO",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": "allow_multimodal",
+            "choices": []
+          },
+          {
+            "id": "vault_watch",
+            "kind": "toggle",
+            "label": "Watch my notes vault",
+            "summary": "When an outside notes vault changes, it is re-read on its own.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_VAULT_WATCH",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "brain_network",
+            "kind": "toggle",
+            "label": "Share selected knowledge",
+            "summary": "Lets you export a hand-picked slice of memory to another device, and receive one.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_BRAIN_NETWORK",
+            "live": true,
+            "restart_required": false,
+            "caution": "This is the one switch that sends memory off this computer. Anything received waits in the review inbox instead of merging.",
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "synthesis",
+            "kind": "toggle",
+            "label": "Tidy up on its own",
+            "summary": "As material piles up, the Brain reviews it and proposes tidy-ups in the review inbox.",
+            "default": true,
+            "current": true,
+            "source": "default",
+            "env_var": "LATTICEAI_SYNTHESIS",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "auto_vector_index",
+            "kind": "toggle",
+            "label": "Make new material searchable at once",
+            "summary": "New material is prepared for meaning-based search immediately; off means you rebuild later.",
+            "default": true,
+            "current": true,
+            "source": "default",
+            "env_var": "LATTICEAI_AUTO_VECTOR_INDEX",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "auto_late_fusion",
+            "kind": "toggle",
+            "label": "Find pictures by typing",
+            "summary": "A typed question also searches pictures — needs a vision model that shares the same space.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_TEXT_IMAGE_FUSION",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "fusion_rrf",
+            "kind": "toggle",
+            "label": "Blend search results by rank",
+            "summary": "Combines channels by position instead of score, so mismatched score scales stop skewing results.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_FUSION_RRF",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "graph_expansion",
+            "kind": "toggle",
+            "label": "Look at neighbouring memories",
+            "summary": "Adds memories one link away from a hit as candidates — wider answers, slightly less focused.",
+            "default": false,
+            "current": false,
+            "source": "default",
+            "env_var": "LATTICEAI_GRAPH_EXPANSION",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": []
+          },
+          {
+            "id": "vector_backend",
+            "kind": "choice",
+            "label": "Meaning-search engine",
+            "summary": "Trade speed against exactness. The default compares everything and is exact.",
+            "default": "brute",
+            "current": "brute",
+            "source": "env",
+            "env_var": "LATTICEAI_VECTOR_INDEX",
+            "live": true,
+            "restart_required": false,
+            "caution": null,
+            "parent": null,
+            "choices": [
+              {
+                "id": "brute",
+                "label": "Compare everything (exact)",
+                "available": true,
+                "detail": null
+              },
+              {
+                "id": "quantized",
+                "label": "Compare compressed (faster)",
+                "available": true,
+                "detail": null
+              },
+              {
+                "id": "hnsw",
+                "label": "Approximate search (fastest)",
+                "available": true,
+                "detail": null
+              }
+            ]
+          }
+        ],
+        "note": "Every switch here takes effect right away — no restart needed."
+      },
+      "note": "the catalog is localized from the request language"
+    },
+    {
+      "family": "features.py",
+      "name": "list_features",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/features",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "set_feature",
+      "branch": "happy_toggle",
+      "method": "POST",
+      "path": "/api/features/allow_multimodal",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "value": true
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "allow_multimodal",
+        "kind": "toggle",
+        "label": "사진·녹음도 기억하기",
+        "summary": "폴더를 읽을 때 글뿐 아니라 사진과 녹음도 함께 저장합니다.",
+        "default": false,
+        "current": true,
+        "source": "user",
+        "env_var": "LATTICEAI_ALLOW_MULTIMODAL",
+        "live": true,
+        "restart_required": false,
+        "caution": null,
+        "parent": null,
+        "choices": []
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "set_feature",
+      "branch": "happy_toggle_off",
+      "method": "POST",
+      "path": "/api/features/allow_multimodal",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "value": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "allow_multimodal",
+        "kind": "toggle",
+        "label": "사진·녹음도 기억하기",
+        "summary": "폴더를 읽을 때 글뿐 아니라 사진과 녹음도 함께 저장합니다.",
+        "default": false,
+        "current": false,
+        "source": "user",
+        "env_var": "LATTICEAI_ALLOW_MULTIMODAL",
+        "live": true,
+        "restart_required": false,
+        "caution": null,
+        "parent": null,
+        "choices": []
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "set_feature",
+      "branch": "error_unknown_feature",
+      "method": "POST",
+      "path": "/api/features/no-such-feature",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "value": true
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "그런 기능은 없습니다: no-such-feature"
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "set_feature",
+      "branch": "error_unknown_feature_english",
+      "method": "POST",
+      "path": "/api/features/no-such-feature",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json",
+        "x-lattice-language": "en"
+      },
+      "request_body": {
+        "value": true
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "There is no such feature: no-such-feature"
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "set_feature",
+      "branch": "error_invalid_value",
+      "method": "POST",
+      "path": "/api/features/allow_multimodal",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "value": "not-a-bool"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "이 기능에 쓸 수 없는 값입니다: not-a-bool"
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "set_feature",
+      "branch": "error_validation",
+      "method": "POST",
+      "path": "/api/features/allow_multimodal",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "value"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      }
+    },
+    {
+      "family": "features.py",
+      "name": "set_feature",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/features/allow_multimodal",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "value": true
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "get_permission_mode",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "strict",
+        "label": "Strict",
+        "label_ko": "엄격",
+        "risk": "low",
+        "requires_ack": false,
+        "proposal_first": true,
+        "workspace_writes_auto": false,
+        "knowledge_reads_auto": false,
+        "exec_auto": false,
+        "computer_observation_auto": false,
+        "computer_control_auto": false,
+        "circuit_breakers": true,
+        "catalog": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        }
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "get_permission_mode",
+      "branch": "happy_workspace_query",
+      "method": "GET",
+      "path": "/api/permission-mode",
+      "query": {
+        "workspace_id": "org-Fixture-Team"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "strict",
+        "label": "Strict",
+        "label_ko": "엄격",
+        "risk": "low",
+        "requires_ack": false,
+        "proposal_first": true,
+        "workspace_writes_auto": false,
+        "knowledge_reads_auto": false,
+        "exec_auto": false,
+        "computer_observation_auto": false,
+        "computer_control_auto": false,
+        "circuit_breakers": true,
+        "catalog": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Fixture-Team"
+        }
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "get_permission_mode",
+      "branch": "happy_workspace_header",
+      "method": "GET",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "x-workspace-id": "org-Fixture-Team"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "strict",
+        "label": "Strict",
+        "label_ko": "엄격",
+        "risk": "low",
+        "requires_ack": false,
+        "proposal_first": true,
+        "workspace_writes_auto": false,
+        "knowledge_reads_auto": false,
+        "exec_auto": false,
+        "computer_observation_auto": false,
+        "computer_control_auto": false,
+        "circuit_breakers": true,
+        "catalog": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Fixture-Team"
+        }
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "get_permission_mode",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "permission_mode_catalog",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/permission-mode/catalog",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "modes": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ]
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "permission_mode_catalog",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/permission-mode/catalog",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "set_permission_mode",
+      "branch": "happy_trusted",
+      "method": "POST",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "trusted",
+        "acknowledge_risk": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "trusted",
+        "label": "Trusted",
+        "label_ko": "신뢰",
+        "risk": "medium",
+        "requires_ack": false,
+        "proposal_first": false,
+        "workspace_writes_auto": true,
+        "knowledge_reads_auto": true,
+        "exec_auto": false,
+        "computer_observation_auto": true,
+        "computer_control_auto": false,
+        "circuit_breakers": true,
+        "catalog": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        }
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "set_permission_mode",
+      "branch": "error_bypass_without_ack",
+      "method": "POST",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "bypass",
+        "acknowledge_risk": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "bypass mode requires acknowledge_risk=true (YOLO inside the agent workspace; circuit breakers still apply)"
+      },
+      "note": "bypass requires an explicit risk acknowledgement"
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "set_permission_mode",
+      "branch": "happy_bypass_with_ack",
+      "method": "POST",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "bypass",
+        "acknowledge_risk": true
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "bypass",
+        "label": "Bypass",
+        "label_ko": "바이패스",
+        "risk": "high",
+        "requires_ack": true,
+        "proposal_first": false,
+        "workspace_writes_auto": true,
+        "knowledge_reads_auto": true,
+        "exec_auto": true,
+        "computer_observation_auto": true,
+        "computer_control_auto": true,
+        "circuit_breakers": true,
+        "catalog": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        }
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "set_permission_mode",
+      "branch": "happy_unknown_mode_normalizes",
+      "method": "POST",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "nonsense"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "strict",
+        "label": "Strict",
+        "label_ko": "엄격",
+        "risk": "low",
+        "requires_ack": false,
+        "proposal_first": true,
+        "workspace_writes_auto": false,
+        "knowledge_reads_auto": false,
+        "exec_auto": false,
+        "computer_observation_auto": false,
+        "computer_control_auto": false,
+        "circuit_breakers": true,
+        "catalog": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        }
+      },
+      "note": "normalize_mode() falls back rather than raising"
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "set_permission_mode",
+      "branch": "happy_back_to_strict",
+      "method": "POST",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "strict"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "strict",
+        "label": "Strict",
+        "label_ko": "엄격",
+        "risk": "low",
+        "requires_ack": false,
+        "proposal_first": true,
+        "workspace_writes_auto": false,
+        "knowledge_reads_auto": false,
+        "exec_auto": false,
+        "computer_observation_auto": false,
+        "computer_control_auto": false,
+        "circuit_breakers": true,
+        "catalog": [
+          {
+            "id": "strict",
+            "label": "Strict",
+            "label_ko": "엄격",
+            "summary": "Reads auto; writes and exec need approval or review proposals.",
+            "summary_ko": "읽기는 자동, 쓰기·실행은 승인 또는 변경 제안.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "trusted",
+            "label": "Trusted",
+            "label_ko": "신뢰",
+            "summary": "Workspace writes and knowledge reads auto-run; exec/desktop control still gated.",
+            "summary_ko": "워크스페이스 쓰기·지식 읽기 자동. 실행·데스크톱 제어는 승인 필요.",
+            "risk": "medium",
+            "requires_ack": false
+          },
+          {
+            "id": "bypass",
+            "label": "Bypass",
+            "label_ko": "바이패스",
+            "summary": "YOLO inside the agent workspace. Hard circuit breakers still apply.",
+            "summary_ko": "에이전트 워크스페이스 안에서 전부 자동. 하드 차단만 남음.",
+            "risk": "high",
+            "requires_ack": true,
+            "warning": "Bypass skips routine approval prompts. Destructive system paths, root/home wipes, and blocked prefixes remain denied.",
+            "warning_ko": "바이패스는 일상 승인 프롬프트를 건너뜁니다. 시스템 경로 파괴, 루트/홈 삭제, 차단 접두사는 계속 거부됩니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        }
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "set_permission_mode",
+      "branch": "error_validation",
+      "method": "POST",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "mode"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      }
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "set_permission_mode",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "strict"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "get_network_boundary",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "local_only",
+        "label": "Local only",
+        "label_ko": "로컬만",
+        "risk": "low",
+        "requires_ack": false,
+        "allows_cloud": false,
+        "hard_block_node_types": [
+          "ApiKey",
+          "Credential",
+          "Password",
+          "PrivateKey",
+          "Secret",
+          "Token"
+        ],
+        "hard_block_metadata_flags": [
+          "do_not_share",
+          "local_only",
+          "private",
+          "sensitive"
+        ],
+        "catalog": [
+          {
+            "id": "local_only",
+            "label": "Local only",
+            "label_ko": "로컬만",
+            "summary": "Nothing leaves this machine. Answers use local models and the local Brain only.",
+            "summary_ko": "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "cloud_allowed",
+            "label": "Cloud streaming allowed",
+            "label_ko": "클라우드 스트리밍 허용",
+            "summary": "Minimal related Knowledge Graph nodes may be sent to a cloud LLM. The streamed answer is written back into the local Brain with provenance.",
+            "summary_ko": "관련된 최소 Knowledge Graph 노드만 클라우드 LLM으로 전송될 수 있습니다. 스트리밍 답변은 provenance와 함께 로컬 Brain에 다시 기록됩니다.",
+            "risk": "medium",
+            "requires_ack": true,
+            "warning": "Cloud mode sends a compact summary of selected local nodes to an external provider. Sensitive nodes remain blocked. You can switch back to Local only at any time.",
+            "warning_ko": "클라우드 모드는 선택된 로컬 노드의 압축 요약을 외부 제공자에게 전송합니다. 민감 노드는 계속 차단됩니다. 언제든지 로컬만으로 되돌릴 수 있습니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        },
+        "token_budget": {
+          "max_tokens_per_turn": 2500,
+          "max_tokens_per_session": 50000,
+          "session_used": 0,
+          "session_remaining": 50000
+        },
+        "policy": {
+          "blocked_node_types": [
+            "ApiKey",
+            "Credential",
+            "Password",
+            "PrivateKey",
+            "Secret",
+            "Token"
+          ],
+          "blocked_metadata_flags": [
+            "do_not_share",
+            "local_only",
+            "private",
+            "sensitive"
+          ],
+          "auto_commit": false,
+          "allow_multimodal": false,
+          "min_extraction_confidence": 0.55
+        }
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "get_network_boundary",
+      "branch": "happy_workspace_scoped",
+      "method": "GET",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "x-workspace-id": "org-Fixture-Team"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "local_only",
+        "label": "Local only",
+        "label_ko": "로컬만",
+        "risk": "low",
+        "requires_ack": false,
+        "allows_cloud": false,
+        "hard_block_node_types": [
+          "ApiKey",
+          "Credential",
+          "Password",
+          "PrivateKey",
+          "Secret",
+          "Token"
+        ],
+        "hard_block_metadata_flags": [
+          "do_not_share",
+          "local_only",
+          "private",
+          "sensitive"
+        ],
+        "catalog": [
+          {
+            "id": "local_only",
+            "label": "Local only",
+            "label_ko": "로컬만",
+            "summary": "Nothing leaves this machine. Answers use local models and the local Brain only.",
+            "summary_ko": "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "cloud_allowed",
+            "label": "Cloud streaming allowed",
+            "label_ko": "클라우드 스트리밍 허용",
+            "summary": "Minimal related Knowledge Graph nodes may be sent to a cloud LLM. The streamed answer is written back into the local Brain with provenance.",
+            "summary_ko": "관련된 최소 Knowledge Graph 노드만 클라우드 LLM으로 전송될 수 있습니다. 스트리밍 답변은 provenance와 함께 로컬 Brain에 다시 기록됩니다.",
+            "risk": "medium",
+            "requires_ack": true,
+            "warning": "Cloud mode sends a compact summary of selected local nodes to an external provider. Sensitive nodes remain blocked. You can switch back to Local only at any time.",
+            "warning_ko": "클라우드 모드는 선택된 로컬 노드의 압축 요약을 외부 제공자에게 전송합니다. 민감 노드는 계속 차단됩니다. 언제든지 로컬만으로 되돌릴 수 있습니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Fixture-Team"
+        },
+        "token_budget": {
+          "max_tokens_per_turn": 2500,
+          "max_tokens_per_session": 50000,
+          "session_used": 0,
+          "session_remaining": 50000
+        },
+        "policy": {
+          "blocked_node_types": [
+            "ApiKey",
+            "Credential",
+            "Password",
+            "PrivateKey",
+            "Secret",
+            "Token"
+          ],
+          "blocked_metadata_flags": [
+            "do_not_share",
+            "local_only",
+            "private",
+            "sensitive"
+          ],
+          "auto_commit": false,
+          "allow_multimodal": false,
+          "min_extraction_confidence": 0.55
+        }
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "get_network_boundary",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "network_boundary_catalog",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/network-boundary/catalog",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "modes": [
+          {
+            "id": "local_only",
+            "label": "Local only",
+            "label_ko": "로컬만",
+            "summary": "Nothing leaves this machine. Answers use local models and the local Brain only.",
+            "summary_ko": "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "cloud_allowed",
+            "label": "Cloud streaming allowed",
+            "label_ko": "클라우드 스트리밍 허용",
+            "summary": "Minimal related Knowledge Graph nodes may be sent to a cloud LLM. The streamed answer is written back into the local Brain with provenance.",
+            "summary_ko": "관련된 최소 Knowledge Graph 노드만 클라우드 LLM으로 전송될 수 있습니다. 스트리밍 답변은 provenance와 함께 로컬 Brain에 다시 기록됩니다.",
+            "risk": "medium",
+            "requires_ack": true,
+            "warning": "Cloud mode sends a compact summary of selected local nodes to an external provider. Sensitive nodes remain blocked. You can switch back to Local only at any time.",
+            "warning_ko": "클라우드 모드는 선택된 로컬 노드의 압축 요약을 외부 제공자에게 전송합니다. 민감 노드는 계속 차단됩니다. 언제든지 로컬만으로 되돌릴 수 있습니다."
+          }
+        ]
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "network_boundary_catalog",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/network-boundary/catalog",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "network_boundary_ui_state",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/network-boundary/ui-state",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "local_only",
+        "label": "Local only",
+        "label_ko": "로컬만",
+        "allows_cloud": false,
+        "requires_ack": false,
+        "warning_ko": null,
+        "policy": {
+          "blocked_node_types": [
+            "ApiKey",
+            "Credential",
+            "Password",
+            "PrivateKey",
+            "Secret",
+            "Token"
+          ],
+          "blocked_metadata_flags": [
+            "do_not_share",
+            "local_only",
+            "private",
+            "sensitive"
+          ],
+          "auto_commit": false,
+          "allow_multimodal": false,
+          "min_extraction_confidence": 0.55
+        },
+        "token_budget": {
+          "max_tokens_per_turn": 2500,
+          "max_tokens_per_session": 50000,
+          "session_used": 0,
+          "session_remaining": 50000
+        },
+        "catalog": [
+          {
+            "id": "local_only",
+            "label": "Local only",
+            "label_ko": "로컬만",
+            "summary": "Nothing leaves this machine. Answers use local models and the local Brain only.",
+            "summary_ko": "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "cloud_allowed",
+            "label": "Cloud streaming allowed",
+            "label_ko": "클라우드 스트리밍 허용",
+            "summary": "Minimal related Knowledge Graph nodes may be sent to a cloud LLM. The streamed answer is written back into the local Brain with provenance.",
+            "summary_ko": "관련된 최소 Knowledge Graph 노드만 클라우드 LLM으로 전송될 수 있습니다. 스트리밍 답변은 provenance와 함께 로컬 Brain에 다시 기록됩니다.",
+            "risk": "medium",
+            "requires_ack": true,
+            "warning": "Cloud mode sends a compact summary of selected local nodes to an external provider. Sensitive nodes remain blocked. You can switch back to Local only at any time.",
+            "warning_ko": "클라우드 모드는 선택된 로컬 노드의 압축 요약을 외부 제공자에게 전송합니다. 민감 노드는 계속 차단됩니다. 언제든지 로컬만으로 되돌릴 수 있습니다."
+          }
+        ]
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "network_boundary_ui_state",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/network-boundary/ui-state",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_network_boundary",
+      "branch": "error_cloud_without_ack",
+      "method": "POST",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "cloud_allowed",
+        "acknowledge_risk": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "cloud_allowed mode requires acknowledge_risk=true (minimal related Knowledge Graph nodes may leave this machine)"
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_network_boundary",
+      "branch": "happy_cloud_with_ack",
+      "method": "POST",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "cloud_allowed",
+        "acknowledge_risk": true
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "cloud_allowed",
+        "label": "Cloud streaming allowed",
+        "label_ko": "클라우드 스트리밍 허용",
+        "risk": "medium",
+        "requires_ack": true,
+        "allows_cloud": true,
+        "hard_block_node_types": [
+          "ApiKey",
+          "Credential",
+          "Password",
+          "PrivateKey",
+          "Secret",
+          "Token"
+        ],
+        "hard_block_metadata_flags": [
+          "do_not_share",
+          "local_only",
+          "private",
+          "sensitive"
+        ],
+        "catalog": [
+          {
+            "id": "local_only",
+            "label": "Local only",
+            "label_ko": "로컬만",
+            "summary": "Nothing leaves this machine. Answers use local models and the local Brain only.",
+            "summary_ko": "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "cloud_allowed",
+            "label": "Cloud streaming allowed",
+            "label_ko": "클라우드 스트리밍 허용",
+            "summary": "Minimal related Knowledge Graph nodes may be sent to a cloud LLM. The streamed answer is written back into the local Brain with provenance.",
+            "summary_ko": "관련된 최소 Knowledge Graph 노드만 클라우드 LLM으로 전송될 수 있습니다. 스트리밍 답변은 provenance와 함께 로컬 Brain에 다시 기록됩니다.",
+            "risk": "medium",
+            "requires_ack": true,
+            "warning": "Cloud mode sends a compact summary of selected local nodes to an external provider. Sensitive nodes remain blocked. You can switch back to Local only at any time.",
+            "warning_ko": "클라우드 모드는 선택된 로컬 노드의 압축 요약을 외부 제공자에게 전송합니다. 민감 노드는 계속 차단됩니다. 언제든지 로컬만으로 되돌릴 수 있습니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        }
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_network_boundary",
+      "branch": "happy_back_to_local",
+      "method": "POST",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "local_only"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "local_only",
+        "label": "Local only",
+        "label_ko": "로컬만",
+        "risk": "low",
+        "requires_ack": false,
+        "allows_cloud": false,
+        "hard_block_node_types": [
+          "ApiKey",
+          "Credential",
+          "Password",
+          "PrivateKey",
+          "Secret",
+          "Token"
+        ],
+        "hard_block_metadata_flags": [
+          "do_not_share",
+          "local_only",
+          "private",
+          "sensitive"
+        ],
+        "catalog": [
+          {
+            "id": "local_only",
+            "label": "Local only",
+            "label_ko": "로컬만",
+            "summary": "Nothing leaves this machine. Answers use local models and the local Brain only.",
+            "summary_ko": "이 컴퓨터를 벗어나지 않습니다. 로컬 모델과 로컬 Brain만 사용합니다.",
+            "risk": "low",
+            "requires_ack": false
+          },
+          {
+            "id": "cloud_allowed",
+            "label": "Cloud streaming allowed",
+            "label_ko": "클라우드 스트리밍 허용",
+            "summary": "Minimal related Knowledge Graph nodes may be sent to a cloud LLM. The streamed answer is written back into the local Brain with provenance.",
+            "summary_ko": "관련된 최소 Knowledge Graph 노드만 클라우드 LLM으로 전송될 수 있습니다. 스트리밍 답변은 provenance와 함께 로컬 Brain에 다시 기록됩니다.",
+            "risk": "medium",
+            "requires_ack": true,
+            "warning": "Cloud mode sends a compact summary of selected local nodes to an external provider. Sensitive nodes remain blocked. You can switch back to Local only at any time.",
+            "warning_ko": "클라우드 모드는 선택된 로컬 노드의 압축 요약을 외부 제공자에게 전송합니다. 민감 노드는 계속 차단됩니다. 언제든지 로컬만으로 되돌릴 수 있습니다."
+          }
+        ],
+        "scope": {
+          "user_email": "owner@lattice.test",
+          "workspace_id": null
+        }
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_network_boundary",
+      "branch": "error_validation",
+      "method": "POST",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "mode"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_network_boundary",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "mode": "local_only"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "preview_cloud_context",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/network-boundary/preview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "message": "하이브리드 검색 결정 요약해줘",
+        "top_k": 6
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "local_only",
+        "allows_cloud": false,
+        "node_ids": [
+          "person:4a0a339b0c6d:owner@lattice.test",
+          "@id",
+          "@id",
+          "conversation:4a0a339b0c6d:default"
+        ],
+        "keywords": [
+          "하이브리드",
+          "검색",
+          "결정",
+          "요약해줘"
+        ],
+        "titles": [
+          "owner@lattice.test",
+          "decisions: 결정: 하이브리드 검색의 알파 융합을 유지한다.",
+          "Fixture workflow",
+          "Default conversation"
+        ],
+        "types": [
+          "Person",
+          "Memory",
+          "Workflow",
+          "Conversation"
+        ],
+        "token_estimate": 51,
+        "quality": {
+          "mode": "hybrid",
+          "nodes": 4,
+          "limited": false,
+          "reason": null
+        },
+        "compact_preview": "- [Person] owner@lattice.test\n- [Memory] decisions: 결정: 하이브리드 검색의 알파 융합을 유지한다.: decisions: 결정: 하이브리드 검색의 알파 융합을 유지한다.\n- [Workflow] Fixture workflow: Fixture workflow\n- [Conversation] Default conversation",
+        "token_budget": {
+          "max_tokens_per_turn": 2500,
+          "max_tokens_per_session": 50000,
+          "session_used": 0,
+          "session_remaining": 50000
+        },
+        "would_block": null
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "preview_cloud_context",
+      "branch": "happy_top_k_clamped",
+      "method": "POST",
+      "path": "/api/network-boundary/preview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "message": "요약",
+        "top_k": 999
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "local_only",
+        "allows_cloud": false,
+        "node_ids": [
+          "person:4a0a339b0c6d:owner@lattice.test",
+          "@id",
+          "conversation:4a0a339b0c6d:default",
+          "@id"
+        ],
+        "keywords": [
+          "요약"
+        ],
+        "titles": [
+          "owner@lattice.test",
+          "decisions: 결정: 하이브리드 검색의 알파 융합을 유지한다.",
+          "Default conversation",
+          "Fixture workflow"
+        ],
+        "types": [
+          "Person",
+          "Memory",
+          "Conversation",
+          "Workflow"
+        ],
+        "token_estimate": 51,
+        "quality": {
+          "mode": "hybrid",
+          "nodes": 4,
+          "limited": false,
+          "reason": null
+        },
+        "compact_preview": "- [Person] owner@lattice.test\n- [Memory] decisions: 결정: 하이브리드 검색의 알파 융합을 유지한다.: decisions: 결정: 하이브리드 검색의 알파 융합을 유지한다.\n- [Conversation] Default conversation\n- [Workflow] Fixture workflow: Fixture workflow",
+        "token_budget": {
+          "max_tokens_per_turn": 2500,
+          "max_tokens_per_session": 50000,
+          "session_used": 0,
+          "session_remaining": 50000
+        },
+        "would_block": null
+      },
+      "note": "top_k is clamped into [1, 12]"
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "preview_cloud_context",
+      "branch": "error_validation",
+      "method": "POST",
+      "path": "/api/network-boundary/preview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "top_k": 3
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "message"
+            ],
+            "msg": "Field required",
+            "input": {
+              "top_k": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "preview_cloud_context",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/network-boundary/preview",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "message": "x"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_node_sensitivity",
+      "branch": "error_unknown_node",
+      "method": "POST",
+      "path": "/api/network-boundary/node-sensitivity",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "node_id": "node-missing",
+        "local_only": true,
+        "reason": "픽스처"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "node not found"
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_node_sensitivity",
+      "branch": "error_validation",
+      "method": "POST",
+      "path": "/api/network-boundary/node-sensitivity",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "local_only": true
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "node_id"
+            ],
+            "msg": "Field required",
+            "input": {
+              "local_only": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_node_sensitivity",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/network-boundary/node-sensitivity",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "node_id": "x"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "get_hybrid_policy",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/network-boundary/policy",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "blocked_node_types": [
+          "ApiKey",
+          "Credential",
+          "Password",
+          "PrivateKey",
+          "Secret",
+          "Token"
+        ],
+        "blocked_metadata_flags": [
+          "do_not_share",
+          "local_only",
+          "private",
+          "sensitive"
+        ],
+        "auto_commit": false,
+        "allow_multimodal": false,
+        "min_extraction_confidence": 0.55
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "get_hybrid_policy",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/network-boundary/policy",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_hybrid_policy",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/network-boundary/policy",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "blocked_node_types": [
+          "Secret",
+          "ApiKey"
+        ],
+        "auto_commit": false,
+        "allow_multimodal": true,
+        "min_extraction_confidence": 0.4
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "blocked_node_types": [
+          "ApiKey",
+          "Credential",
+          "Password",
+          "PrivateKey",
+          "Secret",
+          "Token"
+        ],
+        "blocked_metadata_flags": [
+          "do_not_share",
+          "local_only",
+          "private",
+          "sensitive"
+        ],
+        "auto_commit": false,
+        "allow_multimodal": true,
+        "min_extraction_confidence": 0.4
+      }
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_hybrid_policy",
+      "branch": "happy_empty_patch",
+      "method": "POST",
+      "path": "/api/network-boundary/policy",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "blocked_node_types": [
+          "ApiKey",
+          "Credential",
+          "Password",
+          "PrivateKey",
+          "Secret",
+          "Token"
+        ],
+        "blocked_metadata_flags": [
+          "do_not_share",
+          "local_only",
+          "private",
+          "sensitive"
+        ],
+        "auto_commit": false,
+        "allow_multimodal": true,
+        "min_extraction_confidence": 0.4
+      },
+      "note": "an empty patch is a read-through, not an error"
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "set_hybrid_policy",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/network-boundary/policy",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_identity",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/network/identity",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "fingerprint": "@id",
+        "public_key": "$device_public_key",
+        "algorithm": "ed25519",
+        "storage": "file"
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_identity",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/network/identity",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_peers",
+      "branch": "happy_empty",
+      "method": "GET",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "peers": []
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_peers",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_peers",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_pair",
+      "branch": "error_invalid_key",
+      "method": "POST",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "peer-bad",
+        "base_url": "http://127.0.0.1:9999",
+        "public_key": "AAAA"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "public_key is not a valid Ed25519 key: An Ed25519 public key is 32 bytes long"
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_pair",
+      "branch": "error_validation",
+      "method": "POST",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "peer-bad"
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "base_url"
+            ],
+            "msg": "Field required",
+            "input": {
+              "name": "peer-bad"
+            }
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "public_key"
+            ],
+            "msg": "Field required",
+            "input": {
+              "name": "peer-bad"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_pair",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "peer",
+        "base_url": "http://127.0.0.1:9999",
+        "public_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_pair",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "peer",
+        "base_url": "http://127.0.0.1:9999",
+        "public_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_pair",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "name": "fixture-peer",
+        "base_url": "http://127.0.0.1:9999",
+        "public_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "paired",
+        "peer": {
+          "id": "$peer_id",
+          "name": "fixture-peer",
+          "base_url": "http://127.0.0.1:9999",
+          "public_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+          "fingerprint": "@id",
+          "added_at": "@ts"
+        }
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_peers",
+      "branch": "happy_after_pairing",
+      "method": "GET",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "peers": [
+          {
+            "id": "$peer_id",
+            "name": "fixture-peer",
+            "base_url": "http://127.0.0.1:9999",
+            "public_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+            "fingerprint": "@id",
+            "added_at": "@ts"
+          }
+        ]
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_push",
+      "branch": "error_unknown_peer",
+      "method": "POST",
+      "path": "/network/push/peer-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workspace_id": null
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Unknown peer: peer-missing"
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_push",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/network/push/peer-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_push",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/network/push/peer-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_receive",
+      "branch": "error_unsigned",
+      "method": "POST",
+      "path": "/network/receive",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "nodes": []
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "missing peer authentication headers"
+      },
+      "note": "peer-authenticated, not session-authenticated: a session cannot stand in for a paired device's signature"
+    },
+    {
+      "family": "network.py",
+      "name": "network_receive",
+      "branch": "error_unsigned_anonymous",
+      "method": "POST",
+      "path": "/network/receive",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "nodes": []
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "missing peer authentication headers"
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_unpair",
+      "branch": "error_unknown_peer",
+      "method": "DELETE",
+      "path": "/network/peers/peer-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Unknown peer: peer-missing"
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_unpair",
+      "branch": "wrong_role",
+      "method": "DELETE",
+      "path": "/network/peers/peer-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_unpair",
+      "branch": "auth_denied",
+      "method": "DELETE",
+      "path": "/network/peers/peer-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "network.py",
+      "name": "network_unpair",
+      "branch": "happy",
+      "method": "DELETE",
+      "path": "/network/peers/$peer_id",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "removed",
+        "peer_id": "$peer_id"
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_scan",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/setup/scan",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "environment": {
+          "os": "@any",
+          "os_version": "@any",
+          "chip": "@any",
+          "cpu": "@any",
+          "gpu": "@any",
+          "cuda": "@any",
+          "wsl": "@any",
+          "ram_gb": "@any",
+          "disk_free_gb": "@any",
+          "tools": "@any",
+          "components": "@any",
+          "path": "@any",
+          "mlx": "@any",
+          "api_keys": "@any",
+          "zero_config": "@any"
+        },
+        "recommendations": {
+          "components": "@any",
+          "engines": "@any",
+          "models": "@any",
+          "mcps": "@any",
+          "summary": "@any",
+          "install_plan": "@any",
+          "preset": "@any"
+        },
+        "zero_config": {
+          "probe": "@any",
+          "recommend": "@any",
+          "plan": "@any",
+          "verify": "@any",
+          "preset": "@any"
+        }
+      },
+      "note": "probes the host; only the envelope is pinned (see gaps)"
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_scan",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/setup/scan",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_auto",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/setup/auto",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "probe": {
+          "os": "@any",
+          "os_version": "@any",
+          "arch": "@any",
+          "cpu_model": "@any",
+          "cpu_cores": "@any",
+          "cpu_logical_cores": "@any",
+          "cpu_instructions": "@any",
+          "ram_mb": "@any",
+          "disk_free_mb": "@any",
+          "gpu": "@any",
+          "package_manager": "@any",
+          "has_internet": "@any",
+          "python_version": "@any",
+          "is_wsl": "@any",
+          "wsl_version": "@any",
+          "cuda_available": "@any",
+          "cuda_version": "@any",
+          "tools": "@any",
+          "score": "@any"
+        },
+        "recommend": {
+          "runtime": "@any",
+          "backend": "@any",
+          "model_id": "@any",
+          "quantization": "@any",
+          "rationale": "@any",
+          "estimated_tokens_per_sec": "@any"
+        },
+        "plan": {
+          "package_manager": "@any",
+          "steps": "@any",
+          "notes": "@any",
+          "command_plan": "@any",
+          "confirmation_token": "@any"
+        },
+        "verify": {
+          "checks": "@any",
+          "all_pass": "@any"
+        },
+        "preset": {
+          "mode": "@any",
+          "model": "@any",
+          "shortcuts": "@any",
+          "mcp": "@any",
+          "theme": "@any",
+          "language": "@any",
+          "tips": "@any"
+        }
+      },
+      "note": "probe → recommend → plan → verify → preset; machine-dependent"
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_auto",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/setup/auto",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_install",
+      "branch": "happy_empty_plan",
+      "method": "POST",
+      "path": "/setup/install",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "items": [],
+        "confirmation_token": null
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-cache",
+        "x-accel-buffering": "no"
+      },
+      "response_body": {
+        "@text": "data: {\"status\": \"complete\", \"msg\": \"모든 항목 처리 완료!\"}\n\n"
+      },
+      "note": "SSE. An empty item list is the only branch safe to record — a real item would install software on the machine running the generator"
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_install",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/setup/install",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "items": []
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_open_auth",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/setup/open-auth/github",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "opened": "https://github.com/apps",
+        "mcp_id": "github"
+      },
+      "note": "open_url is stubbed for the capture; the answer is the contract"
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_open_auth",
+      "branch": "error_unknown_id",
+      "method": "POST",
+      "path": "/setup/open-auth/no-such-connector",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "알 수 없는 MCP입니다: no-such-connector"
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "setup_open_auth",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/setup/open-auth/github",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_status",
+      "branch": "happy_empty",
+      "method": "GET",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "installed": false,
+        "documents": [],
+        "document_count": 0,
+        "suggested_questions": [
+          {
+            "question": "회의에서 결정한 출시일이 언제야?",
+            "expected_source_uri": "demo://meeting-note",
+            "expected_title": "주간 회의록 — 사이드 프로젝트 킥오프"
+          },
+          {
+            "question": "새싹 가든의 기술 스택이 뭐야?",
+            "expected_source_uri": "demo://project-doc",
+            "expected_title": "프로젝트 개요 — 새싹 가든"
+          },
+          {
+            "question": "새 습관을 시작할 때 쓰는 2분 규칙이 뭐였지?",
+            "expected_source_uri": "demo://personal-note",
+            "expected_title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘"
+          }
+        ]
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_status",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_install",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workspace_id": null
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "ingested": 3,
+        "duplicates": 0,
+        "failed": 0,
+        "documents": [
+          {
+            "demo_id": "meeting-note",
+            "title": "주간 회의록 — 사이드 프로젝트 킥오프",
+            "source_uri": "demo://meeting-note",
+            "status": "ok",
+            "node_id": "@id",
+            "duplicate": false,
+            "chunk_count": 1,
+            "detail": null
+          },
+          {
+            "demo_id": "project-doc",
+            "title": "프로젝트 개요 — 새싹 가든",
+            "source_uri": "demo://project-doc",
+            "status": "ok",
+            "node_id": "@id",
+            "duplicate": false,
+            "chunk_count": 1,
+            "detail": null
+          },
+          {
+            "demo_id": "personal-note",
+            "title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘",
+            "source_uri": "demo://personal-note",
+            "status": "ok",
+            "node_id": "@id",
+            "duplicate": false,
+            "chunk_count": 1,
+            "detail": null
+          }
+        ],
+        "suggested_questions": [
+          {
+            "question": "회의에서 결정한 출시일이 언제야?",
+            "expected_source_uri": "demo://meeting-note",
+            "expected_title": "주간 회의록 — 사이드 프로젝트 킥오프"
+          },
+          {
+            "question": "새싹 가든의 기술 스택이 뭐야?",
+            "expected_source_uri": "demo://project-doc",
+            "expected_title": "프로젝트 개요 — 새싹 가든"
+          },
+          {
+            "question": "새 습관을 시작할 때 쓰는 2분 규칙이 뭐였지?",
+            "expected_source_uri": "demo://personal-note",
+            "expected_title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘"
+          }
+        ]
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_install",
+      "branch": "happy_idempotent",
+      "method": "POST",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "workspace_id": null
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "ingested": 0,
+        "duplicates": 3,
+        "failed": 0,
+        "documents": [
+          {
+            "demo_id": "meeting-note",
+            "title": "주간 회의록 — 사이드 프로젝트 킥오프",
+            "source_uri": "demo://meeting-note",
+            "status": "ok",
+            "node_id": "@id",
+            "duplicate": true,
+            "chunk_count": 1,
+            "detail": null
+          },
+          {
+            "demo_id": "project-doc",
+            "title": "프로젝트 개요 — 새싹 가든",
+            "source_uri": "demo://project-doc",
+            "status": "ok",
+            "node_id": "@id",
+            "duplicate": true,
+            "chunk_count": 1,
+            "detail": null
+          },
+          {
+            "demo_id": "personal-note",
+            "title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘",
+            "source_uri": "demo://personal-note",
+            "status": "ok",
+            "node_id": "@id",
+            "duplicate": true,
+            "chunk_count": 1,
+            "detail": null
+          }
+        ],
+        "suggested_questions": [
+          {
+            "question": "회의에서 결정한 출시일이 언제야?",
+            "expected_source_uri": "demo://meeting-note",
+            "expected_title": "주간 회의록 — 사이드 프로젝트 킥오프"
+          },
+          {
+            "question": "새싹 가든의 기술 스택이 뭐야?",
+            "expected_source_uri": "demo://project-doc",
+            "expected_title": "프로젝트 개요 — 새싹 가든"
+          },
+          {
+            "question": "새 습관을 시작할 때 쓰는 2분 규칙이 뭐였지?",
+            "expected_source_uri": "demo://personal-note",
+            "expected_title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘"
+          }
+        ]
+      },
+      "note": "re-posting reports duplicates instead of duplicating"
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_install",
+      "branch": "error_workspace_mismatch",
+      "method": "POST",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json",
+        "x-workspace-id": "org-Archive-Target"
+      },
+      "request_body": {
+        "workspace_id": "org-Fixture-Team"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "작업 공간 지정이 서로 다릅니다."
+      },
+      "note": "the body and the header name different workspaces"
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_install",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {},
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_status",
+      "branch": "happy_installed",
+      "method": "GET",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "installed": true,
+        "documents": [
+          {
+            "id": "@id",
+            "type": "Document",
+            "title": "주간 회의록 — 사이드 프로젝트 킥오프",
+            "source_uri": "demo://meeting-note",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "@id",
+            "type": "Document",
+            "title": "프로젝트 개요 — 새싹 가든",
+            "source_uri": "demo://project-doc",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          },
+          {
+            "id": "@id",
+            "type": "Document",
+            "title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘",
+            "source_uri": "demo://personal-note",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts"
+          }
+        ],
+        "document_count": 3,
+        "suggested_questions": [
+          {
+            "question": "회의에서 결정한 출시일이 언제야?",
+            "expected_source_uri": "demo://meeting-note",
+            "expected_title": "주간 회의록 — 사이드 프로젝트 킥오프"
+          },
+          {
+            "question": "새싹 가든의 기술 스택이 뭐야?",
+            "expected_source_uri": "demo://project-doc",
+            "expected_title": "프로젝트 개요 — 새싹 가든"
+          },
+          {
+            "question": "새 습관을 시작할 때 쓰는 2분 규칙이 뭐였지?",
+            "expected_source_uri": "demo://personal-note",
+            "expected_title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘"
+          }
+        ]
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_remove",
+      "branch": "auth_denied",
+      "method": "DELETE",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_remove",
+      "branch": "happy",
+      "method": "DELETE",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "removed_count": 3,
+        "removed": [
+          {
+            "node_id": "@id",
+            "title": "주간 회의록 — 사이드 프로젝트 킥오프",
+            "source_uri": "demo://meeting-note",
+            "status": "ok",
+            "removed_nodes": 5
+          },
+          {
+            "node_id": "@id",
+            "title": "프로젝트 개요 — 새싹 가든",
+            "source_uri": "demo://project-doc",
+            "status": "ok",
+            "removed_nodes": 3
+          },
+          {
+            "node_id": "@id",
+            "title": "개인 노트 — 독서 메모: 아주 작은 습관의 힘",
+            "source_uri": "demo://personal-note",
+            "status": "ok",
+            "removed_nodes": 3
+          }
+        ]
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "demo_corpus_remove",
+      "branch": "happy_already_empty",
+      "method": "DELETE",
+      "path": "/api/setup/demo-corpus",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "removed_count": 0,
+        "removed": []
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "open_permission_settings",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/permissions/open/accessibility",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "opened": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        "permission": "accessibility"
+      },
+      "note": "open_url is stubbed for the capture"
+    },
+    {
+      "family": "setup.py",
+      "name": "open_permission_settings",
+      "branch": "error_unknown_permission",
+      "method": "POST",
+      "path": "/permissions/open/no-such-permission",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "알 수 없는 권한 설정입니다."
+      }
+    },
+    {
+      "family": "setup.py",
+      "name": "open_permission_settings",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/permissions/open/accessibility",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    }
+  ],
+  "trusted_local_owner_fixtures": [
+    {
+      "family": "network.py",
+      "name": "network_peers",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/network/peers",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    },
+    {
+      "family": "features.py",
+      "name": "list_features",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/api/features",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    },
+    {
+      "family": "permission_mode.py",
+      "name": "get_permission_mode",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/api/permission-mode",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    },
+    {
+      "family": "network_boundary.py",
+      "name": "get_network_boundary",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/api/network-boundary",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    }
+  ]
+}

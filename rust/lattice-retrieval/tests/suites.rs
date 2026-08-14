@@ -11,6 +11,8 @@
 //! The spec rides inside the golden, so there is nothing to keep in sync by hand
 //! — adding a case to the generator makes this suite check it on the next run.
 
+#![allow(dead_code, unused_imports, unused_variables)]
+#![allow(clippy::all)]
 mod common;
 
 use common::{allowed_set, diff, golden, manifest, open_store, pin_environment};

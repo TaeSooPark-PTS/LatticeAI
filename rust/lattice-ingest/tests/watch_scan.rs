@@ -11,6 +11,8 @@
 //! snapshot is edited instead of the file's mtime — a filesystem whose
 //! timestamp granularity is coarser than a test is a flake, not a finding.
 
+#![allow(dead_code, unused_imports, unused_variables)]
+#![allow(clippy::all)]
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;

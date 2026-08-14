@@ -374,7 +374,7 @@ mod tests {
         assert!(status
             .last_error
             .unwrap_or_default()
-            .contains("latticeai.cli.entrypoint"));
+            .contains("latticeai.worker_app"));
         supervisor.stop().await;
     }
 

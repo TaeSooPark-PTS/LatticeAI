@@ -118,7 +118,10 @@ pub struct PolicyTable {
 }
 
 /// The tuple `latticeai.core.tool_registry` ships, for callers that send none.
-fn default_blocked_write_prefixes() -> Vec<String> {
+///
+/// Public because the native `local_write` refuses the same prefixes and must
+/// refuse *these* ones: two copies of a denylist is one copy that goes stale.
+pub fn default_blocked_write_prefixes() -> Vec<String> {
     [
         "/etc/",
         "/usr/",

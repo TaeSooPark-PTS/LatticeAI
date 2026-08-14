@@ -1,0 +1,1597 @@
+{
+  "_": "Captured from the live Python app by scripts/gen_static_fixtures.py. The `allow` header is recorded with its methods sorted — Starlette emits them from a set, in a different order each run. Replayed by rust/lattice-platform/tests/static_ui_*.rs and ui_redirects_*.rs. Do not hand-edit. FROZEN at commit fc65e60 — last generating tree; do not regenerate.",
+  "starlette": "1.3.1",
+  "tree": {
+    "app/asset-manifest.json": {
+      "sha256": "b4904bb148d2cc1f15858ce96dbb11064dacb65408d831514abab5c9b7841a6d",
+      "bytes": 50,
+      "b64": "eyJpbmRleC5odG1sIjp7ImZpbGUiOiJhc3NldHMvaW5kZXgtRklYVFVSRS5qcyJ9fQo="
+    },
+    "app/assets/index-FIXTURE.css": {
+      "sha256": "7a9da69bcf57970fcc4e51b11cf95a5870297918728c459ef9bc2b886fb88cb8",
+      "bytes": 26,
+      "b64": "LmJyYWluIHsgZGlzcGxheTogZ3JpZDsgfQo="
+    },
+    "app/assets/index-FIXTURE.js": {
+      "sha256": "37d7d1324ec6540a8967c7eb83fa063f7a3c4803866a564c3f876dfbfcbd940b",
+      "bytes": 32,
+      "b64": "ZXhwb3J0IGNvbnN0IGJyYWluID0gJ2ZpeHR1cmUnOwo="
+    },
+    "app/index.html": {
+      "sha256": "bf70c02abf5127e54d35d81403cc5269da62ce49ee781e700a3ceecf7db74fca",
+      "bytes": 312,
+      "b64": "PCFkb2N0eXBlIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KICA8aGVhZD4KICAgIDxtZXRhIGNoYXJzZXQ9IlVURi04IiAvPgogICAgPHRpdGxlPkxhdHRpY2UgQUkgwrcgTGl2aW5nIEJyYWluPC90aXRsZT4KICAgIDxsaW5rIHJlbD0ibWFuaWZlc3QiIGhyZWY9Ii9tYW5pZmVzdC5qc29uIiAvPgogICAgPHNjcmlwdCB0eXBlPSJtb2R1bGUiIGNyb3Nzb3JpZ2luIHNyYz0iL3N0YXRpYy9hcHAvYXNzZXRzL2luZGV4LUZJWFRVUkUuanMiPjwvc2NyaXB0PgogIDwvaGVhZD4KICA8Ym9keT48ZGl2IGlkPSJyb290Ij48L2Rpdj48L2JvZHk+CjwvaHRtbD4K"
+    },
+    "app/opaque.fixtureext": {
+      "sha256": "328975f24457d58da82eb3d42151ced7f78a04209724bc41f20c51ce49e45c0b",
+      "bytes": 7,
+      "b64": "b3BhcXVlCg=="
+    },
+    "app/theme-boot.js": {
+      "sha256": "e96d02d59e260be3a1ca18618aae50467b32dc89edc6ec775b678056d4671e56",
+      "bytes": 51,
+      "b64": "ZG9jdW1lbnQuZG9jdW1lbnRFbGVtZW50LmRhdGFzZXQubHRUaGVtZSA9ICdkYXJrJzsK"
+    },
+    "css/base.css": {
+      "sha256": "32058eeb1c9bc45a653ec62e4e53ec49b390775ddad27431ddaa05b43febd50f",
+      "bytes": 36,
+      "b64": "OnJvb3QgeyBjb2xvci1zY2hlbWU6IGRhcmsgbGlnaHQ7IH0K"
+    },
+    "favicon.ico": {
+      "sha256": "989718b4dbced31a293f66c02177590b9f41378b17a4c4e52e834a593fc67220",
+      "bytes": 90,
+      "b64": "AAABAAEAEBAAAAEAIABEAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "icons/favicon-32.png": {
+      "sha256": "b7a95783e8c945e9f2566ec4baaf0d118564bc09278f801c44f44140cfb2f1c0",
+      "bytes": 68,
+      "b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+    },
+    "icons/icon-192.png": {
+      "sha256": "b7a95783e8c945e9f2566ec4baaf0d118564bc09278f801c44f44140cfb2f1c0",
+      "bytes": 68,
+      "b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+    },
+    "manifest.json": {
+      "sha256": "bcc07ba19fb5bd516a44af7a7204d1fc4f5e28d3cda33e88c20743270015dfd0",
+      "bytes": 64,
+      "b64": "eyJuYW1lIjoiTGF0dGljZSBBSSIsInNob3J0X25hbWUiOiJMYXR0aWNlIiwic3RhcnRfdXJsIjoiL2FwcCJ9Cg=="
+    },
+    "sw.js": {
+      "sha256": "459d49f63f0d87e86877b92668c1643b37eeb470f6ebbf2d999299027f5bb1f6",
+      "bytes": 60,
+      "b64": "c2VsZi5hZGRFdmVudExpc3RlbmVyKCdpbnN0YWxsJywgKCkgPT4gc2VsZi5za2lwV2FpdGluZygpKTsK"
+    }
+  },
+  "configs": {
+    "gate_off": {
+      "invite_gate_enabled": false,
+      "secure_cookies": false,
+      "omit": [],
+      "why": "the product default: no gate, a complete build output"
+    },
+    "shell_missing": {
+      "invite_gate_enabled": false,
+      "secure_cookies": false,
+      "omit": [
+        "app/index.html",
+        "manifest.json",
+        "sw.js",
+        "favicon.ico"
+      ],
+      "why": "an install whose `npm run build:assets` never ran"
+    },
+    "iconless": {
+      "invite_gate_enabled": false,
+      "secure_cookies": false,
+      "omit": [
+        "app/index.html",
+        "manifest.json",
+        "sw.js",
+        "favicon.ico",
+        "icons/favicon-32.png",
+        "icons/icon-192.png"
+      ],
+      "why": "not even the png fallback for /favicon.ico"
+    },
+    "gate_on": {
+      "invite_gate_enabled": true,
+      "secure_cookies": false,
+      "omit": [],
+      "why": "invitation-only install on a loopback bind"
+    },
+    "gate_on_secure": {
+      "invite_gate_enabled": true,
+      "secure_cookies": true,
+      "omit": [],
+      "why": "the same, reachable from the network — cookies gain Secure"
+    }
+  },
+  "redirects": {
+    "status": 308,
+    "template": "/app#/{fragment}{query}",
+    "note": "The redirect helper is one function; its callers are scattered across api/*.py. The three in static_routes.py are replayed as live cases below — the rest share the helper, so the table is the contract and the require_user flag says which need the auth layer over them.",
+    "routes": [
+      {
+        "path": "/chat",
+        "fragment": "chat",
+        "python_module": "static_routes.py",
+        "requires_user": false
+      },
+      {
+        "path": "/admin",
+        "fragment": "admin/users",
+        "python_module": "static_routes.py",
+        "requires_user": false
+      },
+      {
+        "path": "/account",
+        "fragment": "account",
+        "python_module": "static_routes.py — invite-gated, served by static_ui",
+        "requires_user": false
+      },
+      {
+        "path": "/workspace",
+        "fragment": "workspace-admin",
+        "python_module": "workspace.py",
+        "requires_user": true
+      },
+      {
+        "path": "/onboarding",
+        "fragment": "workspace-admin",
+        "python_module": "workspace.py",
+        "requires_user": true
+      },
+      {
+        "path": "/graph",
+        "fragment": "knowledge-graph",
+        "python_module": "knowledge_graph.py",
+        "requires_user": true
+      },
+      {
+        "path": "/knowledge-graph",
+        "fragment": "knowledge-graph",
+        "python_module": "knowledge_graph.py",
+        "requires_user": true
+      },
+      {
+        "path": "/agents",
+        "fragment": "agents",
+        "python_module": "agents.py",
+        "requires_user": true
+      },
+      {
+        "path": "/workflows",
+        "fragment": "workflows",
+        "python_module": "workflow_designer.py",
+        "requires_user": true
+      },
+      {
+        "path": "/activity",
+        "fragment": "activity",
+        "python_module": "realtime.py",
+        "requires_user": true
+      },
+      {
+        "path": "/plugins/sdk",
+        "fragment": "marketplace",
+        "python_module": "plugins.py",
+        "requires_user": true
+      }
+    ]
+  },
+  "mimetypes": {
+    "machine_dependent": true,
+    "charset_rule": "starlette appends '; charset=utf-8' to media types starting with 'text/'",
+    "unknown_extension": "application/octet-stream",
+    "rows": [
+      {
+        "extension": ".html",
+        "served": "text/html; charset=utf-8",
+        "live_guess": "text/html",
+        "builtin_guess": "text/html"
+      },
+      {
+        "extension": ".htm",
+        "served": "text/html; charset=utf-8",
+        "live_guess": "text/html",
+        "builtin_guess": "text/html"
+      },
+      {
+        "extension": ".js",
+        "served": "text/javascript; charset=utf-8",
+        "live_guess": "text/javascript",
+        "builtin_guess": "text/javascript"
+      },
+      {
+        "extension": ".mjs",
+        "served": "text/javascript; charset=utf-8",
+        "live_guess": "text/javascript",
+        "builtin_guess": "text/javascript"
+      },
+      {
+        "extension": ".css",
+        "served": "text/css; charset=utf-8",
+        "live_guess": "text/css",
+        "builtin_guess": "text/css"
+      },
+      {
+        "extension": ".json",
+        "served": "application/json",
+        "live_guess": "application/json",
+        "builtin_guess": "application/json"
+      },
+      {
+        "extension": ".map",
+        "served": "application/octet-stream",
+        "live_guess": null,
+        "builtin_guess": null
+      },
+      {
+        "extension": ".svg",
+        "served": "image/svg+xml",
+        "live_guess": "image/svg+xml",
+        "builtin_guess": "image/svg+xml"
+      },
+      {
+        "extension": ".png",
+        "served": "image/png",
+        "live_guess": "image/png",
+        "builtin_guess": "image/png"
+      },
+      {
+        "extension": ".jpg",
+        "served": "image/jpeg",
+        "live_guess": "image/jpeg",
+        "builtin_guess": "image/jpeg"
+      },
+      {
+        "extension": ".jpeg",
+        "served": "image/jpeg",
+        "live_guess": "image/jpeg",
+        "builtin_guess": "image/jpeg"
+      },
+      {
+        "extension": ".gif",
+        "served": "image/gif",
+        "live_guess": "image/gif",
+        "builtin_guess": "image/gif"
+      },
+      {
+        "extension": ".webp",
+        "served": "image/webp",
+        "live_guess": "image/webp",
+        "builtin_guess": "image/webp"
+      },
+      {
+        "extension": ".ico",
+        "served": "image/x-icon",
+        "live_guess": "image/x-icon",
+        "builtin_guess": "image/vnd.microsoft.icon"
+      },
+      {
+        "extension": ".woff",
+        "served": "font/woff",
+        "live_guess": "font/woff",
+        "builtin_guess": "font/woff"
+      },
+      {
+        "extension": ".woff2",
+        "served": "font/woff2",
+        "live_guess": "font/woff2",
+        "builtin_guess": "font/woff2"
+      },
+      {
+        "extension": ".ttf",
+        "served": "font/ttf",
+        "live_guess": "font/ttf",
+        "builtin_guess": "font/ttf"
+      },
+      {
+        "extension": ".otf",
+        "served": "font/otf",
+        "live_guess": "font/otf",
+        "builtin_guess": "font/otf"
+      },
+      {
+        "extension": ".wasm",
+        "served": "application/wasm",
+        "live_guess": "application/wasm",
+        "builtin_guess": "application/wasm"
+      },
+      {
+        "extension": ".txt",
+        "served": "text/plain; charset=utf-8",
+        "live_guess": "text/plain",
+        "builtin_guess": "text/plain"
+      },
+      {
+        "extension": ".xml",
+        "served": "application/xml",
+        "live_guess": "application/xml",
+        "builtin_guess": "text/xml"
+      },
+      {
+        "extension": ".pdf",
+        "served": "application/pdf",
+        "live_guess": "application/pdf",
+        "builtin_guess": "application/pdf"
+      },
+      {
+        "extension": ".mp4",
+        "served": "video/mp4",
+        "live_guess": "video/mp4",
+        "builtin_guess": "video/mp4"
+      },
+      {
+        "extension": ".webm",
+        "served": "video/webm",
+        "live_guess": "video/webm",
+        "builtin_guess": "video/webm"
+      },
+      {
+        "extension": ".md",
+        "served": "text/markdown; charset=utf-8",
+        "live_guess": "text/markdown",
+        "builtin_guess": "text/markdown"
+      },
+      {
+        "extension": ".fixtureext",
+        "served": "application/octet-stream",
+        "live_guess": null,
+        "builtin_guess": null
+      }
+    ]
+  },
+  "invite": {
+    "cookie_name": "lattice_invite",
+    "ttl_seconds": 604800,
+    "secret": "fixture-invite-cookie-secret",
+    "code": "FIXTURE-INVITE-CODE",
+    "frozen_now": 4000000000,
+    "frozen_nonce": "fixture-nonce-000000000000",
+    "signed_cookie": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+    "vectors": [
+      {
+        "value": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+        "now": 4000000000,
+        "valid": true,
+        "why": "freshly signed"
+      },
+      {
+        "value": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+        "now": 4000604799,
+        "valid": true,
+        "why": "one second before expiry"
+      },
+      {
+        "value": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+        "now": 4000604800,
+        "valid": false,
+        "why": "expiry is exclusive — equal is already dead"
+      },
+      {
+        "value": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+        "now": 4000604801,
+        "valid": false,
+        "why": "expired"
+      },
+      {
+        "value": "v2.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+        "now": 4000000000,
+        "valid": false,
+        "why": "version bump"
+      },
+      {
+        "value": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f60",
+        "now": 4000000000,
+        "valid": false,
+        "why": "signature tampered"
+      },
+      {
+        "value": "v1.4000604800..aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+        "now": 4000000000,
+        "valid": false,
+        "why": "empty nonce"
+      },
+      {
+        "value": "v1.not-a-number.fixture-nonce-000000000000.abc",
+        "now": 4000000000,
+        "valid": false,
+        "why": "non-numeric expiry"
+      },
+      {
+        "value": "v1.only.three",
+        "now": 4000000000,
+        "valid": false,
+        "why": "too few parts"
+      },
+      {
+        "value": "",
+        "now": 4000000000,
+        "valid": false,
+        "why": "empty value"
+      },
+      {
+        "value": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61",
+        "now": 4000000000,
+        "secret": "another-secret",
+        "valid": false,
+        "why": "signed for a different install"
+      }
+    ]
+  },
+  "sysinfo": {
+    "keys": [
+      "cpu_pct",
+      "gpu_mem_gb",
+      "gpu_mem_pct",
+      "ram_pct",
+      "readiness"
+    ],
+    "thresholds": {
+      "roomy_max": 55.0,
+      "tight_max": 80.0
+    },
+    "worker_gpu_path": "/worker/sysinfo",
+    "worker_gpu_schema": {
+      "mlx_available": "bool",
+      "gpu_mem_gb": "number",
+      "gpu_mem_pct": "number",
+      "total_bytes": "int",
+      "detail": "str|null"
+    },
+    "probes": [
+      {
+        "name": "busy",
+        "top": "Processes: 512 total, 2 running, 510 sleeping\nCPU usage: 4.34% user, 10.86% sys, 84.80% idle\nSharedLibs: 500M resident\n",
+        "vm_stat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                         100.\nPages active:                       300.\nPages inactive:                     200.\nPages wired down:                   400.\nPages occupied by compressor:       0.\nPageins:                            999999.\n",
+        "expect": {
+          "cpu_pct": 15.2,
+          "ram_pct": 90.0,
+          "gpu_mem_pct": 0.0,
+          "gpu_mem_gb": 0.0,
+          "readiness": "low"
+        }
+      },
+      {
+        "name": "idle",
+        "top": "Processes: 400 total\nCPU usage: 1.00% user, 0.50% sys, 98.50% idle\n",
+        "vm_stat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                         800.\nPages active:                       100.\nPages inactive:                     50.\nPages wired down:                   40.\nPages occupied by compressor:       10.\nPageins:                            999999.\n",
+        "expect": {
+          "cpu_pct": 1.5,
+          "ram_pct": 20.0,
+          "gpu_mem_pct": 0.0,
+          "gpu_mem_gb": 0.0,
+          "readiness": "roomy"
+        }
+      },
+      {
+        "name": "no_cpu_line",
+        "top": "Processes: 400 total\nSharedLibs: 12M resident\n",
+        "vm_stat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                         500.\nPages active:                       250.\nPages inactive:                     150.\nPages wired down:                   100.\nPages occupied by compressor:       0.\nPageins:                            999999.\n",
+        "expect": {
+          "cpu_pct": 0.0,
+          "ram_pct": 50.0,
+          "gpu_mem_pct": 0.0,
+          "gpu_mem_gb": 0.0,
+          "readiness": "roomy"
+        }
+      },
+      {
+        "name": "no_pages",
+        "top": "CPU usage: 90.00% user, 5.00% sys, 5.00% idle\n",
+        "vm_stat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\n",
+        "expect": {
+          "cpu_pct": 95.0,
+          "ram_pct": 0.0,
+          "gpu_mem_pct": 0.0,
+          "gpu_mem_gb": 0.0,
+          "readiness": "low"
+        }
+      }
+    ],
+    "readiness_grid": [
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "roomy"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "roomy"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 0.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "roomy"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "roomy"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 55.1,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "tight"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.0,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 80.1,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 0.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 40.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 0.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 56.0,
+        "readiness": "low"
+      },
+      {
+        "cpu_pct": 99.9,
+        "ram_pct": 90.0,
+        "gpu_mem_pct": 81.0,
+        "readiness": "low"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "root_redirect",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "gate off: / is a redirect to the account screen"
+    },
+    {
+      "name": "root_redirect_query",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/?next=%2Fapp&mode=basic",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account?next=%2Fapp&mode=basic"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "query preserved after the hash"
+    },
+    {
+      "name": "account_redirect",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/account",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0
+    },
+    {
+      "name": "account_redirect_query",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/account?drop=me",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "app_redirect called WITHOUT the request — query is dropped here"
+    },
+    {
+      "name": "app_shell",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/app",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "312",
+        "cache-control": "no-cache, no-store, must-revalidate",
+        "pragma": "no-cache",
+        "expires": "0",
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://127.0.0.1:*; font-src 'self' data:; connect-src 'self' http://127.0.0.1:*; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+      },
+      "body_sha256": "bf70c02abf5127e54d35d81403cc5269da62ce49ee781e700a3ceecf7db74fca",
+      "body_bytes": 312,
+      "note": "no-store trio + production CSP",
+      "body_text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <title>Lattice AI · Living Brain</title>\n    <link rel=\"manifest\" href=\"/manifest.json\" />\n    <script type=\"module\" crossorigin src=\"/static/app/assets/index-FIXTURE.js\"></script>\n  </head>\n  <body><div id=\"root\"></div></body>\n</html>\n"
+    },
+    {
+      "name": "manifest",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/manifest.json",
+      "status": 200,
+      "headers": {
+        "content-type": "application/manifest+json",
+        "content-length": "64"
+      },
+      "body_sha256": "bcc07ba19fb5bd516a44af7a7204d1fc4f5e28d3cda33e88c20743270015dfd0",
+      "body_bytes": 64,
+      "note": "explicit application/manifest+json",
+      "body_text": "{\"name\":\"Lattice AI\",\"short_name\":\"Lattice\",\"start_url\":\"/app\"}\n"
+    },
+    {
+      "name": "manifest_head",
+      "config": "gate_off",
+      "method": "HEAD",
+      "path": "/manifest.json",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "31",
+        "allow": "GET"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "only GET is declared for this one"
+    },
+    {
+      "name": "favicon",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "status": 200,
+      "headers": {
+        "content-type": "image/x-icon",
+        "content-length": "90"
+      },
+      "body_sha256": "989718b4dbced31a293f66c02177590b9f41378b17a4c4e52e834a593fc67220",
+      "body_bytes": 90,
+      "note": "image/x-icon from static/favicon.ico"
+    },
+    {
+      "name": "favicon_head",
+      "config": "gate_off",
+      "method": "HEAD",
+      "path": "/favicon.ico",
+      "status": 200,
+      "headers": {
+        "content-type": "image/x-icon",
+        "content-length": "90"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "declared api_route methods GET+HEAD"
+    },
+    {
+      "name": "favicon_post",
+      "config": "gate_off",
+      "method": "POST",
+      "path": "/favicon.ico",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "31",
+        "allow": "GET, HEAD"
+      },
+      "body_sha256": "83c09ba9a8daedb136f90b17a294caa90ad471a016e430df6e229acb5a81e100",
+      "body_bytes": 31,
+      "note": "method outside the declared pair",
+      "body_text": "{\"detail\":\"Method Not Allowed\"}"
+    },
+    {
+      "name": "service_worker",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/sw.js",
+      "status": 200,
+      "headers": {
+        "content-type": "application/javascript",
+        "content-length": "60",
+        "service-worker-allowed": "/"
+      },
+      "body_sha256": "459d49f63f0d87e86877b92668c1643b37eeb470f6ebbf2d999299027f5bb1f6",
+      "body_bytes": 60,
+      "note": "Service-Worker-Allowed widens the scope",
+      "body_text": "self.addEventListener('install', () => self.skipWaiting());\n"
+    },
+    {
+      "name": "chat_redirect",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/chat",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/chat"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "GET /chat is a page redirect; POST /chat is the SSE stream"
+    },
+    {
+      "name": "chat_redirect_query",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/chat?thread=7&x=%20a",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/chat?thread=7&x=%20a"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "query survives after the hash"
+    },
+    {
+      "name": "admin_redirect",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/admin",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/admin/users"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "fragment is a two-segment path"
+    },
+    {
+      "name": "admin_redirect_query",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/admin?tab=roles",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/admin/users?tab=roles"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0
+    },
+    {
+      "name": "static_manifest",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/manifest.json",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "64"
+      },
+      "body_sha256": "bcc07ba19fb5bd516a44af7a7204d1fc4f5e28d3cda33e88c20743270015dfd0",
+      "body_bytes": 64,
+      "note": "StaticFiles mount",
+      "body_text": "{\"name\":\"Lattice AI\",\"short_name\":\"Lattice\",\"start_url\":\"/app\"}\n"
+    },
+    {
+      "name": "static_shell",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/app/index.html",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "312"
+      },
+      "body_sha256": "bf70c02abf5127e54d35d81403cc5269da62ce49ee781e700a3ceecf7db74fca",
+      "body_bytes": 312,
+      "body_text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <title>Lattice AI · Living Brain</title>\n    <link rel=\"manifest\" href=\"/manifest.json\" />\n    <script type=\"module\" crossorigin src=\"/static/app/assets/index-FIXTURE.js\"></script>\n  </head>\n  <body><div id=\"root\"></div></body>\n</html>\n"
+    },
+    {
+      "name": "static_js",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/app/assets/index-FIXTURE.js",
+      "status": 200,
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8",
+        "content-length": "32"
+      },
+      "body_sha256": "37d7d1324ec6540a8967c7eb83fa063f7a3c4803866a564c3f876dfbfcbd940b",
+      "body_bytes": 32,
+      "note": "hashed vite chunk",
+      "body_text": "export const brain = 'fixture';\n"
+    },
+    {
+      "name": "static_css",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/app/assets/index-FIXTURE.css",
+      "status": 200,
+      "headers": {
+        "content-type": "text/css; charset=utf-8",
+        "content-length": "26"
+      },
+      "body_sha256": "7a9da69bcf57970fcc4e51b11cf95a5870297918728c459ef9bc2b886fb88cb8",
+      "body_bytes": 26,
+      "body_text": ".brain { display: grid; }\n"
+    },
+    {
+      "name": "static_theme_boot",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/app/theme-boot.js",
+      "status": 200,
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8",
+        "content-length": "51"
+      },
+      "body_sha256": "e96d02d59e260be3a1ca18618aae50467b32dc89edc6ec775b678056d4671e56",
+      "body_bytes": 51,
+      "note": "referenced by the shell",
+      "body_text": "document.documentElement.dataset.ltTheme = 'dark';\n"
+    },
+    {
+      "name": "static_css_dir_file",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/css/base.css",
+      "status": 200,
+      "headers": {
+        "content-type": "text/css; charset=utf-8",
+        "content-length": "36"
+      },
+      "body_sha256": "32058eeb1c9bc45a653ec62e4e53ec49b390775ddad27431ddaa05b43febd50f",
+      "body_bytes": 36,
+      "body_text": ":root { color-scheme: dark light; }\n"
+    },
+    {
+      "name": "static_missing",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/app/assets/nope.js",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "22"
+      },
+      "body_sha256": "37ec4665a8102d115ffd1ac20dae94c98b4dac64b0c1a68228aa2a531caeb35d",
+      "body_bytes": 22,
+      "note": "missing asset",
+      "body_text": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "name": "static_head",
+      "config": "gate_off",
+      "method": "HEAD",
+      "path": "/static/app/assets/index-FIXTURE.js",
+      "status": 200,
+      "headers": {
+        "content-type": "text/javascript; charset=utf-8",
+        "content-length": "32"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0
+    },
+    {
+      "name": "static_post",
+      "config": "gate_off",
+      "method": "POST",
+      "path": "/static/app/assets/index-FIXTURE.js",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "31"
+      },
+      "body_sha256": "83c09ba9a8daedb136f90b17a294caa90ad471a016e430df6e229acb5a81e100",
+      "body_bytes": 31,
+      "body_text": "{\"detail\":\"Method Not Allowed\"}"
+    },
+    {
+      "name": "static_directory",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/app",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "22"
+      },
+      "body_sha256": "37ec4665a8102d115ffd1ac20dae94c98b4dac64b0c1a68228aa2a531caeb35d",
+      "body_bytes": 22,
+      "note": "a directory, not a file",
+      "body_text": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "name": "static_escape",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/..%2fsecret.txt",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "22"
+      },
+      "body_sha256": "37ec4665a8102d115ffd1ac20dae94c98b4dac64b0c1a68228aa2a531caeb35d",
+      "body_bytes": 22,
+      "note": "traversal attempt",
+      "body_text": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "name": "static_unknown_ext",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/app/opaque.fixtureext",
+      "status": 200,
+      "headers": {
+        "content-type": "application/octet-stream",
+        "content-length": "7"
+      },
+      "body_sha256": "328975f24457d58da82eb3d42151ced7f78a04209724bc41f20c51ce49e45c0b",
+      "body_bytes": 7,
+      "note": "mimetypes fallback"
+    },
+    {
+      "name": "static_via_icons_dir",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/static/icons/favicon-32.png",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png",
+        "content-length": "68"
+      },
+      "body_sha256": "b7a95783e8c945e9f2566ec4baaf0d118564bc09278f801c44f44140cfb2f1c0",
+      "body_bytes": 68,
+      "note": "same file, first mount"
+    },
+    {
+      "name": "icons_png",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/icons/favicon-32.png",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png",
+        "content-length": "68"
+      },
+      "body_sha256": "b7a95783e8c945e9f2566ec4baaf0d118564bc09278f801c44f44140cfb2f1c0",
+      "body_bytes": 68,
+      "note": "second mount, rooted at static/icons"
+    },
+    {
+      "name": "icons_missing",
+      "config": "gate_off",
+      "method": "GET",
+      "path": "/icons/nope.png",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "22"
+      },
+      "body_sha256": "37ec4665a8102d115ffd1ac20dae94c98b4dac64b0c1a68228aa2a531caeb35d",
+      "body_bytes": 22,
+      "body_text": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "name": "app_shell_head",
+      "config": "gate_off",
+      "method": "HEAD",
+      "path": "/app",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "31",
+        "allow": "GET"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "the shell declares GET only"
+    },
+    {
+      "name": "service_worker_head",
+      "config": "gate_off",
+      "method": "HEAD",
+      "path": "/sw.js",
+      "status": 405,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "31",
+        "allow": "GET"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0
+    },
+    {
+      "name": "app_shell_missing",
+      "config": "shell_missing",
+      "method": "GET",
+      "path": "/app",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "35"
+      },
+      "body_sha256": "e2093cea35fad9440dab94b9abce9adb166c2f670a0a27d02b289049ef7ebd98",
+      "body_bytes": 35,
+      "note": "detail text is part of the contract",
+      "body_text": "{\"detail\":\"React shell not found.\"}"
+    },
+    {
+      "name": "manifest_missing",
+      "config": "shell_missing",
+      "method": "GET",
+      "path": "/manifest.json",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "22"
+      },
+      "body_sha256": "37ec4665a8102d115ffd1ac20dae94c98b4dac64b0c1a68228aa2a531caeb35d",
+      "body_bytes": 22,
+      "body_text": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "name": "service_worker_missing",
+      "config": "shell_missing",
+      "method": "GET",
+      "path": "/sw.js",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "22"
+      },
+      "body_sha256": "37ec4665a8102d115ffd1ac20dae94c98b4dac64b0c1a68228aa2a531caeb35d",
+      "body_bytes": 22,
+      "body_text": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "name": "favicon_png_fallback",
+      "config": "shell_missing",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png",
+        "content-length": "68"
+      },
+      "body_sha256": "b7a95783e8c945e9f2566ec4baaf0d118564bc09278f801c44f44140cfb2f1c0",
+      "body_bytes": 68,
+      "note": "no .ico → icons/favicon-32.png as image/png"
+    },
+    {
+      "name": "favicon_absent",
+      "config": "iconless",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "22"
+      },
+      "body_sha256": "37ec4665a8102d115ffd1ac20dae94c98b4dac64b0c1a68228aa2a531caeb35d",
+      "body_bytes": 22,
+      "note": "neither .ico nor the png fallback exists",
+      "body_text": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "name": "gate_root_denied",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/",
+      "status": 403,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "1012"
+      },
+      "body_sha256": "89230ec9a8655925f195f71ba3d7848b5605081336fa0145920ab48bfb330641",
+      "body_bytes": 1012,
+      "note": "the invitation wall — exact HTML",
+      "body_text": "\n            <body style=\"background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;\">\n                <div style=\"background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);\">\n                    <div style=\"font-size:48px; margin-bottom:20px;\">🔒</div>\n                    <h1 style=\"color:#378ADD; margin:0; font-size:24px;\">Invitation Required</h1>\n                    <p style=\"color:#94a3b8; margin:20px 0; line-height:1.6;\">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>\n                    <div style=\"margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;\">LATTICE AI</div>\n                </div>\n            </body>\n        "
+    },
+    {
+      "name": "gate_root_wrong_code",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/?code=WRONG",
+      "status": 403,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "1012"
+      },
+      "body_sha256": "89230ec9a8655925f195f71ba3d7848b5605081336fa0145920ab48bfb330641",
+      "body_bytes": 1012,
+      "body_text": "\n            <body style=\"background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;\">\n                <div style=\"background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);\">\n                    <div style=\"font-size:48px; margin-bottom:20px;\">🔒</div>\n                    <h1 style=\"color:#378ADD; margin:0; font-size:24px;\">Invitation Required</h1>\n                    <p style=\"color:#94a3b8; margin:20px 0; line-height:1.6;\">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>\n                    <div style=\"margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;\">LATTICE AI</div>\n                </div>\n            </body>\n        "
+    },
+    {
+      "name": "gate_root_right_code",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/?code=FIXTURE-INVITE-CODE",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "issues the cookie and redirects so the code leaves the URL",
+      "set_cookie": {
+        "name": "lattice_invite",
+        "value_prefix": "v1",
+        "value_parts": 4,
+        "attributes": [
+          "HttpOnly",
+          "Max-Age=604800",
+          "Path=/",
+          "SameSite=lax"
+        ]
+      }
+    },
+    {
+      "name": "gate_root_with_cookie",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "cookies": {
+        "lattice_invite": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61"
+      },
+      "note": "a Python-signed cookie the Rust verifier must accept"
+    },
+    {
+      "name": "gate_root_forged_cookie",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/",
+      "status": 403,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "1012"
+      },
+      "body_sha256": "89230ec9a8655925f195f71ba3d7848b5605081336fa0145920ab48bfb330641",
+      "body_bytes": 1012,
+      "cookies": {
+        "lattice_invite": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f60"
+      },
+      "body_text": "\n            <body style=\"background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;\">\n                <div style=\"background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);\">\n                    <div style=\"font-size:48px; margin-bottom:20px;\">🔒</div>\n                    <h1 style=\"color:#378ADD; margin:0; font-size:24px;\">Invitation Required</h1>\n                    <p style=\"color:#94a3b8; margin:20px 0; line-height:1.6;\">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>\n                    <div style=\"margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;\">LATTICE AI</div>\n                </div>\n            </body>\n        "
+    },
+    {
+      "name": "gate_account_denied",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/account",
+      "status": 403,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "1012"
+      },
+      "body_sha256": "89230ec9a8655925f195f71ba3d7848b5605081336fa0145920ab48bfb330641",
+      "body_bytes": 1012,
+      "body_text": "\n            <body style=\"background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;\">\n                <div style=\"background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);\">\n                    <div style=\"font-size:48px; margin-bottom:20px;\">🔒</div>\n                    <h1 style=\"color:#378ADD; margin:0; font-size:24px;\">Invitation Required</h1>\n                    <p style=\"color:#94a3b8; margin:20px 0; line-height:1.6;\">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>\n                    <div style=\"margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;\">LATTICE AI</div>\n                </div>\n            </body>\n        "
+    },
+    {
+      "name": "gate_account_with_cookie",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/account",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "cookies": {
+        "lattice_invite": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61"
+      }
+    },
+    {
+      "name": "gate_app_denied",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/app",
+      "status": 403,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "1012"
+      },
+      "body_sha256": "89230ec9a8655925f195f71ba3d7848b5605081336fa0145920ab48bfb330641",
+      "body_bytes": 1012,
+      "body_text": "\n            <body style=\"background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;\">\n                <div style=\"background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);\">\n                    <div style=\"font-size:48px; margin-bottom:20px;\">🔒</div>\n                    <h1 style=\"color:#378ADD; margin:0; font-size:24px;\">Invitation Required</h1>\n                    <p style=\"color:#94a3b8; margin:20px 0; line-height:1.6;\">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>\n                    <div style=\"margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;\">LATTICE AI</div>\n                </div>\n            </body>\n        "
+    },
+    {
+      "name": "gate_app_with_cookie",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/app",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "312",
+        "cache-control": "no-cache, no-store, must-revalidate",
+        "pragma": "no-cache",
+        "expires": "0",
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://127.0.0.1:*; font-src 'self' data:; connect-src 'self' http://127.0.0.1:*; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+      },
+      "body_sha256": "bf70c02abf5127e54d35d81403cc5269da62ce49ee781e700a3ceecf7db74fca",
+      "body_bytes": 312,
+      "cookies": {
+        "lattice_invite": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f61"
+      },
+      "body_text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <title>Lattice AI · Living Brain</title>\n    <link rel=\"manifest\" href=\"/manifest.json\" />\n    <script type=\"module\" crossorigin src=\"/static/app/assets/index-FIXTURE.js\"></script>\n  </head>\n  <body><div id=\"root\"></div></body>\n</html>\n"
+    },
+    {
+      "name": "gate_app_forged_cookie",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/app",
+      "status": 403,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "1012"
+      },
+      "body_sha256": "89230ec9a8655925f195f71ba3d7848b5605081336fa0145920ab48bfb330641",
+      "body_bytes": 1012,
+      "cookies": {
+        "lattice_invite": "v1.4000604800.fixture-nonce-000000000000.aed3312c7d871af98e1f752c7edb6c3808b2f378f64182be5ed339cf48285f60"
+      },
+      "body_text": "\n            <body style=\"background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;\">\n                <div style=\"background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);\">\n                    <div style=\"font-size:48px; margin-bottom:20px;\">🔒</div>\n                    <h1 style=\"color:#378ADD; margin:0; font-size:24px;\">Invitation Required</h1>\n                    <p style=\"color:#94a3b8; margin:20px 0; line-height:1.6;\">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>\n                    <div style=\"margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;\">LATTICE AI</div>\n                </div>\n            </body>\n        "
+    },
+    {
+      "name": "gate_chat_public",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/chat",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/chat"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "the gate covers /, /account and /app — nothing else"
+    },
+    {
+      "name": "gate_manifest_public",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/manifest.json",
+      "status": 200,
+      "headers": {
+        "content-type": "application/manifest+json",
+        "content-length": "64"
+      },
+      "body_sha256": "bcc07ba19fb5bd516a44af7a7204d1fc4f5e28d3cda33e88c20743270015dfd0",
+      "body_bytes": 64,
+      "body_text": "{\"name\":\"Lattice AI\",\"short_name\":\"Lattice\",\"start_url\":\"/app\"}\n"
+    },
+    {
+      "name": "gate_static_public",
+      "config": "gate_on",
+      "method": "GET",
+      "path": "/static/app/index.html",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "312"
+      },
+      "body_sha256": "bf70c02abf5127e54d35d81403cc5269da62ce49ee781e700a3ceecf7db74fca",
+      "body_bytes": 312,
+      "note": "the mounts are outside the gate: the shell is walled, its chunks are not",
+      "body_text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <title>Lattice AI · Living Brain</title>\n    <link rel=\"manifest\" href=\"/manifest.json\" />\n    <script type=\"module\" crossorigin src=\"/static/app/assets/index-FIXTURE.js\"></script>\n  </head>\n  <body><div id=\"root\"></div></body>\n</html>\n"
+    },
+    {
+      "name": "gate_root_right_code_secure",
+      "config": "gate_on_secure",
+      "method": "GET",
+      "path": "/?code=FIXTURE-INVITE-CODE",
+      "status": 308,
+      "headers": {
+        "content-length": "0",
+        "location": "/app#/account"
+      },
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body_bytes": 0,
+      "note": "public/non-loopback bind forces Secure on the invite cookie",
+      "set_cookie": {
+        "name": "lattice_invite",
+        "value_prefix": "v1",
+        "value_parts": 4,
+        "attributes": [
+          "HttpOnly",
+          "Max-Age=604800",
+          "Path=/",
+          "SameSite=lax",
+          "Secure"
+        ]
+      }
+    }
+  ]
+}

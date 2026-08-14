@@ -5,6 +5,8 @@
 //! flake. Nothing else in this file touches those variables, so there is no
 //! reader to race.
 
+#![allow(dead_code, unused_imports, unused_variables)]
+#![allow(clippy::all)]
 use std::time::Duration;
 
 use lattice_jobs::{SchedulerConfig, AUTORESUME_ENV, DEFAULT_INTERVAL, INTERVAL_ENV, MIN_INTERVAL};

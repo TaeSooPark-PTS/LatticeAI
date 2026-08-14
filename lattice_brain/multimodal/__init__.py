@@ -34,6 +34,12 @@ Brain Core owns none of those models. Every heavy dependency arrives as an
 injected callable (:class:`MultimodalPorts`), which is also why this module
 imports nothing from ``latticeai``.
 
+v11.6.0 removed the *writing* half — ``write_image_memory``,
+``write_video_memory``, the keyframe writer and the node-id helpers. Extraction
+returns facts; ``lattice-core``'s graph write engine turns them into nodes. What
+is left here is exactly what ``POST /worker/multimodal/describe`` and
+``POST /worker/asr`` answer with.
+
 Split into cohesive submodules in v11.3.0 (no behaviour change): ``common``
 (taxonomy + shared helpers), ``ports`` (injected capabilities + the ffmpeg
 fallback), ``images``, ``audio``, ``video``. This module re-exports every name
@@ -74,16 +80,8 @@ from .common import (
 from .common import _sha256_file as _sha256_file
 from .common import _sha256_text as _sha256_text
 from .common import _split_index_text as _split_index_text
-from .images import (
-    ImageFacts,
-    extract_image_facts,
-    image_node_id,
-    image_quality_score,
-    write_image_memory,
-)
+from .images import ImageFacts, extract_image_facts, image_quality_score
 from .images import _apply_vision_embedding as _apply_vision_embedding
-from .images import _attach_concepts as _attach_concepts
-from .images import _attach_source as _attach_source
 from .images import _open_image as _open_image
 from .images import _run_ocr as _run_ocr
 from .images import _safe_caption as _safe_caption
@@ -112,12 +110,8 @@ from .video import (
     find_subtitle,
     parse_subtitles,
     read_video_facts,
-    video_frame_dir,
-    video_node_id,
     video_quality_score,
-    write_video_memory,
 )
-from .video import _write_keyframes as _write_keyframes
 
 __all__ = [
     "AUDIO_EXTENSIONS",
@@ -151,14 +145,9 @@ __all__ = [
     "extract_keyframes",
     "ffmpeg_available",
     "find_subtitle",
-    "image_node_id",
     "image_quality_score",
     "parse_subtitles",
     "read_video_facts",
     "transcribe_audio",
-    "video_frame_dir",
-    "video_node_id",
     "video_quality_score",
-    "write_image_memory",
-    "write_video_memory",
 ]

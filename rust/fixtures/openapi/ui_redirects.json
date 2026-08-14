@@ -1,0 +1,150 @@
+{
+  "components": {
+    "schemas": {}
+  },
+  "family": "ui_redirects",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {},
+  "operation_count": 7,
+  "operation_order": [
+    "GET /activity",
+    "GET /agents",
+    "GET /graph",
+    "GET /knowledge-graph",
+    "GET /onboarding",
+    "GET /workflows",
+    "GET /workspace"
+  ],
+  "path_count": 7,
+  "path_order": [
+    "/activity",
+    "/agents",
+    "/graph",
+    "/knowledge-graph",
+    "/onboarding",
+    "/workflows",
+    "/workspace"
+  ],
+  "paths": {
+    "/activity": {
+      "get": {
+        "operationId": "activity_page_activity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Activity Page"
+      }
+    },
+    "/agents": {
+      "get": {
+        "operationId": "agents_page_agents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agents Page"
+      }
+    },
+    "/graph": {
+      "get": {
+        "description": "Serve the interactive knowledge graph canvas UI.",
+        "operationId": "knowledge_graph_page_graph_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Page"
+      }
+    },
+    "/knowledge-graph": {
+      "get": {
+        "description": "Backward-compatible route for the graph page.",
+        "operationId": "knowledge_graph_legacy_page_knowledge_graph_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Legacy Page"
+      }
+    },
+    "/onboarding": {
+      "get": {
+        "operationId": "onboarding_page_onboarding_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Onboarding Page"
+      }
+    },
+    "/workflows": {
+      "get": {
+        "operationId": "workflows_page_workflows_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workflows Page"
+      }
+    },
+    "/workspace": {
+      "get": {
+        "operationId": "workspace_page_workspace_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Page"
+      }
+    }
+  },
+  "schema_count": 0,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Legacy HTML page routes that only render or redirect to an SPA shell, living in feature modules today.",
+  "target": "lattice-host (SPA shell routes)",
+  "wp": "I4"
+}

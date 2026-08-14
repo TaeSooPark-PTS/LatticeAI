@@ -119,13 +119,34 @@ pub async fn unknown_native(OriginalUri(uri): OriginalUri) -> Response {
         .into_response()
 }
 
-/// Nothing matched: guard the host namespaces, else proxy to the worker.
+/// FastAPI's own answer for a path no route matched.
 ///
-/// This is the whole of the routing decision that cannot be a route. Both
-/// namespaces mount real paths from several crates, so reserving them with
-/// catch-all routes would collide with those mounts; deciding here instead
-/// keeps one rule — *a path under `/host` or `/rust` is answered here or is a
-/// 404, and is never proxied* — in one readable place.
+/// The gateway is the product server now, so an unknown product path must read
+/// exactly as it read when Python served it — clients (and the SPA's error
+/// handling) parse `{"detail": …}`.
+pub fn not_found() -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"detail": "Not Found"})),
+    )
+        .into_response()
+}
+
+/// Nothing matched: guard the host namespaces, then the worker allowlist.
+///
+/// This is the whole of the routing decision that cannot be a route, and since
+/// v11.6.0 it is also the security boundary. Three rules, in order:
+///
+/// 1. **`/host` and `/rust` are ours.** Both namespaces mount real paths from
+///    several crates, so reserving them with catch-all routes would collide
+///    with those mounts; deciding here keeps the rule — *answered here or a
+///    404, never proxied* — in one readable place.
+/// 2. **The worker gets only its own surface.** [`allowlist`] is the committed
+///    projection of `worker_route_keys()`. A path on it is forwarded; a path
+///    off it never reaches the worker at all.
+/// 3. **Everything else is 404.** Not "probably the worker's" — the gateway
+///    mounts the product, so a path it does not serve and the worker does not
+///    own is a path that does not exist.
 pub async fn gateway_fallback(state: State<Arc<GatewayState>>, request: Request) -> Response {
     let path = request.uri().path().to_string();
     let uri = OriginalUri(request.uri().clone());
@@ -137,6 +158,9 @@ pub async fn gateway_fallback(state: State<Arc<GatewayState>>, request: Request)
     }
     if in_namespace(&path, "/rust") {
         return unknown_native(uri).await;
+    }
+    if !state.allowlist().allows(request.method(), &path) {
+        return not_found();
     }
     proxy::proxy_handler(state, request).await
 }

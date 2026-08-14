@@ -133,18 +133,6 @@ class FakeHooks:
         return {}
 
 
-class FakeGovernor:
-    """Stands in for ``ChangeProposalService``; returns a scripted verdict."""
-
-    def __init__(self, verdict: Optional[Dict[str, Any]]) -> None:
-        self.verdict = verdict
-        self.calls: list = []
-
-    def review(self, name: str, args: Dict[str, Any], **kwargs: Any):
-        self.calls.append({"name": name, "args": dict(args), **kwargs})
-        return self.verdict
-
-
 class RecordingLimiter:
     def __init__(self, *, boom: bool = False) -> None:
         self.calls: list = []
@@ -165,7 +153,6 @@ def _client(
     dispatch: Any = None,
     execute_tool: Any = None,
     hooks: Any = None,
-    change_proposals: Any = None,
     user: Optional[str] = USER,
     limiter: Any = None,
 ) -> TestClient:
@@ -183,7 +170,6 @@ def _client(
                 lambda name, args: {"ok": True, "tool": name, "args": args}
             ),
             hooks=hooks,
-            change_proposals=change_proposals,
             require_user=require_user,
             enforce_rate_limit=limiter if limiter is not None else RecordingLimiter(),
         )
@@ -333,13 +319,12 @@ def test_a_rate_limited_worker_gets_the_limiters_own_answer():
     ("path", "body"),
     [
         ("/agent/tool", {"tool": "read_file", "args": {"path": "a.md"}}),
-        ("/agent/change-proposal", {"tool": "write_file", "args": {}}),
     ],
 )
 def test_the_side_effecting_routes_are_404_until_the_host_opens_the_seam(
     seam_off, path, body
 ):
-    response = _client(change_proposals=FakeGovernor(None)).post(path, json=body)
+    response = _client().post(path, json=body)
     assert response.status_code == 404
     assert response.json()["detail"] == MESSAGES["agent_seam.disabled"]["ko"]
 
@@ -584,108 +569,10 @@ def test_args_default_to_an_empty_object(seam_on):
     assert seen == [{}]
 
 
-# ── POST /agent/change-proposal ─────────────────────────────────────────────
-
-
-def test_an_additive_write_is_allowed_and_the_verdict_comes_back_verbatim(seam_on):
-    verdict = {
-        "decision": "allow_additive",
-        "classification": {"change_class": "additive", "fail_closed": False},
-    }
-    governor = FakeGovernor(verdict)
-    response = _client(change_proposals=governor).post(
-        "/agent/change-proposal",
-        json={
-            "tool": "write_file",
-            "args": {"path": "new.md", "content": "x"},
-            "workspace_id": "ws-1",
-            "conversation_id": "c-9",
-        },
-    )
-    assert response.status_code == 200
-    assert response.json() == verdict
-    assert governor.calls[0]["name"] == "write_file"
-    assert governor.calls[0]["user_email"] == USER
-    assert governor.calls[0]["workspace_id"] == "ws-1"
-    assert governor.calls[0]["conversation_id"] == "c-9"
-
-
-def test_an_overwrite_comes_back_staged_with_the_proposal(seam_on):
-    verdict = {
-        "decision": "proposed",
-        "classification": {"change_class": "mutation"},
-        "proposal": {"id": "p-1", "path": "notes.md", "diff": ["-a", "+b"]},
-    }
-    response = _client(change_proposals=FakeGovernor(verdict)).post(
-        "/agent/change-proposal",
-        json={"tool": "write_file", "args": {"path": "notes.md", "content": "b"}},
-    )
-    assert response.status_code == 200
-    assert response.json() == verdict
-
-
-def test_nothing_to_say_is_reported_as_none_without_inventing_a_reason(seam_on):
-    """``review`` collapses three situations into ``None``; so does this."""
-    response = _client(change_proposals=FakeGovernor(None)).post(
-        "/agent/change-proposal", json={"tool": "run_command", "args": {}}
-    )
-    assert response.status_code == 200
-    assert response.json() == {"decision": "none"}
-
-
-def test_an_omitted_policy_falls_back_to_the_registrys_own(seam_on):
-    governor = FakeGovernor(None)
-    _client(change_proposals=governor).post(
-        "/agent/change-proposal",
-        json={"tool": "write_file", "args": {"path": "a.md"}},
-    )
-    assert governor.calls[0]["policy"] == dict(
-        DEFAULT_TOOL_DISPATCH_SERVICE.policy_for("write_file", {"path": "a.md"})
-    )
-
-
-def test_a_supplied_policy_is_the_one_the_governor_judges_with(seam_on):
-    """The kernel preflighted with a policy; both sides decide on the same facts."""
-    governor = FakeGovernor(None)
-    supplied = {"risk": "write", "destructive": False, "auto_approve": True}
-    _client(change_proposals=governor).post(
-        "/agent/change-proposal",
-        json={"tool": "write_file", "args": {"path": "a.md"}, "policy": supplied},
-    )
-    assert governor.calls[0]["policy"] == supplied
-
-
-def test_without_a_governor_the_route_is_503_not_a_silent_allow(seam_on):
-    response = _client(change_proposals=None).post(
-        "/agent/change-proposal",
-        json={"tool": "write_file", "args": {}},
-        headers={LANGUAGE_HEADER: "en"},
-    )
-    assert response.status_code == 503
-    assert response.json()["detail"] == MESSAGES[
-        "agent_seam.proposals_unavailable"
-    ]["en"]
-
-
-@pytest.mark.parametrize("tool", ["", "  "])
-def test_a_blank_tool_name_on_the_proposal_route_is_a_422(seam_on, tool):
-    response = _client(change_proposals=FakeGovernor(None)).post(
-        "/agent/change-proposal", json={"tool": tool}
-    )
-    assert response.status_code == 422
-
-
-def test_change_proposal_requires_an_authenticated_user(seam_on):
-    response = _client(user=None, change_proposals=FakeGovernor(None)).post(
-        "/agent/change-proposal", json={"tool": "write_file"}
-    )
-    assert response.status_code == 401
-
-
 # ── the seam writes nothing it was not asked to ─────────────────────────────
 
 
-def test_the_router_registers_exactly_the_three_seam_paths():
+def test_the_router_registers_exactly_the_two_seam_paths():
     app = FastAPI()
     app.include_router(
         create_agent_worker_seam_router(
@@ -693,7 +580,6 @@ def test_the_router_registers_exactly_the_three_seam_paths():
             dispatch_service=FakeDispatch(),
             execute_tool=lambda name, args: {},
             hooks=None,
-            change_proposals=FakeGovernor(None),
             require_user=lambda _request: USER,
             enforce_rate_limit=RecordingLimiter(),
         )
@@ -703,9 +589,9 @@ def test_the_router_registers_exactly_the_three_seam_paths():
     # 11.0.0 idempotence-guard lesson). The OpenAPI schema is the one
     # route inventory every supported fastapi version agrees on.
     paths = set(app.openapi()["paths"])
-    assert {"/agent/llm", "/agent/tool", "/agent/change-proposal"} <= paths
+    assert {"/agent/llm", "/agent/tool"} <= paths
     assert not {path for path in paths if path.startswith("/agent/")} - {
-        "/agent/llm", "/agent/tool", "/agent/change-proposal"
+        "/agent/llm", "/agent/tool"
     }
 
 

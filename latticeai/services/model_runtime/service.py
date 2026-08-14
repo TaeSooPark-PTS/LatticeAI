@@ -12,7 +12,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Dict, List, Optional
 
-from latticeai.services.model_runtime.cloud import verify_cloud_models
 from latticeai.services.model_runtime.loading import (
     prepare_and_load_model,
     prepare_and_load_model_stream,
@@ -21,11 +20,7 @@ from latticeai.services.model_runtime.state import (
     ModelRuntimeState,
     create_model_runtime_state,
 )
-from latticeai.services.model_runtime.status import (
-    engine_status,
-    install_engine,
-    runtime_features,
-)
+from latticeai.services.model_runtime.status import engine_status, runtime_features
 
 
 def configure_model_runtime(**deps: Any) -> "ModelRuntimeService":
@@ -49,6 +44,9 @@ class ModelRuntimeService:
     """
 
     state: ModelRuntimeState
+    #: Engine probes cache their cloud-provider answers here. It is per-service
+    #: rather than process-wide so a second application starts with an empty
+    #: cache instead of inheriting probe results it never ran.
     _cloud_verify_cache: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     def runtime_features(self) -> Dict[str, Any]:
@@ -60,28 +58,6 @@ class ModelRuntimeService:
             cloud_verify_cache=self._cloud_verify_cache,
         )
 
-    def install_engine(
-        self,
-        engine: str,
-        confirmation_token: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        return install_engine(
-            engine,
-            confirmation_token=confirmation_token,
-            state=self.state,
-        )
-
-    async def verify_cloud_models(
-        self,
-        force: bool = False,
-        provider_filter: Optional[str] = None,
-    ) -> Dict[str, Dict[str, Any]]:
-        return await verify_cloud_models(
-            force=force,
-            provider_filter=provider_filter,
-            state=self.state,
-            cache=self._cloud_verify_cache,
-        )
 
     async def prepare_and_load_model(
         self,

@@ -54,6 +54,17 @@ pub const AGENT_TOOL_SEAM_ENV: &str = "LATTICEAI_AGENT_TOOL_SEAM";
 /// rejected. That is the single blocker to running the gateway as the front
 /// door, and this is the whole fix: name the gateway's origin, in both
 /// spellings a browser can produce for loopback.
+///
+/// **Still load-bearing after One Door**, and the reasoning is worth writing
+/// down because the obvious conclusion is the wrong one. The gateway now owns
+/// the browser-facing surface and applies its own Origin guard, so it is
+/// tempting to stop injecting this. But the proxy allowlist still forwards
+/// browser-facing writes — `POST /models/load`, `POST /engines/pull-model`,
+/// `POST /tools/read_document` — and a proxied request arrives at the worker
+/// carrying the browser's session cookie *and* its `Origin: …:{gateway port}`.
+/// Without this variable the worker's own guard sees a cross-site origin and
+/// answers 403, so loading a model from the SPA would stop working. WP-I2 §4
+/// states the rule: do not drop it while any browser-facing path proxies.
 pub fn csrf_trusted_origins(gateway_port: u16) -> String {
     format!("http://127.0.0.1:{gateway_port},http://localhost:{gateway_port}")
 }
@@ -74,6 +85,15 @@ pub fn csrf_trusted_origins(gateway_port: u16) -> String {
 /// loopback: `[::1]` is added here and not in the CSRF list only because the
 /// worker folds its CORS allowlist into the CSRF trust set anyway
 /// (`runtime/web_runtime.py`), so naming it once covers both.
+///
+/// After One Door no browser talks to the worker cross-origin — the SPA is
+/// same-origin with the gateway, and the extensions point at the gateway port
+/// too — so the `Access-Control-Allow-Origin` half of this is no longer reached
+/// in the product topology. It is kept for the half that is: the worker merges
+/// this list into its CSRF trust set, so dropping it would quietly narrow the
+/// trust the variable above exists to widen. One variable, two effects; only
+/// one of them is now dead, and removing the pair to retire the dead half would
+/// take the live half with it.
 pub fn cors_allowed_origins(gateway_port: u16) -> String {
     format!(
         "http://127.0.0.1:{gateway_port},http://localhost:{gateway_port},http://[::1]:{gateway_port}"

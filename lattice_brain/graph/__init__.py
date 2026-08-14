@@ -1,28 +1,13 @@
-"""Knowledge graph subsystem of the Brain Core.
+"""Graph compute: chunking, extraction, parsing, and the embedder fingerprint.
 
-Physically hosts the graph schema, store, mixins (write/retrieval/discovery/
-documents/ingest/projection/provenance), device identity, brain network, and
-the graph curator. Heavy modules are lazy-loaded so importing
-``lattice_brain.graph`` stays cheap.
+The store, the schema, the write mixins, the ANN index and the retrieval stack
+all moved to ``lattice-core`` / ``lattice-retrieval`` in v11.6.0 §Wave 2.5. This
+package keeps only what turns bytes into structures a writer can use, which is
+why it now exports nothing itself — import the submodule you mean
+(``._kg_common``, ``.documents``, ``.retrieval_vector.fingerprint``,
+``.runtime``).
 """
 
 from __future__ import annotations
 
-__all__ = [
-    "KnowledgeGraphStore",
-    "KGStoreV2",
-    "NodeType",
-    "EdgeType",
-]
-
-
-def __getattr__(name: str):
-    if name == "KnowledgeGraphStore":
-        from .store import KnowledgeGraphStore
-
-        return KnowledgeGraphStore
-    if name in {"KGStoreV2", "NodeType", "EdgeType"}:
-        from . import schema
-
-        return getattr(schema, name)
-    raise AttributeError(name)
+__all__: list[str] = []

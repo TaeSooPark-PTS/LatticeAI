@@ -1,13 +1,14 @@
 """Machine-checkable product readiness gates for the current release.
 
 Where ``architecture_readiness`` proves the internal structure is sound, this
-module answers the product question the 8.4 release exists to settle: *does the
-app now feel like a finished product rather than only a strong framework?*
-It does so honestly: every gate is backed by
+module answers the product question: *does the app now feel like a finished
+product rather than only a strong framework?* Every gate is backed by
 evidence that is probed on disk, so a gate only reports ``complete`` when its
-evidence actually resolves. The same report can be printed by
-``scripts/product_readiness.py`` and re-run after every change, which is the
-point: completeness is something we keep measuring, not a one-time claim.
+evidence actually resolves.
+
+v11.6.0 retargeted every needle that named a deleted Python product module
+onto the worker-only tree, the native owner, or the surviving test. The
+assertions themselves were not deleted.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "11.5.2"
+PRODUCT_VERSION_TARGET = "11.6.0"
 
 
 @dataclass(frozen=True)
@@ -43,18 +44,17 @@ PRODUCT_GATES: List[ProductGate] = [
             "frontend/src/features/brain/BrainHomeDock.tsx::BrainBriefPanel",
             "frontend/src/features/brain/BrainHome.tsx",
             "frontend/src/App.tsx::brain-mobile-nav",
-            "latticeai/setup/auto_setup.py",
-            # v11.3.0: the wizard is a package (paths / detect / plans /
-            # catalog / recommend / install); the recommender is the piece
-            # first-run actually shows.
-            "latticeai/setup/wizard/recommend.py",
+            "latticeai/cli/entrypoint.py",
+            # v11.6.0: the wizard died with the product app. First-run now
+            # boots the worker factory the host supervises.
+            "latticeai/worker_app.py",
         ],
     ),
     ProductGate(
         id="answer-proof",
         title="Answers carry memory proof and citations",
         evidence=[
-            "latticeai/api/memory.py::brain-proof",
+            "latticeai/api/search.py::embeddings_status",
             "scripts/brain_quality_eval.py",
         ],
     ),
@@ -62,18 +62,13 @@ PRODUCT_GATES: List[ProductGate] = [
         id="action-aware-chat",
         title="File action requests create artifacts instead of code-only answers",
         evidence=[
-            "latticeai/api/chat.py::is_file_action_request",
-            "latticeai/api/chat_intents.py::direct_file_action",
-            "latticeai/api/chat_intents.py::direct_write_file",
-            # v9.9.2 ArtifactWritePipeline: every write path shares the same
-            # extract → validate → repair guarantee, proven by the FG harness.
-            # v11.3.0: both modules became packages — the write-side door is
-            # its own submodule, and the agent's use of it lives in the
-            # EXECUTE phase.
-            "latticeai/core/file_generation/sanitize.py::sanitize_write_content",
-            "latticeai/core/agent/execution.py::content_sanitize",
-            "tests/unit/test_artifact_write_scenarios.py::test_fg06_agent_dispatch_strips_fences_from_write_file_content",
-            "tests/unit/test_chat_telegram_decoupling.py::test_chat_file_creation_intent_writes_real_file",
+            "latticeai/api/worker_compute.py::create_worker_compute_router",
+            "latticeai/tools/documents.py::read_document",
+            "latticeai/tools/filesystem.py::read_file",
+            "latticeai/core/tool_governor.py::classify_tool_call",
+            "latticeai/core/agent_permission.py::block_reason_for_tool",
+            "tests/unit/test_worker_compute.py::test_the_docx_bytes_open_as_a_document_with_the_blocks_that_were_sent",
+            "tests/unit/test_tool_registry.py::test_execute_tool_uses_registry",
         ],
     ),
     ProductGate(
@@ -116,16 +111,14 @@ PRODUCT_GATES: List[ProductGate] = [
             f"docs/CHANGELOG.md::## [{PRODUCT_VERSION_TARGET}]",
             "FEATURE_STATUS.md",
             f"RELEASE_NOTES_v{PRODUCT_VERSION_TARGET}.md",
-            # v11.3.0: the single-agent loop is a package; the composed
-            # class and its boundary contract live in the runtime half.
-            "latticeai/core/agent/runtime.py::SingleAgentRuntime",
-            "lattice_brain/runtime/agent_runtime.py::class AgentRuntime",
-            "lattice_brain/runtime/contracts.py::runtime-boundary/v1",
-            "lattice_brain/runtime/contracts.py::RuntimeBoundaryProtocol",
-            "lattice_brain/runtime/agent_runtime.py::def boundary",
-            "latticeai/core/agent/runtime.py::def boundary",
+            "latticeai/core/agent_permission.py::block_reason_for_tool",
+            "rust/lattice-agent/src/lib.rs::pub mod agentloop",
+            "latticeai/api/agent_worker_seam.py::create_agent_worker_seam_router",
+            "latticeai/core/agent_permission.py::non_auto_plan_steps",
+            "latticeai/worker_app.py::create_worker_app",
+            "latticeai/worker_app.py::def create_worker_app",
             "latticeai/services/architecture_readiness.py::lattice-architecture-contract/v1",
-            "latticeai/services/tool_dispatch.py::rollback_file",
+            "latticeai/core/tool_governor.py::MUTATING_TOOL_INVENTORY",
         ],
     ),
     ProductGate(
@@ -142,11 +135,11 @@ PRODUCT_GATES: List[ProductGate] = [
         id="ingestion-graph-coverage",
         title="Graph and ingestion integration coverage guards the Brain",
         evidence=[
-            "tests/unit/test_ingestion_pipeline.py::test_upload_result_enters_unified_ingestion_pipeline",
-            "tests/unit/test_ingestion_pipeline.py::test_ingestion_preserves_workspace_scope_for_duplicate_content",
-            "tests/integration/test_ingest_graph_retrieval.py",
+            "tests/unit/test_worker_compute.py::test_extract_returns_the_structures_ingestion_consumes",
+            "tests/unit/test_worker_compute.py::test_a_picture_comes_back_as_the_facts_the_ingest_path_would_have_written",
+            "tests/unit/test_t3_vision_embedding.py",
             "tests/unit/test_lattice_brain_isolation.py",
-            "tests/unit/test_retrieval_benchmark_corpus.py",
+            "tests/unit/test_chunking_parity_contract.py",
         ],
     ),
     ProductGate(

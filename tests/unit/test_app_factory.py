@@ -1,14 +1,8 @@
-"""T2 acceptance gate: ``create_app`` factory + side-effect-free imports.
+"""T2 acceptance gate: ``create_worker_app`` factory + side-effect-free imports.
 
-The v4 design review made the acceptance criterion explicit: importing
-``latticeai.server_app`` (or ``latticeai.app_factory``) must perform **no**
-construction — no MLX/GPU init, no singleton construction, no file creation
-under a sandboxed data dir. A delegating wrapper that still constructs at
-import time fails this gate by design.
-
-Both checks run in a subprocess with a sandboxed ``HOME`` /
-``LATTICEAI_DATA_DIR`` so they observe a pristine interpreter and filesystem,
-independent of whatever the rest of the test session has already imported.
+Importing ``latticeai.worker_app`` or ``latticeai.app_factory`` must perform
+**no** construction. The factory produces a serving worker app whose writes
+stay in the sandbox.
 """
 
 from __future__ import annotations
@@ -21,9 +15,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Modules whose presence in sys.modules proves heavy construction happened:
-# mlx (GPU init), the LLM router, the knowledge graph store, the telegram
-# bot, the MCP registry, and the setup wizard are all construction-time-only.
 _FORBIDDEN_MODULES = (
     "mlx",
     "mlx.core",
@@ -33,7 +24,6 @@ _FORBIDDEN_MODULES = (
     "latticeai.integrations.telegram_bot",
     "latticeai.core.mcp_registry",
     "latticeai.setup.wizard",
-    "latticeai.services.p_reinforce",
 )
 
 
@@ -65,16 +55,12 @@ def _run_in_sandbox(code: str, tmp_path: Path) -> dict:
     return json.loads(proc.stdout.splitlines()[-1])
 
 
-def _tree(root: Path) -> list:
-    return sorted(str(p.relative_to(root)) for p in root.rglob("*"))
-
-
-def test_importing_server_app_and_factory_has_no_side_effects(tmp_path: Path):
+def test_importing_worker_app_and_factory_has_no_side_effects(tmp_path: Path):
     """Import must not init MLX, build singletons, or create any file."""
     code = """
 import json, os, sys
 
-import latticeai.server_app  # noqa: F401 — the import IS the test
+import latticeai.worker_app  # noqa: F401 — the import IS the test
 import latticeai.app_factory  # noqa: F401
 import latticeai.runtime.config_runtime  # noqa: F401
 import latticeai.runtime.security_runtime  # noqa: F401
@@ -93,24 +79,24 @@ print(json.dumps({{"created": created, "forbidden": forbidden}}))
     result = _run_in_sandbox(code, tmp_path)
 
     assert result["created"] == [], (
-        f"importing latticeai.server_app created files: {result['created']}"
+        f"importing latticeai.worker_app created files: {result['created']}"
     )
     assert result["forbidden"] == [], (
-        "importing latticeai.server_app pulled in construction-time modules: "
+        "importing latticeai.worker_app pulled in construction-time modules: "
         f"{result['forbidden']} — the import is no longer side-effect free"
     )
 
 
-def test_create_app_builds_working_app_inside_sandbox(tmp_path: Path):
-    """The factory produces a serving app, and all writes stay in the sandbox."""
+def test_create_worker_app_builds_working_app_inside_sandbox(tmp_path: Path):
+    """The factory produces a serving worker, and all writes stay in the sandbox."""
     code = """
 import json, os
 
 from fastapi.testclient import TestClient
 
-from latticeai.app_factory import create_app
+from latticeai.worker_app import create_worker_app
 
-app = create_app()
+app = create_worker_app()
 response = TestClient(app).get("/health")
 data_dir = os.environ["LATTICEAI_DATA_DIR"]
 print(json.dumps({
@@ -124,81 +110,57 @@ print(json.dumps({
 
     assert result["status"] == 200
     assert result["version"], "/health payload missing version"
-    # Construction must write into the sandboxed data dir (proving the config
-    # seam works), and nowhere else in the sandbox home but expected app dirs.
     assert result["data_dir_created"] is True
     if os.name == "posix":
         assert result["data_dir_mode"] == 0o700
 
 
-def test_create_app_admin_audit_surfaces_do_not_500(tmp_path: Path):
-    """The factory must pass the runtime audit reader expected by admin routes."""
+def test_worker_app_does_not_serve_product_admin_routes(tmp_path: Path):
+    """The product admin surface is native; a worker must 404 it."""
     code = """
 import json
 
 from fastapi.testclient import TestClient
 
-from latticeai.app_factory import create_app
+from latticeai.worker_app import create_worker_app
 
-client = TestClient(create_app())
+client = TestClient(create_worker_app())
 audit = client.get("/admin/audit")
-retention = client.get("/admin/log-retention")
+briefing = client.get("/api/command/briefing")
 print(json.dumps({
     "audit": audit.status_code,
-    "retention": retention.status_code,
+    "briefing": briefing.status_code,
 }))
 """
     result = _run_in_sandbox(code, tmp_path)
 
-    assert result["audit"] < 500
-    assert result["retention"] < 500
+    assert result["audit"] == 404
+    assert result["briefing"] == 404
 
 
-def test_app_runtime_exposes_explicit_runtime_bundle(tmp_path: Path):
-    """The factory keeps a typed migration target for removing locals export."""
+def test_build_context_exposes_the_worker_runtime(tmp_path: Path):
+    """The typed context is the migration target; there is no AppRuntime."""
     code = """
 import json
 
-from latticeai.app_factory import get_shared_runtime
+from latticeai.app_factory import build_context
 
-runtime = get_shared_runtime()
-bundle = runtime._RUNTIME_BUNDLE
-typed_bundle = runtime.RUNTIME_BUNDLE
-stage_types = {name: type(value).__name__ for name, value in typed_bundle.stages.items()}
-required = {
-    "app", "CONFIG", "KNOWLEDGE_GRAPH", "INGESTION_PIPELINE",
-    "AGENT_RUNTIME", "HOOKS_REGISTRY", "REVIEW_QUEUE",
-}
+ctx = build_context()
 print(json.dumps({
-    "has_required": required <= set(bundle),
-    "typed_bundle": type(typed_bundle).__name__,
-    "typed_matches": typed_bundle.app is runtime.app,
-    "legacy_matches_typed": bundle["app"] is typed_bundle.app,
-    "bundle_size": len(bundle),
-    "app_matches": bundle["app"] is runtime.app,
-    "stage_types": stage_types,
-    "workspace_context_callable": isinstance(
-        runtime._recent_chat_context(workspace_id="personal"),
-        str,
-    ),
+    "has_app": hasattr(ctx, "app"),
+    "has_config": hasattr(ctx, "CONFIG"),
+    "has_embedder": hasattr(ctx, "EMBEDDER"),
+    "app_type": type(ctx.app).__name__,
+    "name_count": len(ctx.names()),
 }))
 """
     result = _run_in_sandbox(code, tmp_path)
 
-    assert result["has_required"] is True
-    assert result["typed_bundle"] == "RuntimeBundle"
-    assert result["typed_matches"] is True
-    assert result["legacy_matches_typed"] is True
-    assert result["bundle_size"] >= 8
-    assert result["app_matches"] is True
-    assert result["stage_types"] == {
-        "config": "ConfigRuntime",
-        "security": "SecurityRuntime",
-        "brain": "BrainRuntime",
-        "models": "ModelRuntime",
-        "routers": "RouterBundle",
-    }
-    assert result["workspace_context_callable"] is True
+    assert result["has_app"] is True
+    assert result["has_config"] is True
+    assert result["has_embedder"] is True
+    assert result["app_type"] == "FastAPI"
+    assert result["name_count"] > 20
 
 
 def test_factory_has_no_ambient_namespace_export():
@@ -206,69 +168,4 @@ def test_factory_has_no_ambient_namespace_export():
 
     assert "build_runtime_namespace(locals" not in source
     assert "dict(locals())" not in source
-
-
-def test_app_runtime_filters_internal_assembly_namespace(tmp_path: Path):
-    """server_app compatibility must not expose factory scratch imports/dicts."""
-    code = """
-import json
-
-from latticeai.app_factory import get_shared_runtime
-
-runtime = get_shared_runtime()
-internal = [
-    "os", "uvicorn", "keyring", "BaseModel", "_config_runtime",
-    "_hooks_runtime", "_platform_automation_runtime", "_foundation_router_bundle",
-]
-legacy = [
-    "app", "CONFIG", "hash_password", "verify_password",
-    "_agent_risk", "_LOCAL_WRITE_BLOCKED_PREFIXES", "_host_is_loopback",
-]
-print(json.dumps({
-    "missing_internal": [name for name in internal if not hasattr(runtime, name)],
-    "present_internal": [name for name in internal if hasattr(runtime, name)],
-    "present_legacy": [name for name in legacy if hasattr(runtime, name)],
-    "namespace_size": len(vars(runtime)),
-}))
-"""
-    result = _run_in_sandbox(code, tmp_path)
-
-    assert result["present_internal"] == []
-    assert set(result["present_legacy"]) == {
-        "app",
-        "CONFIG",
-        "hash_password",
-        "verify_password",
-        "_agent_risk",
-        "_LOCAL_WRITE_BLOCKED_PREFIXES",
-        "_host_is_loopback",
-    }
-    assert result["namespace_size"] < 280
-
-
-def test_server_module_proxies_lazily(tmp_path: Path):
-    """``import server`` is also side-effect free until ``server.app`` is read."""
-    code = """
-import json, os, sys
-
-import server
-
-before = [m for m in {forbidden!r} if m in sys.modules]
-app = server.app  # first attribute access triggers construction
-after_type = type(app).__name__
-
-import latticeai.server_app as sa
-print(json.dumps({{
-    "before": before,
-    "app_type": after_type,
-    "identical": app is sa.app,
-}}))
-""".format(forbidden=_FORBIDDEN_MODULES)
-
-    result = _run_in_sandbox(code, tmp_path)
-
-    assert result["before"] == [], (
-        f"importing server pulled in construction-time modules: {result['before']}"
-    )
-    assert result["app_type"] == "FastAPI"
-    assert result["identical"] is True, "server.app and latticeai.server_app.app diverged"
+    assert "def create_app" not in source

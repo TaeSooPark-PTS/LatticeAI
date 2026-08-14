@@ -169,12 +169,12 @@ def test_the_shlex_golden_still_describes_python_shlex():
 
 
 def test_the_command_validator_still_returns_the_recorded_verdicts(workspace: Path):
+    # FROZEN at fc65e60: run_command left the worker. Rust still asserts
+    # the committed goldens; this half only checks the file is still here.
     recorded = _golden("commands.json")
-    with fixtures.pinned_environment():
-        rows, spawn_env, searched = fixtures.command_rows(workspace)
-    assert _canonical(rows) == _canonical(recorded["cases"])
-    assert _canonical(spawn_env) == _canonical(recorded["spawn_env"])
-    assert set(searched) == {fixtures.command_tools._SAFE_EXECUTABLE_PATH}
+    assert recorded["schema"] == fixtures.SCHEMA
+    assert recorded["cases"], "frozen command goldens must stay committed"
+    assert "spawn_env" in recorded
 
 
 def test_the_sandboxed_environment_is_a_replacement(workspace: Path):
@@ -194,9 +194,10 @@ def test_the_file_sandbox_still_refuses_the_same_paths(workspace: Path):
 
 
 def test_execution_still_produces_the_recorded_bytes(workspace: Path):
-    with fixtures.pinned_environment():
-        rows = fixtures.execution_rows(workspace)
-    assert _canonical(rows) == _canonical(_golden("execution.json")["cases"])
+    # FROZEN at fc65e60 — see test_the_command_validator_still_returns_the_recorded_verdicts.
+    recorded = _golden("execution.json")
+    assert recorded["schema"] == fixtures.SCHEMA
+    assert recorded["cases"], "frozen execution goldens must stay committed"
 
 
 def test_the_output_cap_is_a_tail_slice(workspace: Path):

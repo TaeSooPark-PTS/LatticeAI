@@ -1,0 +1,1405 @@
+{
+  "components": {
+    "schemas": {
+      "ClearRequest": {
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope"
+        ],
+        "title": "ClearRequest",
+        "type": "object"
+      },
+      "ConsolidateRequest": {
+        "properties": {
+          "apply": {
+            "default": false,
+            "title": "Apply",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dry Run"
+          }
+        },
+        "title": "ConsolidateRequest",
+        "type": "object"
+      },
+      "EvidenceActionsRequest": {
+        "description": "Citations from one answer (the ids the grounding badge reported).",
+        "properties": {
+          "language": {
+            "default": "ko",
+            "title": "Language",
+            "type": "string"
+          },
+          "question": {
+            "default": "",
+            "title": "Question",
+            "type": "string"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Ids",
+            "type": "array"
+          }
+        },
+        "title": "EvidenceActionsRequest",
+        "type": "object"
+      },
+      "GardenRequest": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "raw_data": {
+            "title": "Raw Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "raw_data"
+        ],
+        "title": "GardenRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PruneRequest": {
+        "properties": {
+          "ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          }
+        },
+        "title": "PruneRequest",
+        "type": "object"
+      },
+      "RebuildRequest": {
+        "properties": {
+          "target": {
+            "default": "vector",
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "title": "RebuildRequest",
+        "type": "object"
+      },
+      "RecallRequest": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "default": "",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "title": "RecallRequest",
+        "type": "object"
+      },
+      "ResolveContradictionRequest": {
+        "description": "Settle one contradiction proposal (v11.1.0).\n\n``item_id`` is a Review Center item raised by synthesis; ``resolution`` is\none of ``keep_old`` / ``replace`` / ``keep_both_temporal``. Approval and\nthe temporal stamping happen together \u2014 there is no way to stamp the graph\nwithout approving the proposal first.",
+        "properties": {
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "keep_both_temporal",
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ],
+        "title": "ResolveContradictionRequest",
+        "type": "object"
+      },
+      "SelfModelApplyRequest": {
+        "description": "Approve one Self-Model proposal and write the fact it carries.",
+        "properties": {
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ],
+        "title": "SelfModelApplyRequest",
+        "type": "object"
+      },
+      "SelfModelFactRequest": {
+        "description": "A fact the user states about themselves (user-initiated direct write).",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "SelfModelFactRequest",
+        "type": "object"
+      },
+      "SelfModelProposeRequest": {
+        "description": "Text to read for candidate facts. Output is proposals, never writes.",
+        "properties": {
+          "max_proposals": {
+            "default": 5,
+            "title": "Max Proposals",
+            "type": "integer"
+          },
+          "source": {
+            "default": "",
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "title": "SelfModelProposeRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "family": "memory_brain",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {},
+  "operation_count": 37,
+  "operation_order": [
+    "POST /api/brain/consolidate",
+    "GET /api/brain/contradictions",
+    "POST /api/brain/contradictions/propose",
+    "POST /api/brain/contradictions/resolve",
+    "GET /api/brain/duplicates",
+    "GET /api/brain/garden",
+    "GET /api/brain/health",
+    "GET /api/brain/importance",
+    "GET /api/brain/insights",
+    "GET /api/brain/proactive-brief",
+    "GET /api/brain/quality-report",
+    "POST /api/brain/synthesize",
+    "GET /api/brain/vector-freshness",
+    "GET /api/chronicle/as-of",
+    "GET /api/chronicle/day/{date}",
+    "GET /api/chronicle/overview",
+    "GET /api/command/briefing",
+    "GET /api/command/search",
+    "POST /api/evidence/actions",
+    "GET /api/memory/brain-brief",
+    "GET /api/memory/brain-proof",
+    "GET /api/memory/brain-quality",
+    "POST /api/memory/clear",
+    "POST /api/memory/compact",
+    "GET /api/memory/inspect",
+    "GET /api/memory/manager",
+    "POST /api/memory/prune",
+    "POST /api/memory/rebuild",
+    "POST /api/memory/recall",
+    "GET /api/memory/self-model",
+    "POST /api/memory/self-model",
+    "POST /api/memory/self-model/apply",
+    "POST /api/memory/self-model/propose",
+    "DELETE /api/memory/self-model/{node_id}",
+    "GET /api/memory/tiers",
+    "POST /garden",
+    "GET /garden/tree"
+  ],
+  "path_count": 36,
+  "path_order": [
+    "/api/brain/consolidate",
+    "/api/brain/contradictions",
+    "/api/brain/contradictions/propose",
+    "/api/brain/contradictions/resolve",
+    "/api/brain/duplicates",
+    "/api/brain/garden",
+    "/api/brain/health",
+    "/api/brain/importance",
+    "/api/brain/insights",
+    "/api/brain/proactive-brief",
+    "/api/brain/quality-report",
+    "/api/brain/synthesize",
+    "/api/brain/vector-freshness",
+    "/api/chronicle/as-of",
+    "/api/chronicle/day/{date}",
+    "/api/chronicle/overview",
+    "/api/command/briefing",
+    "/api/command/search",
+    "/api/evidence/actions",
+    "/api/memory/brain-brief",
+    "/api/memory/brain-proof",
+    "/api/memory/brain-quality",
+    "/api/memory/clear",
+    "/api/memory/compact",
+    "/api/memory/inspect",
+    "/api/memory/manager",
+    "/api/memory/prune",
+    "/api/memory/rebuild",
+    "/api/memory/recall",
+    "/api/memory/self-model",
+    "/api/memory/self-model/apply",
+    "/api/memory/self-model/propose",
+    "/api/memory/self-model/{node_id}",
+    "/api/memory/tiers",
+    "/garden",
+    "/garden/tree"
+  ],
+  "paths": {
+    "/api/brain/consolidate": {
+      "post": {
+        "operationId": "brain_consolidate_api_brain_consolidate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsolidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Consolidate"
+      }
+    },
+    "/api/brain/contradictions": {
+      "get": {
+        "operationId": "brain_contradictions_api_brain_contradictions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Contradictions"
+      }
+    },
+    "/api/brain/contradictions/propose": {
+      "post": {
+        "description": "Raise a review proposal for each contradicting pair of memories.",
+        "operationId": "brain_propose_contradictions_api_brain_contradictions_propose_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Propose Contradictions"
+      }
+    },
+    "/api/brain/contradictions/resolve": {
+      "post": {
+        "description": "Approve a contradiction proposal and stamp the graph accordingly.",
+        "operationId": "brain_resolve_contradiction_api_brain_contradictions_resolve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveContradictionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Resolve Contradiction"
+      }
+    },
+    "/api/brain/duplicates": {
+      "get": {
+        "description": "Graph-layer duplicate node candidates (read-only).",
+        "operationId": "brain_duplicates_api_brain_duplicates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Duplicates"
+      }
+    },
+    "/api/brain/garden": {
+      "get": {
+        "description": "Knowledge garden overview (v9.9.7): recent / contradictions /\nstale / frequent, read-only and workspace-scoped.",
+        "operationId": "brain_garden_api_brain_garden_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Garden"
+      }
+    },
+    "/api/brain/health": {
+      "get": {
+        "operationId": "brain_health_api_brain_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Health"
+      }
+    },
+    "/api/brain/importance": {
+      "get": {
+        "description": "Importance + decay report (read-only): what has gone quiet.",
+        "operationId": "brain_importance_api_brain_importance_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Importance"
+      }
+    },
+    "/api/brain/insights": {
+      "get": {
+        "operationId": "brain_insights_api_brain_insights_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Insights"
+      }
+    },
+    "/api/brain/proactive-brief": {
+      "get": {
+        "description": "Brain Brief proactive section (v11.1.0): what the Brain noticed.\n\nRead-only \u2014 it reports the proposals already waiting in the Review\nCenter and never raises new ones.",
+        "operationId": "brain_proactive_brief_api_brain_proactive_brief_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Proactive Brief"
+      }
+    },
+    "/api/brain/quality-report": {
+      "get": {
+        "description": "Combined graph quality report: duplicates, contradictions, stale\nnodes, edge quality (read-only).",
+        "operationId": "brain_quality_report_api_brain_quality_report_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Quality Report"
+      }
+    },
+    "/api/brain/synthesize": {
+      "post": {
+        "description": "Run one synthesis pass. Output is review proposals, never writes.",
+        "operationId": "brain_synthesize_api_brain_synthesize_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Synthesize"
+      }
+    },
+    "/api/brain/vector-freshness": {
+      "get": {
+        "description": "Vector index freshness summary (read-only, never raises).\n\nFixed contract consumed by the frontend:\n``{\"status\": \"ready\"|\"pending\"|\"unavailable\", \"pending_items\": int,\n\"total_items\": int, \"detail\": str}``.\n\nAdditive since v11.2.0: ``breakdown`` splits the backlog into\n``embedded``/``missing``/``stale``/``queued`` when the store can. The\nfour keys above are unchanged, so existing readers see no difference.",
+        "operationId": "brain_vector_freshness_api_brain_vector_freshness_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Vector Freshness"
+      }
+    },
+    "/api/chronicle/as-of": {
+      "get": {
+        "operationId": "chronicle_as_of_api_chronicle_as_of_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ts",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "title": "Ts",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chronicle As Of"
+      }
+    },
+    "/api/chronicle/day/{date}": {
+      "get": {
+        "operationId": "chronicle_day_api_chronicle_day__date__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chronicle Day"
+      }
+    },
+    "/api/chronicle/overview": {
+      "get": {
+        "operationId": "chronicle_overview_api_chronicle_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Chronicle Overview"
+      }
+    },
+    "/api/command/briefing": {
+      "get": {
+        "operationId": "command_briefing_api_command_briefing_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Command Briefing"
+      }
+    },
+    "/api/command/search": {
+      "get": {
+        "operationId": "command_search_api_command_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 300,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Command Search"
+      }
+    },
+    "/api/evidence/actions": {
+      "post": {
+        "operationId": "evidence_actions_api_evidence_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceActionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Evidence Actions"
+      }
+    },
+    "/api/memory/brain-brief": {
+      "get": {
+        "operationId": "brain_brief_api_memory_brain_brief_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Brief"
+      }
+    },
+    "/api/memory/brain-proof": {
+      "get": {
+        "operationId": "brain_proof_api_memory_brain_proof_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Proof"
+      }
+    },
+    "/api/memory/brain-quality": {
+      "get": {
+        "operationId": "brain_quality_summary_api_memory_brain_quality_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Quality Summary"
+      }
+    },
+    "/api/memory/clear": {
+      "post": {
+        "operationId": "memory_clear_api_memory_clear_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memory Clear"
+      }
+    },
+    "/api/memory/compact": {
+      "post": {
+        "operationId": "memory_compact_api_memory_compact_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Memory Compact"
+      }
+    },
+    "/api/memory/inspect": {
+      "get": {
+        "operationId": "memory_inspect_api_memory_inspect_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "required": true,
+            "schema": {
+              "title": "Source",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memory Inspect"
+      }
+    },
+    "/api/memory/manager": {
+      "get": {
+        "operationId": "memory_manager_api_memory_manager_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Memory Manager"
+      }
+    },
+    "/api/memory/prune": {
+      "post": {
+        "operationId": "memory_prune_api_memory_prune_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PruneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memory Prune"
+      }
+    },
+    "/api/memory/rebuild": {
+      "post": {
+        "operationId": "memory_rebuild_api_memory_rebuild_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memory Rebuild"
+      }
+    },
+    "/api/memory/recall": {
+      "post": {
+        "operationId": "memory_recall_api_memory_recall_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memory Recall"
+      }
+    },
+    "/api/memory/self-model": {
+      "get": {
+        "description": "What the Brain believes about its owner, and the injected summary.",
+        "operationId": "self_model_profile_api_memory_self_model_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Self Model Profile"
+      },
+      "post": {
+        "description": "Add or correct one fact directly \u2014 the user owns their profile.",
+        "operationId": "self_model_upsert_api_memory_self_model_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfModelFactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Self Model Upsert"
+      }
+    },
+    "/api/memory/self-model/apply": {
+      "post": {
+        "description": "Approve a proposal and write the fact it carries into the graph.",
+        "operationId": "self_model_apply_api_memory_self_model_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfModelApplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Self Model Apply"
+      }
+    },
+    "/api/memory/self-model/propose": {
+      "post": {
+        "description": "Read text for candidate facts; every hit becomes a review proposal.",
+        "operationId": "self_model_propose_api_memory_self_model_propose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfModelProposeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Self Model Propose"
+      }
+    },
+    "/api/memory/self-model/{node_id}": {
+      "delete": {
+        "description": "Forget one fact about the user, permanently.",
+        "operationId": "self_model_delete_api_memory_self_model__node_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Self Model Delete"
+      }
+    },
+    "/api/memory/tiers": {
+      "get": {
+        "operationId": "memory_tiers_api_memory_tiers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Memory Tiers"
+      }
+    },
+    "/garden": {
+      "post": {
+        "description": "Raw \ub370\uc774\ud130\ub97c P-Reinforce \uad6c\uc870\ub85c \uc790\ub3d9 \ubd84\ub958\u00b7\uc800\uc7a5",
+        "operationId": "garden_garden_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GardenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Garden"
+      }
+    },
+    "/garden/tree": {
+      "get": {
+        "description": "\uc9c0\uc2dd \uc815\uc6d0 \ud30c\uc77c\ud2b8\ub9ac \ubc18\ud658",
+        "operationId": "garden_tree_garden_tree_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Garden Tree"
+      }
+    }
+  },
+  "schema_count": 13,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Memory manager, brain intelligence, garden, chronicle, command center and evidence actions.",
+  "target": "lattice-retrieval / lattice-platform",
+  "wp": "R5"
+}

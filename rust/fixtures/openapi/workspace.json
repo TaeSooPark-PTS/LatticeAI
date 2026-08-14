@@ -1,0 +1,2847 @@
+{
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InvitationCreateRequest": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "expires_hours": {
+            "default": 168,
+            "title": "Expires Hours",
+            "type": "integer"
+          },
+          "role": {
+            "default": "member",
+            "title": "Role",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "InvitationCreateRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WorkspaceActivateRequest": {
+        "properties": {
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id"
+        ],
+        "title": "WorkspaceActivateRequest",
+        "type": "object"
+      },
+      "WorkspaceAgentRunRequest": {
+        "properties": {
+          "agent_id": {
+            "default": "agent:executor",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "input": {
+            "default": "",
+            "title": "Input",
+            "type": "string"
+          },
+          "output": {
+            "default": "",
+            "title": "Output",
+            "type": "string"
+          },
+          "relationships": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "status": {
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "timeline": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Timeline",
+            "type": "array"
+          }
+        },
+        "title": "WorkspaceAgentRunRequest",
+        "type": "object"
+      },
+      "WorkspaceComputerActivityRequest": {
+        "properties": {
+          "activity": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Activity",
+            "type": "object"
+          }
+        },
+        "title": "WorkspaceComputerActivityRequest",
+        "type": "object"
+      },
+      "WorkspaceComputerMemoryRequest": {
+        "properties": {
+          "consent": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Consent",
+            "type": "object"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "scopes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "title": "WorkspaceComputerMemoryRequest",
+        "type": "object"
+      },
+      "WorkspaceCreateRequest": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WorkspaceCreateRequest",
+        "type": "object"
+      },
+      "WorkspaceMemberRequest": {
+        "properties": {
+          "role": {
+            "default": "member",
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "WorkspaceMemberRequest",
+        "type": "object"
+      },
+      "WorkspaceMemberRoleRequest": {
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "WorkspaceMemberRoleRequest",
+        "type": "object"
+      },
+      "WorkspaceMemoryRequest": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "memory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Id"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Metadata",
+            "type": "object"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "content"
+        ],
+        "title": "WorkspaceMemoryRequest",
+        "type": "object"
+      },
+      "WorkspaceOnboardingCompleteRequest": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "WorkspaceOnboardingCompleteRequest",
+        "type": "object"
+      },
+      "WorkspaceOnboardingStepRequest": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Data",
+            "type": "object"
+          },
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          },
+          "status": {
+            "default": "complete",
+            "title": "Status",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step"
+        ],
+        "title": "WorkspaceOnboardingStepRequest",
+        "type": "object"
+      },
+      "WorkspaceSkillActionRequest": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Metadata",
+            "type": "object"
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plugin"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "skill"
+        ],
+        "title": "WorkspaceSkillActionRequest",
+        "type": "object"
+      },
+      "WorkspaceSnapshotCompareRequest": {
+        "properties": {
+          "after_id": {
+            "title": "After Id",
+            "type": "string"
+          },
+          "before_id": {
+            "title": "Before Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "before_id",
+          "after_id"
+        ],
+        "title": "WorkspaceSnapshotCompareRequest",
+        "type": "object"
+      },
+      "WorkspaceSnapshotRequest": {
+        "properties": {
+          "name": {
+            "default": "Workspace snapshot",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "WorkspaceSnapshotRequest",
+        "type": "object"
+      },
+      "WorkspaceUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          }
+        },
+        "title": "WorkspaceUpdateRequest",
+        "type": "object"
+      },
+      "WorkspaceVSCodeRequest": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "extension_version": {
+            "default": "",
+            "title": "Extension Version",
+            "type": "string"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "prompt": {
+            "default": "",
+            "title": "Prompt",
+            "type": "string"
+          },
+          "selection": {
+            "default": "",
+            "title": "Selection",
+            "type": "string"
+          },
+          "workspace_folder": {
+            "default": "",
+            "title": "Workspace Folder",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "WorkspaceVSCodeRequest",
+        "type": "object"
+      },
+      "WorkspaceVSCodeStatusRequest": {
+        "properties": {
+          "active_file": {
+            "default": "",
+            "title": "Active File",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "extension_version": {
+            "default": "",
+            "title": "Extension Version",
+            "type": "string"
+          },
+          "index_status": {
+            "default": "unknown",
+            "title": "Index Status",
+            "type": "string"
+          },
+          "status": {
+            "default": "connected",
+            "title": "Status",
+            "type": "string"
+          },
+          "workspace_folder": {
+            "default": "",
+            "title": "Workspace Folder",
+            "type": "string"
+          }
+        },
+        "title": "WorkspaceVSCodeStatusRequest",
+        "type": "object"
+      },
+      "WorkspaceWorkflowEventRequest": {
+        "properties": {
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Payload",
+            "type": "object"
+          }
+        },
+        "required": [
+          "event_type"
+        ],
+        "title": "WorkspaceWorkflowEventRequest",
+        "type": "object"
+      },
+      "WorkspaceWorkflowRequest": {
+        "properties": {
+          "metadata": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Metadata",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "steps": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WorkspaceWorkflowRequest",
+        "type": "object"
+      }
+    }
+  },
+  "family": "workspace",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {
+    "GET /workspace/relationships/{node_id}": "node_id"
+  },
+  "operation_count": 61,
+  "operation_order": [
+    "GET /invitations",
+    "POST /invitations",
+    "POST /invitations/{token}/accept",
+    "POST /permissions/approve/{token}",
+    "POST /permissions/deny/{token}",
+    "GET /permissions/pending",
+    "GET /permissions/status/{token}",
+    "POST /workspace/activate",
+    "GET /workspace/agents",
+    "POST /workspace/agents/runs",
+    "GET /workspace/audit-timeline",
+    "GET /workspace/computer-memory",
+    "POST /workspace/computer-memory",
+    "POST /workspace/computer-memory/activity",
+    "GET /workspace/editions",
+    "GET /workspace/indexing",
+    "POST /workspace/indexing/{source_id}/pause",
+    "POST /workspace/indexing/{source_id}/remove",
+    "POST /workspace/indexing/{source_id}/resume",
+    "GET /workspace/memories",
+    "POST /workspace/memories",
+    "GET /workspace/memories/search",
+    "DELETE /workspace/memories/{memory_id}",
+    "POST /workspace/onboarding/complete",
+    "GET /workspace/onboarding/hardware",
+    "GET /workspace/onboarding/model-recommendations",
+    "GET /workspace/onboarding/status",
+    "POST /workspace/onboarding/step",
+    "POST /workspace/orgs",
+    "GET /workspace/orgs/{workspace_id}",
+    "PATCH /workspace/orgs/{workspace_id}",
+    "POST /workspace/orgs/{workspace_id}/archive",
+    "POST /workspace/orgs/{workspace_id}/members",
+    "DELETE /workspace/orgs/{workspace_id}/members/{user_id}",
+    "PATCH /workspace/orgs/{workspace_id}/members/{user_id}",
+    "GET /workspace/orgs/{workspace_id}/summary",
+    "GET /workspace/os",
+    "GET /workspace/registry",
+    "GET /workspace/relationships/{node_id}",
+    "GET /workspace/skills",
+    "POST /workspace/skills/disable",
+    "POST /workspace/skills/enable",
+    "POST /workspace/skills/install",
+    "POST /workspace/skills/uninstall",
+    "POST /workspace/skills/update",
+    "GET /workspace/snapshots",
+    "POST /workspace/snapshots",
+    "POST /workspace/snapshots/compare",
+    "GET /workspace/snapshots/{snapshot_id}",
+    "POST /workspace/snapshots/{snapshot_id}/export",
+    "POST /workspace/snapshots/{snapshot_id}/restore",
+    "GET /workspace/snapshots/{snapshot_id}/{area}",
+    "GET /workspace/time-machine",
+    "GET /workspace/time-machine/{snapshot_id}/{area}",
+    "GET /workspace/traces",
+    "POST /workspace/vscode/send",
+    "GET /workspace/vscode/status",
+    "POST /workspace/vscode/status",
+    "GET /workspace/workflows",
+    "POST /workspace/workflows",
+    "POST /workspace/workflows/{workflow_id}/events"
+  ],
+  "path_count": 53,
+  "path_order": [
+    "/invitations",
+    "/invitations/{token}/accept",
+    "/permissions/approve/{token}",
+    "/permissions/deny/{token}",
+    "/permissions/pending",
+    "/permissions/status/{token}",
+    "/workspace/activate",
+    "/workspace/agents",
+    "/workspace/agents/runs",
+    "/workspace/audit-timeline",
+    "/workspace/computer-memory",
+    "/workspace/computer-memory/activity",
+    "/workspace/editions",
+    "/workspace/indexing",
+    "/workspace/indexing/{source_id}/pause",
+    "/workspace/indexing/{source_id}/remove",
+    "/workspace/indexing/{source_id}/resume",
+    "/workspace/memories",
+    "/workspace/memories/search",
+    "/workspace/memories/{memory_id}",
+    "/workspace/onboarding/complete",
+    "/workspace/onboarding/hardware",
+    "/workspace/onboarding/model-recommendations",
+    "/workspace/onboarding/status",
+    "/workspace/onboarding/step",
+    "/workspace/orgs",
+    "/workspace/orgs/{workspace_id}",
+    "/workspace/orgs/{workspace_id}/archive",
+    "/workspace/orgs/{workspace_id}/members",
+    "/workspace/orgs/{workspace_id}/members/{user_id}",
+    "/workspace/orgs/{workspace_id}/summary",
+    "/workspace/os",
+    "/workspace/registry",
+    "/workspace/relationships/{node_id}",
+    "/workspace/skills",
+    "/workspace/skills/disable",
+    "/workspace/skills/enable",
+    "/workspace/skills/install",
+    "/workspace/skills/uninstall",
+    "/workspace/skills/update",
+    "/workspace/snapshots",
+    "/workspace/snapshots/compare",
+    "/workspace/snapshots/{snapshot_id}",
+    "/workspace/snapshots/{snapshot_id}/export",
+    "/workspace/snapshots/{snapshot_id}/restore",
+    "/workspace/snapshots/{snapshot_id}/{area}",
+    "/workspace/time-machine",
+    "/workspace/time-machine/{snapshot_id}/{area}",
+    "/workspace/traces",
+    "/workspace/vscode/send",
+    "/workspace/vscode/status",
+    "/workspace/workflows",
+    "/workspace/workflows/{workflow_id}/events"
+  ],
+  "paths": {
+    "/invitations": {
+      "get": {
+        "operationId": "list_invitations_invitations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Invitations"
+      },
+      "post": {
+        "operationId": "create_invitation_invitations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Invitation"
+      }
+    },
+    "/invitations/{token}/accept": {
+      "post": {
+        "operationId": "accept_invitation_invitations__token__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Invitation"
+      }
+    },
+    "/permissions/approve/{token}": {
+      "post": {
+        "operationId": "permissions_approve_permissions_approve__token__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Permissions Approve"
+      }
+    },
+    "/permissions/deny/{token}": {
+      "post": {
+        "operationId": "permissions_deny_permissions_deny__token__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Permissions Deny"
+      }
+    },
+    "/permissions/pending": {
+      "get": {
+        "operationId": "permissions_pending_permissions_pending_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Permissions Pending"
+      }
+    },
+    "/permissions/status/{token}": {
+      "get": {
+        "operationId": "permissions_status_permissions_status__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Permissions Status"
+      }
+    },
+    "/workspace/activate": {
+      "post": {
+        "operationId": "workspace_activate_workspace_activate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceActivateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Activate"
+      }
+    },
+    "/workspace/agents": {
+      "get": {
+        "operationId": "workspace_agents_workspace_agents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Agents"
+      }
+    },
+    "/workspace/agents/runs": {
+      "post": {
+        "operationId": "workspace_agent_run_workspace_agents_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceAgentRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Agent Run"
+      }
+    },
+    "/workspace/audit-timeline": {
+      "get": {
+        "operationId": "workspace_audit_timeline_workspace_audit_timeline_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "model",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Audit Timeline"
+      }
+    },
+    "/workspace/computer-memory": {
+      "get": {
+        "operationId": "workspace_computer_memory_workspace_computer_memory_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Computer Memory"
+      },
+      "post": {
+        "operationId": "workspace_computer_memory_config_workspace_computer_memory_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceComputerMemoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Computer Memory Config"
+      }
+    },
+    "/workspace/computer-memory/activity": {
+      "post": {
+        "operationId": "workspace_computer_memory_activity_workspace_computer_memory_activity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceComputerActivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Computer Memory Activity"
+      }
+    },
+    "/workspace/editions": {
+      "get": {
+        "operationId": "workspace_editions_workspace_editions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Editions"
+      }
+    },
+    "/workspace/indexing": {
+      "get": {
+        "operationId": "workspace_indexing_dashboard_workspace_indexing_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Indexing Dashboard"
+      }
+    },
+    "/workspace/indexing/{source_id}/pause": {
+      "post": {
+        "operationId": "workspace_indexing_pause_workspace_indexing__source_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Indexing Pause"
+      }
+    },
+    "/workspace/indexing/{source_id}/remove": {
+      "post": {
+        "operationId": "workspace_indexing_remove_workspace_indexing__source_id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Indexing Remove"
+      }
+    },
+    "/workspace/indexing/{source_id}/resume": {
+      "post": {
+        "operationId": "workspace_indexing_resume_workspace_indexing__source_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Indexing Resume"
+      }
+    },
+    "/workspace/memories": {
+      "get": {
+        "operationId": "workspace_memories_workspace_memories_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Memories"
+      },
+      "post": {
+        "operationId": "workspace_memory_upsert_workspace_memories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMemoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Memory Upsert"
+      }
+    },
+    "/workspace/memories/search": {
+      "get": {
+        "operationId": "workspace_memory_search_workspace_memories_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Memory Search"
+      }
+    },
+    "/workspace/memories/{memory_id}": {
+      "delete": {
+        "operationId": "workspace_memory_delete_workspace_memories__memory_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Memory Delete"
+      }
+    },
+    "/workspace/onboarding/complete": {
+      "post": {
+        "operationId": "workspace_onboarding_complete_workspace_onboarding_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceOnboardingCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Onboarding Complete"
+      }
+    },
+    "/workspace/onboarding/hardware": {
+      "get": {
+        "operationId": "workspace_onboarding_hardware_workspace_onboarding_hardware_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Onboarding Hardware"
+      }
+    },
+    "/workspace/onboarding/model-recommendations": {
+      "get": {
+        "operationId": "workspace_onboarding_model_recommendations_workspace_onboarding_model_recommendations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Onboarding Model Recommendations"
+      }
+    },
+    "/workspace/onboarding/status": {
+      "get": {
+        "operationId": "workspace_onboarding_status_workspace_onboarding_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Onboarding Status"
+      }
+    },
+    "/workspace/onboarding/step": {
+      "post": {
+        "operationId": "workspace_onboarding_step_workspace_onboarding_step_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceOnboardingStepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Onboarding Step"
+      }
+    },
+    "/workspace/orgs": {
+      "post": {
+        "operationId": "workspace_org_create_workspace_orgs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Create"
+      }
+    },
+    "/workspace/orgs/{workspace_id}": {
+      "get": {
+        "operationId": "workspace_org_get_workspace_orgs__workspace_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Get"
+      },
+      "patch": {
+        "operationId": "workspace_org_update_workspace_orgs__workspace_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Update"
+      }
+    },
+    "/workspace/orgs/{workspace_id}/archive": {
+      "post": {
+        "operationId": "workspace_org_archive_workspace_orgs__workspace_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Archive"
+      }
+    },
+    "/workspace/orgs/{workspace_id}/members": {
+      "post": {
+        "operationId": "workspace_org_add_member_workspace_orgs__workspace_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Add Member"
+      }
+    },
+    "/workspace/orgs/{workspace_id}/members/{user_id}": {
+      "delete": {
+        "operationId": "workspace_org_remove_member_workspace_orgs__workspace_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Remove Member"
+      },
+      "patch": {
+        "operationId": "workspace_org_update_member_workspace_orgs__workspace_id__members__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMemberRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Update Member"
+      }
+    },
+    "/workspace/orgs/{workspace_id}/summary": {
+      "get": {
+        "operationId": "workspace_org_summary_workspace_orgs__workspace_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Org Summary"
+      }
+    },
+    "/workspace/os": {
+      "get": {
+        "operationId": "workspace_os_summary_workspace_os_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Os Summary"
+      }
+    },
+    "/workspace/registry": {
+      "get": {
+        "operationId": "workspace_registry_workspace_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Registry"
+      }
+    },
+    "/workspace/relationships/{node_id}": {
+      "get": {
+        "operationId": "workspace_relationships_workspace_relationships__node_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Relationships"
+      }
+    },
+    "/workspace/skills": {
+      "get": {
+        "operationId": "workspace_skills_workspace_skills_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Skills"
+      }
+    },
+    "/workspace/skills/disable": {
+      "post": {
+        "operationId": "workspace_skill_disable_workspace_skills_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSkillActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Skill Disable"
+      }
+    },
+    "/workspace/skills/enable": {
+      "post": {
+        "operationId": "workspace_skill_enable_workspace_skills_enable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSkillActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Skill Enable"
+      }
+    },
+    "/workspace/skills/install": {
+      "post": {
+        "operationId": "workspace_skill_install_workspace_skills_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSkillActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Skill Install"
+      }
+    },
+    "/workspace/skills/uninstall": {
+      "post": {
+        "operationId": "workspace_skill_uninstall_workspace_skills_uninstall_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSkillActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Skill Uninstall"
+      }
+    },
+    "/workspace/skills/update": {
+      "post": {
+        "operationId": "workspace_skill_update_workspace_skills_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSkillActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Skill Update"
+      }
+    },
+    "/workspace/snapshots": {
+      "get": {
+        "operationId": "workspace_snapshots_workspace_snapshots_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Snapshots"
+      },
+      "post": {
+        "operationId": "workspace_snapshot_create_workspace_snapshots_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Snapshot Create"
+      }
+    },
+    "/workspace/snapshots/compare": {
+      "post": {
+        "operationId": "workspace_snapshot_compare_workspace_snapshots_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSnapshotCompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Snapshot Compare"
+      }
+    },
+    "/workspace/snapshots/{snapshot_id}": {
+      "get": {
+        "operationId": "workspace_snapshot_get_workspace_snapshots__snapshot_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Snapshot Get"
+      }
+    },
+    "/workspace/snapshots/{snapshot_id}/export": {
+      "post": {
+        "operationId": "workspace_snapshot_export_workspace_snapshots__snapshot_id__export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Snapshot Export"
+      }
+    },
+    "/workspace/snapshots/{snapshot_id}/restore": {
+      "post": {
+        "operationId": "workspace_snapshot_restore_workspace_snapshots__snapshot_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Snapshot Restore"
+      }
+    },
+    "/workspace/snapshots/{snapshot_id}/{area}": {
+      "get": {
+        "operationId": "workspace_snapshot_area_workspace_snapshots__snapshot_id___area__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "area",
+            "required": true,
+            "schema": {
+              "title": "Area",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Snapshot Area"
+      }
+    },
+    "/workspace/time-machine": {
+      "get": {
+        "operationId": "workspace_time_machine_workspace_time_machine_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Time Machine"
+      }
+    },
+    "/workspace/time-machine/{snapshot_id}/{area}": {
+      "get": {
+        "operationId": "workspace_time_machine_view_workspace_time_machine__snapshot_id___area__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "area",
+            "required": true,
+            "schema": {
+              "title": "Area",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Time Machine View"
+      }
+    },
+    "/workspace/traces": {
+      "get": {
+        "operationId": "workspace_traces_workspace_traces_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "conversation_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Traces"
+      }
+    },
+    "/workspace/vscode/send": {
+      "post": {
+        "operationId": "workspace_vscode_send_workspace_vscode_send_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceVSCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Vscode Send"
+      }
+    },
+    "/workspace/vscode/status": {
+      "get": {
+        "operationId": "workspace_vscode_status_workspace_vscode_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Vscode Status"
+      },
+      "post": {
+        "operationId": "workspace_vscode_status_update_workspace_vscode_status_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceVSCodeStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Vscode Status Update"
+      }
+    },
+    "/workspace/workflows": {
+      "get": {
+        "operationId": "workspace_workflows_workspace_workflows_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Workflows"
+      },
+      "post": {
+        "operationId": "workspace_workflow_create_workspace_workflows_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceWorkflowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Workflow Create"
+      }
+    },
+    "/workspace/workflows/{workflow_id}/events": {
+      "post": {
+        "operationId": "workspace_workflow_event_workspace_workflows__workflow_id__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workflow_id",
+            "required": true,
+            "schema": {
+              "title": "Workflow Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceWorkflowEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Workflow Event"
+      }
+    }
+  },
+  "schema_count": 21,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Workspace OS and org surface plus scope, invitations and the permission approval queue.",
+  "target": "lattice-platform (workspace)",
+  "wp": "R1"
+}

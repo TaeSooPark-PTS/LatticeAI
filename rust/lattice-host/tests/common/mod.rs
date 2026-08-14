@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use lattice_host::gateway::allowlist::Allowlist;
 use lattice_host::gateway::posture::Posture;
 use lattice_host::gateway::{bind_loopback, serve_gateway, GatewayState, StatusProvider};
 use lattice_host::supervisor::WorkerStatus;
@@ -421,6 +422,41 @@ async fn respond(
     let _ = stream.flush().await;
 }
 
+/// The paths [`FakeWorker`] answers, as an allowlist the gateway forwards by.
+///
+/// Since v11.6.0 the proxy fall-through is an allowlist: a path the real worker
+/// does not mount is a 404 from the gateway and never crosses the hop. That is
+/// the behaviour under test in `binary_frontdoor.rs`, which runs the real
+/// binary against the real committed allowlist. The *proxy mechanics* suites —
+/// header hygiene, redirects, streaming, body framing — need a worker that
+/// answers something, so they declare this fake worker's own surface and the
+/// gateway forwards by that instead. Naming the fixture paths here is the
+/// honest version of "the thing in front of us serves these".
+pub fn fake_worker_allowlist() -> Arc<Allowlist> {
+    let mut rows: Vec<(String, String)> = Allowlist::shared()
+        .routes()
+        .iter()
+        .map(|route| (route.method.clone(), route.axum.clone()))
+        .collect();
+    for path in [
+        "/echo",
+        "/sse",
+        "/teapot",
+        "/redirect",
+        "/redirect-absolute",
+        "/redirect-external",
+        "/api/anything",
+        "/api/notes",
+        "/api/memory",
+        "/api/echo",
+    ] {
+        for method in ["GET", "POST", "PUT", "PATCH", "DELETE"] {
+            rows.push((method.to_string(), path.to_string()));
+        }
+    }
+    Arc::new(Allowlist::from_pairs(rows))
+}
+
 /// A [`StatusProvider`] that points at a fixed origin — lets the gateway be
 /// tested without a supervisor.
 pub struct FixedProvider {
@@ -482,6 +518,7 @@ impl TestGateway {
             GatewayState::new(provider)
                 .expect("gateway state")
                 .with_agent_root(test_agent_root("default"))
+                .with_allowlist(fake_worker_allowlist())
                 .with_pinned_posture(Posture::Open),
         )
         .await
@@ -498,6 +535,7 @@ impl TestGateway {
                 .expect("gateway state")
                 .with_db_path(db)
                 .with_agent_root(test_agent_root("default"))
+                .with_allowlist(fake_worker_allowlist())
                 .with_pinned_posture(Posture::Open),
         )
         .await

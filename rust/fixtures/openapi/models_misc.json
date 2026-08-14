@@ -1,0 +1,1280 @@
+{
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InstallEngineRequest": {
+        "properties": {
+          "confirmation_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Token"
+          },
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          }
+        },
+        "required": [
+          "engine"
+        ],
+        "title": "InstallEngineRequest",
+        "type": "object"
+      },
+      "SetApiKeyRequest": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          }
+        },
+        "required": [
+          "provider",
+          "key"
+        ],
+        "title": "SetApiKeyRequest",
+        "type": "object"
+      },
+      "SetPermissionModeRequest": {
+        "properties": {
+          "acknowledge_risk": {
+            "default": false,
+            "title": "Acknowledge Risk",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "strict | trusted | bypass",
+            "title": "Mode",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "SetPermissionModeRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VerifyCloudRequest": {
+        "properties": {
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "title": "VerifyCloudRequest",
+        "type": "object"
+      },
+      "WorkflowDefinitionRequest": {
+        "properties": {
+          "metadata": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Metadata",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nodes": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WorkflowDefinitionRequest",
+        "type": "object"
+      },
+      "WorkflowImportRequest": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "WorkflowImportRequest",
+        "type": "object"
+      },
+      "WorkflowRecipeInstallRequest": {
+        "properties": {
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "WorkflowRecipeInstallRequest",
+        "type": "object"
+      },
+      "WorkflowResumeRequest": {
+        "properties": {
+          "approved": {
+            "default": true,
+            "title": "Approved",
+            "type": "boolean"
+          }
+        },
+        "title": "WorkflowResumeRequest",
+        "type": "object"
+      },
+      "WorkflowRunRequest": {
+        "properties": {
+          "inputs": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Inputs",
+            "type": "object"
+          }
+        },
+        "title": "WorkflowRunRequest",
+        "type": "object"
+      },
+      "WorkflowUpdateRequest": {
+        "properties": {
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "nodes": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nodes"
+          }
+        },
+        "title": "WorkflowUpdateRequest",
+        "type": "object"
+      },
+      "WorkflowValidateRequest": {
+        "properties": {
+          "name": {
+            "default": "Draft",
+            "title": "Name",
+            "type": "string"
+          },
+          "nodes": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "title": "WorkflowValidateRequest",
+        "type": "object"
+      }
+    }
+  },
+  "family": "models_misc",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {},
+  "operation_count": 27,
+  "operation_order": [
+    "GET /api/permission-mode",
+    "POST /api/permission-mode",
+    "GET /api/permission-mode/catalog",
+    "GET /engines",
+    "POST /engines/install",
+    "POST /engines/verify-cloud",
+    "GET /mode",
+    "GET /models/compat-profiles",
+    "GET /models/recommendations",
+    "GET /runtime_features",
+    "POST /setup/set-api-key",
+    "GET /workflows/api/automation/recipes",
+    "POST /workflows/api/automation/recipes/{recipe_id}",
+    "GET /workflows/api/definitions",
+    "POST /workflows/api/definitions",
+    "GET /workflows/api/definitions/{workflow_id}",
+    "PATCH /workflows/api/definitions/{workflow_id}",
+    "POST /workflows/api/definitions/{workflow_id}/run",
+    "GET /workflows/api/definitions/{workflow_id}/runs",
+    "GET /workflows/api/export/{workflow_id}",
+    "POST /workflows/api/import",
+    "GET /workflows/api/runs",
+    "GET /workflows/api/runs/{run_id}/replay",
+    "POST /workflows/api/runs/{run_id}/resume",
+    "POST /workflows/api/runs/{run_id}/stop",
+    "GET /workflows/api/triggers",
+    "POST /workflows/api/validate"
+  ],
+  "path_count": 24,
+  "path_order": [
+    "/api/permission-mode",
+    "/api/permission-mode/catalog",
+    "/engines",
+    "/engines/install",
+    "/engines/verify-cloud",
+    "/mode",
+    "/models/compat-profiles",
+    "/models/recommendations",
+    "/runtime_features",
+    "/setup/set-api-key",
+    "/workflows/api/automation/recipes",
+    "/workflows/api/automation/recipes/{recipe_id}",
+    "/workflows/api/definitions",
+    "/workflows/api/definitions/{workflow_id}",
+    "/workflows/api/definitions/{workflow_id}/run",
+    "/workflows/api/definitions/{workflow_id}/runs",
+    "/workflows/api/export/{workflow_id}",
+    "/workflows/api/import",
+    "/workflows/api/runs",
+    "/workflows/api/runs/{run_id}/replay",
+    "/workflows/api/runs/{run_id}/resume",
+    "/workflows/api/runs/{run_id}/stop",
+    "/workflows/api/triggers",
+    "/workflows/api/validate"
+  ],
+  "paths": {
+    "/api/permission-mode": {
+      "get": {
+        "operationId": "get_permission_mode_api_permission_mode_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Permission Mode",
+        "tags": [
+          "permission-mode"
+        ]
+      },
+      "post": {
+        "operationId": "set_permission_mode_api_permission_mode_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPermissionModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Permission Mode",
+        "tags": [
+          "permission-mode"
+        ]
+      }
+    },
+    "/api/permission-mode/catalog": {
+      "get": {
+        "operationId": "permission_mode_catalog_api_permission_mode_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Permission Mode Catalog",
+        "tags": [
+          "permission-mode"
+        ]
+      }
+    },
+    "/engines": {
+      "get": {
+        "operationId": "engines_engines_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Engines"
+      }
+    },
+    "/engines/install": {
+      "post": {
+        "operationId": "engines_install_engines_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallEngineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Engines Install"
+      }
+    },
+    "/engines/verify-cloud": {
+      "post": {
+        "operationId": "engines_verify_cloud_engines_verify_cloud_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCloudRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Engines Verify Cloud"
+      }
+    },
+    "/mode": {
+      "get": {
+        "operationId": "mode_mode_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mode"
+      }
+    },
+    "/models/compat-profiles": {
+      "get": {
+        "operationId": "list_model_compat_profiles_models_compat_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Model Compat Profiles"
+      }
+    },
+    "/models/recommendations": {
+      "get": {
+        "description": "Hardware-aware tri-state model recommendation for this machine.\n\n5.2.0: now includes rich capability fields (hf_repo_id, verification,\nhardware, load_strategy, license, safety_notes) from the structured registry.",
+        "operationId": "model_recommendations_models_recommendations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "engine",
+            "required": false,
+            "schema": {
+              "default": "local_mlx",
+              "title": "Engine",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Model Recommendations"
+      }
+    },
+    "/runtime_features": {
+      "get": {
+        "operationId": "mode_runtime_features_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mode"
+      }
+    },
+    "/setup/set-api-key": {
+      "post": {
+        "operationId": "set_api_key_setup_set_api_key_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetApiKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Api Key"
+      }
+    },
+    "/workflows/api/automation/recipes": {
+      "get": {
+        "operationId": "automation_recipes_workflows_api_automation_recipes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Automation Recipes"
+      }
+    },
+    "/workflows/api/automation/recipes/{recipe_id}": {
+      "post": {
+        "operationId": "install_automation_recipe_workflows_api_automation_recipes__recipe_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRecipeInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Install Automation Recipe"
+      }
+    },
+    "/workflows/api/definitions": {
+      "get": {
+        "operationId": "list_definitions_workflows_api_definitions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Definitions"
+      },
+      "post": {
+        "operationId": "create_definition_workflows_api_definitions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowDefinitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Definition"
+      }
+    },
+    "/workflows/api/definitions/{workflow_id}": {
+      "get": {
+        "operationId": "get_definition_workflows_api_definitions__workflow_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workflow_id",
+            "required": true,
+            "schema": {
+              "title": "Workflow Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Definition"
+      },
+      "patch": {
+        "operationId": "update_definition_workflows_api_definitions__workflow_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workflow_id",
+            "required": true,
+            "schema": {
+              "title": "Workflow Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Definition"
+      }
+    },
+    "/workflows/api/definitions/{workflow_id}/run": {
+      "post": {
+        "operationId": "run_definition_workflows_api_definitions__workflow_id__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workflow_id",
+            "required": true,
+            "schema": {
+              "title": "Workflow Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Definition"
+      }
+    },
+    "/workflows/api/definitions/{workflow_id}/runs": {
+      "get": {
+        "operationId": "list_runs_workflows_api_definitions__workflow_id__runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workflow_id",
+            "required": true,
+            "schema": {
+              "title": "Workflow Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs"
+      }
+    },
+    "/workflows/api/export/{workflow_id}": {
+      "get": {
+        "operationId": "export_definition_workflows_api_export__workflow_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workflow_id",
+            "required": true,
+            "schema": {
+              "title": "Workflow Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Definition"
+      }
+    },
+    "/workflows/api/import": {
+      "post": {
+        "operationId": "import_definition_workflows_api_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Definition"
+      }
+    },
+    "/workflows/api/runs": {
+      "get": {
+        "operationId": "list_all_runs_workflows_api_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List All Runs"
+      }
+    },
+    "/workflows/api/runs/{run_id}/replay": {
+      "get": {
+        "operationId": "workflow_run_replay_workflows_api_runs__run_id__replay_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workflow Run Replay"
+      }
+    },
+    "/workflows/api/runs/{run_id}/resume": {
+      "post": {
+        "description": "Decide a paused (awaiting_approval) run: approve \u2192 the paused node\nexecutes and the run continues; deny \u2192 the run fails honestly.",
+        "operationId": "resume_run_workflows_api_runs__run_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowResumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Run"
+      }
+    },
+    "/workflows/api/runs/{run_id}/stop": {
+      "post": {
+        "operationId": "stop_run_workflows_api_runs__run_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Run"
+      }
+    },
+    "/workflows/api/triggers": {
+      "get": {
+        "operationId": "trigger_status_workflows_api_triggers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Trigger Status"
+      }
+    },
+    "/workflows/api/validate": {
+      "post": {
+        "operationId": "validate_workflow_workflows_api_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Workflow"
+      }
+    }
+  },
+  "schema_count": 13,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Model catalog/recommendation reads, engine install surface, permission mode, workflow designer and the residual runtime probes.",
+  "target": "lattice-platform (misc)",
+  "wp": "R10"
+}

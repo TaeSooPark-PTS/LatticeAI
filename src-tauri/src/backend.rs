@@ -14,6 +14,11 @@
 //! navigates to the gateway, and the worker is told to trust that origin so
 //! cookie-authenticated writes still work through the proxy hop.
 //!
+//! 11.6.0 One Door: the Python-direct topologies are gone. The shell always
+//! boots or attaches through lattice-host. The window health-gates on
+//! `GET {origin}/health` — the **host** surface at the same origin the window
+//! loads, not a bare worker port.
+//!
 //! Which arrangement is chosen lives in [`crate::topology`]; what this module
 //! adds is the running of it, and the five IPC contracts on top (unchanged in
 //! name, type and meaning — the new status fields are additive).
@@ -26,9 +31,17 @@ use lattice_host::supervisor::{
     wait_for_health, HostProbe, Supervisor, SupervisorConfig, SupervisorError, SystemProbe,
     WorkerStatus,
 };
+
 use serde::Serialize;
 
 use crate::topology::{self, Plan, Topology};
+
+/// The module the host supervises. I6's launch string is
+/// `uvicorn latticeai.worker_app:create_worker_app --factory`; the module form
+/// reads `LATTICEAI_PORT` from the supervisor, so we do not have to know the
+/// internal port at pin time.
+const WORKER_MODULE: &str = "latticeai.worker_app";
+const BACKEND_CMD_ENV: &str = "LATTICEAI_DESKTOP_BACKEND_CMD";
 
 /// The desktop shell's view of the worker.
 ///
@@ -54,14 +67,14 @@ pub struct BackendStatus {
     pub healthy: bool,
     /// The chosen port — authoritative, not the configured preference.
     pub port: u16,
-    /// `false` when the shell only fronts a worker it did not start.
+    /// `false` when the shell only fronts a host it did not start.
     pub supervised: bool,
     /// How many times the supervisor restarted the worker after a crash.
     pub restarts: u32,
     /// Seconds since the current worker process started.
     pub uptime_seconds: Option<u64>,
-    /// Which arrangement this shell is running: `gateway`, `direct`,
-    /// `external` or `disabled` (11.5.0, additive).
+    /// Which arrangement this shell is running: `gateway` or `external`
+    /// (11.5.0, additive; `direct`/`disabled` retired in 11.6.0).
     pub topology: String,
     /// Where the worker itself answers. Equal to `origin` unless a gateway is
     /// in front of it (11.5.0, additive).
@@ -94,14 +107,71 @@ pub struct DesktopBackend {
     jobs: Option<Arc<lattice_jobs::Scheduler>>,
     /// Why the front door is not there, when it could not be bound.
     ///
-    /// `None` means "nothing went wrong" — including in the topologies that
-    /// serve no gateway at all, where the worker *is* the front door.
+    /// `None` means "nothing went wrong" — including in the topology that
+    /// attaches to someone else's host, where this process serves no gateway.
     gateway_error: Mutex<Option<String>>,
+}
+
+/// True when the packaged Resources tree already carries a worker.
+///
+/// Leave `LATTICEAI_DESKTOP_BACKEND_CMD` unset in that case so the supervisor
+/// can point `PYTHONPATH` at the tree (its bundled-tree rule). Integrator
+/// must flip `WORKER_MODULE` from `latticeai.cli.entrypoint` to
+/// `latticeai.worker_app`.
+fn bundled_worker_present(probe: &dyn HostProbe) -> bool {
+    let Some(resources) = probe.resource_dir() else {
+        return false;
+    };
+    for root in [resources.join("_up_"), resources] {
+        if probe.is_file(&root.join("latticeai").join("worker_app.py"))
+            || probe.is_file(&root.join("latticeai").join("cli").join("entrypoint.py"))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// Command that pins the supervisor onto the worker, or `None` when an
+/// existing override / bundled tree should win.
+///
+/// `bin/ltcai.js` is now the **host** front door. If the supervisor still
+/// treats `ltcai` on `PATH` as a worker (lattice-host rule 2), it would spawn
+/// another host and recurse. Pinning `python -m latticeai.worker_app` closes
+/// that hatch in the unpackaged shell. A caller that already set
+/// `LATTICEAI_DESKTOP_BACKEND_CMD` is left alone.
+fn worker_launch_command(probe: &dyn HostProbe) -> Option<String> {
+    if probe
+        .env_var(BACKEND_CMD_ENV)
+        .filter(|value| !value.trim().is_empty())
+        .is_some()
+    {
+        return None;
+    }
+    if bundled_worker_present(probe) {
+        return None;
+    }
+    let candidates = lattice_host::supervisor::command::python_candidates(probe);
+    let python = candidates
+        .iter()
+        .find(|program| probe.module_importable(program, WORKER_MODULE))
+        .cloned()
+        .or_else(|| candidates.first().cloned())
+        .unwrap_or_else(|| "python3".into());
+    Some(format!("{python} -m {WORKER_MODULE}"))
+}
+
+/// Pin the worker launch on the real process environment, once.
+fn pin_worker_launch_if_needed(probe: &dyn HostProbe) {
+    if let Some(command) = worker_launch_command(probe) {
+        std::env::set_var(BACKEND_CMD_ENV, command);
+    }
 }
 
 impl DesktopBackend {
     /// Resolve against the real machine.
     pub fn resolve() -> Result<Self, SupervisorError> {
+        pin_worker_launch_if_needed(&SystemProbe);
         Self::with_probe(Arc::new(SystemProbe))
     }
 
@@ -180,7 +250,8 @@ impl DesktopBackend {
     ///
     /// A failure here is logged rather than fatal — the window still opens, and
     /// the browser's own "cannot connect" plus this line is a better failure
-    /// than a shell that exits. `LATTICEAI_DESKTOP_DIRECT=1` is the way out.
+    /// than a shell that exits. Attach to a running host with
+    /// `LATTICEAI_DESKTOP_BACKEND_ORIGIN` if this process cannot bind.
     async fn start_gateway(&self) {
         let Some(port) = self.plan.gateway_port else {
             return;
@@ -194,7 +265,8 @@ impl DesktopBackend {
             Err(err) => {
                 let message = format!(
                     "the gateway could not bind {addr}: {err} — \
-                     set LATTICEAI_DESKTOP_DIRECT=1 to run the worker as the front door"
+                     set LATTICEAI_PORT to a free port, or \
+                     LATTICEAI_DESKTOP_BACKEND_ORIGIN to an already-running lattice-host"
                 );
                 eprintln!("lattice-ai-desktop: {message}");
                 // Recorded, not only logged: `plan.origin` names the port that
@@ -258,18 +330,12 @@ impl DesktopBackend {
             .agent_root()
     }
 
-    /// Wait for `GET {origin}/health`, so the webview never lands on a page the
-    /// worker has not started serving yet.
+    /// Wait for `GET {origin}/health` on the **host** origin the window loads.
     ///
     /// Replaces the old TCP-connect probe, which proved only that *something*
-    /// had bound the port. In the gateway topology this probes through the
-    /// proxy, which is the honest question: can the page the window is about to
-    /// open reach a healthy worker? With the kill switch on there is nothing to
-    /// wait for and this returns immediately.
+    /// had bound the port. After One Door this is never a bare worker port:
+    /// `plan.origin` is the in-process gateway or the attached lattice-host.
     pub async fn wait_until_serving(&self) -> bool {
-        if self.plan.disabled {
-            return false;
-        }
         wait_for_health(
             &self.supervisor.client(),
             &self.plan.origin,
@@ -349,8 +415,8 @@ impl DesktopBackend {
         }
         if !self.supervised() {
             return format!(
-                "external worker at {} (not started here)",
-                self.plan.worker_origin
+                "external lattice-host at {} (not started here)",
+                self.plan.origin
             );
         }
         match &status.last_error {
@@ -384,16 +450,18 @@ mod tests {
     }
 
     #[test]
-    fn the_direct_hatch_restores_the_previous_topology() {
+    fn a_retired_direct_flag_still_fronts_the_gateway() {
         let shell = backend(
             StaticProbe::new()
                 .with_env(DIRECT_ENV, "1")
                 .with_env(PORT_ENV, "41841"),
         );
-        assert_eq!(shell.topology(), Topology::Direct);
-        assert_eq!(shell.origin(), "http://127.0.0.1:41841");
-        assert_eq!(shell.plan.worker_origin, shell.plan.origin);
-        assert!(shell.jobs.is_none(), "no gateway, no /host/jobs to drive");
+        assert_eq!(shell.topology(), Topology::Gateway);
+        assert_ne!(shell.plan.worker_origin, shell.plan.origin);
+        assert!(
+            shell.jobs.is_some(),
+            "gateway topology still mounts /host/jobs"
+        );
     }
 
     #[test]
@@ -403,28 +471,33 @@ mod tests {
         assert_eq!(shell.app_url(), "http://127.0.0.1:9100/app");
         assert!(!shell.supervised());
         assert_eq!(shell.topology(), Topology::External);
+        assert!(
+            shell.jobs.is_none(),
+            "an attached host is not ours to schedule"
+        );
     }
 
     #[test]
-    fn the_kill_switch_spawns_nothing_but_still_names_an_origin() {
-        let shell = backend(StaticProbe::new().with_env(NO_BACKEND_ENV, "1"));
-        assert!(!shell.supervised());
-        assert!(shell.plan.disabled, "nothing will answer, so nothing waits");
-        assert!(shell.origin().starts_with("http://127.0.0.1:"));
+    fn a_retired_kill_switch_still_fronts_the_gateway() {
+        let shell = backend(
+            StaticProbe::new()
+                .with_env(NO_BACKEND_ENV, "1")
+                .with_env(PORT_ENV, "41845"),
+        );
+        assert!(shell.supervised());
+        assert_eq!(shell.topology(), Topology::Gateway);
+        assert_eq!(shell.origin(), "http://127.0.0.1:41845");
     }
 
     #[test]
-    fn an_explicit_origin_outranks_the_kill_switch() {
+    fn an_explicit_origin_outranks_the_retired_kill_switch() {
         let shell = backend(
             StaticProbe::new()
                 .with_env(NO_BACKEND_ENV, "1")
                 .with_env(ORIGIN_ENV, "http://127.0.0.1:9100"),
         );
         assert!(!shell.supervised(), "still nothing is spawned");
-        assert!(
-            !shell.plan.disabled,
-            "a worker was named, so the shell waits"
-        );
+        assert_eq!(shell.topology(), Topology::External);
     }
 
     #[test]
@@ -437,19 +510,19 @@ mod tests {
             shell.command_text(&status),
             "unavailable: worker unavailable"
         );
-        status.command = Some("/usr/bin/python3 -m latticeai.cli.entrypoint".into());
+        status.command = Some("/usr/bin/python3 -m latticeai.worker_app".into());
         assert_eq!(
             shell.command_text(&status),
-            "/usr/bin/python3 -m latticeai.cli.entrypoint"
+            "/usr/bin/python3 -m latticeai.worker_app"
         );
     }
 
     #[test]
-    fn an_external_worker_is_named_by_its_own_origin() {
+    fn an_external_host_is_named_by_its_own_origin() {
         let shell = backend(StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100"));
         assert_eq!(
             shell.command_text(&WorkerStatus::idle(9100, false)),
-            "external worker at http://127.0.0.1:9100 (not started here)"
+            "external lattice-host at http://127.0.0.1:9100 (not started here)"
         );
     }
 
@@ -470,18 +543,18 @@ mod tests {
     }
 
     #[test]
-    fn a_direct_shell_reports_no_gateway_origin() {
-        let shell = backend(StaticProbe::new().with_env(DIRECT_ENV, "1"));
-        let value =
-            serde_json::to_value(shell.render(&WorkerStatus::idle(4825, true))).expect("serialise");
-        assert_eq!(value["topology"], "direct");
+    fn an_external_shell_reports_no_local_gateway_origin() {
+        let shell = backend(StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100"));
+        let value = serde_json::to_value(shell.render(&WorkerStatus::idle(9100, false)))
+            .expect("serialise");
+        assert_eq!(value["topology"], "external");
         assert!(value["gateway_origin"].is_null());
         assert_eq!(value["worker_origin"], value["origin"]);
     }
 
     #[test]
     fn stopping_a_gateway_that_never_started_is_a_no_op() {
-        let shell = backend(StaticProbe::new().with_env(DIRECT_ENV, "1"));
+        let shell = backend(StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100"));
         shell.stop_gateway();
         shell.stop_gateway();
     }
@@ -492,7 +565,7 @@ mod tests {
     fn a_healthy_shell_names_no_gateway_error() {
         for probe in [
             StaticProbe::new().with_env(PORT_ENV, "41844"),
-            StaticProbe::new().with_env(DIRECT_ENV, "1"),
+            StaticProbe::new().with_env(ORIGIN_ENV, "http://127.0.0.1:9100"),
         ] {
             let shell = backend(probe);
             assert_eq!(shell.gateway_error(), None);
@@ -518,8 +591,12 @@ mod tests {
         let reason = shell.gateway_error().expect("the failure is recorded");
         assert!(reason.contains("could not bind"), "{reason}");
         assert!(
-            reason.contains("LATTICEAI_DESKTOP_DIRECT"),
+            reason.contains("LATTICEAI_DESKTOP_BACKEND_ORIGIN"),
             "the way out is named: {reason}"
+        );
+        assert!(
+            !reason.contains("LATTICEAI_DESKTOP_DIRECT"),
+            "the retired hatch must not be offered: {reason}"
         );
         assert!(
             shell.app_url().contains(&port.to_string()),
@@ -530,5 +607,34 @@ mod tests {
             serde_json::to_value(shell.render(&WorkerStatus::idle(port, true))).expect("serialise");
         assert_eq!(value["gateway_error"], reason);
         drop(occupied);
+    }
+
+    #[test]
+    fn an_existing_backend_cmd_is_left_alone() {
+        let probe = StaticProbe::new().with_env(BACKEND_CMD_ENV, "custom-worker --flag");
+        assert_eq!(worker_launch_command(&probe), None);
+    }
+
+    #[test]
+    fn a_bundled_tree_is_left_to_the_supervisor() {
+        let probe = StaticProbe::new()
+            .with_resource_dir("/app/Resources")
+            .with_file("/app/Resources/latticeai/worker_app.py");
+        assert_eq!(worker_launch_command(&probe), None);
+        let legacy = StaticProbe::new()
+            .with_resource_dir("/app/Resources")
+            .with_file("/app/Resources/_up_/latticeai/cli/entrypoint.py");
+        assert_eq!(worker_launch_command(&legacy), None);
+    }
+
+    #[test]
+    fn an_unpackaged_shell_pins_the_worker_module() {
+        let probe = StaticProbe::new().with_importable("/opt/homebrew/bin/python3");
+        let command = worker_launch_command(&probe).expect("pin");
+        assert!(command.ends_with("-m latticeai.worker_app"), "{command}");
+        assert!(
+            !command.contains("latticeai.cli.entrypoint"),
+            "the product server is gone: {command}"
+        );
     }
 }

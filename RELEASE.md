@@ -13,6 +13,43 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.6.0 — One Door (2026-08-15)
+
+제품 서버가 Rust 하나로 통합된 릴리스. Python은 웹 애플리케이션이 아니라
+AI 워커입니다.
+
+- **네이티브 420 오퍼레이션 / 41 라우트 패밀리**: `lattice-host`가 아홉
+  크레이트의 라우터를 한 프로세스에 마운트하고 원래 경로 그대로
+  응답합니다. `(method, path)` 중복은 라우터 생성 전에 이름 붙은 단언으로
+  먼저 실패합니다.
+- **Python 워커 28 라우트**: LLM·스트림, embed, extract, parse, render×4,
+  ASR, multimodal-describe, models/engines, sysinfo, health. 커밋된
+  allowlist(`rust/fixtures/worker_allowlist.json`) 밖의 경로는 프록시가
+  아니라 `404 {"detail":"Not Found"}`이며, 드리프트 게이트가 그 목록을
+  워커 프로필에서 다시 생성해 비교합니다.
+- **모든 쓰기가 네이티브**: KG write 엔진이 `lattice-core`로. 32단계 행
+  단위 패리티(매 단계 전 테이블 덤프, 허용 오차 0), `sqlite_master` 67
+  객체 스키마 대조, 그래프 테이블 17개 소유권 WORKER → RUST_PLATFORM.
+- **표면은 재생으로 증명**: 녹화된 HTTP 골든 **1,487 케이스**(12 픽스처
+  파일)를 네이티브 라우트에 재생. 기존 골든 계열(retrieval/chunking/
+  agent kernel/agent loop)은 그대로 초록.
+- **삭제**: Python **298 파일 / 73,617줄**. 남은 127 파일은 문·분기
+  **100.00%**(`fail_under=100`, 새 pragma 0).
+- **제거된 표면**: Telegram 브리지, SSO OIDC 로그인/콜백 플로우(설정
+  표면은 유지, 패스워드 로그인은 네이티브). 둘 다 워커 경계의 결과이며
+  노트에 이유와 함께 적었습니다.
+- **정직한 고지**: 그대로 이식한 오라클 버그 3건과 남은 구멍(업로드 추출
+  UTF-8 전용, 공급 벡터 1차 노드 한정, 모델 로드 스트리밍은 FakeWorker +
+  라이브 스모크로 증명, `/worker/render/pdf`의 새 `pdf` extra, 포인터
+  도구의 워커 실행)은 전부 릴리스 노트에 열거되어 있습니다.
+
+빌드 산출물은 `dist/ltcai-11.6.0-py3-none-any.whl`,
+`dist/ltcai-11.6.0.tar.gz`, `ltcai-11.6.0.tgz`, `dist/ltcai-11.6.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.6.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md)
+
 ## v11.5.2 — Tight Ship (2026-08-12)
 
 정착된 11.5.1 트리를 3중 감사하고 그 결과만 실행한 정리·정합성 릴리스.

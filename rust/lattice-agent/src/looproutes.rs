@@ -48,6 +48,13 @@ pub struct LoopConfig {
     pub runs_dir: std::path::PathBuf,
     /// Shared HTTP client, so the loopback pool is not duplicated.
     pub client: Option<reqwest::Client>,
+    /// Where a `strict` mutation is staged for review.
+    ///
+    /// `None` uses [`crate::proposals::JsonProposalStore`] over
+    /// `LATTICEAI_DATA_DIR`. A host that runs the Review Center in this process
+    /// **must** inject that store instead — see [`crate::proposals`] for why a
+    /// second writer on the same file is not a second opinion but a lost item.
+    pub proposals: Option<Arc<dyn crate::proposals::ProposalStore>>,
 }
 
 impl LoopConfig {
@@ -57,7 +64,14 @@ impl LoopConfig {
             worker_origin: worker_origin.into(),
             runs_dir: crate::runs::default_runs_dir(),
             client: None,
+            proposals: None,
         }
+    }
+
+    /// Stage proposals into `store` — the Review Center's, in the product.
+    pub fn with_proposals(mut self, store: Arc<dyn crate::proposals::ProposalStore>) -> Self {
+        self.proposals = Some(store);
+        self
     }
 
     fn worker(&self) -> WorkerClient {
@@ -92,6 +106,18 @@ impl LoopState {
     pub fn store(&self) -> &AgentRunStore {
         &self.store
     }
+
+    /// The ports one run needs: the body's, with the host's proposal store.
+    ///
+    /// Every `Runtime` these routes build comes through here, so the injected
+    /// store cannot be forgotten on one of the four paths.
+    fn deps_for(&self, body: &RunBody) -> crate::agentloop::LoopDeps {
+        let mut deps = body.to_deps(self.config.worker(), self.workspace.clone());
+        if let Some(store) = &self.config.proposals {
+            deps.proposals = Arc::clone(store);
+        }
+        deps
+    }
 }
 
 /// Mount the loop routes.
@@ -121,7 +147,7 @@ async fn drive(
     request: &RunRequest,
     observer: Option<crate::agentloop::StepObserver>,
 ) -> Outcome {
-    let deps = body.to_deps(state.config.worker(), state.workspace.clone());
+    let deps = state.deps_for(body);
     let mut runtime = Runtime::new(deps);
     if let Some(observer) = observer {
         runtime = runtime.with_observer(observer);
@@ -209,9 +235,7 @@ async fn run(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> Res
                 &ctx,
                 &body,
                 &state.workspace,
-                &body
-                    .to_deps(state.config.worker(), state.workspace.clone())
-                    .file_create_actions,
+                &state.deps_for(&body).file_create_actions,
                 &audit,
             ))
             .into_response(),
@@ -235,7 +259,7 @@ async fn run(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> Res
     tokio::spawn(async move {
         let payload = match drive(&state, &body, &request, Some(observer)).await {
             Outcome::Finished(ctx, audit) => {
-                let deps = body.to_deps(state.config.worker(), state.workspace.clone());
+                let deps = state.deps_for(&body);
                 finish_payload(
                     &ctx,
                     &body,
@@ -356,7 +380,7 @@ async fn resume(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> 
     }
 
     let request = stored_request.to_request();
-    let deps = stored_request.to_deps(state.config.worker(), state.workspace.clone());
+    let deps = state.deps_for(&stored_request);
     let file_create_actions = deps.file_create_actions.clone();
     let mut runtime = Runtime::new(deps);
     let mut ctx = AgentRunContext::restore(&record["ctx"]);

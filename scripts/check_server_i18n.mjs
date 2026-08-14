@@ -28,27 +28,11 @@ const API_DIR = "latticeai/api";
 // `check_legacy_debt.mjs` rejects a bare "<module>.py" literal in scripts/,
 // which is how the removed root shims used to be referenced.
 const LOCALIZED = [
-  "admin",
   "agent_worker_seam",
-  "auth",
-  "browser",
-  "chat",
-  "chat_history",
-  "chat_intents",
-  "chronicle",
-  "features",
-  "index_jobs",
-  "knowledge_graph",
-  "local_files",
-  "mcp",
-  "memory",
   "models",
-  "network_boundary",
-  "portability",
-  "project_sessions",
-  "review_queue",
-  "setup",
   "tools",
+  "worker_compute",
+  "worker_seams",
 ];
 
 const failures = [];

@@ -24,6 +24,7 @@ pub mod verification;
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
 
@@ -31,8 +32,10 @@ use crate::documents::document_output_target;
 use crate::mode::{normalize_mode, PermissionMode};
 use crate::policy::PolicyTable;
 use crate::profile::{profile_for_model, AgentProfile};
+use crate::proposals::{JsonProposalStore, ProposalStore};
 use crate::sandbox::Workspace;
 use crate::state::{AgentRunContext, AgentState};
+use crate::tools::{NativeTools, ToolConfig, ToolHost};
 use crate::transcript::{PhaseBudgets, TranscriptBudget};
 use crate::worker::WorkerClient;
 
@@ -110,6 +113,13 @@ impl Default for RunRequest {
 #[derive(Debug, Clone)]
 pub struct LoopDeps {
     pub worker: WorkerClient,
+    /// The native tool set (v11.6.0 §W4). Everything it `handles` is executed
+    /// here; everything else is still a `POST /agent/tool`.
+    pub native: Arc<dyn ToolHost>,
+    /// Where a `strict` mutation is staged for review (v11.6.0 §P1c). The
+    /// default writes `workspace_os.json` directly; a host running the Review
+    /// Center **must** inject its own store — see [`crate::proposals`].
+    pub proposals: Arc<dyn ProposalStore>,
     pub workspace: Workspace,
     pub policies: PolicyTable,
     pub file_create_actions: BTreeSet<String>,
@@ -168,8 +178,15 @@ pub fn default_scoped_knowledge_tools() -> BTreeSet<String> {
 impl LoopDeps {
     /// Production defaults around a worker and a workspace.
     pub fn new(worker: WorkerClient, workspace: Workspace) -> Self {
+        let native = Arc::new(NativeTools::new(
+            workspace.clone(),
+            ToolConfig::from_env(),
+            worker.clone(),
+        ));
         Self {
             worker,
+            native,
+            proposals: Arc::new(JsonProposalStore::from_env()),
             workspace,
             policies: PolicyTable::default(),
             file_create_actions: default_file_create_actions(),

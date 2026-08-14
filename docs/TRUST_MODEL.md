@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.5.2 — Tight Ship**.
+Current release: **11.6.0 — One Door**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

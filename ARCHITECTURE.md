@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.5.2 — Tight Ship**.
+Current release: **11.6.0 — One Door**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -22,25 +22,27 @@ flowchart TB
     desktop["Tauri desktop shell<br/>boots the host topology"]
     editor["VS Code<br/>extension"]
     browser["Browser<br/>extension"]
-    telegram["Telegram<br/>bridge"]
-    desktop ~~~ ui ~~~ editor ~~~ browser ~~~ telegram
+    desktop ~~~ ui ~~~ editor ~~~ browser
   end
 
-  subgraph host["Lattice Host — Rust front door (desktop default · opt-in binary)"]
+  subgraph host["Lattice Host — the product server (Rust, 127.0.0.1)"]
     direction TB
-    gateway["Gateway (axum, loopback-only)<br/>/host/* · /rust/* native — open-posture gated, fail closed<br/>streaming reverse proxy · 3xx + cookies pass intact"]
-    subgraph crates["Native crates — every port pinned by bidirectional parity goldens"]
-      direction LR
-      core_c["lattice-core<br/>storage reads · hash embedder<br/>(bit-for-bit)"]
-      retr["lattice-retrieval<br/>hybrid · keyword · vector ·<br/>graph · history · context ·<br/>doc-gen (191+ goldens)"]
-      ingest["lattice-ingest<br/>watch · parse · chunk ·<br/>dedup (332 golden chunks)"]
-      jobs["lattice-jobs<br/>scheduler · embed-queue drain"]
-      agentc["lattice-agent<br/>loop orchestrator ·<br/>permission kernel (2,452 verdicts) ·<br/>sandbox · read-only exec"]
-      core_c ~~~ retr ~~~ ingest ~~~ jobs ~~~ agentc
+    door["One door: 420 native operations · 41 route families<br/>mounted at their original paths<br/>anything not native and not on the allowlist ⇒ 404"]
+    subgraph crates["Nine crates — every port pinned by goldens"]
+      direction TB
+      plat["lattice-platform (317 ops)<br/>workspace · admin · review_queue · change_proposals ·<br/>automation · hooks · mcp · marketplace · plugins ·<br/>tools · permissions · network · portability · setup ·<br/>agents · realtime · voice · workflow_designer · …"]
+      retr["lattice-retrieval (65 ops)<br/>search · knowledge_graph · brain ·<br/>memory · chronicle · command_center ·<br/>evidence · garden"]
+      ingestc["lattice-ingest (27 ops)<br/>browser · local_files"]
+      chatc["lattice-chat (7 ops)<br/>chat + history"]
+      jobsc["lattice-jobs (4 ops)<br/>index · scheduler"]
+      authc["lattice-auth<br/>password login · sessions · CSRF"]
+      agentc["lattice-agent<br/>loop orchestrator · permission kernel ·<br/>sandbox · native tools · proposal staging"]
+      corec["lattice-core<br/>store · embeddings · <b>graph_write</b>"]
+      hostc["lattice-host<br/>gateway · supervisor · static UI"]
     end
-    supervisor["Supervisor<br/>spawn · /health gate · backoff restart ·<br/>graceful stop · unified ports · CSRF + CORS origin injection"]
-    gateway --> crates
-    gateway --> supervisor
+    supervisor["Supervisor<br/>uvicorn factory spawn · /health gate ·<br/>backoff restart · graceful stop ·<br/>CSRF + CORS origin injection"]
+    door --> crates
+    door --> supervisor
   end
 
   subgraph gates["Trust boundary — every request crosses this"]
@@ -48,54 +50,66 @@ flowchart TB
     trust["auth · consent<br/>audit · redaction"]
     mode["PermissionMode dial<br/>strict · trusted · bypass<br/><i>may this tool run?</i>"]
     net["NetworkBoundary dial<br/>local_only · cloud_allowed<br/><i>may knowledge leave?</i>"]
-    breakers["Circuit breakers<br/>mode-invariant — enforced in<br/>BOTH the Rust kernel and the worker"]
+    breakers["Circuit breakers<br/>mode-invariant — enforced in the Rust kernel"]
     trust ~~~ mode ~~~ net ~~~ breakers
   end
 
-  subgraph worker["Python AI Worker — FastAPI (latticeai.app_factory)"]
+  subgraph worker["Python AI Worker — pure compute (latticeai.worker_app)"]
     direction LR
-    llm["LLM inference<br/>/agent/llm · chat streams<br/>MLX · on-device"]
-    toolexec["Tool handlers + graph writes<br/>/agent/tool · /agent/change-proposal<br/>single writer · proposal-first"]
-    platform["Platform routes<br/>chat · memory · ingestion pipeline ·<br/>parsers · review · admin (~450 routes)"]
-    llm ~~~ toolexec ~~~ platform
+    llm["Inference<br/>/agent/llm · /worker/llm/stream"]
+    compute["Compute seams<br/>/worker/{embed,extract,parse,asr,<br/>multimodal/describe,render/×4}"]
+    catalog["Model + engine catalog<br/>/models · /engines/* · /worker/sysinfo · /health"]
+    llm ~~~ compute ~~~ catalog
   end
 
-  subgraph data["Brain Core — lattice_brain (one SQLite file)"]
+  subgraph data["Brain — one SQLite file"]
     direction LR
     kg["Knowledge Graph<br/>nodes · edges · provenance"]
-    store["Local storage<br/>SQLite live · Postgres optional"]
+    store["Local storage<br/>SQLite live"]
     archive["Portable archives<br/>.latticebrain"]
     kg ~~~ store ~~~ archive
   end
 
-  cloud["Cloud LLM worker<br/>OpenAI-compatible stream<br/><b>opt-in, off by default</b>"]
+  cloud["Cloud LLM lane<br/>OpenAI-compatible stream, native in lattice-chat<br/><b>opt-in, off by default</b>"]
 
   user --> surfaces
   surfaces --> host
-  gateway -- "everything not native<br/>(streaming, SSE, X-Forwarded-*)" --> gates
+  door -- "28 allow-listed routes only<br/>(streaming, SSE, X-Forwarded-*)" --> gates
   gates --> worker
-  agentc -- "plan · execute · verify turns<br/>via the worker seams" --> worker
-  jobs -- "drain ticks" --> worker
-  ingest -- "detected content<br/>(writes stay delegated)" --> worker
-  crates -- "read-only<br/>(WAL, busy-timeout)" --> data
-  worker -- "single writer" --> data
+  corec -- "<b>single writer — RUST</b>" --> data
+  crates -- "reads (WAL, busy-timeout)" --> data
 
   mode -. "widens approval only" .-> agentc
   breakers -. "no mode ever widens these" .-> agentc
 
-  worker -- "minimal extracted slice only<br/>never the graph" --> cloud
-  cloud -- "streamed answer +<br/>proposed memory" --> worker
+  chatc -- "minimal extracted slice only<br/>never the graph" --> cloud
+  cloud -- "streamed answer +<br/>proposed memory" --> chatc
   net -. "local_only blocks this edge entirely" .-> cloud
   breakers -. "sensitive · private · do_not_share<br/>filtered in BOTH modes" .-> cloud
 
   style cloud stroke-dasharray: 5 5
 ```
 
-The dashed node is the only thing in this diagram that can live off the
-machine, and two independent gates stand in front of it: the boundary dial
-must be `cloud_allowed`, and the sensitivity filter runs regardless of the
-dial. The Knowledge Graph itself never crosses that edge — only the minimal
-node slice the extractor selected for one turn.
+Three things this diagram says that the 11.5.x one did not:
+
+- **The worker is not a server of the product.** It answers 28 routes, all of
+  them compute, and the door forwards to it only from a committed allowlist
+  (`rust/fixtures/worker_allowlist.json`) that a drift gate regenerates from
+  the worker's own profile and compares. A path absent from that file is
+  answered natively or 404 — never forwarded.
+- **The single writer is Rust.** `lattice_core::graph_write` owns every write
+  to `knowledge_graph.sqlite`; seventeen graph tables changed owner in 11.6.0,
+  and `db_write_ownership.rs` asserts that no table in the graph database is
+  written by the worker.
+- **The cloud lane is native and still dashed.** It is the only thing here that
+  can live off the machine, and two independent gates stand in front of it: the
+  boundary dial must be `cloud_allowed`, and the sensitivity filter runs
+  regardless of the dial. The Knowledge Graph itself never crosses that edge —
+  only the minimal node slice the extractor selected for one turn.
+
+The Telegram bridge is gone from this diagram because it is gone from the
+product: it lived in the platform code that became the worker (see
+[RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md) §5.1).
 
 Key boundaries:
 
@@ -110,41 +124,43 @@ Key boundaries:
   `scripts/check_i18n_namespace_coverage.mjs` fails the build when a chunk
   reads a key whose namespace it never imports — otherwise `t()` silently
   returns the raw key and the UI renders an identifier instead of text.
-- `latticeai.app_factory` is the FastAPI composition root.
-- `latticeai.runtime` owns typed config, security, Brain, model, platform, and
-  router assembly stages (`config_runtime`, `security_runtime`,
-  `brain_runtime`, `persistence_runtime`, `history_runtime`,
-  `history_writer`, `router_registration`, ...); no stage exports ambient
-  `locals()` state. `history_writer` holds the redact → audit → store → ingest
-  order for one chat turn; it was 66 lines inside the `_build` closure until
-  10.3.0, which is why the function deciding what the audit log records about a
-  message had never been tested.
-- `latticeai.api` owns route-level behavior through router-factory modules
-  (chat, memory, search, local_files/ingestion, brain_intelligence,
-  automation_intelligence, command_center, change_proposals, review_queue,
-  network_boundary, workspace, admin, ...). Chat contracts, history, documents,
-  and streaming are focused modules over service-owned logic; `chat_hybrid`
-  is the branch `chat` delegates to when the boundary allows cloud.
-- `latticeai.services` owns product and execution services (`chat_service`,
-  `memory_service`, `model_service`, `ingestion`, `search_service`,
-  `review_queue`, `command_center`, `automation_intelligence`,
-  `brain_intelligence`, `change_proposals`, ...). The hybrid path is a
-  self-contained group inside it (`hybrid_chat`, `hybrid_context`,
-  `hybrid_policy`, `cloud_streaming`, `cloud_extraction`, `cloud_token_guard`,
-  `openai_compatible_adapter`, `network_boundary_service`) so the local path
-  carries none of it.
-- `latticeai.core` owns lower-level registries and helpers (`agent`,
-  `agent_state`, `agent_helpers`, `agent_eval`, `tool_governor`,
-  `network_boundary`, `context_builder`, `workspace_os`, `mcp_registry`,
-  `marketplace`, `tool_registry`, `config`, ...).
-- `lattice_brain` owns Brain Core, graph, memory, ingestion, and storage.
-  `lattice_brain/graph/store.py` composes `KnowledgeGraphStore` from focused
-  mixins (retrieval, retrieval_vector, ingest, discovery, provenance,
-  projection, documents, write_master). `lattice_brain/graph/proactive.py`
-  provides read-only proactive intelligence (duplicate discovery,
-  contradictions, quality reports, the observe-mode ingest quality gate) over
-  the store's public APIs. Storage engines live in `lattice_brain/storage/`
-  (SQLite live engine, optional Postgres scale/migration tooling).
+- `rust/lattice-host` is the product composition root. `gateway/onedoor.rs`
+  builds every shared dependency exactly once — one `RuntimeConfig`, one
+  SQLite `Store`, one `GraphWriter` (whose `open` *is* the schema bootstrap,
+  so it runs before any route serves), one `AuthState`, one loopback client,
+  one agent `Workspace`, one workspace-membership resolver, and one
+  `GovernanceState` — and hands them to the family routers.
+  `gateway/product.rs::mount_table()` is the declared union of every crate's
+  `MOUNTED` const, so a `(method, path)` claimed twice fails as a named
+  assertion before the router is built rather than as an axum panic inside a
+  constructor.
+- `rust/lattice-platform` owns the product route families that are not
+  retrieval, ingest, chat or jobs: workspace and invitations, admin and the
+  security dashboard, features and funnel metrics, setup, review_queue and
+  change_proposals, automation and hooks, mcp, marketplace and plugins,
+  agent_registry and agents, tools, permissions and permission_mode,
+  portability, network and network_boundary, realtime, project_sessions,
+  computer_use, voice, workflow_designer, models_catalog, static UI and the
+  page redirects.
+- `rust/lattice-core` owns the store and — since 11.6.0 — `graph_write`, the
+  knowledge-graph **write** engine: ingest doors, curation, provenance,
+  taxonomy, the vector queue and the schema bootstrap. It is the single writer.
+- `rust/lattice-agent` owns the safety kernel and the loop: permission modes,
+  circuit breakers, the `run_command` validator, the sandbox, the native tool
+  handlers, `pydiff` (a port of CPython's `difflib` so the reviewer reads the
+  diff that will actually be applied), and `proposals::ProposalStore`, the port
+  through which a paused run stages into the Review Center's own document.
+- `latticeai.worker_app` is the only application the Python package builds.
+  `create_worker_app` is a seven-phase bootstrap (platform, config, identity,
+  brain, domain, web, features) over a 47-field runtime context, and it serves
+  28 routes: `/agent/{llm,tool}`, `/worker/{llm/stream,sysinfo,embed,extract,
+  parse,asr,multimodal/describe,render/{docx,pdf,pptx,xlsx}}`, the model and
+  engine catalog, `/tools/{read_document,pdf_pages}`, the embeddings and
+  multimodal status probes, and `/health`. `create_app` no longer exists.
+- `lattice_brain` is now the compute half of the Brain: the local embedding
+  model, the multimodal fact extractors, the text/extraction helpers and the
+  capability-only ingestion pipeline. The graph store, conversations, storage
+  engines, portability and the workflow engine moved to Rust.
 
 ## First Screen Composition
 
@@ -197,18 +213,18 @@ sequenceDiagram
   autonumber
   participant U as User
   participant UI as Brain Home
-  participant API as FastAPI Sidecar
-  participant RT as Runtime Context
-  participant MS as Memory / Model Services
-  participant AR as AgentRuntime
+  participant API as Lattice Host (one door)
+  participant RT as OneDoorState
+  participant MS as Retrieval / Chat crates
+  participant AR as Agent loop (lattice-agent)
   participant CG as Change Governor
-  participant TR as ToolRegistry
-  participant KG as Knowledge Graph
+  participant TR as Native tools + worker seams
+  participant KG as Knowledge Graph (graph_write)
   participant CL as Cloud LLM (opt-in)
 
   U->>UI: Ask, capture, review, or automate
   UI->>API: Authenticated localhost request
-  API->>RT: Resolve scoped runtime dependencies
+  API->>RT: Resolve the shared dependencies built once at boot
   RT->>MS: Load workspace, memory, model state
   MS->>KG: Retrieve grounded context and provenance
 
@@ -269,7 +285,7 @@ enter the governed workspace file tool path.
 
 ## Frontend
 
-The app is a React/Vite static bundle served by the local FastAPI sidecar.
+The app is a React/Vite static bundle served by the Rust host (`static_ui`).
 Current UX rules:
 
 - Brain Home is the default product surface, composed of exactly four zones
@@ -306,43 +322,89 @@ Current UX rules:
 - Critical API failures produce an explicit unavailable state and are never
   normalized into healthy empty Brain data.
 
-## FastAPI Sidecar
+## Python AI Worker
 
-`latticeai.app_factory` builds the local app without import-time MLX/GPU
-initialization, filesystem writes, or network calls. Runtime assembly is
-dependency-injected through immutable typed stages instead of ambient locals or
-global mutable model state.
+`latticeai.worker_app.create_worker_app` builds the only application this
+package produces. It is not a product server: it is the process that does what
+a model does, reached over loopback by the Rust host that supervises it.
+
+The bootstrap is seven phases (`platform`, `config`, `identity`, `brain`,
+`domain`, `web`, `features`) with no import-time MLX/GPU initialization,
+filesystem writes, or network calls, and every phase is dependency-injected
+through an immutable typed context instead of ambient locals.
+
+| Phase | What it builds |
+|---|---|
+| `platform` | the MLX device |
+| `config` | `Config.from_env`, the data dir, rate-limit switch. `APP_VERSION` is `latticeai.__version__` |
+| `identity` | the seam gate: `users.json`, an in-memory session store, `require_user` / `require_admin`, rate limiting. No audit, SSO, VPC, MCP state or invitations — those are the host's |
+| `brain` | the resolved embedder, `MultimodalPorts`, a capability-only ingestion pipeline. No graph store, no conversations, no workspace OS |
+| `domain` | `LLMRouter`, tool-dispatch configuration |
+| `web` | lifespan (model autoload + idle unload), the FastAPI shell, the model runtime |
+| `features` | the six routers that carry the 28 routes |
 
 Important expectations:
 
-- bind to `127.0.0.1` by default;
-- require auth for sensitive endpoints;
-- keep static serving, API routers, MCP install state, and runtime context
-  separately testable;
-- keep model and tool execution behind explicit runtime boundaries.
-- keep API-specific HTTP errors at the route boundary and domain/model errors in
-  services.
+- bind to `127.0.0.1`; the host supervises it on an internal port;
+- the compute seams are gated on `LATTICEAI_AGENT_TOOL_SEAM`, which only the
+  host injects, and auth runs **before** any decode or compute so a 401 costs
+  nothing;
+- the CSRF origin guard stays, because browser-facing writes on a handful of
+  paths (`/models/load`, `/engines/pull-model`, `/tools/read_document`) are
+  still proxied and arrive carrying the gateway's `Origin`. That is why the
+  supervisor injects `LATTICEAI_CSRF_TRUSTED_ORIGINS`;
+- keep HTTP errors at the route boundary and model errors in services;
+- **launch through uvicorn's factory form.** `python -m latticeai.worker_app`
+  exports `main()` but has no `__main__` guard, so the module form imports and
+  exits without binding. The supervisor runs
+  `python -m uvicorn latticeai.worker_app:create_worker_app --factory`.
 
-## Rust Foundation (11.4.0) / Rust Complete (11.5.0)
+The 28 routes, by group:
 
-`rust/` is a cargo workspace of six crates. 11.4.0 landed Phase 1 of
-[`docs/v11.4.0_RUST_FOUNDATION_PLAN.md`](docs/v11.4.0_RUST_FOUNDATION_PLAN.md);
-11.5.0 landed Phases 2-4 in
-[`docs/v11.5.0_RUST_COMPLETE_PLAN.md`](docs/v11.5.0_RUST_COMPLETE_PLAN.md). The
-rule did not change: the layers that are pure computation move to Rust, Python
-keeps everything that is not, and every ported path is locked by a golden that
-both runtimes are held to. The workspace is deliberately **not** a member of
+| Group | Routes |
+|---|---|
+| Agent seam (2) | `POST /agent/llm` · `POST /agent/tool` |
+| State seams (2) | `GET /worker/sysinfo` · `POST /worker/llm/stream` |
+| Compute seams (9) | `POST /worker/{embed,extract,parse,asr,multimodal/describe}` · `POST /worker/render/{docx,pdf,pptx,xlsx}` |
+| Models + engines (8) | `GET /models` · `POST /models/{load,switch/{id}}` · `DELETE /models/{unload/{id},unload-all}` · `POST /engines/{prepare-model,prepare-model/stream,pull-model}` |
+| Documents (2) | `POST /tools/read_document` · `GET /tools/pdf_pages` |
+| Status (5) | `GET /health` · `GET /api/embeddings/{status,providers}` · `GET /api/ingestion/multimodal` · `GET /api/capture/voice/status` |
+
+`rust/fixtures/worker_allowlist.json` is that list projected into the gateway,
+generated by `scripts/gen_worker_allowlist_fixture.py` from
+`worker_profile.worker_route_keys()`, `include_str!`-compiled into the binary
+(a shipped binary has no `fixtures/` directory) and pinned from Python by
+`tests/unit/test_worker_allowlist.py`.
+
+## The Rust workspace (11.4.0 → 11.6.0)
+
+`rust/` is a cargo workspace of **nine** crates. 11.4.0 landed Phase 1 of
+[`docs/v11.4.0_RUST_FOUNDATION_PLAN.md`](docs/v11.4.0_RUST_FOUNDATION_PLAN.md),
+11.5.0 landed Phases 2-4 of
+[`docs/v11.5.0_RUST_COMPLETE_PLAN.md`](docs/v11.5.0_RUST_COMPLETE_PLAN.md),
+11.5.1 landed the loop orchestrator, and 11.6.0 finished the job in
+[`docs/v11.6.0_ONE_DOOR_PLAN.md`](docs/v11.6.0_ONE_DOOR_PLAN.md): the product
+server itself. The rule that got it here did not change — a ported path is
+locked by a golden that both runtimes are held to — but the split it enforces
+did: Python is no longer "everything that is not pure computation", it is
+**only** what a model does. The workspace is deliberately **not** a member of
 `src-tauri`'s build — none of it depends on `tauri`, so a bare ubuntu CI runner
 compiles and tests all of it with no desktop system libraries installed.
 
-| Crate | Role |
-|---|---|
-| `lattice-core` | Data-directory resolution (`LATTICEAI_DATA_DIR`, else `~/.ltcai`), read-only WAL access to the shared `knowledge_graph.sqlite`, and a 1:1 port of `lattice_brain/embeddings.py` (tokenizer, blake2b-8 hashed bag of features, L2 normalization, `<f32` encoding, pure-inner-product similarity). |
-| `lattice-retrieval` | The graph-layer engines — `search()` (keyword), `vector_search()` (brute-force cosine), `hybrid_search()` (two-channel alpha fusion) — plus, in 11.5.0, the service-layer three-channel fusion, the KG relationship and traversal reads, the durable conversation-history reads, and the budgeted context assembler. Exposes them as a mountable router. |
-| `lattice-ingest` | Watch, parse, chunk, hash: the four typed chunking strategies and their boundary arithmetic, the chunk-id and content-hash conventions, the PDF page-offset arithmetic, the folder filter chain, and the polling mtime watcher. It never writes the graph — detection and chunking here, the write delegated to the worker. |
-| `lattice-jobs` | The timer nothing had: a scheduler that calls the worker's `POST /api/index/drain` on an interval, optionally resumes one interrupted ingestion job per tick, backs off on failure, and exposes its schedule and backlog as status routes. |
-| `lattice-agent` | The agent safety kernel — permission modes, auto-approve decisions, circuit breakers, proposal staging, tool classification, and the `run_command` validator — plus native execution of the read-only allow-listed commands. Inference and mutation stay with the worker. |
-| `lattice-host` | The Python worker supervisor and the loopback-only IPC/API gateway that mounts all of the above. Usable as a library (the desktop shell consumes it) and as a `lattice-host` binary. |
+| Crate | Role | Route families it mounts |
+|---|---|---|
+| `lattice-core` | Data-directory resolution (`LATTICEAI_DATA_DIR`, else `~/.ltcai`), the SQLite store, a 1:1 port of `lattice_brain/embeddings.py`, and **`graph_write`** — the knowledge-graph write engine (ingest doors, curation, provenance, taxonomy, vector queue, schema bootstrap). The single writer. | — (a library every family writes through) |
+| `lattice-auth` | Password login, sessions, roles, rate limits, CSRF policy. One `AuthState` per process. | `auth` (6 paths) |
+| `lattice-retrieval` | Keyword / vector / hybrid search, the service-layer three-channel fusion, KG relationship and traversal reads, durable history reads, the budgeted context assembler and doc-gen. | `search`, `knowledge_graph`, `brain`, `memory`, `chronicle`, `command_center`, `evidence`, `garden` — **65 ops** |
+| `lattice-ingest` | Watch, parse, chunk, hash: four typed chunking strategies, chunk-id and content-hash conventions, PDF page-offset arithmetic, the folder filter chain, the polling watcher — and, since 11.6.0, the writes themselves through `graph_write`. | `browser`, `local_files` — **27 ops** |
+| `lattice-jobs` | The scheduler for the embed queue. Since 11.6.0 it holds a `GraphWriter` and drains **natively**; before that every tick was an HTTP call to a path the worker no longer served. | `index` — **4 ops** |
+| `lattice-agent` | The safety kernel (permission modes, auto-approve, circuit breakers, the `run_command` validator, the sandbox), the loop orchestrator, the native mutating tool handlers, `pydiff`, and `proposals::ProposalStore`. | `/rust/agent/{preflight,exec,contract,run,resume,approvals}` |
+| `lattice-chat` | The chat turn end to end: redact → audit → store → ingest, history, and the opt-in cloud lane behind the network-boundary dial. | `chat` + `history` — **7 ops** |
+| `lattice-platform` | Everything else the product serves: workspace, admin, review_queue, change_proposals, automation, hooks, mcp, marketplace, plugins, tools, permissions, portability, network, setup, agents, realtime, voice, workflow_designer, models_catalog, static UI, page redirects. | 28 families — **317 ops** |
+| `lattice-host` | The composition root, the gateway, the worker supervisor and the static UI resolution. Usable as a library (the desktop shell consumes it) and as a `lattice-host` binary. | the door itself |
+
+`mounted_route_count()` is **420** over **41** families, and a unit test proves
+no `(method, path)` is claimed twice *before* the router is built.
 
 ### The parity contract runs both ways
 
@@ -355,8 +417,13 @@ whole response, so a drifting float, a renamed key, a missing honesty field and 
 reordered tie all fail the same way. A semantic change on the Python side cannot
 silently invalidate the goldens, and a Rust port cannot quietly narrow the claim.
 
-Five golden families exist, each generated from the real Python original and
-asserted from both sides:
+Since 11.6.0 the generators are frozen: the Python sources several of them
+imported no longer exist, so `rust/fixtures/{golden,graph_write,http,agent_loop,
+agent}/FROZEN.md` records commit `fc65e60` as the last tree that could
+regenerate them, and the committed files are the contract. That is stated rather
+than hidden, because a golden nothing can reproduce is a spec nobody can check.
+
+**Seven** golden families exist, each generated from the real Python original:
 
 | Family | What is pinned | Generator |
 |---|---|---|
@@ -365,44 +432,69 @@ asserted from both sides:
 | Agent kernel | 2,358 decisions: mode normalization, effective auto-approve, circuit breakers, proposal staging, tool classification, and the `run_command` validator verdicts | `scripts/generate_agent_parity_fixtures.py` |
 | Context / history | 109 goldens: the assembler's section order and greedy budget truncation, the live `build_recent_chat_context` (a family added in 11.5.2 — it caught Rust returning empty for Python's keep-everything `limit=0` tail slice), the history reads with their scoping and grouping, doc-gen search and multi-hop context | `scripts/generate_rust_parity_fixtures.py` + `scripts/parity_fixture_corpus_{docgen,context}.py` |
 | Agent loop | Ten scripted trajectories replayed byte-identically against the real Python runtime (audit trail included), plus the helper tables — plan normalization, action extraction, and since 11.5.2 `document_targets` and `agent_profiles` (97 rows), the last two `/agent` hot-path twins | `scripts/generate_agent_loop_fixtures.py` |
+| **Graph write** (11.6.0) | A **32-step battery** driven through the real Python store, dumping **every table after every step**, plus the final store and a `sqlite_master` master of all **67 objects** (implicit indexes and FTS shadow tables included). Zero tolerated differences | `scripts/gen_graph_write_goldens.py` |
+| **HTTP surface** (11.6.0) | **1,487 recorded request/response cases** across twelve fixture files — admin, auth/security, chat, knowledge/search, mcp/ecosystem, memory/brain, platform, review/proposals, static UI, tools, worker tools, workspace — captured from the real Python app while it still served them, and replayed against the native routes | frozen at `fc65e60` |
 
 The clock is a parameter, not a call: `hybrid_search` takes `now_secs`, because a
 golden file that reads the wall clock is not a golden file.
 
-### Gateway topology
+### Gateway topology — the one door
 
-The gateway binds 127.0.0.1 and refuses any other address outright. Two host
-namespaces and one fallthrough, no overlap:
+The gateway binds 127.0.0.1 and refuses any other address outright. Since
+11.6.0 it is not a proxy with a few native lanes; it is the product server, and
+the proxy is the fallback.
 
+- **Product routes** — the 420 native operations, mounted at the paths they
+  always had (`/api/*`, `/workspace/*`, `/models` pages, `/chat`, the SPA shell,
+  the page redirects). They are real routes, assembled before the fallback, so
+  nothing native can be shadowed by the proxy.
 - `/host/health` — the host answers itself, always: liveness only, no data.
   `/host/status` and `/host/jobs` (added by `lattice-jobs` when a scheduler is
   wired) share the native lanes' posture gate below. Anything else under
-  `/host/` is a 404 from the host, never a request leaked to the worker.
-- `/rust/...` — served natively by the mounted crates, and gated on the same
-  rule Python calls `trusted_local_owner`: the lanes answer only while the
-  worker reports an open posture (auth not required, loopback-only bind). The
-  gateway reads those facts from the worker's `/health` payload, caches them
-  briefly, and **fails closed** — posture closed *or unknown* is a 401
-  `native_lane_requires_open_posture`, never an unauthenticated graph read.
-  Within an open posture: bad input is a 422 naming the field; a machine with
-  no brain yet gets a 404 that says so rather than an empty result set that
-  reads like "nothing matched". SQLite work runs on `spawn_blocking`, so a
-  search never stalls an in-flight SSE stream. An unknown path under `/rust/`
-  is a 404 that lists the families that exist.
-- everything else — reverse-proxied to the Python worker with the response body
-  streamed, so `/api/chat/stream` and the agent step feed keep flowing. A
-  proxied `text/event-stream` response also picks up `X-Accel-Buffering: no`
-  when the worker did not set it, so a buffering proxy in front of the desktop
-  cannot turn a live stream into one late burst. The proxy never follows a
-  redirect on the app's behalf: a 3xx passes through with its `Set-Cookie` and
-  `Location` intact (the invite gate and SSO login both set cookies on
-  redirects), and an absolute `Location` naming the internal worker origin is
-  rewritten to the gateway origin so the worker port never leaks. Every proxied
-  request carries `X-Forwarded-For`, `X-Forwarded-Proto`, and
-  `X-Forwarded-Host`, which the worker honours only from a loopback peer or a
-  listed trusted proxy.
+  `/host/` is a 404 from the host, never leaked to the worker.
+- `/rust/...` — the credential-free lanes, gated on the rule Python calls
+  `trusted_local_owner`: they answer only while the worker reports an open
+  posture (auth not required, loopback-only bind). The gateway reads those facts
+  from the worker's `/health`, caches them briefly, and **fails closed** —
+  posture closed *or unknown* is a 401 `native_lane_requires_open_posture`,
+  never an unauthenticated graph read. Within an open posture: bad input is a
+  422 naming the field; a machine with no brain yet gets a 404 that says so
+  rather than an empty result set that reads like "nothing matched". SQLite work
+  runs on `spawn_blocking`, so a search never stalls an in-flight SSE stream.
+- **The allowlist, then 404.** Everything else is checked against
+  `gateway/allowlist.rs` — the committed projection of the worker's own route
+  keys. A match is reverse-proxied with the response body streamed (so
+  `/worker/llm/stream` and the agent step feed keep flowing); a miss is
+  `404 {"detail":"Not Found"}`, FastAPI's own body, because this process is the
+  product server now. Matching is on method **and** path; `HEAD` follows `GET`
+  (whether that is a 200 or a 405 is the worker's call, and inventing one here
+  would be claiming authority this hop does not have); `{id:path}` converters
+  are prefix matches with a non-empty tail.
+- A proxied `text/event-stream` response picks up `X-Accel-Buffering: no` when
+  the worker did not set it. The proxy never follows a redirect on the app's
+  behalf: a 3xx passes through with `Set-Cookie` and `Location` intact, and an
+  absolute `Location` naming the internal worker origin is rewritten to the
+  gateway origin. Every proxied request carries `X-Forwarded-For`,
+  `X-Forwarded-Proto` and `X-Forwarded-Host`, honoured only from a loopback peer
+  or a listed trusted proxy. The hop deliberately carries no request timeout: a
+  blanket timeout would kill long-lived SSE.
 
-The mount map (`rust/lattice-host/src/gateway/mounts.rs`) is one screen:
+The mount map is declared, not discovered — `gateway/product.rs::mount_table()`
+is the union of every crate's `MOUNTED` const:
+
+| Group | Families | Ops |
+|---|---|---|
+| `lattice-platform` | admin, agent_registry, agents (+ agent loop), automation, change_proposals, computer_use, features, funnel_metrics, hooks, invitations, marketplace, mcp, models_catalog, network, network_boundary, permission_mode, permissions, plugins, portability, project_sessions, realtime, review_queue, security_dashboard, setup, tools, voice, workflow_designer, workspace | 317 |
+| `lattice-retrieval` | knowledge_graph, search, brain, chronicle, command_center, evidence, garden, memory | 65 |
+| `lattice-ingest` | browser, local_files | 27 |
+| `lattice-chat` | chat + history | 7 |
+| `lattice-jobs` | index | 4 |
+
+Declared as routers rather than tables, and so not counted in the 420:
+`lattice_auth::router` (6 paths), `static_ui::router` (`/`, `/account`, `/app`,
+`/manifest.json`, `/sw.js`, `/favicon.ico`, `/static/**`, `/icons/**`), the page
+redirects, `static_ui::sysinfo_router`, and the pre-existing `/rust/*` and
+`/host/*` lanes:
 
 | Route family | Crate |
 |---|---|
@@ -462,26 +554,37 @@ and the unified 4825 port scan.
 
 ### The boundary, stated rather than discovered
 
-Python is not being retired — it is converging on the AI Worker of the target
-diagram, and two rules keep the split honest:
+The boundary the previous four releases were converging on is the one 11.6.0
+arrived at. Two rules keep it honest, and both inverted:
 
-- **Single writer.** Every write to `knowledge_graph.sqlite` goes through the
-  Python worker. The Rust crates open the store `SQLITE_OPEN_READ_ONLY`;
-  `lattice-ingest` detects, parses, chunks and judges duplicates, and then
-  delegates the write; `lattice-jobs` drains the embed queue by *calling* the
-  worker, never by embedding itself.
-- **AI Worker.** Inference, the document parser matrix (pdf/docx/xlsx/pptx),
-  embedding production, mutating tool execution and graph writes stay in Python
-  by design. The agent kernel decides in Rust and executes only validated,
-  read-only, allow-listed commands; everything else comes back as a verdict.
+- **Single writer — Rust.** Every write to `knowledge_graph.sqlite` goes
+  through `lattice_core::graph_write`. Seventeen graph tables changed owner
+  from WORKER to RUST_PLATFORM, `knowledge_graph_blobs/` came with them, and
+  `db_write_ownership.rs::no_table_in_the_graph_database_is_written_by_the_worker`
+  is the assertion that keeps it that way. One writer means one write
+  connection, and one write connection means one write lock — `GraphWriter`
+  clones share the `Arc<Store>`, so two writers are the same writer.
+- **AI Worker — only what a model does.** Inference, embedding production,
+  extraction, the document parser matrix, the four renderers, speech-to-text,
+  multimodal description, and the model/engine catalog. Nothing else. Mutating
+  tool execution came back to Rust (`lattice_agent::tools`), and so did the
+  graph writes.
 
-Python still serves every product surface. The native routes are a proven
-alternative path, not a replacement. The agent loop's orchestration — the last
-explicitly outstanding port — shipped in 11.5.1: the Rust loop replays the
-same scripted trajectories as the real Python runtime byte-for-byte (ten
-golden trajectories, audit trail included) and drives a live worker through
-the three seams, ending a model-less turn in the same fail-closed
-`NEEDS_REVIEW` Python produces.
+What that costs, said plainly:
+
+- The **Telegram bridge** and the **SSO OIDC login/callback flows** left with
+  the platform code. The SSO configuration surface remains and password login
+  is native; the bridge is simply gone.
+- The six `pyautogui` pointer tools deliberately stayed on `POST /agent/tool`.
+  They call a library that is not a declared dependency, so on a stock install
+  they answer "unavailable" exactly as before — and a user who installed it into
+  the worker venv keeps working pointer control. Closing that properly needs a
+  native actuator, which is a decision rather than an oversight.
+- Three outbound seam calls still address the worker on paths it no longer
+  serves (`/clear`'s graph audit event, a garden note's Brain write, browser
+  tab capture — the last of which fails outright). The integration test asserts
+  the leak set is **exactly** those three, so a new one fails the build and a
+  fix must shrink the list with it.
 
 ## Brain Core
 
@@ -1205,24 +1308,35 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.5.2 exact artifact names:
+11.6.0 exact artifact names:
 
-- `dist/ltcai-11.5.2-py3-none-any.whl`
-- `dist/ltcai-11.5.2.tar.gz`
-- `ltcai-11.5.2.tgz`
-- `dist/ltcai-11.5.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.2_aarch64.dmg`
+- `dist/ltcai-11.6.0-py3-none-any.whl`
+- `dist/ltcai-11.6.0.tar.gz`
+- `ltcai-11.6.0.tgz`
+- `dist/ltcai-11.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.6.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 
 ## Known Limitations
 
-- The repo root keeps exactly one compatibility module (`server.py` for
-  `uvicorn server:app`); all other root shims were removed in 9.9.1 and a
-  legacy debt gate (`scripts/check_legacy_debt.mjs`) keeps the root clean.
-- PostgreSQL scale/migration tooling, Docker, cloud models, Telegram, Brain
-  Network, update checks, and marketplace refreshes are not default local
-  behavior.
+- The Python package no longer ships a root compatibility module: `server.py`
+  went with `create_app`, and `uvicorn server:app` has nothing to serve. The
+  worker is started as `python -m uvicorn latticeai.worker_app:create_worker_app
+  --factory`, and the product is started by the `lattice-host` binary. The
+  legacy debt gate (`scripts/check_legacy_debt.mjs`) still keeps the root clean.
+- The **Telegram bridge** and the **SSO OIDC login/callback flows** were removed
+  in 11.6.0 as consequences of the worker boundary. The SSO configuration
+  surface remains and password login is native.
+- `POST /worker/render/pdf` requires the `pdf` extra (`reportlab`). Without it
+  the route answers "renderer unavailable" — a fact about the install, not the
+  request.
+- Cloud models, Docker, Brain Network, update checks and marketplace refreshes
+  are not default local behavior. The optional PostgreSQL scale/migration
+  tooling is not part of the 11.6.0 worker.
+- Three outbound seam calls still address the worker on retired paths; the
+  browser tab capture one fails outright. The set is pinned by a test and listed
+  in [RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md) §5.3.
 - Package registry publication is owner-run and can lag behind the GitHub
   release.
 - Local data protection depends on the user's machine, OS account, backups, and

@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **11.5.2 — Tight Ship**.
+Current release: **11.6.0 — One Door**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -37,9 +37,9 @@ External paths include:
   a cloud model is configured and used.
 - **Model downloads**: model identifiers and download requests go to model
   registries such as Hugging Face or Ollama registries after user consent.
-- **Telegram**: messages can be bridged only when Telegram is explicitly
-  enabled, the chat is listed in `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS`, and the
-  bridge has a dedicated `LATTICEAI_SERVER_SESSION_TOKEN` for local API calls.
+- **Telegram**: removed in 11.6.0. The bridge lived in the platform code that
+  became the AI worker, so no message leaves the machine over Telegram any more
+  and `LATTICEAI_TELEGRAM_*` is no longer read. Nothing replaces it.
 - **Brain Network**: peer exchange requires explicit pairing and network
   action.
 - **PostgreSQL/Docker**: scale-mode setup uses configured local/network

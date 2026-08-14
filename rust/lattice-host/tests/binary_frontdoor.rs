@@ -21,11 +21,14 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     let worker = FakeWorker::start().await;
     let gateway_port = free_port();
 
-    // The binary creates its agent workspace on start; point it at this
-    // suite's own directory rather than the home of whoever runs the tests.
-    let agent_root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-        .join("binary_frontdoor")
-        .join("agent_workspace");
+    // The binary creates its agent workspace *and its Brain* on start, so both
+    // are pointed at this suite's own directory. `LATTICEAI_DATA_DIR` is not
+    // optional here: without it the One Door state would bootstrap the schema
+    // of `~/.ltcai/knowledge_graph.sqlite` — the real store of whoever runs the
+    // tests.
+    let scratch = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("binary_frontdoor");
+    let agent_root = scratch.join("agent_workspace");
+    let data_dir = scratch.join("data");
     let mut child = Command::new(env!("CARGO_BIN_EXE_lattice-host"))
         .args([
             "--no-spawn",
@@ -34,6 +37,7 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
             "--worker-port",
             &worker.port().to_string(),
         ])
+        .env("LATTICEAI_DATA_DIR", &data_dir)
         .env("LATTICEAI_AGENT_ROOT", &agent_root)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -76,15 +80,38 @@ async fn the_binary_fronts_an_existing_worker_and_shuts_down_cleanly() {
     );
     assert_eq!(body["worker"]["port"], worker.port());
 
+    // `GET /models` is on the worker allowlist — the MLX runtime lives in the
+    // interpreter holding the weights — so it crosses the hop.
     let proxied = http
-        .get(format!("{base}/api/memory"))
+        .get(format!("{base}/models"))
         .send()
         .await
         .expect("proxied request");
     assert_eq!(proxied.status(), 200);
+    assert_eq!(proxied.text().await.expect("body"), "worker saw /models");
+
+    // …and a path that is neither the gateway's nor the worker's is a 404 from
+    // here, not a request handed to a process that does not serve it. This is
+    // the v11.6.0 proxy flip: the fall-through is an allowlist now.
+    let refused = http
+        .get(format!("{base}/not-a-route"))
+        .send()
+        .await
+        .expect("unknown path");
+    assert_eq!(refused.status(), 404);
     assert_eq!(
-        proxied.text().await.expect("body"),
-        "worker saw /api/memory"
+        json(refused).await,
+        serde_json::json!({"detail": "Not Found"}),
+        "an unknown product path answers what FastAPI answered"
+    );
+    assert_eq!(
+        worker
+            .requests()
+            .iter()
+            .filter(|request| request.path() == "/not-a-route")
+            .count(),
+        0,
+        "an off-allowlist path must never reach the worker"
     );
 
     // The mounted namespaces are the binary's, not only the library's: the

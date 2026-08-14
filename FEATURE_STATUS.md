@@ -1,12 +1,12 @@
-# Lattice AI Feature Status (v11.5.2)
+# Lattice AI Feature Status (v11.6.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **11.5.2 — Tight Ship**.
+Current release: **11.6.0 — One Door**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 9.0.0 and later in `RELEASE.md` and
+change history is intentionally limited to 11.0.0 and later in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -95,6 +95,17 @@ by vitest thresholds and CI) and trims public release history to start at
 blocking-call rules and `tests/unit/test_event_loop_not_blocked.py` keep long
 work off the loop.
 
+The 11.6.0 line is the last structural one: **the product has one door, and it
+is Rust.** `lattice-host` serves every product route natively and supervises a
+Python **AI worker** that does only what a model does. Nothing about the
+product's promises moved — the Brain is still the durable asset, the dials still
+mean the same things, and the screens are the ones 11.5.2 shipped — but the
+process that answers a request changed, and two surfaces left with the platform
+code that became the worker: the **Telegram bridge** and the **SSO/OIDC login
+and callback flows**. Both are recorded below with their reasons rather than
+quietly dropped, and the gaps this release carries openly are listed in Known
+Limitations.
+
 ## Current Feature Status
 
 | Area | Status | Notes |
@@ -105,7 +116,7 @@ work off the loop.
 | Temporal Knowledge | Current | Nodes and edges carry `valid_from` / `valid_to` / `superseded_by`, added by an idempotent additive migration on an existing Brain (NULL means "since `created_at`" / "still true" — never an empty string, and no backfill). `store.as_of(timestamp)` returns the graph slice that was valid at that instant, and `neighbors(..., as_of=…)` takes the same slice; both default to today's behaviour when the argument is omitted. |
 | Proactive Synthesis | Current | The Brain notices on its own and asks rather than acts: contradicting memories, recurring-but-unnamed topics, always-together-never-linked pairs, and decayed episodic fragments all arrive as Review Center proposals (`kg_change_digest`) with a plain-language explanation. Deterministic — token overlap and clock arithmetic, no model needed; a model may only reword the weekly brief. Runs event-driven: the ingestion pipeline's audit seam hands every landed ingest to `BrainIntelligenceService.note_ingest`, and a pass fires every `LATTICEAI_SYNTHESIS_THRESHOLD` (25) genuinely new nodes — duplicates do not count, and a trigger that fails never fails the ingest. **Every write goes through approval**: `POST /api/brain/contradictions/resolve` approves the proposal first and only then stamps the pair's validity windows (keep / replace / keep both with time ranges), and the same pair is never proposed twice while it is still waiting. The *automatic* trigger is **toggleable from the home dock's 기능 drawer** since 11.2.0 (`LATTICEAI_SYNTHESIS`, default on); turning it off stops the Brain deciding *when*, and an explicitly requested run still works. |
 | Memory Decay | Current | `GET /api/brain/importance` scores each memory by use (ingested access counts, else the store's own read counter) plus recency decay, and names the weakest *episodic* fragments only — a decayed Decision or Document is reported as stale knowledge, never folded away. `/api/brain/quality-report` carries the same numbers plus a `tidying` flag so "the Brain is tidying up" is visible rather than a background surprise. |
-| Rust Foundation (Phases 1-4 complete) | Current (desktop front door) | The `rust/` cargo workspace holds six crates. **Phase 1 (11.4.0)**: `lattice-core` (read-only SQLite layer over the same `knowledge_graph.sqlite` + a bit-for-bit port of the hash embedder), `lattice-retrieval` (native hybrid/keyword/vector engines proven against committed Python goldens, zero epsilon, with a bidirectional contract: `tests/unit/test_rust_parity_contract.py` re-runs Python against the same goldens so neither side can drift silently), and `lattice-host` (worker supervisor with HTTP `/health` gating, crash auto-restart with backoff, graceful SIGTERM, unified port selection, plus a loopback-only axum gateway serving the `/host/` status routes, native `/rust/search/{hybrid,keyword,vector}`, and a streaming reverse proxy for everything else). **Phases 2-4 (11.5.0)**: the retrieval crate grew the service-layer three-channel fusion, the KG relationship/traversal reads, the durable history reads and the context assembler; `lattice-ingest` ported typed chunking, the hash conventions, the PDF page arithmetic, the folder filter chain and the polling watcher; `lattice-jobs` added the scheduler the embed queue never had; `lattice-agent` ported the permission kernel and the `run_command` validator and executes only read-only allow-listed commands. The gateway mounts all four router factories ahead of its streaming reverse proxy, and the **desktop now runs that gateway as its front door by default** — worker on an internal port behind it, `LATTICEAI_DESKTOP_DIRECT=1` / `LATTICEAI_DESKTOP_BACKEND_ORIGIN` / `LATTICEAI_DESKTOP_NO_BACKEND` preserved as escape hatches, the five IPC commands unchanged (new status fields are additive). Four golden families hold both runtimes to the same files: retrieval (191), chunking, the agent kernel (2,358 decisions), and context/history. **Phase completion (11.5.1)**: the agent loop orchestrator itself now runs in Rust — the full state machine, execution rules, fail-closed verification mapping, three-tier rollback and the approval store, exposed as `/rust/agent/{run,resume,approvals}` (run streams SSE) — proven by replaying the real Python `SingleAgentRuntime` on scripted LLM transcripts (10 trajectories, byte-identical down to the audit trail) and by a live smoke against a real worker (seams answered, a real review proposal was created, and a model-less turn ended fail-closed in NEEDS_REVIEW exactly like Python). The worker gained three additive seams (`/agent/llm`, `/agent/tool`, `/agent/change-proposal` — 100% covered, server-side circuit breakers and fail-closed guards intact, gated behind `LATTICEAI_AGENT_TOOL_SEAM` which only the host injects), and the document-generation context builder is native (53 new goldens, 247 total). **The boundary that remains is the design itself**: Python is the AI Worker — LLM inference, tool-handler execution, document parsers, embedding production and all graph writes (single writer) — and still serves every product surface. **Tight Ship (11.5.2)**: the front door was hardened end-to-end — the proxy no longer follows redirects on the app's behalf (a 3xx passes through with `Set-Cookie` and `Location` intact, and a `Location` naming the internal worker origin is rewritten to the gateway origin, so the invite gate, SSO login and the legacy deep links survive being fronted), every proxied request carries X-Forwarded-For/Proto/Host (honoured only from a loopback or listed trusted-proxy peer), the supervisor injects CORS origins alongside the CSRF ones, and the native lanes plus the host status/jobs routes are posture-gated **fail-closed**: they answer only while the worker's `/health` reports Python's `trusted_local_owner` posture (auth off, loopback bind) — a closed or unknown posture is a 401 `native_lane_requires_open_posture`, never an unauthenticated graph read. Retrieval parity gained the third channel's missing Python route (`POST /api/search/graph` — allow-listed since the chokepoint existed, unreachable until now), the golden corpus stands at 251 files (a new `recent_chat` family pins the `build_recent_chat_context` the live `/chat` path actually calls — and caught a real divergence: Python's `history[-limit:]` with `limit=0` keeps everything where Rust returned empty; Python is the reference and Rust was fixed), and the loop helper goldens grew `document_targets` and `agent_profiles` (97 rows), covering the last two hot-path twins. Roadmaps: docs/v11.4.0_RUST_FOUNDATION_PLAN.md, docs/v11.5.0_RUST_COMPLETE_PLAN.md, docs/v11.5.1_RUST_FULL_LOOP_PLAN.md, docs/v11.5.2_TIGHT_SHIP_PLAN.md. |
+| One Door — the Rust product server | Current | **11.6.0 completes the migration.** `rust/` is nine crates and `lattice-host` *is* the product server: `mount_table()` declares **420 native operations across 41 route families**, mounted at the paths they always had, and a unit test proves no `(method, path)` is claimed twice before the router is built. Python is a pure-compute **AI worker** serving **28 routes** (LLM + stream, embed, extract, parse, four renderers, ASR, multimodal describe, the model/engine catalog, `sysinfo`, `/health`); the door forwards only what the committed allowlist `rust/fixtures/worker_allowlist.json` names — generated from the worker's own profile, `include_str!`-compiled into the binary, pinned from Python by `tests/unit/test_worker_allowlist.py` — and answers `404 {"detail":"Not Found"}` for everything else. **Every write is native**: `lattice_core::graph_write` owns ingest, curation, provenance, taxonomy and the vector queue, held to Python's bytes by a 32-step row-parity battery (every table dumped after every step, zero tolerated differences) and a `sqlite_master` comparison over all 67 objects; 17 graph tables changed owner and `db_write_ownership.rs` asserts no graph table is worker-written. The surface itself is replayed rather than re-described: **1,487 recorded HTTP cases** across twelve committed fixture files, captured from the real Python app while it still served them. Earlier phases still hold — retrieval/chunking/agent-kernel/agent-loop goldens are unchanged and green, and the desktop still fronts through this gateway. Roadmaps: docs/v11.4.0_RUST_FOUNDATION_PLAN.md, docs/v11.5.0_RUST_COMPLETE_PLAN.md, docs/v11.5.1_RUST_FULL_LOOP_PLAN.md, docs/v11.5.2_TIGHT_SHIP_PLAN.md, docs/v11.6.0_ONE_DOOR_PLAN.md. |
 | Brain Chronicle (연대기) | Current | A seventh primary screen (`#/chronicle`, alias `#/timeline`) that turns the Brain's growth into a timeline. Read-only over existing tables — `GET /api/chronicle/overview` (day-bucketed totals + sparse activity series in the app timezone), `GET /api/chronicle/day/{date}` (the day's story: sources, new concepts, conversations, changed facts — group lists capped at 200 with true totals in `counts`), `GET /api/chronicle/as-of` (graph slice stats + top entities at any past instant, via `store.as_of()`). The UI is a hand-rolled SVG growth curve with a keyboard-operable time handle (ARIA slider), a week×weekday activity heatmap, plain-language day cards deep-linking into memory search / graph / conversations, and a rewind panel ("그때 중요했던 개념"). First surface to expose the 11.1.0 temporal columns. No writes, no schema change, no model calls; an empty Brain shows an honest empty state. |
 | Hybrid Recall | Current | /api/memory/recall and the graph-layer `hybrid_search` blend lexical evidence with vector similarity (hybrid-evidence/v2 gate) with workspace-scoped vector hits and honest lexical fallback when the vector tier fails. Chat consumes a `context_quality` signal so grounding reflects how strong the retrieved context actually is. |
 | Folder Ingestion | Current | `ingest_folder` indexes a chosen local folder with `.latticeignore` filtering; long runs execute as resumable background jobs surfaced through `/api/ingestion/jobs` rather than a single blocking request. |
@@ -128,13 +139,13 @@ work off the loop.
 | Model Verification | Current (static, not a load test) | `scripts/verify_hf_model_registry.py` re-measures every entry — recommended and recognised — through the public HF API: existence without credentials, gated flag, canonical casing, `library_name`/tags, config architecture, sibling files and their exact byte sum against the registry's recorded size. It **never downloads weights and never loads a model**, and no flag exists that could; the refreshed `verification_report.json` ships with the tree (18/18 present, 18/18 statically loadable, 0 bytes downloaded). The verdict is explicitly **static** — MLX library signal + an architecture with a loader in mlx-lm/mlx-vlm + community downloads — which means "nothing published rules out a load", **not** "this loaded". It cannot see a corrupt shard, an incompatible quantisation, a tokenizer mismatch, or an installed mlx-vlm older than the architecture. The loader plus the on-device smoke test remain the only authority on whether a model really runs. |
 | Installer Audit | Current | Setup Wizard, auto setup, and engine installers expose redacted command plans, require confirmation tokens, and write local process audit events. |
 | Cloud Models | Opt-in | Cloud prompts are sent only after keys are configured and the user selects a cloud model path. |
-| Telegram | Opt-in / fail-closed | The bridge starts only with a bot token, explicit chat-ID allowlist, and dedicated server session bearer; unauthorized messages and callbacks are rejected before registration. |
+| Telegram | **Removed in 11.6.0** — reason stated | The bridge lived in the platform code that became the AI worker (`latticeai/integrations/telegram_bot/`, the lifespan bridge start, the CLI notification). With the product server in Rust there is no in-process product for it to bridge to, so it was deleted rather than left as a half-wired surface. `latticeai.integrations.telegram_bot` is on `wheel_smoke.py`'s not-importable list, and `telegram_chats.json` is why `Owner::Worker` survives as an enum variant. Not a judgement about the feature — a consequence of the boundary. |
 | Agent Runtime | Current | AgentRuntime preview/readiness contracts avoid tool execution during preview, reject unknown roles, require explicit human approval for non-auto-approved plans, tolerate legacy run events with contract envelopes, and expose orchestration boundaries. |
 | Tool Registry / MCP | Current | ToolRegistry diagnostics, explicit desktop/knowledge/network policy gates, masked MCP paths, and MCP install state are separated from app-factory helpers and covered by focused tests. |
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. Since 11.5.2, a request that names two different workspaces (header vs. query/body selector) is refused with a 403 at the chat, agent, upload, computer-use and admin surfaces — previously the header silently won at four of them. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. Recall carries the same `grounding` verdict as the web badge, staged change proposals are reviewable in place (409 conflicts reported honestly), agent runs report steps/files/outcome, and 9.9.7 adds a live `agent_step` timeline (`POST /agent` `stream:true`) plus evidence→action follow-ups from the last recall's cited sources. |
 | Browser Extension | Current | Capture, recall, and approval visibility (9.9.7). Asking the Brain shows the server's own grounding verdict — an absent verdict reads "근거 확인 불가", never "근거 있음". Approval *decisions* stay off this surface by design (they need a signed short-TTL token); the extension shows that runs are waiting. Posts only to `127.0.0.1`. |
-| Telegram Review | Current | `/review` lists staged change proposals from the same `/api/proposals` surface with inline approve/reject; a 409 reports that nothing was written. Answers carry the server's grounding verdict. |
+| Telegram Review | **Removed in 11.6.0** — reason stated | It was a surface of the Telegram bridge, above. The `/api/proposals` review surface it read is unchanged and native; only the Telegram rendering of it is gone. Review on web and in VS Code is unaffected. |
 | Knowledge Garden | Current | `GET /api/brain/garden` answers four gardener questions from one scoped read: recent, contradictions, stale, and most-relied-on (real graph degree; Chunk nodes excluded). An unavailable graph yields empty beds, never invented ones. |
 | Agent File Tasks | Current | The executor prompt carries profile-aware file-writing hints (`core/agent_prompts.executor_prompt_for`): the order of operations, that `write_file` comes *first* on a file request, and — for the `compact` profile — the same thing as a three-step numbered list, because the weak-model failure the loop could not repair was writing nothing at all. `EXECUTOR_PROMPT` itself is unchanged, and a Self-Model summary is injected only when a caller passes one — the agent runtime does not yet (see Known Limitations). |
 | Agent Profiles | Current | `standard` / `compact` profiles selected from the model id (or `LATTICEAI_AGENT_PROFILE`). Under ~4B the loop shortens its transcript window, escalates corrections sooner, and falls back to writing the plan's files directly when JSON tool calls keep failing. A failed or staged write is reported as *not* written. |
@@ -149,7 +160,7 @@ work off the loop.
 | Trusted Agent Loop | Current | LoopTrace observability + `loop` API payload, python-literal weak-model repair with escalating corrections, deterministic agent-eval CI gate, and proposal-first change governance (`/api/proposals`, 변경 제안 panel) where edits/deletions of existing files are reviewed before applying. |
 | Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. |
 | Evidence → Action | Current | `POST /api/evidence/actions` composes evidence-scoped follow-up prompts (요약/체크리스트/문서/한 페이지) from an answer's real citations; deterministic and model-free, executed through the normal chat path. Unresolvable citations are reported, never dropped. |
-| Run Explanation | Current | Every agent run returns a deterministic `explanation` (why it ended, how much the model struggled, one concrete next step). It never upgrades a non-success; `ok` is true only for a verified `DONE`. Rendered on web, VS Code, and Telegram. |
+| Run Explanation | Current | Every agent run returns a deterministic `explanation` (why it ended, how much the model struggled, one concrete next step). It never upgrades a non-success; `ok` is true only for a verified `DONE`. Rendered on web and in VS Code (the Telegram surface was removed in 11.6.0 with the bridge). |
 | Project Sessions | Current | `/api/projects` keeps a project's produced files, open TODOs, and last honest verification across runs; `/agent` accepts `project_id` and folds each run's outcome (including the last failure's diagnosis) back in. |
 | Citation Precision | Current | A sentence-aware `prose` chunking strategy keeps Korean claims whole for `.txt/.pdf/.docx/.html`; chunk hits carry a locator (`Guide > Setup · p.4`) and stay silent when they cannot prove it. `plain` chunking is byte-identical to the legacy walk. |
 | Graph Relation Evidence | Current | Relations record whether they came from a verb or from co-occurrence, with matching weights; enumerations no longer manufacture relation chains, and the curator can demote weak/hub adjacency edges without touching verb-backed or legacy ones. |
@@ -164,7 +175,8 @@ work off the loop.
 | Recipient-Key Sharing | Opt-in prototype (off by default) | A shared subgraph can be sealed to the receiver's **X25519 public key** (HKDF-SHA256 → AES-256-GCM, a fresh ephemeral keypair per bundle, so a later key compromise does not open an old one) instead of a shared passphrase — nothing secret has to travel first. `GET /api/knowledge-graph/share/recipient-key` publishes the receiving key; the sender passes it to `POST /api/knowledge-graph/share/archive`. Choosing both mechanisms, or neither, is refused rather than guessed. The Ed25519 **signature is unchanged**: signing says who wrote a bundle, sealing says who may read it. |
 | Bulk Review Actions | Current | `POST /automation/reviews/bulk/{approve,dismiss}` decide up to 200 named items through the *same* single-item guards — an already-decided item still conflicts, a `change_proposal` still applies its staged content, and the audit trail records N decisions. The response carries a per-item verdict (`ok` / `not_found` / `conflict` / `failed`), so a partial success is legible instead of a single number. `ids` is required; there is no "approve everything pending". |
 | Selective Brain Network | Opt-in prototype (off by default) | `GET/POST /api/knowledge-graph/share*` export a *chosen* subgraph — node ids, node types, or source types, optionally one hop out — as a bundle signed by this device's Ed25519 identity, with a payload digest pinned inside the signed header. The receiving Brain verifies fail-closed and files every node as a **review proposal** carrying the sender's fingerprint; the graph changes only when a person accepts one item, and an edge into a node the receiver does not have is deferred and reported rather than written dangling. Everything is behind `LATTICEAI_BRAIN_NETWORK` (default off); while off the mutating routes answer 403 with the reason and `GET /api/knowledge-graph/share` still answers `enabled: false`. **Toggleable from the home dock's 기능 drawer** since 11.2.0, where it is the one switch that carries a caution line — it is the only one that sends knowledge off this machine. |
-| Release Assets | Current | 11.1.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| SSO / OIDC login | **Removed in 11.6.0** — reason stated | The worker mounts no `/auth/*` at all, so the OIDC login and callback flows went with `authlib` and `cryptography`. **The configuration surface remains** (the settings are still read and still shown), and **password login is native** in `lattice-auth` — sessions, roles, rate limits and CSRF included. Restoring the flows means porting them to `lattice-auth`, which is a decision this release did not take rather than one it hid. |
+| Release Assets | Current | 11.6.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -303,8 +315,34 @@ work off the loop.
   scale/migration tooling and requires explicit setup.
 - Package registry publishing is owner-run and can lag behind the GitHub
   release.
-- Docker setup, model downloads, cloud model calls, Telegram, Brain Network,
-  update checks, and marketplace refreshes are explicit opt-in paths.
+- Docker setup, model downloads, cloud model calls, Brain Network, update
+  checks, and marketplace refreshes are explicit opt-in paths.
+- **The Telegram bridge and the SSO/OIDC login+callback flows were removed in
+  11.6.0**, both as consequences of the worker boundary. The SSO configuration
+  surface remains and password login is native.
+- **Three outbound seam calls still address the worker on retired paths**: the
+  `/clear` command's graph audit event is lost (the clear itself succeeds), a
+  garden note lands in the vault but not in the Brain, and **browser tab capture
+  fails outright**. The set is pinned by an integration test, so a fourth fails
+  the build.
+- **Upload extraction enrichment is UTF-8-text only**, and **supplied vectors
+  cover the primary ingest node** (chunks have their own door). In both cases the
+  node is still written and the Concept subgraph is visibly absent rather than
+  silently wrong.
+- **No user hook fires for a native tool** until a hook sink is wired, and
+  `sanitize_write_content` is not applied on the native write path — Python's
+  loop applied it but `/agent/tool` and `/tools/write_file` never did.
+- **`POST /worker/render/pdf` needs the `pdf` extra** (`reportlab`). Without it
+  the route says the renderer is unavailable instead of raising the undeclared
+  500 it used to.
+- **The six pyautogui pointer tools execute in the worker**, not natively. On a
+  stock install they answer "unavailable" exactly as before; a user who installed
+  `pyautogui` into the worker venv keeps working pointer control. Closing this
+  needs a native actuator — a decision, not an oversight.
+- **Three oracle bugs were ported as they are** so the surface does not change
+  mid-release: `/api/command/search`'s knowledge group is always empty (`results`
+  vs `matches`), review snooze 500s on an offset-aware timestamp, and rejecting an
+  already-rejected proposal 500s.
 - Agent/workflow simulation without a loaded LLM is deterministic and must stay
   labeled as model-free rather than autonomous model execution.
 - Local file privacy depends on the user's OS account, disk encryption, and
@@ -325,35 +363,28 @@ work off the loop.
 - Requirement coverage blocks completion only for *declared* project files;
   matching a prose feature request to a transcript stays the critic's
   judgement and is advisory.
-- Root compatibility shims were removed in 9.9.1 (only `server.py` remains
-  for `uvicorn server:app`); the managed compatibility inventory tracks the
-  removals, internal-only Brain shim layers were removed in 8.8.0, and the
-  legacy debt gate in `npm run lint` blocks reintroduction.
+- The last root compatibility module is gone: `server.py` left with `create_app`
+  in 11.6.0, so `uvicorn server:app` has nothing to serve. The worker starts as
+  `python -m uvicorn latticeai.worker_app:create_worker_app --factory`; the
+  product starts as the `lattice-host` binary. The legacy debt gate in
+  `npm run lint` still blocks reintroduction.
 
 ## Release-Era History Kept In Git
 
-The Git tree keeps release history from:
+The Git tree keeps supported release history from:
 
-- 9.9.0
-- 9.8.0
-- 9.7.0
-- 9.6.0
-- 9.5.0
-- 9.4.0
-- 9.3.0
-- 9.2.0
-- 9.1.0
-- 9.0.0
-- 8.9.0
-- 8.8.0
-- 8.7.0
-- 8.6.0
-- 8.5.0
-- 8.4.0
-- 8.3.0
-- 8.2.0
-- 8.1.0
-- 8.0.0
+- 11.6.0
+- 11.5.2
+- 11.5.1
+- 11.5.0
+- 11.4.0
+- 11.3.0
+- 11.2.0
+- 11.1.0
+- 11.0.1
+- 11.0.0
 
-Release notes and release evidence older than 8.0.0 are intentionally removed
-from the tracked tree.
+11.6.0 rebuilt the product server in Rust, so a 10.x or 9.x install is a
+different program and `SECURITY.md` supports only 11.x. Their note files remain
+in the tree as history rather than as supported releases; anything older than
+8.0.0 was removed from the tracked tree.

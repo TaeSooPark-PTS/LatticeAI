@@ -29,6 +29,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use axum::Router;
+use lattice_agent::proposals::ProposalStore;
 use lattice_agent::sandbox::Workspace;
 use lattice_agent::LoopConfig;
 use lattice_ingest::IngestApiConfig;
@@ -102,6 +103,24 @@ pub fn scheduler(worker_origin: &str, client: reqwest::Client) -> Arc<Scheduler>
     ))
 }
 
+/// The same scheduler, draining the embedding queue **natively**.
+///
+/// Without a writer the tick is `POST {worker}/api/index/drain`, which is what
+/// it was until v11.6.0 §W3b moved the drain into `lattice_jobs::index_api`.
+/// The worker no longer serves that path, so an unbound scheduler now spends
+/// every minute failing a request and backing off — visible in the log,
+/// invisible in the product, and the queue never drains. Handing it the writer
+/// points `tick()` at the native drain instead.
+pub fn scheduler_with_graph(
+    worker_origin: &str,
+    client: reqwest::Client,
+    graph: lattice_core::graph_write::GraphWriter,
+) -> Arc<Scheduler> {
+    Arc::new(
+        Scheduler::with_client(SchedulerConfig::from_env(worker_origin), client).with_graph(graph),
+    )
+}
+
 /// The loop orchestrator's configuration: where its AI worker listens, where
 /// paused runs are stored, and the client to reach the worker with.
 ///
@@ -109,12 +128,28 @@ pub fn scheduler(worker_origin: &str, client: reqwest::Client) -> Arc<Scheduler>
 /// the loop talks to the very worker this host supervises — the one that was
 /// handed `LATTICEAI_AGENT_TOOL_SEAM=1` and is therefore the only worker whose
 /// seam endpoints answer at all.
-pub fn agent_loop_config(worker_origin: &str, client: reqwest::Client) -> LoopConfig {
+///
+/// `proposals` is the store a paused-for-approval run stages into. The loop's
+/// own default (`JsonProposalStore`) appends to `workspace_os.json` directly,
+/// which is wrong whenever `lattice_platform`'s Review Center is mounted in
+/// this process: `GovernanceState` holds that document in memory and mirrors it
+/// into SQLite, so a JSON-only append is invisible to it and is overwritten by
+/// its next save. The caller therefore names the writer — the product hands the
+/// very `GovernanceState` the Review Center routes were built from
+/// ([`super::GatewayState::agent_loop_config`]), and a host with no product
+/// mounted has no Review Center to disagree with and hands the JSON store.
+pub fn agent_loop_config(
+    worker_origin: &str,
+    client: reqwest::Client,
+    proposals: Arc<dyn ProposalStore>,
+) -> LoopConfig {
     LoopConfig {
         worker_origin: worker_origin.to_string(),
         runs_dir: lattice_agent::runs::default_runs_dir(),
         client: Some(client),
+        proposals: None,
     }
+    .with_proposals(proposals)
 }
 
 /// The agent kernel **and loop** routes, or `None` when this machine has no
@@ -222,14 +257,18 @@ mod tests {
         assert_eq!(scheduler.config().worker_origin, "http://127.0.0.1:4825");
     }
 
-    /// A loop config whose run store is a throwaway directory, so a test can
-    /// never read or write the real one.
+    /// A loop config whose run store *and* proposal store are throwaway
+    /// directories, so a test can never read or write the real ones — §P1c §5
+    /// found a suite staging into the developer's own Review Center.
     fn test_loop_config(dir: &Path) -> LoopConfig {
         LoopConfig {
             runs_dir: dir.join("rust_agent_runs"),
             ..agent_loop_config(
                 "http://127.0.0.1:1",
                 crate::supervisor::http_client().expect("client"),
+                Arc::new(lattice_agent::proposals::JsonProposalStore::new(
+                    dir.join("proposals"),
+                )),
             )
         }
     }
@@ -244,9 +283,11 @@ mod tests {
 
     #[test]
     fn the_loop_config_points_at_the_supervised_worker() {
+        let dir = tempfile::tempdir().expect("tempdir");
         let config = agent_loop_config(
             "http://127.0.0.1:4899",
             crate::supervisor::http_client().expect("client"),
+            Arc::new(lattice_agent::proposals::JsonProposalStore::new(dir.path())),
         );
         assert_eq!(config.worker_origin, "http://127.0.0.1:4899");
         assert!(config.client.is_some(), "the loopback pool is shared");
@@ -254,6 +295,32 @@ mod tests {
             config.runs_dir.ends_with("rust_agent_runs"),
             "the native store is not Python's: {:?}",
             config.runs_dir
+        );
+    }
+
+    /// The integrator item from §P1c: a config built here must carry the store
+    /// the caller named, never fall back to the loop's `JsonProposalStore`
+    /// default. `proposals: None` is what selects that default, so `is_some()`
+    /// is the whole assertion — and the store it carries is the caller's, which
+    /// is what makes the product's Review Center see a staged proposal.
+    #[test]
+    fn the_loop_stages_into_the_store_the_caller_named() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Arc::new(lattice_agent::proposals::JsonProposalStore::new(
+            dir.path().join("named"),
+        ));
+        let config = agent_loop_config(
+            "http://127.0.0.1:4899",
+            crate::supervisor::http_client().expect("client"),
+            store.clone(),
+        );
+        let bound = config
+            .proposals
+            .as_ref()
+            .expect("the caller's proposal store must be bound, not the default");
+        assert!(
+            std::sync::Arc::ptr_eq(&(store as Arc<dyn ProposalStore>), bound),
+            "the very store the caller handed over, not a second one over the same directory"
         );
     }
 

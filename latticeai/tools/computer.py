@@ -72,45 +72,6 @@ def computer_screenshot() -> Dict[str, Any]:
             quiet()
 
 
-def computer_open_app(app: str = "Google Chrome") -> Dict[str, Any]:
-    """앱을 실행하거나 앞으로 가져옵니다 (macOS/Windows/Linux)."""
-    app = str(app or "Google Chrome").strip()
-    if not app:
-        raise ToolError("앱 이름이 필요합니다.")
-    if _PLATFORM == "Darwin":
-        cmd = ["open", "-a", app]
-    elif _PLATFORM == "Windows":
-        cmd = ["cmd", "/c", "start", "", app]
-    else:
-        cmd = ["xdg-open", app]
-    r = subprocess.run(cmd, capture_output=True, timeout=10, check=False)
-    if r.returncode != 0:
-        err = r.stderr.decode("utf-8", errors="replace").strip()
-        raise ToolError(f"앱 열기 실패: {err or app}")
-    return {"action": "open_app", "app": app}
-
-
-def computer_open_url(url: str, app: str = "Google Chrome") -> Dict[str, Any]:
-    """URL을 브라우저로 엽니다 (macOS/Windows/Linux)."""
-    url = str(url or "").strip()
-    app = str(app or "").strip()
-    if not url:
-        raise ToolError("URL이 필요합니다.")
-    if "://" not in url and not url.startswith(("localhost", "127.0.0.1")):
-        url = "https://" + url
-    if _PLATFORM == "Darwin":
-        cmd = ["open", "-a", app, url] if app else ["open", url]
-    elif _PLATFORM == "Windows":
-        cmd = ["cmd", "/c", "start", "", url]
-    else:
-        cmd = ["xdg-open", url]
-    r = subprocess.run(cmd, capture_output=True, timeout=10, check=False)
-    if r.returncode != 0:
-        err = r.stderr.decode("utf-8", errors="replace").strip()
-        raise ToolError(f"URL 열기 실패: {err or url}")
-    return {"action": "open_url", "app": app or "default", "url": url}
-
-
 def computer_click(x: int, y: int, button: str = "left", double: bool = False) -> Dict[str, Any]:
     """화면 좌표 (x, y)를 클릭합니다."""
     if not _CU_AVAILABLE:

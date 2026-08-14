@@ -34,10 +34,16 @@
 //! `scripts/generate_chunking_parity_fixtures.py` writes and
 //! `tests/unit/test_chunking_parity_contract.py` re-asserts from the Python side.
 
+// The HTTP modules answer `Result<T, axum::response::Response>`: the error is
+// the rendered refusal, as in `lattice-auth`. Allowed once at the root.
+#![allow(clippy::result_large_err)]
+
 pub mod api;
+pub mod browser_api;
 pub mod chunk;
 pub mod filters;
 pub mod hashes;
+pub mod local_files_api;
 pub mod pages;
 pub mod pystr;
 pub mod strategy;

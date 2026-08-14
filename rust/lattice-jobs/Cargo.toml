@@ -17,8 +17,13 @@ reqwest = { workspace = true }
 # native search lanes use, so this crate cannot migrate or write a store whose
 # schema Python owns.
 lattice-core = { workspace = true }
+lattice-auth = { workspace = true }
+# `GET /api/index/status` (v11.6.0) walks every embeddable item and compares the
+# text it *would* embed against the stored vector row, so this crate now names
+# SQLite rows and re-derives that digest itself. Both are already workspace
+# dependencies; neither adds a new package to the lock.
+rusqlite = { workspace = true }
+sha2 = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
-# Tests build their own `vector_jobs` fixture with the Python DDL verbatim.
-rusqlite = { workspace = true }

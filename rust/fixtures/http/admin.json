@@ -1,0 +1,5169 @@
+{
+  "$schema_note": "Golden HTTP fixtures captured from the Python implementation before it is deleted in v11.6.0. Each record is one (route, branch) exchange: replay the request against the Rust front door and the answer must match after the token substitutions below.",
+  "generated_by": "scripts/gen_http_fixtures_platform.py FROZEN at commit fc65e60 — last generating tree; do not regenerate.",
+  "work_package": "WP-F1",
+  "title": "Admin console, security & audit command center, approval queue, funnel",
+  "grouping": "Everything behind require_admin except the workspace surface: the admin console reads and writes, the security/audit command center (including its redaction contract), the local-file approval queue, and the UX funnel snapshot.",
+  "families": [
+    "latticeai/api/admin.py",
+    "latticeai/api/security_dashboard.py",
+    "latticeai/api/permissions.py",
+    "latticeai/api/funnel_metrics.py"
+  ],
+  "family_route_counts": {
+    "admin.py": 63,
+    "workspace_scope.py": 4,
+    "funnel_metrics.py": 3,
+    "security_dashboard.py": 54,
+    "permissions.py": 18
+  },
+  "families_present": [
+    "admin.py",
+    "funnel_metrics.py",
+    "permissions.py",
+    "security_dashboard.py",
+    "workspace_scope.py"
+  ],
+  "profile": {
+    "note": "The app under capture, built by latticeai.app_factory.create_app().",
+    "env": {
+      "LATTICEAI_ADMIN_EMAILS": "",
+      "LATTICEAI_AGENT_ROOT": "<SANDBOX>/agent_workspace",
+      "LATTICEAI_ALLOW_LOCAL_MODELS": "0",
+      "LATTICEAI_ALLOW_MODEL_DOWNLOADS": "0",
+      "LATTICEAI_AUTOLOAD_MODELS": "0",
+      "LATTICEAI_BRAIN_DIR": "<SANDBOX>/brain",
+      "LATTICEAI_CSRF_TRUSTED_ORIGINS": "",
+      "LATTICEAI_DATA_DIR": "<DATA_DIR>",
+      "LATTICEAI_DISCORD_BOT_TOKEN": "",
+      "LATTICEAI_DISCORD_PERMISSION_WEBHOOK": "",
+      "LATTICEAI_EMBEDDING_PROVIDER": "hash",
+      "LATTICEAI_ENABLE_GRAPH": "1",
+      "LATTICEAI_ENABLE_TELEGRAM": "0",
+      "LATTICEAI_HOST": "127.0.0.1",
+      "LATTICEAI_INVITE_CODE": "",
+      "LATTICEAI_INVITE_GATE_ENABLED": "0",
+      "LATTICEAI_LLM_EXTRACTION": "false",
+      "LATTICEAI_MODE": "local",
+      "LATTICEAI_OPEN_REGISTRATION": "1",
+      "LATTICEAI_PERMISSION_SECRET": "",
+      "LATTICEAI_PERMISSION_UI_URL": "",
+      "LATTICEAI_PORT": "4825",
+      "LATTICEAI_PUBLIC_URL": "",
+      "LATTICEAI_RATE_LIMIT": "0",
+      "LATTICEAI_REQUIRE_AUTH": "1",
+      "LATTICEAI_VECTOR_DIM": "384",
+      "LATTICEAI_VECTOR_INDEX": "brute",
+      "LATTICE_TZ": "UTC"
+    },
+    "auth": "LATTICEAI_REQUIRE_AUTH=1, so require_user answers 401 and require_admin answers 403 for an anonymous caller. The shipped desktop default (the variable unset, bound to loopback) makes an anonymous caller the trusted local owner instead; that profile is recorded in `trusted_local_owner_fixtures`.",
+    "origin": "http://127.0.0.1:4825",
+    "sessions": {
+      "session:owner": "owner@lattice.test — the first registered account, therefore admin",
+      "session:member": "member@lattice.test — a non-admin account",
+      "session:invalid": "a syntactically valid cookie carrying an unknown token",
+      "absent": "no Cookie header at all"
+    }
+  },
+  "tokens": {
+    "@ts": "an ISO-8601 timestamp (any precision, with or without offset)",
+    "@uuid": "a UUID",
+    "@id": "an opaque generated identifier (workflow-…, event:…, agent-run-…)",
+    "@any": "a machine- or environment-dependent value, or a value deliberately not pinned (see `gaps`)",
+    "@version": "the product version string",
+    "$name": "a value bound by a `setup` step; the Rust test binds its own and substitutes it into the path/body before replaying",
+    "<DATA_DIR>": "the data directory prefix (LATTICEAI_DATA_DIR)",
+    "<HOME>": "the home directory prefix",
+    "<SANDBOX>": "the throwaway root that held the data dir during capture",
+    "<REPO>": "the repository root prefix",
+    "@text:{'@text': …}": "a non-JSON text body",
+    "@binary:{'@binary': …}": "a binary body: size and digest are '@any', the leading magic bytes are pinned"
+  },
+  "symbols": {
+    "$acceptable_invitation_token": "bound by a setup step",
+    "$agent_run_id": "bound by a setup step",
+    "$approval_hint": "bound by a setup step",
+    "$approval_hint_b": "bound by a setup step",
+    "$approval_token": "bound by a setup step",
+    "$approval_token_b": "bound by a setup step",
+    "$device_public_key": "bound by a setup step",
+    "$invitation_id": "bound by a setup step",
+    "$invitation_token": "bound by a setup step",
+    "$invitation_token_c": "bound by a setup step",
+    "$invitation_token_d": "bound by a setup step",
+    "$memory_id": "bound by a setup step",
+    "$peer_id": "bound by a setup step",
+    "$snapshot_a": "bound by a setup step",
+    "$snapshot_b": "bound by a setup step",
+    "$workflow_id": "bound by a setup step"
+  },
+  "setup": [
+    {
+      "kind": "file",
+      "note": "two chat turns the security console reads — one carries a secret and a resident registration number, so the redaction branch has something to redact. Imported into the durable conversation store at construction.",
+      "file": "chat_history.json",
+      "append_records": [
+        {
+          "role": "user",
+          "content": "배포 키는 sk-fixture1234567890abcdefghij 이고 주민번호는 900101-1234567 이야",
+          "timestamp": "2026-08-01T09:00:00+00:00",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "conversation_id": "conv-fixture-001",
+          "model": "local:test"
+        },
+        {
+          "role": "assistant",
+          "content": "민감정보는 저장하지 않겠습니다.",
+          "timestamp": "2026-08-01T09:00:05+00:00",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "conversation_id": "conv-fixture-001",
+          "model": "local:test"
+        }
+      ]
+    },
+    {
+      "kind": "file",
+      "note": "a document_upload audit record — the file monitor derives its rows from it",
+      "file": "audit_log.json",
+      "append_records": [
+        {
+          "event_type": "document_upload",
+          "timestamp": "2026-08-01T09:05:00+00:00",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "filename": "fixture-contract.txt",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key: sk-fixture1234567890abcdefghij",
+          "extracted_text": "API key: sk-fixture1234567890abcdefghij / 계약 조건"
+        }
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "register the first account — the first user registered becomes admin",
+      "method": "POST",
+      "path": "/register",
+      "session": "absent",
+      "request_body": {
+        "email": "owner@lattice.test",
+        "password": "Fixture0wner1",
+        "name": "Fixture Owner",
+        "nickname": "owner"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "register a second, non-admin account (the wrong-role denials use it)",
+      "method": "POST",
+      "path": "/register",
+      "session": "absent",
+      "request_body": {
+        "email": "member@lattice.test",
+        "password": "Fixture0member1",
+        "name": "Fixture Member",
+        "nickname": "member"
+      }
+    },
+    {
+      "kind": "login",
+      "note": "POST /login for both accounts; the session_token cookie of each becomes 'session:owner' / 'session:member' in the fixtures",
+      "accounts": [
+        "owner@lattice.test",
+        "member@lattice.test"
+      ]
+    },
+    {
+      "kind": "note",
+      "note": "user ids are stable_user_id(email) — uuid5, not random",
+      "owner_user_id": "user:fa484c1e-1b5a-50ef-9c18-b73ca89368d7",
+      "member_user_id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4"
+    },
+    {
+      "kind": "http",
+      "note": "create the organization workspace the scoped routes act on",
+      "method": "POST",
+      "path": "/workspace/orgs",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture Team",
+        "settings": {
+          "tier": "team"
+        }
+      }
+    },
+    {
+      "kind": "http",
+      "note": "a second organization workspace, archived by one of the fixtures",
+      "method": "POST",
+      "path": "/workspace/orgs",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Archive Target",
+        "settings": {}
+      }
+    },
+    {
+      "kind": "http",
+      "note": "add the non-admin account to the organization workspace",
+      "method": "POST",
+      "path": "/workspace/orgs/org-Fixture-Team/members",
+      "session": "session:owner",
+      "request_body": {
+        "user_id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+        "role": "member"
+      }
+    },
+    {
+      "kind": "http",
+      "note": "snapshot A of the personal workspace",
+      "method": "POST",
+      "path": "/workspace/snapshots",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture snapshot A"
+      },
+      "binds": [
+        "$snapshot_a"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "snapshot B, so the compare route has two records",
+      "method": "POST",
+      "path": "/workspace/snapshots",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture snapshot B"
+      },
+      "binds": [
+        "$snapshot_b"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a workspace memory (kind 'decisions')",
+      "method": "POST",
+      "path": "/workspace/memories",
+      "session": "session:owner",
+      "request_body": {
+        "kind": "decisions",
+        "content": "결정: 하이브리드 검색의 알파 융합을 유지한다.",
+        "tags": [
+          "decision",
+          "retrieval"
+        ]
+      },
+      "binds": [
+        "$memory_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a workspace workflow (the event route needs one)",
+      "method": "POST",
+      "path": "/workspace/workflows",
+      "session": "session:owner",
+      "request_body": {
+        "name": "Fixture workflow",
+        "steps": [
+          {
+            "action": "note",
+            "detail": "첫 단계"
+          }
+        ],
+        "metadata": {
+          "origin": "fixture"
+        }
+      },
+      "binds": [
+        "$workflow_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a recorded agent run, so the agents listing is not empty",
+      "method": "POST",
+      "path": "/workspace/agents/runs",
+      "session": "session:owner",
+      "request_body": {
+        "agent_id": "agent:executor",
+        "status": "ok",
+        "input": "요약해줘",
+        "output": "요약했습니다.",
+        "timeline": [],
+        "relationships": []
+      },
+      "binds": [
+        "$agent_run_id"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "an invitation into the organization workspace",
+      "method": "POST",
+      "path": "/invitations",
+      "session": "session:owner",
+      "request_body": {
+        "email": "invitee@lattice.test",
+        "workspace_id": "org-Fixture-Team",
+        "role": "member",
+        "expires_hours": 168
+      },
+      "binds": [
+        "$invitation_id",
+        "$invitation_token"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "a second invitation, accepted by the member account in a fixture",
+      "method": "POST",
+      "path": "/invitations",
+      "session": "session:owner",
+      "request_body": {
+        "email": "member@lattice.test",
+        "role": "viewer",
+        "expires_hours": 24
+      },
+      "binds": [
+        "$acceptable_invitation_token"
+      ]
+    },
+    {
+      "kind": "http",
+      "note": "report a VS Code presence so the status route has a live record",
+      "method": "POST",
+      "path": "/workspace/vscode/status",
+      "session": "session:owner",
+      "request_body": {
+        "status": "connected",
+        "index_status": "ok",
+        "workspace_folder": "/workspace/fixture",
+        "extension_version": "11.5.2",
+        "active_file": "src/main.rs",
+        "detail": ""
+      }
+    },
+    {
+      "kind": "http",
+      "note": "ask the local-file router for read permission — the only producer of an approval token, which /permissions/{approve,deny,status} consume",
+      "method": "POST",
+      "path": "/local/read",
+      "session": "session:owner",
+      "request_body": {
+        "path": "~/fixture-notes.txt",
+        "approved": false
+      }
+    },
+    {
+      "kind": "http",
+      "note": "a second approval request, denied by a fixture",
+      "method": "POST",
+      "path": "/local/read",
+      "session": "session:owner",
+      "request_body": {
+        "path": "~/fixture-second.txt",
+        "approved": false
+      }
+    },
+    {
+      "kind": "http",
+      "note": "read the peer-network device identity — the keypair is generated per install, so its public key is named rather than pinned",
+      "method": "GET",
+      "path": "/network/identity",
+      "session": "session:owner",
+      "request_body": null,
+      "binds": [
+        "$device_public_key"
+      ]
+    },
+    {
+      "kind": "note",
+      "note": "URLs the stubbed open_url() would have launched during the capture",
+      "opened_urls": [
+        "https://github.com/apps",
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "route": "POST /admin/security/export (format=excel|pdf)",
+      "reason": "The bytes of an xlsx zip container carry their own timestamps and the pdf branch depends on whether reportlab is installed. The status, content-type and Content-Disposition are pinned; the body is '@binary' with '@any' size and digest. The excel branch is additionally captured as a 500 for list-valued cells, which is what the events scope actually produces."
+    },
+    {
+      "route": "POST /admin/security/export (format=excel) with openpyxl absent",
+      "reason": "_excel_dump falls back to _csv_dump when the import fails; the capture environment has openpyxl 3.1.5, so the fallback arm is not exercised."
+    },
+    {
+      "route": "POST /permissions/approve/{token} — 410 expired",
+      "reason": "The expiry arm needs the 5-minute TTL to elapse. Freezing the clock would change what the comparison means, and sleeping 300 s in a generator is not a contract. Not captured."
+    },
+    {
+      "route": "POST /permissions/approve|deny/{token} — LATTICEAI_PERMISSION_SECRET bearer",
+      "reason": "check_permission_auth() accepts a monitor bearer token instead of an admin session when the secret is configured. The fixtures pin the unconfigured profile (admin session required)."
+    },
+    {
+      "route": "POST /permissions/approve/{token} — 409 ambiguous hint",
+      "reason": "Requires two live approvals whose eight-character hints collide; the hint is derived from a random token, so it cannot be forced without patching the token generator."
+    },
+    {
+      "route": "GET /admin/product-hardening — provider absent",
+      "reason": "The `available: false` arm needs the app built without a hardening status provider, which create_app() always supplies."
+    }
+  ],
+  "fixture_count": 142,
+  "fixtures": [
+    {
+      "family": "admin.py",
+      "name": "admin_summary",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "total_users": 2,
+        "active_users": 2,
+        "admin_users": 1,
+        "total_messages": 2,
+        "user_messages": 1,
+        "assistant_messages": 1,
+        "last_message_at": "@ts"
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_summary",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_summary",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_health_summary",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/health-summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "attention",
+        "issue_count": 1,
+        "issues": [
+          {
+            "area": "security",
+            "severity": "high",
+            "message": "1 high-risk event(s)"
+          }
+        ]
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_health_summary",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/health-summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_health_summary",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/health-summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_stats",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/stats",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "daily": [
+          {
+            "date": "2026-08-01",
+            "user": 1,
+            "assistant": 1
+          }
+        ]
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_stats",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/stats",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_stats",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/stats",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_users",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/users",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": [
+        {
+          "id": "user:fa484c1e-1b5a-50ef-9c18-b73ca89368d7",
+          "email": "owner@lattice.test",
+          "identity": "user:fa484c1e-1b5a-50ef-9c18-b73ca89368d7",
+          "name": "Fixture Owner",
+          "nickname": "owner",
+          "role": "admin",
+          "disabled": false
+        },
+        {
+          "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+          "email": "member@lattice.test",
+          "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+          "name": "Fixture Member",
+          "nickname": "member",
+          "role": "user",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_users",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/users",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_users",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/users",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_sensitivity",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/sensitivity",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "summary": {
+          "total_messages": 2,
+          "risky_messages": 1,
+          "compliant_messages": 1,
+          "risk_rate": 50.0,
+          "severity_counts": {
+            "high": 1,
+            "medium": 0,
+            "low": 0,
+            "none": 1
+          },
+          "field_counts": {
+            "주민등록번호": 1,
+            "카드번호": 1
+          },
+          "user_counts": {
+            "owner@lattice.test": 1
+          }
+        },
+        "risk_fields": [
+          {
+            "index": 0,
+            "role": "user",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "timestamp": "@ts",
+            "sensitivity": "high",
+            "labels": [
+              "주민등록번호",
+              "카드번호"
+            ],
+            "risk_fields": [
+              {
+                "type": "rrn",
+                "label": "주민등록번호",
+                "severity": "high",
+                "start": 46,
+                "end": 60
+              },
+              {
+                "type": "card",
+                "label": "카드번호",
+                "severity": "high",
+                "start": 46,
+                "end": 61
+              }
+            ],
+            "compliance_fields": [],
+            "preview": "배포 키는 sk-fixture1234567890abcdefghij 이고 주민번호는 90***********7 이야"
+          }
+        ],
+        "compliance_fields": [
+          {
+            "index": 1,
+            "role": "assistant",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "timestamp": "@ts",
+            "sensitivity": "none",
+            "labels": [],
+            "risk_fields": [],
+            "compliance_fields": [
+              "민감정보 미검출"
+            ],
+            "preview": "민감정보는 저장하지 않겠습니다."
+          }
+        ]
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_sensitivity",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/sensitivity",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_sensitivity",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/sensitivity",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_roles",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/roles",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "roles": [
+          {
+            "role": "owner",
+            "members": 0,
+            "caps": [
+              "all"
+            ]
+          },
+          {
+            "role": "admin",
+            "members": 1,
+            "caps": [
+              "admin:audit",
+              "admin:policies",
+              "admin:roles",
+              "admin:security",
+              "admin:users",
+              "chat",
+              "desktop:control",
+              "files",
+              "pipeline",
+              "search",
+              "workspace:manage",
+              "workspace:members",
+              "workspace:read",
+              "workspace:write"
+            ]
+          },
+          {
+            "role": "member",
+            "members": 0,
+            "caps": [
+              "chat",
+              "files",
+              "pipeline",
+              "search",
+              "workspace:read",
+              "workspace:write"
+            ]
+          },
+          {
+            "role": "user",
+            "members": 1,
+            "caps": [
+              "chat",
+              "files",
+              "pipeline",
+              "search",
+              "workspace:read",
+              "workspace:write"
+            ]
+          },
+          {
+            "role": "viewer",
+            "members": 0,
+            "caps": [
+              "chat",
+              "search",
+              "workspace:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_roles",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/roles",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_roles",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/roles",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_policies",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/policies",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "policies": [
+          {
+            "id": "local_file_access",
+            "label": "Local file access",
+            "value": "Approval-token gated (per path/user/action)",
+            "enforced": true
+          },
+          {
+            "id": "package_install",
+            "label": "Package install",
+            "value": "Admin-only with audit trail",
+            "enforced": true
+          },
+          {
+            "id": "data_residency",
+            "label": "Data residency",
+            "value": "Single-tenant local storage (~/.ltcai)",
+            "enforced": true
+          },
+          {
+            "id": "model_egress",
+            "label": "Model egress",
+            "value": "Local-only by default (no external inference in local mode)",
+            "enforced": true
+          },
+          {
+            "id": "invite_gate",
+            "label": "Invite gate",
+            "value": "Disabled",
+            "enforced": false
+          },
+          {
+            "id": "log_retention",
+            "label": "Log retention",
+            "value": "90 day local audit window with manual export before pruning",
+            "enforced": true
+          }
+        ]
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_policies",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/policies",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_policies",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/policies",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_log_retention",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/log-retention",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "local-first",
+        "retention_days": 90,
+        "total_events": 8,
+        "retained_events": 8,
+        "prune_candidates": 0,
+        "export_before_prune": true,
+        "editable": false,
+        "reason": "Retention is reported in Community mode; destructive pruning requires an explicit export workflow."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_log_retention",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/log-retention",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_log_retention",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/log-retention",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_product_hardening",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/product-hardening",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "version": "@version",
+        "startup": {
+          "local_only_default": true,
+          "host": "127.0.0.1",
+          "port": 4825,
+          "network_exposed": false,
+          "auth_required": true,
+          "cors_network_allowed": false
+        },
+        "desktop": {
+          "sidecar_lifecycle": "managed",
+          "restart_supported": true,
+          "shutdown_supported": true,
+          "updater": {
+            "enabled": false,
+            "limitation": "No external update checks run unless explicitly enabled by policy."
+          }
+        },
+        "first_run": {
+          "data_dir": "@any",
+          "data_dir_exists": true,
+          "python_available": true,
+          "docker_available": true,
+          "docker_required": false,
+          "postgres_required": false
+        },
+        "privacy": {
+          "local_only_default": true,
+          "integrations": {
+            "telegram": {
+              "enabled": false,
+              "credential_present": false,
+              "opt_in_required": true,
+              "automatic_egress": false,
+              "detail": "disabled; token presence alone does not start Telegram"
+            },
+            "brain_network": {
+              "enabled": false,
+              "credential_present": false,
+              "opt_in_required": true,
+              "automatic_egress": false,
+              "detail": "peer pushes are user/admin initiated; no automatic peer sync by default"
+            },
+            "updates": {
+              "enabled": false,
+              "credential_present": false,
+              "opt_in_required": true,
+              "automatic_egress": false,
+              "detail": "desktop updater checks are disabled unless LATTICEAI_ENABLE_UPDATES is true"
+            },
+            "model_downloads": {
+              "enabled": false,
+              "credential_present": false,
+              "opt_in_required": true,
+              "automatic_egress": false,
+              "detail": "model downloads require an explicit load/autoload setting"
+            },
+            "docker": {
+              "enabled": false,
+              "credential_present": false,
+              "opt_in_required": true,
+              "automatic_egress": false,
+              "detail": "Docker setup requires explicit runtime consent; auto-start is disabled by default"
+            },
+            "postgres": {
+              "enabled": false,
+              "credential_present": false,
+              "opt_in_required": true,
+              "automatic_egress": false,
+              "detail": "Postgres scale mode is used only when storage engine and DSN are explicitly configured"
+            },
+            "external_connectors": {
+              "enabled": false,
+              "credential_present": false,
+              "opt_in_required": true,
+              "automatic_egress": false,
+              "detail": "connector credentials are inert until the connector is explicitly enabled and invoked"
+            }
+          }
+        },
+        "storage": {
+          "available": true,
+          "active": {
+            "engine": "sqlite",
+            "available": true,
+            "reason": "sqlite-vec Python package not installed: No module named 'sqlite_vec'; using real brute-force cosine fallback, not sqlite-vec ANN",
+            "vector_backend": "bruteforce-cosine",
+            "vector_available": true,
+            "backup_restore": true,
+            "migrations": true,
+            "encrypted_archives": true,
+            "metadata": {
+              "db_path": "@any",
+              "sqlite_vec_loaded": false,
+              "sqlite_vec_ann_available": false,
+              "vector_mode": "fallback",
+              "degraded": true,
+              "honest_fallback": "Vector search is available through the deterministic brute-force cosine backend. sqlite-vec ANN is unavailable."
+            }
+          },
+          "postgres": {
+            "engine": "postgres",
+            "available": false,
+            "reason": "Postgres storage requires LATTICEAI_POSTGRES_DSN; no SQLite fallback is attempted.",
+            "vector_backend": "pgvector",
+            "vector_available": false,
+            "backup_restore": false,
+            "migrations": false,
+            "encrypted_archives": false,
+            "metadata": {
+              "schema": "lattice_brain"
+            }
+          },
+          "backup_health": {
+            "available": true,
+            "directory": "<DATA_DIR>/workspace_exports",
+            "count": 0,
+            "latest": null,
+            "latest_bytes": 0,
+            "encrypted_archives": 0,
+            "zip_backups": 0
+          }
+        },
+        "backup": {
+          "available": true,
+          "directory": "<DATA_DIR>/workspace_exports",
+          "count": 0,
+          "latest": null,
+          "latest_bytes": 0,
+          "encrypted_archives": 0,
+          "zip_backups": 0
+        },
+        "device_identity": {
+          "fingerprint": "@id",
+          "public_key": "$device_public_key",
+          "algorithm": "ed25519",
+          "storage": "file"
+        },
+        "permissions": {
+          "export_requires_admin": true,
+          "import_requires_admin": true,
+          "restore_requires_admin": true,
+          "destructive_restore_requires_confirmation": true,
+          "workspace_isolation_enforced": true,
+          "audit_log_visible_to_admin": true
+        },
+        "failure_policy": {
+          "archive_corruption": "fail_closed",
+          "partial_archive": "fail_closed",
+          "signature_mismatch": "fail_closed",
+          "unsupported_version": "fail_closed",
+          "missing_docker": "honest_unavailable",
+          "missing_postgres": "honest_unavailable",
+          "permission_denied": "honest_error"
+        }
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_product_hardening",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/product-hardening",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_product_hardening",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/product-hardening",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_invite_link",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/invite-link",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "invite_url": "http://127.0.0.1:4825/",
+        "invite_code": "",
+        "gate_enabled": false
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_invite_link",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/invite-link",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_invite_link",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/invite-link",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_sso",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/sso",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "enabled": false,
+        "provider_name": "SSO",
+        "discovery_url": "",
+        "client_id": "",
+        "redirect_uri": "http://localhost:4825/auth/sso/callback",
+        "scopes": "openid email profile",
+        "secret_configured": false
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_sso",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/sso",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_sso",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/sso",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_enterprise",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/enterprise",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "edition": {
+          "edition": "community",
+          "is_enterprise": false,
+          "capabilities": {
+            "sso_advanced": false,
+            "idp_provisioning": false,
+            "scim": false,
+            "rbac_abac_advanced": false,
+            "tenant_isolation": false,
+            "compliance_retention": false,
+            "siem_export": false,
+            "private_vpc": false,
+            "air_gapped_deployment": false,
+            "dlp_policy": false,
+            "ediscovery": false,
+            "admin_policy_packs": false,
+            "graph_promotion_review": false
+          },
+          "community_notice": "All listed capabilities are Enterprise-only extension points. The open-source Community edition ships none of them enabled; see docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md."
+        },
+        "admin_policies": {
+          "capability": "admin_policy_packs",
+          "enabled": false,
+          "enforced": false,
+          "effective_policy": {
+            "base_roles": [
+              "owner",
+              "admin",
+              "member",
+              "viewer"
+            ],
+            "local_file_access": "approval-token gated (per path/user/action)",
+            "package_install": "admin-only with audit trail",
+            "network_binding": "127.0.0.1 by default",
+            "managed_policy_packs": []
+          },
+          "note": "Community edition: this is an Enterprise extension point and is not enforced. Local-first behaviour is always available. See docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md."
+        },
+        "audit_export": {
+          "local_export": {
+            "available": true,
+            "endpoint": "/admin/security/export",
+            "formats": [
+              "json",
+              "csv",
+              "xlsx",
+              "txt",
+              "pdf"
+            ],
+            "note": "Community local audit export is always available to admins."
+          },
+          "siem_streaming": {
+            "capability": "siem_export",
+            "enabled": false,
+            "note": "Community edition: this is an Enterprise extension point and is not enforced. Local-first behaviour is always available. See docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md."
+          },
+          "compliance_retention": {
+            "capability": "compliance_retention",
+            "enabled": false,
+            "note": "Community edition: this is an Enterprise extension point and is not enforced. Local-first behaviour is always available. See docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md."
+          }
+        },
+        "siem_export": {
+          "capability": "siem_export",
+          "enabled": false,
+          "streamed": false,
+          "destination": null,
+          "preview_envelope": {
+            "format": "ltcai.siem.v1",
+            "encoding": "ndjson",
+            "vendor": "LatticeAI",
+            "product": "Workspace OS",
+            "records": [
+              {
+                "ts": "@ts",
+                "actor": "admin@example.com",
+                "act": "model_load",
+                "sev": "informational",
+                "kind": "audit_event",
+                "id": "evt_sample"
+              }
+            ]
+          },
+          "note": "Community edition: this is an Enterprise extension point and is not enforced. Local-first behaviour is always available. See docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md."
+        },
+        "organization_settings": {
+          "community_baseline": {
+            "workspaces": [
+              "personal",
+              "organization"
+            ],
+            "roles": [
+              "owner",
+              "admin",
+              "member",
+              "viewer"
+            ],
+            "data_isolation": "single-tenant local storage (~/.ltcai)"
+          },
+          "governance_capabilities": {
+            "tenant_isolation": false,
+            "rbac_abac_advanced": false,
+            "scim": false,
+            "idp_provisioning": false,
+            "sso_advanced": false,
+            "dlp_policy": false,
+            "ediscovery": false,
+            "private_vpc": false,
+            "air_gapped_deployment": false
+          },
+          "note": "Community edition: this is an Enterprise extension point and is not enforced. Local-first behaviour is always available. See docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md."
+        }
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_enterprise",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/enterprise",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_enterprise",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/enterprise",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_enterprise_siem",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/enterprise/siem-export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "capability": "siem_export",
+        "enabled": false,
+        "streamed": false,
+        "destination": null,
+        "preview_envelope": {
+          "format": "ltcai.siem.v1",
+          "encoding": "ndjson",
+          "vendor": "LatticeAI",
+          "product": "Workspace OS",
+          "records": [
+            {
+              "ts": "@ts",
+              "actor": "admin@example.com",
+              "act": "model_load",
+              "sev": "informational",
+              "kind": "audit_event",
+              "id": "evt_sample"
+            }
+          ]
+        },
+        "note": "Community edition: this is an Enterprise extension point and is not enforced. Local-first behaviour is always available. See docs/ENTERPRISE.md and docs/EDITION_STRATEGY.md."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_enterprise_siem",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/enterprise/siem-export",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_enterprise_siem",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/enterprise/siem-export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_audit",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/audit",
+      "query": {
+        "limit": "50"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "summary": {
+          "total_events": 8,
+          "chat_events": 0,
+          "user_messages": 0,
+          "assistant_messages": 0,
+          "document_uploads": 1,
+          "clear_events": 0,
+          "delete_events": 0,
+          "sensitive_events": 1,
+          "high_sensitive_events": 1,
+          "graph_nodes": 0,
+          "graph_edges": 0
+        },
+        "per_user": [
+          {
+            "email": "owner@lattice.test",
+            "nickname": "owner",
+            "role": "admin",
+            "disabled": false,
+            "user_messages": 0,
+            "assistant_messages": 0,
+            "document_uploads": 1,
+            "clear_events": 0,
+            "delete_events": 0,
+            "sensitive_events": 1,
+            "high_sensitive_events": 1,
+            "total_content_chars": 0,
+            "last_activity_at": "@ts"
+          },
+          {
+            "email": "member@lattice.test",
+            "nickname": "member",
+            "role": "user",
+            "disabled": false,
+            "user_messages": 0,
+            "assistant_messages": 0,
+            "document_uploads": 0,
+            "clear_events": 0,
+            "delete_events": 0,
+            "sensitive_events": 0,
+            "high_sensitive_events": 0,
+            "total_content_chars": 0,
+            "last_activity_at": null
+          }
+        ],
+        "recent_events": [
+          {
+            "workspace_id": null,
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "role": "viewer",
+            "event_type": "invitation_created"
+          },
+          {
+            "workspace_id": "org-Fixture-Team",
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "role": "member",
+            "event_type": "invitation_created"
+          },
+          {
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_snapshot"
+          },
+          {
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_snapshot"
+          },
+          {
+            "workspace_id": "org-Fixture-Team",
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "role": "member",
+            "event_type": "workspace_member_added"
+          },
+          {
+            "workspace_id": "org-Archive-Target",
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_created"
+          },
+          {
+            "workspace_id": "org-Fixture-Team",
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_created"
+          },
+          {
+            "user_email": "owner@lattice.test",
+            "sensitive_labels": [
+              "secret"
+            ],
+            "user_nickname": "owner",
+            "sensitivity": "high",
+            "ext": ".txt",
+            "timestamp": "@ts",
+            "content_preview": "API key: sk-fixture1234567890abcdefghij",
+            "filename": "fixture-contract.txt",
+            "bytes": 128,
+            "event_type": "document_upload"
+          }
+        ],
+        "sensitive_events": [
+          {
+            "user_email": "owner@lattice.test",
+            "sensitive_labels": [
+              "secret"
+            ],
+            "user_nickname": "owner",
+            "sensitivity": "high",
+            "ext": ".txt",
+            "timestamp": "@ts",
+            "content_preview": "API key: sk-fixture1234567890abcdefghij",
+            "filename": "fixture-contract.txt",
+            "bytes": 128,
+            "event_type": "document_upload"
+          }
+        ],
+        "deletion_events": [],
+        "filters": {
+          "q": "",
+          "actor": "",
+          "action": "",
+          "severity": "",
+          "limit": 50,
+          "matched_events": 8,
+          "scoped_events": 8
+        },
+        "graph": {
+          "db_path": "@any",
+          "schema_version": 1,
+          "v2_schema_available": true,
+          "nodes": {
+            "Conversation": 1,
+            "Memory": 1,
+            "Person": 1,
+            "Workflow": 1
+          },
+          "edges": {
+            "HAS_EVENT": 2,
+            "TRIGGERED": 2
+          },
+          "local_sources": 0,
+          "local_file_status": {},
+          "v2": {
+            "schema_version": 2,
+            "embed_dim": 384,
+            "nodes": 4,
+            "edges": 4,
+            "by_node_type": {
+              "CONCEPT": 1,
+              "CONVERSATION": 1,
+              "PERSON": 1,
+              "WORKFLOW": 1
+            },
+            "by_edge_type": {
+              "HAS_EVENT": 2,
+              "TRIGGERED": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_audit",
+      "branch": "filtered",
+      "method": "GET",
+      "path": "/admin/audit",
+      "query": {
+        "q": "workspace",
+        "actor": "owner",
+        "action": "workspace",
+        "severity": "",
+        "limit": "10"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "summary": {
+          "total_events": 5,
+          "chat_events": 0,
+          "user_messages": 0,
+          "assistant_messages": 0,
+          "document_uploads": 0,
+          "clear_events": 0,
+          "delete_events": 0,
+          "sensitive_events": 0,
+          "high_sensitive_events": 0,
+          "graph_nodes": 0,
+          "graph_edges": 0
+        },
+        "per_user": [
+          {
+            "email": "owner@lattice.test",
+            "nickname": "owner",
+            "role": "admin",
+            "disabled": false,
+            "user_messages": 0,
+            "assistant_messages": 0,
+            "document_uploads": 0,
+            "clear_events": 0,
+            "delete_events": 0,
+            "sensitive_events": 0,
+            "high_sensitive_events": 0,
+            "total_content_chars": 0,
+            "last_activity_at": "@ts"
+          },
+          {
+            "email": "member@lattice.test",
+            "nickname": "member",
+            "role": "user",
+            "disabled": false,
+            "user_messages": 0,
+            "assistant_messages": 0,
+            "document_uploads": 0,
+            "clear_events": 0,
+            "delete_events": 0,
+            "sensitive_events": 0,
+            "high_sensitive_events": 0,
+            "total_content_chars": 0,
+            "last_activity_at": null
+          }
+        ],
+        "recent_events": [
+          {
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_snapshot"
+          },
+          {
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_snapshot"
+          },
+          {
+            "workspace_id": "org-Fixture-Team",
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "role": "member",
+            "event_type": "workspace_member_added"
+          },
+          {
+            "workspace_id": "org-Archive-Target",
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_created"
+          },
+          {
+            "workspace_id": "org-Fixture-Team",
+            "user_email": "owner@lattice.test",
+            "timestamp": "@ts",
+            "event_type": "workspace_created"
+          }
+        ],
+        "sensitive_events": [],
+        "deletion_events": [],
+        "filters": {
+          "q": "workspace",
+          "actor": "owner",
+          "action": "workspace",
+          "severity": "",
+          "limit": 10,
+          "matched_events": 5,
+          "scoped_events": 8
+        },
+        "graph": {
+          "db_path": "@any",
+          "schema_version": 1,
+          "v2_schema_available": true,
+          "nodes": {
+            "Conversation": 1,
+            "Memory": 1,
+            "Person": 1,
+            "Workflow": 1
+          },
+          "edges": {
+            "HAS_EVENT": 2,
+            "TRIGGERED": 2
+          },
+          "local_sources": 0,
+          "local_file_status": {},
+          "v2": {
+            "schema_version": 2,
+            "embed_dim": 384,
+            "nodes": 4,
+            "edges": 4,
+            "by_node_type": {
+              "CONCEPT": 1,
+              "CONVERSATION": 1,
+              "PERSON": 1,
+              "WORKFLOW": 1
+            },
+            "by_edge_type": {
+              "HAS_EVENT": 2,
+              "TRIGGERED": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_audit",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/audit",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_audit",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/audit",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_audit",
+      "branch": "error_limit_out_of_range",
+      "method": "GET",
+      "path": "/admin/audit",
+      "query": {
+        "limit": "5000"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "less_than_equal",
+            "loc": [
+              "query",
+              "limit"
+            ],
+            "msg": "Input should be less than or equal to 250",
+            "input": "5000",
+            "ctx": {
+              "le": 250
+            }
+          }
+        ]
+      },
+      "note": "limit is Query(ge=1, le=250); 5000 fails validation with FastAPI's 422"
+    },
+    {
+      "family": "admin.py",
+      "name": "vpc_status",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/vpc/status",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "provider": "AWS",
+        "region": "ap-northeast-2",
+        "cidr_block": "10.42.0.0/16",
+        "private_subnets": [
+          "10.42.10.0/24",
+          "10.42.20.0/24"
+        ],
+        "endpoint": "ltcai-private.local",
+        "vpn_status": "standby",
+        "peering_status": "not_configured",
+        "notes": "로컬 MLX 브릿지를 프라이빗 서브넷 또는 VPN 뒤에서 운영할 때 쓰는 네트워크 프로필입니다.",
+        "updated_at": null
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "vpc_status",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/vpc/status",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "vpc_status",
+      "branch": "member_allowed",
+      "method": "GET",
+      "path": "/vpc/status",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "provider": "AWS",
+        "region": "ap-northeast-2",
+        "cidr_block": "10.42.0.0/16",
+        "private_subnets": [
+          "10.42.10.0/24",
+          "10.42.20.0/24"
+        ],
+        "endpoint": "ltcai-private.local",
+        "vpn_status": "standby",
+        "peering_status": "not_configured",
+        "notes": "로컬 MLX 브릿지를 프라이빗 서브넷 또는 VPN 뒤에서 운영할 때 쓰는 네트워크 프로필입니다.",
+        "updated_at": null
+      },
+      "note": "require_user, not require_admin — a non-admin session is served"
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_vpc",
+      "branch": "happy",
+      "method": "PATCH",
+      "path": "/admin/vpc",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "region": "ap-northeast-2",
+        "notes": "픽스처 캡처",
+        "private_subnets": [
+          "10.42.10.0/24",
+          " "
+        ]
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "provider": "AWS",
+        "region": "ap-northeast-2",
+        "cidr_block": "10.42.0.0/16",
+        "private_subnets": [
+          "10.42.10.0/24"
+        ],
+        "endpoint": "ltcai-private.local",
+        "vpn_status": "standby",
+        "peering_status": "not_configured",
+        "notes": "픽스처 캡처",
+        "updated_at": "@ts"
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_vpc",
+      "branch": "auth_denied",
+      "method": "PATCH",
+      "path": "/admin/vpc",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "region": "us-east-1"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_vpc",
+      "branch": "wrong_role",
+      "method": "PATCH",
+      "path": "/admin/vpc",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "region": "us-east-1"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_sso",
+      "branch": "happy",
+      "method": "PATCH",
+      "path": "/admin/sso",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "enabled": false,
+        "provider_name": "Fixture IdP",
+        "discovery_url": "https://idp.example.test/.well-known/openid-configuration",
+        "client_id": "fixture-client",
+        "client_secret": "fixture-secret",
+        "scopes": "openid email profile"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "enabled": false,
+        "provider_name": "Fixture IdP",
+        "discovery_url": "https://idp.example.test/.well-known/openid-configuration",
+        "client_id": "fixture-client",
+        "redirect_uri": "http://localhost:4825/auth/sso/callback",
+        "scopes": "openid email profile",
+        "secret_configured": true
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_sso",
+      "branch": "auth_denied",
+      "method": "PATCH",
+      "path": "/admin/sso",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "enabled": true
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_sso",
+      "branch": "wrong_role",
+      "method": "PATCH",
+      "path": "/admin/sso",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "enabled": true
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_user",
+      "branch": "happy",
+      "method": "PATCH",
+      "path": "/admin/users/member@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "role": "user",
+        "disabled": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+        "email": "member@lattice.test",
+        "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+        "name": "Fixture Member",
+        "nickname": "member",
+        "role": "user",
+        "disabled": false
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_user",
+      "branch": "error_unknown_user",
+      "method": "PATCH",
+      "path": "/admin/users/ghost@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "role": "user"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "사용자를 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_user",
+      "branch": "error_invalid_role",
+      "method": "PATCH",
+      "path": "/admin/users/member@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "role": "superuser"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "role은 admin 또는 user만 가능합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_user",
+      "branch": "error_disable_self",
+      "method": "PATCH",
+      "path": "/admin/users/owner@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "disabled": true
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "자기 자신은 비활성화할 수 없습니다."
+      },
+      "note": "an admin may not disable their own account"
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_user",
+      "branch": "auth_denied",
+      "method": "PATCH",
+      "path": "/admin/users/member@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "role": "admin"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_update_user",
+      "branch": "wrong_role",
+      "method": "PATCH",
+      "path": "/admin/users/member@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "role": "admin"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_delete_user",
+      "branch": "error_delete_self",
+      "method": "DELETE",
+      "path": "/admin/users/owner@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "자기 자신은 삭제할 수 없습니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_delete_user",
+      "branch": "error_unknown_user",
+      "method": "DELETE",
+      "path": "/admin/users/ghost@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "사용자를 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_delete_user",
+      "branch": "auth_denied",
+      "method": "DELETE",
+      "path": "/admin/users/member@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_delete_user",
+      "branch": "wrong_role",
+      "method": "DELETE",
+      "path": "/admin/users/member@lattice.test",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "workspace_scope.py",
+      "name": "scope_header_scoped_admin_read",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "x-workspace-id": "org-Fixture-Team"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "total_users": 2,
+        "active_users": 2,
+        "admin_users": 1,
+        "total_messages": 0,
+        "user_messages": 0,
+        "assistant_messages": 0,
+        "last_message_at": null
+      },
+      "note": "requested_workspace() reads the header; history/audit are filtered to it"
+    },
+    {
+      "family": "workspace_scope.py",
+      "name": "scope_query_scoped_admin_read",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {
+        "workspace_id": "org-Fixture-Team"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "total_users": 2,
+        "active_users": 2,
+        "admin_users": 1,
+        "total_messages": 0,
+        "user_messages": 0,
+        "assistant_messages": 0,
+        "last_message_at": null
+      },
+      "note": "the query parameter is the second accepted selector"
+    },
+    {
+      "family": "workspace_scope.py",
+      "name": "scope_selector_mismatch",
+      "branch": "error_mismatch",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {
+        "workspace_id": "org-Other"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "x-workspace-id": "org-Fixture-Team"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Workspace selectors must match."
+      },
+      "note": "two different workspaces named in one request is a 403, never a silent preference"
+    },
+    {
+      "family": "workspace_scope.py",
+      "name": "scope_selectors_agree",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {
+        "workspace_id": "org-Fixture-Team"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "x-workspace-id": "org-Fixture-Team"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "total_users": 2,
+        "active_users": 2,
+        "admin_users": 1,
+        "total_messages": 0,
+        "user_messages": 0,
+        "assistant_messages": 0,
+        "last_message_at": null
+      },
+      "note": "agreeing selectors are allowed"
+    },
+    {
+      "family": "funnel_metrics.py",
+      "name": "funnel_metrics",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/api/admin/funnel-metrics",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "counters": {
+          "file_requests": 0,
+          "real_file_delivered": 0,
+          "code_only_responses": 0,
+          "agent_runs": 0,
+          "needs_review_runs": 0,
+          "ingest_completions": 0,
+          "recall_successes": 0,
+          "approval_pauses": 0,
+          "approval_resumes": 0
+        },
+        "firsts": {
+          "first_ingest_at": null,
+          "first_value_at": null
+        },
+        "rates": {
+          "real_file_rate": null,
+          "code_only_rate": null,
+          "needs_review_rate": null,
+          "approval_resume_rate": null
+        },
+        "alerts": [],
+        "ttfv_seconds": null,
+        "generated_at": "@any"
+      }
+    },
+    {
+      "family": "funnel_metrics.py",
+      "name": "funnel_metrics",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/api/admin/funnel-metrics",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "funnel_metrics.py",
+      "name": "funnel_metrics",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/api/admin/funnel-metrics",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_overview",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "generated_at": "@any",
+        "timezone": "UTC",
+        "cards": {
+          "events_today": 9,
+          "high_risk_events": 1,
+          "risky_chats": 1,
+          "risky_files": 1,
+          "secret_blocks": 1,
+          "external_blocks": 0,
+          "admin_raw_views": 0,
+          "review_required": 1
+        },
+        "field_counts": {
+          "주민등록번호": 1,
+          "카드번호": 1
+        },
+        "severity_counts": {
+          "high": 1,
+          "medium": 0,
+          "low": 0,
+          "none": 1
+        },
+        "risk_rate": 50.0
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_overview",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_overview",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_users",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/users",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "users": [
+          {
+            "user": "owner",
+            "total_chats": 1,
+            "compliant_chats": 0,
+            "risky_chats": 1,
+            "uploaded_files": 1,
+            "compliant_files": 0,
+            "risky_files": 1,
+            "high_risk_events": 2,
+            "last_activity_at": "@ts",
+            "email": "owner@lattice.test",
+            "risk_rate": 100.0,
+            "role": "admin",
+            "disabled": false
+          }
+        ],
+        "total": 1
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_users",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/users",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_users",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/users",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_files",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/files",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "files": [
+          {
+            "file_id": "fixture-contract.txt",
+            "filename": "fixture-contract.txt",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "uploaded_at": "@ts",
+            "ext": ".txt",
+            "bytes": 128,
+            "sensitivity": "high",
+            "sensitive_labels": [
+              "secret"
+            ],
+            "content_preview": "API key=[REDACTED_SECRET]"
+          }
+        ],
+        "total": 1
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_files",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/files",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_files",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/files",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_events",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/events",
+      "query": {
+        "limit": "200"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "events": [
+          {
+            "event_type": "document_upload",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "filename": "fixture-contract.txt",
+            "ext": ".txt",
+            "bytes": 128,
+            "sensitivity": "high",
+            "sensitive_labels": [
+              "secret"
+            ],
+            "content_preview": "API key=[REDACTED_SECRET]",
+            "extracted_text": "API key: sk-fixture1234567890abcdefghij / 계약 조건",
+            "event_id": "0"
+          },
+          {
+            "event_type": "invitation_created",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "invitation_id": "@id",
+            "workspace_id": null,
+            "role": "viewer",
+            "event_id": "7"
+          },
+          {
+            "event_type": "invitation_created",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "invitation_id": "$invitation_id",
+            "workspace_id": "org-Fixture-Team",
+            "role": "member",
+            "event_id": "6"
+          },
+          {
+            "event_type": "sso_config_update",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "provider_name": "Fixture IdP",
+            "discovery_url": "https://idp.example.test/.well-known/openid-configuration",
+            "enabled": false,
+            "event_id": "8"
+          },
+          {
+            "event_type": "user_update",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "target_email": "member@lattice.test",
+            "before": {
+              "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "email": "member@lattice.test",
+              "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "name": "Fixture Member",
+              "nickname": "member",
+              "role": "user",
+              "disabled": false
+            },
+            "after": {
+              "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "email": "member@lattice.test",
+              "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "name": "Fixture Member",
+              "nickname": "member",
+              "role": "user",
+              "disabled": false
+            },
+            "event_id": "9"
+          },
+          {
+            "event_type": "workspace_created",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "workspace_id": "org-Archive-Target",
+            "event_id": "2"
+          },
+          {
+            "event_type": "workspace_created",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "workspace_id": "org-Fixture-Team",
+            "event_id": "1"
+          },
+          {
+            "event_type": "workspace_member_added",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "workspace_id": "org-Fixture-Team",
+            "member": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "role": "member",
+            "event_id": "3"
+          },
+          {
+            "event_type": "workspace_snapshot",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "snapshot_id": "$snapshot_b",
+            "event_id": "5"
+          },
+          {
+            "event_type": "workspace_snapshot",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "snapshot_id": "$snapshot_a",
+            "event_id": "4"
+          }
+        ],
+        "total": 10
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_events",
+      "branch": "filtered",
+      "method": "GET",
+      "path": "/admin/security/events",
+      "query": {
+        "type": "document_upload",
+        "severity": "high",
+        "limit": "50"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "events": [
+          {
+            "event_type": "document_upload",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "filename": "fixture-contract.txt",
+            "ext": ".txt",
+            "bytes": 128,
+            "sensitivity": "high",
+            "sensitive_labels": [
+              "secret"
+            ],
+            "content_preview": "API key=[REDACTED_SECRET]",
+            "extracted_text": "API key: sk-fixture1234567890abcdefghij / 계약 조건",
+            "event_id": "0"
+          }
+        ],
+        "total": 1
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_events",
+      "branch": "filtered_by_date",
+      "method": "GET",
+      "path": "/admin/security/events",
+      "query": {
+        "from": "2026-01-01",
+        "to": "2030-01-01",
+        "limit": "5"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "events": [
+          {
+            "event_type": "invitation_created",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "invitation_id": "@id",
+            "workspace_id": null,
+            "role": "viewer",
+            "event_id": "7"
+          },
+          {
+            "event_type": "invitation_created",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "invitation_id": "$invitation_id",
+            "workspace_id": "org-Fixture-Team",
+            "role": "member",
+            "event_id": "6"
+          },
+          {
+            "event_type": "sso_config_update",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "provider_name": "Fixture IdP",
+            "discovery_url": "https://idp.example.test/.well-known/openid-configuration",
+            "enabled": false,
+            "event_id": "8"
+          },
+          {
+            "event_type": "user_update",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "target_email": "member@lattice.test",
+            "before": {
+              "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "email": "member@lattice.test",
+              "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "name": "Fixture Member",
+              "nickname": "member",
+              "role": "user",
+              "disabled": false
+            },
+            "after": {
+              "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "email": "member@lattice.test",
+              "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+              "name": "Fixture Member",
+              "nickname": "member",
+              "role": "user",
+              "disabled": false
+            },
+            "event_id": "9"
+          },
+          {
+            "event_type": "workspace_snapshot",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "snapshot_id": "$snapshot_b",
+            "event_id": "5"
+          }
+        ],
+        "total": 10
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_events",
+      "branch": "error_limit_out_of_range",
+      "method": "GET",
+      "path": "/admin/security/events",
+      "query": {
+        "limit": "99999"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "less_than_equal",
+            "loc": [
+              "query",
+              "limit"
+            ],
+            "msg": "Input should be less than or equal to 2000",
+            "input": "99999",
+            "ctx": {
+              "le": 2000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_events",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/events",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_events",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/events",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_event_detail",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/events/0",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "event": {
+          "event_type": "document_upload",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "filename": "fixture-contract.txt",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key=[REDACTED_SECRET]",
+          "extracted_text": "API key: sk-fixture1234567890abcdefghij / 계약 조건"
+        },
+        "raw_available": true
+      },
+      "note": "a numeric event_id indexes the audit list positionally"
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_event_detail",
+      "branch": "error_not_found",
+      "method": "GET",
+      "path": "/admin/security/events/no-such-event",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "이벤트를 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_event_detail",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/events/0",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_event_detail",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/events/0",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_summary",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-fixture-001",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "conversation_id": "conv-fixture-001",
+        "messages_total": 2,
+        "risky_messages": 1,
+        "items": [
+          {
+            "index": 0,
+            "role": "user",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "timestamp": "@ts",
+            "sensitivity": "high",
+            "labels": [
+              "주민등록번호",
+              "카드번호"
+            ],
+            "risk_fields": [
+              {
+                "type": "rrn",
+                "label": "주민등록번호",
+                "severity": "high",
+                "start": 46,
+                "end": 60
+              },
+              {
+                "type": "card",
+                "label": "카드번호",
+                "severity": "high",
+                "start": 46,
+                "end": 61
+              }
+            ],
+            "compliance_fields": [],
+            "preview": "배포 키는 sk-fixture1234567890abcdefghij 이고 주민번호는 90***********7 이야"
+          },
+          {
+            "index": 1,
+            "role": "assistant",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "timestamp": "@ts",
+            "sensitivity": "none",
+            "labels": [],
+            "risk_fields": [],
+            "compliance_fields": [
+              "민감정보 미검출"
+            ],
+            "preview": "민감정보는 저장하지 않겠습니다."
+          }
+        ]
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_summary",
+      "branch": "empty_conversation",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-missing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "conversation_id": "conv-missing",
+        "messages_total": 0,
+        "risky_messages": 0,
+        "items": []
+      },
+      "note": "an unknown conversation is an empty summary, not a 404"
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_summary",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-fixture-001",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_summary",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-fixture-001",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_raw",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-fixture-001/raw",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "conversation_id": "conv-fixture-001",
+        "messages": [
+          {
+            "role": "user",
+            "content": "배포 키는 [REDACTED_SECRET] 이고 주민번호는 900101-1234567 이야",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "conversation_id": "conv-fixture-001"
+          },
+          {
+            "role": "assistant",
+            "content": "민감정보는 저장하지 않겠습니다.",
+            "timestamp": "@ts",
+            "user_email": "owner@lattice.test",
+            "user_nickname": "owner",
+            "conversation_id": "conv-fixture-001"
+          }
+        ]
+      },
+      "note": "hard secrets stay redacted even in the raw view"
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_raw",
+      "branch": "error_not_found",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-missing/raw",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "대화를 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_raw",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-fixture-001/raw",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_conversation_raw",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/conversations/conv-fixture-001/raw",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_detail",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/files/fixture-contract.txt",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "file": {
+          "file_id": "fixture-contract.txt",
+          "filename": "fixture-contract.txt",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "uploaded_at": "@ts",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key=[REDACTED_SECRET]"
+        }
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_detail",
+      "branch": "error_not_found",
+      "method": "GET",
+      "path": "/admin/security/files/no-such-file.txt",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "파일을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_detail",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/files/fixture-contract.txt",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_detail",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/files/fixture-contract.txt",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_content",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/admin/security/files/fixture-contract.txt/content",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "file_id": "fixture-contract.txt",
+        "text": "API key=[REDACTED_SECRET]"
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_content",
+      "branch": "error_not_found",
+      "method": "GET",
+      "path": "/admin/security/files/no-such-file.txt/content",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "파일을 찾을 수 없습니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_content",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/files/fixture-contract.txt/content",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_file_content",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/files/fixture-contract.txt/content",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_raw",
+      "branch": "happy_scope_audit",
+      "method": "GET",
+      "path": "/admin/security/raw",
+      "query": {
+        "scope": "audit"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "response_body": [
+        {
+          "event_type": "document_upload",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "filename": "fixture-contract.txt",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key=[REDACTED_SECRET]",
+          "extracted_text": "API key=[REDACTED_SECRET] / 계약 조건"
+        },
+        {
+          "event_type": "workspace_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Fixture-Team"
+        },
+        {
+          "event_type": "workspace_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Archive-Target"
+        },
+        {
+          "event_type": "workspace_member_added",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Fixture-Team",
+          "member": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+          "role": "member"
+        },
+        {
+          "event_type": "workspace_snapshot",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "snapshot_id": "$snapshot_a"
+        },
+        {
+          "event_type": "workspace_snapshot",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "snapshot_id": "$snapshot_b"
+        },
+        {
+          "event_type": "invitation_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "invitation_id": "$invitation_id",
+          "workspace_id": "org-Fixture-Team",
+          "role": "member"
+        },
+        {
+          "event_type": "invitation_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "invitation_id": "@id",
+          "workspace_id": null,
+          "role": "viewer"
+        },
+        {
+          "event_type": "sso_config_update",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "provider_name": "Fixture IdP",
+          "discovery_url": "https://idp.example.test/.well-known/openid-configuration",
+          "enabled": false
+        },
+        {
+          "event_type": "user_update",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "target_email": "member@lattice.test",
+          "before": {
+            "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "email": "member@lattice.test",
+            "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "name": "Fixture Member",
+            "nickname": "member",
+            "role": "user",
+            "disabled": false
+          },
+          "after": {
+            "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "email": "member@lattice.test",
+            "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "name": "Fixture Member",
+            "nickname": "member",
+            "role": "user",
+            "disabled": false
+          }
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "event",
+          "target_id": "0",
+          "reason": "security_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "conversation",
+          "target_id": "conv-fixture-001",
+          "reason": "security_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "file",
+          "target_id": "fixture-contract.txt",
+          "reason": "security_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "file_content",
+          "target_id": "fixture-contract.txt",
+          "reason": "raw_content_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "raw",
+          "target_id": "audit",
+          "reason": "raw_explorer"
+        }
+      ]
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_raw",
+      "branch": "happy_scope_history",
+      "method": "GET",
+      "path": "/admin/security/raw",
+      "query": {
+        "scope": "history"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "response_body": [
+        {
+          "role": "user",
+          "content": "배포 키는 [REDACTED_SECRET] 이고 주민번호는 900101-1234567 이야",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "conversation_id": "conv-fixture-001"
+        },
+        {
+          "role": "assistant",
+          "content": "민감정보는 저장하지 않겠습니다.",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "conversation_id": "conv-fixture-001"
+        }
+      ]
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_raw",
+      "branch": "happy_scope_files",
+      "method": "GET",
+      "path": "/admin/security/raw",
+      "query": {
+        "scope": "files"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "response_body": [
+        {
+          "file_id": "fixture-contract.txt",
+          "filename": "fixture-contract.txt",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "uploaded_at": "@ts",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key=[REDACTED_SECRET]"
+        }
+      ]
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_raw",
+      "branch": "error_unknown_scope",
+      "method": "GET",
+      "path": "/admin/security/raw",
+      "query": {
+        "scope": "nope"
+      },
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "지원하지 않는 scope입니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_raw",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/admin/security/raw",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_raw",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/admin/security/raw",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_json_events",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "json"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8",
+        "content-disposition": "attachment; filename=security_events.json"
+      },
+      "response_body": [
+        {
+          "event_type": "document_upload",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "filename": "fixture-contract.txt",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key=[REDACTED_SECRET]",
+          "extracted_text": "API key=[REDACTED_SECRET] / 계약 조건"
+        },
+        {
+          "event_type": "workspace_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Fixture-Team"
+        },
+        {
+          "event_type": "workspace_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Archive-Target"
+        },
+        {
+          "event_type": "workspace_member_added",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "workspace_id": "org-Fixture-Team",
+          "member": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+          "role": "member"
+        },
+        {
+          "event_type": "workspace_snapshot",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "snapshot_id": "$snapshot_a"
+        },
+        {
+          "event_type": "workspace_snapshot",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "snapshot_id": "$snapshot_b"
+        },
+        {
+          "event_type": "invitation_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "invitation_id": "$invitation_id",
+          "workspace_id": "org-Fixture-Team",
+          "role": "member"
+        },
+        {
+          "event_type": "invitation_created",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "invitation_id": "@id",
+          "workspace_id": null,
+          "role": "viewer"
+        },
+        {
+          "event_type": "sso_config_update",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "provider_name": "Fixture IdP",
+          "discovery_url": "https://idp.example.test/.well-known/openid-configuration",
+          "enabled": false
+        },
+        {
+          "event_type": "user_update",
+          "timestamp": "@ts",
+          "user_email": "owner@lattice.test",
+          "target_email": "member@lattice.test",
+          "before": {
+            "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "email": "member@lattice.test",
+            "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "name": "Fixture Member",
+            "nickname": "member",
+            "role": "user",
+            "disabled": false
+          },
+          "after": {
+            "id": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "email": "member@lattice.test",
+            "identity": "user:15669c19-6f17-5633-a2a6-a664d0d032c4",
+            "name": "Fixture Member",
+            "nickname": "member",
+            "role": "user",
+            "disabled": false
+          }
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "event",
+          "target_id": "0",
+          "reason": "security_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "conversation",
+          "target_id": "conv-fixture-001",
+          "reason": "security_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "file",
+          "target_id": "fixture-contract.txt",
+          "reason": "security_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "file_content",
+          "target_id": "fixture-contract.txt",
+          "reason": "raw_content_review"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "raw",
+          "target_id": "audit",
+          "reason": "raw_explorer"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "raw",
+          "target_id": "history",
+          "reason": "raw_explorer"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "raw",
+          "target_id": "files",
+          "reason": "raw_explorer"
+        },
+        {
+          "event_type": "admin_view_sensitive_raw",
+          "timestamp": "@ts",
+          "admin_email": "owner@lattice.test",
+          "target_type": "raw",
+          "target_id": "nope",
+          "reason": "raw_explorer"
+        }
+      ]
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_json_users",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "users",
+        "format": "json"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8",
+        "content-disposition": "attachment; filename=security_users.json"
+      },
+      "response_body": [
+        {
+          "user": "owner",
+          "total_chats": 1,
+          "compliant_chats": 0,
+          "risky_chats": 1,
+          "uploaded_files": 1,
+          "compliant_files": 0,
+          "risky_files": 1,
+          "high_risk_events": 2,
+          "last_activity_at": "@ts",
+          "email": "owner@lattice.test",
+          "risk_rate": 100.0
+        }
+      ]
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_json_files",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "files",
+        "format": "json"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8",
+        "content-disposition": "attachment; filename=security_files.json"
+      },
+      "response_body": [
+        {
+          "file_id": "fixture-contract.txt",
+          "filename": "fixture-contract.txt",
+          "user_email": "owner@lattice.test",
+          "user_nickname": "owner",
+          "uploaded_at": "@ts",
+          "ext": ".txt",
+          "bytes": 128,
+          "sensitivity": "high",
+          "sensitive_labels": [
+            "secret"
+          ],
+          "content_preview": "API key=[REDACTED_SECRET]"
+        }
+      ]
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_json_overview",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "overview",
+        "format": "json"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8",
+        "content-disposition": "attachment; filename=security_overview.json"
+      },
+      "response_body": [
+        {
+          "total_messages": 2,
+          "risky_messages": 1,
+          "compliant_messages": 1,
+          "risk_rate": 50.0,
+          "severity_counts": {
+            "high": 1,
+            "medium": 0,
+            "low": 0,
+            "none": 1
+          },
+          "field_counts": {
+            "주민등록번호": 1,
+            "카드번호": 1
+          },
+          "user_counts": {
+            "owner@lattice.test": 1
+          }
+        }
+      ]
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_format_csv",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "csv"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": "attachment; filename=security_events.csv"
+      },
+      "response_body": {
+        "@text": "event_type,timestamp,user_email,user_nickname,filename,ext,bytes,sensitivity,sensitive_labels,content_preview,extracted_text,workspace_id,member,role,snapshot_id,invitation_id,provider_name,discovery_url,enabled,target_email,before,after,admin_email,target_type,target_id,reason\r\ndocument_upload,@ts,owner@lattice.test,owner,fixture-contract.txt,.txt,128,high,['secret'],API key=[REDACTED_SECRET],API key=[REDACTED_SECRET] / 계약 조건,,,,,,,,,,,,,,,\r\nworkspace_created,@ts,owner@lattice.test,,,,,,,,,org-Fixture-Team,,,,,,,,,,,,,,\r\nworkspace_created,@ts,owner@lattice.test,,,,,,,,,org-Archive-Target,,,,,,,,,,,,,,\r\nworkspace_member_added,@ts,owner@lattice.test,,,,,,,,,org-Fixture-Team,user:15669c19-6f17-5633-a2a6-a664d0d032c4,member,,,,,,,,,,,,\r\nworkspace_snapshot,@ts,owner@lattice.test,,,,,,,,,,,,$snapshot_a,,,,,,,,,,,\r\nworkspace_snapshot,@ts,owner@lattice.test,,,,,,,,,,,,$snapshot_b,,,,,,,,,,,\r\ninvitation_created,@ts,owner@lattice.test,,,,,,,,,org-Fixture-Team,,member,,$invitation_id,,,,,,,,,,\r\ninvitation_created,@ts,owner@lattice.test,,,,,,,,,,,viewer,,@id,,,,,,,,,,\r\nsso_config_update,@ts,owner@lattice.test,,,,,,,,,,,,,,Fixture IdP,https://idp.example.test/.well-known/openid-configuration,False,,,,,,,\r\nuser_update,@ts,owner@lattice.test,,,,,,,,,,,,,,,,,member@lattice.test,\"{'id': 'user:15669c19-6f17-5633-a2a6-a664d0d032c4', 'email': 'member@lattice.test', 'identity': 'user:15669c19-6f17-5633-a2a6-a664d0d032c4', 'name': 'Fixture Member', 'nickname': 'member', 'role': 'user', 'disabled': False}\",\"{'id': 'user:15669c19-6f17-5633-a2a6-a664d0d032c4', 'email': 'member@lattice.test', 'identity': 'user:15669c19-6f17-5633-a2a6-a664d0d032c4', 'name': 'Fixture Member', 'nickname': 'member', 'role': 'user', 'disabled': False}\",,,,\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,event,0,security_review\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,conversation,conv-fixture-001,security_review\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,file,fixture-contract.txt,security_review\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,file_content,fixture-contract.txt,raw_content_review\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,raw,audit,raw_explorer\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,raw,history,raw_explorer\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,raw,files,raw_explorer\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,raw,nope,raw_explorer\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,export,events:json,export\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,export,users:json,export\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,export,files:json,export\r\nadmin_view_sensitive_raw,@ts,,,,,,,,,,,,,,,,,,,,,owner@lattice.test,export,overview:json,export\r\n"
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_format_txt",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "txt"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "content-disposition": "attachment; filename=security_events.txt"
+      },
+      "response_body": {
+        "@text": "{\"event_type\": \"document_upload\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"user_nickname\": \"owner\", \"filename\": \"fixture-contract.txt\", \"ext\": \".txt\", \"bytes\": 128, \"sensitivity\": \"high\", \"sensitive_labels\": [\"secret\"], \"content_preview\": \"API key=[REDACTED_SECRET]\", \"extracted_text\": \"API key=[REDACTED_SECRET] / 계약 조건\"}\n{\"event_type\": \"workspace_created\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"workspace_id\": \"org-Fixture-Team\"}\n{\"event_type\": \"workspace_created\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"workspace_id\": \"org-Archive-Target\"}\n{\"event_type\": \"workspace_member_added\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"workspace_id\": \"org-Fixture-Team\", \"member\": \"user:15669c19-6f17-5633-a2a6-a664d0d032c4\", \"role\": \"member\"}\n{\"event_type\": \"workspace_snapshot\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"snapshot_id\": \"$snapshot_a\"}\n{\"event_type\": \"workspace_snapshot\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"snapshot_id\": \"$snapshot_b\"}\n{\"event_type\": \"invitation_created\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"invitation_id\": \"$invitation_id\", \"workspace_id\": \"org-Fixture-Team\", \"role\": \"member\"}\n{\"event_type\": \"invitation_created\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"invitation_id\": \"@id\", \"workspace_id\": null, \"role\": \"viewer\"}\n{\"event_type\": \"sso_config_update\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"provider_name\": \"Fixture IdP\", \"discovery_url\": \"https://idp.example.test/.well-known/openid-configuration\", \"enabled\": false}\n{\"event_type\": \"user_update\", \"timestamp\": \"@ts\", \"user_email\": \"owner@lattice.test\", \"target_email\": \"member@lattice.test\", \"before\": {\"id\": \"user:15669c19-6f17-5633-a2a6-a664d0d032c4\", \"email\": \"member@lattice.test\", \"identity\": \"user:15669c19-6f17-5633-a2a6-a664d0d032c4\", \"name\": \"Fixture Member\", \"nickname\": \"member\", \"role\": \"user\", \"disabled\": false}, \"after\": {\"id\": \"user:15669c19-6f17-5633-a2a6-a664d0d032c4\", \"email\": \"member@lattice.test\", \"identity\": \"user:15669c19-6f17-5633-a2a6-a664d0d032c4\", \"name\": \"Fixture Member\", \"nickname\": \"member\", \"role\": \"user\", \"disabled\": false}}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"event\", \"target_id\": \"0\", \"reason\": \"security_review\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"conversation\", \"target_id\": \"conv-fixture-001\", \"reason\": \"security_review\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"file\", \"target_id\": \"fixture-contract.txt\", \"reason\": \"security_review\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"file_content\", \"target_id\": \"fixture-contract.txt\", \"reason\": \"raw_content_review\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"raw\", \"target_id\": \"audit\", \"reason\": \"raw_explorer\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"raw\", \"target_id\": \"history\", \"reason\": \"raw_explorer\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"raw\", \"target_id\": \"files\", \"reason\": \"raw_explorer\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"raw\", \"target_id\": \"nope\", \"reason\": \"raw_explorer\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"export\", \"target_id\": \"events:json\", \"reason\": \"export\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"export\", \"target_id\": \"users:json\", \"reason\": \"export\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"export\", \"target_id\": \"files:json\", \"reason\": \"export\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"export\", \"target_id\": \"overview:json\", \"reason\": \"export\"}\n{\"event_type\": \"admin_view_sensitive_raw\", \"timestamp\": \"@ts\", \"admin_email\": \"owner@lattice.test\", \"target_type\": \"export\", \"target_id\": \"events:csv\", \"reason\": \"export\"}"
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_format_pdf",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "pdf"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/pdf",
+        "content-disposition": "attachment; filename=security_events.pdf"
+      },
+      "response_body": {
+        "@binary": {
+          "bytes": "@any",
+          "sha256": "@any",
+          "leading_magic": "25504446"
+        }
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "error_excel_list_valued_cell",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "excel"
+      },
+      "status": 500,
+      "response_headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "response_body": {
+        "@text": "Internal Server Error"
+      },
+      "note": "_excel_dump writes raw cell values, and openpyxl refuses a list (`sensitive_labels: ['secret']`) — an unhandled 500 whenever an event carries a list-valued field (Python defect, pinned as-is)"
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "happy_format_excel_scalar_rows",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "users",
+        "format": "excel"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "content-disposition": "attachment; filename=security_users.xlsx"
+      },
+      "response_body": {
+        "@binary": {
+          "bytes": "@any",
+          "sha256": "@any",
+          "leading_magic": "504b0304"
+        }
+      },
+      "note": "the same route succeeds when every cell is scalar"
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "error_unknown_scope",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "nope",
+        "format": "json"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "지원하지 않는 scope입니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "error_unknown_format",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "nope"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "지원하지 않는 포맷입니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "json"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_export",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/admin/security/export",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825",
+        "content-type": "application/json"
+      },
+      "request_body": {
+        "scope": "events",
+        "format": "json"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_pending",
+      "branch": "happy",
+      "method": "GET",
+      "path": "/permissions/pending",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "pending": {
+          "$approval_hint": {
+            "path": "/private<HOME>/fixture-notes.txt",
+            "action": "read",
+            "action_label": "파일 읽기",
+            "user_email": "owner@lattice.test",
+            "approved": false,
+            "expires_in": "@any"
+          },
+          "$approval_hint_b": {
+            "path": "/private<HOME>/fixture-second.txt",
+            "action": "read",
+            "action_label": "파일 읽기",
+            "user_email": "owner@lattice.test",
+            "approved": false,
+            "expires_in": "@any"
+          }
+        },
+        "count": 2
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_pending",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/permissions/pending",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_pending",
+      "branch": "wrong_role",
+      "method": "GET",
+      "path": "/permissions/pending",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_status",
+      "branch": "happy_pending",
+      "method": "GET",
+      "path": "/permissions/status/$approval_token",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "pending",
+        "token_hint": "$approval_hint",
+        "expires_in": "@any"
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_status",
+      "branch": "unknown_token",
+      "method": "GET",
+      "path": "/permissions/status/not-a-real-token",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "denied_or_expired",
+        "token_hint": "not-a-re"
+      },
+      "note": "an unknown token keeps the generic answer — it must not leak whether one exists"
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_status",
+      "branch": "wrong_owner",
+      "method": "GET",
+      "path": "/permissions/status/$approval_token",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "다른 사용자의 승인 상태는 조회할 수 없습니다."
+      },
+      "note": "a live request's state is readable only by the account that asked for it"
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_status",
+      "branch": "auth_denied",
+      "method": "GET",
+      "path": "/permissions/status/$approval_token",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_approve",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/permissions/approve/$approval_token",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_approve",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/permissions/approve/$approval_token",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_approve",
+      "branch": "error_unknown_token",
+      "method": "POST",
+      "path": "/permissions/approve/not-a-real-token",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "토큰이 없거나 만료되었습니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_approve",
+      "branch": "happy_by_hint",
+      "method": "POST",
+      "path": "/permissions/approve/$approval_hint",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "ok": true,
+        "token_hint": "$approval_hint",
+        "path": "/private<HOME>/fixture-notes.txt",
+        "action": "read",
+        "user_email": "owner@lattice.test"
+      },
+      "note": "the eight-character hint is accepted so the admin UI never handles the bearer token"
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_status",
+      "branch": "happy_approved",
+      "method": "GET",
+      "path": "/permissions/status/$approval_token",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "approved",
+        "token_hint": "$approval_hint"
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_deny",
+      "branch": "auth_denied",
+      "method": "POST",
+      "path": "/permissions/deny/$approval_token_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_deny",
+      "branch": "wrong_role",
+      "method": "POST",
+      "path": "/permissions/deny/$approval_token_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:member",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_deny",
+      "branch": "happy",
+      "method": "POST",
+      "path": "/permissions/deny/$approval_token_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "ok": true,
+        "denied": true,
+        "token_hint": "$approval_hint_b",
+        "path": "/private<HOME>/fixture-second.txt",
+        "action": "read"
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_deny",
+      "branch": "error_already_handled",
+      "method": "POST",
+      "path": "/permissions/deny/$approval_token_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "토큰이 없거나 이미 처리되었습니다."
+      },
+      "note": "denying twice is a 404 — the record is gone after the first"
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_status",
+      "branch": "happy_denied_or_expired",
+      "method": "GET",
+      "path": "/permissions/status/$approval_token_b",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "denied_or_expired",
+        "token_hint": "$approval_hint_b"
+      }
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_pending",
+      "branch": "after_decisions",
+      "method": "GET",
+      "path": "/permissions/pending",
+      "query": {},
+      "request_headers": {
+        "cookie": "session:owner",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "pending": {
+          "$approval_hint": {
+            "path": "/private<HOME>/fixture-notes.txt",
+            "action": "read",
+            "action_label": "파일 읽기",
+            "user_email": "owner@lattice.test",
+            "approved": true,
+            "expires_in": "@any"
+          }
+        },
+        "count": 1
+      },
+      "note": "the approved record is still pending-listed until it is consumed; the denied one is gone"
+    }
+  ],
+  "trusted_local_owner_fixtures": [
+    {
+      "family": "admin.py",
+      "name": "admin_summary",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/admin/summary",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    },
+    {
+      "family": "admin.py",
+      "name": "admin_users",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/admin/users",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    },
+    {
+      "family": "security_dashboard.py",
+      "name": "security_overview",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/admin/security/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    },
+    {
+      "family": "permissions.py",
+      "name": "permissions_pending",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/permissions/pending",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    },
+    {
+      "family": "funnel_metrics.py",
+      "name": "funnel_metrics",
+      "branch": "trusted_local_owner",
+      "method": "GET",
+      "path": "/api/admin/funnel-metrics",
+      "query": {},
+      "request_headers": {
+        "cookie": "absent",
+        "origin": "http://127.0.0.1:4825"
+      },
+      "request_body": null,
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "note": "no session, loopback bind, LATTICEAI_REQUIRE_AUTH unset — require_user/require_admin both answer the empty owner identity, so the route is served instead of denied. Only the status is pinned; the payload duplicates the authenticated fixture of the same route."
+    }
+  ]
+}

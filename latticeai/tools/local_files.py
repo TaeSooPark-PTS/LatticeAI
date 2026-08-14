@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict
 
-from latticeai.core.tool_registry import LOCAL_WRITE_BLOCKED_PREFIXES
 from latticeai.tools import LOCAL_MAX_FILE_BYTES, ToolError
 
 
@@ -46,25 +45,6 @@ def local_read(path: str) -> Dict[str, Any]:
     except Exception as exc:
         raise ToolError(f"파일 읽기 실패: {exc}") from exc
     return {"path": str(target), "size": size, "content": content}
-
-
-def local_write(path: str, content: str) -> Dict[str, Any]:
-    """Write content to any path on the local filesystem (requires user approval via UI)."""
-    target = Path(path).expanduser().resolve()
-    normalized = str(target).replace("\\", "/")
-    for prefix in LOCAL_WRITE_BLOCKED_PREFIXES:
-        blocked = normalized == prefix.rstrip("/") or normalized.startswith(prefix)
-        if blocked:
-            raise ToolError("차단된 시스템 경로에는 쓸 수 없습니다.")
-    if len(content.encode("utf-8")) > LOCAL_MAX_FILE_BYTES:
-        raise ToolError("내용이 너무 큽니다.")
-    try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
-    except PermissionError as exc:
-        raise ToolError(f"쓰기 권한 없음: {exc}") from exc
-    return {"path": str(target), "bytes": target.stat().st_size}
-
 
 
 def desktop_bridge_status() -> Dict[str, Any]:

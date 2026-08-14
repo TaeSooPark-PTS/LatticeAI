@@ -14,8 +14,8 @@
 mod common;
 
 use common::{
-    audit_of, canonical, file_create_actions, loop_deps, loop_golden, loop_normalize, loop_request,
-    start_replay_worker,
+    audit_of, canonical, file_create_actions, loop_deps, loop_deps_with, loop_golden,
+    loop_normalize, loop_request, start_replay_worker, PinnedProposalStore,
 };
 use lattice_agent::agentloop::Runtime;
 use lattice_agent::sandbox::Workspace;
@@ -236,7 +236,7 @@ async fn the_verdict_mapping_reaches_the_recorded_states() {
         };
         server.worker.push_completions(&script);
 
-        let mut runtime = Runtime::new(loop_deps(&server.origin, workspace.clone()));
+        let mut runtime = Runtime::new(loop_deps(&server, workspace.clone()));
         let mut ctx = AgentRunContext::new();
         ctx.retry_count = case["retry_count"].as_u64().unwrap_or(0) as u32;
         ctx.transcript = vec![if case["evidence"] == json!(true) {
@@ -295,14 +295,24 @@ async fn replay(case: &Value) -> (Value, Value) {
         .map(|text| text.as_str().unwrap_or_default().to_string())
         .collect();
     server.worker.push_completions(&script);
-    if case["governor_verdict"].is_object() {
-        server.worker.set_proposal(case["governor_verdict"].clone());
-    }
     server
         .worker
         .load_tool_calls(&case["tool_calls"].as_array().cloned().unwrap_or_default());
 
-    let mut runtime = Runtime::new(loop_deps(&server.origin, workspace.clone()));
+    // Staging is native (§P1c), so the recorded verdict is not injected into a
+    // worker any more: the loop really stages into this scratch store, and only
+    // the id — the one environment-dependent field — is the recorded one.
+    let proposals = std::sync::Arc::new(PinnedProposalStore::new(dir.join("data")));
+    let recorded_id = case["governor_verdict"]["proposal"]["id"].as_str();
+    if let Some(id) = recorded_id {
+        proposals.pin(id);
+    }
+    let mut runtime = Runtime::new(loop_deps_with(
+        &server,
+        workspace.clone(),
+        std::sync::Arc::clone(&proposals)
+            as std::sync::Arc<dyn lattice_agent::proposals::ProposalStore>,
+    ));
     let request = loop_request(case["message"].as_str().expect("message"));
     let mut ctx = AgentRunContext::new();
     ctx.permission_mode = case["mode"].as_str().map(String::from);
@@ -367,6 +377,18 @@ async fn replay(case: &Value) -> (Value, Value) {
         canonical(&json!(recorded_calls)),
         "{key}: the dispatched tool calls differ"
     );
+    // The other half of the same question for the proposal path: a trajectory
+    // recorded as `proposed` must have written a real review item here, and one
+    // recorded without a verdict must have written none.
+    let staged = proposals.staged();
+    let expected_staged =
+        usize::from(case["governor_verdict"]["decision"].as_str() == Some("proposed"));
+    assert_eq!(staged.len(), expected_staged, "{key}: staged proposals");
+    if let Some(item) = staged.first() {
+        assert_eq!(item["source"], json!("change_proposal"), "{key}");
+        assert_eq!(item["status"], json!("pending"), "{key}");
+        assert!(item["payload"]["diff"].is_array(), "{key}: staged a diff");
+    }
     (actual, expected)
 }
 

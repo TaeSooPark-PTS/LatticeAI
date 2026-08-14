@@ -1,0 +1,1680 @@
+{
+  "components": {
+    "schemas": {
+      "AdminUserUpdate": {
+        "properties": {
+          "disabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "title": "AdminUserUpdate",
+        "type": "object"
+      },
+      "DemoCorpusRequest": {
+        "properties": {
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "DemoCorpusRequest",
+        "type": "object"
+      },
+      "ExportRequest": {
+        "properties": {
+          "filters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters"
+          },
+          "format": {
+            "default": "json",
+            "title": "Format",
+            "type": "string"
+          },
+          "scope": {
+            "default": "events",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "title": "ExportRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "SetFeatureRequest": {
+        "description": "One switch move. ``value`` is a bool for a toggle, a string for a choice.",
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "true/false for a toggle, or the option id for a choice",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "SetFeatureRequest",
+        "type": "object"
+      },
+      "SetupInstallRequest": {
+        "properties": {
+          "confirmation_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Token"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SetupInstallRequest",
+        "type": "object"
+      },
+      "SsoConfigUpdate": {
+        "properties": {
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Secret"
+          },
+          "discovery_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discovery Url"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name"
+          },
+          "redirect_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Uri"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          }
+        },
+        "title": "SsoConfigUpdate",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VpcConfigUpdate": {
+        "properties": {
+          "cidr_block": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cidr Block"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "peering_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peering Status"
+          },
+          "private_subnets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Private Subnets"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "vpn_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vpn Status"
+          }
+        },
+        "title": "VpcConfigUpdate",
+        "type": "object"
+      }
+    }
+  },
+  "family": "admin",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {
+    "DELETE /admin/users/{email}": "email",
+    "PATCH /admin/users/{email}": "email"
+  },
+  "operation_count": 41,
+  "operation_order": [
+    "GET /admin/audit",
+    "GET /admin/enterprise",
+    "GET /admin/enterprise/siem-export",
+    "GET /admin/health-summary",
+    "GET /admin/invite-link",
+    "GET /admin/log-retention",
+    "GET /admin/policies",
+    "GET /admin/product-hardening",
+    "GET /admin/roles",
+    "GET /admin/security/conversations/{conversation_id}",
+    "GET /admin/security/conversations/{conversation_id}/raw",
+    "GET /admin/security/events",
+    "GET /admin/security/events/{event_id}",
+    "POST /admin/security/export",
+    "GET /admin/security/files",
+    "GET /admin/security/files/{file_id}",
+    "GET /admin/security/files/{file_id}/content",
+    "GET /admin/security/overview",
+    "GET /admin/security/raw",
+    "GET /admin/security/users",
+    "GET /admin/sensitivity",
+    "GET /admin/sso",
+    "PATCH /admin/sso",
+    "GET /admin/stats",
+    "GET /admin/summary",
+    "GET /admin/users",
+    "DELETE /admin/users/{email}",
+    "PATCH /admin/users/{email}",
+    "PATCH /admin/vpc",
+    "GET /api/admin/funnel-metrics",
+    "GET /api/features",
+    "POST /api/features/{feature_id}",
+    "DELETE /api/setup/demo-corpus",
+    "GET /api/setup/demo-corpus",
+    "POST /api/setup/demo-corpus",
+    "POST /permissions/open/{permission_id}",
+    "GET /setup/auto",
+    "POST /setup/install",
+    "POST /setup/open-auth/{mcp_id}",
+    "GET /setup/scan",
+    "GET /vpc/status"
+  ],
+  "path_count": 37,
+  "path_order": [
+    "/admin/audit",
+    "/admin/enterprise",
+    "/admin/enterprise/siem-export",
+    "/admin/health-summary",
+    "/admin/invite-link",
+    "/admin/log-retention",
+    "/admin/policies",
+    "/admin/product-hardening",
+    "/admin/roles",
+    "/admin/security/conversations/{conversation_id}",
+    "/admin/security/conversations/{conversation_id}/raw",
+    "/admin/security/events",
+    "/admin/security/events/{event_id}",
+    "/admin/security/export",
+    "/admin/security/files",
+    "/admin/security/files/{file_id}",
+    "/admin/security/files/{file_id}/content",
+    "/admin/security/overview",
+    "/admin/security/raw",
+    "/admin/security/users",
+    "/admin/sensitivity",
+    "/admin/sso",
+    "/admin/stats",
+    "/admin/summary",
+    "/admin/users",
+    "/admin/users/{email}",
+    "/admin/vpc",
+    "/api/admin/funnel-metrics",
+    "/api/features",
+    "/api/features/{feature_id}",
+    "/api/setup/demo-corpus",
+    "/permissions/open/{permission_id}",
+    "/setup/auto",
+    "/setup/install",
+    "/setup/open-auth/{mcp_id}",
+    "/setup/scan",
+    "/vpc/status"
+  ],
+  "paths": {
+    "/admin/audit": {
+      "get": {
+        "operationId": "admin_audit_admin_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 250,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Audit"
+      }
+    },
+    "/admin/enterprise": {
+      "get": {
+        "description": "Enterprise PoC surface: edition matrix, admin policies, audit export,\nSIEM stub, and org-governance capabilities. Community reports every\nEnterprise capability as disabled and never gates Community features.",
+        "operationId": "admin_enterprise_overview_admin_enterprise_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Enterprise Overview"
+      }
+    },
+    "/admin/enterprise/siem-export": {
+      "get": {
+        "description": "Preview the SIEM export envelope. In Community this is a stub\n(``streamed=false``) \u2014 no events are pushed to an external SIEM.",
+        "operationId": "admin_enterprise_siem_export_admin_enterprise_siem_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Enterprise Siem Export"
+      }
+    },
+    "/admin/health-summary": {
+      "get": {
+        "description": "One-line admin health for the calm console header (layout rebuild).\n\nAggregates existing admin surfaces \u2014 no new persistence. ``status`` is\n``attention`` when any issue is present, else ``ok``.",
+        "operationId": "admin_health_summary_admin_health_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Health Summary"
+      }
+    },
+    "/admin/invite-link": {
+      "get": {
+        "operationId": "admin_invite_link_admin_invite_link_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Invite Link"
+      }
+    },
+    "/admin/log-retention": {
+      "get": {
+        "operationId": "admin_log_retention_admin_log_retention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Log Retention"
+      }
+    },
+    "/admin/policies": {
+      "get": {
+        "operationId": "admin_policies_admin_policies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Policies"
+      }
+    },
+    "/admin/product-hardening": {
+      "get": {
+        "operationId": "admin_product_hardening_admin_product_hardening_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Product Hardening"
+      }
+    },
+    "/admin/roles": {
+      "get": {
+        "operationId": "admin_roles_admin_roles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Roles"
+      }
+    },
+    "/admin/security/conversations/{conversation_id}": {
+      "get": {
+        "operationId": "security_conversation_summary_admin_security_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security Conversation Summary"
+      }
+    },
+    "/admin/security/conversations/{conversation_id}/raw": {
+      "get": {
+        "operationId": "security_conversation_raw_admin_security_conversations__conversation_id__raw_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security Conversation Raw"
+      }
+    },
+    "/admin/security/events": {
+      "get": {
+        "operationId": "security_events_admin_security_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 2000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security Events"
+      }
+    },
+    "/admin/security/events/{event_id}": {
+      "get": {
+        "operationId": "security_event_detail_admin_security_events__event_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security Event Detail"
+      }
+    },
+    "/admin/security/export": {
+      "post": {
+        "operationId": "security_export_admin_security_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security Export"
+      }
+    },
+    "/admin/security/files": {
+      "get": {
+        "operationId": "security_files_admin_security_files_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Security Files"
+      }
+    },
+    "/admin/security/files/{file_id}": {
+      "get": {
+        "operationId": "security_file_detail_admin_security_files__file_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security File Detail"
+      }
+    },
+    "/admin/security/files/{file_id}/content": {
+      "get": {
+        "operationId": "security_file_content_admin_security_files__file_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security File Content"
+      }
+    },
+    "/admin/security/overview": {
+      "get": {
+        "operationId": "security_overview_admin_security_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Security Overview"
+      }
+    },
+    "/admin/security/raw": {
+      "get": {
+        "operationId": "security_raw_admin_security_raw_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "audit",
+              "title": "Scope",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security Raw"
+      }
+    },
+    "/admin/security/users": {
+      "get": {
+        "operationId": "security_users_admin_security_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Security Users"
+      }
+    },
+    "/admin/sensitivity": {
+      "get": {
+        "operationId": "admin_sensitivity_admin_sensitivity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Sensitivity"
+      }
+    },
+    "/admin/sso": {
+      "get": {
+        "operationId": "admin_sso_admin_sso_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Sso"
+      },
+      "patch": {
+        "operationId": "admin_update_sso_admin_sso_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Update Sso"
+      }
+    },
+    "/admin/stats": {
+      "get": {
+        "operationId": "admin_stats_admin_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Stats"
+      }
+    },
+    "/admin/summary": {
+      "get": {
+        "operationId": "admin_summary_admin_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Summary"
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "operationId": "admin_users_admin_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Users"
+      }
+    },
+    "/admin/users/{email}": {
+      "delete": {
+        "operationId": "admin_delete_user_admin_users__email__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "email",
+            "required": true,
+            "schema": {
+              "title": "Email",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Delete User"
+      },
+      "patch": {
+        "operationId": "admin_update_user_admin_users__email__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "email",
+            "required": true,
+            "schema": {
+              "title": "Email",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUserUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Update User"
+      }
+    },
+    "/admin/vpc": {
+      "patch": {
+        "operationId": "admin_update_vpc_admin_vpc_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpcConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Update Vpc"
+      }
+    },
+    "/api/admin/funnel-metrics": {
+      "get": {
+        "operationId": "funnel_metrics_api_admin_funnel_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Funnel Metrics"
+      }
+    },
+    "/api/features": {
+      "get": {
+        "description": "Every opt-in feature, its live value, and where that value came from.",
+        "operationId": "list_features_api_features_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Features Api Features Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Features",
+        "tags": [
+          "features"
+        ]
+      }
+    },
+    "/api/features/{feature_id}": {
+      "post": {
+        "description": "Persist one person's choice; the answer is the feature as it now reads.",
+        "operationId": "set_feature_api_features__feature_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature_id",
+            "required": true,
+            "schema": {
+              "title": "Feature Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Set Feature Api Features  Feature Id  Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Feature",
+        "tags": [
+          "features"
+        ]
+      }
+    },
+    "/api/setup/demo-corpus": {
+      "delete": {
+        "description": "Remove every demo document (node + chunks + edges + orphan source).",
+        "operationId": "demo_corpus_remove_api_setup_demo_corpus_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Demo Corpus Remove"
+      },
+      "get": {
+        "description": "Whether the demo corpus is installed + the suggestion chips.",
+        "operationId": "demo_corpus_status_api_setup_demo_corpus_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Demo Corpus Status"
+      },
+      "post": {
+        "description": "One-click ingest of the 3 built-in demo documents (idempotent).\n\nEvery document goes through the normal IngestionPipeline door with\n``demo://`` provenance so it is honest (real nodes, real chunks, real\nprovenance) and removable via DELETE. Re-POSTing reports duplicates\ninstead of duplicating.",
+        "operationId": "demo_corpus_install_api_setup_demo_corpus_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DemoCorpusRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo Corpus Install"
+      }
+    },
+    "/permissions/open/{permission_id}": {
+      "post": {
+        "operationId": "open_permission_settings_permissions_open__permission_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "permission_id",
+            "required": true,
+            "schema": {
+              "title": "Permission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Permission Settings"
+      }
+    },
+    "/setup/auto": {
+      "get": {
+        "description": "PPT-aligned zero-config setup pipeline: probe \u2192 recommend \u2192 plan \u2192 verify \u2192 preset.",
+        "operationId": "setup_auto_setup_auto_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Setup Auto"
+      }
+    },
+    "/setup/install": {
+      "post": {
+        "description": "\uc120\ud0dd\ub41c \ud56d\ubaa9\uc744 \uc21c\uc11c\ub300\ub85c \uc124\uce58 \u00b7 \ub85c\ub4dc\ud558\ub294 SSE \uc2a4\ud2b8\ub9bc.",
+        "operationId": "setup_install_setup_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Install"
+      }
+    },
+    "/setup/open-auth/{mcp_id}": {
+      "post": {
+        "operationId": "setup_open_auth_setup_open_auth__mcp_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mcp_id",
+            "required": true,
+            "schema": {
+              "title": "Mcp Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Open Auth"
+      }
+    },
+    "/setup/scan": {
+      "get": {
+        "description": "\ud658\uacbd \uac10\uc9c0 \ubc0f \ub9de\ucda4 \ucd94\ucc9c \ubc18\ud658.",
+        "operationId": "setup_scan_setup_scan_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Setup Scan"
+      }
+    },
+    "/vpc/status": {
+      "get": {
+        "operationId": "vpc_status_vpc_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Vpc Status"
+      }
+    }
+  },
+  "schema_count": 9,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Admin console, security dashboard, feature toggles, funnel metrics and the setup wizard.",
+  "target": "lattice-platform (admin)",
+  "wp": "R2"
+}

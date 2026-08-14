@@ -21,7 +21,8 @@ boundary honest (Community is never crippled to upsell Enterprise).
 
 ## The extension seam
 
-The seam lives in [`latticeai/core/enterprise.py`](../latticeai/core/enterprise.py):
+The seam moved to Rust with the product server in 11.6.0 and now lives in
+[`rust/lattice-platform/src/admin/enterprise.rs`](../rust/lattice-platform/src/admin/enterprise.rs):
 
 - `Edition` — `community` (default) or `enterprise`.
 - `EnterpriseCapability` — the enum of reserved capabilities (below).

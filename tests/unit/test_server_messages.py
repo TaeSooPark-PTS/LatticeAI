@@ -125,27 +125,11 @@ def test_http_error_carries_the_localized_detail():
 # stricter — it rejects an English literal too, not only a Korean one), and
 # test_the_two_gates_agree below fails if the two ever drift apart.
 MIGRATED_ROUTERS = [
-    "latticeai/api/admin.py",
     "latticeai/api/agent_worker_seam.py",
-    "latticeai/api/auth.py",
-    "latticeai/api/browser.py",
-    "latticeai/api/chat.py",
-    "latticeai/api/chat_history.py",
-    "latticeai/api/chat_intents.py",
-    "latticeai/api/chronicle.py",
-    "latticeai/api/features.py",
-    "latticeai/api/index_jobs.py",
-    "latticeai/api/knowledge_graph.py",
-    "latticeai/api/local_files.py",
-    "latticeai/api/mcp.py",
-    "latticeai/api/memory.py",
     "latticeai/api/models.py",
-    "latticeai/api/network_boundary.py",
-    "latticeai/api/portability.py",
-    "latticeai/api/project_sessions.py",
-    "latticeai/api/review_queue.py",
-    "latticeai/api/setup.py",
     "latticeai/api/tools.py",
+    "latticeai/api/worker_compute.py",
+    "latticeai/api/worker_seams.py",
 ]
 
 
@@ -218,66 +202,67 @@ def test_every_key_the_routers_reference_exists_in_the_catalog():
 # ── end to end: a real request gets a real localized answer ─────────────
 
 
-def _auth_client():
-    """The auth router wired to in-memory stubs, so a 401/400 can be observed."""
-    from fastapi import FastAPI, HTTPException, Request
+def _seam_client(monkeypatch):
+    """The worker seam wired shut, so a localized 404 can be observed."""
+    from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from latticeai.api.auth import create_auth_router
+    from latticeai.api.agent_worker_seam import (
+        SEAM_ENV_VAR,
+        create_agent_worker_seam_router,
+    )
 
-    def require_user(_request: Request) -> str:
-        raise HTTPException(status_code=401, detail="auth required")
-
+    monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
     app = FastAPI()
-    app.include_router(create_auth_router(
-        load_users=lambda: {},
-        save_users=lambda _users: None,
-        hash_password=lambda value: f"hashed:{value}",
-        verify_and_migrate=lambda *_args: True,
-        create_session=lambda email: f"session:{email}",
-        get_session_email=lambda _token: None,
-        invalidate_session=lambda _token: None,
-        extract_bearer_token=lambda _request: None,
-        get_user_role=lambda _email, _users=None: "user",
-        require_user=require_user,
-        check_ip_rate_limit=lambda *_args, **_kwargs: None,
-        client_ip=lambda _request: "127.0.0.1",
-        get_sso_settings=lambda: {},
-        get_sso_discovery=lambda _settings: None,
-        public_sso_config=lambda **_kwargs: {},
-        open_registration=True,
-        session_ttl=3600,
-        require_auth=True,
+    app.include_router(create_agent_worker_seam_router(
+        model_router=object(),
+        dispatch_service=object(),
+        execute_tool=lambda name, args: {},
+        hooks=None,
+        require_user=lambda _request: "owner@example.com",
+        enforce_rate_limit=lambda *_args: None,
     ))
     return TestClient(app)
 
 
 @pytest.mark.parametrize("language", SUPPORTED_LANGUAGES)
-def test_rejected_password_is_explained_in_the_requested_language(language):
-    response = _auth_client().post(
-        "/register",
-        json={"email": "a@b.c", "password": "short", "name": "A", "nickname": "A"},
+def test_a_closed_seam_is_explained_in_the_requested_language(language, monkeypatch):
+    response = _seam_client(monkeypatch).post(
+        "/agent/tool",
+        json={"tool": "read_file", "args": {"path": "a.md"}},
         headers={LANGUAGE_HEADER: language},
     )
-    assert response.status_code == 400
-    assert response.json()["detail"] == MESSAGES["auth.password_too_weak"][language]
+    assert response.status_code == 404
+    assert response.json()["detail"] == MESSAGES["agent_seam.disabled"][language]
 
 
-def test_a_browser_that_only_sends_accept_language_is_still_understood():
-    response = _auth_client().post(
-        "/register",
-        json={"email": "a@b.c", "password": "short", "name": "A", "nickname": "A"},
+def test_a_browser_that_only_sends_accept_language_is_still_understood(monkeypatch):
+    response = _seam_client(monkeypatch).post(
+        "/agent/tool",
+        json={"tool": "read_file", "args": {"path": "a.md"}},
         headers={"Accept-Language": "en-US,en;q=0.9"},
     )
-    assert response.json()["detail"] == MESSAGES["auth.password_too_weak"]["en"]
+    assert response.json()["detail"] == MESSAGES["agent_seam.disabled"]["en"]
 
 
-def test_sso_callback_can_resolve_a_language_too():
-    """It is an OAuth redirect target and had no Request parameter at all."""
-    response = _auth_client().get(
-        "/auth/sso/callback",
-        params={"state": "never-issued"},
+def test_the_compute_seam_can_resolve_a_language_too(monkeypatch):
+    """Worker compute seams share the same catalog and header."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from latticeai.api.agent_worker_seam import SEAM_ENV_VAR
+    from latticeai.api.worker_seams import create_worker_seams_router
+
+    monkeypatch.delenv(SEAM_ENV_VAR, raising=False)
+    app = FastAPI()
+    app.include_router(create_worker_seams_router(
+        model_router=None,
+        require_user=lambda _request: "owner@example.com",
+        enforce_rate_limit=lambda *_args: None,
+    ))
+    response = TestClient(app).get(
+        "/worker/sysinfo",
         headers={LANGUAGE_HEADER: "en"},
     )
-    assert response.status_code == 400
-    assert response.json()["detail"] == MESSAGES["sso.invalid_state"]["en"]
+    assert response.status_code == 404
+    assert response.json()["detail"] == MESSAGES["agent_seam.disabled"]["en"]

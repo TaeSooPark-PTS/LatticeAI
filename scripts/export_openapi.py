@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""Export the FastAPI OpenAPI schema used by the desktop frontend client."""
+"""Export the AI-Worker's OpenAPI schema — one input to the composed contract.
+
+Until v11.6.0 this *was* the contract: it built the 464-route product app and
+wrote ``frontend/openapi.json``. WP-P1 deleted that app. The committed contract
+is unchanged (421 paths / 463 operations — clients still call all of them) but
+its source is now ``scripts/compose_openapi.py``, which reassembles the
+per-crate fragments in ``rust/fixtures/openapi/``.
+
+What this script exports is the worker half, to a **scratch** path, so the
+composer can check it: every operation the worker serves must already be in
+``worker_keep.json`` (the gateway will not proxy a route with no contract), and
+its ``info.version`` must agree with the fragments. It is an input, not the
+output — see WP-I5 §"P1 cutover".
+
+    node scripts/run_python.mjs scripts/export_openapi.py <scratch>/worker.json
+    node scripts/run_python.mjs scripts/compose_openapi.py \
+         --worker-spec <scratch>/worker.json --output frontend/openapi.json
+"""
 
 from __future__ import annotations
 
@@ -72,15 +89,26 @@ def isolated_runtime_environment(root: Path) -> Iterator[Mapping[str, str]]:
 
 
 def main() -> int:
-    target = Path(sys.argv[1] if len(sys.argv) > 1 else "frontend/openapi.json")
+    # No default of ``frontend/openapi.json``: that file is the composer's
+    # output now, and silently overwriting it with the 28-route worker spec is
+    # exactly the mistake this argument exists to prevent.
+    if len(sys.argv) < 2:
+        print(
+            "usage: export_openapi.py <output.json>\n"
+            "  the committed contract is written by scripts/compose_openapi.py;\n"
+            "  this exports the worker half to a scratch path it consumes.",
+            file=sys.stderr,
+        )
+        return 2
+    target = Path(sys.argv[1])
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="ltcai-openapi-") as temp_dir:
         with isolated_runtime_environment(Path(temp_dir)):
             # Import only after isolation is active in case a future dependency
             # starts reading environment or user paths during module import.
-            from latticeai.app_factory import create_app
+            from latticeai.worker_app import create_worker_app
 
-            app = create_app()
+            app = create_worker_app()
             schema = app.openapi()
     target.write_text(json.dumps(schema, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {target} with {len(schema.get('paths', {}))} paths")

@@ -1,8 +1,16 @@
-"""Model / engine API router.
+"""Model / engine API router — the MLX lifecycle this process owns.
 
-Extracted from ``server_app.py`` in v1.3.0. Paths and schemas unchanged:
-``/models*``, ``/engines*`` (install/verify-cloud/pull-model/prepare-model[/stream]),
-``/setup/set-api-key``.
+Extracted from ``server_app.py`` in v1.3.0 with the whole ``/models*`` +
+``/engines*`` + ``/setup/set-api-key`` surface. v11.6.0 kept the eight routes
+that are *this interpreter's* business — loading, switching and unloading MLX
+models, and the resolve → download-if-consented → load → smoke prepare flow —
+and moved the rest to ``lattice-host``: engine installation and cloud-key
+verification are host operations, ``/setup/set-api-key`` is account state, and
+the two catalogue reads (``/models/compat-profiles``, ``/models/recommendations``)
+are product views.
+
+The download itself stays because it is ``huggingface_hub`` / ``ollama``
+running here (v11.6.0 gateway integration §4a).
 
 Mirrors the established router-factory convention: the heavy provider/runtime
 helpers are injected as bound service callables. This module owns the sole
@@ -66,15 +74,6 @@ class LoadModelRequest(BaseModel):
     allow_download: bool = False
 
 
-class InstallEngineRequest(BaseModel):
-    engine: str
-    confirmation_token: Optional[str] = None
-
-
-class SetApiKeyRequest(BaseModel):
-    provider: str
-    key: str
-    user_email: Optional[str] = None
 
 
 class PullModelRequest(BaseModel):
@@ -89,21 +88,12 @@ class PrepareModelRequest(BaseModel):
     allow_download: bool = False
 
 
-class VerifyCloudRequest(BaseModel):
-    force: bool = False
-    provider: Optional[str] = None
-
 
 def create_models_router(
     *,
     model_router: Any,
     require_user: Callable[[Request], str],
     require_admin: Callable[[Request], tuple],
-    get_current_user: Callable[[Request], Optional[str]],
-    load_users: Callable[[], Dict],
-    get_user_role: Callable[..., str],
-    install_engine: Callable[..., Dict],
-    verify_cloud_models: Callable[..., Any],
     normalize_local_model_request: Callable[..., str],
     download_hf_model: Callable[..., Dict],
     prepare_and_load_model: Callable[..., Any],
@@ -114,10 +104,8 @@ def create_models_router(
     engine_status: Callable[[], List[Dict]],
     filter_lower_family_versions: Callable[[List[Dict]], List[Dict]],
     list_compat_profiles: Callable[[], Any],
-    set_user_api_key: Callable[..., None],
     engine_model_catalog: Dict,
     model_engine_aliases: Dict,
-    cloud_verify_ttl_seconds: int,
     is_public_mode: bool,
     allow_local_models: bool,
     require_auth: bool,
@@ -127,7 +115,6 @@ def create_models_router(
     _router = model_router
     ENGINE_MODEL_CATALOG = engine_model_catalog
     MODEL_ENGINE_ALIASES = model_engine_aliases
-    CLOUD_VERIFY_TTL_SECONDS = cloud_verify_ttl_seconds
     IS_PUBLIC_MODE = is_public_mode
     ALLOW_LOCAL_MODELS = allow_local_models
     REQUIRE_AUTH = require_auth
@@ -302,29 +289,6 @@ def create_models_router(
 
     # ── Engines ───────────────────────────────────────────────────────────
 
-    @router.post("/engines/install")
-    async def engines_install(req: InstallEngineRequest, request: Request):
-        _authorize_model_admin(request)
-        try:
-            # `install_engine` shells out with a 900s timeout. On the event loop
-            # that is a fifteen-minute freeze of the entire server — no chat, no
-            # status, no UI — for one admin installing an engine.
-            if req.confirmation_token:
-                return await asyncio.to_thread(
-                    install_engine, req.engine, confirmation_token=req.confirmation_token
-                )
-            return await asyncio.to_thread(install_engine, req.engine)
-        except ModelRuntimeError as exc:
-            _raise_model_http(exc)
-
-    @router.post("/engines/verify-cloud")
-    async def engines_verify_cloud(req: VerifyCloudRequest, request: Request):
-        _authorize_model_admin(request)
-        try:
-            results = await verify_cloud_models(force=req.force, provider_filter=req.provider)
-        except ModelRuntimeError as exc:
-            _raise_model_http(exc)
-        return {"verified": results, "ttl_seconds": CLOUD_VERIFY_TTL_SECONDS}
 
     @router.post("/engines/pull-model")
     async def pull_ollama_model(req: PullModelRequest, request: Request):
@@ -452,22 +416,6 @@ def create_models_router(
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    @router.post("/setup/set-api-key")
-    async def set_api_key(req: SetApiKeyRequest, request: Request):
-        from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS
-        config = OPENAI_COMPATIBLE_PROVIDERS.get(req.provider)
-        if not config:
-            raise http_error(400, "models.unknown_provider", resolve_language(request))
-        if not req.key.strip():
-            raise http_error(400, "models.api_key_empty", resolve_language(request))
-        current_user = require_user(request)
-        if REQUIRE_AUTH and req.user_email and _normalized_identity(req.user_email) != _normalized_identity(current_user):
-            raise http_error(403, "models.other_user_api_key", resolve_language(request))
-        target_email = str(_effective_email(current_user, req.user_email) or "").strip()
-        if not target_email:
-            raise http_error(400, "models.sign_in_required", resolve_language(request))
-        set_user_api_key(target_email, req.provider, req.key.strip())
-        return {"ok": True, "provider": req.provider, "user_email": target_email, "scope": "user"}
 
     # ── Models ────────────────────────────────────────────────────────────
 
@@ -503,10 +451,6 @@ def create_models_router(
             },
         }
 
-    @router.get("/models/compat-profiles")
-    async def list_model_compat_profiles(request: Request):
-        require_user(request)
-        return {"profiles": _list_compat_profiles()}
 
     @router.post("/models/load")
     async def load_model(req: LoadModelRequest, request: Request):
@@ -562,24 +506,5 @@ def create_models_router(
         _router.unload_all()
         return {"status": "ok", "unloaded": unloaded}
 
-    @router.get("/models/recommendations")
-    async def model_recommendations(request: Request, engine: str = "local_mlx"):
-        """Hardware-aware tri-state model recommendation for this machine.
-
-        5.2.0: now includes rich capability fields (hf_repo_id, verification,
-        hardware, load_strategy, license, safety_notes) from the structured registry.
-        """
-        require_user(request)
-        from latticeai.services.model_recommendation import recommend_catalog
-        from latticeai.setup.auto_setup import probe as auto_setup_probe
-
-        profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())
-        catalog = recommend_catalog(profile, engine=engine)
-        try:
-            from latticeai.services.model_catalog import get_verified_models
-            reg_meta = {"version": "5.2.0", "verified_total": len(get_verified_models())}
-        except Exception:
-            reg_meta = {"version": "5.2.0"}
-        return {"profile": profile, "recommendations": catalog, "registry": reg_meta}
 
     return router

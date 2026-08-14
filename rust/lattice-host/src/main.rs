@@ -177,16 +177,37 @@ async fn run(options: Options) -> Result<(), String> {
         log("--no-spawn: fronting an existing worker, nothing will be started");
     }
 
-    // The scheduler is built either way so `/host/jobs` always answers; only
-    // the timer is conditional, and `enabled` in that payload *is* "the timer
-    // is running".
-    let scheduler = mounts::scheduler(&supervisor.worker_origin(), supervisor.client());
-    let mut state = GatewayState::with_client(Arc::new(supervisor.clone()), supervisor.client())
-        .with_jobs(Arc::clone(&scheduler));
+    let mut state = GatewayState::with_client(Arc::new(supervisor.clone()), supervisor.client());
     if let Some(root) = agent_root {
         state = state.with_agent_root(root);
     }
-    let state = Arc::new(state);
+    // One Door: this process serves the product. Fatal on purpose — a front
+    // door that came up without the platform behind it would answer 404 for
+    // every product route and look like a routing bug rather than a machine
+    // that cannot open its own data directory.
+    let state = state
+        .open_product()
+        .map_err(|err| format!("cannot assemble the product surface: {err}"))?;
+    log(&format!(
+        "serving {} product routes natively; {} paths proxy to the worker",
+        lattice_host::gateway::product::mounted_route_count(),
+        lattice_host::gateway::allowlist::Allowlist::shared().len(),
+    ));
+
+    // The scheduler is built either way so `/host/jobs` always answers; only
+    // the timer is conditional, and `enabled` in that payload *is* "the timer
+    // is running". It is built *after* the product state because it needs that
+    // state's graph writer: the drain is native now, and a scheduler without
+    // the writer would keep asking the worker for a route the worker no longer
+    // serves.
+    let graph = state
+        .product()
+        .expect("open_product just succeeded")
+        .graph
+        .clone();
+    let scheduler =
+        mounts::scheduler_with_graph(&supervisor.worker_origin(), supervisor.client(), graph);
+    let state = Arc::new(state.with_jobs(Arc::clone(&scheduler)));
 
     let run_jobs = jobs_should_run(&options, std::env::var(mounts::JOBS_ENV).ok().as_deref());
     let (jobs_stop_tx, jobs_stop_rx) = tokio::sync::oneshot::channel::<()>();

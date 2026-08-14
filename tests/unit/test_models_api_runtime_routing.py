@@ -76,11 +76,6 @@ def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(
             model_router=_FakeRouter(),
             require_user=lambda _request: "tester",
             require_admin=lambda _request: ("tester", {}),
-            get_current_user=lambda _request: "tester",
-            load_users=lambda: {},
-            get_user_role=lambda *_args, **_kwargs: "admin",
-            install_engine=lambda _engine: {},
-            verify_cloud_models=lambda **_kwargs: {},
             normalize_local_model_request=lambda model, engine=None: model,
             download_hf_model=lambda *_args, **_kwargs: {},
             prepare_and_load_model=lambda *_args, **_kwargs: {},
@@ -91,7 +86,6 @@ def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(
             engine_status=lambda: engines,
             filter_lower_family_versions=lambda items: items,
             list_compat_profiles=lambda: [],
-            set_user_api_key=lambda *_args, **_kwargs: None,
             engine_model_catalog=catalog,
             model_engine_aliases={
                 "mlx-community/gemma-4-12b-it-4bit": {
@@ -99,7 +93,6 @@ def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(
                     "ollama": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
                 }
             },
-            cloud_verify_ttl_seconds=600,
             is_public_mode=False,
             allow_local_models=True,
             require_auth=False,

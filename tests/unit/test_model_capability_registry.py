@@ -72,22 +72,6 @@ def test_legacy_catalog_shape_preserved_and_enriched():
     assert len(filtered) >= 6
 
 
-def test_recommendation_payload_includes_5_2_fields(tmp_path: Path):
-    # simulate what /models/recommendations returns after wiring
-    from latticeai.services.model_recommendation import recommend_catalog
-
-    profile = {"os": "darwin", "arch": "arm64", "ram_mb": 32768, "gpu": {"vendor": "apple", "vram_mb": 0}}
-    rec = recommend_catalog(profile, engine="local_mlx")
-    assert "models" in rec and rec["models"]
-    first = rec["models"][0]
-    assert "status" in first and first["status"] in {"recommended", "compatible", "not_recommended"}
-    # rich pass-through
-    assert "hf_repo_id" in first
-    assert "verification" in first
-    assert "hardware" in first or first.get("hardware") is None  # hardware may be nested dict
-    assert "load_strategy" in first
-
-
 def test_verification_report_exists_and_valid():
     # The script writes this; existence + parse proves the automation path
     report = Path(__file__).resolve().parents[2] / "verification_report.json"

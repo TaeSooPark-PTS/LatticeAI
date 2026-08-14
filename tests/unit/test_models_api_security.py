@@ -5,7 +5,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
 from latticeai.api.models import create_models_router
-from latticeai.services.model_errors import ModelRuntimeError
 
 
 class _FakeRouter:
@@ -34,7 +33,6 @@ def _models_client(
     identity: str | None,
     role: str = "user",
     require_auth: bool = True,
-    install_error: ModelRuntimeError | None = None,
 ):
     calls = []
 
@@ -48,10 +46,6 @@ def _models_client(
             raise HTTPException(status_code=403, detail="admin required")
         return identity or "", {}
 
-    async def verify_cloud_models(**kwargs):
-        calls.append(("verify", kwargs))
-        return []
-
     async def prepare_and_load_model(model, _request, **kwargs):
         calls.append(("prepare", {"model": model, **kwargs}))
         return {"ok": True, "model": model, "user_email": kwargs.get("user_email")}
@@ -60,23 +54,12 @@ def _models_client(
         calls.append(("prepare_stream", {"model": model, **kwargs}))
         yield "data: done\n\n"
 
-    def install_engine(engine, **kwargs):
-        if install_error is not None:
-            raise install_error
-        calls.append(("install", {"engine": engine, **kwargs}))
-        return {}
-
     app = FastAPI()
     app.include_router(
         create_models_router(
             model_router=_FakeRouter(),
             require_user=require_user,
             require_admin=require_admin,
-            get_current_user=lambda _request: identity,
-            load_users=lambda: ({identity: {"role": role}} if identity else {}),
-            get_user_role=lambda *_args, **_kwargs: role,
-            install_engine=install_engine,
-            verify_cloud_models=verify_cloud_models,
             normalize_local_model_request=lambda model, _engine=None: model,
             download_hf_model=lambda model, provider: calls.append(("pull", {"model": model, "provider": provider})) or {},
             prepare_and_load_model=prepare_and_load_model,
@@ -87,10 +70,8 @@ def _models_client(
             engine_status=lambda: [],
             filter_lower_family_versions=lambda items: items,
             list_compat_profiles=lambda: [],
-            set_user_api_key=lambda *args, **kwargs: calls.append(("set_key", {"args": args, **kwargs})),
             engine_model_catalog={"local_mlx": []},
             model_engine_aliases={},
-            cloud_verify_ttl_seconds=600,
             is_public_mode=False,
             allow_local_models=True,
             require_auth=require_auth,
@@ -118,8 +99,6 @@ def test_model_endpoints_reject_anonymous_callers(method, path, payload):
     ("method", "path", "payload"),
     [
         ("get", "/models", None),
-        ("post", "/engines/install", {"engine": "local_mlx"}),
-        ("post", "/engines/verify-cloud", {}),
         ("post", "/engines/pull-model", {"model": "example/model", "allow_download": True}),
         ("post", "/engines/prepare-model", {"model": "example/model"}),
         ("post", "/engines/prepare-model/stream", {"model": "example/model"}),
@@ -144,7 +123,6 @@ def test_model_inventory_and_lifecycle_are_admin_only_in_auth_mode(method, path,
         ("/engines/prepare-model", {"model": "example/model", "user_email": "victim@example.com"}),
         ("/engines/prepare-model/stream", {"model": "example/model", "user_email": "victim@example.com"}),
         ("/models/load", {"model_id": "openai:test", "user_email": "victim@example.com"}),
-        ("/setup/set-api-key", {"provider": "openai", "key": "secret", "user_email": "victim@example.com"}),
     ],
 )
 def test_body_identity_cannot_override_logged_in_admin(path, payload):
@@ -177,20 +155,3 @@ def test_prepare_uses_authenticated_identity_downstream():
             },
         )
     ]
-
-
-def test_model_runtime_error_is_translated_only_at_http_boundary():
-    client, calls = _models_client(
-        identity="admin@example.com",
-        role="admin",
-        install_error=ModelRuntimeError(
-            status_code=409,
-            detail={"status": "confirmation_required"},
-        ),
-    )
-
-    response = client.post("/engines/install", json={"engine": "local_mlx"})
-
-    assert response.status_code == 409
-    assert response.json()["detail"] == {"status": "confirmation_required"}
-    assert calls == []

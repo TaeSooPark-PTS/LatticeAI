@@ -3,49 +3,29 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.5.2 — Tight Ship**.
+Current release: **11.6.0 — One Door**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 9.0.0 through 11.5.2. Security
-support follows that same product era.
+The public Git tree keeps release history from 11.0.0 through 11.6.0. Security
+support follows that same product era: **only 11.x receives fixes.**
+
+11.6.0 rebuilt the product server in Rust and reduced the Python package to a
+pure-compute AI worker. A fix for the 11.6 line is a fix to a different program
+than the one 10.x and 9.x shipped, so backporting it would be a claim this
+project cannot honour. Those release notes stay in the tree as history; the
+support line does not.
 
 | Version | Support |
 | --- | --- |
-| 11.5.x (latest) | Supported |
+| 11.6.x (latest) | Supported |
+| 11.5.x | Supported |
 | 11.4.x | Supported |
 | 11.3.x | Supported |
 | 11.2.x | Supported |
 | 11.1.x | Supported |
 | 11.0.x | Supported |
-| 10.10.x | Supported |
-| 10.8.x | Supported |
-| 10.6.x | Supported |
-| 10.5.x | Supported |
-| 10.4.x | Supported |
-| 10.3.x | Supported |
-| 10.0.x | Supported |
-| 9.9.x | Supported |
-| 9.8.x | Supported |
-| 9.7.x | Supported |
-| 9.6.x | Supported |
-| 9.5.x | Supported |
-| 9.4.x | Supported |
-| 9.3.x | Supported |
-| 9.2.x | Supported |
-| 9.1.x | Supported |
-| 9.0.x | Supported |
-| 8.9.x | Supported |
-| 8.8.x | Supported |
-| 8.7.x | Supported |
-| 8.6.x | Supported |
-| 8.5.x | Supported |
-| 8.4.x | Supported |
-| 8.3.x | Supported |
-| 8.2.x | Supported |
-| 8.1.x | Supported |
-| 8.0.x | Supported |
-| Older than 8.0.0 | Not supported in the current Git history |
+| Older than 11.0.0 | Not supported — see the note above |
 
 ## Reporting Vulnerabilities
 

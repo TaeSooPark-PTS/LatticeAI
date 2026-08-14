@@ -8,8 +8,8 @@ Split into cohesive submodules in v11.3.0 (no behaviour change): ``state`` (the
 immutable ``ModelRuntimeState`` and the consent gates), ``engines`` (engine
 wrappers + the LM Studio client), ``download`` (Hugging Face readiness and
 fetch), ``status`` (``engine_status`` / ``runtime_features`` / ``install_engine``),
-``loading`` (identity resolution and the load entrypoints), ``cloud`` (cloud key
-verification) and ``service`` (the bound ``ModelRuntimeService``). This module
+``loading`` (identity resolution and the load entrypoints) and ``service`` (the
+bound ``ModelRuntimeService``). This module
 re-exports every name the single file exposed, so
 ``latticeai.services.model_runtime.X`` keeps working — including the private
 names ``model_loading._get_model_runtime_deps`` imports.
@@ -69,15 +69,6 @@ from latticeai.services.model_catalog import (
     filter_lower_family_versions as filter_lower_family_versions,
 )
 from latticeai.services.model_errors import ModelRuntimeError as ModelRuntimeError
-from latticeai.services.model_runtime.cloud import (
-    CLOUD_VERIFY_TTL_SECONDS as CLOUD_VERIFY_TTL_SECONDS,
-)
-from latticeai.services.model_runtime.cloud import (
-    _probe_cloud_model as _probe_cloud_model,
-)
-from latticeai.services.model_runtime.cloud import (
-    verify_cloud_models as verify_cloud_models,
-)
 from latticeai.services.model_runtime.download import (
     download_hf_model as download_hf_model,
 )

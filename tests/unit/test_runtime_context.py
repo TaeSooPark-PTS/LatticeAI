@@ -1,21 +1,11 @@
 """The build-phase order is a contract, so it gets a test rather than a comment.
 
-``app_factory._build`` used to be one 1,300-line function. Splitting it into
-phases is only safe while the dependency order holds: ``phase_web`` needs the
-model router from ``phase_domain``, ``phase_services`` needs handles that
-``phase_web`` produced, and several closures resolve dependencies that a
-*later* phase publishes.
-
+WP-P1 cut the product's ten phases to the seven the worker still runs.
 These tests pin three things:
 
 1. the phase sequence itself,
-2. which phase publishes which attribute (so a reordering that breaks a
-   dependency fails here, not in production),
+2. which phase publishes which attribute,
 3. that reading an attribute before its phase has run fails loudly.
-
-The full assembly runs in a subprocess with a sandboxed HOME, the same way
-``test_app_factory.py`` does, so it never touches the developer's real data
-directory.
 """
 
 from __future__ import annotations
@@ -40,10 +30,7 @@ EXPECTED_PHASE_ORDER = [
     "phase_brain",
     "phase_domain",
     "phase_web",
-    "phase_services",
-    "phase_foundation_routes",
-    "phase_platform_features",
-    "phase_interaction",
+    "phase_features",
 ]
 
 # One representative attribute per phase. Not exhaustive on purpose: these are
@@ -51,27 +38,13 @@ EXPECTED_PHASE_ORDER = [
 PHASE_OWNERS = {
     "CONFIG": "config",
     "DATA_DIR": "config",
-    "append_audit_event": "identity",
     "require_user": "identity",
     "load_users": "identity",
-    "KNOWLEDGE_GRAPH": "brain",
-    "WORKSPACE_OS": "brain",
-    "save_to_history": "brain",
-    "get_history": "brain",
+    "EMBEDDER": "brain",
     "model_router": "domain",
-    "gardener": "domain",
-    "CHAT_SERVICE": "domain",
     "app": "web",
     "_spawn": "web",
-    "ui_file_response": "web",
-    "_graph_stats_safe": "web",
-    "SEARCH_SERVICE": "services",
-    "app_context": "services",
-    "CHAT_AGENT_RUNTIME": "services",
-    "PLATFORM": "platform_features",
-    "REVIEW_QUEUE": "platform_features",
-    "RUN_EXECUTOR": "platform_features",
-    "model_runtime": "interaction",
+    "model_service": "features",
 }
 
 
@@ -103,7 +76,6 @@ def _run_in_sandbox(code: str, tmp_path: Path) -> dict:
     return json.loads(proc.stdout.splitlines()[-1])
 
 
-# ── contract 1: the sequence ─────────────────────────────────────────────────
 def test_build_phase_order_is_fixed() -> None:
     assert [phase.__name__ for phase in BUILD_PHASES] == EXPECTED_PHASE_ORDER
 
@@ -117,20 +89,13 @@ def test_every_phase_is_documented_in_the_module_docstring() -> None:
         assert f"``{label}``" in doc, f"{label} phase is not described in the docstring"
 
 
-def test_domain_precedes_web_and_services_follows_it() -> None:
+def test_domain_precedes_web_and_features_follows_it() -> None:
     """The two orderings that a naive split gets wrong."""
     order = [phase.__name__ for phase in BUILD_PHASES]
-    # phase_web wires the lifespan, static status routes and model runtime
-    # against the router that phase_domain constructs.
     assert order.index("phase_domain") < order.index("phase_web")
-    # The AppContext carries ui_file_response / local_sysinfo / graph_stats,
-    # all produced by phase_web.
-    assert order.index("phase_web") < order.index("phase_services")
-    # Routers can only mount once the AppContext exists.
-    assert order.index("phase_services") < order.index("phase_foundation_routes")
+    assert order.index("phase_web") < order.index("phase_features")
 
 
-# ── contract 2: who produces what ────────────────────────────────────────────
 def test_each_attribute_is_produced_by_its_declared_phase(tmp_path: Path) -> None:
     code = """
 import json
@@ -139,9 +104,6 @@ from latticeai.app_factory import build_context
 
 ctx = build_context()
 print(json.dumps({
-    # ``_produced`` is the phase ledger itself: name -> publishing phase, in
-    # insertion order. Reading it directly keeps the contract test honest
-    # without the product carrying accessors only a test ever called.
     "produced_by": dict(ctx._produced),
     "phases_run": list(dict.fromkeys(ctx._produced.values())),
     "name_count": len(ctx.names()),
@@ -157,36 +119,32 @@ print(json.dumps({
     }
     assert mismatched == {}, f"attribute moved phase: {mismatched}"
 
-    # foundation_routes only mounts routers, so it publishes nothing.
     assert result["phases_run"] == [
-        label
-        for label in (name.removeprefix("phase_") for name in EXPECTED_PHASE_ORDER)
-        if label != "foundation_routes"
+        name.removeprefix("phase_") for name in EXPECTED_PHASE_ORDER
     ]
-    assert result["name_count"] > 100, "the context lost most of the assembly state"
+    assert result["name_count"] > 20, "the context lost most of the assembly state"
 
 
-# ── contract 3: reading too early fails loudly ───────────────────────────────
 def test_require_names_the_unset_attribute() -> None:
     ctx = RuntimeContext()
-    with pytest.raises(RuntimeError, match="KNOWLEDGE_GRAPH"):
-        ctx.require("KNOWLEDGE_GRAPH")
+    with pytest.raises(RuntimeError, match="EMBEDDER"):
+        ctx.require("EMBEDDER")
 
 
 def test_require_reports_the_producing_phase_when_known() -> None:
     ctx = RuntimeContext()
     ctx.enter("brain")
-    ctx.set(KNOWLEDGE_GRAPH=object())
-    del ctx.KNOWLEDGE_GRAPH
+    ctx.set(EMBEDDER=object())
+    del ctx.EMBEDDER
     with pytest.raises(RuntimeError, match="phase 'brain'"):
-        ctx.require("KNOWLEDGE_GRAPH")
+        ctx.require("EMBEDDER")
 
 
 def test_unset_attribute_raises_rather_than_returning_none() -> None:
     """The failure mode a defaulted dataclass would have hidden."""
     ctx = RuntimeContext()
     with pytest.raises(AttributeError):
-        _ = ctx.WORKSPACE_OS
+        _ = ctx.EMBEDDER
 
 
 def test_set_records_the_current_phase() -> None:
@@ -217,9 +175,8 @@ def test_config_argument_is_carried_for_the_config_phase() -> None:
     assert RuntimeContext(sentinel).config_arg is sentinel
 
 
-# ── the decomposition itself ─────────────────────────────────────────────────
 def test_build_is_an_orchestrator_not_an_assembly() -> None:
-    """`_build` must stay small; the phases hold the assembly."""
+    """`build_context` must stay small; the phases hold the assembly."""
     import ast
 
     source = (REPO_ROOT / "latticeai" / "app_factory.py").read_text(encoding="utf-8")
@@ -227,20 +184,16 @@ def test_build_is_an_orchestrator_not_an_assembly() -> None:
     build = next(
         node
         for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name == "_build"
+        if isinstance(node, ast.FunctionDef) and node.name == "build_context"
     )
     length = build.end_lineno - build.lineno + 1
-    assert length < 60, f"_build grew back to {length} lines — keep assembly in phases"
+    assert length < 60, f"build_context grew back to {length} lines — keep assembly in phases"
 
 
 def test_build_phases_module_imports_nothing_heavy() -> None:
     """Phase modules must keep their heavy imports inside the functions."""
     import ast
 
-    # v11.3.0 turned build_phases.py into a package (foundation / web /
-    # features). The contract is per *file*, so every source file in the
-    # package is checked — reading only __init__.py would let a heavy import
-    # hide one directory level down.
     package_dir = REPO_ROOT / "latticeai" / "runtime" / "build_phases"
     sources = sorted(package_dir.glob("*.py"))
     assert len(sources) >= 2, "build_phases package lost its submodules"

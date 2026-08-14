@@ -33,10 +33,13 @@ REPO = Path(__file__).resolve().parents[1]
 # member belongs here.
 RUST_CRATES = (
     "lattice-agent",
+    "lattice-auth",
+    "lattice-chat",
     "lattice-core",
     "lattice-host",
     "lattice-ingest",
     "lattice-jobs",
+    "lattice-platform",
     "lattice-retrieval",
 )
 RUST_LOCKFILES = ("rust/Cargo.lock", "src-tauri/Cargo.lock")
@@ -45,13 +48,10 @@ RUST_LOCKFILES = ("rust/Cargo.lock", "src-tauri/Cargo.lock")
 TARGETS = [
     ("latticeai/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
     ("lattice_brain/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
-    # Moved out of workspace_os.py in 10.2.0 when the vocabulary was split off.
-    ("latticeai/core/workspace_os_constants.py", "regex", r'(WORKSPACE_OS_VERSION = ")([^"]+)(")'),
-    ("latticeai/core/marketplace.py", "regex", r'(MARKETPLACE_VERSION = ")([^"]+)(")'),
-    ("lattice_brain/runtime/multi_agent.py", "regex", r'(MULTI_AGENT_VERSION = ")([^"]+)(")'),
+    # WP-P1 deleted workspace_os / marketplace / multi_agent / the legacy
+    # shim registry. The package version is the runtime canonical now.
     ("latticeai/services/architecture_readiness.py", "regex", r'(ARCHITECTURE_VERSION_TARGET = ")([^"]+)(")'),
     ("latticeai/services/product_readiness.py", "regex", r'(PRODUCT_VERSION_TARGET = ")([^"]+)(")'),
-    ("latticeai/core/legacy_compatibility.py", "regex", r'(LEGACY_COMPATIBILITY_VERSION = ")([^"]+)(")'),
     ("pyproject.toml", "regex", r'(^version = ")([^"]+)(")'),
     ("package.json", "json", "version"),
     ("package-lock.json", "package-lock", None),

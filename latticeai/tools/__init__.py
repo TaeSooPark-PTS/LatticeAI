@@ -1,12 +1,21 @@
-"""Safe local tools for Lattice AI agent mode.
+"""The compute tool table — read-only tools, plus pointer actuation.
 
 All filesystem operations are confined to LATTICEAI_AGENT_ROOT, defaulting to
-./agent_workspace. Command execution runs without a shell and from inside that
-workspace.
+./agent_workspace.
 
-The physical implementation belongs to ``latticeai.tools``. The historical
-root ``tools`` package aliases this exact module object, preserving existing
-imports and ``tools.AGENT_ROOT`` monkeypatch/state identity.
+v11.6.0 §W4 moved the mutating half of this table into ``lattice-agent``: the
+file writes, the todo write, the project scaffold, the vault saves, the two
+desktop openers, the exec surface and the four document creators all run in the
+Rust loop's own sandbox now, and the creators call ``POST /worker/render/*``
+for the bytes. ``TOOL_HANDLERS`` is what a stateless worker may still be asked
+to do: **twenty-five** read-only / capability handlers, plus the **six** pointer
+tools the loop deliberately keeps sending here (v11.6.0 gateway integration
+§4b) because mouse and keyboard actuation is ``pyautogui`` — a capability of
+this interpreter, not a file write Rust can perform. A native refusal would
+only take working pointer control away from an install that has it.
+
+That is the whole seam: ``POST /agent/tool``'s whitelist is
+``registered_tools()``, and there is no second table.
 """
 
 import base64
@@ -162,20 +171,6 @@ from latticeai.tools.network import *  # noqa: E402,F401,F403
 
 
 # ── tool registry: the single name → invocation source of truth ───────────────
-def _h_create_xlsx(args: Dict[str, Any]) -> Dict[str, Any]:
-    rows = args.get("rows", [])
-    if isinstance(rows, str):
-        rows = json.loads(rows)
-    return create_xlsx(rows, args.get("filename", "spreadsheet.xlsx"), args.get("sheet_name", "Sheet1"))
-
-
-def _h_create_pptx(args: Dict[str, Any]) -> Dict[str, Any]:
-    slides = args.get("slides", [])
-    if isinstance(slides, str):
-        slides = json.loads(slides)
-    return create_pptx(args.get("title", ""), slides, args.get("filename", "presentation.pptx"))
-
-
 def _knowledge_scope(args: Dict[str, Any]) -> Dict[str, str]:
     """Return the authenticated scope injected by server/runtime adapters."""
     workspace_id = str(args.get("workspace_id") or "").strip()
@@ -197,31 +192,19 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "list_dir":          lambda a: list_dir(a.get("path", ".")),
     "workspace_tree":    lambda a: workspace_tree(a.get("path", "."), a.get("max_depth", 3)),
     "read_file":         lambda a: read_file(a["path"], offset=a.get("offset", 0), limit=a.get("limit", 0), line_numbers=a.get("line_numbers", True)),
-    "write_file":        lambda a: write_file(a["path"], a.get("content", "")),
-    "edit_file":         lambda a: edit_file(a["path"], a["old_string"], a["new_string"], replace_all=bool(a.get("replace_all", False))),
     "grep":              lambda a: grep(a["pattern"], path=a.get("path", "."), glob=a.get("glob"), max_results=a.get("max_results", 50), case_insensitive=bool(a.get("case_insensitive", False)), context_lines=a.get("context_lines", 0)),
     "search_files":      lambda a: search_files(a["query"], a.get("path", "."), a.get("max_results", 20)),
     "inspect_html":      lambda a: inspect_html(a["path"]),
     "preview_url":       lambda a: preview_url(a.get("path", "index.html")),
     # planning
     "todo_read":         lambda a: todo_read(),
-    "todo_write":        lambda a: todo_write(a.get("todos") or []),
-    # documents
-    "create_docx":       lambda a: create_docx(a.get("title", ""), a.get("body", ""), a.get("filename", "document.docx")),
-    "create_xlsx":       _h_create_xlsx,
-    "create_pptx":       _h_create_pptx,
-    "create_pdf":        lambda a: create_pdf(a.get("title", ""), a.get("body", ""), a.get("filename", "document.pdf")),
-    "create_web_project": lambda a: create_web_project(a.get("path", ""), a.get("framework", "react"), a.get("template", "vite")),
     # local filesystem
     "local_list":        lambda a: local_list(a["path"]),
     "local_read":        lambda a: local_read(a["path"]),
-    "local_write":       lambda a: local_write(a["path"], a.get("content", "")),
     "read_document":     lambda a: read_document(a["path"]),
     "network_status":    lambda a: network_status(),
     # computer use
     "computer_screenshot": lambda a: computer_screenshot(),
-    "computer_open_app": lambda a: computer_open_app(a.get("app", "Google Chrome")),
-    "computer_open_url": lambda a: computer_open_url(a["url"], a.get("app", "Google Chrome")),
     "computer_click":    lambda a: computer_click(a.get("x", 0), a.get("y", 0), a.get("button", "left"), a.get("double", False)),
     "computer_type":     lambda a: computer_type(a["text"], a.get("interval", 0.04)),
     "computer_key":      lambda a: computer_key(a["key"]),
@@ -233,10 +216,8 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "computer_use_status": lambda a: desktop_bridge_status(),
     "vision_analyze":    lambda a: vision_analyze(a.get("image_b64", ""), a.get("prompt", "Describe this image in detail. Be concise.")),
     # knowledge / obsidian
-    "knowledge_save":    lambda a: knowledge_save(a["content"], a.get("folder", "00_Raw"), a.get("title"), **_knowledge_scope(a)),
     "knowledge_search":  lambda a: knowledge_search(a["query"], a.get("max_results", 5), **_knowledge_scope(a)),
     "knowledge_tree":    lambda a: knowledge_tree(**_knowledge_scope(a)),
-    "obsidian_save":     lambda a: obsidian_save(a["content"], a.get("folder", "00_Raw"), a.get("title"), **_knowledge_scope(a)),
     "obsidian_search":   lambda a: obsidian_search(a["query"], a.get("max_results", 5), **_knowledge_scope(a)),
     "obsidian_tree":     lambda a: obsidian_tree(**_knowledge_scope(a)),
     # git (read-only)
@@ -244,10 +225,6 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "git_diff":          lambda a: git_diff(a.get("path"), a.get("cwd")),
     "git_log":           lambda a: git_log(a.get("max_count", 5), a.get("cwd")),
     "git_show":          lambda a: git_show(a.get("revision", "HEAD"), a.get("cwd")),
-    # exec
-    "run_command":       lambda a: run_command(a["command"], a.get("cwd")),
-    "build_project":     lambda a: build_project(a.get("cwd"), a.get("script", "build")),
-    "deploy_project":    lambda a: deploy_project(a.get("cwd"), a.get("script", "deploy")),
 }
 
 
@@ -265,19 +242,15 @@ def execute_tool(action: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
 __all__ = [
     "AGENT_ROOT", "ToolError", "ensure_agent_root", "resolve_workspace_path",
-    "list_dir", "workspace_tree", "read_file", "write_file", "edit_file", "grep",
-    "search_files", "inspect_html", "preview_url", "create_web_project",
-    "todo_read", "todo_write",
-    "create_docx", "create_xlsx", "create_pptx", "create_pdf", "read_document",
+    "list_dir", "workspace_tree", "read_file", "grep",
+    "search_files", "inspect_html", "preview_url", "todo_read", "read_document",
     "document_output_target",
-    "local_list", "local_read", "local_write", "desktop_bridge_status",
-    "knowledge_save", "knowledge_search", "knowledge_tree", "knowledge_scope_root",
-    "obsidian_save", "obsidian_search", "obsidian_tree",
+    "local_list", "local_read", "desktop_bridge_status",
+    "knowledge_search", "knowledge_tree", "knowledge_scope_root",
+    "obsidian_search", "obsidian_tree",
     "network_status",
-    "computer_screenshot", "computer_open_app", "computer_open_url",
-    "computer_click", "computer_type", "computer_key", "computer_scroll",
+    "computer_screenshot", "computer_click", "computer_type", "computer_key", "computer_scroll",
     "computer_move", "computer_drag", "computer_status", "vision_analyze",
-    "run_command", "build_project", "deploy_project",
     "git_status", "git_diff", "git_log", "git_show",
     "TOOL_HANDLERS", "DEFAULT_TOOL_REGISTRY", "registered_tools", "execute_tool",
     "BRAIN_DIR", "STRUCTURE",

@@ -1,0 +1,5833 @@
+{
+  "_": "Golden HTTP fixtures captured from the live Python app by scripts/gen_http_fixtures_brain.py before the Python routers are deleted (v11.6.0 One Door, WP-F2). Replayed by the Rust port. Do not hand-edit — regenerate. FROZEN at commit fc65e60 — last generating tree; do not regenerate.",
+  "scope": "latticeai/api/memory.py, brain_intelligence.py, garden.py, chronicle.py, command_center.py, evidence_actions.py",
+  "families": {
+    "memory": 35,
+    "brain_intelligence": 17,
+    "garden": 6,
+    "chronicle": 9,
+    "command_center": 6,
+    "evidence_actions": 5
+  },
+  "case_count": 78,
+  "order_is_significant": "Cases were captured in this order against one shared sandbox; writes and the destructive cases at the end depend on it.",
+  "tokens": {
+    "@ts": "a timestamp (any ISO-8601 value)",
+    "@uuid": "a UUID",
+    "@any": "a value that may differ per run or per machine (random tokens, durations, pids, IPs, out-of-sandbox paths, machine facts)",
+    "@session": "in request_headers.cookie: the call carried the logged-in session cookie",
+    "@datadir": "the sandbox data directory",
+    "@home": "the sandbox HOME",
+    "@corpus": "the seeded local corpus directory",
+    "@agentroot": "the agent workspace root",
+    "@sandbox": "the sandbox root the four above live in",
+    "@repo": "the repository checkout",
+    "@systmp": "the system temp directory",
+    "@tmpname": "a random temp-file name the product minted",
+    "@stamp": "a YYYYMMDD_HHMMSS stamp in a garden filename",
+    "@today": "the capture date (YYYY-MM-DD); a replayer substitutes its own",
+    "@hostname": "this machine's name, which the discovery index writes into a Computer node and its id",
+    "@gardenwiki0/@gardenwiki1/@gardenraw0/@gardenraw1": "the graph_node_id and provenance_id of the two garden writes; they hash a filename carrying the wall-clock second, so they are tokenised wherever they appear"
+  },
+  "record_shape": [
+    "family",
+    "method",
+    "path",
+    "query",
+    "request_headers",
+    "request_body",
+    "status",
+    "response_headers",
+    "response_body",
+    "name",
+    "note",
+    "sse_frames"
+  ],
+  "sse": "For text/event-stream answers response_body is null and sse_frames holds the parsed wire frames in order, including the terminating 'data: [DONE]' sentinel. JSON payloads are re-serialised with json.dumps(ensure_ascii=False), the flags the server itself writes them with.",
+  "dropped_response_headers": [
+    "content-length",
+    "date",
+    "server"
+  ],
+  "gaps": [
+    "POST /chat with a model loaded is NOT captured: loading an MLX model is the AI worker's job and would make the fixture machine-dependent. What is captured is every branch reachable without one — the no-model refusal (all four stream/Accept combinations), the intent branches that answer before the model is consulted (/clear, current-url, direct file action), the unknown-model 404, the identity-mismatch 403, the 422 and the 401.",
+    "Therefore no /chat SSE success stream exists in these fixtures. The only SSE capture is POST /agent (stream:true), whose no-model failure still exercises the real frame writer: an anonymous error frame followed by the 'data: [DONE]' sentinel. Named 'agent_step' frames are unreachable without a model (the loop fails before its first observer callback) — the Rust port must pin those against rust/fixtures/agent_loop instead.",
+    "POST /chat 'network status' intent: captured with response_body '@any'. It shells out for the machine's own interfaces and calls an external IP service, so its body is neither offline-reproducible nor machine-stable. Status code and content type are the whole contract here.",
+    "POST /api/browser/read-url is captured on its validation/boundary branches only (bad scheme, private host, missing url) — the success branch fetches a public URL and this generator makes no network calls. POST /api/browser/ingest-current-tab, which needs no network, is captured on its real success branch.",
+    "The local-file approval dance (/local/*, /api/ingestion/*, /knowledge-graph/local/*) needs a human approval that is granted through POST /permissions/approve/{token} — another WP's family. That call is made as a seeding step and is not recorded here; the fixtures show the probe response (which mints the token), the approved success and the unapproved/expired/absent-token refusals.",
+    "Approval tokens are random per run, so they appear as '@any' in both the response that minted them and the request that spends them. A replayer must thread the value it received rather than the literal.",
+    "Feature-gate refusals (gate_read/gate_write) are not captured: every gate these families read is on by default, and flipping toggles belongs to the feature-toggle WP. All /api/memory and /api/brain captures are therefore gate-open captures.",
+    "Workspace scoping is captured single-workspace only (the seeded owner has no second workspace). Cross-workspace 403s belong to the workspace WP.",
+    "POST /api/index/{drain,rebuild} are KEEP_WORKER: captured for the worker contract, not as a port target.",
+    "Three cases answer with facts about the machine that captured them and are marked MACHINE-DEPENDENT in their note: local_knowledge/roots (this machine's home and mounted volumes), local_files/local_agent_status (platform, machine, python, pid — already tokenised) and local_files/ingestion_interop_status (whether git is installed). Replay their shape, not their values.",
+    "The capture date appears as the '@today' token (in the chronicle day path and as-of query). A replayer substitutes its own date; nothing else in these files is dated, because every other timestamp is '@ts'.",
+    "One list is '@any' because its ORDER is not determined by anything a caller can pin, even with the write clock frozen and PYTHONHASHSEED set: knowledge_graph/curate's 'skipped', whose equal-score candidates keep their clustering order. Its contents are stable and its member shape is in the case note; everything else in that answer is pinned.",
+    "Found while capturing, recorded rather than fixed: GET /api/command/search can never fill its 'knowledge' group — services/command_center.py reads payload['results'] from search_service.keyword_search, which answers 'matches'. The fixtures show the empty group, which is what the product does today."
+  ],
+  "cases": [
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/manager",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "sources": [
+          {
+            "id": "workspace",
+            "type": "workspace",
+            "label": "Workspace Memory",
+            "count": 0,
+            "size_bytes": 0,
+            "health": "ok",
+            "detail": "Personal workspace knowledge, by kind."
+          },
+          {
+            "id": "project",
+            "type": "project",
+            "label": "Project Memory",
+            "count": 0,
+            "size_bytes": 0,
+            "health": "ok",
+            "detail": "Memory scoped to organization workspaces."
+          },
+          {
+            "id": "agent",
+            "type": "agent",
+            "label": "Agent Memory",
+            "count": 0,
+            "size_bytes": 0,
+            "health": "ok",
+            "detail": "Per-run agent memory snapshots."
+          },
+          {
+            "id": "conversation",
+            "type": "conversation",
+            "label": "Conversation Memory",
+            "count": 2,
+            "size_bytes": 798720,
+            "health": "ok",
+            "detail": "Historical interaction memory from chat."
+          },
+          {
+            "id": "graph",
+            "type": "graph",
+            "label": "Graph Memory",
+            "count": 62,
+            "size_bytes": 798720,
+            "health": "ok",
+            "detail": "Knowledge Graph entities and relations.",
+            "edges": 68
+          },
+          {
+            "id": "vector",
+            "type": "vector",
+            "label": "Vector Memory",
+            "count": null,
+            "size_bytes": 0,
+            "health": "ok",
+            "detail": "Local embedding vector index."
+          }
+        ],
+        "recent_memories": [],
+        "tiers": [
+          "workspace",
+          "project",
+          "agent",
+          "conversation",
+          "graph",
+          "vector"
+        ],
+        "usage": {
+          "total_items": 64,
+          "total_bytes": "@any",
+          "sources": 6
+        },
+        "brain_readiness": {
+          "score": 100,
+          "state": "alive",
+          "depth": 5,
+          "title_key": "brain.readiness.alive",
+          "action_key": "brain.readiness.map",
+          "signals": {
+            "memory_count": 2,
+            "concept_count": 62,
+            "relationship_count": 68,
+            "healthy_sources": 6
+          },
+          "source": "memory_service"
+        },
+        "health": "ok",
+        "graph_enabled": true,
+        "generated_at": "@ts"
+      },
+      "name": "manager",
+      "note": "The memory manager's source list with counts and health."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/brain-quality",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "score": 100,
+        "state": "alive",
+        "depth": 5,
+        "title_key": "brain.readiness.alive",
+        "action_key": "brain.readiness.map",
+        "signals": {
+          "memory_count": 2,
+          "concept_count": 62,
+          "relationship_count": 68,
+          "healthy_sources": 6
+        },
+        "source": "memory_service"
+      },
+      "name": "brain_quality",
+      "note": "Quality summary over the seeded graph."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/brain-brief",
+      "query": {
+        "q": "retrieval",
+        "limit": "3"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "alive",
+        "score": 100,
+        "headline_key": "brain.brief.headline.alive",
+        "body_key": "brain.brief.body.alive",
+        "focus": {
+          "kind": "recall",
+          "title": "Hybrid retrieval decision",
+          "detail": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision.",
+          "source": "graph",
+          "score": 1.0
+        },
+        "next_actions": [
+          {
+            "id": "ask_brain",
+            "label_key": "brain.brief.action.ask",
+            "detail_key": "brain.brief.action.ask.detail",
+            "route": "",
+            "priority": 10
+          },
+          {
+            "id": "inspect_topics",
+            "label_key": "brain.brief.action.topics",
+            "detail_key": "brain.brief.action.topics.detail",
+            "route": "/knowledge-graph",
+            "priority": 8
+          },
+          {
+            "id": "verify_model",
+            "label_key": "brain.brief.action.verify",
+            "detail_key": "brain.brief.action.verify.detail",
+            "route": "",
+            "priority": 7
+          },
+          {
+            "id": "backup_brain",
+            "label_key": "brain.brief.action.backup",
+            "detail_key": "brain.brief.action.backup.detail",
+            "route": "/settings",
+            "priority": 6
+          }
+        ],
+        "suggested_questions": [
+          {
+            "id": "focus_next",
+            "label_key": "brain.suggestion.focus.label",
+            "detail_key": "brain.suggestion.focus.detail",
+            "prompt_key": "brain.suggestion.focus.prompt",
+            "params": {
+              "focus": "Hybrid retrieval decision"
+            },
+            "priority": 10
+          },
+          {
+            "id": "evidence_check",
+            "label_key": "brain.suggestion.evidence.label",
+            "detail_key": "brain.suggestion.evidence.detail",
+            "prompt_key": "brain.suggestion.evidence.prompt",
+            "params": {
+              "focus": "Hybrid retrieval decision"
+            },
+            "priority": 9
+          },
+          {
+            "id": "graph_connections",
+            "label_key": "brain.suggestion.graph.label",
+            "detail_key": "brain.suggestion.graph.detail",
+            "prompt_key": "brain.suggestion.graph.prompt",
+            "params": {
+              "focus": "Hybrid retrieval decision"
+            },
+            "priority": 8
+          },
+          {
+            "id": "conversation_followup",
+            "label_key": "brain.suggestion.history.label",
+            "detail_key": "brain.suggestion.history.detail",
+            "prompt_key": "brain.suggestion.history.prompt",
+            "params": {
+              "focus": "Hybrid retrieval decision"
+            },
+            "priority": 7
+          }
+        ],
+        "proactive_actions": [
+          {
+            "id": "proactive_evidence_review",
+            "intent": "ask",
+            "label_key": "brain.proactive.evidence.label",
+            "detail_key": "brain.proactive.evidence.detail",
+            "prompt": "Review the evidence Brain has for Hybrid retrieval decision. Separate confirmed facts, weak signals, contradictions, and next checks.",
+            "priority": 100,
+            "context": {
+              "focus": "Hybrid retrieval decision",
+              "detail": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision."
+            }
+          },
+          {
+            "id": "proactive_delegate",
+            "intent": "delegate",
+            "label_key": "brain.proactive.delegate.label",
+            "detail_key": "brain.proactive.delegate.detail",
+            "prompt": "Turn Hybrid retrieval decision into an execution plan, verify the known context, and return concrete next steps with risks.",
+            "priority": 95,
+            "context": {
+              "focus": "Hybrid retrieval decision",
+              "detail": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision."
+            }
+          },
+          {
+            "id": "proactive_review_draft",
+            "intent": "review",
+            "label_key": "brain.proactive.review.label",
+            "detail_key": "brain.proactive.review.detail",
+            "prompt": "Create a reviewable task from Brain's current focus: Hybrid retrieval decision. We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision.",
+            "priority": 90,
+            "context": {
+              "focus": "Hybrid retrieval decision",
+              "detail": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision."
+            }
+          },
+          {
+            "id": "proactive_map_connections",
+            "intent": "route",
+            "label_key": "brain.proactive.map.label",
+            "detail_key": "brain.proactive.map.detail",
+            "route": "/knowledge-graph",
+            "prompt": "Map the strongest Knowledge Graph connections around Hybrid retrieval decision.",
+            "priority": 82,
+            "context": {
+              "focus": "Hybrid retrieval decision",
+              "graph_concepts": 62
+            }
+          }
+        ],
+        "evidence": [
+          {
+            "id": "durable",
+            "label_key": "brain.brief.evidence.durable",
+            "value": 64,
+            "detail_key": "brain.brief.evidence.durable.detail"
+          },
+          {
+            "id": "graph",
+            "label_key": "brain.brief.evidence.graph",
+            "value": 62,
+            "detail_key": "brain.brief.evidence.graph.detail"
+          },
+          {
+            "id": "sources",
+            "label_key": "brain.brief.evidence.sources",
+            "value": 6,
+            "detail_key": "brain.brief.evidence.sources.detail"
+          }
+        ],
+        "signals": {
+          "workspace_memories": 0,
+          "conversations": 2,
+          "graph_concepts": 62,
+          "vector_items": 0,
+          "healthy_sources": 6
+        },
+        "proof": {
+          "query": "retrieval",
+          "items": [
+            {
+              "id": "webdoc:8d1cf3b813efa206bad0a854",
+              "source": "graph",
+              "title": "Hybrid retrieval decision",
+              "snippet": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision.",
+              "score": 1.0,
+              "matched_terms": [
+                "retrieval"
+              ],
+              "confidence": "high",
+              "kind": "Document"
+            },
+            {
+              "id": "chunk:2ba4fa634cdc0381edf03fb1",
+              "source": "graph",
+              "title": "Contradiction seed chunk 1",
+              "snippet": "The retrieval weights are keyword 0.9 and vector 0.1. 이 문장은 위의 회의록과 상충하는 내용을 담고 있습니다.",
+              "score": 1.0,
+              "matched_terms": [
+                "retrieval"
+              ],
+              "confidence": "high",
+              "kind": "Chunk"
+            },
+            {
+              "id": "chunk:d663ec705687946669fce867",
+              "source": "graph",
+              "title": "Hybrid retrieval decision chunk 1",
+              "snippet": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision.",
+              "score": 1.0,
+              "matched_terms": [
+                "retrieval"
+              ],
+              "confidence": "high",
+              "kind": "Chunk"
+            }
+          ],
+          "model_continuity": {
+            "active_model": "",
+            "brain_owner": "lattice_brain",
+            "capability": true,
+            "survives_model_switch": true,
+            "proven": true,
+            "context_store": "workspace + conversation + graph + vector"
+          }
+        },
+        "generated_at": "@ts"
+      },
+      "name": "brain_brief",
+      "note": "Brain brief for a query with a hit."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/brain-brief",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "alive",
+        "score": 100,
+        "headline_key": "brain.brief.headline.alive",
+        "body_key": "brain.brief.body.alive",
+        "focus": {
+          "kind": "recall",
+          "title": "현재 페이지 URL: https://example.com/page",
+          "detail": "현재 페이지 URL: https://example.com/page",
+          "source": "graph",
+          "score": 1.0
+        },
+        "next_actions": [
+          {
+            "id": "ask_brain",
+            "label_key": "brain.brief.action.ask",
+            "detail_key": "brain.brief.action.ask.detail",
+            "route": "",
+            "priority": 10
+          },
+          {
+            "id": "inspect_topics",
+            "label_key": "brain.brief.action.topics",
+            "detail_key": "brain.brief.action.topics.detail",
+            "route": "/knowledge-graph",
+            "priority": 8
+          },
+          {
+            "id": "verify_model",
+            "label_key": "brain.brief.action.verify",
+            "detail_key": "brain.brief.action.verify.detail",
+            "route": "",
+            "priority": 7
+          },
+          {
+            "id": "backup_brain",
+            "label_key": "brain.brief.action.backup",
+            "detail_key": "brain.brief.action.backup.detail",
+            "route": "/settings",
+            "priority": 6
+          }
+        ],
+        "suggested_questions": [
+          {
+            "id": "focus_next",
+            "label_key": "brain.suggestion.focus.label",
+            "detail_key": "brain.suggestion.focus.detail",
+            "prompt_key": "brain.suggestion.focus.prompt",
+            "params": {
+              "focus": "현재 페이지 URL: https://example.com/page"
+            },
+            "priority": 10
+          },
+          {
+            "id": "evidence_check",
+            "label_key": "brain.suggestion.evidence.label",
+            "detail_key": "brain.suggestion.evidence.detail",
+            "prompt_key": "brain.suggestion.evidence.prompt",
+            "params": {
+              "focus": "현재 페이지 URL: https://example.com/page"
+            },
+            "priority": 9
+          },
+          {
+            "id": "graph_connections",
+            "label_key": "brain.suggestion.graph.label",
+            "detail_key": "brain.suggestion.graph.detail",
+            "prompt_key": "brain.suggestion.graph.prompt",
+            "params": {
+              "focus": "현재 페이지 URL: https://example.com/page"
+            },
+            "priority": 8
+          },
+          {
+            "id": "conversation_followup",
+            "label_key": "brain.suggestion.history.label",
+            "detail_key": "brain.suggestion.history.detail",
+            "prompt_key": "brain.suggestion.history.prompt",
+            "params": {
+              "focus": "현재 페이지 URL: https://example.com/page"
+            },
+            "priority": 7
+          }
+        ],
+        "proactive_actions": [
+          {
+            "id": "proactive_evidence_review",
+            "intent": "ask",
+            "label_key": "brain.proactive.evidence.label",
+            "detail_key": "brain.proactive.evidence.detail",
+            "prompt": "Review the evidence Brain has for 현재 페이지 URL: https://example.com/page. Separate confirmed facts, weak signals, contradictions, and next checks.",
+            "priority": 100,
+            "context": {
+              "focus": "현재 페이지 URL: https://example.com/page",
+              "detail": "현재 페이지 URL: https://example.com/page"
+            }
+          },
+          {
+            "id": "proactive_delegate",
+            "intent": "delegate",
+            "label_key": "brain.proactive.delegate.label",
+            "detail_key": "brain.proactive.delegate.detail",
+            "prompt": "Turn 현재 페이지 URL: https://example.com/page into an execution plan, verify the known context, and return concrete next steps with risks.",
+            "priority": 95,
+            "context": {
+              "focus": "현재 페이지 URL: https://example.com/page",
+              "detail": "현재 페이지 URL: https://example.com/page"
+            }
+          },
+          {
+            "id": "proactive_review_draft",
+            "intent": "review",
+            "label_key": "brain.proactive.review.label",
+            "detail_key": "brain.proactive.review.detail",
+            "prompt": "Create a reviewable task from Brain's current focus: 현재 페이지 URL: https://example.com/page. 현재 페이지 URL: https://example.com/page",
+            "priority": 90,
+            "context": {
+              "focus": "현재 페이지 URL: https://example.com/page",
+              "detail": "현재 페이지 URL: https://example.com/page"
+            }
+          },
+          {
+            "id": "proactive_map_connections",
+            "intent": "route",
+            "label_key": "brain.proactive.map.label",
+            "detail_key": "brain.proactive.map.detail",
+            "route": "/knowledge-graph",
+            "prompt": "Map the strongest Knowledge Graph connections around 현재 페이지 URL: https://example.com/page.",
+            "priority": 82,
+            "context": {
+              "focus": "현재 페이지 URL: https://example.com/page",
+              "graph_concepts": 62
+            }
+          }
+        ],
+        "evidence": [
+          {
+            "id": "durable",
+            "label_key": "brain.brief.evidence.durable",
+            "value": 64,
+            "detail_key": "brain.brief.evidence.durable.detail"
+          },
+          {
+            "id": "graph",
+            "label_key": "brain.brief.evidence.graph",
+            "value": 62,
+            "detail_key": "brain.brief.evidence.graph.detail"
+          },
+          {
+            "id": "sources",
+            "label_key": "brain.brief.evidence.sources",
+            "value": 6,
+            "detail_key": "brain.brief.evidence.sources.detail"
+          }
+        ],
+        "signals": {
+          "workspace_memories": 0,
+          "conversations": 2,
+          "graph_concepts": 62,
+          "vector_items": 0,
+          "healthy_sources": 6
+        },
+        "proof": {
+          "query": "현재 페이지 URL: https://example.com/page",
+          "items": [
+            {
+              "id": "airesponse:26924af3eb594ec50c814539",
+              "source": "graph",
+              "title": "현재 페이지 URL: https://example.com/page",
+              "snippet": "현재 페이지 URL: https://example.com/page",
+              "score": 1.0,
+              "matched_terms": [
+                "현재",
+                "페이지",
+                "url:",
+                "https://example.com/page"
+              ],
+              "confidence": "high",
+              "kind": "AIResponse"
+            },
+            {
+              "id": "airesponse:097dd9e780a500a6baee6ddb",
+              "source": "graph",
+              "title": "현재 페이지 URL: https://example.com/other",
+              "snippet": "현재 페이지 URL: https://example.com/other",
+              "score": 0.8057,
+              "matched_terms": [
+                "현재",
+                "페이지",
+                "url:"
+              ],
+              "confidence": "high",
+              "kind": "AIResponse"
+            },
+            {
+              "id": "chunk:61042cc288a09e7e4044acfa",
+              "source": "graph",
+              "title": "chunk 1",
+              "snippet": "현재 url 알려줘",
+              "score": 0.25,
+              "matched_terms": [
+                "현재"
+              ],
+              "confidence": "low",
+              "kind": "Chunk"
+            }
+          ],
+          "model_continuity": {
+            "active_model": "",
+            "brain_owner": "lattice_brain",
+            "capability": true,
+            "survives_model_switch": true,
+            "proven": true,
+            "context_store": "workspace + conversation + graph + vector"
+          }
+        },
+        "generated_at": "@ts"
+      },
+      "name": "brain_brief_no_query",
+      "note": "Brain brief with no query at all."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/brain-proof",
+      "query": {
+        "q": "하이브리드",
+        "limit": "3"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "alive",
+        "readiness": {
+          "score": 100,
+          "state": "alive",
+          "depth": 5,
+          "title_key": "brain.readiness.alive",
+          "action_key": "brain.readiness.map",
+          "signals": {
+            "memory_count": 2,
+            "concept_count": 62,
+            "relationship_count": 68,
+            "healthy_sources": 6
+          },
+          "source": "memory_service"
+        },
+        "model_continuity": {
+          "active_model": "",
+          "brain_owner": "lattice_brain",
+          "capability": true,
+          "survives_model_switch": true,
+          "proven": true,
+          "context_store": "workspace + conversation + graph + vector"
+        },
+        "proofs": {
+          "durable_items": 64,
+          "has_durable_evidence": true,
+          "workspace_memories": 0,
+          "conversations": 2,
+          "graph_concepts": 62,
+          "vector_items": 0,
+          "healthy_sources": 6
+        },
+        "recall": {
+          "query": "하이브리드",
+          "items": [
+            {
+              "id": "chunk:b812eaf3f65a138d3f53ff26",
+              "source": "graph",
+              "title": "chunk 1",
+              "snippet": "하이브리드 검색은 어떤 가중치를 쓰나요?",
+              "score": 1.0,
+              "matched_terms": [
+                "하이브리드"
+              ],
+              "confidence": "high",
+              "kind": "Chunk"
+            },
+            {
+              "id": "message:d4296bd346daee363770ced9",
+              "source": "graph",
+              "title": "하이브리드 검색은 어떤 가중치를 쓰나요?",
+              "snippet": "하이브리드 검색은 어떤 가중치를 쓰나요?",
+              "score": 1.0,
+              "matched_terms": [
+                "하이브리드"
+              ],
+              "confidence": "high",
+              "kind": "Message"
+            },
+            {
+              "id": "message:4beefff66cf77cb20461cf2b",
+              "source": "graph",
+              "title": "현재 url 알려줘",
+              "snippet": "현재 url 알려줘",
+              "score": 0.12,
+              "matched_terms": [],
+              "confidence": "low",
+              "kind": "Chunk"
+            }
+          ],
+          "count": 3
+        },
+        "claims": {
+          "can_recall_user_context": true,
+          "keeps_context_across_models": true,
+          "is_knowledge_store": true
+        },
+        "generated_at": "@ts"
+      },
+      "name": "brain_proof",
+      "note": "Brain proof for a Korean query."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/tiers",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "tiers": [
+          "workspace",
+          "project",
+          "agent",
+          "conversation",
+          "graph",
+          "vector"
+        ],
+        "workspace_kinds": [
+          "short_term",
+          "workspace",
+          "preferences",
+          "decisions",
+          "working_style",
+          "frequently_used_tools",
+          "long_term"
+        ]
+      },
+      "name": "tiers",
+      "note": "Memory tiers (rings) summary."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/inspect",
+      "query": {
+        "source": "workspace",
+        "limit": "5"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "source": "workspace",
+        "items": [],
+        "count": 0
+      },
+      "name": "inspect_workspace",
+      "note": "Inspect the workspace ring."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/inspect",
+      "query": {
+        "source": "conversation",
+        "limit": "5"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "source": "conversation",
+        "items": [
+          {
+            "id": "conv-chat-1",
+            "title": "conv-chat-1",
+            "messages": 2
+          },
+          {
+            "id": "conv-chat-2",
+            "title": "conv-chat-2",
+            "messages": 2
+          }
+        ],
+        "count": 2
+      },
+      "name": "inspect_conversation",
+      "note": "Inspect the conversation ring — the seeded conversations."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/inspect",
+      "query": {
+        "source": "graph"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "source": "graph",
+        "stats": {
+          "db_path": "@datadir/knowledge_graph.sqlite",
+          "schema_version": 1,
+          "v2_schema_available": true,
+          "nodes": {
+            "AIResponse": 4,
+            "Chat": 4,
+            "Chunk": 16,
+            "ClearEvent": 1,
+            "Computer": 1,
+            "Concept": 11,
+            "Conversation": 1,
+            "Decision": 3,
+            "Document": 10,
+            "Drive": 1,
+            "Folder": 1,
+            "Message": 4,
+            "Person": 1,
+            "Source": 4
+          },
+          "edges": {
+            "CONTAINS": 39,
+            "HAS_EVENT": 1,
+            "INDEXED_FROM": 7,
+            "MENTIONS": 9,
+            "TRIGGERED": 1,
+            "UPLOADED_BY": 7,
+            "WROTE": 4
+          },
+          "local_sources": 1,
+          "local_file_status": {
+            "indexed": 3
+          },
+          "v2": {
+            "schema_version": 2,
+            "embed_dim": 384,
+            "nodes": 62,
+            "edges": 68,
+            "by_node_type": {
+              "AI_RESPONSE": 4,
+              "CHAT": 4,
+              "CHUNK": 16,
+              "COMPUTER": 1,
+              "CONCEPT": 12,
+              "CONVERSATION": 1,
+              "DECISION": 3,
+              "DOCUMENT": 10,
+              "DRIVE": 1,
+              "FOLDER": 1,
+              "MESSAGE": 4,
+              "PERSON": 1,
+              "SOURCE": 4
+            },
+            "by_edge_type": {
+              "CONTAINS": 39,
+              "HAS_EVENT": 1,
+              "INDEXED_FROM": 7,
+              "MENTIONS": 9,
+              "TRIGGERED": 1,
+              "UPLOADED_BY": 7,
+              "WROTE": 4
+            }
+          }
+        },
+        "available": true
+      },
+      "name": "inspect_graph",
+      "note": "The graph ring answers stats, not items — a different shape from the same route."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/inspect",
+      "query": {
+        "source": "not-a-source"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "'not-a-source'는 알 수 없는 기억 출처입니다."
+      },
+      "name": "inspect_unknown_source",
+      "note": "Unknown source id."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/inspect",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "query",
+              "source"
+            ],
+            "msg": "Field required",
+            "input": null
+          }
+        ]
+      },
+      "name": "inspect_missing_source",
+      "note": "source is required."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/recall",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "query": "retrieval fusion",
+        "limit": 3
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "query": "retrieval fusion",
+        "results": [
+          {
+            "source": "graph",
+            "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+            "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the",
+            "snippet": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision.",
+            "kind": "Decision",
+            "score": 1.0,
+            "matched_terms": [
+              "retrieval",
+              "fusion"
+            ],
+            "confidence": "high",
+            "evidence_kinds": [
+              "lexical"
+            ]
+          },
+          {
+            "source": "graph",
+            "id": "webdoc:8d1cf3b813efa206bad0a854",
+            "title": "Hybrid retrieval decision",
+            "snippet": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision.",
+            "kind": "Document",
+            "score": 1.0,
+            "matched_terms": [
+              "retrieval",
+              "fusion"
+            ],
+            "vector_score": 0.4624,
+            "confidence": "high",
+            "evidence_kinds": [
+              "lexical",
+              "semantic"
+            ]
+          },
+          {
+            "source": "graph",
+            "id": "chunk:d663ec705687946669fce867",
+            "title": "Hybrid retrieval decision chunk 1",
+            "snippet": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns the decision.",
+            "kind": "Chunk",
+            "score": 1.0,
+            "matched_terms": [
+              "retrieval",
+              "fusion"
+            ],
+            "confidence": "high",
+            "evidence_kinds": [
+              "lexical"
+            ]
+          }
+        ],
+        "count": 4,
+        "source": "live",
+        "status": "ok",
+        "errors": [],
+        "quality_gate": {
+          "candidates": 4,
+          "passed": 4,
+          "filtered": 0,
+          "gate": "hybrid-evidence/v2"
+        }
+      },
+      "name": "recall",
+      "note": "Hybrid recall over the seeded corpus."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/recall",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "query": "회의록",
+        "limit": 3
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "query": "회의록",
+        "results": [
+          {
+            "source": "graph",
+            "id": "decision:1875f9b3776c4733d6c0d63f",
+            "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+            "snippet": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+            "kind": "Decision",
+            "score": 1.0,
+            "matched_terms": [
+              "회의록"
+            ],
+            "vector_score": 0.4108,
+            "confidence": "high",
+            "evidence_kinds": [
+              "lexical",
+              "semantic"
+            ]
+          },
+          {
+            "source": "graph",
+            "id": "local-file:e12370d06b45a320a35ee274",
+            "title": "회의록.md",
+            "snippet": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+            "kind": "Document",
+            "score": 1.0,
+            "matched_terms": [
+              "회의록"
+            ],
+            "vector_score": 0.5185,
+            "confidence": "high",
+            "evidence_kinds": [
+              "lexical",
+              "semantic"
+            ]
+          },
+          {
+            "source": "graph",
+            "id": "chunk:7eeaebd9d35503b60c26c498",
+            "title": "회의록.md chunk 1",
+            "snippet": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+            "kind": "Chunk",
+            "score": 1.0,
+            "matched_terms": [
+              "회의록"
+            ],
+            "confidence": "high",
+            "evidence_kinds": [
+              "lexical"
+            ]
+          }
+        ],
+        "count": 4,
+        "source": "live",
+        "status": "ok",
+        "errors": [],
+        "quality_gate": {
+          "candidates": 4,
+          "passed": 4,
+          "filtered": 0,
+          "gate": "hybrid-evidence/v2"
+        }
+      },
+      "name": "recall_korean",
+      "note": "Recall for a Korean query."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/recall",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "query": ""
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "query": "",
+        "results": [],
+        "count": 0,
+        "source": "live",
+        "status": "ok",
+        "errors": [],
+        "quality_gate": {
+          "candidates": 0,
+          "passed": 0,
+          "filtered": 0,
+          "gate": "lexical-evidence/v1"
+        }
+      },
+      "name": "recall_empty_query",
+      "note": "Empty query branch."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/self-model",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "available": true,
+        "facts": [],
+        "count": 0,
+        "counts": {
+          "trait": 0,
+          "preference": 0,
+          "habit": 0,
+          "decision": 0,
+          "relationship": 0
+        },
+        "kinds": [
+          "trait",
+          "preference",
+          "habit",
+          "decision",
+          "relationship"
+        ],
+        "generated_at": "@ts",
+        "summary": "",
+        "summary_tokens": 200,
+        "user_email": "owner@fixture.local",
+        "kind_options": [
+          "trait",
+          "preference",
+          "habit",
+          "decision",
+          "relationship"
+        ]
+      },
+      "name": "self_model",
+      "note": "What the brain believes about its owner, before any write."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/self-model",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "kind": "preference",
+        "text": "답변은 한국어로 받고 싶습니다."
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "self:preference:e28d88323aff",
+        "kind": "preference",
+        "type": "Preference",
+        "text": "답변은 한국어로 받고 싶습니다",
+        "origin": "user",
+        "confidence": 1.0,
+        "signal": "user_edit",
+        "workspace_id": "personal"
+      },
+      "name": "self_model_add",
+      "note": "The user writes one fact about themselves directly."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/self-model",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "kind": "preference"
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "text"
+            ],
+            "msg": "Field required",
+            "input": {
+              "kind": "preference"
+            }
+          }
+        ]
+      },
+      "name": "self_model_add_validation",
+      "note": "text is required."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/self-model",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "available": true,
+        "facts": [
+          {
+            "id": "self:preference:e28d88323aff",
+            "kind": "preference",
+            "type": "Preference",
+            "text": "답변은 한국어로 받고 싶습니다",
+            "origin": "user",
+            "confidence": 1.0,
+            "signal": "user_edit",
+            "workspace_id": "personal",
+            "updated_at": "@ts"
+          }
+        ],
+        "count": 1,
+        "counts": {
+          "trait": 0,
+          "preference": 1,
+          "habit": 0,
+          "decision": 0,
+          "relationship": 0
+        },
+        "kinds": [
+          "trait",
+          "preference",
+          "habit",
+          "decision",
+          "relationship"
+        ],
+        "generated_at": "@ts",
+        "summary": "사용자에 대해 확인된 사실:\n- 선호: 답변은 한국어로 받고 싶습니다",
+        "summary_tokens": 200,
+        "user_email": "owner@fixture.local",
+        "kind_options": [
+          "trait",
+          "preference",
+          "habit",
+          "decision",
+          "relationship"
+        ]
+      },
+      "name": "self_model_after_add",
+      "note": "The same read after the write — the fact and the injected summary now carry it."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/self-model/propose",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "text": "저는 파이썬을 좋아합니다. 매일 아침 회의록을 정리합니다. I decided to keep alpha fusion.",
+        "source": "fixture",
+        "max_proposals": 3
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "available": true,
+        "candidates": [
+          {
+            "id": "self:decision:6f38e4112de8",
+            "kind": "decision",
+            "text": "keep alpha fusion",
+            "confidence": 0.75,
+            "signal": "en_decided_to",
+            "source": "fixture"
+          },
+          {
+            "id": "self:habit:a66867df7553",
+            "kind": "habit",
+            "text": "매일 아침 회의록을 정리합니다",
+            "confidence": 0.65,
+            "signal": "ko_routine",
+            "source": "fixture"
+          },
+          {
+            "id": "self:preference:303bc97d58dc",
+            "kind": "preference",
+            "text": "파이썬",
+            "confidence": 0.7,
+            "signal": "ko_first_person_preference",
+            "source": "fixture"
+          }
+        ],
+        "candidate_count": 3,
+        "already_known": 0,
+        "proposed": [
+          {
+            "id": "@any",
+            "status": "pending",
+            "title": "나에 대한 새 사실: keep alpha fusion",
+            "summary": "대화에서 'keep alpha fusion'를 읽었습니다. 내 프로필(결정)에 추가할까요? 승인하기 전에는 저장되지 않습니다.",
+            "source": "kg_change_digest",
+            "kind": "self_model_fact",
+            "payload": {
+              "fact": {
+                "id": "self:decision:6f38e4112de8",
+                "kind": "decision",
+                "text": "keep alpha fusion",
+                "confidence": 0.75,
+                "signal": "en_decided_to",
+                "source": "fixture"
+              },
+              "node_type": "Decision",
+              "proposal_key": "self:decision:6f38e4112de8",
+              "summary_ko": "대화에서 'keep alpha fusion'를 읽었습니다. 내 프로필(결정)에 추가할까요? 승인하기 전에는 저장되지 않습니다."
+            },
+            "provenance": {
+              "pipeline": "brain-synthesis",
+              "proposal_key": "self:decision:6f38e4112de8"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@fixture.local",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts",
+            "effective_status": "pending"
+          },
+          {
+            "id": "@any",
+            "status": "pending",
+            "title": "나에 대한 새 사실: 매일 아침 회의록을 정리합니다",
+            "summary": "대화에서 '매일 아침 회의록을 정리합니다'를 읽었습니다. 내 프로필(습관)에 추가할까요? 승인하기 전에는 저장되지 않습니다.",
+            "source": "kg_change_digest",
+            "kind": "self_model_fact",
+            "payload": {
+              "fact": {
+                "id": "self:habit:a66867df7553",
+                "kind": "habit",
+                "text": "매일 아침 회의록을 정리합니다",
+                "confidence": 0.65,
+                "signal": "ko_routine",
+                "source": "fixture"
+              },
+              "node_type": "Habit",
+              "proposal_key": "self:habit:a66867df7553",
+              "summary_ko": "대화에서 '매일 아침 회의록을 정리합니다'를 읽었습니다. 내 프로필(습관)에 추가할까요? 승인하기 전에는 저장되지 않습니다."
+            },
+            "provenance": {
+              "pipeline": "brain-synthesis",
+              "proposal_key": "self:habit:a66867df7553"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@fixture.local",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts",
+            "effective_status": "pending"
+          },
+          {
+            "id": "@any",
+            "status": "pending",
+            "title": "나에 대한 새 사실: 파이썬",
+            "summary": "대화에서 '파이썬'를 읽었습니다. 내 프로필(선호)에 추가할까요? 승인하기 전에는 저장되지 않습니다.",
+            "source": "kg_change_digest",
+            "kind": "self_model_fact",
+            "payload": {
+              "fact": {
+                "id": "self:preference:303bc97d58dc",
+                "kind": "preference",
+                "text": "파이썬",
+                "confidence": 0.7,
+                "signal": "ko_first_person_preference",
+                "source": "fixture"
+              },
+              "node_type": "Preference",
+              "proposal_key": "self:preference:303bc97d58dc",
+              "summary_ko": "대화에서 '파이썬'를 읽었습니다. 내 프로필(선호)에 추가할까요? 승인하기 전에는 저장되지 않습니다."
+            },
+            "provenance": {
+              "pipeline": "brain-synthesis",
+              "proposal_key": "self:preference:303bc97d58dc"
+            },
+            "snoozed_until": null,
+            "user_email": "owner@fixture.local",
+            "workspace_id": "personal",
+            "created_at": "@ts",
+            "updated_at": "@ts",
+            "effective_status": "pending"
+          }
+        ],
+        "proposed_count": 3,
+        "suppressed": 0,
+        "generated_at": "@ts"
+      },
+      "name": "self_model_propose",
+      "note": "Candidate facts become review proposals, never direct writes. The text is shaped to hit three of the deterministic extraction patterns (ko preference, ko routine, en decision)."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/self-model/propose",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "text": "The build finished.",
+        "source": "fixture"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "available": true,
+        "candidates": [],
+        "candidate_count": 0,
+        "already_known": 0,
+        "proposed": [],
+        "proposed_count": 0,
+        "suppressed": 0,
+        "generated_at": "@ts"
+      },
+      "name": "self_model_propose_no_candidates",
+      "note": "Text with nothing extractable in it."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/self-model/apply",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "item_id": "not-a-proposal"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "검토 항목을 찾을 수 없습니다."
+      },
+      "name": "self_model_apply_unknown",
+      "note": "Applying a proposal that is not in the queue."
+    },
+    {
+      "family": "memory",
+      "method": "DELETE",
+      "path": "/api/memory/self-model/node-does-not-exist",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "내 프로필 항목이 아니라서 지울 수 없습니다."
+      },
+      "name": "self_model_delete_unknown",
+      "note": "Forgetting a fact that is not there."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/compact",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {},
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "compacted": 0,
+        "removed": [],
+        "remaining": 0,
+        "failed": [],
+        "status": "ok"
+      },
+      "name": "compact",
+      "note": "Compaction pass over the rings."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/rebuild",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "target": "vector"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "target": "vector_index",
+        "result": {
+          "status": "completed",
+          "operation_id": "@any",
+          "full": false,
+          "items_total": 64,
+          "items_indexed": 0,
+          "items_skipped": 64,
+          "duration_ms": "@any",
+          "embedding_model": "lattice-local-hash-v1:384",
+          "embedding_dim": 384
+        }
+      },
+      "name": "rebuild",
+      "note": "Rebuild the vector index (the only real target)."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/rebuild",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "target": "not-a-target"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "error",
+        "detail": "Unknown rebuild target: not-a-target"
+      },
+      "name": "rebuild_unknown_target",
+      "note": "Unknown rebuild target."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/clear",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "confirm": true
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "scope"
+            ],
+            "msg": "Field required",
+            "input": {
+              "confirm": true
+            }
+          }
+        ]
+      },
+      "name": "clear_validation",
+      "note": "scope is required."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/clear",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "scope": "not-a-scope",
+        "confirm": true
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "unsupported clear scope: not-a-scope"
+      },
+      "name": "clear_unknown_scope",
+      "note": "Unknown scope."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/clear",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "scope": "conversations"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "clear requires confirm=true"
+      },
+      "name": "clear_without_confirm",
+      "note": "The confirm flag is the guard on the destructive branch."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/manager",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "manager_auth_denied",
+      "note": "Auth denial (read gate and write gate both go through require_user first)."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/recall",
+      "query": {},
+      "request_headers": {},
+      "request_body": {},
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "recall_auth_denied",
+      "note": "Auth denial (read gate and write gate both go through require_user first)."
+    },
+    {
+      "family": "memory",
+      "method": "GET",
+      "path": "/api/memory/self-model",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "self_model_auth_denied",
+      "note": "Auth denial (read gate and write gate both go through require_user first)."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/clear",
+      "query": {},
+      "request_headers": {},
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "scope"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      },
+      "name": "clear_auth_denied",
+      "note": "Auth denial (read gate and write gate both go through require_user first)."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/health",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "overall_score": 100,
+        "grade": "excellent",
+        "dimensions": {
+          "freshness": {
+            "status": "ok",
+            "score": 100,
+            "sampled": 36,
+            "stale_nodes": 0,
+            "stale_threshold_days": 45
+          },
+          "connectivity": {
+            "status": "ok",
+            "score": 100,
+            "sampled": 36,
+            "orphan_nodes": 0,
+            "edges": 42
+          },
+          "embedding_coverage": {
+            "status": "ok",
+            "score": 98,
+            "ready_items": 63,
+            "pending_items": 1,
+            "needs_reindex": true
+          },
+          "consistency": {
+            "status": "ok",
+            "score": 100,
+            "edge_metrics": {
+              "avg_conf": 0.5,
+              "avg_evidence": 0.0,
+              "dup_rate": 0.0
+            },
+            "contradiction_edges": 0
+          }
+        },
+        "coverage": {
+          "measured": 4,
+          "total": 4,
+          "unavailable": [],
+          "partial": false
+        },
+        "recommended_actions": [
+          {
+            "id": "rebuild_vector_index",
+            "reason": "1 items are missing or stale in the vector index."
+          }
+        ],
+        "graph_available": true,
+        "generated_at": "@ts"
+      },
+      "name": "health",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/insights",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "window_days": 7,
+        "activity": {
+          "recent_nodes": 36,
+          "recent_samples": [
+            {
+              "id": "computer:4a0a339b0c6d:@hostname",
+              "type": "Computer",
+              "title": "@hostname",
+              "updated_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:fixture-note.md",
+              "type": "Concept",
+              "title": "fixture-note.md",
+              "updated_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:fixture-report.docx",
+              "type": "Concept",
+              "title": "fixture-report.docx",
+              "updated_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:lattice",
+              "type": "Concept",
+              "title": "Lattice",
+              "updated_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:ranking",
+              "type": "Concept",
+              "title": "Ranking",
+              "updated_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:rust",
+              "type": "Concept",
+              "title": "Rust",
+              "updated_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:url",
+              "type": "Concept",
+              "title": "URL",
+              "updated_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:가중치",
+              "type": "Concept",
+              "title": "가중치",
+              "updated_at": "@ts"
+            }
+          ],
+          "trending_types": [
+            {
+              "type": "Concept",
+              "count": 11
+            },
+            {
+              "type": "Document",
+              "count": 10
+            },
+            {
+              "type": "Chat",
+              "count": 4
+            },
+            {
+              "type": "Source",
+              "count": 4
+            },
+            {
+              "type": "Decision",
+              "count": 3
+            }
+          ]
+        },
+        "attention": {
+          "stale_nodes": 0,
+          "stale_samples": [],
+          "orphan_nodes": 0,
+          "orphan_samples": []
+        },
+        "suggested_questions": [
+          "@hostname에 대해 지금까지 알고 있는 것을 정리해줘",
+          "fixture-note.md에 대해 지금까지 알고 있는 것을 정리해줘",
+          "fixture-report.docx에 대해 지금까지 알고 있는 것을 정리해줘"
+        ],
+        "graph_available": true,
+        "generated_at": "@ts"
+      },
+      "name": "insights",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/contradictions",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "items": [],
+        "count": 0,
+        "sources": {
+          "memory_pairs": 0,
+          "temporal": 0,
+          "graph_edges": 0,
+          "graph_node_pairs": 0
+        },
+        "memories_scanned": 0,
+        "generated_at": "@ts"
+      },
+      "name": "contradictions",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/garden",
+      "query": {
+        "limit": "5"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "available": true,
+        "window_days": 7,
+        "stale_threshold_days": 45,
+        "beds": {
+          "recent": {
+            "count": 36,
+            "items": [
+              {
+                "id": "computer:4a0a339b0c6d:@hostname",
+                "type": "Computer",
+                "title": "@hostname",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:fixture-note.md",
+                "type": "Concept",
+                "title": "fixture-note.md",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "type": "Concept",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:lattice",
+                "type": "Concept",
+                "title": "Lattice",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:ranking",
+                "type": "Concept",
+                "title": "Ranking",
+                "updated_at": "@ts"
+              }
+            ]
+          },
+          "contradictions": {
+            "count": 0,
+            "items": []
+          },
+          "stale": {
+            "count": 0,
+            "items": []
+          },
+          "frequent": {
+            "count": 5,
+            "items": [
+              {
+                "id": "person:4a0a339b0c6d:owner@fixture.local",
+                "type": "Person",
+                "title": "owner@fixture.local",
+                "updated_at": "@ts",
+                "degree": 11
+              },
+              {
+                "id": "webdoc:d2c86342c46b9109f94f5486",
+                "type": "Document",
+                "title": "Rust 이관 회의록",
+                "updated_at": "@ts",
+                "degree": 5
+              },
+              {
+                "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+                "type": "Document",
+                "title": "Contradiction seed",
+                "updated_at": "@ts",
+                "degree": 4
+              },
+              {
+                "id": "source:727bc16c7e6f6d8457422188",
+                "type": "Source",
+                "title": "Contradiction seed",
+                "updated_at": "@ts",
+                "degree": 4
+              },
+              {
+                "id": "folder:5602751f0aaa1eb8af29b566",
+                "type": "Folder",
+                "title": "corpus",
+                "updated_at": "@ts",
+                "degree": 4
+              }
+            ]
+          }
+        },
+        "generated_at": "@ts"
+      },
+      "name": "garden",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/vector-freshness",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "pending",
+        "pending_items": 1,
+        "total_items": 64,
+        "detail": "1 of 64 items are missing or stale in the vector index",
+        "breakdown": {
+          "status": "pending",
+          "detail": "1 of 64 items are missing or stale in the vector index",
+          "embedded": 63,
+          "pending": 1,
+          "missing": 1,
+          "stale": 0,
+          "total": 64,
+          "queued": 0
+        }
+      },
+      "name": "vector_freshness",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/duplicates",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "nodes_scanned": 36,
+        "exact_groups": [],
+        "exact_duplicate_nodes": 0,
+        "near_pairs": [
+          {
+            "left": {
+              "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+              "type": "Decision",
+              "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the",
+              "updated_at": "@ts"
+            },
+            "right": {
+              "id": "webdoc:8d1cf3b813efa206bad0a854",
+              "type": "Document",
+              "title": "Hybrid retrieval decision",
+              "updated_at": "@ts"
+            },
+            "similarity": 1.0
+          },
+          {
+            "left": {
+              "id": "decision:1875f9b3776c4733d6c0d63f",
+              "type": "Decision",
+              "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+              "updated_at": "@ts"
+            },
+            "right": {
+              "id": "local-file:e12370d06b45a320a35ee274",
+              "type": "Document",
+              "title": "회의록.md",
+              "updated_at": "@ts"
+            },
+            "similarity": 1.0
+          },
+          {
+            "left": {
+              "id": "concept:4a0a339b0c6d:fixture-report.docx",
+              "type": "Concept",
+              "title": "fixture-report.docx",
+              "updated_at": "@ts"
+            },
+            "right": {
+              "id": "file:9f033e8b2619a947d73cfadd",
+              "type": "Document",
+              "title": "fixture-report.docx",
+              "updated_at": "@ts"
+            },
+            "similarity": 1.0
+          },
+          {
+            "left": {
+              "id": "decision:1a3d37580afc4a3381ab7226",
+              "type": "Decision",
+              "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다.",
+              "updated_at": "@ts"
+            },
+            "right": {
+              "id": "webdoc:d2c86342c46b9109f94f5486",
+              "type": "Document",
+              "title": "Rust 이관 회의록",
+              "updated_at": "@ts"
+            },
+            "similarity": 0.8333
+          },
+          {
+            "left": {
+              "id": "concept:4a0a339b0c6d:fixture-report.docx",
+              "type": "Concept",
+              "title": "fixture-report.docx",
+              "updated_at": "@ts"
+            },
+            "right": {
+              "id": "source:0fd118756d7d34aca17cf762",
+              "type": "Source",
+              "title": "fixture-report.docx",
+              "updated_at": "@ts"
+            },
+            "similarity": 0.75
+          },
+          {
+            "left": {
+              "id": "file:9f033e8b2619a947d73cfadd",
+              "type": "Document",
+              "title": "fixture-report.docx",
+              "updated_at": "@ts"
+            },
+            "right": {
+              "id": "source:0fd118756d7d34aca17cf762",
+              "type": "Source",
+              "title": "fixture-report.docx",
+              "updated_at": "@ts"
+            },
+            "similarity": 0.75
+          }
+        ],
+        "near_threshold": 0.75,
+        "available": true,
+        "generated_at": "@ts"
+      },
+      "name": "duplicates",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/quality-report",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "nodes_scanned": 36,
+        "edges_scanned": 42,
+        "duplicates": {
+          "nodes_scanned": 36,
+          "exact_groups": [],
+          "exact_duplicate_nodes": 0,
+          "near_pairs": [
+            {
+              "left": {
+                "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                "type": "Decision",
+                "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "webdoc:8d1cf3b813efa206bad0a854",
+                "type": "Document",
+                "title": "Hybrid retrieval decision",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "decision:1875f9b3776c4733d6c0d63f",
+                "type": "Decision",
+                "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "local-file:e12370d06b45a320a35ee274",
+                "type": "Document",
+                "title": "회의록.md",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "type": "Concept",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "file:9f033e8b2619a947d73cfadd",
+                "type": "Document",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "decision:1a3d37580afc4a3381ab7226",
+                "type": "Decision",
+                "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다.",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "webdoc:d2c86342c46b9109f94f5486",
+                "type": "Document",
+                "title": "Rust 이관 회의록",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.8333
+            },
+            {
+              "left": {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "type": "Concept",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "source:0fd118756d7d34aca17cf762",
+                "type": "Source",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.75
+            },
+            {
+              "left": {
+                "id": "file:9f033e8b2619a947d73cfadd",
+                "type": "Document",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "source:0fd118756d7d34aca17cf762",
+                "type": "Source",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.75
+            }
+          ],
+          "near_threshold": 0.75
+        },
+        "contradictions": {
+          "nodes_scanned": 36,
+          "node_pairs": [],
+          "temporal": [],
+          "contradiction_edges": [],
+          "count": 0
+        },
+        "stale_nodes": {
+          "count": 0,
+          "dated_nodes": 36,
+          "threshold_days": 90,
+          "samples": []
+        },
+        "edge_quality": {
+          "metrics": {
+            "avg_conf": 0.5,
+            "avg_evidence": 0.0,
+            "dup_rate": 0.0
+          },
+          "duplicate_edge_ids": [],
+          "duplicate_edge_count": 0
+        },
+        "summary": {
+          "exact_duplicate_nodes": 0,
+          "near_duplicate_pairs": 6,
+          "contradiction_signals": 0,
+          "stale_nodes": 0,
+          "consolidation_candidates": 4
+        },
+        "generated_at": "@ts",
+        "available": true,
+        "importance": {
+          "nodes_scanned": 36,
+          "half_life_days": 30.0,
+          "access_source": "store",
+          "candidates": [
+            {
+              "id": "conversation:4a0a339b0c6d:conv-chat-2",
+              "type": "Chat",
+              "title": "현재 페이지 URL: https://example.com/other",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 2,
+              "age_days": "@any",
+              "score": 3.0,
+              "episodic": true
+            },
+            {
+              "id": "conversation:4a0a339b0c6d:conv-fixture-1",
+              "type": "Chat",
+              "title": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 2,
+              "age_days": "@any",
+              "score": 3.0,
+              "episodic": true
+            },
+            {
+              "id": "conversation:4a0a339b0c6d:conv-fixture-2",
+              "type": "Chat",
+              "title": "The chronicle reads the bitemporal node and edge versions plus the conversation ",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 2,
+              "age_days": "@any",
+              "score": 3.0,
+              "episodic": true
+            },
+            {
+              "id": "conversation:4a0a339b0c6d:conv-chat-1",
+              "type": "Chat",
+              "title": "conv-chat-1",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 4,
+              "age_days": "@any",
+              "score": 5.0,
+              "episodic": true
+            }
+          ],
+          "candidate_count": 4,
+          "strongest": [
+            {
+              "id": "person:4a0a339b0c6d:owner@fixture.local",
+              "type": "Person",
+              "title": "owner@fixture.local",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 11,
+              "age_days": "@any",
+              "score": 12.0,
+              "episodic": false
+            },
+            {
+              "id": "webdoc:d2c86342c46b9109f94f5486",
+              "type": "Document",
+              "title": "Rust 이관 회의록",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 5,
+              "age_days": "@any",
+              "score": 6.0,
+              "episodic": false
+            },
+            {
+              "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+              "type": "Document",
+              "title": "Contradiction seed",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 4,
+              "age_days": "@any",
+              "score": 5.0,
+              "episodic": false
+            },
+            {
+              "id": "source:727bc16c7e6f6d8457422188",
+              "type": "Source",
+              "title": "Contradiction seed",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 4,
+              "age_days": "@any",
+              "score": 5.0,
+              "episodic": false
+            },
+            {
+              "id": "folder:5602751f0aaa1eb8af29b566",
+              "type": "Folder",
+              "title": "corpus",
+              "updated_at": "@ts",
+              "accesses": 0.0,
+              "degree": 4,
+              "age_days": "@any",
+              "score": 5.0,
+              "episodic": false
+            }
+          ],
+          "generated_at": "@ts",
+          "available": true
+        },
+        "tidying": true
+      },
+      "name": "quality_report",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/proactive-brief",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "available": true,
+        "pending": {
+          "total": 3,
+          "by_kind": {
+            "self_model_fact": 3
+          }
+        },
+        "tidying": false,
+        "headline": "최근 7일 동안 새 기억 36건이 쌓였고, Brain이 검토할 거리 3건을 찾았습니다.",
+        "lines": [
+          "모순되는 기억 0쌍",
+          "새 주제 후보 0건",
+          "빠진 연결 0건",
+          "정리할 오래된 기록 0묶음"
+        ],
+        "generated_at": "@ts",
+        "items": [
+          {
+            "id": "@any",
+            "kind": "self_model_fact",
+            "title": "나에 대한 새 사실: 파이썬",
+            "summary": "대화에서 '파이썬'를 읽었습니다. 내 프로필(선호)에 추가할까요? 승인하기 전에는 저장되지 않습니다."
+          },
+          {
+            "id": "@any",
+            "kind": "self_model_fact",
+            "title": "나에 대한 새 사실: 매일 아침 회의록을 정리합니다",
+            "summary": "대화에서 '매일 아침 회의록을 정리합니다'를 읽었습니다. 내 프로필(습관)에 추가할까요? 승인하기 전에는 저장되지 않습니다."
+          },
+          {
+            "id": "@any",
+            "kind": "self_model_fact",
+            "title": "나에 대한 새 사실: keep alpha fusion",
+            "summary": "대화에서 'keep alpha fusion'를 읽었습니다. 내 프로필(결정)에 추가할까요? 승인하기 전에는 저장되지 않습니다."
+          }
+        ],
+        "recent_nodes": 36
+      },
+      "name": "proactive_brief",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/importance",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "nodes_scanned": 36,
+        "half_life_days": 30.0,
+        "access_source": "store",
+        "candidates": [
+          {
+            "id": "conversation:4a0a339b0c6d:conv-chat-2",
+            "type": "Chat",
+            "title": "현재 페이지 URL: https://example.com/other",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 2,
+            "age_days": "@any",
+            "score": 3.0,
+            "episodic": true
+          },
+          {
+            "id": "conversation:4a0a339b0c6d:conv-fixture-1",
+            "type": "Chat",
+            "title": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 2,
+            "age_days": "@any",
+            "score": 3.0,
+            "episodic": true
+          },
+          {
+            "id": "conversation:4a0a339b0c6d:conv-fixture-2",
+            "type": "Chat",
+            "title": "The chronicle reads the bitemporal node and edge versions plus the conversation ",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 2,
+            "age_days": "@any",
+            "score": 3.0,
+            "episodic": true
+          },
+          {
+            "id": "conversation:4a0a339b0c6d:conv-chat-1",
+            "type": "Chat",
+            "title": "conv-chat-1",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 4,
+            "age_days": "@any",
+            "score": 5.0,
+            "episodic": true
+          }
+        ],
+        "candidate_count": 4,
+        "strongest": [
+          {
+            "id": "person:4a0a339b0c6d:owner@fixture.local",
+            "type": "Person",
+            "title": "owner@fixture.local",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 11,
+            "age_days": "@any",
+            "score": 12.0,
+            "episodic": false
+          },
+          {
+            "id": "webdoc:d2c86342c46b9109f94f5486",
+            "type": "Document",
+            "title": "Rust 이관 회의록",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 5,
+            "age_days": "@any",
+            "score": 6.0,
+            "episodic": false
+          },
+          {
+            "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+            "type": "Document",
+            "title": "Contradiction seed",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 4,
+            "age_days": "@any",
+            "score": 5.0,
+            "episodic": false
+          },
+          {
+            "id": "source:727bc16c7e6f6d8457422188",
+            "type": "Source",
+            "title": "Contradiction seed",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 4,
+            "age_days": "@any",
+            "score": 5.0,
+            "episodic": false
+          },
+          {
+            "id": "folder:5602751f0aaa1eb8af29b566",
+            "type": "Folder",
+            "title": "corpus",
+            "updated_at": "@ts",
+            "accesses": 0.0,
+            "degree": 4,
+            "age_days": "@any",
+            "score": 5.0,
+            "episodic": false
+          }
+        ],
+        "generated_at": "@ts",
+        "available": true
+      },
+      "name": "importance",
+      "note": "Read-only brain intelligence over the seeded graph."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "POST",
+      "path": "/api/brain/synthesize",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {},
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "nodes_scanned": 36,
+        "edges_scanned": 42,
+        "counts": {
+          "contradictions": 0,
+          "concepts": 5,
+          "links": 5,
+          "consolidation": 1
+        },
+        "proposed_total": 11,
+        "suppressed": 0,
+        "contradictions": {
+          "available": true,
+          "pairs_detected": 0,
+          "proposed": [],
+          "proposed_count": 0,
+          "suppressed": 0,
+          "nodes_scanned": 36,
+          "generated_at": "@ts"
+        },
+        "concepts": {
+          "clusters": [
+            {
+              "token": "@any",
+              "size": 9,
+              "members": [
+                {
+                  "id": "concept:4a0a339b0c6d:fixture-note.md",
+                  "title": "fixture-note.md"
+                },
+                {
+                  "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                  "title": "fixture-report.docx"
+                },
+                {
+                  "id": "file:9f033e8b2619a947d73cfadd",
+                  "title": "fixture-report.docx"
+                },
+                {
+                  "id": "file:fce1110ff985bba9cad1f594",
+                  "title": "fixture-note.md"
+                },
+                {
+                  "id": "person:4a0a339b0c6d:owner@fixture.local",
+                  "title": "owner@fixture.local"
+                },
+                {
+                  "id": "source:0fd118756d7d34aca17cf762",
+                  "title": "fixture-report.docx"
+                },
+                {
+                  "id": "source:301246d3f9fa484df2b90fed",
+                  "title": "handbook.md"
+                },
+                {
+                  "id": "source:727bc16c7e6f6d8457422188",
+                  "title": "Contradiction seed"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 5,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "file:5863e1edc1af064f319ba6b0",
+                  "title": "handbook.md"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:7279f72bf8d49324fc92eddf",
+                  "title": "Onboarding checklist"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "file:5863e1edc1af064f319ba6b0",
+                  "title": "handbook.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                },
+                {
+                  "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+                  "title": "Contradiction seed"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:1875f9b3776c4733d6c0d63f",
+                  "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                },
+                {
+                  "id": "decision:1a3d37580afc4a3381ab7226",
+                  "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+                },
+                {
+                  "id": "local-file:e12370d06b45a320a35ee274",
+                  "title": "회의록.md"
+                },
+                {
+                  "id": "webdoc:d2c86342c46b9109f94f5486",
+                  "title": "Rust 이관 회의록"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                },
+                {
+                  "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+                  "title": "Contradiction seed"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:1875f9b3776c4733d6c0d63f",
+                  "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                },
+                {
+                  "id": "decision:1a3d37580afc4a3381ab7226",
+                  "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+                },
+                {
+                  "id": "local-file:e12370d06b45a320a35ee274",
+                  "title": "회의록.md"
+                },
+                {
+                  "id": "webdoc:d2c86342c46b9109f94f5486",
+                  "title": "Rust 이관 회의록"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:1875f9b3776c4733d6c0d63f",
+                  "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                },
+                {
+                  "id": "decision:1a3d37580afc4a3381ab7226",
+                  "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+                },
+                {
+                  "id": "local-file:e12370d06b45a320a35ee274",
+                  "title": "회의록.md"
+                },
+                {
+                  "id": "webdoc:d2c86342c46b9109f94f5486",
+                  "title": "Rust 이관 회의록"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:1875f9b3776c4733d6c0d63f",
+                  "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                },
+                {
+                  "id": "decision:1a3d37580afc4a3381ab7226",
+                  "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+                },
+                {
+                  "id": "local-file:e12370d06b45a320a35ee274",
+                  "title": "회의록.md"
+                },
+                {
+                  "id": "webdoc:d2c86342c46b9109f94f5486",
+                  "title": "Rust 이관 회의록"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:1875f9b3776c4733d6c0d63f",
+                  "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                },
+                {
+                  "id": "decision:1a3d37580afc4a3381ab7226",
+                  "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+                },
+                {
+                  "id": "local-file:e12370d06b45a320a35ee274",
+                  "title": "회의록.md"
+                },
+                {
+                  "id": "webdoc:d2c86342c46b9109f94f5486",
+                  "title": "Rust 이관 회의록"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 4,
+              "members": [
+                {
+                  "id": "decision:1875f9b3776c4733d6c0d63f",
+                  "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                },
+                {
+                  "id": "decision:1a3d37580afc4a3381ab7226",
+                  "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+                },
+                {
+                  "id": "local-file:e12370d06b45a320a35ee274",
+                  "title": "회의록.md"
+                },
+                {
+                  "id": "webdoc:d2c86342c46b9109f94f5486",
+                  "title": "Rust 이관 회의록"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                  "title": "fixture-report.docx"
+                },
+                {
+                  "id": "file:9f033e8b2619a947d73cfadd",
+                  "title": "fixture-report.docx"
+                },
+                {
+                  "id": "source:0fd118756d7d34aca17cf762",
+                  "title": "fixture-report.docx"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "concept:4a0a339b0c6d:fixture-note.md",
+                  "title": "fixture-note.md"
+                },
+                {
+                  "id": "file:fce1110ff985bba9cad1f594",
+                  "title": "fixture-note.md"
+                },
+                {
+                  "id": "source:b524ef2ecffbf256caa9e9d1",
+                  "title": "fixture-note.md"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                  "title": "fixture-report.docx"
+                },
+                {
+                  "id": "file:9f033e8b2619a947d73cfadd",
+                  "title": "fixture-report.docx"
+                },
+                {
+                  "id": "source:0fd118756d7d34aca17cf762",
+                  "title": "fixture-report.docx"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "file:5863e1edc1af064f319ba6b0",
+                  "title": "handbook.md"
+                },
+                {
+                  "id": "local-file:5f5adbb31c47745d5314651e",
+                  "title": "onboarding.txt"
+                },
+                {
+                  "id": "webdoc:7279f72bf8d49324fc92eddf",
+                  "title": "Onboarding checklist"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            },
+            {
+              "token": "@any",
+              "size": 3,
+              "members": [
+                {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                }
+              ]
+            }
+          ],
+          "proposed": [
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "새 주제 후보: fixture",
+              "summary": "'fixture'가 9개의 기억에 반복해서 나타납니다(fixture-note.md, fixture-report.docx, fixture-report.docx 등). 하나의 주제로 묶어둘까요?",
+              "source": "kg_change_digest",
+              "kind": "concept_cluster",
+              "payload": {
+                "token": "@any",
+                "members": [
+                  {
+                    "id": "concept:4a0a339b0c6d:fixture-note.md",
+                    "title": "fixture-note.md"
+                  },
+                  {
+                    "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                    "title": "fixture-report.docx"
+                  },
+                  {
+                    "id": "file:9f033e8b2619a947d73cfadd",
+                    "title": "fixture-report.docx"
+                  },
+                  {
+                    "id": "file:fce1110ff985bba9cad1f594",
+                    "title": "fixture-note.md"
+                  },
+                  {
+                    "id": "person:4a0a339b0c6d:owner@fixture.local",
+                    "title": "owner@fixture.local"
+                  },
+                  {
+                    "id": "source:0fd118756d7d34aca17cf762",
+                    "title": "fixture-report.docx"
+                  },
+                  {
+                    "id": "source:301246d3f9fa484df2b90fed",
+                    "title": "handbook.md"
+                  },
+                  {
+                    "id": "source:727bc16c7e6f6d8457422188",
+                    "title": "Contradiction seed"
+                  }
+                ],
+                "size": 9,
+                "node_type": "Concept",
+                "proposal_key": "concept_cluster:fixture",
+                "summary_ko": "'fixture'가 9개의 기억에 반복해서 나타납니다(fixture-note.md, fixture-report.docx, fixture-report.docx 등). 하나의 주제로 묶어둘까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "concept_cluster:fixture"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "새 주제 후보: one",
+              "summary": "'one'가 5개의 기억에 반복해서 나타납니다(We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the, handbook.md, ranking-notes.md 등). 하나의 주제로 묶어둘까요?",
+              "source": "kg_change_digest",
+              "kind": "concept_cluster",
+              "payload": {
+                "token": "@any",
+                "members": [
+                  {
+                    "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                    "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                  },
+                  {
+                    "id": "file:5863e1edc1af064f319ba6b0",
+                    "title": "handbook.md"
+                  },
+                  {
+                    "id": "local-file:a2473ecbcf97e12aced076dd",
+                    "title": "ranking-notes.md"
+                  },
+                  {
+                    "id": "webdoc:7279f72bf8d49324fc92eddf",
+                    "title": "Onboarding checklist"
+                  },
+                  {
+                    "id": "webdoc:8d1cf3b813efa206bad0a854",
+                    "title": "Hybrid retrieval decision"
+                  }
+                ],
+                "size": 5,
+                "node_type": "Concept",
+                "proposal_key": "concept_cluster:one",
+                "summary_ko": "'one'가 5개의 기억에 반복해서 나타납니다(We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the, handbook.md, ranking-notes.md 등). 하나의 주제로 묶어둘까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "concept_cluster:one"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "새 주제 후보: retrieval",
+              "summary": "'retrieval'가 4개의 기억에 반복해서 나타납니다(We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the, handbook.md, Hybrid retrieval decision 등). 하나의 주제로 묶어둘까요?",
+              "source": "kg_change_digest",
+              "kind": "concept_cluster",
+              "payload": {
+                "token": "@any",
+                "members": [
+                  {
+                    "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                    "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                  },
+                  {
+                    "id": "file:5863e1edc1af064f319ba6b0",
+                    "title": "handbook.md"
+                  },
+                  {
+                    "id": "webdoc:8d1cf3b813efa206bad0a854",
+                    "title": "Hybrid retrieval decision"
+                  },
+                  {
+                    "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+                    "title": "Contradiction seed"
+                  }
+                ],
+                "size": 4,
+                "node_type": "Concept",
+                "proposal_key": "concept_cluster:retrieval",
+                "summary_ko": "'retrieval'가 4개의 기억에 반복해서 나타납니다(We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the, handbook.md, Hybrid retrieval decision 등). 하나의 주제로 묶어둘까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "concept_cluster:retrieval"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "새 주제 후보: rust로",
+              "summary": "'rust로'가 4개의 기억에 반복해서 나타납니다(# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다., 검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다., 회의록.md 등). 하나의 주제로 묶어둘까요?",
+              "source": "kg_change_digest",
+              "kind": "concept_cluster",
+              "payload": {
+                "token": "@any",
+                "members": [
+                  {
+                    "id": "decision:1875f9b3776c4733d6c0d63f",
+                    "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                  },
+                  {
+                    "id": "decision:1a3d37580afc4a3381ab7226",
+                    "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+                  },
+                  {
+                    "id": "local-file:e12370d06b45a320a35ee274",
+                    "title": "회의록.md"
+                  },
+                  {
+                    "id": "webdoc:d2c86342c46b9109f94f5486",
+                    "title": "Rust 이관 회의록"
+                  }
+                ],
+                "size": 4,
+                "node_type": "Concept",
+                "proposal_key": "concept_cluster:rust로",
+                "summary_ko": "'rust로'가 4개의 기억에 반복해서 나타납니다(# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다., 검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다., 회의록.md 등). 하나의 주제로 묶어둘까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "concept_cluster:rust로"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "새 주제 후보: vector",
+              "summary": "'vector'가 4개의 기억에 반복해서 나타납니다(We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the, ranking-notes.md, Hybrid retrieval decision 등). 하나의 주제로 묶어둘까요?",
+              "source": "kg_change_digest",
+              "kind": "concept_cluster",
+              "payload": {
+                "token": "@any",
+                "members": [
+                  {
+                    "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                    "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                  },
+                  {
+                    "id": "local-file:a2473ecbcf97e12aced076dd",
+                    "title": "ranking-notes.md"
+                  },
+                  {
+                    "id": "webdoc:8d1cf3b813efa206bad0a854",
+                    "title": "Hybrid retrieval decision"
+                  },
+                  {
+                    "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+                    "title": "Contradiction seed"
+                  }
+                ],
+                "size": 4,
+                "node_type": "Concept",
+                "proposal_key": "concept_cluster:vector",
+                "summary_ko": "'vector'가 4개의 기억에 반복해서 나타납니다(We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the, ranking-notes.md, Hybrid retrieval decision 등). 하나의 주제로 묶어둘까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "concept_cluster:vector"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            }
+          ],
+          "suppressed": 0
+        },
+        "links": {
+          "pairs": [
+            {
+              "left": {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "title": "fixture-report.docx"
+              },
+              "right": {
+                "id": "source:0fd118756d7d34aca17cf762",
+                "title": "fixture-report.docx"
+              },
+              "similarity": 0.75,
+              "shared_tokens": [
+                "docx",
+                "fixture",
+                "report"
+              ]
+            },
+            {
+              "left": {
+                "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+              },
+              "right": {
+                "id": "local-file:a2473ecbcf97e12aced076dd",
+                "title": "ranking-notes.md"
+              },
+              "similarity": 0.5909,
+              "shared_tokens": [
+                "alpha",
+                "channel",
+                "fusion",
+                "lexical",
+                "max",
+                "normalized",
+                "one",
+                "over"
+              ]
+            },
+            {
+              "left": {
+                "id": "local-file:a2473ecbcf97e12aced076dd",
+                "title": "ranking-notes.md"
+              },
+              "right": {
+                "id": "webdoc:8d1cf3b813efa206bad0a854",
+                "title": "Hybrid retrieval decision"
+              },
+              "similarity": 0.5909,
+              "shared_tokens": [
+                "alpha",
+                "channel",
+                "fusion",
+                "lexical",
+                "max",
+                "normalized",
+                "one",
+                "over"
+              ]
+            },
+            {
+              "left": {
+                "id": "local-file:5f5adbb31c47745d5314651e",
+                "title": "onboarding.txt"
+              },
+              "right": {
+                "id": "webdoc:7279f72bf8d49324fc92eddf",
+                "title": "Onboarding checklist"
+              },
+              "similarity": 0.5556,
+              "shared_tokens": [
+                "ask",
+                "capture",
+                "folder",
+                "install",
+                "load",
+                "model",
+                "onboarding",
+                "proposal"
+              ]
+            },
+            {
+              "left": {
+                "id": "decision:1875f9b3776c4733d6c0d63f",
+                "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+              },
+              "right": {
+                "id": "webdoc:d2c86342c46b9109f94f5486",
+                "title": "Rust 이관 회의록"
+              },
+              "similarity": 0.5385,
+              "shared_tokens": [
+                "rust로",
+                "결정했습니다",
+                "랭킹을",
+                "이관하기로",
+                "증명을",
+                "패리티",
+                "회의록"
+              ]
+            },
+            {
+              "left": {
+                "id": "local-file:e12370d06b45a320a35ee274",
+                "title": "회의록.md"
+              },
+              "right": {
+                "id": "webdoc:d2c86342c46b9109f94f5486",
+                "title": "Rust 이관 회의록"
+              },
+              "similarity": 0.5385,
+              "shared_tokens": [
+                "rust로",
+                "결정했습니다",
+                "랭킹을",
+                "이관하기로",
+                "증명을",
+                "패리티",
+                "회의록"
+              ]
+            },
+            {
+              "left": {
+                "id": "decision:1875f9b3776c4733d6c0d63f",
+                "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+              },
+              "right": {
+                "id": "decision:1a3d37580afc4a3381ab7226",
+                "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+              },
+              "similarity": 0.5,
+              "shared_tokens": [
+                "rust로",
+                "결정했습니다",
+                "랭킹을",
+                "이관하기로",
+                "증명을",
+                "패리티"
+              ]
+            },
+            {
+              "left": {
+                "id": "decision:1a3d37580afc4a3381ab7226",
+                "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다."
+              },
+              "right": {
+                "id": "local-file:e12370d06b45a320a35ee274",
+                "title": "회의록.md"
+              },
+              "similarity": 0.5,
+              "shared_tokens": [
+                "rust로",
+                "결정했습니다",
+                "랭킹을",
+                "이관하기로",
+                "증명을",
+                "패리티"
+              ]
+            }
+          ],
+          "proposed": [
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "연결 제안: fixture-report.docx ↔ fixture-report.docx",
+              "summary": "'fixture-report.docx'와(과) 'fixture-report.docx'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 75%). 연결할까요?",
+              "source": "kg_change_digest",
+              "kind": "missing_edge",
+              "payload": {
+                "source": {
+                  "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                  "title": "fixture-report.docx"
+                },
+                "target": {
+                  "id": "source:0fd118756d7d34aca17cf762",
+                  "title": "fixture-report.docx"
+                },
+                "edge_type": "RELATED_TO",
+                "similarity": 0.75,
+                "shared_tokens": [
+                  "docx",
+                  "fixture",
+                  "report"
+                ],
+                "proposal_key": "missing_edge:concept:4a0a339b0c6d:fixture-report.docx|source:0fd118756d7d34aca17cf762",
+                "summary_ko": "'fixture-report.docx'와(과) 'fixture-report.docx'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 75%). 연결할까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "missing_edge:concept:4a0a339b0c6d:fixture-report.docx|source:0fd118756d7d34aca17cf762"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "연결 제안: We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the ↔ ranking-notes.md",
+              "summary": "'We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the'와(과) 'ranking-notes.md'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 59%). 연결할까요?",
+              "source": "kg_change_digest",
+              "kind": "missing_edge",
+              "payload": {
+                "source": {
+                  "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                  "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the"
+                },
+                "target": {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                "edge_type": "RELATED_TO",
+                "similarity": 0.5909,
+                "shared_tokens": [
+                  "alpha",
+                  "channel",
+                  "fusion",
+                  "lexical",
+                  "max",
+                  "normalized",
+                  "one",
+                  "over"
+                ],
+                "proposal_key": "missing_edge:decision:4f6dbf62b0a72ef7f6fb0a07|local-file:a2473ecbcf97e12aced076dd",
+                "summary_ko": "'We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the'와(과) 'ranking-notes.md'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 59%). 연결할까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "missing_edge:decision:4f6dbf62b0a72ef7f6fb0a07|local-file:a2473ecbcf97e12aced076dd"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "연결 제안: ranking-notes.md ↔ Hybrid retrieval decision",
+              "summary": "'ranking-notes.md'와(과) 'Hybrid retrieval decision'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 59%). 연결할까요?",
+              "source": "kg_change_digest",
+              "kind": "missing_edge",
+              "payload": {
+                "source": {
+                  "id": "local-file:a2473ecbcf97e12aced076dd",
+                  "title": "ranking-notes.md"
+                },
+                "target": {
+                  "id": "webdoc:8d1cf3b813efa206bad0a854",
+                  "title": "Hybrid retrieval decision"
+                },
+                "edge_type": "RELATED_TO",
+                "similarity": 0.5909,
+                "shared_tokens": [
+                  "alpha",
+                  "channel",
+                  "fusion",
+                  "lexical",
+                  "max",
+                  "normalized",
+                  "one",
+                  "over"
+                ],
+                "proposal_key": "missing_edge:local-file:a2473ecbcf97e12aced076dd|webdoc:8d1cf3b813efa206bad0a854",
+                "summary_ko": "'ranking-notes.md'와(과) 'Hybrid retrieval decision'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 59%). 연결할까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "missing_edge:local-file:a2473ecbcf97e12aced076dd|webdoc:8d1cf3b813efa206bad0a854"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "연결 제안: onboarding.txt ↔ Onboarding checklist",
+              "summary": "'onboarding.txt'와(과) 'Onboarding checklist'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 55%). 연결할까요?",
+              "source": "kg_change_digest",
+              "kind": "missing_edge",
+              "payload": {
+                "source": {
+                  "id": "local-file:5f5adbb31c47745d5314651e",
+                  "title": "onboarding.txt"
+                },
+                "target": {
+                  "id": "webdoc:7279f72bf8d49324fc92eddf",
+                  "title": "Onboarding checklist"
+                },
+                "edge_type": "RELATED_TO",
+                "similarity": 0.5556,
+                "shared_tokens": [
+                  "ask",
+                  "capture",
+                  "folder",
+                  "install",
+                  "load",
+                  "model",
+                  "onboarding",
+                  "proposal"
+                ],
+                "proposal_key": "missing_edge:local-file:5f5adbb31c47745d5314651e|webdoc:7279f72bf8d49324fc92eddf",
+                "summary_ko": "'onboarding.txt'와(과) 'Onboarding checklist'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 55%). 연결할까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "missing_edge:local-file:5f5adbb31c47745d5314651e|webdoc:7279f72bf8d49324fc92eddf"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            },
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "연결 제안: # 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다. ↔ Rust 이관 회의록",
+              "summary": "'# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.'와(과) 'Rust 이관 회의록'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 53%). 연결할까요?",
+              "source": "kg_change_digest",
+              "kind": "missing_edge",
+              "payload": {
+                "source": {
+                  "id": "decision:1875f9b3776c4733d6c0d63f",
+                  "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다."
+                },
+                "target": {
+                  "id": "webdoc:d2c86342c46b9109f94f5486",
+                  "title": "Rust 이관 회의록"
+                },
+                "edge_type": "RELATED_TO",
+                "similarity": 0.5385,
+                "shared_tokens": [
+                  "rust로",
+                  "결정했습니다",
+                  "랭킹을",
+                  "이관하기로",
+                  "증명을",
+                  "패리티",
+                  "회의록"
+                ],
+                "proposal_key": "missing_edge:decision:1875f9b3776c4733d6c0d63f|webdoc:d2c86342c46b9109f94f5486",
+                "summary_ko": "'# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.'와(과) 'Rust 이관 회의록'는 자주 같이 등장하는데 아직 이어져 있지 않습니다(겹침 53%). 연결할까요?"
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "missing_edge:decision:1875f9b3776c4733d6c0d63f|webdoc:d2c86342c46b9109f94f5486"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            }
+          ],
+          "suppressed": 0
+        },
+        "consolidation": {
+          "available": true,
+          "candidate_count": 4,
+          "proposed": [
+            {
+              "id": "@any",
+              "status": "pending",
+              "title": "오래된 기록 4건 정리",
+              "summary": "현재 페이지 URL: https://example.com/other, 키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c, The chronicle reads the bitemporal node and edge versions plus the conversation  등 4건이 오랫동안 쓰이지 않았습니다. 하나의 요약으로 묶어둘까요? 원본은 그대로 남습니다.",
+              "source": "kg_change_digest",
+              "kind": "consolidation",
+              "payload": {
+                "candidates": [
+                  {
+                    "id": "conversation:4a0a339b0c6d:conv-chat-2",
+                    "type": "Chat",
+                    "title": "현재 페이지 URL: https://example.com/other",
+                    "updated_at": "@ts",
+                    "accesses": 0.0,
+                    "degree": 2,
+                    "age_days": "@any",
+                    "score": 3.0,
+                    "episodic": true
+                  },
+                  {
+                    "id": "conversation:4a0a339b0c6d:conv-fixture-1",
+                    "type": "Chat",
+                    "title": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+                    "updated_at": "@ts",
+                    "accesses": 0.0,
+                    "degree": 2,
+                    "age_days": "@any",
+                    "score": 3.0,
+                    "episodic": true
+                  },
+                  {
+                    "id": "conversation:4a0a339b0c6d:conv-fixture-2",
+                    "type": "Chat",
+                    "title": "The chronicle reads the bitemporal node and edge versions plus the conversation ",
+                    "updated_at": "@ts",
+                    "accesses": 0.0,
+                    "degree": 2,
+                    "age_days": "@any",
+                    "score": 3.0,
+                    "episodic": true
+                  },
+                  {
+                    "id": "conversation:4a0a339b0c6d:conv-chat-1",
+                    "type": "Chat",
+                    "title": "conv-chat-1",
+                    "updated_at": "@ts",
+                    "accesses": 0.0,
+                    "degree": 4,
+                    "age_days": "@any",
+                    "score": 5.0,
+                    "episodic": true
+                  }
+                ],
+                "half_life_days": 30.0,
+                "access_source": "store",
+                "proposal_key": "consolidation:conversation:4a0a339b0c6d:conv-chat-1|conversation:4a0a339b0c6d:conv-chat-2|conversation:4a0a339b0c6d:conv-fixture-1|conversation:4a0a339b0c6d:conv-fixture-2",
+                "summary_ko": "현재 페이지 URL: https://example.com/other, 키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c, The chronicle reads the bitemporal node and edge versions plus the conversation  등 4건이 오랫동안 쓰이지 않았습니다. 하나의 요약으로 묶어둘까요? 원본은 그대로 남습니다."
+              },
+              "provenance": {
+                "pipeline": "brain-synthesis",
+                "proposal_key": "consolidation:conversation:4a0a339b0c6d:conv-chat-1|conversation:4a0a339b0c6d:conv-chat-2|conversation:4a0a339b0c6d:conv-fixture-1|conversation:4a0a339b0c6d:conv-fixture-2"
+              },
+              "snoozed_until": null,
+              "user_email": "owner@fixture.local",
+              "workspace_id": "personal",
+              "created_at": "@ts",
+              "updated_at": "@ts",
+              "effective_status": "pending"
+            }
+          ],
+          "proposed_count": 1,
+          "suppressed": 0,
+          "report": {
+            "nodes_scanned": 36,
+            "half_life_days": 30.0,
+            "access_source": "store",
+            "candidates": [
+              {
+                "id": "conversation:4a0a339b0c6d:conv-chat-2",
+                "type": "Chat",
+                "title": "현재 페이지 URL: https://example.com/other",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 2,
+                "age_days": "@any",
+                "score": 3.0,
+                "episodic": true
+              },
+              {
+                "id": "conversation:4a0a339b0c6d:conv-fixture-1",
+                "type": "Chat",
+                "title": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 2,
+                "age_days": "@any",
+                "score": 3.0,
+                "episodic": true
+              },
+              {
+                "id": "conversation:4a0a339b0c6d:conv-fixture-2",
+                "type": "Chat",
+                "title": "The chronicle reads the bitemporal node and edge versions plus the conversation ",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 2,
+                "age_days": "@any",
+                "score": 3.0,
+                "episodic": true
+              },
+              {
+                "id": "conversation:4a0a339b0c6d:conv-chat-1",
+                "type": "Chat",
+                "title": "conv-chat-1",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 4,
+                "age_days": "@any",
+                "score": 5.0,
+                "episodic": true
+              }
+            ],
+            "candidate_count": 4,
+            "strongest": [
+              {
+                "id": "person:4a0a339b0c6d:owner@fixture.local",
+                "type": "Person",
+                "title": "owner@fixture.local",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 11,
+                "age_days": "@any",
+                "score": 12.0,
+                "episodic": false
+              },
+              {
+                "id": "webdoc:d2c86342c46b9109f94f5486",
+                "type": "Document",
+                "title": "Rust 이관 회의록",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 5,
+                "age_days": "@any",
+                "score": 6.0,
+                "episodic": false
+              },
+              {
+                "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+                "type": "Document",
+                "title": "Contradiction seed",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 4,
+                "age_days": "@any",
+                "score": 5.0,
+                "episodic": false
+              },
+              {
+                "id": "source:727bc16c7e6f6d8457422188",
+                "type": "Source",
+                "title": "Contradiction seed",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 4,
+                "age_days": "@any",
+                "score": 5.0,
+                "episodic": false
+              },
+              {
+                "id": "folder:5602751f0aaa1eb8af29b566",
+                "type": "Folder",
+                "title": "corpus",
+                "updated_at": "@ts",
+                "accesses": 0.0,
+                "degree": 4,
+                "age_days": "@any",
+                "score": 5.0,
+                "episodic": false
+              }
+            ],
+            "generated_at": "@ts"
+          },
+          "generated_at": "@ts"
+        },
+        "brief": {
+          "headline": "최근 7일 동안 새 기억 36건이 쌓였고, Brain이 검토할 거리 11건을 찾았습니다.",
+          "deterministic_headline": "최근 7일 동안 새 기억 36건이 쌓였고, Brain이 검토할 거리 11건을 찾았습니다.",
+          "lines": [
+            "모순되는 기억 0쌍",
+            "새 주제 후보 5건",
+            "빠진 연결 5건",
+            "정리할 오래된 기록 1묶음"
+          ],
+          "recent_nodes": 36,
+          "window_days": 7,
+          "counts": {
+            "contradictions": 0,
+            "concepts": 5,
+            "links": 5,
+            "consolidation": 1
+          },
+          "generated_at": "@ts"
+        },
+        "trigger": {
+          "threshold": 25,
+          "pending": 15,
+          "runs": 0,
+          "last_fired_at": null,
+          "due_in": 10
+        },
+        "generated_at": "@ts",
+        "available": true
+      },
+      "name": "synthesize",
+      "note": "One synthesis pass — output is review proposals, never writes."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "POST",
+      "path": "/api/brain/contradictions/propose",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {},
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "available": true,
+        "pairs_detected": 0,
+        "proposed": [],
+        "proposed_count": 0,
+        "suppressed": 0,
+        "nodes_scanned": 36,
+        "generated_at": "@ts"
+      },
+      "name": "contradictions_propose",
+      "note": "Raise a proposal per contradicting pair."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "POST",
+      "path": "/api/brain/contradictions/resolve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "item_id": "not-a-proposal",
+        "resolution": "keep_newer"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "resolution must be one of ['keep_old', 'replace', 'keep_both_temporal']"
+      },
+      "name": "contradictions_resolve_unknown",
+      "note": "Resolving a proposal that is not in the queue."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "POST",
+      "path": "/api/brain/contradictions/resolve",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "item_id"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      },
+      "name": "contradictions_resolve_validation",
+      "note": "item_id is required."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "POST",
+      "path": "/api/brain/consolidate",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "apply": false,
+        "dry_run": true
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "dry_run",
+        "memories_scanned": 0,
+        "duplicate_memories": [],
+        "duplicate_memory_count": 0,
+        "pruned": 0,
+        "duplicate_edges": [],
+        "duplicate_edge_count": 0,
+        "graph_consolidation": {
+          "mode": "dry_run",
+          "apply_supported": false,
+          "nodes_scanned": 36,
+          "groups": [],
+          "group_count": 0,
+          "applied": [],
+          "review_only_near_pairs": [
+            {
+              "left": {
+                "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                "type": "Decision",
+                "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "webdoc:8d1cf3b813efa206bad0a854",
+                "type": "Document",
+                "title": "Hybrid retrieval decision",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "decision:1875f9b3776c4733d6c0d63f",
+                "type": "Decision",
+                "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "local-file:e12370d06b45a320a35ee274",
+                "type": "Document",
+                "title": "회의록.md",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "type": "Concept",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "file:9f033e8b2619a947d73cfadd",
+                "type": "Document",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "decision:1a3d37580afc4a3381ab7226",
+                "type": "Decision",
+                "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다.",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "webdoc:d2c86342c46b9109f94f5486",
+                "type": "Document",
+                "title": "Rust 이관 회의록",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.8333
+            },
+            {
+              "left": {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "type": "Concept",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "source:0fd118756d7d34aca17cf762",
+                "type": "Source",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.75
+            },
+            {
+              "left": {
+                "id": "file:9f033e8b2619a947d73cfadd",
+                "type": "Document",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "source:0fd118756d7d34aca17cf762",
+                "type": "Source",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.75
+            }
+          ],
+          "note": null,
+          "generated_at": "@ts"
+        },
+        "generated_at": "@ts"
+      },
+      "name": "consolidate_dry_run",
+      "note": "Consolidation, reporting only."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "POST",
+      "path": "/api/brain/consolidate",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "apply": true,
+        "dry_run": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "mode": "applied",
+        "memories_scanned": 0,
+        "duplicate_memories": [],
+        "duplicate_memory_count": 0,
+        "pruned": 0,
+        "duplicate_edges": [],
+        "duplicate_edge_count": 0,
+        "graph_consolidation": {
+          "mode": "dry_run",
+          "apply_supported": false,
+          "nodes_scanned": 36,
+          "groups": [],
+          "group_count": 0,
+          "applied": [],
+          "review_only_near_pairs": [
+            {
+              "left": {
+                "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+                "type": "Decision",
+                "title": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "webdoc:8d1cf3b813efa206bad0a854",
+                "type": "Document",
+                "title": "Hybrid retrieval decision",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "decision:1875f9b3776c4733d6c0d63f",
+                "type": "Decision",
+                "title": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "local-file:e12370d06b45a320a35ee274",
+                "type": "Document",
+                "title": "회의록.md",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "type": "Concept",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "file:9f033e8b2619a947d73cfadd",
+                "type": "Document",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 1.0
+            },
+            {
+              "left": {
+                "id": "decision:1a3d37580afc4a3381ab7226",
+                "type": "Decision",
+                "title": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다.",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "webdoc:d2c86342c46b9109f94f5486",
+                "type": "Document",
+                "title": "Rust 이관 회의록",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.8333
+            },
+            {
+              "left": {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "type": "Concept",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "source:0fd118756d7d34aca17cf762",
+                "type": "Source",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.75
+            },
+            {
+              "left": {
+                "id": "file:9f033e8b2619a947d73cfadd",
+                "type": "Document",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "right": {
+                "id": "source:0fd118756d7d34aca17cf762",
+                "type": "Source",
+                "title": "fixture-report.docx",
+                "updated_at": "@ts"
+              },
+              "similarity": 0.75
+            }
+          ],
+          "note": null,
+          "generated_at": "@ts"
+        },
+        "generated_at": "@ts"
+      },
+      "name": "consolidate_apply",
+      "note": "Consolidation that is allowed to write."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "GET",
+      "path": "/api/brain/health",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "health_auth_denied",
+      "note": "Auth denial."
+    },
+    {
+      "family": "brain_intelligence",
+      "method": "POST",
+      "path": "/api/brain/synthesize",
+      "query": {},
+      "request_headers": {},
+      "request_body": {},
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "synthesize_auth_denied",
+      "note": "Auth denial."
+    },
+    {
+      "family": "garden",
+      "method": "POST",
+      "path": "/garden",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "raw_data": "Rust 이관 결정: 게이트웨이가 제품 서버가 된다.",
+        "category": "10_Wiki"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "saved",
+        "folder": "10_Wiki",
+        "filename": "@stamp_Rust_이관_결정_게이트웨이가_제품_서버가_된다.md",
+        "path": "@home/.ltcai-brain/10_Wiki/@stamp_Rust_이관_결정_게이트웨이가_제품_서버가_된다.md",
+        "classified_as": "10_Wiki",
+        "description": "검증된 지식, 개념 설명, 레퍼런스",
+        "graph": "ok",
+        "graph_node_id": "@any",
+        "provenance_id": "@any",
+        "duplicate": false
+      },
+      "name": "garden_put",
+      "note": "VS Code-only route: classify raw text into the P-Reinforce tree. graph_node_id/provenance_id are '@any' — they hash a filename that carries the wall-clock second."
+    },
+    {
+      "family": "garden",
+      "method": "POST",
+      "path": "/garden",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "raw_data": "Ranking notes: alpha fusion stays."
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "saved",
+        "folder": "00_Raw",
+        "filename": "@stamp_Ranking_notes_alpha_fusion_stays.md",
+        "path": "@home/.ltcai-brain/00_Raw/@stamp_Ranking_notes_alpha_fusion_stays.md",
+        "classified_as": "00_Raw",
+        "description": "정제되지 않은 원시 데이터, 아이디어 메모",
+        "graph": "ok",
+        "graph_node_id": "@any",
+        "provenance_id": "@any",
+        "duplicate": false
+      },
+      "name": "garden_put_no_category",
+      "note": "Same route letting the classifier pick the folder."
+    },
+    {
+      "family": "garden",
+      "method": "POST",
+      "path": "/garden",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {},
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "raw_data"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
+      },
+      "name": "garden_put_validation",
+      "note": "raw_data is required."
+    },
+    {
+      "family": "garden",
+      "method": "GET",
+      "path": "/garden/tree",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "root": "@home/.ltcai-brain",
+        "folders": [
+          {
+            "name": "10_Wiki",
+            "description": "검증된 지식, 개념 설명, 레퍼런스",
+            "files": [
+              {
+                "name": "@stamp_Rust_이관_결정_게이트웨이가_제품_서버가_된다.md",
+                "size_bytes": 241,
+                "modified_at": "@ts"
+              }
+            ],
+            "count": 1
+          },
+          {
+            "name": "00_Raw",
+            "description": "정제되지 않은 원시 데이터, 아이디어 메모",
+            "files": [
+              {
+                "name": "@stamp_Ranking_notes_alpha_fusion_stays.md",
+                "size_bytes": 182,
+                "modified_at": "@ts"
+              }
+            ],
+            "count": 1
+          },
+          {
+            "name": "20_Skills",
+            "description": "재사용 가능한 코드 스니펫, 프롬프트, 워크플로",
+            "files": [],
+            "count": 0
+          },
+          {
+            "name": "30_Projects",
+            "description": "프로젝트별 컨텍스트, 진행 상황",
+            "files": [],
+            "count": 0
+          },
+          {
+            "name": "40_Log",
+            "description": "날짜별 작업 로그",
+            "files": [
+              {
+                "name": "@today.md",
+                "size_bytes": 315,
+                "modified_at": "@ts"
+              }
+            ],
+            "count": 1
+          }
+        ]
+      },
+      "name": "garden_tree",
+      "note": "The tree the VS Code webview renders (brain_dir + structure)."
+    },
+    {
+      "family": "garden",
+      "method": "GET",
+      "path": "/garden/tree",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "garden_tree_auth_denied",
+      "note": "Auth denial."
+    },
+    {
+      "family": "garden",
+      "method": "POST",
+      "path": "/garden",
+      "query": {},
+      "request_headers": {},
+      "request_body": {
+        "raw_data": "x"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "garden_put_auth_denied",
+      "note": "Auth denial."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/overview",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "first_activity_at": "@ts",
+        "last_activity_at": "@ts",
+        "totals": {
+          "sources": 15,
+          "entities": 33,
+          "connections": 69,
+          "conversations": 2
+        },
+        "series": [
+          {
+            "date": "@ts",
+            "sources": 15,
+            "entities": 33,
+            "connections": 69,
+            "conversations": 2
+          }
+        ]
+      },
+      "name": "overview",
+      "note": "The chronicle's totals and series over the seeded graph."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/day/@today",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "date": "@ts",
+        "counts": {
+          "sources": 15,
+          "entities": 33,
+          "conversations": 2,
+          "changes": 0
+        },
+        "groups": {
+          "sources": [
+            {
+              "id": "prov:05129d6035fdc6ae05d20cf5",
+              "title": "Hybrid retrieval decision",
+              "source_type": "note",
+              "captured_at": "@ts",
+              "node_id": "webdoc:8d1cf3b813efa206bad0a854"
+            },
+            {
+              "id": "prov:052339f4d2c85719ea23f700",
+              "title": "fixture-note.md",
+              "source_type": "file",
+              "captured_at": "@ts",
+              "node_id": "file:fce1110ff985bba9cad1f594"
+            },
+            {
+              "id": "prov:27310d23a323479346e779ec",
+              "title": "handbook.md",
+              "source_type": "upload",
+              "captured_at": "@ts",
+              "node_id": "file:5863e1edc1af064f319ba6b0"
+            },
+            {
+              "id": "prov:2c150ee3e65850f732b7e4e5",
+              "title": "Contradiction seed",
+              "source_type": "note",
+              "captured_at": "@ts",
+              "node_id": "webdoc:b4d2f4f2e3557369d4b546cc"
+            },
+            {
+              "id": "prov:2e19230ba507ab7395403ce0",
+              "title": "Rust 이관 회의록",
+              "source_type": "note",
+              "captured_at": "@ts",
+              "node_id": "webdoc:d2c86342c46b9109f94f5486"
+            },
+            {
+              "id": "prov:34097684f06ccdc8a8c75f8a",
+              "title": "Onboarding checklist",
+              "source_type": "note",
+              "captured_at": "@ts",
+              "node_id": "webdoc:7279f72bf8d49324fc92eddf"
+            },
+            {
+              "id": "prov:361097cddfdda7230fd6e74b",
+              "title": "Retrieval question",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "message:d4296bd346daee363770ced9"
+            },
+            {
+              "id": "prov:54855097aec28ea7d3e5404b",
+              "title": "Retrieval answer",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "airesponse:f93d7c89fc5874afec4f66e9"
+            },
+            {
+              "id": "prov:6860aaf1b1301a931fe04f14",
+              "title": "이 페이지 주소 알려줘",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "message:29f8d189be7c6b5d31b0b36c"
+            },
+            {
+              "id": "prov:68e01a47861dd5e9328a66fb",
+              "title": "Second answer",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "airesponse:254907e406bc5e7703b40b4b"
+            },
+            {
+              "id": "prov:7e040946017106062e0388da",
+              "title": "현재 페이지 URL: https://example.com/page",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "airesponse:26924af3eb594ec50c814539"
+            },
+            {
+              "id": "prov:cc4d33c38f728ce9ad002f61",
+              "title": "Second conversation",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "message:02c4924c0abbe70bb5fad6db"
+            },
+            {
+              "id": "prov:da3f10b59a87129ac4c38b73",
+              "title": "fixture-report.docx",
+              "source_type": "file",
+              "captured_at": "@ts",
+              "node_id": "file:9f033e8b2619a947d73cfadd"
+            },
+            {
+              "id": "prov:ddf13086358760df7df9772b",
+              "title": "현재 url 알려줘",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "message:4beefff66cf77cb20461cf2b"
+            },
+            {
+              "id": "prov:e23b93ffd82ba6f86147556d",
+              "title": "현재 페이지 URL: https://example.com/other",
+              "source_type": "chat_message",
+              "captured_at": "@ts",
+              "node_id": "airesponse:097dd9e780a500a6baee6ddb"
+            }
+          ],
+          "entities": [
+            {
+              "id": "airesponse:097dd9e780a500a6baee6ddb",
+              "label": "현재 페이지 URL: https://example.com/other",
+              "type": "AIResponse",
+              "created_at": "@ts"
+            },
+            {
+              "id": "airesponse:254907e406bc5e7703b40b4b",
+              "label": "The chronicle reads the bitemporal node and edge versions plus the conversation ",
+              "type": "AIResponse",
+              "created_at": "@ts"
+            },
+            {
+              "id": "airesponse:26924af3eb594ec50c814539",
+              "label": "현재 페이지 URL: https://example.com/page",
+              "type": "AIResponse",
+              "created_at": "@ts"
+            },
+            {
+              "id": "airesponse:f93d7c89fc5874afec4f66e9",
+              "label": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+              "type": "AIResponse",
+              "created_at": "@ts"
+            },
+            {
+              "id": "computer:4a0a339b0c6d:@hostname",
+              "label": "@hostname",
+              "type": "Computer",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:fixture-note.md",
+              "label": "fixture-note.md",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:fixture-report.docx",
+              "label": "fixture-report.docx",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:lattice",
+              "label": "Lattice",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:ranking",
+              "label": "Ranking",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:rust",
+              "label": "Rust",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:url",
+              "label": "URL",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:가중치",
+              "label": "가중치",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:게이트웨이",
+              "label": "게이트웨이",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:데이터",
+              "label": "데이터",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:상충하",
+              "label": "상충하",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "concept:4a0a339b0c6d:회의록",
+              "label": "회의록",
+              "type": "Concept",
+              "created_at": "@ts"
+            },
+            {
+              "id": "conversation:4a0a339b0c6d:conv-chat-1",
+              "label": "conv-chat-1",
+              "type": "Chat",
+              "created_at": "@ts"
+            },
+            {
+              "id": "conversation:4a0a339b0c6d:conv-chat-2",
+              "label": "현재 페이지 URL: https://example.com/other",
+              "type": "Chat",
+              "created_at": "@ts"
+            },
+            {
+              "id": "conversation:4a0a339b0c6d:conv-fixture-1",
+              "label": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+              "type": "Chat",
+              "created_at": "@ts"
+            },
+            {
+              "id": "conversation:4a0a339b0c6d:conv-fixture-2",
+              "label": "The chronicle reads the bitemporal node and edge versions plus the conversation ",
+              "type": "Chat",
+              "created_at": "@ts"
+            },
+            {
+              "id": "decision:1875f9b3776c4733d6c0d63f",
+              "label": "# 회의록 검색 랭킹을 Rust로 이관하기로 결정했습니다. 패리티 증명을 먼저 만듭니다.",
+              "type": "Decision",
+              "created_at": "@ts"
+            },
+            {
+              "id": "decision:1a3d37580afc4a3381ab7226",
+              "label": "검색 랭킹을 Rust로 이관하기로 결정했습니다. 회의 결과 패리티 증명을 먼저 만들고, 그 다음 게이트웨이를 제품 서버로 올립니다.",
+              "type": "Decision",
+              "created_at": "@ts"
+            },
+            {
+              "id": "decision:4f6dbf62b0a72ef7f6fb0a07",
+              "label": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the",
+              "type": "Decision",
+              "created_at": "@ts"
+            },
+            {
+              "id": "drive:26ea774180ad1f73ff0941b0",
+              "label": "/",
+              "type": "Drive",
+              "created_at": "@ts"
+            },
+            {
+              "id": "@any",
+              "label": "/clear requested",
+              "type": "ClearEvent",
+              "created_at": "@ts"
+            },
+            {
+              "id": "folder:5602751f0aaa1eb8af29b566",
+              "label": "corpus",
+              "type": "Folder",
+              "created_at": "@ts"
+            },
+            {
+              "id": "person:4a0a339b0c6d:owner@fixture.local",
+              "label": "owner@fixture.local",
+              "type": "Person",
+              "created_at": "@ts"
+            },
+            {
+              "id": "self:preference:e28d88323aff",
+              "label": "답변은 한국어로 받고 싶습니다",
+              "type": "Preference",
+              "created_at": "@ts"
+            },
+            {
+              "id": "self:root",
+              "label": "나",
+              "type": "Self",
+              "created_at": "@ts"
+            },
+            {
+              "id": "source:0fd118756d7d34aca17cf762",
+              "label": "fixture-report.docx",
+              "type": "Source",
+              "created_at": "@ts"
+            },
+            {
+              "id": "source:301246d3f9fa484df2b90fed",
+              "label": "handbook.md",
+              "type": "Source",
+              "created_at": "@ts"
+            },
+            {
+              "id": "source:727bc16c7e6f6d8457422188",
+              "label": "Contradiction seed",
+              "type": "Source",
+              "created_at": "@ts"
+            },
+            {
+              "id": "source:b524ef2ecffbf256caa9e9d1",
+              "label": "fixture-note.md",
+              "type": "Source",
+              "created_at": "@ts"
+            }
+          ],
+          "conversations": [
+            {
+              "conversation_id": "conv-chat-1",
+              "preview": "현재 url 알려줘",
+              "messages": 2,
+              "started_at": "@ts"
+            },
+            {
+              "conversation_id": "conv-chat-2",
+              "preview": "이 페이지 주소 알려줘",
+              "messages": 2,
+              "started_at": "@ts"
+            }
+          ],
+          "changes": []
+        }
+      },
+      "name": "day_with_activity",
+      "note": "The day the seed was written. The date is an explicit path parameter — no clock is read to serve it — and it is recorded as the '@today' token so regenerating on another day produces the same fixture. Every group is pinned including its order: groups.entities is served ORDER BY created_at ASC, id ASC over a second-resolution column, which is only reproducible because this capture freezes the write clock; see frozen_stamps()."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/day/2020-01-01",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "date": "@ts",
+        "counts": {
+          "sources": 0,
+          "entities": 0,
+          "conversations": 0,
+          "changes": 0
+        },
+        "groups": {
+          "sources": [],
+          "entities": [],
+          "conversations": [],
+          "changes": []
+        }
+      },
+      "name": "day_empty",
+      "note": "A day with nothing in it — the empty shape."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/day/not-a-date",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "날짜를 읽을 수 없습니다. 2026-08-11 처럼 연-월-일로 적어 주세요."
+      },
+      "name": "day_malformed",
+      "note": "A malformed date."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/as-of",
+      "query": {
+        "ts": "@ts"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "ts": "@ts",
+        "stats": {
+          "entities": 64,
+          "connections": 69
+        },
+        "top_entities": [
+          {
+            "id": "airesponse:097dd9e780a500a6baee6ddb",
+            "label": "현재 페이지 URL: https://example.com/other",
+            "type": "AIResponse",
+            "importance_score": "@any"
+          },
+          {
+            "id": "airesponse:254907e406bc5e7703b40b4b",
+            "label": "The chronicle reads the bitemporal node and edge versions plus the conversation ",
+            "type": "AIResponse",
+            "importance_score": "@any"
+          },
+          {
+            "id": "airesponse:26924af3eb594ec50c814539",
+            "label": "현재 페이지 URL: https://example.com/page",
+            "type": "AIResponse",
+            "importance_score": "@any"
+          },
+          {
+            "id": "airesponse:f93d7c89fc5874afec4f66e9",
+            "label": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+            "type": "AIResponse",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:082d6654ffb44c83b15972eb",
+            "label": "Onboarding checklist chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:1903492b5d0039e97b6838b7",
+            "label": "onboarding.txt chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:2ba4fa634cdc0381edf03fb1",
+            "label": "Contradiction seed chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:331bfc093843e01c643d8a7c",
+            "label": "ranking-notes.md chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:61042cc288a09e7e4044acfa",
+            "label": "chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:7eeaebd9d35503b60c26c498",
+            "label": "회의록.md chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:7f1715f756bf0cf1d6f5951a",
+            "label": "handbook.md chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          },
+          {
+            "id": "chunk:81b12597bbf14bea39d39a1a",
+            "label": "Rust 이관 회의록 chunk 1",
+            "type": "Chunk",
+            "importance_score": "@any"
+          }
+        ]
+      },
+      "name": "as_of",
+      "note": "Bitemporal as-of read at the end of the seeded day — after every write, so the versions are visible."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/as-of",
+      "query": {
+        "ts": "@ts"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "ts": "@ts",
+        "stats": {
+          "entities": 0,
+          "connections": 0
+        },
+        "top_entities": []
+      },
+      "name": "as_of_past",
+      "note": "As-of before anything existed."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/as-of",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "query",
+              "ts"
+            ],
+            "msg": "Field required",
+            "input": null
+          }
+        ]
+      },
+      "name": "as_of_missing_ts",
+      "note": "ts is required."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/as-of",
+      "query": {
+        "ts": "@any"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "시점을 읽을 수 없습니다. 2026-08-11T09:00:00 처럼 적어 주세요."
+      },
+      "name": "as_of_malformed",
+      "note": "A malformed timestamp."
+    },
+    {
+      "family": "chronicle",
+      "method": "GET",
+      "path": "/api/chronicle/overview",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "overview_auth_denied",
+      "note": "Auth denial."
+    },
+    {
+      "family": "command_center",
+      "method": "GET",
+      "path": "/api/command/briefing",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "generated_at": "@ts",
+        "sections": {
+          "knowledge": {
+            "available": true,
+            "recent": [
+              {
+                "id": "computer:4a0a339b0c6d:@hostname",
+                "title": "@hostname",
+                "type": "Computer",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:fixture-note.md",
+                "title": "fixture-note.md",
+                "type": "Concept",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:fixture-report.docx",
+                "title": "fixture-report.docx",
+                "type": "Concept",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:lattice",
+                "title": "Lattice",
+                "type": "Concept",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:ranking",
+                "title": "Ranking",
+                "type": "Concept",
+                "updated_at": "@ts"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:rust",
+                "title": "Rust",
+                "type": "Concept",
+                "updated_at": "@ts"
+              }
+            ],
+            "sampled_nodes": 36
+          },
+          "conversations": {
+            "available": true,
+            "messages": 4,
+            "questions": 2,
+            "last_active": "@ts",
+            "last_question": "이 페이지 주소 알려줘"
+          },
+          "automations": {
+            "available": true,
+            "total": 0,
+            "enabled": 0,
+            "drafts": 0
+          },
+          "review": {
+            "available": true,
+            "pending": 14
+          },
+          "health": {
+            "available": true,
+            "grade": "excellent",
+            "score": 100,
+            "recommended_actions": [
+              {
+                "id": "rebuild_vector_index",
+                "reason": "1 items are missing or stale in the vector index."
+              }
+            ]
+          },
+          "suggestions": {
+            "available": true,
+            "count": 0,
+            "top": []
+          },
+          "hygiene": {
+            "available": true,
+            "suggest_noise_curate": false,
+            "reason": "",
+            "last_noise_curate_at": null,
+            "node_count": 74
+          }
+        },
+        "quick_actions": [
+          {
+            "id": "review-pending",
+            "kind": "review",
+            "count": 14,
+            "target": "/act/review"
+          }
+        ]
+      },
+      "name": "briefing",
+      "note": "Today's briefing: it fans out over graph, conversations and the review queue."
+    },
+    {
+      "family": "command_center",
+      "method": "GET",
+      "path": "/api/command/search",
+      "query": {
+        "q": "retrieval",
+        "limit": "5"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "query": "retrieval",
+        "groups": [],
+        "total": 0,
+        "generated_at": "@ts"
+      },
+      "name": "search",
+      "note": "The Cmd+K unified search. Its knowledge group is empty on purpose-of-record: the service reads payload['results'] while search_service.keyword_search answers 'matches', so that group never fills. Captured as the behaviour is, not as it was meant to be."
+    },
+    {
+      "family": "command_center",
+      "method": "GET",
+      "path": "/api/command/search",
+      "query": {
+        "q": "페이지",
+        "limit": "5"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "query": "페이지",
+        "groups": [
+          {
+            "kind": "conversation",
+            "items": [
+              {
+                "conversation_id": "conv-chat-2",
+                "role": "assistant",
+                "snippet": "현재 페이지 URL: https://example.com/other",
+                "timestamp": "@ts"
+              },
+              {
+                "conversation_id": "conv-chat-1",
+                "role": "assistant",
+                "snippet": "현재 페이지 URL: https://example.com/page",
+                "timestamp": "@ts"
+              }
+            ]
+          }
+        ],
+        "total": 2,
+        "generated_at": "@ts"
+      },
+      "name": "search_conversation_hit",
+      "note": "A query that does reach the conversation group (it matches the chat history, which is the only group that can fill)."
+    },
+    {
+      "family": "command_center",
+      "method": "GET",
+      "path": "/api/command/search",
+      "query": {
+        "q": "가중치",
+        "limit": "5"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "query": "가중치",
+        "groups": [],
+        "total": 0,
+        "generated_at": "@ts"
+      },
+      "name": "search_korean",
+      "note": "Same search for a Korean query."
+    },
+    {
+      "family": "command_center",
+      "method": "GET",
+      "path": "/api/command/search",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "query": "",
+        "groups": [],
+        "generated_at": "@ts"
+      },
+      "name": "search_empty_query",
+      "note": "No q at all."
+    },
+    {
+      "family": "command_center",
+      "method": "GET",
+      "path": "/api/command/briefing",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "briefing_auth_denied",
+      "note": "Auth denial."
+    },
+    {
+      "family": "evidence_actions",
+      "method": "POST",
+      "path": "/api/evidence/actions",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "question": "하이브리드 검색 가중치는?",
+        "source_ids": [
+          "concept:4a0a339b0c6d:lattice",
+          "concept:4a0a339b0c6d:rust"
+        ],
+        "language": "ko"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "sources": [
+          {
+            "id": "concept:4a0a339b0c6d:lattice",
+            "title": "Lattice",
+            "type": "Concept",
+            "origin": "",
+            "excerpt": "",
+            "truncated": false
+          },
+          {
+            "id": "concept:4a0a339b0c6d:rust",
+            "title": "Rust",
+            "type": "Concept",
+            "origin": "local_folder",
+            "excerpt": "",
+            "truncated": false
+          }
+        ],
+        "missing": [],
+        "actions": [
+          {
+            "id": "summary",
+            "kind": "chat",
+            "label": {
+              "ko": "이 근거로 요약 만들기",
+              "en": "Summarize from this evidence"
+            },
+            "prompt": "[근거 자료]\n1. Lattice\n2. Rust (local_folder)\n\n핵심만 5줄 이내로 요약해 주세요.\n\n위 근거 자료에 있는 내용만 사용하세요. 근거에 없는 사실은 지어내지 말고, 근거가 부족하면 '이 부분은 근거가 없습니다'라고 적으세요.\n\n원래 질문: 하이브리드 검색 가중치는?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice",
+              "concept:4a0a339b0c6d:rust"
+            ]
+          },
+          {
+            "id": "checklist",
+            "kind": "chat",
+            "label": {
+              "ko": "이 근거로 체크리스트 만들기",
+              "en": "Build a checklist"
+            },
+            "prompt": "[근거 자료]\n1. Lattice\n2. Rust (local_folder)\n\n실행 가능한 체크리스트를 만들어 주세요. 각 항목은 한 줄이고, 근거가 있는 항목만 넣으세요.\n\n위 근거 자료에 있는 내용만 사용하세요. 근거에 없는 사실은 지어내지 말고, 근거가 부족하면 '이 부분은 근거가 없습니다'라고 적으세요.\n\n원래 질문: 하이브리드 검색 가중치는?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice",
+              "concept:4a0a339b0c6d:rust"
+            ]
+          },
+          {
+            "id": "document",
+            "kind": "file",
+            "label": {
+              "ko": "이 근거로 문서 파일 만들기",
+              "en": "Write a document file"
+            },
+            "prompt": "[근거 자료]\n1. Lattice\n2. Rust (local_folder)\n\n정리된 마크다운 문서를 만들어 evidence-note.md 파일로 저장해 주세요.\n\n위 근거 자료에 있는 내용만 사용하세요. 근거에 없는 사실은 지어내지 말고, 근거가 부족하면 '이 부분은 근거가 없습니다'라고 적으세요.\n\n원래 질문: 하이브리드 검색 가중치는?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice",
+              "concept:4a0a339b0c6d:rust"
+            ],
+            "suggested_path": "evidence-note.md"
+          },
+          {
+            "id": "page",
+            "kind": "file",
+            "label": {
+              "ko": "이 근거로 한 페이지 만들기",
+              "en": "Build a one-page view"
+            },
+            "prompt": "[근거 자료]\n1. Lattice\n2. Rust (local_folder)\n\n내용을 한눈에 보는 HTML 한 페이지로 만들어 evidence-note.html 파일로 저장해 주세요.\n\n위 근거 자료에 있는 내용만 사용하세요. 근거에 없는 사실은 지어내지 말고, 근거가 부족하면 '이 부분은 근거가 없습니다'라고 적으세요.\n\n원래 질문: 하이브리드 검색 가중치는?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice",
+              "concept:4a0a339b0c6d:rust"
+            ],
+            "suggested_path": "evidence-note.html"
+          }
+        ],
+        "reason": ""
+      },
+      "name": "actions_with_sources",
+      "note": "Evidence → action for real node ids from the seeded graph."
+    },
+    {
+      "family": "evidence_actions",
+      "method": "POST",
+      "path": "/api/evidence/actions",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "question": "what are the retrieval weights?",
+        "source_ids": [
+          "concept:4a0a339b0c6d:lattice"
+        ],
+        "language": "en"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "sources": [
+          {
+            "id": "concept:4a0a339b0c6d:lattice",
+            "title": "Lattice",
+            "type": "Concept",
+            "origin": "",
+            "excerpt": "",
+            "truncated": false
+          }
+        ],
+        "missing": [],
+        "actions": [
+          {
+            "id": "summary",
+            "kind": "chat",
+            "label": {
+              "ko": "이 근거로 요약 만들기",
+              "en": "Summarize from this evidence"
+            },
+            "prompt": "[EVIDENCE]\n1. Lattice\n\nSummarize the key points in five lines or fewer.\n\nUse only the evidence quoted above. Do not invent facts that are not in it; when the evidence does not cover something, say so explicitly.\n\nOriginal question: what are the retrieval weights?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice"
+            ]
+          },
+          {
+            "id": "checklist",
+            "kind": "chat",
+            "label": {
+              "ko": "이 근거로 체크리스트 만들기",
+              "en": "Build a checklist"
+            },
+            "prompt": "[EVIDENCE]\n1. Lattice\n\nBuild an actionable checklist. One line per item, only items the evidence supports.\n\nUse only the evidence quoted above. Do not invent facts that are not in it; when the evidence does not cover something, say so explicitly.\n\nOriginal question: what are the retrieval weights?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice"
+            ]
+          },
+          {
+            "id": "document",
+            "kind": "file",
+            "label": {
+              "ko": "이 근거로 문서 파일 만들기",
+              "en": "Write a document file"
+            },
+            "prompt": "[EVIDENCE]\n1. Lattice\n\nWrite a structured markdown document and save it as what-are-the-retrieval-weights.md.\n\nUse only the evidence quoted above. Do not invent facts that are not in it; when the evidence does not cover something, say so explicitly.\n\nOriginal question: what are the retrieval weights?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice"
+            ],
+            "suggested_path": "what-are-the-retrieval-weights.md"
+          },
+          {
+            "id": "page",
+            "kind": "file",
+            "label": {
+              "ko": "이 근거로 한 페이지 만들기",
+              "en": "Build a one-page view"
+            },
+            "prompt": "[EVIDENCE]\n1. Lattice\n\nBuild a single self-contained HTML page and save it as what-are-the-retrieval-weights.html.\n\nUse only the evidence quoted above. Do not invent facts that are not in it; when the evidence does not cover something, say so explicitly.\n\nOriginal question: what are the retrieval weights?",
+            "source_ids": [
+              "concept:4a0a339b0c6d:lattice"
+            ],
+            "suggested_path": "what-are-the-retrieval-weights.html"
+          }
+        ],
+        "reason": ""
+      },
+      "name": "actions_english",
+      "note": "The same answer in English."
+    },
+    {
+      "family": "evidence_actions",
+      "method": "POST",
+      "path": "/api/evidence/actions",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "question": "x",
+        "source_ids": [
+          "node-does-not-exist"
+        ]
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "sources": [],
+        "missing": [
+          "node-does-not-exist"
+        ],
+        "actions": [],
+        "reason": "근거로 쓸 출처를 찾지 못했습니다."
+      },
+      "name": "actions_unknown_source",
+      "note": "A source id that resolves to nothing."
+    },
+    {
+      "family": "evidence_actions",
+      "method": "POST",
+      "path": "/api/evidence/actions",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {},
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "sources": [],
+        "missing": [],
+        "actions": [],
+        "reason": "근거로 쓸 출처를 찾지 못했습니다."
+      },
+      "name": "actions_empty",
+      "note": "No question and no sources."
+    },
+    {
+      "family": "evidence_actions",
+      "method": "POST",
+      "path": "/api/evidence/actions",
+      "query": {},
+      "request_headers": {},
+      "request_body": {
+        "question": "x"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "actions_auth_denied",
+      "note": "Auth denial."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/prune",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "kind": "orphans"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "removed": [],
+        "count": 0
+      },
+      "name": "prune",
+      "note": "Prune by kind. DESTRUCTIVE — captured after every read case."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/prune",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "kind": "not-a-kind"
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "removed": [],
+        "count": 0
+      },
+      "name": "prune_unknown_kind",
+      "note": "Unknown prune kind."
+    },
+    {
+      "family": "memory",
+      "method": "POST",
+      "path": "/api/memory/clear",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "scope": "conversations",
+        "confirm": true
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "unsupported clear scope: conversations"
+      },
+      "name": "clear_conversations",
+      "note": "The real destructive clear. DESTRUCTIVE — captured last."
+    }
+  ]
+}

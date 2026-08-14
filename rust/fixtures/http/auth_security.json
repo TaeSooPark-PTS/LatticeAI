@@ -1,0 +1,1308 @@
+{
+  "version": 1,
+  "generated_by": "scripts/gen_auth_fixtures.py FROZEN at commit fc65e60 — last generating tree; do not regenerate.",
+  "about": "Byte-parity fixtures for rust/lattice-auth, captured from the real FastAPI app (routes, CSRF middleware included) and the real runtime guard closures. Regenerate with `.venv/bin/python scripts/gen_auth_fixtures.py`.",
+  "masks": {
+    "@token": "The value directly after `session_token=` in a Set-Cookie header, when it is neither empty nor quoted. A login issues a fresh `secrets.token_urlsafe(32)` every time.",
+    "@date": "The value of the `expires=` attribute in a Set-Cookie header. `delete_cookie` renders the current time, so it moves every run."
+  },
+  "captured_headers": [
+    "content-type",
+    "set-cookie",
+    "retry-after"
+  ],
+  "frozen_now": 1786000000.0,
+  "seed_password": "abcd1234",
+  "tokens": {
+    "admin": "fixture-admin-session-token",
+    "user": "fixture-user-session-token",
+    "disabled": "fixture-disabled-session-token"
+  },
+  "profiles": {
+    "local_owner": {
+      "env": {},
+      "session_created_at": 1785999999.0,
+      "seed_users": {},
+      "seed_sessions": {}
+    },
+    "multi_user": {
+      "env": {
+        "LATTICEAI_REQUIRE_AUTH": "1"
+      },
+      "session_created_at": 1785999999.0,
+      "seed_users": {
+        "a@b.com": {
+          "password": "0123456789abcdef0123456789abcdef:0903396273169b0968df66c06d38c6357aa4eb4b3f15d0ff867d3a281d9ec7967c5ec56d6e6003049daa3cc176205e631606a72c473f622433f8683f2bfb2d1e",
+          "name": "Name a@b.com",
+          "nickname": "nick-a",
+          "role": "admin",
+          "disabled": false,
+          "id": "user:86f56efe-644a-5ccb-8043-7065edc4df96",
+          "email": "a@b.com"
+        },
+        "c@d.com": {
+          "password": "0123456789abcdef0123456789abcdef:0903396273169b0968df66c06d38c6357aa4eb4b3f15d0ff867d3a281d9ec7967c5ec56d6e6003049daa3cc176205e631606a72c473f622433f8683f2bfb2d1e",
+          "name": "Name c@d.com",
+          "nickname": "nick-c",
+          "role": "user",
+          "disabled": false,
+          "id": "user:e3cf7a32-4b26-5d92-8722-a26c061bd51f",
+          "email": "c@d.com"
+        },
+        "z@z.z": {
+          "password": "0123456789abcdef0123456789abcdef:0903396273169b0968df66c06d38c6357aa4eb4b3f15d0ff867d3a281d9ec7967c5ec56d6e6003049daa3cc176205e631606a72c473f622433f8683f2bfb2d1e",
+          "name": "Name z@z.z",
+          "nickname": "nick-z",
+          "role": "user",
+          "disabled": true,
+          "id": "user:99e3b8c6-0d14-5ed7-bf37-b86216de5f05",
+          "email": "z@z.z"
+        }
+      },
+      "seed_sessions": {
+        "46eb699fdc257e45f1584c5e046b1d8861a88ff1c03a7c3a63cb6bb95af7a95f": [
+          "user:86f56efe-644a-5ccb-8043-7065edc4df96",
+          1785999999.0,
+          "a@b.com"
+        ],
+        "e8dba3845fa4fcfefabb24761f007fbdfe2b54146033bc74b3e23f48bdf78b63": [
+          "user:e3cf7a32-4b26-5d92-8722-a26c061bd51f",
+          1785999999.0,
+          "c@d.com"
+        ],
+        "8aab7b456b453b98fcdb22d949dd5a140b786cc703a119ed17406c51604ba598": [
+          "user:99e3b8c6-0d14-5ed7-bf37-b86216de5f05",
+          1785999999.0,
+          "z@z.z"
+        ]
+      }
+    },
+    "reachable": {
+      "env": {
+        "LATTICEAI_HOST": "0.0.0.0"
+      },
+      "session_created_at": 1785999999.0,
+      "seed_users": {
+        "a@b.com": {
+          "password": "0123456789abcdef0123456789abcdef:0903396273169b0968df66c06d38c6357aa4eb4b3f15d0ff867d3a281d9ec7967c5ec56d6e6003049daa3cc176205e631606a72c473f622433f8683f2bfb2d1e",
+          "name": "Name a@b.com",
+          "nickname": "nick-a",
+          "role": "admin",
+          "disabled": false,
+          "id": "user:86f56efe-644a-5ccb-8043-7065edc4df96",
+          "email": "a@b.com"
+        },
+        "c@d.com": {
+          "password": "0123456789abcdef0123456789abcdef:0903396273169b0968df66c06d38c6357aa4eb4b3f15d0ff867d3a281d9ec7967c5ec56d6e6003049daa3cc176205e631606a72c473f622433f8683f2bfb2d1e",
+          "name": "Name c@d.com",
+          "nickname": "nick-c",
+          "role": "user",
+          "disabled": false,
+          "id": "user:e3cf7a32-4b26-5d92-8722-a26c061bd51f",
+          "email": "c@d.com"
+        },
+        "z@z.z": {
+          "password": "0123456789abcdef0123456789abcdef:0903396273169b0968df66c06d38c6357aa4eb4b3f15d0ff867d3a281d9ec7967c5ec56d6e6003049daa3cc176205e631606a72c473f622433f8683f2bfb2d1e",
+          "name": "Name z@z.z",
+          "nickname": "nick-z",
+          "role": "user",
+          "disabled": true,
+          "id": "user:99e3b8c6-0d14-5ed7-bf37-b86216de5f05",
+          "email": "z@z.z"
+        }
+      },
+      "seed_sessions": {
+        "46eb699fdc257e45f1584c5e046b1d8861a88ff1c03a7c3a63cb6bb95af7a95f": [
+          "user:86f56efe-644a-5ccb-8043-7065edc4df96",
+          1785999999.0,
+          "a@b.com"
+        ],
+        "e8dba3845fa4fcfefabb24761f007fbdfe2b54146033bc74b3e23f48bdf78b63": [
+          "user:e3cf7a32-4b26-5d92-8722-a26c061bd51f",
+          1785999999.0,
+          "c@d.com"
+        ],
+        "8aab7b456b453b98fcdb22d949dd5a140b786cc703a119ed17406c51604ba598": [
+          "user:99e3b8c6-0d14-5ed7-bf37-b86216de5f05",
+          1785999999.0,
+          "z@z.z"
+        ]
+      }
+    },
+    "sso_configured": {
+      "env": {
+        "OIDC_DISCOVERY_URL": "https://idp.example/.well-known/openid-configuration",
+        "OIDC_CLIENT_ID": "lattice-client",
+        "OIDC_CLIENT_SECRET": "shh",
+        "OIDC_PROVIDER_NAME": "Okta"
+      },
+      "session_created_at": 1785999999.0,
+      "seed_users": {},
+      "seed_sessions": {}
+    }
+  },
+  "cases": [
+    {
+      "name": "profile/local-owner",
+      "kind": "route",
+      "profile": "local_owner",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/account/profile",
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\":\"\",\"name\":\"Local User\",\"nickname\":\"You\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "profile/local-owner-cannot-patch",
+      "kind": "route",
+      "profile": "local_owner",
+      "warmup": 0,
+      "request": {
+        "method": "PATCH",
+        "path": "/account/profile",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"name\": \"Bob\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"인증이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "sso-config/default",
+      "kind": "route",
+      "profile": "local_owner",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/auth/sso/config",
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"enabled\":false,\"provider_name\":\"SSO\",\"discovery_url\":\"\",\"client_id\":\"\",\"redirect_uri\":\"http://localhost:4825/auth/sso/callback\",\"scopes\":\"openid email profile\",\"secret_configured\":false}"
+      }
+    },
+    {
+      "name": "sso-config/enabled",
+      "kind": "route",
+      "profile": "sso_configured",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/auth/sso/config",
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"enabled\":true,\"provider_name\":\"Okta\",\"discovery_url\":\"https://idp.example/.well-known/openid-configuration\",\"client_id\":\"lattice-client\",\"redirect_uri\":\"http://localhost:4825/auth/sso/callback\",\"scopes\":\"openid email profile\",\"secret_configured\":true}"
+      }
+    },
+    {
+      "name": "register/first-user-is-admin",
+      "kind": "route",
+      "profile": "local_owner",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/register",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"A@B.com\", \"password\": \"abcd1234\", \"name\": \"Al\", \"nickname\": \"al\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"status\":\"ok\",\"message\":\"회원가입 성공! 첫 번째 사용자로 관리자 권한이 부여되었습니다.\",\"role\":\"admin\"}"
+      }
+    },
+    {
+      "name": "register/email-taken",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/register",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\", \"name\": \"Al\", \"nickname\": \"al\"}"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"이미 존재하는 이메일입니다.\"}"
+      }
+    },
+    {
+      "name": "register/weak-password",
+      "kind": "route",
+      "profile": "local_owner",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/register",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"new@x.y\", \"password\": \"short\", \"name\": \"n\", \"nickname\": \"k\"}"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"비밀번호는 8자 이상이며 영문자와 숫자를 모두 포함해야 합니다.\"}"
+      }
+    },
+    {
+      "name": "register/closed-on-a-reachable-bind",
+      "kind": "route",
+      "profile": "reachable",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/register",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"A@B.com\", \"password\": \"abcd1234\", \"name\": \"Al\", \"nickname\": \"al\"}"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.\"}"
+      }
+    },
+    {
+      "name": "register/rate-limited",
+      "kind": "route",
+      "profile": "local_owner",
+      "warmup": 5,
+      "request": {
+        "method": "POST",
+        "path": "/register",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"A@B.com\", \"password\": \"abcd1234\", \"name\": \"Al\", \"nickname\": \"al\"}"
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"요청이 너무 많습니다. 잠시 후 다시 시도하세요.\"}"
+      }
+    },
+    {
+      "name": "login/happy",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=@token; HttpOnly; Max-Age=86400; Path=/; SameSite=lax"
+        },
+        "body": "{\"status\":\"ok\",\"nickname\":\"nick-a\",\"name\":\"Name a@b.com\",\"email\":\"a@b.com\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "login/secure-cookie-on-a-reachable-bind",
+      "kind": "route",
+      "profile": "reachable",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=@token; HttpOnly; Max-Age=86400; Path=/; SameSite=lax; Secure"
+        },
+        "body": "{\"status\":\"ok\",\"nickname\":\"nick-a\",\"name\":\"Name a@b.com\",\"email\":\"a@b.com\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "login/bad-password",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"wrong123\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"이메일 또는 비밀번호가 틀렸습니다.\"}"
+      }
+    },
+    {
+      "name": "login/unknown-account",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"nobody@x.y\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"이메일 또는 비밀번호가 틀렸습니다.\"}"
+      }
+    },
+    {
+      "name": "login/disabled-account",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"z@z.z\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"비활성화된 계정입니다.\"}"
+      }
+    },
+    {
+      "name": "login/missing-fields",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{}"
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"email\"],\"msg\":\"Field required\",\"input\":{}},{\"type\":\"missing\",\"loc\":[\"body\",\"password\"],\"msg\":\"Field required\",\"input\":{}}]}"
+      }
+    },
+    {
+      "name": "login/wrong-types",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": 1, \"password\": true}"
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"email\"],\"msg\":\"Input should be a valid string\",\"input\":1},{\"type\":\"string_type\",\"loc\":[\"body\",\"password\"],\"msg\":\"Input should be a valid string\",\"input\":true}]}"
+      }
+    },
+    {
+      "name": "login/not-an-object",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "[]"
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":[{\"type\":\"model_attributes_type\",\"loc\":[\"body\"],\"msg\":\"Input should be a valid dictionary or object to extract fields from\",\"input\":[]}]}"
+      }
+    },
+    {
+      "name": "login/rate-limited",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 10,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"요청이 너무 많습니다. 잠시 후 다시 시도하세요.\"}"
+      }
+    },
+    {
+      "name": "logout/deletes-the-cookie",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/logout",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=\"\"; expires=@date; HttpOnly; Max-Age=0; Path=/; SameSite=lax"
+        },
+        "body": "{\"status\":\"ok\"}"
+      }
+    },
+    {
+      "name": "logout/secure-cookie",
+      "kind": "route",
+      "profile": "reachable",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/logout",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "origin": "http://127.0.0.1:4825"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=\"\"; expires=@date; HttpOnly; Max-Age=0; Path=/; SameSite=lax; Secure"
+        },
+        "body": "{\"status\":\"ok\"}"
+      }
+    },
+    {
+      "name": "profile/no-session",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/account/profile",
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"인증이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "profile/by-cookie",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/account/profile",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\":\"a@b.com\",\"name\":\"Name a@b.com\",\"nickname\":\"nick-a\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "profile/by-bearer",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/account/profile",
+        "headers": {
+          "authorization": "Bearer fixture-user-session-token"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\":\"c@d.com\",\"name\":\"Name c@d.com\",\"nickname\":\"nick-c\",\"role\":\"user\",\"is_admin\":false}"
+      }
+    },
+    {
+      "name": "profile/disabled-session-is-dead",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/account/profile",
+        "headers": {
+          "cookie": "session_token=fixture-disabled-session-token"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"인증이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "profile/patch-happy",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "PATCH",
+        "path": "/account/profile",
+        "headers": {
+          "cookie": "session_token=fixture-user-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"name\": \" New Name \", \"nickname\": \"nn\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"status\":\"ok\",\"name\":\"New Name\",\"nickname\":\"nn\"}"
+      }
+    },
+    {
+      "name": "profile/patch-blank-name",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "PATCH",
+        "path": "/account/profile",
+        "headers": {
+          "cookie": "session_token=fixture-user-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"name\": \"   \"}"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"이름을 입력해주세요.\"}"
+      }
+    },
+    {
+      "name": "profile/patch-blank-nickname",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "PATCH",
+        "path": "/account/profile",
+        "headers": {
+          "cookie": "session_token=fixture-user-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"nickname\": \"\"}"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"닉네임을 입력해주세요.\"}"
+      }
+    },
+    {
+      "name": "change-password/happy",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/account/change-password",
+        "headers": {
+          "cookie": "session_token=fixture-user-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"current_password\": \"abcd1234\", \"new_password\": \"newpass123\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"status\":\"ok\",\"message\":\"비밀번호가 변경되었습니다.\"}"
+      }
+    },
+    {
+      "name": "change-password/wrong-current",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/account/change-password",
+        "headers": {
+          "cookie": "session_token=fixture-user-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"current_password\": \"nope1234\", \"new_password\": \"newpass123\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"현재 비밀번호가 틀렸습니다.\"}"
+      }
+    },
+    {
+      "name": "change-password/weak-new",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/account/change-password",
+        "headers": {
+          "cookie": "session_token=fixture-user-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"current_password\": \"abcd1234\", \"new_password\": \"abc\"}"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"비밀번호는 8자 이상이며 영문자와 숫자를 모두 포함해야 합니다.\"}"
+      }
+    },
+    {
+      "name": "change-password/no-session",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/account/change-password",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"current_password\": \"abcd1234\", \"new_password\": \"newpass123\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"detail\":\"인증이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "csrf/safe-method-is-never-guarded",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "GET",
+        "path": "/account/profile",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "origin": "https://evil.example"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"email\":\"a@b.com\",\"name\":\"Name a@b.com\",\"nickname\":\"nick-a\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "csrf/bearer-auth-is-exempt",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/logout",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "origin": "https://evil.example",
+          "authorization": "Bearer fixture-admin-session-token"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=\"\"; expires=@date; HttpOnly; Max-Age=0; Path=/; SameSite=lax"
+        },
+        "body": "{\"status\":\"ok\"}"
+      }
+    },
+    {
+      "name": "csrf/no-session-cookie-is-exempt",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "origin": "https://evil.example",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=@token; HttpOnly; Max-Age=86400; Path=/; SameSite=lax"
+        },
+        "body": "{\"status\":\"ok\",\"nickname\":\"nick-a\",\"name\":\"Name a@b.com\",\"email\":\"a@b.com\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "csrf/opaque-origin",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "origin": "null",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"detail\": \"요청 출처를 확인할 수 없어 거부했습니다. 다른 사이트에서 보낸 요청일 수 있습니다.\", \"error\": \"csrf_origin_rejected\", \"reason\": \"opaque-origin\"}"
+      }
+    },
+    {
+      "name": "csrf/no-origin-loopback-bind",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=@token; HttpOnly; Max-Age=86400; Path=/; SameSite=lax"
+        },
+        "body": "{\"status\":\"ok\",\"nickname\":\"nick-a\",\"name\":\"Name a@b.com\",\"email\":\"a@b.com\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "csrf/no-origin-reachable-bind",
+      "kind": "route",
+      "profile": "reachable",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"detail\": \"요청 출처를 확인할 수 없어 거부했습니다. 다른 사이트에서 보낸 요청일 수 있습니다.\", \"error\": \"csrf_origin_rejected\", \"reason\": \"no-origin-reachable-bind\"}"
+      }
+    },
+    {
+      "name": "csrf/same-site-origin",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "origin": "http://127.0.0.1:4825",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=@token; HttpOnly; Max-Age=86400; Path=/; SameSite=lax"
+        },
+        "body": "{\"status\":\"ok\",\"nickname\":\"nick-a\",\"name\":\"Name a@b.com\",\"email\":\"a@b.com\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "csrf/referer-stands-in-for-origin",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "referer": "http://127.0.0.1:4825/app",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": "session_token=@token; HttpOnly; Max-Age=86400; Path=/; SameSite=lax"
+        },
+        "body": "{\"status\":\"ok\",\"nickname\":\"nick-a\",\"name\":\"Name a@b.com\",\"email\":\"a@b.com\",\"role\":\"admin\",\"is_admin\":true}"
+      }
+    },
+    {
+      "name": "csrf/cross-site-origin",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token",
+          "origin": "https://evil.example",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"detail\": \"요청 출처를 확인할 수 없어 거부했습니다. 다른 사이트에서 보낸 요청일 수 있습니다.\", \"error\": \"csrf_origin_rejected\", \"reason\": \"cross-site-origin\"}"
+      }
+    },
+    {
+      "name": "csrf/malformed-cookie-still-counts",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "bad;;session_token",
+          "origin": "https://evil.example",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"detail\": \"요청 출처를 확인할 수 없어 거부했습니다. 다른 사이트에서 보낸 요청일 수 있습니다.\", \"error\": \"csrf_origin_rejected\", \"reason\": \"cross-site-origin\"}"
+      }
+    },
+    {
+      "name": "csrf/trailing-junk-cookie-still-counts",
+      "kind": "route",
+      "profile": "multi_user",
+      "warmup": 0,
+      "request": {
+        "method": "POST",
+        "path": "/login",
+        "headers": {
+          "cookie": "a=1; session_token",
+          "origin": "https://evil.example",
+          "content-type": "application/json"
+        },
+        "body": "{\"email\": \"a@b.com\", \"password\": \"abcd1234\"}"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"detail\": \"요청 출처를 확인할 수 없어 거부했습니다. 다른 사이트에서 보낸 요청일 수 있습니다.\", \"error\": \"csrf_origin_rejected\", \"reason\": \"cross-site-origin\"}"
+      }
+    },
+    {
+      "name": "guard/require_user-local-owner",
+      "kind": "guard",
+      "profile": "local_owner",
+      "guard": "require_user",
+      "repeat": 1,
+      "request": {
+        "headers": {},
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"email\":\"\",\"role\":\"owner\"}"
+      }
+    },
+    {
+      "name": "guard/require_user-denied",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "require_user",
+      "repeat": 1,
+      "request": {
+        "headers": {},
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {},
+        "body": "{\"detail\":\"인증이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "guard/require_user-by-cookie",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "require_user",
+      "repeat": 1,
+      "request": {
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token"
+        },
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"email\":\"a@b.com\",\"role\":\"admin\"}"
+      }
+    },
+    {
+      "name": "guard/require_user-disabled",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "require_user",
+      "repeat": 1,
+      "request": {
+        "headers": {
+          "cookie": "session_token=fixture-disabled-session-token"
+        },
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {},
+        "body": "{\"detail\":\"인증이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "guard/require_admin-local-owner",
+      "kind": "guard",
+      "profile": "local_owner",
+      "guard": "require_admin",
+      "repeat": 1,
+      "request": {
+        "headers": {},
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"email\":\"\",\"role\":\"owner\"}"
+      }
+    },
+    {
+      "name": "guard/require_admin-denied-anonymous",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "require_admin",
+      "repeat": 1,
+      "request": {
+        "headers": {},
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {},
+        "body": "{\"detail\":\"관리자 권한이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "guard/require_admin-denied-non-admin",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "require_admin",
+      "repeat": 1,
+      "request": {
+        "headers": {
+          "cookie": "session_token=fixture-user-session-token"
+        },
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {},
+        "body": "{\"detail\":\"관리자 권한이 필요합니다.\"}"
+      }
+    },
+    {
+      "name": "guard/require_admin-allowed",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "require_admin",
+      "repeat": 1,
+      "request": {
+        "headers": {
+          "cookie": "session_token=fixture-admin-session-token"
+        },
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"email\":\"a@b.com\",\"role\":\"admin\"}"
+      }
+    },
+    {
+      "name": "guard/workspace-none",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "requested_workspace",
+      "repeat": 1,
+      "request": {
+        "headers": {},
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"workspace\":null}"
+      }
+    },
+    {
+      "name": "guard/workspace-header",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "requested_workspace",
+      "repeat": 1,
+      "request": {
+        "headers": {
+          "x-workspace-id": "team"
+        },
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"workspace\":\"team\"}"
+      }
+    },
+    {
+      "name": "guard/workspace-agreeing",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "requested_workspace",
+      "repeat": 1,
+      "request": {
+        "headers": {
+          "x-workspace-id": "team"
+        },
+        "query": "workspace_id=team",
+        "body_workspace": "team"
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"workspace\":\"team\"}"
+      }
+    },
+    {
+      "name": "guard/workspace-mismatch",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "requested_workspace",
+      "repeat": 1,
+      "request": {
+        "headers": {
+          "x-workspace-id": "team"
+        },
+        "query": "workspace_id=other",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {},
+        "body": "{\"detail\":\"Workspace selectors must match.\"}"
+      }
+    },
+    {
+      "name": "guard/rate-limit-within-budget",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "enforce_rate_limit",
+      "repeat": 10,
+      "request": {
+        "headers": {},
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": "{\"ok\":true}"
+      }
+    },
+    {
+      "name": "guard/rate-limit-exceeded",
+      "kind": "guard",
+      "profile": "multi_user",
+      "guard": "enforce_rate_limit",
+      "repeat": 11,
+      "request": {
+        "headers": {},
+        "query": "",
+        "body_workspace": null
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "retry-after": "10"
+        },
+        "body": "{\"detail\":\"Rate limit exceeded for agent. Retry after 10s.\"}"
+      }
+    }
+  ]
+}

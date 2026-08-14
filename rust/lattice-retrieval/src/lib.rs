@@ -27,6 +27,13 @@
 //! prompt is assembled with, and [`docgen_context`] the budgeted context builder
 //! that composes them — behind `POST /rust/context/document`.
 
+// The route modules answer `Result<T, axum::response::Response>` (the refusal
+// *is* the answer) and carry a good deal of borrowed-row plumbing whose
+// lifetimes elision cannot always infer without changing what the signature
+// says. Both are crate-wide conventions, allowed once here rather than
+// repeated per module.
+#![allow(clippy::needless_lifetimes, clippy::result_large_err)]
+
 /// Compile a pattern ported verbatim from a Python original.
 ///
 /// `expect`, not a `Result`: every pattern in this crate is a literal copied
@@ -38,16 +45,24 @@ pub(crate) fn build_pattern(pattern: &str) -> fancy_regex::Regex {
     fancy_regex::Regex::new(pattern).expect("ported pattern must compile")
 }
 
+pub mod brain_api;
+pub mod chronicle_api;
+pub mod command_center_api;
 pub mod concepts;
 pub mod context;
 pub mod docgen;
 pub mod docgen_context;
+pub mod evidence_api;
+pub mod garden_api;
 pub mod graph_reads;
 pub mod history;
 pub mod hybrid;
 pub mod keyword;
+pub mod knowledge_graph_api;
+pub mod memory_api;
 pub mod policy;
 pub mod routes;
+pub mod search_api;
 pub mod self_model;
 pub mod service;
 pub mod service_hybrid;

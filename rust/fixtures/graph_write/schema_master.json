@@ -1,0 +1,407 @@
+{
+  "objects": [
+    {
+      "type": "index",
+      "name": "idx_chunks_source",
+      "tbl_name": "chunks",
+      "sql": "CREATE INDEX idx_chunks_source ON chunks(source_node)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edge_occurrences_edge",
+      "tbl_name": "edge_occurrences",
+      "sql": "CREATE INDEX idx_edge_occurrences_edge ON edge_occurrences(edge_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edge_occurrences_time",
+      "tbl_name": "edge_occurrences",
+      "sql": "CREATE INDEX idx_edge_occurrences_time ON edge_occurrences(observed_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edges_from",
+      "tbl_name": "edges",
+      "sql": "CREATE INDEX idx_edges_from ON edges(from_node)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edges_to",
+      "tbl_name": "edges",
+      "sql": "CREATE INDEX idx_edges_to ON edges(to_node)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edges_v2_legacy",
+      "tbl_name": "edges_v2",
+      "sql": "CREATE INDEX idx_edges_v2_legacy   ON edges_v2(legacy_type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edges_v2_source",
+      "tbl_name": "edges_v2",
+      "sql": "CREATE INDEX idx_edges_v2_source   ON edges_v2(source)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edges_v2_target",
+      "tbl_name": "edges_v2",
+      "sql": "CREATE INDEX idx_edges_v2_target   ON edges_v2(target)"
+    },
+    {
+      "type": "index",
+      "name": "idx_edges_v2_type",
+      "tbl_name": "edges_v2",
+      "sql": "CREATE INDEX idx_edges_v2_type     ON edges_v2(type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_knowledge_sources_root",
+      "tbl_name": "knowledge_sources",
+      "sql": "CREATE INDEX idx_knowledge_sources_root ON knowledge_sources(root_path)"
+    },
+    {
+      "type": "index",
+      "name": "idx_local_file_index_graph_node",
+      "tbl_name": "local_file_index",
+      "sql": "CREATE INDEX idx_local_file_index_graph_node ON local_file_index(graph_node_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_local_file_index_source",
+      "tbl_name": "local_file_index",
+      "sql": "CREATE INDEX idx_local_file_index_source ON local_file_index(source_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_local_file_index_status",
+      "tbl_name": "local_file_index",
+      "sql": "CREATE INDEX idx_local_file_index_status ON local_file_index(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_nodes_type",
+      "tbl_name": "nodes",
+      "sql": "CREATE INDEX idx_nodes_type ON nodes(type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_nodes_v2_legacy",
+      "tbl_name": "nodes_v2",
+      "sql": "CREATE INDEX idx_nodes_v2_legacy   ON nodes_v2(legacy_type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_nodes_v2_owner",
+      "tbl_name": "nodes_v2",
+      "sql": "CREATE INDEX idx_nodes_v2_owner    ON nodes_v2(owner_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_nodes_v2_type",
+      "tbl_name": "nodes_v2",
+      "sql": "CREATE INDEX idx_nodes_v2_type     ON nodes_v2(type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_provenance_created",
+      "tbl_name": "ingestion_provenance",
+      "sql": "CREATE INDEX idx_provenance_created ON ingestion_provenance(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_provenance_hash",
+      "tbl_name": "ingestion_provenance",
+      "sql": "CREATE INDEX idx_provenance_hash ON ingestion_provenance(content_hash)"
+    },
+    {
+      "type": "index",
+      "name": "idx_provenance_node",
+      "tbl_name": "ingestion_provenance",
+      "sql": "CREATE INDEX idx_provenance_node ON ingestion_provenance(node_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_provenance_source_type",
+      "tbl_name": "ingestion_provenance",
+      "sql": "CREATE INDEX idx_provenance_source_type ON ingestion_provenance(source_type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_vector_embeddings_model",
+      "tbl_name": "vector_embeddings",
+      "sql": "CREATE INDEX idx_vector_embeddings_model ON vector_embeddings(embedding_model)"
+    },
+    {
+      "type": "index",
+      "name": "idx_vector_embeddings_model_dim_indexed",
+      "tbl_name": "vector_embeddings",
+      "sql": "CREATE INDEX idx_vector_embeddings_model_dim_indexed\n                      ON vector_embeddings(embedding_model, embedding_dim, indexed_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_vector_embeddings_source",
+      "tbl_name": "vector_embeddings",
+      "sql": "CREATE INDEX idx_vector_embeddings_source ON vector_embeddings(source_node)"
+    },
+    {
+      "type": "index",
+      "name": "idx_vector_embeddings_type",
+      "tbl_name": "vector_embeddings",
+      "sql": "CREATE INDEX idx_vector_embeddings_type ON vector_embeddings(item_type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_vector_index_operations_requested",
+      "tbl_name": "vector_index_operations",
+      "sql": "CREATE INDEX idx_vector_index_operations_requested ON vector_index_operations(requested_at)"
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_chunks_1",
+      "tbl_name": "chunks",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_edges_1",
+      "tbl_name": "edges",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_edges_2",
+      "tbl_name": "edges",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_edges_v2_1",
+      "tbl_name": "edges_v2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_edges_v2_2",
+      "tbl_name": "edges_v2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_graph_meta_1",
+      "tbl_name": "graph_meta",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_ingestion_provenance_1",
+      "tbl_name": "ingestion_provenance",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_kg_meta_1",
+      "tbl_name": "kg_meta",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_knowledge_sources_1",
+      "tbl_name": "knowledge_sources",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_knowledge_sources_2",
+      "tbl_name": "knowledge_sources",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_local_file_index_1",
+      "tbl_name": "local_file_index",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_local_file_index_2",
+      "tbl_name": "local_file_index",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_nodes_1",
+      "tbl_name": "nodes",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_nodes_v2_1",
+      "tbl_name": "nodes_v2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_vector_embeddings_1",
+      "tbl_name": "vector_embeddings",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_vector_index_operations_1",
+      "tbl_name": "vector_index_operations",
+      "sql": null
+    },
+    {
+      "type": "table",
+      "name": "chunks",
+      "tbl_name": "chunks",
+      "sql": "CREATE TABLE chunks (\n                      id TEXT PRIMARY KEY,\n                      source_node TEXT NOT NULL,\n                      text TEXT NOT NULL,\n                      metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),\n                      created_at TEXT NOT NULL,\n                      FOREIGN KEY(source_node) REFERENCES nodes(id) ON DELETE CASCADE\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "edge_occurrences",
+      "tbl_name": "edge_occurrences",
+      "sql": "CREATE TABLE edge_occurrences (\n  id          INTEGER PRIMARY KEY AUTOINCREMENT,\n  edge_id     TEXT NOT NULL,\n  observed_at TEXT NOT NULL,\n  weight      REAL NOT NULL DEFAULT 1.0,\n  source      TEXT,\n  FOREIGN KEY(edge_id) REFERENCES edges_v2(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "edges",
+      "tbl_name": "edges",
+      "sql": "CREATE TABLE edges (\n                      id TEXT PRIMARY KEY,\n                      from_node TEXT NOT NULL,\n                      to_node TEXT NOT NULL,\n                      type TEXT NOT NULL,\n                      weight REAL NOT NULL DEFAULT 1.0,\n                      metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),\n                      created_at TEXT NOT NULL,\n                      UNIQUE(from_node, to_node, type),\n                      FOREIGN KEY(from_node) REFERENCES nodes(id) ON DELETE CASCADE,\n                      FOREIGN KEY(to_node) REFERENCES nodes(id) ON DELETE CASCADE\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "edges_v2",
+      "tbl_name": "edges_v2",
+      "sql": "CREATE TABLE edges_v2 (\n  id           TEXT PRIMARY KEY,\n  source       TEXT NOT NULL,\n  target       TEXT NOT NULL,\n  type         TEXT NOT NULL,\n  legacy_type  TEXT NOT NULL DEFAULT '',\n  weight       REAL NOT NULL DEFAULT 1.0,\n  confidence   REAL NOT NULL DEFAULT 1.0,\n  evidence     TEXT NOT NULL DEFAULT '[]',\n  metadata     TEXT NOT NULL DEFAULT '{}',\n  created_by   TEXT NOT NULL DEFAULT 'user',\n  created_at   TEXT NOT NULL,\n  -- Bitemporal validity + revision chain (v11.1.0), same NULL convention as\n  -- nodes_v2: NULL valid_from falls back to created_at, NULL valid_to means\n  -- \"still holds\". Relationships go stale exactly like facts do.\n  valid_from   TEXT,\n  valid_to     TEXT,\n  superseded_by TEXT,\n  -- Edge identity (v4): the normalized type AND the raw legacy type.\n  -- Migrated rows keep their legacy_type discriminator, so two distinct\n  -- legacy strings between one pair (e.g. \"mentions\" / \"관련됨\") stay\n  -- distinct even though both normalize to MENTIONS. Native canonical\n  -- writes carry legacy_type='' so their identity is effectively\n  -- (source, target, type) — two canonical types between the same pair\n  -- (e.g. MENTIONS + CONTAINS) never collide. The pre-v4\n  -- UNIQUE(source, target, legacy_type) would have silently merged them.\n  UNIQUE(source, target, type, legacy_type),\n  FOREIGN KEY(source) REFERENCES nodes_v2(id) ON DELETE CASCADE,\n  FOREIGN KEY(target) REFERENCES nodes_v2(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "graph_meta",
+      "tbl_name": "graph_meta",
+      "sql": "CREATE TABLE graph_meta (\n                      key TEXT PRIMARY KEY,\n                      value TEXT NOT NULL\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "ingestion_provenance",
+      "tbl_name": "ingestion_provenance",
+      "sql": "CREATE TABLE ingestion_provenance (\n                      id TEXT PRIMARY KEY,\n                      node_id TEXT NOT NULL,\n                      source_type TEXT NOT NULL,\n                      source_uri TEXT,\n                      content_hash TEXT,\n                      title TEXT,\n                      pipeline TEXT NOT NULL,\n                      owner TEXT,\n                      workspace_id TEXT,\n                      captured_at TEXT,\n                      modified_at TEXT,\n                      embedded INTEGER NOT NULL DEFAULT 0,\n                      linked INTEGER NOT NULL DEFAULT 0,\n                      duplicate INTEGER NOT NULL DEFAULT 0,\n                      agent_used TEXT,\n                      chunk_count INTEGER NOT NULL DEFAULT 0,\n                      permissions_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(permissions_json)),\n                      metadata_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(metadata_json)),\n                      created_at TEXT NOT NULL\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "kg_meta",
+      "tbl_name": "kg_meta",
+      "sql": "CREATE TABLE kg_meta (\n  key   TEXT PRIMARY KEY,\n  value TEXT NOT NULL\n)"
+    },
+    {
+      "type": "table",
+      "name": "knowledge_sources",
+      "tbl_name": "knowledge_sources",
+      "sql": "CREATE TABLE knowledge_sources (\n                      id TEXT PRIMARY KEY,\n                      root_path TEXT NOT NULL UNIQUE,\n                      os_type TEXT NOT NULL,\n                      drive_id TEXT,\n                      label TEXT,\n                      status TEXT NOT NULL,\n                      include_ocr INTEGER NOT NULL DEFAULT 0,\n                      watch_enabled INTEGER NOT NULL DEFAULT 0,\n                      consent_json TEXT NOT NULL CHECK (json_valid(consent_json)),\n                      created_at TEXT NOT NULL,\n                      updated_at TEXT NOT NULL,\n                      last_scanned_at TEXT\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "local_file_index",
+      "tbl_name": "local_file_index",
+      "sql": "CREATE TABLE local_file_index (\n                      id TEXT PRIMARY KEY,\n                      source_id TEXT NOT NULL,\n                      os_type TEXT NOT NULL,\n                      drive_id TEXT,\n                      root_path TEXT NOT NULL,\n                      file_path TEXT NOT NULL,\n                      relative_path TEXT NOT NULL,\n                      file_name TEXT NOT NULL,\n                      extension TEXT NOT NULL,\n                      size_bytes INTEGER,\n                      modified_at TEXT,\n                      sha256 TEXT,\n                      last_scanned_at TEXT,\n                      last_indexed_at TEXT,\n                      parser_type TEXT,\n                      status TEXT NOT NULL,\n                      error_message TEXT,\n                      graph_node_id TEXT,\n                      deleted INTEGER NOT NULL DEFAULT 0,\n                      metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),\n                      UNIQUE(source_id, relative_path),\n                      FOREIGN KEY(source_id) REFERENCES knowledge_sources(id) ON DELETE CASCADE\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "node_fts",
+      "tbl_name": "node_fts",
+      "sql": "CREATE VIRTUAL TABLE node_fts USING fts5(\n          node_id UNINDEXED, title, summary, metadata, tokenize='trigram'\n        )"
+    },
+    {
+      "type": "table",
+      "name": "node_fts_config",
+      "tbl_name": "node_fts_config",
+      "sql": "CREATE TABLE 'node_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "node_fts_content",
+      "tbl_name": "node_fts_content",
+      "sql": "CREATE TABLE 'node_fts_content'(id INTEGER PRIMARY KEY, c0, c1, c2, c3)"
+    },
+    {
+      "type": "table",
+      "name": "node_fts_data",
+      "tbl_name": "node_fts_data",
+      "sql": "CREATE TABLE 'node_fts_data'(id INTEGER PRIMARY KEY, block BLOB)"
+    },
+    {
+      "type": "table",
+      "name": "node_fts_docsize",
+      "tbl_name": "node_fts_docsize",
+      "sql": "CREATE TABLE 'node_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)"
+    },
+    {
+      "type": "table",
+      "name": "node_fts_idx",
+      "tbl_name": "node_fts_idx",
+      "sql": "CREATE TABLE 'node_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "nodes",
+      "tbl_name": "nodes",
+      "sql": "CREATE TABLE nodes (\n                      id TEXT PRIMARY KEY,\n                      type TEXT NOT NULL,\n                      title TEXT NOT NULL,\n                      summary TEXT,\n                      metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),\n                      raw_json TEXT NOT NULL CHECK (json_valid(raw_json)),\n                      created_at TEXT NOT NULL,\n                      updated_at TEXT NOT NULL\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "nodes_v2",
+      "tbl_name": "nodes_v2",
+      "sql": "CREATE TABLE nodes_v2 (\n  id               TEXT PRIMARY KEY,\n  type             TEXT NOT NULL,\n  legacy_type      TEXT,\n  label            TEXT NOT NULL,\n  summary          TEXT,\n  attrs            TEXT NOT NULL DEFAULT '{}',\n  embedding        BLOB,\n  owner_id         TEXT,\n  -- NULL workspace_id = legacy-global (pre-scoping rows, readable machine-wide).\n  workspace_id     TEXT,\n  -- 'legacy' marks rows that predate scoping — the 'private' default must not\n  -- silently privatize previously machine-shared data (design-review ruling).\n  visibility       TEXT NOT NULL DEFAULT 'private',\n  -- Revision chain: a node replaced by a newer one points at its successor.\n  superseded_by    TEXT,\n  -- Bitemporal validity (v11.1.0). NULL is the convention, not '':\n  --   valid_from IS NULL  → the row has been valid since created_at\n  --   valid_to   IS NULL  → the row is still valid now\n  -- An empty string would read as \"valid since the beginning of time\" in a\n  -- string comparison, which is why the columns are nullable with no default.\n  valid_from       TEXT,\n  valid_to         TEXT,\n  created_at       TEXT NOT NULL,\n  updated_at       TEXT NOT NULL,\n  style            TEXT,\n  tone             TEXT,\n  importance_score REAL NOT NULL DEFAULT 0.0,\n  last_used        TEXT\n)"
+    },
+    {
+      "type": "table",
+      "name": "sqlite_sequence",
+      "tbl_name": "sqlite_sequence",
+      "sql": "CREATE TABLE sqlite_sequence(name,seq)"
+    },
+    {
+      "type": "table",
+      "name": "vector_embeddings",
+      "tbl_name": "vector_embeddings",
+      "sql": "CREATE TABLE vector_embeddings (\n                      item_id TEXT PRIMARY KEY,\n                      item_type TEXT NOT NULL,\n                      source_node TEXT NOT NULL,\n                      text_hash TEXT NOT NULL,\n                      embedding BLOB NOT NULL,\n                      embedding_dim INTEGER NOT NULL,\n                      embedding_model TEXT NOT NULL,\n                      metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),\n                      indexed_at TEXT NOT NULL,\n                      FOREIGN KEY(source_node) REFERENCES nodes(id) ON DELETE CASCADE\n                    )"
+    },
+    {
+      "type": "table",
+      "name": "vector_index_operations",
+      "tbl_name": "vector_index_operations",
+      "sql": "CREATE TABLE vector_index_operations (\n                      id TEXT PRIMARY KEY,\n                      operation TEXT NOT NULL,\n                      status TEXT NOT NULL,\n                      requested_at TEXT NOT NULL,\n                      started_at TEXT,\n                      completed_at TEXT,\n                      items_total INTEGER NOT NULL DEFAULT 0,\n                      items_indexed INTEGER NOT NULL DEFAULT 0,\n                      items_skipped INTEGER NOT NULL DEFAULT 0,\n                      error_message TEXT,\n                      metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json))\n                    )"
+    },
+    {
+      "type": "trigger",
+      "name": "node_fts_ad",
+      "tbl_name": "nodes",
+      "sql": "CREATE TRIGGER node_fts_ad AFTER DELETE ON nodes BEGIN\n          DELETE FROM node_fts WHERE node_id = old.id;\n        END"
+    },
+    {
+      "type": "trigger",
+      "name": "node_fts_ai",
+      "tbl_name": "nodes",
+      "sql": "CREATE TRIGGER node_fts_ai AFTER INSERT ON nodes BEGIN\n          INSERT INTO node_fts(node_id, title, summary, metadata)\n          VALUES (new.id, new.title, COALESCE(new.summary, ''), new.metadata_json);\n        END"
+    },
+    {
+      "type": "trigger",
+      "name": "node_fts_au",
+      "tbl_name": "nodes",
+      "sql": "CREATE TRIGGER node_fts_au AFTER UPDATE ON nodes BEGIN\n          DELETE FROM node_fts WHERE node_id = old.id;\n          INSERT INTO node_fts(node_id, title, summary, metadata)\n          VALUES (new.id, new.title, COALESCE(new.summary, ''), new.metadata_json);\n        END"
+    },
+    {
+      "type": "view",
+      "name": "kgv2_edges",
+      "tbl_name": "kgv2_edges",
+      "sql": "CREATE VIEW kgv2_edges AS\n          SELECT id, source AS from_node, target AS to_node,\n                 COALESCE(NULLIF(legacy_type, ''), type) AS type,\n                 weight,\n                 metadata AS metadata_json,\n                 created_at,\n                 valid_from, valid_to, superseded_by\n          FROM edges_v2"
+    },
+    {
+      "type": "view",
+      "name": "kgv2_nodes",
+      "tbl_name": "kgv2_nodes",
+      "sql": "CREATE VIEW kgv2_nodes AS\n          SELECT id,\n                 COALESCE(NULLIF(legacy_type, ''), type) AS type,\n                 label AS title,\n                 summary,\n                 attrs AS metadata_json,\n                 created_at, updated_at,\n                 valid_from, valid_to, superseded_by\n          FROM nodes_v2"
+    }
+  ],
+  "user_version": 4
+}

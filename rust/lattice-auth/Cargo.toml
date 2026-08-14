@@ -1,0 +1,34 @@
+[package]
+name = "lattice-auth"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+rusqlite = { workspace = true }
+lattice-core = { workspace = true }
+# Session keys are sha256 of the bearer token at rest (core/sessions.py v4).
+sha2 = { workspace = true }
+# `secrets.token_urlsafe(32)` is base64url(os.urandom(32)) with padding stripped.
+base64 = { workspace = true }
+getrandom = { workspace = true }
+# Not in the workspace list — declared here with an explicit version.
+# UUIDv5 (`uuid.uuid5`) is SHA-1 over namespace||name; `core/users.py` derives
+# every stable user id that way and the ids are already on disk, so the digest
+# is a compatibility requirement, not a choice. 0.10 shares `digest 0.10` with
+# the sha2 the workspace already pins, so the tree keeps one digest version.
+sha1 = "0.10"
+# `hashlib.scrypt(n=16384, r=8, p=1)` is the stored password KDF
+# (`core/security.py`). default-features = false drops the `simple` PHC-string
+# layer we do not use (and its rand_core dependency); we only need the raw KDF.
+scrypt = { version = "0.11", default-features = false }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+# The fixture replay drives the router over a real loopback socket, the same
+# way `lattice-ingest`'s route tests do, so `ConnectInfo` carries a real peer.
+reqwest = { workspace = true }

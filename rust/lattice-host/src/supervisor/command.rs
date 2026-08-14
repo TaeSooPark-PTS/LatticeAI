@@ -1,7 +1,9 @@
 //! Worker command resolution.
 //!
-//! Four rules, tried in order — inherited verbatim from the desktop shell
-//! (`src-tauri/src/main.rs`), with one bug fixed: that implementation ran
+//! Three rules, tried in order — inherited from the desktop shell
+//! (`src-tauri/src/main.rs`), minus the `ltcai`-on-PATH rule that v11.6.0
+//! retired (`ltcai` starts *this* binary now; see [`resolve_worker_command`]),
+//! and with one bug fixed: that implementation ran
 //! `sort()` on the python candidate list before `dedup()`, which threw away
 //! the declared priority (`LTCAI_PYTHON` first, then PATH, then the well-known
 //! absolute paths) and picked whatever sorted first. Here the candidate list
@@ -31,7 +33,24 @@ pub const ABSOLUTE_PYTHON_CANDIDATES: [&str; 3] = [
 ];
 
 /// The module the worker is started with.
-pub const WORKER_MODULE: &str = "latticeai.cli.entrypoint";
+///
+/// v11.6.0 (§3) points this at the **AI-Worker profile** rather than the
+/// product server. `latticeai.cli.entrypoint` builds `create_app()` — all 464
+/// routes, the SPA, the whole platform — which after One Door would be a second
+/// copy of the product listening behind the one that is serving it.
+/// `latticeai.worker_app` builds the same construction and then reduces the
+/// route table to the surface `worker_route_keys()` names, which is exactly the
+/// surface this gateway's proxy allowlist forwards.
+pub const WORKER_MODULE: &str = "latticeai.worker_app";
+
+/// The ASGI factory inside [`WORKER_MODULE`].
+///
+/// The worker is served through uvicorn rather than `python -m
+/// latticeai.worker_app`: that module exports `main()` but has no
+/// `if __name__ == "__main__"` guard, so the module form imports and exits
+/// without binding anything. This is WP-I6's own documented launch string, and
+/// it is the one that has been verified to serve.
+pub const WORKER_FACTORY: &str = "latticeai.worker_app:create_worker_app";
 
 /// Which of the four resolution rules produced a [`WorkerCommand`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -40,8 +59,12 @@ pub enum CommandOrigin {
     /// `LATTICEAI_DESKTOP_BACKEND_CMD` (+ optional `..._CWD`).
     EnvOverride,
     /// `LTCAI` / `ltcai` found on `PATH`.
+    ///
+    /// **Retired as a resolution rule in v11.6.0** — `ltcai` starts the host,
+    /// not the worker (see [`resolve_worker_command`]). The variant survives so
+    /// a status snapshot written by an older build still deserializes.
     LtcaiOnPath,
-    /// A python interpreter that can `import latticeai.cli.entrypoint`.
+    /// A python interpreter that can `import latticeai.worker_app`.
     PythonModule,
     /// The bundled `Resources` tree shipped inside the app bundle.
     BundledTree,
@@ -102,8 +125,8 @@ impl fmt::Display for ResolveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ResolveError::NotFound => f.write_str(
-                "worker unavailable: no LTCAI executable and no importable \
-                 latticeai.cli.entrypoint module found",
+                "worker unavailable: no python can import latticeai.worker_app \
+                 and no bundled tree was found",
             ),
         }
     }
@@ -283,10 +306,13 @@ pub fn python_candidates(probe: &dyn HostProbe) -> Vec<String> {
     dedup_preserving_order(out)
 }
 
+/// `python -m uvicorn latticeai.worker_app:create_worker_app --factory …`.
 fn module_args(port: u16) -> Vec<String> {
     vec![
         "-m".into(),
-        WORKER_MODULE.into(),
+        "uvicorn".into(),
+        WORKER_FACTORY.into(),
+        "--factory".into(),
         "--host".into(),
         "127.0.0.1".into(),
         "--port".into(),
@@ -294,13 +320,22 @@ fn module_args(port: u16) -> Vec<String> {
     ]
 }
 
+/// The bundled `Resources` tree, if one holds a worker.
+///
+/// The marker is `latticeai/worker_app.py` — what v11.6.0 ships — with
+/// `latticeai/cli/entrypoint.py` accepted as a fallback so a bundle built
+/// before the flip still boots (WP-P2 §integrator checklist 3). WP-P1 keeps the
+/// `latticeai/` directory itself, so neither marker can be lost to a glob.
 fn bundled_root(probe: &dyn HostProbe) -> Option<PathBuf> {
     let resources = probe.resource_dir()?;
-    let entrypoint = |root: &Path| root.join("latticeai").join("cli").join("entrypoint.py");
+    let holds_worker = |root: &Path| {
+        probe.is_file(&root.join("latticeai").join("worker_app.py"))
+            || probe.is_file(&root.join("latticeai").join("cli").join("entrypoint.py"))
+    };
     let up = resources.join("_up_");
-    if probe.is_file(&entrypoint(&up)) {
+    if holds_worker(&up) {
         Some(up)
-    } else if probe.is_file(&entrypoint(&resources)) {
+    } else if holds_worker(&resources) {
         Some(resources)
     } else {
         None
@@ -311,11 +346,21 @@ fn bundled_root(probe: &dyn HostProbe) -> Option<PathBuf> {
 ///
 /// Rules, in order:
 /// 1. `LATTICEAI_DESKTOP_BACKEND_CMD` (with `LATTICEAI_DESKTOP_BACKEND_CWD`),
-/// 2. `LTCAI` then `ltcai` on `PATH` → `<prog> --host 127.0.0.1 --port <port>`,
-/// 3. the first python candidate that can import the worker module →
-///    `-m latticeai.cli.entrypoint --host 127.0.0.1 --port <port>`,
-/// 4. the bundled `Resources` tree, run with the first *existing* python
+/// 2. the first python candidate that can import [`WORKER_MODULE`] →
+///    `-m uvicorn latticeai.worker_app:create_worker_app --factory …`,
+/// 3. the bundled `Resources` tree, run with the first *existing* python
 ///    candidate and `PYTHONPATH`/cwd pointed at the tree.
+///
+/// **`ltcai` on `PATH` is no longer a worker rule** (v11.6.0 §3, WP-P2). It used
+/// to be rule 2, back when `ltcai` started the Python product server. After One
+/// Door `bin/ltcai.js` starts *this binary*, so the old rule made a host that
+/// could not find a python spawn another host, which would spawn another — an
+/// unbounded process tree whose first symptom is a machine that will not
+/// quiesce. WP-P2 mitigated it from the launcher side by pinning
+/// `LATTICEAI_DESKTOP_BACKEND_CMD` so rule 1 wins; removing the rule closes it
+/// from this side, for every caller, including one that starts the binary
+/// directly. [`CommandOrigin::LtcaiOnPath`] is kept as a variant so an old
+/// status snapshot still deserializes.
 pub fn resolve_worker_command(
     probe: &dyn HostProbe,
     port: u16,
@@ -332,23 +377,6 @@ pub fn resolve_worker_command(
                     .map(PathBuf::from),
                 python_root: None,
                 origin: CommandOrigin::EnvOverride,
-            });
-        }
-    }
-
-    for name in ["LTCAI", "ltcai"] {
-        if let Some(program) = find_in_path(probe, name) {
-            return Ok(WorkerCommand {
-                program,
-                args: vec![
-                    "--host".into(),
-                    "127.0.0.1".into(),
-                    "--port".into(),
-                    port.to_string(),
-                ],
-                cwd: None,
-                python_root: None,
-                origin: CommandOrigin::LtcaiOnPath,
             });
         }
     }

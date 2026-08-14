@@ -1,17 +1,7 @@
 """v3.3.1 version-consistency guard.
 
 Lattice AI keeps a single release version. The runtime canonical is
-``latticeai.core.workspace_os.WORKSPACE_OS_VERSION``; everything user-facing
-must agree with it:
-
-* ``latticeai.__version__`` (Python package)
-* ``pyproject.toml`` / ``package.json`` / editor and browser extensions
-* the React browser asset manifest (``static/app/asset-manifest.json``)
-* the release-tracking subsystem constants that historically moved with the
-  release (marketplace, multi-agent)
-
-This test fails the moment any of those drift, which is what made the v3.1.0
-string linger in the Settings UI before this release.
+``latticeai.__version__``; everything user-facing must agree with it.
 """
 
 from __future__ import annotations
@@ -32,22 +22,18 @@ def _json(rel: str) -> dict:
 
 
 def _canonical() -> str:
-    from latticeai.core.workspace_os import WORKSPACE_OS_VERSION
+    from latticeai import __version__
 
-    return WORKSPACE_OS_VERSION
+    return __version__
 
 
 def test_python_constants_agree():
     from lattice_brain import __version__ as brain_version
-    from lattice_brain.runtime.multi_agent import MULTI_AGENT_VERSION
     from latticeai import __version__
-    from latticeai.core.marketplace import MARKETPLACE_VERSION
 
     v = _canonical()
     assert __version__ == v
     assert brain_version == v
-    assert v == MARKETPLACE_VERSION
-    assert v == MULTI_AGENT_VERSION
 
 
 def test_pyproject_version_agrees():
@@ -75,10 +61,13 @@ def test_tauri_cargo_version_agrees():
 # version in both lockfiles without a single test noticing.
 RUST_CRATES = (
     "lattice-agent",
+    "lattice-auth",
+    "lattice-chat",
     "lattice-core",
     "lattice-host",
     "lattice-ingest",
     "lattice-jobs",
+    "lattice-platform",
     "lattice-retrieval",
 )
 

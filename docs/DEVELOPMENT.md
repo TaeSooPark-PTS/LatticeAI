@@ -3,12 +3,13 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **11.5.2 — Tight Ship**.
+Current release: **11.6.0 — One Door**.
 
 This document is for contributors working on the local-first Digital Brain
-codebase. Product positioning and quick start stay in `README.md`; release
-history is intentionally limited to 8.0.0-9.9.0 in `docs/CHANGELOG.md` and
-`RELEASE.md`.
+codebase. Product positioning and quick start stay in `README.md`; supported
+release history is 11.0.0 and later in `docs/CHANGELOG.md` and `RELEASE.md`
+(11.6.0 rebuilt the product server in Rust, so `SECURITY.md` supports only
+11.x).
 
 ## Product Contract
 
@@ -20,8 +21,9 @@ Engineering work should preserve these boundaries:
 - the Brain is the durable asset;
 - models are replaceable voices;
 - SQLite is the live local Brain store;
-- PostgreSQL scale/migration tooling, Docker, cloud models, downloads, update checks, Telegram, and
-  Brain Network are opt-in;
+- Docker, cloud models, downloads, update checks and Brain Network are opt-in
+  (the PostgreSQL scale/migration tooling and the Telegram bridge left the tree
+  in 11.6.0 with the platform code that became the AI worker);
 - import-only paths must not initialize MLX/GPU, write files, or make network
   calls;
 - normal Brain use must stay separate from Admin/operator controls.

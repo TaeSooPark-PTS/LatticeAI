@@ -1,0 +1,1399 @@
+{
+  "_": "Golden HTTP fixtures captured from the live Python app by scripts/gen_http_fixtures_brain.py before the Python routers are deleted (v11.6.0 One Door, WP-F2). Replayed by the Rust port. Do not hand-edit — regenerate. FROZEN at commit fc65e60 — last generating tree; do not regenerate.",
+  "scope": "latticeai/api/chat.py, chat_stream.py, chat_history.py, chat_documents.py, chat_intents.py, chat_contracts.py, chat_helpers.py, chat_agent_http.py, chat_hybrid.py (+ GET /chat, whose handler lives in static_routes.py)",
+  "families": {
+    "chat_ui": 1,
+    "chat": 23,
+    "chat_history": 12,
+    "chat_agent_http": 10
+  },
+  "case_count": 46,
+  "order_is_significant": "Cases were captured in this order against one shared sandbox; writes and the destructive cases at the end depend on it.",
+  "tokens": {
+    "@ts": "a timestamp (any ISO-8601 value)",
+    "@uuid": "a UUID",
+    "@any": "a value that may differ per run or per machine (random tokens, durations, pids, IPs, out-of-sandbox paths, machine facts)",
+    "@session": "in request_headers.cookie: the call carried the logged-in session cookie",
+    "@datadir": "the sandbox data directory",
+    "@home": "the sandbox HOME",
+    "@corpus": "the seeded local corpus directory",
+    "@agentroot": "the agent workspace root",
+    "@sandbox": "the sandbox root the four above live in",
+    "@repo": "the repository checkout",
+    "@systmp": "the system temp directory",
+    "@tmpname": "a random temp-file name the product minted",
+    "@stamp": "a YYYYMMDD_HHMMSS stamp in a garden filename",
+    "@today": "the capture date (YYYY-MM-DD); a replayer substitutes its own",
+    "@hostname": "this machine's name, which the discovery index writes into a Computer node and its id",
+    "@gardenwiki0/@gardenwiki1/@gardenraw0/@gardenraw1": "the graph_node_id and provenance_id of the two garden writes; they hash a filename carrying the wall-clock second, so they are tokenised wherever they appear"
+  },
+  "record_shape": [
+    "family",
+    "method",
+    "path",
+    "query",
+    "request_headers",
+    "request_body",
+    "status",
+    "response_headers",
+    "response_body",
+    "name",
+    "note",
+    "sse_frames"
+  ],
+  "sse": "For text/event-stream answers response_body is null and sse_frames holds the parsed wire frames in order, including the terminating 'data: [DONE]' sentinel. JSON payloads are re-serialised with json.dumps(ensure_ascii=False), the flags the server itself writes them with.",
+  "dropped_response_headers": [
+    "content-length",
+    "date",
+    "server"
+  ],
+  "gaps": [
+    "POST /chat with a model loaded is NOT captured: loading an MLX model is the AI worker's job and would make the fixture machine-dependent. What is captured is every branch reachable without one — the no-model refusal (all four stream/Accept combinations), the intent branches that answer before the model is consulted (/clear, current-url, direct file action), the unknown-model 404, the identity-mismatch 403, the 422 and the 401.",
+    "Therefore no /chat SSE success stream exists in these fixtures. The only SSE capture is POST /agent (stream:true), whose no-model failure still exercises the real frame writer: an anonymous error frame followed by the 'data: [DONE]' sentinel. Named 'agent_step' frames are unreachable without a model (the loop fails before its first observer callback) — the Rust port must pin those against rust/fixtures/agent_loop instead.",
+    "POST /chat 'network status' intent: captured with response_body '@any'. It shells out for the machine's own interfaces and calls an external IP service, so its body is neither offline-reproducible nor machine-stable. Status code and content type are the whole contract here.",
+    "POST /api/browser/read-url is captured on its validation/boundary branches only (bad scheme, private host, missing url) — the success branch fetches a public URL and this generator makes no network calls. POST /api/browser/ingest-current-tab, which needs no network, is captured on its real success branch.",
+    "The local-file approval dance (/local/*, /api/ingestion/*, /knowledge-graph/local/*) needs a human approval that is granted through POST /permissions/approve/{token} — another WP's family. That call is made as a seeding step and is not recorded here; the fixtures show the probe response (which mints the token), the approved success and the unapproved/expired/absent-token refusals.",
+    "Approval tokens are random per run, so they appear as '@any' in both the response that minted them and the request that spends them. A replayer must thread the value it received rather than the literal.",
+    "Feature-gate refusals (gate_read/gate_write) are not captured: every gate these families read is on by default, and flipping toggles belongs to the feature-toggle WP. All /api/memory and /api/brain captures are therefore gate-open captures.",
+    "Workspace scoping is captured single-workspace only (the seeded owner has no second workspace). Cross-workspace 403s belong to the workspace WP.",
+    "POST /api/index/{drain,rebuild} are KEEP_WORKER: captured for the worker contract, not as a port target.",
+    "Three cases answer with facts about the machine that captured them and are marked MACHINE-DEPENDENT in their note: local_knowledge/roots (this machine's home and mounted volumes), local_files/local_agent_status (platform, machine, python, pid — already tokenised) and local_files/ingestion_interop_status (whether git is installed). Replay their shape, not their values.",
+    "The capture date appears as the '@today' token (in the chronicle day path and as-of query). A replayer substitutes its own date; nothing else in these files is dated, because every other timestamp is '@ts'.",
+    "One list is '@any' because its ORDER is not determined by anything a caller can pin, even with the write clock frozen and PYTHONHASHSEED set: knowledge_graph/curate's 'skipped', whose equal-score candidates keep their clustering order. Its contents are stable and its member shape is in the case note; everything else in that answer is pinned.",
+    "Found while capturing, recorded rather than fixed: GET /api/command/search can never fill its 'knowledge' group — services/command_center.py reads payload['results'] from search_service.keyword_search, which answers 'matches'. The fixtures show the empty group, which is what the product does today."
+  ],
+  "cases": [
+    {
+      "family": "chat_ui",
+      "method": "GET",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 308,
+      "response_headers": {
+        "location": "/app#/chat"
+      },
+      "response_body": "",
+      "name": "chat_get_redirect",
+      "note": "GET /chat is a page redirect while POST /chat is the stream — the same path, two unrelated handlers. Captured here so the collision cannot be lost; static_routes.py owns the handler."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "무엇을 기억하고 있나요?",
+        "stream": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "no_model_stream_false_no_accept",
+      "note": "No model loaded. All four stream/Accept combinations must answer the same JSON 400: the refusal is decided before the stream branch, and VS Code sends stream:true with no Accept header at all."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "Accept": "text/event-stream",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "무엇을 기억하고 있나요?",
+        "stream": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "no_model_stream_false_accept_sse",
+      "note": "No model loaded. All four stream/Accept combinations must answer the same JSON 400: the refusal is decided before the stream branch, and VS Code sends stream:true with no Accept header at all."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "무엇을 기억하고 있나요?",
+        "stream": true
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "no_model_stream_true_no_accept",
+      "note": "No model loaded. All four stream/Accept combinations must answer the same JSON 400: the refusal is decided before the stream branch, and VS Code sends stream:true with no Accept header at all."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "Accept": "text/event-stream",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "무엇을 기억하고 있나요?",
+        "stream": true
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "no_model_stream_true_accept_sse",
+      "note": "No model loaded. All four stream/Accept combinations must answer the same JSON 400: the refusal is decided before the stream branch, and VS Code sends stream:true with no Accept header at all."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "en",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "what do you remember?",
+        "stream": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "No model is loaded. Prepare a model first.",
+        "message": "No model is loaded. Prepare a model first.",
+        "action": "load_model"
+      },
+      "name": "no_model_english",
+      "note": "Same refusal in the language the person chose (X-Lattice-Language)."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "explain this file",
+        "source": "vscode",
+        "stream": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "no_model_vscode_source",
+      "note": "source='vscode' does not change the refusal (grounding-badge path)."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "무엇을 기억하고 있나요?",
+        "source": "browser-extension",
+        "stream": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "no_model_browser_extension_source",
+      "note": "source='browser-extension' — the popup's recall call."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "/clear",
+        "stream": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "response": "채팅창을 정리했습니다. 화면에서 제거 0개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
+      },
+      "name": "clear_command",
+      "note": "Intent branch: /clear answers before any model is consulted and reports what it removed from the screen."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "현재 url 알려줘",
+        "client_url": "https://example.com/page",
+        "conversation_id": "conv-chat-1",
+        "stream": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "response": "현재 페이지 URL: https://example.com/page"
+      },
+      "name": "current_url_intent",
+      "note": "Intent branch: answers from the client-supplied URL, no model. It also persists both turns, which is what gives the history routes a real conversation to read."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "이 페이지 주소 알려줘",
+        "client_url": "https://example.com/other",
+        "conversation_id": "conv-chat-2",
+        "stream": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "response": "현재 페이지 URL: https://example.com/other"
+      },
+      "name": "current_url_intent_second_conversation",
+      "note": "The same branch in a second conversation, so history grouping is non-trivial."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "현재 url 알려줘",
+        "stream": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "current_url_intent_without_client_url",
+      "note": "Same intent without client_url: the branch is skipped and the no-model refusal takes over."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "fixture-note.md 파일 만들어줘. 내용: Hello Lattice",
+        "conversation_id": "conv-chat-1",
+        "stream": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "response": "fixture-note.md 파일을 만들었습니다.",
+        "workspace": "@agentroot",
+        "steps": [
+          {
+            "state": "EXECUTING",
+            "action": "write_file",
+            "args": {
+              "path": "fixture-note.md"
+            },
+            "result": {
+              "path": "fixture-note.md",
+              "bytes": 13
+            }
+          }
+        ],
+        "state_history": [
+          "EXECUTING",
+          "DONE"
+        ],
+        "final_state": "DONE",
+        "created_files": [
+          {
+            "path": "fixture-note.md",
+            "filename": "fixture-note.md",
+            "bytes": 13,
+            "action": "write_file"
+          }
+        ],
+        "artifacts": [
+          {
+            "kind": "file",
+            "path": "fixture-note.md",
+            "filename": "fixture-note.md",
+            "bytes": 13,
+            "previewable": true,
+            "valid": true,
+            "repaired": false
+          }
+        ],
+        "routed_to_agent": true,
+        "action_route": "direct_write_file",
+        "brain_ingest": {
+          "status": "ok",
+          "node_id": "file:fce1110ff985bba9cad1f594",
+          "chunk_count": 0,
+          "duplicate": false
+        }
+      },
+      "name": "file_intent_inline_content",
+      "note": "Direct file action: inline content needs no model, so this branch really writes the file and answers with the full agent payload (created_files/artifacts/final_state) the clients parse."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "fixture-report.docx 파일 만들어줘. 내용: 리트리벌 가중치 정리",
+        "conversation_id": "conv-chat-1",
+        "stream": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "ok",
+        "response": "fixture-report.docx 파일을 만들었습니다.",
+        "workspace": "@agentroot",
+        "steps": [
+          {
+            "state": "EXECUTING",
+            "action": "write_file",
+            "args": {
+              "path": "fixture-report.docx"
+            },
+            "result": {
+              "path": "fixture-report.docx",
+              "bytes": 29
+            }
+          }
+        ],
+        "state_history": [
+          "EXECUTING",
+          "DONE"
+        ],
+        "final_state": "DONE",
+        "created_files": [
+          {
+            "path": "fixture-report.docx",
+            "filename": "fixture-report.docx",
+            "bytes": 29,
+            "action": "write_file"
+          }
+        ],
+        "artifacts": [
+          {
+            "kind": "file",
+            "path": "fixture-report.docx",
+            "filename": "fixture-report.docx",
+            "bytes": 29,
+            "previewable": false,
+            "valid": true,
+            "repaired": false
+          }
+        ],
+        "routed_to_agent": true,
+        "action_route": "direct_write_file",
+        "brain_ingest": {
+          "status": "ok",
+          "node_id": "file:9f033e8b2619a947d73cfadd",
+          "chunk_count": 0,
+          "duplicate": false
+        }
+      },
+      "name": "file_intent_docx_artifact",
+      "note": "The document-generation side of the same branch: a binary artifact target (.docx). Whether it answers with an artifact or with the no-model refusal is exactly the contract this pins — read the status."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "hello",
+        "conversation_id": "conv-chat-1",
+        "client_url": "https://example.com/page",
+        "model": null,
+        "max_tokens": 512,
+        "temperature": 0.1,
+        "stream": false,
+        "context": "caller supplied context",
+        "source": "web",
+        "user_email": null,
+        "user_nickname": "owner",
+        "image_data": null,
+        "allow_file_context": false,
+        "network_mode": "local_only"
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "every_contract_field",
+      "note": "Every field ChatRequest declares, at once: the contract module (chat_contracts.py) has no routes of its own, so this is where its shape is pinned."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "hello",
+        "stream": "yes please",
+        "temperature": "hot",
+        "max_tokens": "many"
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "int_parsing",
+            "loc": [
+              "body",
+              "max_tokens"
+            ],
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "input": "many"
+          },
+          {
+            "type": "float_parsing",
+            "loc": [
+              "body",
+              "temperature"
+            ],
+            "msg": "Input should be a valid number, unable to parse string as a number",
+            "input": "hot"
+          },
+          {
+            "type": "bool_parsing",
+            "loc": [
+              "body",
+              "stream"
+            ],
+            "msg": "Input should be a valid boolean, unable to interpret input",
+            "input": "yes please"
+          }
+        ]
+      },
+      "name": "wrong_types_422",
+      "note": "Type coercion refusals — three of them in one detail[]."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "이 화면에 무엇이 보이나요?",
+        "image_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+        "stream": false
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "error": "no_model_loaded",
+        "detail": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "message": "불러온 모델이 없습니다. 모델을 먼저 준비해주세요.",
+        "action": "load_model"
+      },
+      "name": "image_data_no_model",
+      "note": "An attached image does not change the refusal."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "hello",
+        "model": "not-a-real-model",
+        "stream": false
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "'not-a-real-model' 모델이 아직 준비되지 않았습니다."
+      },
+      "name": "unknown_model_404",
+      "note": "A model id that is not loaded is a 404 before anything else runs."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "hello",
+        "user_email": "someone-else@fixture.local",
+        "stream": false
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "로그인한 사용자와 요청한 사용자가 다릅니다."
+      },
+      "name": "identity_mismatch_403",
+      "note": "A body user_email that disagrees with the session is refused."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "stream": false
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "message"
+            ],
+            "msg": "Field required",
+            "input": {
+              "stream": false
+            }
+          }
+        ]
+      },
+      "name": "validation_missing_message",
+      "note": "FastAPI validation shape (422) — the clients read detail[]."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko"
+      },
+      "request_body": {
+        "message": "hello",
+        "stream": false
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "auth_denied",
+      "note": "No session cookie, require_auth on: 401 with the Korean detail."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": [
+        {
+          "role": "user",
+          "content": "현재 url 알려줘",
+          "timestamp": "@ts",
+          "user_email": "owner@fixture.local",
+          "user_nickname": "owner",
+          "source": "web",
+          "conversation_id": "conv-chat-1",
+          "workspace_id": "personal"
+        },
+        {
+          "role": "assistant",
+          "content": "현재 페이지 URL: https://example.com/page",
+          "timestamp": "@ts",
+          "user_email": "owner@fixture.local",
+          "user_nickname": "owner",
+          "source": "web",
+          "conversation_id": "conv-chat-1",
+          "workspace_id": "personal"
+        },
+        {
+          "role": "user",
+          "content": "이 페이지 주소 알려줘",
+          "timestamp": "@ts",
+          "user_email": "owner@fixture.local",
+          "user_nickname": "owner",
+          "source": "web",
+          "conversation_id": "conv-chat-2",
+          "workspace_id": "personal"
+        },
+        {
+          "role": "assistant",
+          "content": "현재 페이지 URL: https://example.com/other",
+          "timestamp": "@ts",
+          "user_email": "owner@fixture.local",
+          "user_nickname": "owner",
+          "source": "web",
+          "conversation_id": "conv-chat-2",
+          "workspace_id": "personal"
+        }
+      ],
+      "name": "history",
+      "note": "The whole history for this user, newest last."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history/conversations",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": [
+        {
+          "id": "conv-chat-2",
+          "title": "이 페이지 주소 알려줘",
+          "created_at": "@ts",
+          "updated_at": "@ts",
+          "message_count": 2,
+          "last_message": "현재 페이지 URL: https://example.com/other",
+          "source": "web"
+        },
+        {
+          "id": "conv-chat-1",
+          "title": "현재 url 알려줘",
+          "created_at": "@ts",
+          "updated_at": "@ts",
+          "message_count": 2,
+          "last_message": "현재 페이지 URL: https://example.com/page",
+          "source": "web"
+        }
+      ],
+      "name": "history_conversations",
+      "note": "History grouped into conversations (the 'previous chats' list)."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history/conversations/conv-chat-1",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "id": "conv-chat-1",
+        "messages": [
+          {
+            "role": "user",
+            "content": "현재 url 알려줘",
+            "timestamp": "@ts",
+            "user_email": "owner@fixture.local",
+            "user_nickname": "owner",
+            "source": "web",
+            "conversation_id": "conv-chat-1",
+            "workspace_id": "personal"
+          },
+          {
+            "role": "assistant",
+            "content": "현재 페이지 URL: https://example.com/page",
+            "timestamp": "@ts",
+            "user_email": "owner@fixture.local",
+            "user_nickname": "owner",
+            "source": "web",
+            "conversation_id": "conv-chat-1",
+            "workspace_id": "personal"
+          }
+        ]
+      },
+      "name": "history_conversation_messages",
+      "note": "One conversation's messages (seeded by the chat intent branches)."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history/conversations/conv-does-not-exist",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "대화를 찾을 수 없습니다."
+      },
+      "name": "history_conversation_missing",
+      "note": "An unknown conversation id."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history/search",
+      "query": {
+        "q": "페이지"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "results": [
+          {
+            "conversation_id": "conv-chat-1",
+            "title": "현재 페이지 URL: https://example.com/page",
+            "messages": [
+              {
+                "role": "assistant",
+                "content": "현재 페이지 URL: https://example.com/page",
+                "timestamp": "@ts",
+                "user_email": "owner@fixture.local",
+                "user_nickname": "owner",
+                "source": "web",
+                "conversation_id": "conv-chat-1",
+                "workspace_id": "personal"
+              }
+            ]
+          },
+          {
+            "conversation_id": "conv-chat-2",
+            "title": "이 페이지 주소 알려줘",
+            "messages": [
+              {
+                "role": "user",
+                "content": "이 페이지 주소 알려줘",
+                "timestamp": "@ts",
+                "user_email": "owner@fixture.local",
+                "user_nickname": "owner",
+                "source": "web",
+                "conversation_id": "conv-chat-2",
+                "workspace_id": "personal"
+              },
+              {
+                "role": "assistant",
+                "content": "현재 페이지 URL: https://example.com/other",
+                "timestamp": "@ts",
+                "user_email": "owner@fixture.local",
+                "user_nickname": "owner",
+                "source": "web",
+                "conversation_id": "conv-chat-2",
+                "workspace_id": "personal"
+              }
+            ]
+          }
+        ],
+        "query": "페이지"
+      },
+      "name": "history_search_hit",
+      "note": "Keyword search over the stored messages — a hit."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history/search",
+      "query": {
+        "q": "zzzzz-no-such-token"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "results": [],
+        "query": "zzzzz-no-such-token"
+      },
+      "name": "history_search_miss",
+      "note": "Same route, empty result."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history/search",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "query",
+              "q"
+            ],
+            "msg": "Field required",
+            "input": null
+          }
+        ]
+      },
+      "name": "history_search_missing_q",
+      "note": "q is required — the validation shape."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "history_auth_denied",
+      "note": "Auth denial for the history reads."
+    },
+    {
+      "family": "chat_history",
+      "method": "GET",
+      "path": "/history/search",
+      "query": {
+        "q": "검색"
+      },
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "history_search_auth_denied",
+      "note": "Auth denial for the search read."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "write a note",
+        "source": "vscode",
+        "stream": true,
+        "human_in_loop": false,
+        "project_id": "fixture-project"
+      },
+      "status": 200,
+      "response_headers": {
+        "x-routed-to": "agent",
+        "content-type": "text/event-stream; charset=utf-8"
+      },
+      "response_body": null,
+      "name": "agent_stream_sse",
+      "note": "The VS Code live-agent body: stream:true, no Accept header. With no model the loop fails at once, so the capture is the error frame plus the [DONE] sentinel — the frame writer's real output.",
+      "sse_frames": [
+        {
+          "event": null,
+          "data": "{\"error\": \"No model loaded. Call /models/load first.\", \"model\": null}"
+        },
+        {
+          "event": null,
+          "data": "[DONE]"
+        }
+      ]
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "write a note",
+        "source": "vscode",
+        "human_in_loop": false,
+        "planning_model": null,
+        "executing_model": null,
+        "reviewing_model": null
+      },
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "No model loaded. Call /models/load first."
+      },
+      "name": "agent_batch_no_model",
+      "note": "The batch body (models present, no stream): a JSON 400, not SSE."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "source": "vscode"
+      },
+      "status": 422,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "message"
+            ],
+            "msg": "Field required",
+            "input": {
+              "source": "vscode"
+            }
+          }
+        ]
+      },
+      "name": "agent_validation",
+      "note": "message is required."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent",
+      "query": {},
+      "request_headers": {},
+      "request_body": {
+        "message": "hello"
+      },
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "agent_auth_denied",
+      "note": "Auth denial on the agent entry point."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "GET",
+      "path": "/agent/approvals",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "pending": []
+      },
+      "name": "agent_approvals",
+      "note": "The pending-approval list ({pending:[…]} — VS Code also accepts a bare array)."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "GET",
+      "path": "/agent/approvals",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "agent_approvals_auth_denied",
+      "note": "Auth denial on the approvals read."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent/resume",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "run_id": "run-does-not-exist",
+        "approval_token": "@any",
+        "approved": true,
+        "approve": true
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Agent run not found. It may have expired — start a new request."
+      },
+      "name": "agent_resume_unknown_run",
+      "note": "404 = run lost. The clients send both approved/approve spellings and key on 410/404/403 to tell expiry from loss from theft."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent/resume",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {},
+      "status": 400,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "run_id (with approval_token) or context_id is required."
+      },
+      "name": "agent_resume_validation",
+      "note": "Neither run_id nor context_id supplied."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent/eval",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "skill": "not-a-skill"
+      },
+      "status": 404,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Skill 'not-a-skill' not found or missing schema.json"
+      },
+      "name": "agent_eval_unknown_skill",
+      "note": "Admin-only eval entry point with an unknown skill."
+    },
+    {
+      "family": "chat_agent_http",
+      "method": "POST",
+      "path": "/agent/eval",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "skill": "not-a-skill"
+      },
+      "status": 403,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "관리자 권한이 필요합니다."
+      },
+      "name": "agent_eval_admin_denied",
+      "note": "A logged-in non-admin is refused (require_admin, not require_user)."
+    },
+    {
+      "family": "chat_history",
+      "method": "DELETE",
+      "path": "/history",
+      "query": {},
+      "request_headers": {},
+      "request_body": null,
+      "status": 401,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "인증이 필요합니다."
+      },
+      "name": "history_delete_auth_denied",
+      "note": "Auth denial for the destructive branch."
+    },
+    {
+      "family": "chat_history",
+      "method": "DELETE",
+      "path": "/history/conversations/conv-chat-2",
+      "query": {},
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "cleared",
+        "conversation_id": "conv-chat-2",
+        "removed": 2,
+        "kept": 2
+      },
+      "name": "history_conversation_delete",
+      "note": "Deletes one conversation and reports removed/kept. DESTRUCTIVE — captured after every read case."
+    },
+    {
+      "family": "chat_history",
+      "method": "DELETE",
+      "path": "/history",
+      "query": {
+        "keep_last": "2"
+      },
+      "request_headers": {
+        "cookie": "session_token=@session"
+      },
+      "request_body": null,
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "status": "cleared",
+        "removed": 0,
+        "kept": 2
+      },
+      "name": "history_delete_keep_last",
+      "note": "Trim the whole history to the last N entries. DESTRUCTIVE."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "/clear_all",
+        "stream": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "response": "채팅창을 정리했습니다. 화면에서 제거 2개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
+      },
+      "name": "clear_all_command",
+      "note": "Intent branch: /clear_all is the second spelling of the clear intent. Captured after every graph read — see this function's docstring for why."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "네트워크 상태 알려줘",
+        "stream": false
+      },
+      "status": 200,
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "response_body": "@any",
+      "name": "network_status_intent",
+      "note": "Intent branch, body masked: it reads this machine's interfaces and an external IP service, so only the status and the content type are reproducible. Captured after everything else because the answer is persisted to history and ingested into the graph."
+    },
+    {
+      "family": "chat",
+      "method": "POST",
+      "path": "/chat",
+      "query": {},
+      "request_headers": {
+        "X-Lattice-Language": "ko",
+        "cookie": "session_token=@session"
+      },
+      "request_body": {
+        "message": "burst",
+        "stream": false
+      },
+      "status": 429,
+      "response_headers": {
+        "retry-after": "1",
+        "content-type": "application/json"
+      },
+      "response_body": {
+        "detail": "Rate limit exceeded for chat. Retry after 1s."
+      },
+      "name": "rate_limited_429",
+      "note": "Token bucket for the 'chat' key is 30 with 0.5/s refill; this is the 429 the 31st call in a burst gets, Retry-After included."
+    }
+  ]
+}

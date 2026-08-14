@@ -1,0 +1,177 @@
+{
+  "count": 28,
+  "generated_by": "scripts/gen_worker_allowlist_fixture.py",
+  "note": "The gateway's reverse proxy allowlist. Generated from latticeai.runtime.build_phases.worker_profile.worker_route_keys() by scripts/gen_worker_allowlist_fixture.py; a path absent here is answered natively or 404, never forwarded.",
+  "routes": [
+    {
+      "axum": "/models/unload-all",
+      "group": "product",
+      "method": "DELETE",
+      "path": "/models/unload-all"
+    },
+    {
+      "axum": "/models/unload/*model_id",
+      "group": "product",
+      "method": "DELETE",
+      "path": "/models/unload/{model_id:path}"
+    },
+    {
+      "axum": "/api/capture/voice/status",
+      "group": "product",
+      "method": "GET",
+      "path": "/api/capture/voice/status"
+    },
+    {
+      "axum": "/api/embeddings/providers",
+      "group": "product",
+      "method": "GET",
+      "path": "/api/embeddings/providers"
+    },
+    {
+      "axum": "/api/embeddings/status",
+      "group": "product",
+      "method": "GET",
+      "path": "/api/embeddings/status"
+    },
+    {
+      "axum": "/api/ingestion/multimodal",
+      "group": "product",
+      "method": "GET",
+      "path": "/api/ingestion/multimodal"
+    },
+    {
+      "axum": "/health",
+      "group": "product",
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "axum": "/models",
+      "group": "product",
+      "method": "GET",
+      "path": "/models"
+    },
+    {
+      "axum": "/tools/pdf_pages",
+      "group": "product",
+      "method": "GET",
+      "path": "/tools/pdf_pages"
+    },
+    {
+      "axum": "/worker/sysinfo",
+      "group": "state_seam",
+      "method": "GET",
+      "path": "/worker/sysinfo"
+    },
+    {
+      "axum": "/agent/llm",
+      "group": "product",
+      "method": "POST",
+      "path": "/agent/llm"
+    },
+    {
+      "axum": "/agent/tool",
+      "group": "product",
+      "method": "POST",
+      "path": "/agent/tool"
+    },
+    {
+      "axum": "/engines/prepare-model",
+      "group": "product",
+      "method": "POST",
+      "path": "/engines/prepare-model"
+    },
+    {
+      "axum": "/engines/prepare-model/stream",
+      "group": "product",
+      "method": "POST",
+      "path": "/engines/prepare-model/stream"
+    },
+    {
+      "axum": "/engines/pull-model",
+      "group": "product",
+      "method": "POST",
+      "path": "/engines/pull-model"
+    },
+    {
+      "axum": "/models/load",
+      "group": "product",
+      "method": "POST",
+      "path": "/models/load"
+    },
+    {
+      "axum": "/models/switch/*model_id",
+      "group": "product",
+      "method": "POST",
+      "path": "/models/switch/{model_id:path}"
+    },
+    {
+      "axum": "/tools/read_document",
+      "group": "product",
+      "method": "POST",
+      "path": "/tools/read_document"
+    },
+    {
+      "axum": "/worker/asr",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/asr"
+    },
+    {
+      "axum": "/worker/embed",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/embed"
+    },
+    {
+      "axum": "/worker/extract",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/extract"
+    },
+    {
+      "axum": "/worker/llm/stream",
+      "group": "state_seam",
+      "method": "POST",
+      "path": "/worker/llm/stream"
+    },
+    {
+      "axum": "/worker/multimodal/describe",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/multimodal/describe"
+    },
+    {
+      "axum": "/worker/parse",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/parse"
+    },
+    {
+      "axum": "/worker/render/docx",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/render/docx"
+    },
+    {
+      "axum": "/worker/render/pdf",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/render/pdf"
+    },
+    {
+      "axum": "/worker/render/pptx",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/render/pptx"
+    },
+    {
+      "axum": "/worker/render/xlsx",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/render/xlsx"
+    }
+  ],
+  "schema": "worker-proxy-allowlist/v1",
+  "source": "latticeai/runtime/build_phases/worker_profile.py"
+}

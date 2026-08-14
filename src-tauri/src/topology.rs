@@ -1,38 +1,31 @@
 //! Which front door the desktop opens, and on which ports.
 //!
-//! Through 11.4.0 the shell had one topology: spawn the Python worker, point
-//! the webview at the worker's own port. 11.5.0 makes the Rust gateway the
-//! **default front door** (plan §2a) — the shell serves `lattice-host`'s
-//! gateway on the public port and supervises the worker on an internal one
-//! behind it — because that is the only arrangement in which the native
-//! `/rust/*` and `/host/*` surfaces exist for the app at all.
-//!
-//! Three escape hatches are preserved, and one is new. They are resolved here,
-//! in one pure-ish function, so "what will this shell do" is a table rather
-//! than a trail through `backend.rs`:
+//! v11.6.0 One Door: **lattice-host is the only front door.** The shell either
+//! serves the gateway in-process (default) or attaches to an already-running
+//! lattice-host named by `LATTICEAI_DESKTOP_BACKEND_ORIGIN`. There is no
+//! Python-direct topology — `LATTICEAI_DESKTOP_DIRECT` and
+//! `LATTICEAI_DESKTOP_NO_BACKEND` are retired and ignored.
 //!
 //! | Environment | Topology | Webview origin | Spawns |
 //! |---|---|---|---|
 //! | *(none)* | `gateway` | `http://127.0.0.1:{gateway}` | worker (internal port) + in-process gateway |
-//! | `LATTICEAI_DESKTOP_DIRECT=1` | `direct` | `http://127.0.0.1:{worker}` | worker only (11.4.0 behaviour) |
-//! | `LATTICEAI_DESKTOP_BACKEND_ORIGIN=…` | `external` | that origin, verbatim | nothing |
-//! | `LATTICEAI_DESKTOP_NO_BACKEND=1` | `disabled` | `http://127.0.0.1:{worker}` | nothing |
+//! | `LATTICEAI_DESKTOP_BACKEND_ORIGIN=…` | `external` | that origin, verbatim (must be a lattice-host) | nothing |
 //!
-//! An explicit origin outranks every other switch (something already exists and
-//! was named), and the kill switch outranks the topology choice (there is
-//! nothing to front). `LATTICEAI_PORT`, when set, is honoured verbatim as the
-//! **port the person visits** — the gateway port in the default topology, the
-//! worker port in the others — because the reason to set it is that something
-//! else knows the number.
+//! An explicit origin outranks the default. `LATTICEAI_PORT`, when set, is
+//! honoured verbatim as the **port the person visits** — the gateway port —
+//! because the reason to set it is that something else knows the number.
 
 use lattice_host::supervisor::{find_free_port, HostProbe, DEFAULT_PORT, DEFAULT_SCAN_ATTEMPTS};
 
-/// Point the shell at an already-running worker. Nothing is spawned, and this
-/// exact string is what `backend_origin` returns and the webview navigates to.
+/// Point the shell at an already-running **lattice-host**. Nothing is spawned,
+/// and this exact string is what `backend_origin` returns and the webview
+/// navigates to. A bare Python worker origin is not a supported value.
 pub const ORIGIN_ENV: &str = "LATTICEAI_DESKTOP_BACKEND_ORIGIN";
-/// Kill switch: open the window with no worker at all.
+/// Retired in 11.6.0: previously a kill switch. Ignored — the shell always
+/// boots or attaches through lattice-host.
 pub const NO_BACKEND_ENV: &str = "LATTICEAI_DESKTOP_NO_BACKEND";
-/// Opt back into the 11.4.0 topology: webview straight at the worker.
+/// Retired in 11.6.0: previously opted into a Python-direct front door.
+/// Ignored — lattice-host is the only front door.
 pub const DIRECT_ENV: &str = "LATTICEAI_DESKTOP_DIRECT";
 /// An explicit port, honoured verbatim.
 pub const PORT_ENV: &str = "LATTICEAI_PORT";
@@ -42,12 +35,8 @@ pub const PORT_ENV: &str = "LATTICEAI_PORT";
 pub enum Topology {
     /// Gateway on the public port, worker behind it. The default.
     Gateway,
-    /// Webview straight at the worker, no gateway (`LATTICEAI_DESKTOP_DIRECT`).
-    Direct,
-    /// A worker someone else started (`LATTICEAI_DESKTOP_BACKEND_ORIGIN`).
+    /// A lattice-host someone else started (`LATTICEAI_DESKTOP_BACKEND_ORIGIN`).
     External,
-    /// No backend at all (`LATTICEAI_DESKTOP_NO_BACKEND`).
-    Disabled,
 }
 
 impl Topology {
@@ -55,15 +44,13 @@ impl Topology {
     pub fn as_str(self) -> &'static str {
         match self {
             Topology::Gateway => "gateway",
-            Topology::Direct => "direct",
             Topology::External => "external",
-            Topology::Disabled => "disabled",
         }
     }
 
     /// Whether this shell owns a worker process.
     pub fn supervises(self) -> bool {
-        matches!(self, Topology::Gateway | Topology::Direct)
+        matches!(self, Topology::Gateway)
     }
 }
 
@@ -72,17 +59,17 @@ impl Topology {
 pub struct Plan {
     /// Which arrangement was chosen.
     pub topology: Topology,
-    /// Where the frontend and the webview go.
+    /// Where the frontend and the webview go (always a lattice-host origin).
     pub origin: String,
-    /// Where the worker itself answers — the proxy target, and the origin the
-    /// supervisor health-gates on.
+    /// Where the worker itself answers — the proxy target. Equal to `origin`
+    /// when we only attach to someone else's host (we do not speak to their
+    /// worker).
     pub worker_origin: String,
-    /// The worker's port.
+    /// The worker's port (internal when we supervise; the named host port
+    /// when we attach).
     pub worker_port: u16,
-    /// The gateway's port, when there is a gateway.
+    /// The gateway's port, when this process serves one.
     pub gateway_port: Option<u16>,
-    /// The kill switch was set: there is deliberately nothing to wait for.
-    pub disabled: bool,
 }
 
 impl Plan {
@@ -102,7 +89,8 @@ impl Plan {
 ///
 /// Presence alone is deliberately *not* enough — `LATTICEAI_DESKTOP_DIRECT=0`
 /// must mean "no", or the variable becomes impossible to turn off in a shell
-/// profile that already exports it.
+/// profile that already exports it. The flag itself is retired; the parser
+/// stays so a leftover `=0` is not mistaken for "on" if anything still reads it.
 pub fn flag_is_on(raw: Option<&str>) -> bool {
     matches!(
         raw.map(|value| value.trim().to_ascii_lowercase())
@@ -156,39 +144,29 @@ pub fn resolve(probe: &dyn HostProbe) -> Plan {
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
     if let Some(origin) = external {
-        let worker_port = origin_port(&origin).unwrap_or_else(|| resolve_port(probe));
+        let host_port = origin_port(&origin).unwrap_or_else(|| resolve_port(probe));
         return Plan {
             topology: Topology::External,
             worker_origin: origin.clone(),
             origin,
-            worker_port,
+            worker_port: host_port,
             gateway_port: None,
-            disabled: false,
         };
     }
 
-    if probe.env_var(NO_BACKEND_ENV).is_some() {
-        let worker_port = resolve_port(probe);
-        return Plan {
-            topology: Topology::Disabled,
-            origin: loopback(worker_port),
-            worker_origin: loopback(worker_port),
-            worker_port,
-            gateway_port: None,
-            disabled: true,
-        };
-    }
-
+    // Retired escape hatches: log once so a leftover profile is visible, then
+    // take the only remaining door.
     if flag_is_on(probe.env_var(DIRECT_ENV).as_deref()) {
-        let worker_port = resolve_port(probe);
-        return Plan {
-            topology: Topology::Direct,
-            origin: loopback(worker_port),
-            worker_origin: loopback(worker_port),
-            worker_port,
-            gateway_port: None,
-            disabled: false,
-        };
+        eprintln!(
+            "lattice-ai-desktop: {DIRECT_ENV} is retired in 11.6.0; \
+             the shell always fronts lattice-host"
+        );
+    }
+    if probe.env_var(NO_BACKEND_ENV).is_some() {
+        eprintln!(
+            "lattice-ai-desktop: {NO_BACKEND_ENV} is retired in 11.6.0; \
+             the shell always boots through lattice-host"
+        );
     }
 
     // The default: the gateway takes the public port and the worker moves
@@ -206,7 +184,6 @@ pub fn resolve(probe: &dyn HostProbe) -> Plan {
         worker_origin: loopback(worker_port),
         worker_port,
         gateway_port: Some(gateway_port),
-        disabled: false,
     }
 }
 
@@ -268,20 +245,18 @@ mod tests {
             format!("http://127.0.0.1:{}", plan.worker_port)
         );
         assert!(plan.supervised());
-        assert!(!plan.disabled);
         assert_eq!(plan.app_url(), "http://127.0.0.1:41830/app");
     }
 
     #[test]
-    fn direct_restores_the_previous_topology() {
+    fn a_retired_direct_flag_still_uses_the_gateway() {
         let probe = StaticProbe::new()
             .with_env(DIRECT_ENV, "1")
             .with_env(PORT_ENV, "41831");
         let plan = resolve(&probe);
-        assert_eq!(plan.topology, Topology::Direct);
-        assert_eq!(plan.gateway_port, None);
-        assert_eq!(plan.worker_port, 41831);
-        assert_eq!(plan.origin, "http://127.0.0.1:41831");
+        assert_eq!(plan.topology, Topology::Gateway);
+        assert_eq!(plan.gateway_port, Some(41831));
+        assert_ne!(plan.worker_origin, plan.origin);
         assert!(plan.supervised());
     }
 
@@ -301,8 +276,12 @@ mod tests {
         assert_eq!(plan.origin, "http://127.0.0.1:9100/");
         assert_eq!(plan.app_url(), "http://127.0.0.1:9100/app");
         assert_eq!(plan.worker_port, 9100);
+        assert_eq!(plan.worker_origin, plan.origin);
+        assert!(
+            plan.gateway_port.is_none(),
+            "we must not bind a port someone else's host already holds"
+        );
         assert!(!plan.supervised());
-        assert!(!plan.disabled, "a worker was named, so the shell waits");
     }
 
     #[test]
@@ -314,13 +293,14 @@ mod tests {
     }
 
     #[test]
-    fn the_kill_switch_spawns_nothing_but_still_names_an_origin() {
-        let probe = StaticProbe::new().with_env(NO_BACKEND_ENV, "1");
+    fn a_retired_kill_switch_still_uses_the_gateway() {
+        let probe = StaticProbe::new()
+            .with_env(NO_BACKEND_ENV, "1")
+            .with_env(PORT_ENV, "41833");
         let plan = resolve(&probe);
-        assert_eq!(plan.topology, Topology::Disabled);
-        assert!(plan.disabled);
-        assert!(!plan.supervised());
-        assert!(plan.origin.starts_with("http://127.0.0.1:"));
+        assert_eq!(plan.topology, Topology::Gateway);
+        assert!(plan.supervised());
+        assert_eq!(plan.gateway_port, Some(41833));
     }
 
     #[test]
@@ -331,24 +311,14 @@ mod tests {
             .with_env(ORIGIN_ENV, "http://127.0.0.1:9100");
         let plan = resolve(&probe);
         assert_eq!(plan.topology, Topology::External);
-        assert!(!plan.disabled, "a worker was named, so the shell waits");
-    }
-
-    #[test]
-    fn the_kill_switch_outranks_the_topology_choice() {
-        let probe = StaticProbe::new()
-            .with_env(NO_BACKEND_ENV, "1")
-            .with_env(DIRECT_ENV, "1");
-        assert_eq!(resolve(&probe).topology, Topology::Disabled);
+        assert!(!plan.supervised());
     }
 
     #[test]
     fn every_topology_reports_a_name() {
         for (topology, name) in [
             (Topology::Gateway, "gateway"),
-            (Topology::Direct, "direct"),
             (Topology::External, "external"),
-            (Topology::Disabled, "disabled"),
         ] {
             assert_eq!(topology.as_str(), name);
         }

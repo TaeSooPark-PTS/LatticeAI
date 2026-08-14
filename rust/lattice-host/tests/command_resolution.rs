@@ -1,4 +1,4 @@
-//! Worker command resolution: the four-rule chain and its priority order.
+//! Worker command resolution: the three-rule chain and its priority order.
 //!
 //! Lives outside `src/supervisor/command.rs` so that file stays under the
 //! 500-line target; every symbol used here is public API.
@@ -81,29 +81,39 @@ fn rule_one_env_override_wins_over_everything() {
 #[test]
 fn rule_one_blank_command_falls_through() {
     let probe = StaticProbe::new()
-        .with_env("LATTICEAI_DESKTOP_BACKEND_CMD", "   ")
         .with_path_dir("/aaa/bin")
-        .with_file("/aaa/bin/ltcai");
+        .with_env("LATTICEAI_DESKTOP_BACKEND_CMD", "   ")
+        .with_file("/aaa/bin/python3")
+        .with_importable("/aaa/bin/python3");
     let cmd = resolve_worker_command(&probe, 4825).expect("resolves");
-    assert_eq!(cmd.origin, CommandOrigin::LtcaiOnPath);
+    assert_eq!(cmd.origin, CommandOrigin::PythonModule);
 }
 
+/// v11.6.0 §3: `ltcai` starts the **host**, so a host that spawned it as its
+/// worker would spawn another host, and that one another. The rule is gone;
+/// an `ltcai` on PATH is now simply not a worker.
 #[test]
-fn rule_two_prefers_uppercase_ltcai_and_passes_port() {
+fn an_ltcai_on_path_is_no_longer_a_worker() {
     let probe = StaticProbe::new()
         .with_path_dir("/aaa/bin")
         .with_file("/aaa/bin/LTCAI")
-        .with_file("/aaa/bin/ltcai")
+        .with_file("/aaa/bin/ltcai");
+    assert_eq!(
+        resolve_worker_command(&probe, 4899).expect_err("no worker"),
+        ResolveError::NotFound,
+        "an ltcai on PATH must not be mistaken for a worker — it is this binary"
+    );
+    // …and with a python beside it, the python wins rather than tying.
+    let probe = probe
         .with_file("/aaa/bin/python3")
         .with_importable("/aaa/bin/python3");
     let cmd = resolve_worker_command(&probe, 4899).expect("resolves");
-    assert_eq!(cmd.origin, CommandOrigin::LtcaiOnPath);
-    assert_eq!(cmd.program, "/aaa/bin/LTCAI");
-    assert_eq!(cmd.display(), "/aaa/bin/LTCAI --host 127.0.0.1 --port 4899");
+    assert_eq!(cmd.origin, CommandOrigin::PythonModule);
+    assert_eq!(cmd.program, "/aaa/bin/python3");
 }
 
 #[test]
-fn rule_three_picks_the_first_importable_candidate_not_the_first_sorted() {
+fn rule_two_picks_the_first_importable_candidate_not_the_first_sorted() {
     // Both interpreters can import the module. Priority order must pick
     // LTCAI_PYTHON even though "/aaa/bin/python3" sorts first.
     let probe = probe_with_python_everywhere()
@@ -114,22 +124,23 @@ fn rule_three_picks_the_first_importable_candidate_not_the_first_sorted() {
     assert_eq!(cmd.program, "/zzz/venv/bin/python");
     assert_eq!(
         cmd.display(),
-        "/zzz/venv/bin/python -m latticeai.cli.entrypoint --host 127.0.0.1 --port 4825"
+        "/zzz/venv/bin/python -m uvicorn latticeai.worker_app:create_worker_app --factory --host 127.0.0.1 --port 4825",
+        "the worker profile is served through uvicorn: `python -m latticeai.worker_app` has no __main__ guard and would exit without binding"
     );
 }
 
 #[test]
-fn rule_three_skips_candidates_that_cannot_import() {
+fn rule_two_skips_candidates_that_cannot_import() {
     let probe = probe_with_python_everywhere().with_importable("/usr/bin/python3");
     let cmd = resolve_worker_command(&probe, 4825).expect("resolves");
     assert_eq!(cmd.program, "/usr/bin/python3");
 }
 
 #[test]
-fn rule_four_uses_the_bundled_tree_with_an_existing_interpreter() {
+fn rule_three_uses_the_bundled_tree_with_an_existing_interpreter() {
     let probe = StaticProbe::new()
         .with_resource_dir("/App/Contents/Resources")
-        .with_file("/App/Contents/Resources/_up_/latticeai/cli/entrypoint.py")
+        .with_file("/App/Contents/Resources/_up_/latticeai/worker_app.py")
         .with_file("/usr/bin/python3");
     let cmd = resolve_worker_command(&probe, 4825).expect("resolves");
     assert_eq!(cmd.origin, CommandOrigin::BundledTree);
@@ -139,20 +150,31 @@ fn rule_four_uses_the_bundled_tree_with_an_existing_interpreter() {
 }
 
 #[test]
-fn rule_four_accepts_resources_root_without_up_dir() {
+fn rule_three_accepts_resources_root_without_up_dir() {
+    let probe = StaticProbe::new()
+        .with_resource_dir("/App/Contents/Resources")
+        .with_file("/App/Contents/Resources/latticeai/worker_app.py")
+        .with_file("/usr/bin/python3");
+    let cmd = resolve_worker_command(&probe, 4825).expect("resolves");
+    assert_eq!(cmd.cwd, Some(PathBuf::from("/App/Contents/Resources")));
+}
+
+/// A bundle built before the flip still boots (WP-P2 §checklist 3).
+#[test]
+fn rule_three_still_accepts_a_pre_v11_6_bundle() {
     let probe = StaticProbe::new()
         .with_resource_dir("/App/Contents/Resources")
         .with_file("/App/Contents/Resources/latticeai/cli/entrypoint.py")
         .with_file("/usr/bin/python3");
     let cmd = resolve_worker_command(&probe, 4825).expect("resolves");
-    assert_eq!(cmd.cwd, Some(PathBuf::from("/App/Contents/Resources")));
+    assert_eq!(cmd.origin, CommandOrigin::BundledTree);
 }
 
 #[test]
 fn nothing_found_is_an_error_not_a_bogus_command() {
     let err = resolve_worker_command(&StaticProbe::new(), 4825).expect_err("no worker");
     assert_eq!(err, ResolveError::NotFound);
-    assert!(err.to_string().contains("latticeai.cli.entrypoint"));
+    assert!(err.to_string().contains("latticeai.worker_app"));
 }
 
 #[test]

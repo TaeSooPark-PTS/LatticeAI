@@ -61,9 +61,9 @@ def test_underscore_helpers_are_exported_on_purpose() -> None:
         assert hasattr(kg_common, name)
 
 
-def test_star_import_reaches_the_graph_mixins() -> None:
-    """The consumers really do resolve their names through the star import."""
-    from lattice_brain.graph import ingest
+def test_star_import_reaches_the_graph_package() -> None:
+    """The keep-set package still re-exports the helpers the goldens pin."""
+    import lattice_brain.graph._kg_common as common
 
-    assert ingest._slug is kg_common._slug
-    assert ingest._sha256_text is kg_common._sha256_text
+    assert common._slug is kg_common._slug
+    assert common._sha256_text is kg_common._sha256_text

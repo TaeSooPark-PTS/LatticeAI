@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v11.5.2)
+# Lattice AI — Operations Guide (v11.6.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -136,8 +136,11 @@ pip install --upgrade ltcai
 - [ ] `CSRF_TRUSTED_ORIGINS` 화이트리스트 설정
 - [ ] `ALLOWED_COMMANDS` 검토 — python3/node 등 불필요한 실행 도구 제거
 - [ ] 방화벽으로 4825 포트를 프록시만 접근 허용
-- [ ] Telegram 활성화 시 `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS`와
-  `LATTICEAI_SERVER_SESSION_TOKEN` 설정
+> **11.6.0 변경**: Telegram 브리지가 제거되어 `LATTICEAI_TELEGRAM_*`는 더 이상
+> 읽히지 않습니다. SSO OIDC 로그인/콜백 플로우도 함께 제거되었습니다 — 설정
+> 표면은 남아 있고 패스워드 로그인은 네이티브(`lattice-auth`)입니다. 외부 OIDC
+> 공급자로 사용자를 인증하던 배포는 해당 플로우가 이식될 때까지 11.5.2에
+> 머무르십시오.
 
 ## 8. 사용자 데이터 격리
 

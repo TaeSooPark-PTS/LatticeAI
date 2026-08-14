@@ -1,24 +1,46 @@
-//! The AI-worker seam: the three things the loop cannot do natively.
+//! The AI-worker seam: the things the loop cannot do natively.
 //!
-//! The kernel decides; the worker infers and mutates. This client is the whole
-//! boundary between them, and it is deliberately three calls wide:
+//! The kernel decides and (since v11.6.0's WP-W4) writes; the worker infers and
+//! computes. This client is the whole boundary between them, and it is
+//! deliberately three calls wide:
 //!
 //! * `POST /agent/llm` — one completion. No history, no persistence.
-//! * `POST /agent/tool` — one governed tool dispatch. The worker keeps its
-//!   **mode-invariant** server guards (circuit breaker / destructive → 403,
-//!   fail-closed classification → 409), so a preflight bug here cannot become a
-//!   write there.
-//! * `POST /agent/change-proposal` — the proposal-first path under `strict`.
+//! * `POST /agent/tool` — one governed tool dispatch, for the **compute-only**
+//!   handlers. The worker keeps its mode-invariant server guards (circuit
+//!   breaker / destructive → 403, fail-closed classification → 409), so a
+//!   preflight bug here cannot become a write there. Every mutating handler is
+//!   native now ([`crate::tools`]) and never reaches this call.
+//! * `POST /worker/render/{docx,xlsx,pptx,pdf}` — the document builders, which
+//!   need python-docx / openpyxl / python-pptx / reportlab. They return **bytes**
+//!   and this side writes the file, so document creation is a compute call with
+//!   a native write rather than a worker-side write.
+//!
+//! `POST /agent/change-proposal` was the fourth until v11.6.0 §P1a retired it
+//! from the worker; staging a proposal is [`crate::proposals`]' job now, in
+//! this process, so a run's *decisions* and the record of the ones it declined
+//! to make are both native.
 //!
 //! Every failure is an *outcome*, not a panic: a worker that is down, slow or
 //! shouting 403 produces a transcript step that says so. The one exception is
 //! the LLM call, whose failure ends the run — there is no honest way to
 //! continue a reasoning loop without the reasoner.
 
+use base64::Engine;
 use serde_json::{json, Map, Value};
 
 /// The seam is off unless the host injects this into its own worker.
 pub const SEAM_ENV: &str = "LATTICEAI_AGENT_TOOL_SEAM";
+
+/// One document the worker built: its bytes, and what it said about them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Rendered {
+    /// The file, decoded.
+    pub content: Vec<u8>,
+    /// The whole 200 body. W2 §3 puts `filename`, `bytes` and the per-kind
+    /// counts (`rows`, `slides`) at the top level; a nested `meta` object is
+    /// honoured too, so the caller reads one shape either way.
+    pub report: Value,
+}
 
 /// A completion could not be obtained.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,31 +176,41 @@ impl WorkerClient {
         }
     }
 
-    /// `POST /agent/change-proposal` → the governor verdict, or `None` when the
-    /// governor could not be consulted (which falls through to the gates).
-    pub async fn change_proposal(
-        &self,
-        tool: &str,
-        args: &Map<String, Value>,
-        policy: &Value,
-        workspace_id: Option<&str>,
-        conversation_id: Option<&str>,
-    ) -> Option<Value> {
-        let mut body = json!({
-            "tool": tool,
-            "args": Value::Object(args.clone()),
-            "policy": policy.clone(),
-        });
-        if let Some(workspace_id) = workspace_id {
-            body["workspace_id"] = json!(workspace_id);
+    /// `POST /worker/render/{kind}` → the document bytes the builder produced.
+    ///
+    /// The request body is the tool handler's own argument schema — W2 §3 binds
+    /// it field for field to `ToolDocxRequest` and friends, so the builder is
+    /// the same code reading the same fields. The response carries the file as
+    /// base64 under `content_b64` (`bytes_b64` is accepted as an alias) and its
+    /// counts beside it. A refusal — `{"error": …}`, or a non-2xx such as W2's
+    /// `503 worker_compute.render_unavailable` — comes back as the message, so
+    /// "this worker cannot render 'xlsx'" reaches the transcript.
+    pub async fn render(&self, kind: &str, body: Value) -> Result<Rendered, String> {
+        let path = format!("/worker/render/{kind}");
+        let (status, value) = self.post(&path, body).await?;
+        if status != 200 {
+            return Err(match value.get("error") {
+                Some(error) => crate::pystr::py_str(error),
+                None => format!(
+                    "worker seam {path} answered {status}: {}",
+                    detail_of(&value)
+                ),
+            });
         }
-        if let Some(conversation_id) = conversation_id {
-            body["conversation_id"] = json!(conversation_id);
+        if let Some(error) = value.get("error").filter(|error| !error.is_null()) {
+            return Err(crate::pystr::py_str(error));
         }
-        match self.post("/agent/change-proposal", body).await {
-            Ok((200, value)) if value.is_object() => Some(value),
-            _ => None,
-        }
+        let encoded = ["content_b64", "bytes_b64"]
+            .iter()
+            .find_map(|key| value.get(*key).and_then(Value::as_str))
+            .ok_or_else(|| format!("worker seam {path} returned no document bytes"))?;
+        let content = base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .map_err(|error| format!("worker seam {path} returned unreadable bytes: {error}"))?;
+        Ok(Rendered {
+            content,
+            report: value,
+        })
     }
 }
 
@@ -225,13 +257,6 @@ mod tests {
             })
             .await
             .is_err());
-        assert_eq!(
-            client
-                .change_proposal("write_file", &Map::new(), &json!({}), None, None)
-                .await,
-            None,
-            "a governor that cannot be reached falls through to the gates"
-        );
     }
 
     #[test]

@@ -12,10 +12,18 @@
 //!   of `latticeai.tools.commands.run_command`'s validator — POSIX `shlex`
 //!   splitting, the executable allowlist, the shell-operator ban, `find`/`rg`
 //!   flag denials, and the absolute / `..` / symlink-escape path rules.
-//! * **What should this tool *do*?** Not this crate's question. Only validated,
-//!   read-only, allow-listed commands are executed ([`exec`]); every mutating
-//!   tool, `git`, `build_project` and `deploy_project` get a verdict and
-//!   nothing else. Inference and mutation belong to the Python worker.
+//! * **What should this tool *do*?** Since v11.6.0 (WP-W4) this crate answers
+//!   that too, for the mutating half: [`tools`] executes the eighteen writing /
+//!   actuating / executing handlers natively and writes the four document
+//!   creators' bytes, so the loop's own effects never leave Rust. What stays
+//!   with the Python worker is **compute** — inference, parsers, the document
+//!   builders, and the twenty-five read-only handlers still reached over
+//!   `POST /agent/tool`.
+//! * **And when may it not run *yet*?** Since v11.6.0 (WP-P1c) [`proposals`]
+//!   stages a `strict` mutation as a Review Center item here rather than asking
+//!   the worker to: the classification, the unified diff ([`pydiff`]) and the
+//!   review item are all computed in this process, and where the item is
+//!   written is a port the Review Center's own store implements.
 //!
 //! Every decision is pinned by committed goldens under `rust/fixtures/agent/`,
 //! produced from the **real** Python functions by
@@ -39,6 +47,8 @@ pub mod permission;
 pub mod plan;
 pub mod policy;
 pub mod profile;
+pub mod proposals;
+pub mod pydiff;
 pub mod pyjson;
 pub mod pyliteral;
 pub mod pyshlex;
@@ -48,6 +58,7 @@ pub mod runbody;
 pub mod runs;
 pub mod sandbox;
 pub mod state;
+pub mod tools;
 pub mod trace;
 pub mod transcript;
 pub mod worker;
@@ -91,6 +102,10 @@ pub use permission::{block_reason_for_tool, non_auto_plan_steps};
 pub use policy::{PolicyTable, ToolPolicy};
 pub use router::router;
 pub use sandbox::{ErrorKind, ToolError, Workspace, MAX_COMMAND_OUTPUT, MAX_FILE_BYTES};
+pub use tools::{
+    is_native, CallScope, HookSink, NativeCall, NativeTools, ToolConfig, ToolHost, MUTATING_TOOLS,
+    RENDER_TOOLS,
+};
 
 /// Product version, kept in lockstep by `scripts/bump_version.py`.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

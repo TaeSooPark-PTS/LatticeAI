@@ -90,19 +90,9 @@ def test_require_user_and_admin_enforce_auth_contract():
     assert forbidden.value.status_code == 403
 
 
-def test_public_user_keeps_identity_projection():
-    users = {"member@example.com": {"name": "Member", "nickname": "Mem", "role": "user", "disabled": True}}
-    runtime = _runtime(users=users)
-
-    assert runtime["public_user"]("member@example.com", users["member@example.com"], users) == {
-        "id": "id:member@example.com",
-        "email": "member@example.com",
-        "identity": "id:member@example.com",
-        "name": "Member",
-        "nickname": "Mem",
-        "role": "user",
-        "disabled": True,
-    }
+def test_access_runtime_no_longer_projects_a_public_user():
+    runtime = _runtime()
+    assert "public_user" not in runtime
 
 
 @pytest.mark.parametrize(
@@ -166,11 +156,9 @@ def test_loopback_no_auth_identity_is_authorized_as_trusted_local_owner():
         "network_status",
         "knowledge_search",
     ):
-        policy = service.enforce_policy(
+        policy = service.policy_for(
             tool_name,
             {"query": "local"} if tool_name == "knowledge_search" else {},
-            current_user=runtime["require_user"](request),
-            source="http",
         )
         assert policy["destructive"] is False
 

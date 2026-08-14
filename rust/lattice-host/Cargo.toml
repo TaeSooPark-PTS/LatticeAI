@@ -29,6 +29,10 @@ lattice-retrieval = { workspace = true }
 lattice-ingest = { workspace = true }
 lattice-jobs = { workspace = true }
 lattice-agent = { workspace = true }
+# One Door (v11.6.0): native identity, platform routes, chat orchestration.
+lattice-auth = { workspace = true }
+lattice-platform = { workspace = true }
+lattice-chat = { workspace = true }
 # Only for kill(2)/SIGTERM on unix; every other platform falls back to the
 # std `Child::kill` path.
 libc = { workspace = true }

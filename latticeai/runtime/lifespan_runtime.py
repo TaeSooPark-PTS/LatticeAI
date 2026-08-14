@@ -1,4 +1,10 @@
-"""FastAPI lifespan assembly for app startup and shutdown tasks."""
+"""FastAPI lifespan assembly for worker startup and shutdown tasks.
+
+Two background tasks, both about the one thing this process holds that a
+restart would lose: the loaded model. The telegram bridge and the local
+knowledge watcher used to start here too — both are product surfaces
+``lattice-host`` owns now, and neither had anything to do with inference.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +17,6 @@ from latticeai.core.quiet import quiet
 def build_lifespan_runtime(
     *,
     app_mode: str,
-    enable_telegram: bool,
     autoload_models: bool,
     is_public_mode: bool,
     public_model: str,
@@ -20,7 +25,6 @@ def build_lifespan_runtime(
     local_draft_model: str,
     model_idle_unload_seconds: int,
     model_router: Any,
-    local_kg_watcher: Any,
     local_server_processes: Dict[str, Any],
     logger: Any,
 ) -> Dict[str, Any]:
@@ -103,26 +107,13 @@ def build_lifespan_runtime(
     async def lifespan(_app):
         try:
             print(f"🧭 Lattice AI mode: {app_mode}")
-            if enable_telegram:
-                from latticeai.integrations.telegram_bot import run_bot
-
-                spawn(run_bot(), name="telegram_bot")
-                print("🚀 Telegram Bot Bridge activated!")
-            else:
-                print("⏭️ Telegram Bot Bridge disabled for this mode.")
             spawn(unload_idle_models_loop(), name="unload_idle_models")
             spawn(autoload_default_model(), name="autoload_default_model")
-            if local_kg_watcher:
-                restored = local_kg_watcher.restore_enabled_sources()
-                if restored.get("restored"):
-                    print(f"🕸️ Local knowledge watchers restored: {restored['restored']}")
         except Exception as e:  # pragma: no cover - startup diagnostics
             print(f"⚠️ Startup sequence failed: {e}")
         try:
             yield
         finally:
-            if local_kg_watcher:
-                local_kg_watcher.stop_all()
             model_router.unload_all()
             for proc in local_server_processes.values():
                 try:

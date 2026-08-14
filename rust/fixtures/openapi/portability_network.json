@@ -1,0 +1,3064 @@
+{
+  "components": {
+    "schemas": {
+      "BackupRequest": {
+        "properties": {
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "title": "BackupRequest",
+        "type": "object"
+      },
+      "CreateProjectRequest": {
+        "properties": {
+          "goal": {
+            "default": "",
+            "title": "Goal",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "CreateProjectRequest",
+        "type": "object"
+      },
+      "CuAgentRequest": {
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "max_steps": {
+            "default": 15,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "temperature": {
+            "default": 0.1,
+            "title": "Temperature",
+            "type": "number"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "title": "CuAgentRequest",
+        "type": "object"
+      },
+      "CuClickRequest": {
+        "properties": {
+          "button": {
+            "default": "left",
+            "title": "Button",
+            "type": "string"
+          },
+          "double": {
+            "default": false,
+            "title": "Double",
+            "type": "boolean"
+          },
+          "x": {
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "CuClickRequest",
+        "type": "object"
+      },
+      "CuDragRequest": {
+        "properties": {
+          "x1": {
+            "title": "X1",
+            "type": "integer"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "integer"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "integer"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ],
+        "title": "CuDragRequest",
+        "type": "object"
+      },
+      "CuKeyRequest": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "CuKeyRequest",
+        "type": "object"
+      },
+      "CuMoveRequest": {
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "CuMoveRequest",
+        "type": "object"
+      },
+      "CuOpenAppRequest": {
+        "properties": {
+          "app": {
+            "default": "Google Chrome",
+            "title": "App",
+            "type": "string"
+          }
+        },
+        "title": "CuOpenAppRequest",
+        "type": "object"
+      },
+      "CuOpenUrlRequest": {
+        "properties": {
+          "app": {
+            "default": "Google Chrome",
+            "title": "App",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "CuOpenUrlRequest",
+        "type": "object"
+      },
+      "CuScrollRequest": {
+        "properties": {
+          "clicks": {
+            "default": 3,
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "direction": {
+            "default": "down",
+            "title": "Direction",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "CuScrollRequest",
+        "type": "object"
+      },
+      "CuTypeRequest": {
+        "properties": {
+          "interval": {
+            "default": 0.04,
+            "title": "Interval",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CuTypeRequest",
+        "type": "object"
+      },
+      "DockerPostgresRequest": {
+        "properties": {
+          "consent": {
+            "default": false,
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "port": {
+            "default": 5432,
+            "title": "Port",
+            "type": "integer"
+          }
+        },
+        "title": "DockerPostgresRequest",
+        "type": "object"
+      },
+      "EncryptedArchiveRequest": {
+        "properties": {
+          "passphrase": {
+            "title": "Passphrase",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "required": [
+          "passphrase"
+        ],
+        "title": "EncryptedArchiveRequest",
+        "type": "object"
+      },
+      "EncryptedInspectRequest": {
+        "properties": {
+          "passphrase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passphrase"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "EncryptedInspectRequest",
+        "type": "object"
+      },
+      "EncryptedRestoreRequest": {
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "passphrase": {
+            "title": "Passphrase",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "passphrase"
+        ],
+        "title": "EncryptedRestoreRequest",
+        "type": "object"
+      },
+      "EncryptedVerifyRequest": {
+        "properties": {
+          "passphrase": {
+            "title": "Passphrase",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "passphrase"
+        ],
+        "title": "EncryptedVerifyRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImportRequest": {
+        "properties": {
+          "artifact": {
+            "additionalProperties": true,
+            "title": "Artifact",
+            "type": "object"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "mode": {
+            "default": "merge",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact"
+        ],
+        "title": "ImportRequest",
+        "type": "object"
+      },
+      "PeerPairRequest": {
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "base_url",
+          "public_key"
+        ],
+        "title": "PeerPairRequest",
+        "type": "object"
+      },
+      "PeerPushRequest": {
+        "properties": {
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "PeerPushRequest",
+        "type": "object"
+      },
+      "PresenceRequest": {
+        "properties": {
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "PresenceRequest",
+        "type": "object"
+      },
+      "PreviewRequest": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 6,
+            "title": "Top K",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "PreviewRequest",
+        "type": "object"
+      },
+      "RestoreRequest": {
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "verify": {
+            "default": true,
+            "title": "Verify",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "RestoreRequest",
+        "type": "object"
+      },
+      "SQLiteToPostgresRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "dsn": {
+            "title": "Dsn",
+            "type": "string"
+          },
+          "schema_name": {
+            "default": "lattice_brain",
+            "title": "Schema Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dsn"
+        ],
+        "title": "SQLiteToPostgresRequest",
+        "type": "object"
+      },
+      "SetHybridPolicyRequest": {
+        "properties": {
+          "allow_multimodal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Multimodal"
+          },
+          "auto_commit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Commit"
+          },
+          "blocked_metadata_flags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Metadata Flags"
+          },
+          "blocked_node_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Node Types"
+          },
+          "min_extraction_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Extraction Confidence"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "SetHybridPolicyRequest",
+        "type": "object"
+      },
+      "SetNetworkBoundaryRequest": {
+        "properties": {
+          "acknowledge_risk": {
+            "default": false,
+            "title": "Acknowledge Risk",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "local_only | cloud_allowed",
+            "title": "Mode",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "SetNetworkBoundaryRequest",
+        "type": "object"
+      },
+      "SetNodeSensitivityRequest": {
+        "properties": {
+          "local_only": {
+            "default": true,
+            "title": "Local Only",
+            "type": "boolean"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "SetNodeSensitivityRequest",
+        "type": "object"
+      },
+      "SubgraphAcceptRequest": {
+        "properties": {
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "SubgraphAcceptRequest",
+        "type": "object"
+      },
+      "SubgraphArchiveRequest": {
+        "description": "Exactly one recipient mechanism \u2014 a passphrase, or a public key.\n\nBoth optional at the schema level and validated in the service, so the\nerror a caller gets names the rule (\"choose one\") instead of a field.",
+        "properties": {
+          "include_legacy_global": {
+            "default": false,
+            "title": "Include Legacy Global",
+            "type": "boolean"
+          },
+          "include_neighbors": {
+            "default": false,
+            "title": "Include Neighbors",
+            "type": "boolean"
+          },
+          "node_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Node Ids",
+            "type": "array"
+          },
+          "node_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Node Types",
+            "type": "array"
+          },
+          "passphrase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passphrase"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "recipient_public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Public Key"
+          },
+          "redact_provenance": {
+            "default": true,
+            "title": "Redact Provenance",
+            "type": "boolean"
+          },
+          "source_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Types",
+            "type": "array"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "SubgraphArchiveRequest",
+        "type": "object"
+      },
+      "SubgraphImportRequest": {
+        "description": "Either an inline ``artifact`` or a ``path`` (+ passphrase) on disk.",
+        "properties": {
+          "artifact": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "passphrase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passphrase"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "SubgraphImportRequest",
+        "type": "object"
+      },
+      "SubgraphSelection": {
+        "description": "What to share. At least one selector is required by the service.",
+        "properties": {
+          "include_legacy_global": {
+            "default": false,
+            "title": "Include Legacy Global",
+            "type": "boolean"
+          },
+          "include_neighbors": {
+            "default": false,
+            "title": "Include Neighbors",
+            "type": "boolean"
+          },
+          "node_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Node Ids",
+            "type": "array"
+          },
+          "node_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Node Types",
+            "type": "array"
+          },
+          "redact_provenance": {
+            "default": true,
+            "title": "Redact Provenance",
+            "type": "boolean"
+          },
+          "source_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Types",
+            "type": "array"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "SubgraphSelection",
+        "type": "object"
+      },
+      "TodosRequest": {
+        "properties": {
+          "todos": {
+            "items": {},
+            "title": "Todos",
+            "type": "array"
+          }
+        },
+        "title": "TodosRequest",
+        "type": "object"
+      },
+      "UpdateProjectRequest": {
+        "properties": {
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "UpdateProjectRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "family": "portability_network",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {},
+  "operation_count": 60,
+  "operation_order": [
+    "GET /api/brain/storage",
+    "POST /api/brain/storage/migrate-postgres",
+    "POST /api/brain/storage/postgres/docker",
+    "POST /api/knowledge-graph/archive",
+    "POST /api/knowledge-graph/archive/import",
+    "POST /api/knowledge-graph/archive/inspect",
+    "POST /api/knowledge-graph/archive/restore",
+    "POST /api/knowledge-graph/archive/verify",
+    "POST /api/knowledge-graph/backup",
+    "GET /api/knowledge-graph/backup-health",
+    "POST /api/knowledge-graph/export",
+    "POST /api/knowledge-graph/export-file",
+    "POST /api/knowledge-graph/import",
+    "GET /api/knowledge-graph/portability",
+    "GET /api/knowledge-graph/provenance",
+    "POST /api/knowledge-graph/restore",
+    "GET /api/knowledge-graph/share",
+    "POST /api/knowledge-graph/share/archive",
+    "POST /api/knowledge-graph/share/export",
+    "POST /api/knowledge-graph/share/import",
+    "POST /api/knowledge-graph/share/proposals/{item_id}/accept",
+    "GET /api/knowledge-graph/share/recipient-key",
+    "GET /api/network-boundary",
+    "POST /api/network-boundary",
+    "GET /api/network-boundary/catalog",
+    "POST /api/network-boundary/node-sensitivity",
+    "GET /api/network-boundary/policy",
+    "POST /api/network-boundary/policy",
+    "POST /api/network-boundary/preview",
+    "GET /api/network-boundary/ui-state",
+    "GET /api/projects",
+    "POST /api/projects",
+    "DELETE /api/projects/{session_id}",
+    "GET /api/projects/{session_id}",
+    "PATCH /api/projects/{session_id}",
+    "PUT /api/projects/{session_id}/todos",
+    "POST /cu/agent",
+    "POST /cu/click",
+    "POST /cu/drag",
+    "POST /cu/key",
+    "POST /cu/move",
+    "POST /cu/open_app",
+    "POST /cu/open_url",
+    "GET /cu/screenshot",
+    "POST /cu/scroll",
+    "GET /cu/status",
+    "POST /cu/type",
+    "GET /network/identity",
+    "GET /network/peers",
+    "POST /network/peers",
+    "DELETE /network/peers/{peer_id}",
+    "POST /network/push/{peer_id}",
+    "POST /network/receive",
+    "GET /realtime/feed",
+    "GET /realtime/presence",
+    "POST /realtime/presence/join",
+    "POST /realtime/presence/leave",
+    "GET /realtime/stream",
+    "GET /tools/chrome_status",
+    "GET /tools/computer_use_status"
+  ],
+  "path_count": 54,
+  "path_order": [
+    "/api/brain/storage",
+    "/api/brain/storage/migrate-postgres",
+    "/api/brain/storage/postgres/docker",
+    "/api/knowledge-graph/archive",
+    "/api/knowledge-graph/archive/import",
+    "/api/knowledge-graph/archive/inspect",
+    "/api/knowledge-graph/archive/restore",
+    "/api/knowledge-graph/archive/verify",
+    "/api/knowledge-graph/backup",
+    "/api/knowledge-graph/backup-health",
+    "/api/knowledge-graph/export",
+    "/api/knowledge-graph/export-file",
+    "/api/knowledge-graph/import",
+    "/api/knowledge-graph/portability",
+    "/api/knowledge-graph/provenance",
+    "/api/knowledge-graph/restore",
+    "/api/knowledge-graph/share",
+    "/api/knowledge-graph/share/archive",
+    "/api/knowledge-graph/share/export",
+    "/api/knowledge-graph/share/import",
+    "/api/knowledge-graph/share/proposals/{item_id}/accept",
+    "/api/knowledge-graph/share/recipient-key",
+    "/api/network-boundary",
+    "/api/network-boundary/catalog",
+    "/api/network-boundary/node-sensitivity",
+    "/api/network-boundary/policy",
+    "/api/network-boundary/preview",
+    "/api/network-boundary/ui-state",
+    "/api/projects",
+    "/api/projects/{session_id}",
+    "/api/projects/{session_id}/todos",
+    "/cu/agent",
+    "/cu/click",
+    "/cu/drag",
+    "/cu/key",
+    "/cu/move",
+    "/cu/open_app",
+    "/cu/open_url",
+    "/cu/screenshot",
+    "/cu/scroll",
+    "/cu/status",
+    "/cu/type",
+    "/network/identity",
+    "/network/peers",
+    "/network/peers/{peer_id}",
+    "/network/push/{peer_id}",
+    "/network/receive",
+    "/realtime/feed",
+    "/realtime/presence",
+    "/realtime/presence/join",
+    "/realtime/presence/leave",
+    "/realtime/stream",
+    "/tools/chrome_status",
+    "/tools/computer_use_status"
+  ],
+  "paths": {
+    "/api/brain/storage": {
+      "get": {
+        "operationId": "brain_storage_status_api_brain_storage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Storage Status"
+      }
+    },
+    "/api/brain/storage/migrate-postgres": {
+      "post": {
+        "operationId": "migrate_sqlite_to_postgres_api_brain_storage_migrate_postgres_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SQLiteToPostgresRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Migrate Sqlite To Postgres"
+      }
+    },
+    "/api/brain/storage/postgres/docker": {
+      "post": {
+        "operationId": "setup_postgres_docker_api_brain_storage_postgres_docker_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DockerPostgresRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Postgres Docker"
+      }
+    },
+    "/api/knowledge-graph/archive": {
+      "post": {
+        "operationId": "encrypted_archive_api_knowledge_graph_archive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encrypted Archive"
+      }
+    },
+    "/api/knowledge-graph/archive/import": {
+      "post": {
+        "operationId": "import_encrypted_archive_api_knowledge_graph_archive_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedRestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Encrypted Archive"
+      }
+    },
+    "/api/knowledge-graph/archive/inspect": {
+      "post": {
+        "operationId": "inspect_encrypted_archive_api_knowledge_graph_archive_inspect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedInspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Encrypted Archive"
+      }
+    },
+    "/api/knowledge-graph/archive/restore": {
+      "post": {
+        "operationId": "restore_encrypted_archive_api_knowledge_graph_archive_restore_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedRestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Encrypted Archive"
+      }
+    },
+    "/api/knowledge-graph/archive/verify": {
+      "post": {
+        "operationId": "verify_encrypted_archive_api_knowledge_graph_archive_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Encrypted Archive"
+      }
+    },
+    "/api/knowledge-graph/backup": {
+      "post": {
+        "operationId": "backup_graph_api_knowledge_graph_backup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Backup Graph"
+      }
+    },
+    "/api/knowledge-graph/backup-health": {
+      "get": {
+        "operationId": "backup_health_api_knowledge_graph_backup_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Backup Health"
+      }
+    },
+    "/api/knowledge-graph/export": {
+      "post": {
+        "description": "Logical JSON export of the whole graph (read-only).",
+        "operationId": "export_graph_api_knowledge_graph_export_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export Graph"
+      }
+    },
+    "/api/knowledge-graph/export-file": {
+      "post": {
+        "operationId": "export_graph_file_api_knowledge_graph_export_file_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export Graph File"
+      }
+    },
+    "/api/knowledge-graph/import": {
+      "post": {
+        "operationId": "import_graph_api_knowledge_graph_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Graph"
+      }
+    },
+    "/api/knowledge-graph/portability": {
+      "get": {
+        "operationId": "portability_status_api_knowledge_graph_portability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Portability Status"
+      }
+    },
+    "/api/knowledge-graph/provenance": {
+      "get": {
+        "description": "Recent ingestions (provenance trail) for the ingestion-sources UI.",
+        "operationId": "recent_provenance_api_knowledge_graph_provenance_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recent Provenance"
+      }
+    },
+    "/api/knowledge-graph/restore": {
+      "post": {
+        "operationId": "restore_graph_api_knowledge_graph_restore_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Graph"
+      }
+    },
+    "/api/knowledge-graph/share": {
+      "get": {
+        "description": "Reports whether sharing is on, and names the flag when it is not.",
+        "operationId": "share_status_api_knowledge_graph_share_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Share Status"
+      }
+    },
+    "/api/knowledge-graph/share/archive": {
+      "post": {
+        "description": "Same bundle, written as an encrypted ``.latticebrain`` file.",
+        "operationId": "share_archive_api_knowledge_graph_share_archive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubgraphArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Archive"
+      }
+    },
+    "/api/knowledge-graph/share/export": {
+      "post": {
+        "description": "Signed JSON bundle of the selected subgraph (no file written).",
+        "operationId": "share_export_api_knowledge_graph_share_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubgraphSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Export"
+      }
+    },
+    "/api/knowledge-graph/share/import": {
+      "post": {
+        "description": "Receive a bundle as review proposals. Never merges on its own.",
+        "operationId": "share_import_api_knowledge_graph_share_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubgraphImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Import"
+      }
+    },
+    "/api/knowledge-graph/share/proposals/{item_id}/accept": {
+      "post": {
+        "description": "Merge one reviewed proposal into this Brain and approve the item.",
+        "operationId": "share_accept_api_knowledge_graph_share_proposals__item_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubgraphAcceptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Accept"
+      }
+    },
+    "/api/knowledge-graph/share/recipient-key": {
+      "get": {
+        "description": "This Brain's X25519 receiving key, for a sender to seal a bundle to.\n\nPublic by construction \u2014 a public key encrypts, it does not decrypt \u2014\nso handing it out is the whole point. Still admin-gated and still\nbehind the share flag, because minting the key is a decision to\nparticipate in sharing at all.",
+        "operationId": "share_recipient_key_api_knowledge_graph_share_recipient_key_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Share Recipient Key"
+      }
+    },
+    "/api/network-boundary": {
+      "get": {
+        "operationId": "get_network_boundary_api_network_boundary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Network Boundary",
+        "tags": [
+          "network-boundary"
+        ]
+      },
+      "post": {
+        "operationId": "set_network_boundary_api_network_boundary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNetworkBoundaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Network Boundary",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/catalog": {
+      "get": {
+        "operationId": "network_boundary_catalog_api_network_boundary_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Network Boundary Catalog",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/node-sensitivity": {
+      "post": {
+        "description": "Mark one memory as never-leaving (or clear the mark).\n\nThe cloud filter has always looked for this flag. Until 10.2.0 nothing\nin the product could set it, so the guard could not fire. Ingestion\nstamps secret-bearing paths automatically; this covers what a path\ncannot tell you \u2014 a note whose *content* is private.",
+        "operationId": "set_node_sensitivity_api_network_boundary_node_sensitivity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNodeSensitivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Node Sensitivity",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/policy": {
+      "get": {
+        "operationId": "get_hybrid_policy_api_network_boundary_policy_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Hybrid Policy",
+        "tags": [
+          "network-boundary"
+        ]
+      },
+      "post": {
+        "operationId": "set_hybrid_policy_api_network_boundary_policy_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHybridPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Hybrid Policy",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/preview": {
+      "post": {
+        "operationId": "preview_cloud_context_api_network_boundary_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Cloud Context",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/network-boundary/ui-state": {
+      "get": {
+        "description": "Compact payload for the progressive-enhancement toggle panel.",
+        "operationId": "network_boundary_ui_state_api_network_boundary_ui_state_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Network Boundary Ui State",
+        "tags": [
+          "network-boundary"
+        ]
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "operationId": "list_projects_api_projects_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Projects"
+      },
+      "post": {
+        "operationId": "create_project_api_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Project"
+      }
+    },
+    "/api/projects/{session_id}": {
+      "delete": {
+        "operationId": "delete_project_api_projects__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Project"
+      },
+      "get": {
+        "operationId": "get_project_api_projects__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project"
+      },
+      "patch": {
+        "operationId": "update_project_api_projects__session_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Project"
+      }
+    },
+    "/api/projects/{session_id}/todos": {
+      "put": {
+        "operationId": "set_todos_api_projects__session_id__todos_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodosRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Todos"
+      }
+    },
+    "/cu/agent": {
+      "post": {
+        "operationId": "cu_agent_cu_agent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Agent"
+      }
+    },
+    "/cu/click": {
+      "post": {
+        "operationId": "cu_click_cu_click_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuClickRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Click"
+      }
+    },
+    "/cu/drag": {
+      "post": {
+        "operationId": "cu_drag_cu_drag_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuDragRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Drag"
+      }
+    },
+    "/cu/key": {
+      "post": {
+        "operationId": "cu_key_cu_key_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Key"
+      }
+    },
+    "/cu/move": {
+      "post": {
+        "operationId": "cu_move_cu_move_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuMoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Move"
+      }
+    },
+    "/cu/open_app": {
+      "post": {
+        "operationId": "cu_open_app_cu_open_app_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuOpenAppRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Open App"
+      }
+    },
+    "/cu/open_url": {
+      "post": {
+        "operationId": "cu_open_url_cu_open_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuOpenUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Open Url"
+      }
+    },
+    "/cu/screenshot": {
+      "get": {
+        "operationId": "cu_screenshot_cu_screenshot_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cu Screenshot"
+      }
+    },
+    "/cu/scroll": {
+      "post": {
+        "operationId": "cu_scroll_cu_scroll_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuScrollRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Scroll"
+      }
+    },
+    "/cu/status": {
+      "get": {
+        "operationId": "cu_status_cu_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cu Status"
+      }
+    },
+    "/cu/type": {
+      "post": {
+        "operationId": "cu_type_cu_type_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cu Type"
+      }
+    },
+    "/network/identity": {
+      "get": {
+        "operationId": "network_identity_network_identity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Network Identity"
+      }
+    },
+    "/network/peers": {
+      "get": {
+        "operationId": "network_peers_network_peers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Network Peers"
+      },
+      "post": {
+        "operationId": "network_pair_network_peers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeerPairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Network Pair"
+      }
+    },
+    "/network/peers/{peer_id}": {
+      "delete": {
+        "operationId": "network_unpair_network_peers__peer_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "peer_id",
+            "required": true,
+            "schema": {
+              "title": "Peer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Network Unpair"
+      }
+    },
+    "/network/push/{peer_id}": {
+      "post": {
+        "operationId": "network_push_network_push__peer_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "peer_id",
+            "required": true,
+            "schema": {
+              "title": "Peer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeerPushRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Network Push"
+      }
+    },
+    "/network/receive": {
+      "post": {
+        "operationId": "network_receive_network_receive_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Network Receive"
+      }
+    },
+    "/realtime/feed": {
+      "get": {
+        "operationId": "realtime_feed_realtime_feed_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Realtime Feed"
+      }
+    },
+    "/realtime/presence": {
+      "get": {
+        "operationId": "realtime_presence_realtime_presence_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Realtime Presence"
+      }
+    },
+    "/realtime/presence/join": {
+      "post": {
+        "operationId": "realtime_join_realtime_presence_join_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Realtime Join"
+      }
+    },
+    "/realtime/presence/leave": {
+      "post": {
+        "operationId": "realtime_leave_realtime_presence_leave_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Realtime Leave"
+      }
+    },
+    "/realtime/stream": {
+      "get": {
+        "operationId": "realtime_stream_realtime_stream_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Realtime Stream"
+      }
+    },
+    "/tools/chrome_status": {
+      "get": {
+        "operationId": "tools_chrome_status_tools_chrome_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Chrome Status"
+      }
+    },
+    "/tools/computer_use_status": {
+      "get": {
+        "operationId": "tools_computer_use_status_tools_computer_use_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Computer Use Status"
+      }
+    }
+  },
+  "schema_count": 34,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Portability/backup/share, peer network, network boundary, realtime, project sessions and computer use.",
+  "target": "lattice-platform (portability)",
+  "wp": "R9"
+}

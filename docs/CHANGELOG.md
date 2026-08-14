@@ -4,6 +4,81 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.6.0] - 2026-08-15 — One Door
+
+### Added
+- **하나의 제품 서버**: `lattice-host`가 **네이티브 420 오퍼레이션 /
+  41 라우트 패밀리**를 원래 경로에 서빙합니다. `mount_table()`이 아홉
+  크레이트의 `MOUNTED` 합집합이고, `(method, path)` 중복은 axum 생성자
+  패닉이 아니라 라우터 생성 **전** 단언으로 실패합니다.
+- **네이티브 KG write 엔진**(`lattice_core::graph_write`): ingest,
+  curation, provenance, taxonomy, 벡터 큐. 32단계 행 단위 패리티 골든과
+  `sqlite_master` 67객체 스키마 대조로 못박혔습니다.
+- **Python 순수 연산 시임 9종**(`/worker/*`): embed, parse, render×4,
+  asr, multimodal/describe, extract. `LATTICEAI_AGENT_TOOL_SEAM` 게이트
+  뒤에 있으며 인증이 디코드보다 먼저 실행됩니다.
+- **HTTP 골든 재생 스위트**: 커밋된 12개 픽스처의 **1,487 케이스**를
+  네이티브 라우트에 재생해 상태줄과 본문을 대조합니다.
+- `rust/fixtures/worker_allowlist.json` — 게이트웨이 프록시 allowlist의
+  단일 출처(**28 라우트**). Python 쪽 `tests/unit/test_worker_allowlist.py`
+  6종이 집합/바이트/결정성/그리디 컨버터/그룹 라벨/"네이티브는 없음"을
+  단언합니다.
+- `pdf` extra (`reportlab`) — `POST /worker/render/pdf`가 지연 임포트하던
+  선언되지 않은 의존성. 없으면 500이 아니라 "렌더러 사용 불가"입니다.
+
+### Changed
+- **Python은 AI 워커입니다.** `create_app`은 사라졌고
+  `latticeai.worker_app:create_worker_app`이 이 패키지가 만드는 유일한
+  애플리케이션이며 **28 라우트**만 서빙합니다. 부트스트랩 10단계 → 7단계,
+  `RuntimeContext` 191 필드 → 47.
+- 그래프 테이블 **17개**의 소유자가 WORKER → RUST_PLATFORM. 단일 writer
+  불변식이 주석이 아니라 테스트입니다.
+- 변경 제안 스테이징·승인·적용이 인프로세스가 되었습니다. 루프는 Review
+  Center와 **같은 문서 핸들**(`GovernanceState`)로 스테이징하고, 적용은
+  네이티브 `write_file`과 같은 샌드박스를 지납니다. unified diff는 CPython
+  `difflib`를 이식한 `pydiff`(`autojunk` 포함)가 만듭니다.
+- 워커 감독자가 uvicorn 팩토리로 기동합니다 —
+  `python -m uvicorn latticeai.worker_app:create_worker_app --factory`.
+  모듈 형태(`-m latticeai.worker_app`)는 `__main__` 가드가 없어 임포트하고
+  즉시 종료합니다.
+- 잡 스케줄러가 `GraphWriter`를 받아 네이티브로 드레인합니다. 이전에는
+  워커에서 이미 사라진 `POST /api/index/drain`을 매 tick 때리고 백오프만
+  쌓았습니다.
+- 공개 릴리스 히스토리와 보안 지원 하한이 **11.0.0**으로 상향
+  (README 표 · `RELEASE_NOTES.md` · `SECURITY.md` · 해당 테스트 동시 수정).
+
+### Removed
+- **Telegram 브리지** — 워커가 된 플랫폼 코드와 함께 삭제.
+  `latticeai.integrations.telegram_bot`은 임포트 불가 목록에 있습니다.
+- **SSO OIDC 로그인/콜백 플로우** — 워커는 `/auth/*`를 마운트하지
+  않습니다. 설정 표면은 유지되고 패스워드 로그인은 네이티브입니다.
+- Python **298 파일 / 73,617줄**. 의존성 `authlib`, `cryptography`,
+  `watchdog`, `psycopg[binary]`와 extras `ann`/`hnsw`/`postgres`.
+- `POST /worker/chat/record-turn`, `POST /agent/change-proposal` —
+  둘 다 네이티브 경로가 대체했습니다.
+
+### Fixed
+- KG write 4건: `kgv2_*` 뷰만 충돌 시 `type`을 갱신하던 문제,
+  `sort_keys` 없는 직렬화 2곳, 기본 JSON 구분자로 해시되던 `edge:`/
+  `event:` id.
+- 리댁션 2건: `Authorization: Bearer …`가 실제로는 리댁션되지 않던 문제,
+  아무것도 거절하지 않던 텔레그램 토큰 lookahead.
+- 변경 제안 종류 화이트리스트가 `"reorganization"`과 비교해 **모든 폴더
+  재구성 제안이 승인 불가**였던 문제(실제 상수는 `"folder_reorganization"`).
+- `serde_json/preserve_order` 피처 통합으로 제품 빌드에서 `Map`이 삽입
+  순서로 순회해 `sort_keys=True`를 자처하던 덤프가 정렬되지 않은
+  `metadata_json`을 쓰던 문제(읽으면 같고 해시는 다름).
+- FastAPI ≥ 0.140에서 `include_router`가 더 이상 평탄화하지 않아 워커
+  라우트 필터가 라우트를 0개로 보던 문제 — 휠에서 부팅 자체가 실패하고
+  있었습니다.
+
+### Known issues
+- 그대로 이식한 오라클 버그 3건(`/api/command/search` knowledge 그룹 항상
+  비어 있음 · 리뷰 스누즈 offset-aware 500 · 제안 이중 거절 500),
+  업로드 추출 UTF-8 전용, 공급 벡터 1차 노드 한정, 네이티브 도구의 사용자
+  훅 미발화, `sanitize_write_content` 미적용, 워커 원점으로 남은 seam 호출
+  3건. 전문은 [RELEASE_NOTES_v11.6.0.md](../RELEASE_NOTES_v11.6.0.md).
+
 ## [11.5.2] - 2026-08-12 — Tight Ship
 
 ### Added

@@ -6,38 +6,26 @@ import types
 import latticeai.cli.entrypoint as ltcai_cli
 
 
-def test_cli_telegram_token_presence_does_not_start_notification(monkeypatch):
-    calls = []
+def test_cli_starts_the_worker_factory(monkeypatch):
+    ran = []
 
-    class FakeThread:
-        def start(self):
-            calls.append("started")
-
-    def fake_thread(*args, **kwargs):
-        calls.append({"args": args, "kwargs": kwargs})
-        return FakeThread()
-
-    monkeypatch.setenv("LATTICEAI_TUNNEL", "false")
-    monkeypatch.setenv("LATTICEAI_ENABLE_TELEGRAM", "false")
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_BOT_TOKEN", "present")
-    monkeypatch.setenv("LATTICEAI_TELEGRAM_CHAT_ID", "present")
     monkeypatch.setattr(sys, "argv", ["LTCAI", "--host", "127.0.0.1", "--port", "8999"])
-    monkeypatch.setitem(sys.modules, "uvicorn", types.SimpleNamespace(run=lambda *args, **kwargs: None))
-    monkeypatch.setattr(ltcai_cli.threading, "Thread", fake_thread)
+    monkeypatch.setitem(
+        sys.modules,
+        "uvicorn",
+        types.SimpleNamespace(run=lambda *args, **kwargs: ran.append((args, kwargs))),
+    )
 
     ltcai_cli.main()
 
-    assert calls == []
+    assert ran
+    kwargs = ran[0][1]
+    assert kwargs["factory"] is True
+    assert kwargs["host"] == "127.0.0.1"
+    assert kwargs["port"] == 8999
+    assert ran[0][0][0] == "latticeai.worker_app:create_worker_app"
 
 
-def test_cli_tunnel_env_presence_does_not_start_cloudflare(monkeypatch):
-    tunnel_calls = []
-
-    monkeypatch.setenv("LATTICEAI_TUNNEL", "true")
-    monkeypatch.setattr(sys, "argv", ["LTCAI", "--host", "127.0.0.1", "--port", "8998"])
-    monkeypatch.setitem(sys.modules, "uvicorn", types.SimpleNamespace(run=lambda *args, **kwargs: None))
-    monkeypatch.setattr(ltcai_cli, "_start_tunnel", lambda port: tunnel_calls.append(port))
-
-    ltcai_cli.main()
-
-    assert tunnel_calls == []
+def test_cli_has_no_tunnel_or_telegram_hooks():
+    assert not hasattr(ltcai_cli, "_start_tunnel")
+    assert not hasattr(ltcai_cli, "threading")

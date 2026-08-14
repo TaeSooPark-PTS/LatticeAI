@@ -53,10 +53,6 @@ def _build(**overrides):
     """Build the router with recording fakes; overrides replace one dep each."""
     calls: list[tuple] = []
 
-    async def verify_cloud_models(**kwargs):
-        calls.append(("verify", kwargs))
-        return [{"provider": "openai", "ok": True}]
-
     async def prepare_and_load_model(model, _request, **kwargs):
         calls.append(("prepare", {"model": model, **kwargs}))
         return {"ok": True, "model": model, "user_email": kwargs.get("user_email")}
@@ -69,11 +65,6 @@ def _build(**overrides):
         model_router=_FakeModelRouter(),
         require_user=lambda _request: "admin@example.com",
         require_admin=lambda _request: ("admin@example.com", {}),
-        get_current_user=lambda _request: "admin@example.com",
-        load_users=lambda: {"admin@example.com": {"role": "admin"}},
-        get_user_role=lambda *_a, **_kw: "admin",
-        install_engine=lambda engine, **kw: calls.append(("install", {"engine": engine, **kw})) or {"installed": engine},
-        verify_cloud_models=verify_cloud_models,
         normalize_local_model_request=lambda model, _engine=None: str(model or "").strip(),
         download_hf_model=lambda model, provider: calls.append(("hf", {"model": model, "provider": provider})) or {"path": "/models/x"},
         prepare_and_load_model=prepare_and_load_model,
@@ -84,10 +75,8 @@ def _build(**overrides):
         engine_status=lambda: [{"id": "local_mlx", "name": "MLX", "installed": True, "models": []}],
         filter_lower_family_versions=lambda items: items,
         list_compat_profiles=lambda: [{"id": "mlx"}],
-        set_user_api_key=lambda *args, **kw: calls.append(("set_key", args)),
         engine_model_catalog={"local_mlx": []},
         model_engine_aliases={},
-        cloud_verify_ttl_seconds=600,
         is_public_mode=False,
         allow_local_models=True,
         require_auth=True,
@@ -141,42 +130,6 @@ def test_vision_degrades_when_the_profile_or_engine_listing_fails(monkeypatch):
 
 
 # ── engines ─────────────────────────────────────────────────────────────────
-
-
-def test_engine_install_forwards_the_confirmation_token():
-    client, calls = _build()
-
-    response = client.post(
-        "/engines/install", json={"engine": "local_mlx", "confirmation_token": "tok-1"},
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {"installed": "local_mlx"}
-    assert calls == [("install", {"engine": "local_mlx", "confirmation_token": "tok-1"})]
-
-
-def test_verify_cloud_returns_the_results_with_the_cache_ttl():
-    client, calls = _build()
-
-    response = client.post("/engines/verify-cloud", json={"force": True, "provider": "openai"})
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "verified": [{"provider": "openai", "ok": True}], "ttl_seconds": 600,
-    }
-    assert calls == [("verify", {"force": True, "provider_filter": "openai"})]
-
-
-def test_verify_cloud_translates_a_model_runtime_error():
-    async def failing(**_kwargs):
-        raise ModelRuntimeError(status_code=502, detail={"status": "provider_unreachable"})
-
-    client, _calls = _build(verify_cloud_models=failing)
-
-    response = client.post("/engines/verify-cloud", json={})
-
-    assert response.status_code == 502
-    assert response.json()["detail"] == {"status": "provider_unreachable"}
 
 
 def test_a_pull_never_starts_without_explicit_download_consent():
@@ -385,7 +338,7 @@ def test_the_prepare_stream_yields_the_service_chunks():
 def test_the_prepare_stream_reports_a_known_failure_as_an_sse_error_event():
     async def failing(_model, _request, **_kwargs):
         raise ModelRuntimeError(status_code=409, detail="confirmation required")
-        yield  # pragma: no cover — keeps this an async generator
+        yield  # keeps this an async generator
 
     client, _calls = _build(prepare_and_load_model_stream=failing)
 
@@ -399,7 +352,7 @@ def test_the_prepare_stream_reports_a_known_failure_as_an_sse_error_event():
 def test_the_prepare_stream_reports_an_unexpected_failure_as_an_sse_error_event(monkeypatch):
     async def failing(_model, _request, **_kwargs):
         raise RuntimeError("mlx segfault")
-        yield  # pragma: no cover — keeps this an async generator
+        yield  # keeps this an async generator
 
     monkeypatch.setattr(
         "latticeai.core.model_compat.friendly_model_runtime_error",
@@ -412,44 +365,6 @@ def test_the_prepare_stream_reports_an_unexpected_failure_as_an_sse_error_event(
     assert response.status_code == 200
     assert "event: error" in response.text
     assert "repair some/model" in response.text
-
-
-# ── api keys ────────────────────────────────────────────────────────────────
-
-
-def test_set_api_key_refuses_an_unknown_provider_and_an_empty_key():
-    client, calls = _build()
-
-    unknown = client.post("/setup/set-api-key", json={"provider": "nope", "key": "k"})
-    empty = client.post("/setup/set-api-key", json={"provider": "openai", "key": "   "})
-
-    assert unknown.status_code == 400
-    assert empty.status_code == 400
-    assert calls == []
-
-
-def test_set_api_key_stores_the_key_for_the_session_identity():
-    client, calls = _build()
-
-    response = client.post(
-        "/setup/set-api-key", json={"provider": "openai", "key": "  sk-live-1  "},
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "ok": True, "provider": "openai",
-        "user_email": "admin@example.com", "scope": "user",
-    }
-    assert calls == [("set_key", ("admin@example.com", "openai", "sk-live-1"))]
-
-
-def test_set_api_key_requires_an_identity_when_auth_is_disabled():
-    client, calls = _build(require_auth=False, require_user=lambda _request: "")
-
-    response = client.post("/setup/set-api-key", json={"provider": "openai", "key": "sk-1"})
-
-    assert response.status_code == 400
-    assert calls == []
 
 
 # ── models ──────────────────────────────────────────────────────────────────
@@ -519,15 +434,6 @@ def test_a_ready_engine_reports_a_missing_model_as_download_required(monkeypatch
     assert item["download_required"] is True
     assert item["load_available"] is False
     assert "opt-in" in item["unavailable_reason"]
-
-
-def test_compat_profiles_are_readable_by_any_signed_in_user():
-    client, _calls = _build()
-
-    response = client.get("/models/compat-profiles")
-
-    assert response.status_code == 200
-    assert response.json() == {"profiles": [{"id": "mlx"}]}
 
 
 def test_load_model_refuses_an_incompatible_runtime(monkeypatch):
@@ -632,48 +538,6 @@ def test_switch_unload_and_unload_all_report_the_router_state():
     assert missing.status_code == 404
     assert unloaded.json() == {"status": "ok", "unloaded": "mlx-community/loaded-4bit"}
     assert unloaded_all.json() == {"status": "ok", "unloaded": []}
-
-
-def test_recommendations_combine_the_hardware_probe_with_the_registry(monkeypatch):
-    monkeypatch.setattr(
-        "latticeai.setup.auto_setup.probe",
-        lambda: SimpleNamespace(to_json=lambda: {"ram_gb": 64, "chip": "M4"}),
-    )
-    monkeypatch.setattr(
-        "latticeai.services.model_recommendation.recommend_catalog",
-        lambda profile, engine="local_mlx": [{"id": "x", "engine": engine, "ram": profile["ram_gb"]}],
-    )
-    monkeypatch.setattr(
-        "latticeai.services.model_catalog.get_verified_models", lambda: [{"id": "x"}],
-    )
-    client, _calls = _build()
-
-    payload = client.get("/models/recommendations", params={"engine": "ollama"}).json()
-
-    assert payload["profile"] == {"ram_gb": 64, "chip": "M4"}
-    assert payload["recommendations"] == [{"id": "x", "engine": "ollama", "ram": 64}]
-    assert payload["registry"] == {"version": "5.2.0", "verified_total": 1}
-
-
-def test_recommendations_survive_a_broken_verified_registry(monkeypatch):
-    def boom():
-        raise RuntimeError("registry file is corrupt")
-
-    monkeypatch.setattr(
-        "latticeai.setup.auto_setup.probe",
-        lambda: SimpleNamespace(to_json=lambda: {"ram_gb": 16}),
-    )
-    monkeypatch.setattr(
-        "latticeai.services.model_recommendation.recommend_catalog",
-        lambda profile, engine="local_mlx": [],
-    )
-    monkeypatch.setattr("latticeai.services.model_catalog.get_verified_models", boom)
-    client, _calls = _build()
-
-    payload = client.get("/models/recommendations").json()
-
-    assert payload["registry"] == {"version": "5.2.0"}
-    assert payload["recommendations"] == []
 
 
 def test_a_signed_in_non_admin_cannot_act_as_another_user():

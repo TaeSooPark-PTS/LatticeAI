@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v11.5.2 Living Brain walkthrough](output/release/v11.5.2/gifs/v11.5.2-living-brain-walkthrough.gif)
+![v11.6.0 Living Brain walkthrough](output/release/v11.6.0/gifs/v11.6.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.5.2/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.5.2/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.5.2/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.5.2/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.5.2/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.5.2/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.5.2/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.5.2/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.6.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.6.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.6.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.6.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.6.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.6.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.6.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.6.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,103 +58,81 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v11.5.2/screenshots/01-login.png) | ![Model install](output/release/v11.5.2/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.5.2/screenshots/07-model-library.png) |
+| ![Login](output/release/v11.6.0/screenshots/01-login.png) | ![Model install](output/release/v11.6.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.6.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v11.5.2/SCREENSHOT_INDEX.md](output/release/v11.5.2/SCREENSHOT_INDEX.md)
+[output/release/v11.6.0/SCREENSHOT_INDEX.md](output/release/v11.6.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **11.5.2 — Tight Ship**:
+The current release is **11.6.0 — One Door**:
 
-A cleanup-and-correctness release built from three audits of the settled
-11.5.1 tree — a Rust↔Python duplication map, an arc-level dead-code and
-test audit, and a live front-door parity sweep across 192 endpoints
-(gateway vs. direct worker). The duplication map's verdict was that the
-boundary itself is sound: **zero cross-boundary deletions**, because every
-twin is either the live Python-direct surface or a copy pinned by a parity
-golden. The real duplication was inside each language, and that is what
-this release removes.
+The product now has one front door, and it is Rust. `lattice-host` serves
+**420 operations across 41 route families** at the paths they always had,
+and the Python package is no longer a web application at all — it is a
+pure-compute **AI worker** with **28 routes**: LLM inference and streaming,
+embedding, extraction, parsing, four document renderers, speech-to-text,
+multimodal description, the model and engine catalog, `sysinfo`, and
+`/health`. Nine crates hold the product; the door forwards exactly the 28
+and answers `404 {"detail":"Not Found"}` for anything else, from a
+committed allowlist that a drift gate regenerates and compares.
 
-- **About 1,100 lines gone.** Six moved-module shims, a multimodal
-  streaming seam that was never wired, roughly 27 zero-caller symbols
-  whose only callers were their own tests, an interface method
-  (`metadata_for`) no consumer ever called, a dead measurement script,
-  and the **legacy Electron shell** — superseded by Tauri, yet still
-  shipping inside the npm tarball. Every deletion came with per-assertion
-  test surgery so the 100% line **and** branch floor never moved, and a
-  new guard forbids the `sys.modules[__name__]` shim pattern from coming
-  back. The 183 coverage work-package test files were all verified
-  load-bearing (ten of them are the sole owners of 79 branch arcs); seven
-  coverage-redundant feature tests were deliberately kept for their
-  regression value.
-- **One home per thing.** The byte-identical embedder pair is
-  single-sourced on the golden-pinned copy — silent vector drift between
-  two write paths was the failure mode. The workspace selector's four
-  verbatim re-derivations now use the canonical rule, an intended
-  behaviour change: chat, agent, upload, computer-use and admin **403 on
-  disagreement** where the copies silently preferred the header. sha256,
-  SSE frame builders, the data-dir default, the mode services and the
-  module-importability probe each collapsed to one implementation, and
-  seven byte-identical Rust copies were consolidated (including a
-  wholesale duplicate of `clock.rs`).
-- **The front door, fixed with live before/after proof.** Proxied
-  redirects now pass through with `Set-Cookie` and `Location` intact —
-  the invite gate was a hard dead-end, SSO login silently never
-  authenticated, and twelve deep links lost their fragment. Absolute
-  `Location` values naming the internal worker are rewritten to the
-  gateway origin. The native `/rust/*` and `/host/status|jobs` lanes are
-  **posture-gated fail-closed**: they used to serve the whole graph
-  unauthenticated while the worker required auth. `X-Forwarded-For/Proto/
-  Host` cross the hop and are honoured only from a loopback or listed
-  trusted-proxy peer, which fixes `--no-spawn` CSRF refusals and the
-  invite links, notifications and SSO URLs that named the internal worker
-  port. The supervisor injects CORS origins alongside the CSRF ones,
-  stale `ws://` CSP entries are gone, and the Tauri shell no longer
-  navigates to a dead origin when the gateway fails to bind.
-- **What the audits surfaced.** `POST /api/search/graph` was allow-listed
-  but unreachable until now; `GET /api/ingestion/multimodal` was
-  documented but unwired. Two golden families were added: a `recent_chat`
-  family pinning the `build_recent_chat_context` the live `/chat` path
-  actually calls — it caught a real divergence, where Python's `limit=0`
-  tail slice keeps everything and Rust returned empty (**Python is the
-  reference; Rust was fixed**) — plus `document_targets` and
-  `agent_profiles` helper goldens, 97 rows. The corpus stands at **251
-  golden files**.
-- **The boundaries, stated plainly.** The native lanes are an
-  open-posture, single-local-owner surface (a closed or unknown posture
-  answers 401). The recent-chat context seam is still owned by the ad-hoc
-  prepends in `/chat` rather than the assembler — wiring it changes the
-  shape of a live prompt, which is a minor-release item, not something to
-  ship quietly here. `workspace_scope_from_request` itself remains
-  lenient for its two remaining callers. And the proxy hop deliberately
-  carries no request timeout: a blanket timeout would kill long-lived SSE.
+- **Every write is native.** The knowledge-graph write engine moved into
+  `lattice-core`: ingest, curation, provenance, taxonomy and the vector
+  queue. It is held to Python's bytes by a **32-step row-parity battery**
+  that dumps every table after every step with zero tolerated differences,
+  and by a schema comparison over all **67 objects** in `sqlite_master`
+  (indexes and FTS shadow tables included). Seventeen graph tables changed
+  owner from the worker to Rust, and the single-writer invariant is now a
+  test rather than a convention.
+- **The surface is replayed, not re-described.** **1,487 recorded HTTP
+  cases** across twelve committed fixture files — captured from the real
+  Python app while it still served them — are replayed against the native
+  routes, status line and body compared. The retrieval, chunking, agent
+  kernel and agent-loop golden families are unchanged and still green.
+- **298 Python files and 73,617 lines were deleted.** What remains is 127
+  files and about 20,900 lines, all of it compute, at **100.00% statement
+  and branch coverage** with `fail_under=100` and no new pragmas.
+- **What the port found.** The Python oracle's own bugs are documented
+  rather than smoothed over: four graph-write divergences (a `kgv2_*` view
+  that updates `type` on conflict where `nodes` does not; two writers that
+  serialise without `sort_keys`; a hash computed from CPython's default
+  JSON separators), a documented redaction rule that never fired, and a
+  change-proposal kind whitelist that could never approve a folder
+  reorganization. Three known-wrong behaviours were ported **as they are**
+  so the surface does not change under users mid-release — they are listed
+  in [RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md).
+- **What was removed, and why.** The **Telegram bridge** is gone: it lived
+  in the platform code that became the worker, and a bridge with no product
+  server to bridge to is not a feature. **SSO/OIDC login and callback
+  flows** are gone with it — the configuration surface remains, and
+  password login is native. Both are consequences of the worker boundary,
+  not decisions taken on their own merits.
 
-The floor holds: **7,022 Python tests (11 skipped) at 100.00% statement
-and branch coverage — 40,307 statements, 10,970 branches, `fail_under=100`
-with the pragma budget untouched — 1,761 frontend tests across 101 files
-at 100% on all four metrics, and 760 Rust workspace tests**, with the
-OpenAPI schema regenerated at 421 paths and the whole suite re-verified in
-a fresh-resolve Python 3.11 environment.
+Full disclosure of gaps, ported bugs and removed surfaces:
+[RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md)
 
-Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
+Expected artifacts for 11.6.0 release must use exact filenames:
 
-Expected artifacts for 11.5.2 release must use exact filenames:
-
-- `dist/ltcai-11.5.2-py3-none-any.whl`
-- `dist/ltcai-11.5.2.tar.gz`
-- `ltcai-11.5.2.tgz`
-- `dist/ltcai-11.5.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.2_aarch64.dmg`
+- `dist/ltcai-11.6.0-py3-none-any.whl`
+- `dist/ltcai-11.6.0.tar.gz`
+- `ltcai-11.6.0.tgz`
+- `dist/ltcai-11.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.6.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
+Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
+
 ## Architecture At A Glance
 
-FastAPI on localhost is the source of truth; the React/Vite frontend and the
-Tauri desktop shell sit on top; the independent `lattice_brain` package owns
-the graph, memory, ingestion, and portability. Local-first by default — cloud
-calls, downloads, Telegram, and update checks are opt-in.
+One Rust server on localhost is the source of truth: `lattice-host` answers
+every product route, owns every write to the Brain, and supervises a Python
+**AI worker** it reaches over loopback for the things a model does — inference,
+embedding, extraction, parsing, rendering, speech-to-text. The React/Vite
+frontend and the Tauri desktop shell sit on top of that one door. Local-first
+by default — cloud model calls, downloads, Brain Network, and update checks are
+opt-in.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the developer workflow
@@ -164,22 +142,36 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
-- PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 10.3.0.
-- Docker, model downloads, cloud model calls, Telegram, Brain Network, and
-  update checks require explicit user action.
+- SQLite is the live local Brain store. The optional PostgreSQL/pgvector
+  migration tooling is not part of the 11.6.0 worker.
+- Docker, model downloads, cloud model calls, Brain Network, and update checks
+  require explicit user action.
+- **The Telegram bridge was removed in 11.6.0** — it lived in the platform code
+  that became the AI worker. **SSO/OIDC login and callback flows were removed
+  with it**; the configuration surface remains and password login is native.
 - Conversation does not fabricate answers when no model is loaded. Agent and
   workflow simulation without a loaded LLM is deterministic and LLM-free (it
   does not call a model) — labeled as such, never presented as autonomous
   model success.
-- Some backend-generated messages (for example the Postgres DSN notice) are
-  produced server-side in English and are shown as-is; server-side i18n is not
-  part of 10.3.0.
+- `POST /worker/render/pdf` ships working out of the box: `reportlab` is a
+  required dependency as of 11.6.0 (it used to be an undeclared lazy import
+  that raised a 500; `ltcai[pdf]` remains as an empty alias for older
+  install instructions).
+- Known gaps carried openly into this release — upload extraction enrichment is
+  UTF-8-text only, supplied vectors cover the primary ingest node, and the
+  pointer-control tools still execute in the worker — are listed with their
+  reasons in [RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md).
 
 ## Release History
 
+Public history starts at 11.0.0. 11.6.0 rebuilt the product server in Rust and
+reduced the Python package to an AI worker, so a 10.x or 9.x install is a
+different program; `SECURITY.md` supports only 11.x, and this table states the
+same boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.
+
 | Version | Theme |
 | --- | --- |
+| 11.6.0 | One Door |
 | 11.5.2 | Tight Ship |
 | 11.5.1 | Rust Full Loop |
 | 11.5.0 | Rust Complete |
@@ -189,54 +181,5 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 | 11.1.0 | Product Intelligence |
 | 11.0.1 | Both Branches |
 | 11.0.0 | Full Measure |
-| 10.10.0 | Quiet Station |
-| 10.9.0 | Never Blocks |
-| 10.8.0 | Within Reach |
-| 10.7.0 | Plain Surface |
-| 10.6.4 | Loud Limits |
-| 10.6.3 | Loud Limits |
-| 10.6.2 | Ask First |
-| 10.6.1 | First Things |
-| 10.6.0 | Promoted Panels |
-| 10.5.0 | Everyday Words |
-| 10.4.0 | Named Ground |
-| 10.3.0 | Measured Ground |
-| 10.2.0 | Load-Bearing Fixes |
-| 10.1.1 | Reachable Boundary |
-| 10.1.0 | Hybrid Brain |
-| 10.0.1 | One Source of Truth |
-| 10.0.0 | Plain Language |
-| 9.9.9 | Lean Shell |
-| 9.9.8 | Autonomy Dial |
-| 9.9.7 | No Gaps Left |
-| 9.9.6 | Same Brain Everywhere |
-| 9.9.5 | Closed Gaps |
-| 9.9.4 | Durable Loops |
-| 9.9.3 | Closed Loops |
-| 9.9.2 | Artifact Trust |
-| 9.9.1 | Clean Foundations |
-| 9.9.0 | Fail-Closed Trust |
-| 9.8.0 | Honest Knowledge Pipeline |
-| 9.7.0 | Proactive Hybrid Brain |
-| 9.6.0 | Trusted Agent Loop |
-| 9.5.0 | Command Center |
-| 9.4.0 | Question-Driven Everyday Automation |
-| 9.3.0 | Proactive Brain Intelligence |
-| 9.2.0 | Model-Agnostic File Generation |
-| 9.1.0 | Code Review Completion & Fail-Closed Runtime |
-| 9.0.0 | Code Review Closure & Runtime Cleanup |
 
 Per-release details: [RELEASE_NOTES.md](RELEASE_NOTES.md)
-
-## Documentation
-
-- [docs/WHY_LATTICE.md](docs/WHY_LATTICE.md) — product philosophy
-- [docs/TRUST_MODEL.md](docs/TRUST_MODEL.md) — local-first trust model
-- [PRIVACY.md](PRIVACY.md) — privacy and external communication policy
-- [FEATURE_STATUS.md](FEATURE_STATUS.md) — feature status and limitations
-- [SECURITY.md](SECURITY.md) — security posture
-- [RELEASE.md](RELEASE.md) — release guide and notes
-
-## License
-
-MIT. See [LICENSE](LICENSE).

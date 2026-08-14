@@ -6,13 +6,11 @@ Path resolution reads ``latticeai.tools.AGENT_ROOT`` so tests can redirect the s
 
 from __future__ import annotations
 
-import io
 import json
 import re
-import zipfile
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import latticeai.tools as tools
 from latticeai.core.quiet import quiet
@@ -116,52 +114,6 @@ def read_file(path: str, offset: int = 0, limit: int = 0, line_numbers: bool = T
             f"{(offset + i + 1):>{width}}\t{line}" for i, line in enumerate(sliced)
         )
     return result
-
-
-def write_file(path: str, content: str) -> Dict[str, Any]:
-    target = _resolve_path(path)
-    if len(content.encode("utf-8")) > MAX_FILE_BYTES:
-        raise ToolError("Content is too large to write.")
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8")
-    return {"path": _relative(target), "bytes": target.stat().st_size}
-
-
-def edit_file(path: str, old_string: str, new_string: str, replace_all: bool = False) -> Dict[str, Any]:
-    """Precise diff-style edit: replace `old_string` with `new_string` in `path`.
-
-    Fails when `old_string` is missing or appears more than once (unless
-    replace_all=True). This forces the caller to read the file first and pass
-    enough surrounding context to uniquely identify the edit site — the same
-    discipline Claude Code uses for safe edits.
-    """
-    if old_string == new_string:
-        raise ToolError("old_string and new_string are identical; nothing to change.")
-    target = _resolve_path(path)
-    if not target.exists() or not target.is_file():
-        raise ToolError("File does not exist.")
-    if target.stat().st_size > MAX_FILE_BYTES:
-        raise ToolError("File is too large to edit.")
-
-    original = target.read_text(encoding="utf-8")
-    occurrences = original.count(old_string)
-    if occurrences == 0:
-        raise ToolError("old_string not found in file. Read the file first and copy the exact bytes (including whitespace).")
-    if occurrences > 1 and not replace_all:
-        raise ToolError(f"old_string is ambiguous: appears {occurrences} times. Add more context to make it unique, or pass replace_all=true.")
-
-    updated = original.replace(old_string, new_string) if replace_all else original.replace(old_string, new_string, 1)
-    if len(updated.encode("utf-8")) > MAX_FILE_BYTES:
-        raise ToolError("Resulting file would exceed the workspace size limit.")
-    target.write_text(updated, encoding="utf-8")
-
-    edited_line = original[: original.find(old_string)].count("\n") + 1
-    return {
-        "path": _relative(target),
-        "replacements": occurrences if replace_all else 1,
-        "bytes": target.stat().st_size,
-        "first_edit_line": edited_line,
-    }
 
 
 _GREP_BINARY_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".zip", ".tar",
@@ -281,46 +233,6 @@ def todo_read() -> Dict[str, Any]:
     return {"todos": todos, "path": _TODO_REL_PATH}
 
 
-def todo_write(todos: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Replace the agent's TODO list. Each todo: {id, content, status}.
-
-    Status must be one of: pending, in_progress, completed.
-    At most one todo should be in_progress at any time — the agent enforces
-    this convention; the tool only warns if violated.
-    """
-    if not isinstance(todos, list):
-        raise ToolError("todos must be a list.")
-    if len(todos) > 50:
-        raise ToolError("Too many todos (max 50). Split into smaller batches.")
-
-    cleaned: List[Dict[str, Any]] = []
-    in_progress_count = 0
-    for idx, raw in enumerate(todos, start=1):
-        if not isinstance(raw, dict):
-            raise ToolError(f"Todo #{idx} is not an object.")
-        content = str(raw.get("content") or "").strip()
-        if not content:
-            raise ToolError(f"Todo #{idx} is missing 'content'.")
-        status = str(raw.get("status") or "pending").strip().lower()
-        if status not in _TODO_ALLOWED_STATUS:
-            raise ToolError(f"Todo #{idx} has invalid status '{status}'. Use one of {sorted(_TODO_ALLOWED_STATUS)}.")
-        if status == "in_progress":
-            in_progress_count += 1
-        cleaned.append({
-            "id": str(raw.get("id") or idx),
-            "content": content[:240],
-            "status": status,
-        })
-
-    target = _todo_file()
-    target.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {
-        "todos": cleaned,
-        "path": _TODO_REL_PATH,
-        "warning": "More than one todo is in_progress; keep only one active at a time." if in_progress_count > 1 else None,
-    }
-
-
 def search_files(query: str, path: str = ".", max_results: int = 20) -> Dict[str, Any]:
     if not query:
         raise ToolError("Query is required.")
@@ -434,166 +346,8 @@ def preview_url(path: str = "index.html") -> Dict[str, Any]:
     }
 
 
-def create_web_project(path: str, framework: str = "react", template: str = "vite") -> Dict[str, Any]:
-    framework = str(framework or "").strip().lower()
-    template = str(template or "").strip().lower()
-    if framework != "react" or template != "vite":
-        raise ToolError("Only React + Vite template is currently supported.")
-    if not path:
-        raise ToolError("Project path is required.")
-
-    root = _resolve_path(path)
-    root.mkdir(parents=True, exist_ok=True)
-
-    files = {
-        "package.json": json.dumps(
-            {
-                "name": Path(path).name.replace(" ", "-").lower() or "vite-react-app",
-                "private": True,
-                "version": "0.0.0",
-                "type": "module",
-                "scripts": {
-                    "dev": "vite",
-                    "build": "vite build",
-                    "preview": "vite preview",
-                },
-                "dependencies": {
-                    "react": "^18.3.1",
-                    "react-dom": "^18.3.1",
-                },
-                "devDependencies": {
-                    "@vitejs/plugin-react": "^4.3.1",
-                    "vite": "^5.4.0",
-                },
-            },
-            ensure_ascii=False,
-            indent=2,
-        ) + "\n",
-        "index.html": """<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite React App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
-""",
-        "vite.config.js": """import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-})
-""",
-        "README.md": """# Vite React App
-
-## Run
-
-```bash
-npm install
-npm run dev
-```
-
-## Build
-
-```bash
-npm run build
-npm run preview
-```
-
-## Lattice AI Notes
-
-- Inspect `package.json` and existing config files before adding new libraries.
-- If you add Tailwind CSS, framer-motion, TypeScript, or other tooling, add the required config files too.
-- Do not report the app as complete until `npm run build` succeeds.
-""",
-        "src/main.jsx": """import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
-""",
-        "src/App.jsx": """import { useState } from 'react'
-
-export default function App() {
-  const [count, setCount] = useState(0)
-  return (
-    <main style={{ maxWidth: 760, margin: '48px auto', padding: '0 20px', fontFamily: 'system-ui, sans-serif' }}>
-      <h1>Vite + React</h1>
-      <p>Starter generated by Lattice AI agent.</p>
-      <p style={{ color: '#555', lineHeight: 1.6 }}>
-        Inspect the current setup before adding new UI libraries, then verify
-        changes with <code>npm run build</code>.
-      </p>
-      <button onClick={() => setCount((c) => c + 1)}>count is {count}</button>
-    </main>
-  )
-}
-""",
-        "src/index.css": """* { box-sizing: border-box; }
-body { margin: 0; background: #f6f7fb; color: #111; }
-button { padding: 10px 14px; border-radius: 10px; border: 1px solid #d6d6d6; background: #fff; cursor: pointer; }
-""",
-    }
-
-    created: List[str] = []
-    total_bytes = 0
-    for rel_path, content in files.items():
-        target = (root / rel_path).resolve()
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
-        created.append(_relative(target))
-        total_bytes += target.stat().st_size
-
-    return {
-        "path": _relative(root),
-        "framework": framework,
-        "template": template,
-        "created_files": created,
-        "file_count": len(created),
-        "bytes": total_bytes,
-    }
-
-
 # Generous cap for a generated-project archive — the workspace itself caps
 # individual files at MAX_FILE_BYTES, this only bounds pathological trees.
 MAX_ZIP_TOTAL_BYTES = 50_000_000
 
 
-def zip_workspace_dir(path: str, max_total_bytes: int = MAX_ZIP_TOTAL_BYTES) -> Tuple[bytes, str]:
-    """Zip one workspace directory for download; confinement-safe by design.
-
-    Path resolution goes through the sandboxed ``_resolve_path`` (traversal
-    outside the agent workspace raises ``ToolError``), symlinks are skipped so
-    an in-workspace link can never leak files from elsewhere, and the archive
-    root is the directory name itself (``todo-app/index.html``).
-    """
-    target = _resolve_path(path)
-    if target == tools.AGENT_ROOT:
-        raise ToolError("Cannot zip the entire workspace root — pick a project directory.")
-    if not target.exists() or not target.is_dir():
-        raise ToolError("Path is not a directory in the workspace.")
-
-    buffer = io.BytesIO()
-    total = 0
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for child in sorted(target.rglob("*")):
-            if child.is_symlink() or not child.is_file():
-                continue
-            resolved = child.resolve()
-            if target not in resolved.parents:
-                continue  # defense in depth — never archive escaped paths
-            total += child.stat().st_size
-            if total > max_total_bytes:
-                raise ToolError("Directory is too large to zip.")
-            archive.write(child, arcname=str(child.relative_to(target.parent)))
-    return buffer.getvalue(), f"{target.name}.zip"

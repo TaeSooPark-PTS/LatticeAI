@@ -8,9 +8,12 @@
 
 pub mod db;
 pub mod embeddings;
+pub mod graph_write;
+pub mod messages;
 pub mod paths;
 pub mod pytext;
 pub mod read;
+pub mod worker;
 
 pub use db::{open_read_only, CoreError};
 pub use embeddings::LocalEmbeddingModel;

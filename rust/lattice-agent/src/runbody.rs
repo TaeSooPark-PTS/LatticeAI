@@ -111,6 +111,15 @@ pub struct RunBody {
     pub scoped_knowledge_tools: Option<Vec<String>>,
     #[serde(default)]
     pub tool_names: Option<Vec<String>>,
+    /// The caller's role, for the native tools' `check_role` port.
+    ///
+    /// **Server-injected**, like `user_email` beside it: the gateway resolves it
+    /// from the session before it calls, and a client cannot widen what it may
+    /// run by claiming `owner` any more than it can by claiming somebody else's
+    /// address. Absent means Python's own default (`user`), which is the
+    /// restrictive answer — admin-only tools refuse.
+    #[serde(default)]
+    pub user_role: Option<String>,
     #[serde(default = "governor_default")]
     pub governor_enabled: bool,
     #[serde(default)]
@@ -172,7 +181,18 @@ impl RunBody {
             .tool_names
             .clone()
             .unwrap_or_else(|| policies.tools.keys().cloned().collect::<Vec<String>>());
+        // The native tools take the run's role and the run's denylist, so a
+        // request that carries its own policy table is refused against *that*
+        // table's prefixes rather than a second built-in copy.
+        let native = std::sync::Arc::new(crate::tools::NativeTools::new(
+            workspace.clone(),
+            crate::tools::ToolConfig::from_env()
+                .with_role(self.user_role.clone())
+                .with_blocked_write_prefixes(policies.blocked_write_prefixes.clone()),
+            worker.clone(),
+        ));
         LoopDeps {
+            native,
             policies,
             tool_names,
             file_create_actions: set_of(

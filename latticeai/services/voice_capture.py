@@ -25,6 +25,11 @@ scan is transcribed by whatever this service was given — see
 :meth:`VoiceCaptureService.multimodal_ports`. One transcriber, one honesty
 story: if a voice memo cannot become text here, a scanned recording cannot
 either, and both say so the same way.
+
+v11.6.0 took the *ingest* half away: ``POST /api/capture/voice`` is a native
+route that stores the memo itself and asks ``POST /worker/asr`` for the words.
+What is left is the transcriber and the two questions only this process can
+answer about it — can it hear, and what will it accept.
 """
 
 from __future__ import annotations
@@ -57,16 +62,14 @@ class TranscriptionUnavailable(RuntimeError):
 
 
 class VoiceCaptureService:
-    """Ingest a voice memo through the unified ingestion pipeline."""
+    """The local transcriber, and the honest report of whether there is one."""
 
     def __init__(
         self,
         *,
-        pipeline: Any,
         transcriber: Optional[Callable[[str], str]] = None,
         max_bytes: int = MAX_AUDIO_BYTES,
     ) -> None:
-        self._pipeline = pipeline
         self._transcriber = transcriber
         self._max_bytes = max(1, int(max_bytes))
 
@@ -74,7 +77,11 @@ class VoiceCaptureService:
     def status(self) -> Dict[str, Any]:
         """What this install can actually do with a voice memo, honestly."""
         return {
-            "capture": self._pipeline is not None,
+            # Storing the memo is native (``POST /api/capture/voice`` in
+            # lattice-platform), so capture is always available to a caller
+            # that reached this answer through the gateway. Only the
+            # transcriber is a fact about this process.
+            "capture": True,
             "transcription": self._transcriber is not None,
             "supported_extensions": sorted(SUPPORTED_AUDIO_EXTENSIONS),
             "max_bytes": self._max_bytes,
@@ -110,106 +117,5 @@ class VoiceCaptureService:
             raise TranscriptionUnavailable("the transcriber returned no text")
         return cleaned
 
-    # ── capture ──────────────────────────────────────────────────────────
-    def capture(
-        self,
-        audio_path: str,
-        *,
-        title: Optional[str] = None,
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        transcript: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Ingest one voice memo.
 
-        ``transcript`` lets a client that already has text (a phone's own
-        dictation, for example) skip local transcription entirely — the memo
-        still lands in the Brain through the same pipeline.
-        """
-        from lattice_brain.ingestion import IngestionItem
-
-        path = Path(str(audio_path or "")).expanduser()
-        if not path.exists() or not path.is_file():
-            return self._failed("FILE_NOT_FOUND", f"audio file not found: {path}")
-        suffix = path.suffix.lower()
-        if suffix not in SUPPORTED_AUDIO_EXTENSIONS:
-            return self._failed(
-                "UNSUPPORTED_FORMAT",
-                f"{suffix or 'this file'} is not a supported audio container",
-            )
-        try:
-            size = path.stat().st_size
-        except OSError as exc:
-            return self._failed("FILE_NOT_FOUND", f"audio file unreadable: {exc}")
-        if size > self._max_bytes:
-            return self._failed(
-                "SIZE_LIMIT",
-                f"audio is {size} bytes; the memo limit is {self._max_bytes}",
-            )
-        if self._pipeline is None:
-            return self._failed("UNAVAILABLE", "the ingestion pipeline is not available")
-
-        supplied = str(transcript or "").strip()
-        transcription_state = "supplied" if supplied else "ok"
-        transcription_detail = ""
-        text = supplied
-        if not text:
-            try:
-                text = self._transcribe(path)
-            except TranscriptionUnavailable as exc:
-                transcription_state = "unavailable"
-                transcription_detail = str(exc)
-                text = ""
-            except Exception as exc:  # noqa: BLE001 — a broken transcriber is a state
-                LOGGER.exception("voice transcription failed")
-                transcription_state = "failed"
-                transcription_detail = str(exc)
-                text = ""
-
-        display_title = str(title or "").strip() or path.stem
-        # With no transcript there is no text to index — the memo is recorded
-        # by what we honestly know (title + the audio file itself), and the
-        # response says so. It is never presented as a searchable note.
-        body = text or (
-            f"[음성 메모] {display_title}\n"
-            "이 메모는 아직 글로 바뀌지 않았습니다 — 음성 인식기가 없어 내용 검색은 되지 않습니다."
-        )
-        item = IngestionItem(
-            source_type="note",
-            title=display_title,
-            text=body,
-            source_uri=str(path),
-            mime_type=f"audio/{suffix.lstrip('.')}",
-            owner=user_email,
-            workspace_id=workspace_id,
-            conversation_id=conversation_id,
-            metadata={
-                "capture": "voice",
-                # Same key the multi-modal ingest door writes, so a memo and a
-                # scanned recording are one kind of thing in the graph.
-                "modality": "audio",
-                "audio_path": str(path),
-                "audio_bytes": size,
-                "transcription": transcription_state,
-                **({"transcription_detail": transcription_detail} if transcription_detail else {}),
-            },
-        )
-        result = self._pipeline.ingest(item, user_email=user_email)
-        payload = result.as_dict() if hasattr(result, "as_dict") else dict(result)
-        payload["transcription"] = transcription_state
-        payload["searchable"] = bool(text)
-        if transcription_detail:
-            payload["transcription_detail"] = transcription_detail
-        return payload
-
-    @staticmethod
-    def _failed(error: str, message: str) -> Dict[str, Any]:
-        return {
-            "status": "failed",
-            "source_type": "note",
-            "error": error,
-            "message": message,
-            "transcription": "skipped",
-            "searchable": False,
-        }
+__all__ = ["VoiceCaptureService", "TranscriptionUnavailable", "SUPPORTED_AUDIO_EXTENSIONS"]

@@ -22,18 +22,4 @@ def build_model_service(
     )
 
 
-def build_brain_network(
-    *,
-    identity: Any,
-    portability: Any,
-    data_dir: Any,
-) -> Any:
-    """Construct peer sync/network service for brain portability routes."""
-
-    from lattice_brain.graph.network import BrainNetwork
-
-    return BrainNetwork(
-        identity=identity,
-        portability=portability,
-        data_dir=data_dir,
-    )
+__all__ = ["build_model_service"]

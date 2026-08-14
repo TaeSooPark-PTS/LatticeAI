@@ -1,53 +1,45 @@
-"""Brain Core runtime assembly for app startup."""
+"""Embedder resolution for the AI-Worker build.
+
+``build_brain_runtime`` used to open the knowledge-graph store and the
+conversation store. Rust owns every durable write after v11.6.0 §Wave 2.5, so
+what is left of "the Brain" inside the worker is the one port the compute seams
+need: something that turns text into a vector.
+
+The resolution rules are the product's, unchanged — a named profile supplies
+model/dimensions, explicit configuration overrides it, and a provider that
+cannot be reached degrades to the offline hash embedder while recording what
+was requested.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
-
-from latticeai.runtime.stages import RuntimeStage
+from typing import Any, Callable, Mapping
 
 
-@dataclass(frozen=True)
-class BrainRuntime(RuntimeStage):
-    BRAIN_CORE: Any
-    KNOWLEDGE_GRAPH: Any
-    CONVERSATIONS: Any
-
-
-def build_brain_runtime(
+def build_embedder_runtime(
     *,
-    data_dir: Any,
-    history_file: Any,
-    enable_graph: bool,
-    embedder: Any,
-    storage_engine: Any,
-) -> BrainRuntime:
-    """Construct Brain Core storage/conversation primitives behind one seam."""
+    config: Any,
+    profile: Mapping[str, Any],
+    resolve_embedder: Callable[..., Any],
+) -> Any:
+    """Resolve the configured embedding provider once."""
 
-    from lattice_brain import BrainCore, ConversationStore
+    provider = config.embedding_provider
+    model = config.embedding_model or str(profile.get("model") or "")
+    dim = config.embedding_dim or int(profile.get("dimensions") or 0)
+    if config.embedding_profile and provider in {"", "hash", "local", "fallback"}:
+        provider = str(profile.get("provider") or provider)
 
-    brain_core = (
-        BrainCore.from_paths(
-            data_dir,
-            embedder=embedder.provider,
-            storage_engine=storage_engine,
-        )
-        if enable_graph
-        else None
-    )
-    knowledge_graph = brain_core.knowledge if brain_core is not None else None
-    conversations = (
-        brain_core.conversations
-        if brain_core is not None
-        else ConversationStore(data_dir / "knowledge_graph.sqlite")
-    )
-    conversations.import_legacy_json(history_file)
-    return BrainRuntime(
-        BRAIN_CORE=brain_core,
-        KNOWLEDGE_GRAPH=knowledge_graph,
-        CONVERSATIONS=conversations,
+    return resolve_embedder(
+        provider,
+        model=model,
+        base_url=config.embedding_base_url,
+        api_key=config.embedding_api_key,
+        dim=dim,
+        timeout=config.embedding_timeout,
+        extra={"target": config.embedding_custom_target},
+        probe=provider not in {"", "hash", "local", "fallback"},
     )
 
 
-__all__ = ["BrainRuntime", "build_brain_runtime"]
+__all__ = ["build_embedder_runtime"]

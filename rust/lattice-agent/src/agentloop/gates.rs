@@ -3,17 +3,21 @@
 //! Split out of [`super::execution`] because the order *is* the policy and it
 //! deserves to be readable in one screen:
 //!
-//! 1. [`Runtime::governor_review`] — change-class governance. Under a mode that
-//!    does not stage proposals the decision is made **before** the governor is
-//!    consulted, because reviewing persists a proposal as a side effect;
-//!    reviewing first and discarding the verdict would apply the change *and*
-//!    leave an orphan pending in the Review Center.
+//! 1. [`Runtime::governor_review`] — change-class governance, native since
+//!    v11.6.0 §P1c ([`crate::proposals`]). Under a mode that does not stage
+//!    proposals the decision is made **before** the governor is consulted,
+//!    because reviewing persists a proposal as a side effect; reviewing first
+//!    and discarding the verdict would apply the change *and* leave an orphan
+//!    pending in the Review Center.
 //! 2. [`Runtime::blocked_by_gates`] — circuit breaker, then destructive policy,
 //!    then the fail-closed overwrite guard, then the approval gate. The first
 //!    three are **mode-invariant**: `bypass` skips the approval prompt, it never
 //!    removes an existence check or unlocks a breaker.
-//! 3. [`Runtime::dispatch_step`] — pre-write snapshot, then the worker seam,
-//!    recorded on the transcript either way.
+//! 3. [`Runtime::dispatch_step`] — pre-write snapshot, then execution: the
+//!    native tool set for anything that mutates, the worker seam for the
+//!    compute-only handlers. Recorded on the transcript either way.
+
+use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
 
@@ -23,8 +27,10 @@ use crate::governor::classify_tool_call;
 use crate::mode::should_stage_proposal;
 use crate::permission::block_reason_for_tool;
 use crate::policy::{risk_level, ToolPolicy};
+use crate::proposals::{Governor, Verdict};
 use crate::pystr::{is_truthy, py_str};
 use crate::state::{AgentRunContext, AgentState};
+use crate::tools::{CallScope, NativeCall};
 use crate::worker::ToolOutcome;
 
 /// `{k: v for k, v in args.items() if k != "content"}` — the decision is worth
@@ -104,64 +110,110 @@ impl Runtime {
             return (false, true);
         }
 
-        let verdict = self
-            .deps
-            .worker
-            .change_proposal(
-                name,
-                args,
-                &serde_json::to_value(policy).unwrap_or(Value::Null),
-                workspace_id,
-                req.conversation_id.as_deref(),
-            )
-            .await;
-        let Some(verdict) = verdict else {
-            return (false, false);
+        // Staging is a blocking read (the base snapshot), a diff and a store
+        // write, so it runs off the reactor — as the retired seam did with
+        // `asyncio.to_thread`. The verdict is the whole answer; there is no
+        // "the governor could not be reached" any more, because the governor
+        // is this process.
+        let workspace = self.deps.workspace.clone();
+        let store = Arc::clone(&self.deps.proposals);
+        let user_email = req.user_email.clone();
+        let workspace_id = workspace_id.map(str::to_string);
+        let conversation_id = req.conversation_id.clone();
+        let tool = name.to_string();
+        let call_args = args.clone();
+        let call_policy = policy.clone();
+        let staged = tokio::task::spawn_blocking(move || {
+            Governor {
+                workspace: &workspace,
+                store: store.as_ref(),
+                user_email: user_email.as_deref(),
+                workspace_id: workspace_id.as_deref(),
+                conversation_id: conversation_id.as_deref(),
+            }
+            .review(&tool, &call_args, &call_policy)
+        })
+        .await;
+        let verdict = match staged {
+            Ok(verdict) => verdict,
+            Err(join) => Verdict::Failed(format!("change proposal staging task failed: {join}")),
         };
+
         let risk = risk_level(policy);
-        if verdict.get("decision").and_then(Value::as_str) == Some("proposed") {
-            let proposal = verdict.get("proposal").cloned().unwrap_or(json!({}));
-            ctx.trace.tool("execute", name, "proposed", Some(risk));
-            self.emit_step("execute", "proposed", &[("action", json!(name))]);
-            ctx.transcript.push(json!({
-                "state": AgentState::Executing.as_str(),
-                "action": name,
-                "thoughts": thoughts,
-                "args": without_content(args),
-                "risk": risk,
-                "governance": policy,
-                "result": {
-                    "proposed": true,
-                    "proposal_id": proposal.get("id").cloned().unwrap_or(Value::Null),
-                    "note": "기존 내용을 바꾸는 작업이라 변경 제안으로 저장했습니다. \
-            검토함에서 승인하면 적용됩니다.",
-                },
-            }));
-            self.audit(
-                "agent_change_proposed",
-                &[
-                    ("user_email", json!(req.user_email)),
-                    ("action", json!(name)),
-                    (
-                        "proposal_id",
-                        proposal.get("id").cloned().unwrap_or(Value::Null),
-                    ),
-                    (
-                        "change_class",
-                        verdict
-                            .get("classification")
-                            .and_then(|classification| classification.get("change_class"))
-                            .cloned()
-                            .unwrap_or(Value::Null),
-                    ),
-                ],
-            );
-            return (true, false);
+        match verdict {
+            Verdict::Silent => (false, false),
+            Verdict::AllowAdditive(_) => (false, true),
+            Verdict::Proposed {
+                classification,
+                proposal,
+            } => {
+                let proposal_id = proposal.get("id").cloned().unwrap_or(Value::Null);
+                ctx.trace.tool("execute", name, "proposed", Some(risk));
+                self.emit_step("execute", "proposed", &[("action", json!(name))]);
+                ctx.transcript.push(json!({
+                    "state": AgentState::Executing.as_str(),
+                    "action": name,
+                    "thoughts": thoughts,
+                    "args": without_content(args),
+                    "risk": risk,
+                    "governance": policy,
+                    "result": {
+                        "proposed": true,
+                        "proposal_id": proposal_id.clone(),
+                        "note": "기존 내용을 바꾸는 작업이라 변경 제안으로 저장했습니다. \
+                검토함에서 승인하면 적용됩니다.",
+                    },
+                }));
+                self.audit(
+                    "agent_change_proposed",
+                    &[
+                        ("user_email", json!(req.user_email)),
+                        ("action", json!(name)),
+                        ("proposal_id", proposal_id),
+                        ("change_class", json!(classification.change_class)),
+                    ],
+                );
+                (true, false)
+            }
+            // The change had to be reviewed and was not. Falling through to the
+            // gates here would leave the run's only record of that a blocked
+            // step with an unrelated reason, so it is its own error step.
+            Verdict::Failed(detail) => {
+                let error = format!(
+                    "PROPOSAL_FAILED: 변경 제안을 저장하지 못해 '{name}' 을(를) 실행하지 \
+않았습니다: {detail}"
+                );
+                ctx.trace.tool("execute", name, "error", Some(risk));
+                ctx.transcript.push(json!({
+                    "state": AgentState::Executing.as_str(),
+                    "action": name,
+                    "thoughts": thoughts,
+                    "args": without_content(args),
+                    "risk": risk,
+                    "governance": policy,
+                    "error": error,
+                }));
+                self.emit_step(
+                    "execute",
+                    "tool",
+                    &[
+                        ("action", json!(name)),
+                        ("ok", json!(false)),
+                        ("reason", json!("proposal_staging_failed")),
+                    ],
+                );
+                self.audit(
+                    "agent_change_proposal_failed",
+                    &[
+                        ("user_email", json!(req.user_email)),
+                        ("action", json!(name)),
+                        ("path", json!(path_arg(args))),
+                        ("detail", json!(detail)),
+                    ],
+                );
+                (true, false)
+            }
         }
-        (
-            false,
-            verdict.get("decision").and_then(Value::as_str) == Some("allow_additive"),
-        )
     }
 
     /// Destructive / circuit-breaker / fail-closed-overwrite / approval gates.
@@ -323,8 +375,8 @@ impl Runtime {
         true
     }
 
-    /// Pre-write snapshot + the worker seam, recorded on the transcript either
-    /// way. Returns the appended step's index.
+    /// Pre-write snapshot + execution (native, or the worker seam), recorded on
+    /// the transcript either way.
     pub(super) async fn dispatch_step(
         &mut self,
         ctx: &mut AgentRunContext,
@@ -338,9 +390,13 @@ impl Runtime {
             policy,
         } = call;
         let risk = risk_level(policy);
-        // `write_file`'s content sanitation is the worker's: the seam's execute
-        // runs `sanitize_write_content`, so there is no second copy here that
-        // could disagree with the one that actually writes the bytes.
+        // `write_file`'s content is written as the model produced it. Python's
+        // *loop* ran `sanitize_write_content` here; neither `/agent/tool` nor
+        // `/tools/write_file` ever did, so the native loop has never had it and
+        // making the write native does not change that. It is a real gap, owned
+        // by the artifact pipeline rather than by this dispatcher — the W4
+        // wiring note carries it rather than a silent re-implementation that
+        // could disagree with the one door Python documents.
         let step_index = 1 + ctx
             .transcript
             .iter()
@@ -373,11 +429,31 @@ impl Runtime {
             }
         }
 
-        let outcome = self
-            .deps
-            .worker
-            .tool(name, args, req.workspace_id.as_deref())
-            .await;
+        // Native first: a mutating tool is executed here, in this process, with
+        // the same workspace the snapshot above just read. Everything else is
+        // still one `POST /agent/tool` to the compute worker.
+        let outcome = if self.deps.native.handles(name) {
+            let scope = CallScope {
+                user_email: req.user_email.clone(),
+                workspace_id: req.workspace_id.clone(),
+            };
+            self.deps
+                .native
+                .execute(NativeCall {
+                    tool: name,
+                    args,
+                    // `check_role` reads the *registry* policy, not the
+                    // argument-rewritten one — see `NativeCall::policy`.
+                    policy: self.deps.policies.get(name),
+                    scope: &scope,
+                })
+                .await
+        } else {
+            self.deps
+                .worker
+                .tool(name, args, req.workspace_id.as_deref())
+                .await
+        };
         let path_detail = path_arg(args).map(Value::from).unwrap_or(Value::Null);
         match outcome {
             ToolOutcome::Result(result) => {

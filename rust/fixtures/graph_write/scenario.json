@@ -1,0 +1,2504 @@
+{
+  "manifest": {
+    "generator": "scripts/gen_graph_write_goldens.py",
+    "frozen_now": "2026-08-01T12:00:00",
+    "frozen_time": 1785974400.5,
+    "frozen_pid": 424242,
+    "frozen_perf_counter": 1000.0,
+    "vector_op_time_sequence": [
+      1785974400.5,
+      1785974401.5,
+      1785974402.5,
+      1785974403.5,
+      1785974404.5
+    ],
+    "environment": {
+      "LATTICEAI_VECTOR_DIM": "384",
+      "LATTICEAI_EMBED_DIM": "1024",
+      "LATTICEAI_KG_READ_V2": "1",
+      "LATTICEAI_LLM_EXTRACTION": "false",
+      "LATTICEAI_GRAPH_PROMOTION_REVIEW": ""
+    },
+    "steps": 32,
+    "blob_sidecars": [
+      "53/53f06801eadf08a1bd6f3ec0e631098931305a2416f3b965fe88d3105004b285.txt"
+    ]
+  },
+  "steps": [
+    {
+      "n": 1,
+      "op": "ingest_content",
+      "args": {
+        "source_type": "note",
+        "title": "Rust write engine",
+        "text": "Lattice AI keeps the Knowledge Graph local.\n결정: 검색 랭킹은 alpha 융합을 유지한다.\nTODO: write the Rust write engine parity harness.\nThe FastAPI worker and the Rust gateway share one SQLite file.\n",
+        "source_uri": "note://rust-write-engine",
+        "owner": "jiwon@example.com",
+        "workspace_id": null,
+        "permissions": {},
+        "captured_at": null,
+        "modified_at": null,
+        "conversation_id": "conv-1",
+        "metadata": {
+          "category": "platform"
+        },
+        "node_type": "Document",
+        "chunks": [
+          {
+            "text": "Lattice AI keeps the Knowledge Graph local.\n결정: 검색 랭킹은 alpha 융합을 유지한다.\nTODO: write the Rust write engine parity harness.\nThe FastAPI worker and the Rust gateway share one SQLite file.",
+            "fields": {
+              "strategy": "plain",
+              "start_char": 0
+            }
+          }
+        ],
+        "concepts": [
+          {
+            "text": "Lattice AI",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Knowledge Graph",
+            "node_type": "Person"
+          },
+          {
+            "text": "The Fast",
+            "node_type": "Person"
+          },
+          {
+            "text": "Rust",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Graph",
+            "node_type": "Concept"
+          },
+          {
+            "text": "FastAPI",
+            "node_type": "Concept"
+          },
+          {
+            "text": "SQLite",
+            "node_type": "Concept"
+          }
+        ],
+        "triples": [
+          {
+            "subject": "Lattice AI",
+            "object": "Knowledge Graph",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Rust write engine\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Knowledge Graph",
+            "object": "Rust",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Rust write engine\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Rust",
+            "object": "Graph",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Rust write engine\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "The Fast",
+            "object": "Rust",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "The FastAPI worker and the Rust gateway share one SQLite file.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Rust",
+            "object": "FastAPI",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "The FastAPI worker and the Rust gateway share one SQLite file.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "FastAPI",
+            "object": "SQLite",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "The FastAPI worker and the Rust gateway share one SQLite file.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          }
+        ],
+        "semantic": [
+          {
+            "item_type": "Decision",
+            "title": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+            "summary": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+            "raw": {
+              "type": "Decision",
+              "title": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+              "summary": "결정: 검색 랭킹은 alpha 융합을 유지한다."
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "TODO: write the Rust write engine parity harness.",
+            "summary": "TODO: write the Rust write engine parity harness.",
+            "raw": {
+              "type": "Task",
+              "title": "TODO: write the Rust write engine parity harness.",
+              "summary": "TODO: write the Rust write engine parity harness."
+            }
+          }
+        ]
+      },
+      "result": {
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "type": "Document",
+        "source_node_id": "source:b85d4d8003d219d75f156dec",
+        "content_hash": "edc8b72f84978025e62b55d435a111e19b5885c93ef6313f0c503a27748ce1f3",
+        "chunk_ids": [
+          "chunk:3fd8e1b912bd859ed99b9506"
+        ],
+        "chunk_count": 1,
+        "duplicate": false,
+        "captured_at": "2026-08-01T12:00:00"
+      }
+    },
+    {
+      "n": 2,
+      "op": "ingest_content",
+      "args": {
+        "source_type": "note",
+        "title": "Rust write engine",
+        "text": "Lattice AI keeps the Knowledge Graph local.\n결정: 검색 랭킹은 alpha 융합을 유지한다.\nTODO: write the Rust write engine parity harness.\nThe FastAPI worker and the Rust gateway share one SQLite file.\n",
+        "source_uri": "note://rust-write-engine",
+        "owner": "jiwon@example.com",
+        "workspace_id": null,
+        "permissions": {},
+        "captured_at": null,
+        "modified_at": null,
+        "conversation_id": "conv-1",
+        "metadata": {
+          "category": "platform"
+        },
+        "node_type": "Document",
+        "chunks": [
+          {
+            "text": "Lattice AI keeps the Knowledge Graph local.\n결정: 검색 랭킹은 alpha 융합을 유지한다.\nTODO: write the Rust write engine parity harness.\nThe FastAPI worker and the Rust gateway share one SQLite file.",
+            "fields": {
+              "strategy": "plain",
+              "start_char": 0
+            }
+          }
+        ],
+        "concepts": [
+          {
+            "text": "Lattice AI",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Knowledge Graph",
+            "node_type": "Person"
+          },
+          {
+            "text": "The Fast",
+            "node_type": "Person"
+          },
+          {
+            "text": "Rust",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Graph",
+            "node_type": "Concept"
+          },
+          {
+            "text": "FastAPI",
+            "node_type": "Concept"
+          },
+          {
+            "text": "SQLite",
+            "node_type": "Concept"
+          }
+        ],
+        "triples": [
+          {
+            "subject": "Lattice AI",
+            "object": "Knowledge Graph",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Rust write engine\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Knowledge Graph",
+            "object": "Rust",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Rust write engine\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Rust",
+            "object": "Graph",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Rust write engine\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "The Fast",
+            "object": "Rust",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "The FastAPI worker and the Rust gateway share one SQLite file.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Rust",
+            "object": "FastAPI",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "The FastAPI worker and the Rust gateway share one SQLite file.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "FastAPI",
+            "object": "SQLite",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "The FastAPI worker and the Rust gateway share one SQLite file.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          }
+        ],
+        "semantic": [
+          {
+            "item_type": "Decision",
+            "title": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+            "summary": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+            "raw": {
+              "type": "Decision",
+              "title": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+              "summary": "결정: 검색 랭킹은 alpha 융합을 유지한다."
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "TODO: write the Rust write engine parity harness.",
+            "summary": "TODO: write the Rust write engine parity harness.",
+            "raw": {
+              "type": "Task",
+              "title": "TODO: write the Rust write engine parity harness.",
+              "summary": "TODO: write the Rust write engine parity harness."
+            }
+          }
+        ]
+      },
+      "result": {
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "type": "Document",
+        "source_node_id": "source:b85d4d8003d219d75f156dec",
+        "content_hash": "edc8b72f84978025e62b55d435a111e19b5885c93ef6313f0c503a27748ce1f3",
+        "chunk_ids": [
+          "chunk:3fd8e1b912bd859ed99b9506"
+        ],
+        "chunk_count": 1,
+        "duplicate": true,
+        "captured_at": "2026-08-01T12:00:00"
+      }
+    },
+    {
+      "n": 3,
+      "op": "ingest_content",
+      "args": {
+        "source_type": "url",
+        "title": "Retrieval handbook",
+        "text": "Paragraph 1: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 1 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 2: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 2 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 3: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 3 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 4: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 4 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 5: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 5 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 6: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 6 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 7: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 7 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 8: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 8 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 9: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 9 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 10: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 10 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 11: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 11 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 12: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 12 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 13: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 13 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 14: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 14 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 15: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 15 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 16: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 16 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 17: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 17 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 18: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 18 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 19: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 19 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 20: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 20 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 21: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 21 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 22: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 22 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 23: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 23 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 24: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 24 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 25: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 25 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 26: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 26 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 27: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 27 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 28: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 28 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 29: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 29 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 30: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 30 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 31: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 31 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 32: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 32 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 33: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 33 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 34: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 34 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 35: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 35 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 36: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 36 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 37: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 37 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 38: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 38 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 39: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 39 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "source_uri": "https://example.invalid/handbook.md",
+        "owner": "jiwon@example.com",
+        "workspace_id": null,
+        "permissions": {},
+        "captured_at": null,
+        "modified_at": null,
+        "conversation_id": null,
+        "metadata": {
+          "filename": "handbook.md"
+        },
+        "node_type": "Document",
+        "chunks": [
+          {
+            "text": "Paragraph 1: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 1 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 2: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 2 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 3: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 3 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 4: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 4 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 5: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 5 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 6: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 6 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 7: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 7 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "fields": {
+              "strategy": "markdown",
+              "start_char": 0
+            }
+          },
+          {
+            "text": "h 7: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 7 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 8: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 8 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 9: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 9 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 10: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 10 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 11: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 11 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 12: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 12 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 13: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 13 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "fields": {
+              "strategy": "markdown",
+              "start_char": 1040
+            }
+          },
+          {
+            "text": "13: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 13 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 14: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 14 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 15: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 15 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 16: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 16 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 17: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 17 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 18: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 18 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 19: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 19 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "fields": {
+              "strategy": "markdown",
+              "start_char": 2080
+            }
+          },
+          {
+            "text": "aph 19: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 19 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 20: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 20 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 21: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 21 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 22: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 22 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 23: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 23 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 24: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 24 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 25: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 25 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "fields": {
+              "strategy": "markdown",
+              "start_char": 3120
+            }
+          },
+          {
+            "text": "ragraph 25: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 25 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 26: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 26 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 27: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 27 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 28: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 28 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 29: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 29 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 30: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 30 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 31: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 31 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "fields": {
+              "strategy": "markdown",
+              "start_char": 4160
+            }
+          },
+          {
+            "text": "x\nParagraph 31: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 31 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 32: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 32 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 33: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 33 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 34: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 34 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 35: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 35 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 36: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 36 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 37: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 37 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "fields": {
+              "strategy": "markdown",
+              "start_char": 5200
+            }
+          },
+          {
+            "text": "xxxxx\nParagraph 37: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 37 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 38: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 38 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 39: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 39 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "fields": {
+              "strategy": "markdown",
+              "start_char": 6240
+            }
+          }
+        ],
+        "concepts": [
+          {
+            "text": "Paragraph 1",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 2",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 3",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 4",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 5",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 6",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 7",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 8",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 9",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 10",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 11",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 12",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 13",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 14",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Paragraph 15",
+            "node_type": "Concept"
+          }
+        ],
+        "triples": [
+          {
+            "subject": "Paragraph 1",
+            "object": "Paragraph 10",
+            "relation": "사용함",
+            "weight": 1.0,
+            "context": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 10: the retrieval pipeline scores lexical and vector channels, then fuses them.",
+            "evidence": "verb",
+            "confidence": null
+          },
+          {
+            "subject": "Paragraph 1",
+            "object": "Paragraph 11",
+            "relation": "사용함",
+            "weight": 1.0,
+            "context": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 11: the retrieval pipeline scores lexical and vector channels, then fuses them.",
+            "evidence": "verb",
+            "confidence": null
+          },
+          {
+            "subject": "Paragraph 1",
+            "object": "Paragraph 12",
+            "relation": "사용함",
+            "weight": 1.0,
+            "context": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 12: the retrieval pipeline scores lexical and vector channels, then fuses them.",
+            "evidence": "verb",
+            "confidence": null
+          },
+          {
+            "subject": "Paragraph 1",
+            "object": "Paragraph 13",
+            "relation": "사용함",
+            "weight": 1.0,
+            "context": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 13: the retrieval pipeline scores lexical and vector channels, then fuses them.",
+            "evidence": "verb",
+            "confidence": null
+          },
+          {
+            "subject": "Paragraph 1",
+            "object": "Paragraph 14",
+            "relation": "사용함",
+            "weight": 1.0,
+            "context": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 14: the retrieval pipeline scores lexical and vector channels, then fuses them.",
+            "evidence": "verb",
+            "confidence": null
+          },
+          {
+            "subject": "Paragraph 1",
+            "object": "Paragraph 15",
+            "relation": "사용함",
+            "weight": 1.0,
+            "context": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nParagraph 15: the retrieval pipeline scores lexical and vector channels, then fuses them.",
+            "evidence": "verb",
+            "confidence": null
+          }
+        ],
+        "semantic": [
+          {
+            "item_type": "Task",
+            "title": "Paragraph 1: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 1 입니다. xxxxxxxxx",
+            "summary": "Paragraph 1: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 1 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 1: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 1 입니다. xxxxxxxxx",
+              "summary": "Paragraph 1: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 1 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "Paragraph 2: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 2 입니다. xxxxxxxxx",
+            "summary": "Paragraph 2: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 2 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 2: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 2 입니다. xxxxxxxxx",
+              "summary": "Paragraph 2: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 2 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "Paragraph 3: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 3 입니다. xxxxxxxxx",
+            "summary": "Paragraph 3: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 3 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 3: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 3 입니다. xxxxxxxxx",
+              "summary": "Paragraph 3: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 3 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "Paragraph 4: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 4 입니다. xxxxxxxxx",
+            "summary": "Paragraph 4: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 4 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 4: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 4 입니다. xxxxxxxxx",
+              "summary": "Paragraph 4: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 4 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "Paragraph 5: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 5 입니다. xxxxxxxxx",
+            "summary": "Paragraph 5: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 5 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 5: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 5 입니다. xxxxxxxxx",
+              "summary": "Paragraph 5: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 5 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "Paragraph 6: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 6 입니다. xxxxxxxxx",
+            "summary": "Paragraph 6: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 6 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 6: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 6 입니다. xxxxxxxxx",
+              "summary": "Paragraph 6: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 6 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "Paragraph 7: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 7 입니다. xxxxxxxxx",
+            "summary": "Paragraph 7: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 7 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 7: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 7 입니다. xxxxxxxxx",
+              "summary": "Paragraph 7: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 7 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "Paragraph 8: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 8 입니다. xxxxxxxxx",
+            "summary": "Paragraph 8: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 8 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "raw": {
+              "type": "Task",
+              "title": "Paragraph 8: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 8 입니다. xxxxxxxxx",
+              "summary": "Paragraph 8: the retrieval pipeline scores lexical and vector channels, then fuses them. 검색 품질을 확인하는 문단 8 입니다. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          }
+        ]
+      },
+      "result": {
+        "node_id": "webdoc:fe4d10715e1c322c7cd12470",
+        "type": "Document",
+        "source_node_id": "source:321b9a7d4b61327a50b9488b",
+        "content_hash": "af17586e4d9dabb79235309af2c5743bde3366e6b006bb81a5f5e24360685432",
+        "chunk_ids": [
+          "chunk:11befd7c738182b347a3d95a",
+          "chunk:f0f48344ff6be4cb43b4c2a7",
+          "chunk:bec498f1d4f8ab2024c90c02",
+          "chunk:3df8a277564592d12995d89f",
+          "chunk:e285e4579a0027fc91d35bd4",
+          "chunk:ecd4429efc4c4d30b222e142",
+          "chunk:dc4efc4d89e0dc7bc97071bf"
+        ],
+        "chunk_count": 7,
+        "duplicate": false,
+        "captured_at": "2026-08-01T12:00:00"
+      }
+    },
+    {
+      "n": 4,
+      "op": "ingest_content",
+      "args": {
+        "source_type": "note",
+        "title": "워크스페이스 노트",
+        "text": "회의 결정 사항: 그래프 쓰기 엔진을 Rust로 옮긴다.\nOwner: Jiwon. Reviewer: Taesoo.\n",
+        "source_uri": "note://ws-alpha-1",
+        "owner": "taesoo@example.com",
+        "workspace_id": "ws-alpha",
+        "permissions": {
+          "read": [
+            "ws-alpha"
+          ]
+        },
+        "captured_at": null,
+        "modified_at": null,
+        "conversation_id": null,
+        "metadata": {
+          "category": "meeting"
+        },
+        "node_type": "Document",
+        "chunks": [
+          {
+            "text": "회의 결정 사항: 그래프 쓰기 엔진을 Rust로 옮긴다.\nOwner: Jiwon. Reviewer: Taesoo.",
+            "fields": {
+              "strategy": "plain",
+              "start_char": 0
+            }
+          }
+        ],
+        "concepts": [
+          {
+            "text": "Rust",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Jiwon",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Taesoo",
+            "node_type": "Concept"
+          },
+          {
+            "text": "워크스페",
+            "node_type": "Concept"
+          }
+        ],
+        "triples": [
+          {
+            "subject": "Rust",
+            "object": "워크스페",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "워크스페이스 노트\n회의 결정 사항: 그래프 쓰기 엔진을 Rust로 옮긴다.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          }
+        ],
+        "semantic": [
+          {
+            "item_type": "Decision",
+            "title": "회의 결정 사항: 그래프 쓰기 엔진을 Rust로 옮긴다.",
+            "summary": "회의 결정 사항: 그래프 쓰기 엔진을 Rust로 옮긴다.",
+            "raw": {
+              "type": "Decision",
+              "title": "회의 결정 사항: 그래프 쓰기 엔진을 Rust로 옮긴다.",
+              "summary": "회의 결정 사항: 그래프 쓰기 엔진을 Rust로 옮긴다."
+            }
+          }
+        ]
+      },
+      "result": {
+        "node_id": "webdoc:efd7bf33520321894247b3d4",
+        "type": "Document",
+        "source_node_id": "source:957b325442e52a890efac091",
+        "content_hash": "ee3dfc60ec2a6e87799f9463bccdcdbb0c52f909bad00738997ce780934246d4",
+        "chunk_ids": [
+          "chunk:3f0a3a0acde449b981d7561b"
+        ],
+        "chunk_count": 1,
+        "duplicate": false,
+        "captured_at": "2026-08-01T12:00:00"
+      }
+    },
+    {
+      "n": 5,
+      "op": "ingest_file",
+      "args": {
+        "filename": "release-notes.txt",
+        "body": "Lattice AI keeps the Knowledge Graph local.\n결정: 검색 랭킹은 alpha 융합을 유지한다.\nTODO: write the Rust write engine parity harness.\nThe FastAPI worker and the Rust gateway share one SQLite file.\nRelease: v11.6.0 One Door.\n",
+        "original_filename": null,
+        "mime_type": "text/plain",
+        "uploader": "jiwon@example.com",
+        "conversation_id": "conv-1",
+        "extracted": {
+          "content": "Lattice AI keeps the Knowledge Graph local.\n결정: 검색 랭킹은 alpha 융합을 유지한다.\nTODO: write the Rust write engine parity harness.\nThe FastAPI worker and the Rust gateway share one SQLite file.\nRelease: v11.6.0 One Door.\n"
+        },
+        "source_type": "upload",
+        "source_uri": "upload://release-notes.txt",
+        "captured_at": null,
+        "modified_at": null,
+        "owner": null,
+        "workspace_id": null,
+        "permissions": {},
+        "structure": {},
+        "chunks": [
+          {
+            "text": "Lattice AI keeps the Knowledge Graph local.\n결정: 검색 랭킹은 alpha 융합을 유지한다.\nTODO: write the Rust write engine parity harness.\nThe FastAPI worker and the Rust gateway share one SQLite file.\nRelease: v11.6.0 One Door.",
+            "fields": {
+              "strategy": "prose",
+              "start_char": 0
+            }
+          }
+        ],
+        "concepts": [
+          {
+            "text": "Lattice AI",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Knowledge Graph",
+            "node_type": "Person"
+          },
+          {
+            "text": "The Fast",
+            "node_type": "Person"
+          },
+          {
+            "text": "One Door",
+            "node_type": "Person"
+          },
+          {
+            "text": "Graph",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Rust",
+            "node_type": "Concept"
+          },
+          {
+            "text": "FastAPI",
+            "node_type": "Concept"
+          },
+          {
+            "text": "SQLite",
+            "node_type": "Concept"
+          },
+          {
+            "text": "One",
+            "node_type": "Concept"
+          },
+          {
+            "text": "Door",
+            "node_type": "Concept"
+          },
+          {
+            "text": "release-notes.txt",
+            "node_type": "Concept"
+          }
+        ],
+        "triples": [
+          {
+            "subject": "Lattice AI",
+            "object": "Knowledge Graph",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "release-notes.txt\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Knowledge Graph",
+            "object": "Graph",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "release-notes.txt\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "Graph",
+            "object": "release-notes.txt",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "release-notes.txt\nLattice AI keeps the Knowledge Graph local.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "One Door",
+            "object": "One",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Release: v11.6.0 One Door.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          },
+          {
+            "subject": "One",
+            "object": "Door",
+            "relation": "관련됨",
+            "weight": 0.35,
+            "context": "Release: v11.6.0 One Door.",
+            "evidence": "cooccurrence",
+            "confidence": null
+          }
+        ],
+        "semantic": [
+          {
+            "item_type": "Decision",
+            "title": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+            "summary": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+            "raw": {
+              "type": "Decision",
+              "title": "결정: 검색 랭킹은 alpha 융합을 유지한다.",
+              "summary": "결정: 검색 랭킹은 alpha 융합을 유지한다."
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "TODO: write the Rust write engine parity harness.",
+            "summary": "TODO: write the Rust write engine parity harness.",
+            "raw": {
+              "type": "Task",
+              "title": "TODO: write the Rust write engine parity harness.",
+              "summary": "TODO: write the Rust write engine parity harness."
+            }
+          }
+        ]
+      },
+      "result": {
+        "node_id": "file:189b97e731246ceb06cb2330",
+        "type": "Document",
+        "sha256": "53f06801eadf08a1bd6f3ec0e631098931305a2416f3b965fe88d3105004b285",
+        "content_hash": "53f06801eadf08a1bd6f3ec0e631098931305a2416f3b965fe88d3105004b285",
+        "source_node_id": "source:8bfc5e88fb3cb6b4a81101ff",
+        "chunk_ids": [
+          "chunk:982e6d2ab4e0fe92e6d61e50"
+        ],
+        "chunk_count": 1,
+        "duplicate": false,
+        "captured_at": "2026-08-01T12:00:00",
+        "metadata": {
+          "filename": "release-notes.txt",
+          "ext": ".txt",
+          "mime_type": "text/plain",
+          "bytes": 239,
+          "sha256": "53f06801eadf08a1bd6f3ec0e631098931305a2416f3b965fe88d3105004b285",
+          "content_hash": "53f06801eadf08a1bd6f3ec0e631098931305a2416f3b965fe88d3105004b285",
+          "blob_path": "{{WORK}}/knowledge_graph_blobs/53/53f06801eadf08a1bd6f3ec0e631098931305a2416f3b965fe88d3105004b285.txt",
+          "uploader": "jiwon@example.com",
+          "owner": "jiwon@example.com",
+          "workspace_id": null,
+          "permissions": {},
+          "source_type": "upload",
+          "source_uri": "upload://release-notes.txt",
+          "captured_at": "2026-08-01T12:00:00",
+          "modified_at": null,
+          "conversation_id": "conv-1",
+          "extracted": {},
+          "structure": {}
+        }
+      }
+    },
+    {
+      "n": 6,
+      "op": "ingest_message",
+      "args": {
+        "role": "user",
+        "content": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+        "user_email": "jiwon@example.com",
+        "user_nickname": "지원",
+        "source": "web",
+        "conversation_id": "conv-1",
+        "workspace_id": null,
+        "raw": null,
+        "chunks": [
+          {
+            "text": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+            "fields": {
+              "strategy": "plain",
+              "start_char": 0
+            }
+          }
+        ],
+        "concepts": [
+          {
+            "text": "Rust",
+            "node_type": "Concept"
+          }
+        ],
+        "triples": [],
+        "semantic": [
+          {
+            "item_type": "Decision",
+            "title": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+            "summary": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+            "raw": {
+              "type": "Decision",
+              "title": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+              "summary": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행."
+            }
+          },
+          {
+            "item_type": "Task",
+            "title": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+            "summary": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+            "raw": {
+              "type": "Task",
+              "title": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행.",
+              "summary": "그래프 쓰기 경로를 Rust로 옮기면 좋겠습니다. Decision: 진행."
+            }
+          }
+        ]
+      },
+      "result": {
+        "node_id": "message:4b12afa93598477370535978",
+        "type": "Message"
+      }
+    },
+    {
+      "n": 7,
+      "op": "ingest_message",
+      "args": {
+        "role": "assistant",
+        "content": "네, GraphWriter가 nodes/edges/chunks를 직접 씁니다.",
+        "user_email": null,
+        "user_nickname": null,
+        "source": "web",
+        "conversation_id": "conv-1",
+        "workspace_id": null,
+        "raw": null,
+        "chunks": [
+          {
+            "text": "네, GraphWriter가 nodes/edges/chunks를 직접 씁니다.",
+            "fields": {
+              "strategy": "plain",
+              "start_char": 0
+            }
+          }
+        ],
+        "concepts": [
+          {
+            "text": "GraphWriter",
+            "node_type": "Concept"
+          }
+        ],
+        "triples": [],
+        "semantic": []
+      },
+      "result": {
+        "node_id": "airesponse:15e670ac1d43da994add5dc2",
+        "type": "AIResponse"
+      }
+    },
+    {
+      "n": 8,
+      "op": "ingest_event",
+      "args": {
+        "event_type": "Event",
+        "title": "rust write engine enabled",
+        "user_email": "jiwon@example.com",
+        "user_nickname": null,
+        "source": "system",
+        "conversation_id": "conv-1",
+        "workspace_id": null,
+        "metadata": {
+          "wave": "2.5"
+        }
+      },
+      "result": {
+        "node_id": "event:0969e25c829fc44851964469",
+        "type": "Event"
+      }
+    },
+    {
+      "n": 9,
+      "op": "record_ingestion",
+      "args": {
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "source_type": "note",
+        "pipeline": "unified-ingestion",
+        "source_uri": "note://rust-write-engine",
+        "content_hash": "edc8b72f84978025e62b55d435a111e19b5885c93ef6313f0c503a27748ce1f3",
+        "title": "Rust write engine",
+        "owner": "jiwon@example.com",
+        "workspace_id": null,
+        "captured_at": null,
+        "modified_at": null,
+        "embedded": true,
+        "linked": true,
+        "duplicate": false,
+        "agent_used": null,
+        "chunk_count": 1,
+        "permissions": {},
+        "metadata": {
+          "pipeline_step": "text"
+        }
+      },
+      "result": {
+        "id": "prov:2fdc31b7695ec6bd629aed61",
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "created_at": "2026-08-01T12:00:00"
+      }
+    },
+    {
+      "n": 10,
+      "op": "record_ingestion",
+      "args": {
+        "node_id": "file:189b97e731246ceb06cb2330",
+        "source_type": "upload",
+        "pipeline": "unified-ingestion",
+        "source_uri": "note://rust-write-engine",
+        "content_hash": "53f06801eadf08a1bd6f3ec0e631098931305a2416f3b965fe88d3105004b285",
+        "title": "release-notes.txt",
+        "owner": "jiwon@example.com",
+        "workspace_id": null,
+        "captured_at": null,
+        "modified_at": null,
+        "embedded": false,
+        "linked": false,
+        "duplicate": true,
+        "agent_used": null,
+        "chunk_count": 1,
+        "permissions": {
+          "read": [
+            "owner"
+          ]
+        },
+        "metadata": {}
+      },
+      "result": {
+        "id": "prov:5d49882b682b010bd64157a4",
+        "node_id": "file:189b97e731246ceb06cb2330",
+        "created_at": "2026-08-01T12:00:00"
+      }
+    },
+    {
+      "n": 11,
+      "op": "record_ingestion",
+      "args": {
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "source_type": "note",
+        "pipeline": "unified-ingestion",
+        "source_uri": "note://rust-write-engine",
+        "content_hash": "edc8b72f84978025e62b55d435a111e19b5885c93ef6313f0c503a27748ce1f3",
+        "title": "Rust write engine (reseen)",
+        "owner": "jiwon@example.com",
+        "workspace_id": null,
+        "captured_at": null,
+        "modified_at": null,
+        "embedded": true,
+        "linked": true,
+        "duplicate": false,
+        "agent_used": null,
+        "chunk_count": 1,
+        "permissions": {},
+        "metadata": {
+          "pipeline_step": "text"
+        }
+      },
+      "result": {
+        "id": "prov:2fdc31b7695ec6bd629aed61",
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "created_at": "2026-08-01T12:00:00"
+      }
+    },
+    {
+      "n": 12,
+      "op": "upsert_nodes",
+      "args": {
+        "nodes": [
+          {
+            "id": "project:one-door",
+            "node_type": "Project",
+            "title": "One Door",
+            "summary": "v11.6.0",
+            "metadata": {
+              "owner": "jiwon@example.com",
+              "workspace_id": "ws-alpha"
+            }
+          },
+          {
+            "id": "person:reviewer",
+            "node_type": "Person",
+            "title": "Taesoo",
+            "metadata": {
+              "email": "taesoo@example.com"
+            },
+            "owner": "taesoo@example.com"
+          }
+        ]
+      },
+      "result": [
+        "project:one-door",
+        "person:reviewer"
+      ]
+    },
+    {
+      "n": 13,
+      "op": "upsert_edges",
+      "args": {
+        "edges": [
+          {
+            "from_node": "person:reviewer",
+            "to_node": "project:one-door",
+            "edge_type": "작성함",
+            "weight": 0.5,
+            "metadata": {
+              "source": "manual"
+            }
+          },
+          {
+            "from_node": "person:reviewer",
+            "to_node": "project:one-door",
+            "edge_type": "MENTIONS",
+            "weight": 0.9,
+            "metadata": {
+              "confidence": 0.75
+            }
+          },
+          {
+            "from_node": "person:reviewer",
+            "to_node": "project:one-door",
+            "edge_type": "관련됨",
+            "weight": 0.4,
+            "metadata": {},
+            "legacy_label": "관련됨"
+          }
+        ]
+      },
+      "result": [
+        "edge:bbaae6dc90e812bd5baafa89",
+        "edge:9b3b453618b2a88f51d46448",
+        "edge:9b3b453618b2a88f51d46448"
+      ]
+    },
+    {
+      "n": 14,
+      "op": "curate",
+      "args": {
+        "max_documents": 50,
+        "max_new_nodes": 4,
+        "review_mode": true,
+        "overlay": {
+          "promotions": [
+            {
+              "label": "검색",
+              "importance": 2.085,
+              "aliases": [],
+              "sources": [
+                "file:189b97e731246ceb06cb2330",
+                "webdoc:82a9e25655117922f16b9537",
+                "webdoc:fe4d10715e1c322c7cd12470"
+              ]
+            },
+            {
+              "label": "결정",
+              "importance": 2.085,
+              "aliases": [],
+              "sources": [
+                "file:189b97e731246ceb06cb2330",
+                "webdoc:82a9e25655117922f16b9537",
+                "webdoc:efd7bf33520321894247b3d4"
+              ]
+            },
+            {
+              "label": "rust gateway",
+              "importance": 1.6835,
+              "aliases": [],
+              "sources": [
+                "file:189b97e731246ceb06cb2330",
+                "webdoc:82a9e25655117922f16b9537"
+              ]
+            },
+            {
+              "label": "keeps knowledge",
+              "importance": 1.6835,
+              "aliases": [],
+              "sources": [
+                "file:189b97e731246ceb06cb2330",
+                "webdoc:82a9e25655117922f16b9537"
+              ]
+            }
+          ],
+          "skipped": [
+            {
+              "label": "rust",
+              "reason": "duplicate of existing node"
+            },
+            {
+              "label": "graph local",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "융합 유지한다",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "alpha 융합",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "parity harness",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "share sqlite",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "knowledge graph",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "engine parity",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "gateway share",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "fastapi worker",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "write rust",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "worker rust",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "유지한다 todo",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "랭킹 alpha",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "local 결정",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "harness fastapi",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "ai keeps",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "rust write",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "lattice ai",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "검색 랭킹",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "결정 검색",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "write engine",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "todo write",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "sqlite file",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "fastapi",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "local",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "parity",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "write",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "유지한다",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "knowledge",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "sqlite",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "harness",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "share",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "gateway",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "engine",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "융합",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "graph",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "alpha",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "lattice",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "worker",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "file",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "ai",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "keeps",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "랭킹",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "todo",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "그래프 쓰기",
+              "reason": "max_new_nodes reached"
+            }
+          ],
+          "candidates_total": 50,
+          "clustered_total": 50
+        }
+      },
+      "result": {
+        "status": "pending_review",
+        "documents_scanned": 6,
+        "candidates_total": 50,
+        "pending": [
+          {
+            "id": "topic:검색",
+            "label": "검색",
+            "importance": 2.085,
+            "aliases": [],
+            "sources": [
+              "file:189b97e731246ceb06cb2330",
+              "webdoc:82a9e25655117922f16b9537",
+              "webdoc:fe4d10715e1c322c7cd12470"
+            ],
+            "proposed_at": "2026-08-01T12:00:00"
+          },
+          {
+            "id": "topic:결정",
+            "label": "결정",
+            "importance": 2.085,
+            "aliases": [],
+            "sources": [
+              "file:189b97e731246ceb06cb2330",
+              "webdoc:82a9e25655117922f16b9537",
+              "webdoc:efd7bf33520321894247b3d4"
+            ],
+            "proposed_at": "2026-08-01T12:00:00"
+          },
+          {
+            "id": "topic:rust-gateway",
+            "label": "rust gateway",
+            "importance": 1.6835,
+            "aliases": [],
+            "sources": [
+              "file:189b97e731246ceb06cb2330",
+              "webdoc:82a9e25655117922f16b9537"
+            ],
+            "proposed_at": "2026-08-01T12:00:00"
+          },
+          {
+            "id": "topic:keeps-knowledge",
+            "label": "keeps knowledge",
+            "importance": 1.6835,
+            "aliases": [],
+            "sources": [
+              "file:189b97e731246ceb06cb2330",
+              "webdoc:82a9e25655117922f16b9537"
+            ],
+            "proposed_at": "2026-08-01T12:00:00"
+          }
+        ],
+        "pending_total": 4,
+        "skipped": [
+          {
+            "label": "rust",
+            "reason": "duplicate of existing node"
+          },
+          {
+            "label": "graph local",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "융합 유지한다",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "alpha 융합",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "parity harness",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "share sqlite",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "knowledge graph",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "engine parity",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "gateway share",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "fastapi worker",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "write rust",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "worker rust",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "유지한다 todo",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "랭킹 alpha",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "local 결정",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "harness fastapi",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "ai keeps",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "rust write",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "lattice ai",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "검색 랭킹",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "결정 검색",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "write engine",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "todo write",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "sqlite file",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "fastapi",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "local",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "parity",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "write",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "유지한다",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "knowledge",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "sqlite",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "harness",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "share",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "gateway",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "engine",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "융합",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "graph",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "alpha",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "lattice",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "worker",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "file",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "ai",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "keeps",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "랭킹",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "todo",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "그래프 쓰기",
+            "reason": "max_new_nodes reached"
+          }
+        ],
+        "skipped_total": 46
+      }
+    },
+    {
+      "n": 15,
+      "op": "apply_promotions",
+      "args": {
+        "ids": [
+          "topic:검색"
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "applied": [
+          {
+            "node_id": "topic:검색",
+            "label": "검색",
+            "importance": 2.085,
+            "linked_sources": 3
+          }
+        ],
+        "remaining": 3
+      }
+    },
+    {
+      "n": 16,
+      "op": "reject_promotions",
+      "args": {
+        "ids": [
+          "topic:결정"
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "rejected": [
+          "topic:결정"
+        ],
+        "remaining": 2
+      }
+    },
+    {
+      "n": 17,
+      "op": "curate",
+      "args": {
+        "max_documents": 50,
+        "max_new_nodes": 3,
+        "review_mode": false,
+        "overlay": {
+          "promotions": [
+            {
+              "label": "결정",
+              "importance": 2.085,
+              "aliases": [],
+              "sources": [
+                "file:189b97e731246ceb06cb2330",
+                "webdoc:82a9e25655117922f16b9537",
+                "webdoc:efd7bf33520321894247b3d4"
+              ]
+            },
+            {
+              "label": "rust gateway",
+              "importance": 1.6835,
+              "aliases": [],
+              "sources": [
+                "file:189b97e731246ceb06cb2330",
+                "webdoc:82a9e25655117922f16b9537"
+              ]
+            },
+            {
+              "label": "keeps knowledge",
+              "importance": 1.6835,
+              "aliases": [],
+              "sources": [
+                "file:189b97e731246ceb06cb2330",
+                "webdoc:82a9e25655117922f16b9537"
+              ]
+            }
+          ],
+          "skipped": [
+            {
+              "label": "rust",
+              "reason": "duplicate of existing node"
+            },
+            {
+              "label": "검색",
+              "reason": "duplicate of existing node"
+            },
+            {
+              "label": "graph local",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "융합 유지한다",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "alpha 융합",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "parity harness",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "share sqlite",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "knowledge graph",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "engine parity",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "gateway share",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "fastapi worker",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "write rust",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "worker rust",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "유지한다 todo",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "랭킹 alpha",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "local 결정",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "harness fastapi",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "ai keeps",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "rust write",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "lattice ai",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "검색 랭킹",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "결정 검색",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "write engine",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "todo write",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "sqlite file",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "fastapi",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "local",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "parity",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "write",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "유지한다",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "knowledge",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "sqlite",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "harness",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "share",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "gateway",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "engine",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "융합",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "graph",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "alpha",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "lattice",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "worker",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "file",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "ai",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "keeps",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "랭킹",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "todo",
+              "reason": "max_new_nodes reached"
+            },
+            {
+              "label": "그래프 쓰기",
+              "reason": "max_new_nodes reached"
+            }
+          ],
+          "candidates_total": 50,
+          "clustered_total": 50
+        }
+      },
+      "result": {
+        "status": "ok",
+        "documents_scanned": 6,
+        "candidates_total": 50,
+        "promoted": [
+          {
+            "node_id": "topic:결정",
+            "label": "결정",
+            "importance": 2.085,
+            "linked_sources": 3
+          },
+          {
+            "node_id": "topic:rust-gateway",
+            "label": "rust gateway",
+            "importance": 1.6835,
+            "linked_sources": 2
+          },
+          {
+            "node_id": "topic:keeps-knowledge",
+            "label": "keeps knowledge",
+            "importance": 1.6835,
+            "linked_sources": 2
+          }
+        ],
+        "skipped": [
+          {
+            "label": "rust",
+            "reason": "duplicate of existing node"
+          },
+          {
+            "label": "검색",
+            "reason": "duplicate of existing node"
+          },
+          {
+            "label": "graph local",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "융합 유지한다",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "alpha 융합",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "parity harness",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "share sqlite",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "knowledge graph",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "engine parity",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "gateway share",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "fastapi worker",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "write rust",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "worker rust",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "유지한다 todo",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "랭킹 alpha",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "local 결정",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "harness fastapi",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "ai keeps",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "rust write",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "lattice ai",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "검색 랭킹",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "결정 검색",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "write engine",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "todo write",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "sqlite file",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "fastapi",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "local",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "parity",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "write",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "유지한다",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "knowledge",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "sqlite",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "harness",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "share",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "gateway",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "engine",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "융합",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "graph",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "alpha",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "lattice",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "worker",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "file",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "ai",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "keeps",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "랭킹",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "todo",
+            "reason": "max_new_nodes reached"
+          },
+          {
+            "label": "그래프 쓰기",
+            "reason": "max_new_nodes reached"
+          }
+        ],
+        "skipped_total": 47
+      }
+    },
+    {
+      "n": 18,
+      "op": "curate_noise",
+      "args": {
+        "dry_run": true,
+        "max_df_ratio": 0.8,
+        "min_doc_frequency": 1,
+        "min_corpus_docs": 3,
+        "normalize_verbs": true,
+        "max_removals": 200
+      },
+      "result": {
+        "status": "ok",
+        "dry_run": true,
+        "total_content_docs": 7,
+        "concepts_examined": 32,
+        "remove": [],
+        "remove_total": 0,
+        "kept": 32,
+        "protected_user_nodes": 0,
+        "verb_normalizations": {},
+        "applied": {
+          "removed_nodes": 0,
+          "renamed_edges": 0
+        },
+        "thresholds": {
+          "max_df_ratio": 0.8,
+          "min_doc_frequency": 1,
+          "min_corpus_docs": 3
+        }
+      }
+    },
+    {
+      "n": 19,
+      "op": "curate_noise",
+      "args": {
+        "dry_run": false,
+        "max_df_ratio": 0.5,
+        "min_doc_frequency": 1,
+        "min_corpus_docs": 3,
+        "normalize_verbs": true,
+        "max_removals": 5
+      },
+      "result": {
+        "status": "ok",
+        "dry_run": false,
+        "total_content_docs": 7,
+        "concepts_examined": 32,
+        "remove": [],
+        "remove_total": 0,
+        "kept": 32,
+        "protected_user_nodes": 0,
+        "verb_normalizations": {},
+        "applied": {
+          "removed_nodes": 0,
+          "renamed_edges": 0
+        },
+        "thresholds": {
+          "max_df_ratio": 0.5,
+          "min_doc_frequency": 1,
+          "min_corpus_docs": 3
+        }
+      }
+    },
+    {
+      "n": 20,
+      "op": "set_node_sensitivity",
+      "args": {
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "local_only": true,
+        "reason": "contains a private decision"
+      },
+      "result": {
+        "ok": true,
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "local_only": true,
+        "reason": "contains a private decision"
+      }
+    },
+    {
+      "n": 21,
+      "op": "set_node_sensitivity",
+      "args": {
+        "node_id": "project:one-door",
+        "local_only": false,
+        "reason": null
+      },
+      "result": {
+        "ok": true,
+        "node_id": "project:one-door",
+        "local_only": false,
+        "reason": null
+      }
+    },
+    {
+      "n": 22,
+      "op": "write_vectors",
+      "args": {
+        "node_id": "webdoc:82a9e25655117922f16b9537"
+      },
+      "result": {
+        "node_id": "webdoc:82a9e25655117922f16b9537",
+        "items_total": 2,
+        "items_indexed": 0,
+        "items_skipped": 2,
+        "status": "noop",
+        "duration_ms": 0.0,
+        "embedding_model": "lattice-local-hash-v1:384"
+      }
+    },
+    {
+      "n": 23,
+      "op": "rebuild_vector_index",
+      "args": {
+        "full": false,
+        "include_nodes": true,
+        "include_chunks": true
+      },
+      "result": {
+        "status": "completed",
+        "operation_id": "vector-op:fa7dfdfd633975bf8f85717c",
+        "full": false,
+        "items_total": 78,
+        "items_indexed": 0,
+        "items_skipped": 78,
+        "duration_ms": 0.0,
+        "embedding_model": "lattice-local-hash-v1:384",
+        "embedding_dim": 384
+      }
+    },
+    {
+      "n": 24,
+      "op": "rebuild_vector_index",
+      "args": {
+        "full": true,
+        "include_nodes": true,
+        "include_chunks": false
+      },
+      "result": {
+        "status": "completed",
+        "operation_id": "vector-op:df07600768e9ebc324789b39",
+        "full": true,
+        "items_total": 66,
+        "items_indexed": 66,
+        "items_skipped": 0,
+        "duration_ms": 0.0,
+        "embedding_model": "lattice-local-hash-v1:384",
+        "embedding_dim": 384
+      }
+    },
+    {
+      "n": 25,
+      "op": "rebuild_vector_index",
+      "args": {
+        "full": false,
+        "include_nodes": true,
+        "include_chunks": true
+      },
+      "result": {
+        "status": "completed",
+        "operation_id": "vector-op:8e63447979b8c08a4c1e9a51",
+        "full": false,
+        "items_total": 78,
+        "items_indexed": 0,
+        "items_skipped": 78,
+        "duration_ms": 0.0,
+        "embedding_model": "lattice-local-hash-v1:384",
+        "embedding_dim": 384
+      }
+    },
+    {
+      "n": 26,
+      "op": "import_graph_data",
+      "args": {
+        "data": {
+          "header": {
+            "graph_schema_version": 1
+          },
+          "nodes": [
+            {
+              "id": "doc:imported",
+              "type": "Document",
+              "title": "Imported artifact",
+              "summary": "arrived through import_graph_data",
+              "metadata_json": "{\"source_uri\": \"import://a\", \"workspace_id\": \"ws-alpha\"}",
+              "raw_json": "{}"
+            },
+            {
+              "id": "concept:import",
+              "type": "Concept",
+              "title": "import",
+              "summary": "",
+              "metadata_json": "{\"auto_extracted\": true}",
+              "raw_json": "{}"
+            },
+            {
+              "id": "chunk:imported-1",
+              "type": "Chunk",
+              "title": "Imported artifact chunk 1",
+              "summary": "imported chunk body long enough to embed",
+              "metadata_json": "{\"index\": 0, \"source_node\": \"doc:imported\"}",
+              "raw_json": "{}"
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge:ignored",
+              "from_node": "doc:imported",
+              "to_node": "concept:import",
+              "type": "포함함",
+              "weight": 0.8,
+              "metadata_json": "{}"
+            }
+          ],
+          "chunks": [
+            {
+              "id": "chunk:imported-1",
+              "source_node": "doc:imported",
+              "text": "imported chunk body long enough to embed",
+              "metadata_json": "{\"index\": 0}"
+            }
+          ],
+          "knowledge_sources": [
+            {
+              "id": "src-local-1",
+              "root_path": "/Users/example/Documents",
+              "os_type": "darwin",
+              "drive_id": null,
+              "label": "Documents",
+              "status": "active",
+              "include_ocr": 0,
+              "watch_enabled": 0,
+              "consent_json": "{\"granted\": true}",
+              "created_at": "2026-07-01T00:00:00",
+              "updated_at": "2026-07-01T00:00:00",
+              "last_scanned_at": null
+            }
+          ],
+          "provenance": [
+            {
+              "id": "prov:imported",
+              "node_id": "doc:imported",
+              "source_type": "import",
+              "source_uri": "import://a",
+              "content_hash": "deadbeef",
+              "title": "Imported artifact",
+              "pipeline": "import",
+              "owner": null,
+              "workspace_id": "ws-alpha",
+              "captured_at": "2026-07-01T00:00:00",
+              "modified_at": null,
+              "embedded": 0,
+              "linked": 0,
+              "duplicate": 0,
+              "agent_used": null,
+              "chunk_count": 1,
+              "permissions_json": "{}",
+              "metadata_json": "{}",
+              "created_at": "2026-07-01T00:00:00"
+            }
+          ]
+        },
+        "mode": "merge",
+        "dry_run": false
+      },
+      "result": {
+        "mode": "merge",
+        "nodes": 3,
+        "edges": 1,
+        "chunks": 1,
+        "knowledge_sources": 1,
+        "provenance": 1,
+        "imported": true
+      }
+    },
+    {
+      "n": 27,
+      "op": "set_local_source_watch",
+      "args": {
+        "source_id": "src-local-1",
+        "enabled": true
+      },
+      "result": {
+        "source_id": "src-local-1",
+        "watch_enabled": true
+      }
+    },
+    {
+      "n": 28,
+      "op": "set_local_source_watch",
+      "args": {
+        "source_id": "src-local-1",
+        "enabled": false
+      },
+      "result": {
+        "source_id": "src-local-1",
+        "watch_enabled": false
+      }
+    },
+    {
+      "n": 29,
+      "op": "remove_local_source",
+      "args": {
+        "source_id": "src-local-1"
+      },
+      "result": {
+        "source_id": "src-local-1",
+        "root_path": "/Users/example/Documents",
+        "removed_graph_nodes": 0
+      }
+    },
+    {
+      "n": 30,
+      "op": "delete_document_tree",
+      "args": {
+        "node_id": "file:189b97e731246ceb06cb2330"
+      },
+      "result": {
+        "status": "ok",
+        "node_id": "file:189b97e731246ceb06cb2330",
+        "removed_nodes": 5
+      }
+    },
+    {
+      "n": 31,
+      "op": "import_graph_data",
+      "args": {
+        "data": {
+          "header": {
+            "graph_schema_version": 1
+          },
+          "nodes": [],
+          "edges": []
+        },
+        "mode": "merge",
+        "dry_run": true
+      },
+      "result": {
+        "mode": "merge",
+        "nodes": 0,
+        "edges": 0,
+        "chunks": 0,
+        "knowledge_sources": 0,
+        "provenance": 0,
+        "dry_run": true
+      }
+    },
+    {
+      "n": 32,
+      "op": "import_graph_data",
+      "args": {
+        "data": {
+          "header": {
+            "graph_schema_version": 1
+          },
+          "nodes": [
+            {
+              "id": "doc:replaced",
+              "type": "Document",
+              "title": "The only survivor",
+              "summary": "everything else was cleared by mode=replace",
+              "metadata_json": "{\"source_uri\": \"import://replace\"}",
+              "raw_json": "{}"
+            }
+          ],
+          "edges": [],
+          "chunks": [],
+          "knowledge_sources": [],
+          "provenance": []
+        },
+        "mode": "replace",
+        "dry_run": false
+      },
+      "result": {
+        "mode": "replace",
+        "nodes": 1,
+        "edges": 0,
+        "chunks": 0,
+        "knowledge_sources": 0,
+        "provenance": 0,
+        "imported": true
+      }
+    }
+  ]
+}

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from latticeai.core.quiet import quiet
 from latticeai.services.p_reinforce import BRAIN_DIR, STRUCTURE
-from latticeai.tools import MAX_FILE_BYTES, ToolError
+from latticeai.tools import ToolError
 
 
 def _safe_brain_folder(folder: str) -> str:
@@ -46,36 +46,6 @@ def knowledge_scope_root(
         / _scope_digest("workspace", workspace)
         / _scope_digest("user", user)
     )
-
-
-def knowledge_save(
-    content: str,
-    folder: str = "00_Raw",
-    title: Optional[str] = None,
-    *,
-    workspace_id: Optional[str] = None,
-    user_email: Optional[str] = None,
-) -> Dict[str, Any]:
-    folder = _safe_brain_folder(folder)
-    if not content:
-        raise ToolError("Knowledge content is required.")
-    if len(content.encode("utf-8")) > MAX_FILE_BYTES:
-        raise ToolError("Knowledge content is too large.")
-
-    root = knowledge_scope_root(workspace_id=workspace_id, user_email=user_email)
-    target_dir = root / folder
-    target_dir.mkdir(parents=True, exist_ok=True)
-    safe_title = title or content.strip().splitlines()[0][:60] or "note"
-    safe_title = "".join(ch if ch.isalnum() or ch in (" ", "-", "_") else "" for ch in safe_title).strip()
-    safe_title = "_".join(safe_title.split()) or "note"
-    filename = f"{safe_title}.md"
-    target = target_dir / filename
-    counter = 2
-    while target.exists():
-        target = target_dir / f"{safe_title}_{counter}.md"
-        counter += 1
-    target.write_text(content, encoding="utf-8")
-    return {"folder": folder, "filename": target.name, "path": str(target)}
 
 
 def knowledge_search(
@@ -131,27 +101,6 @@ def knowledge_tree(
                 }
             )
     return {"root": str(scope_root), "entries": entries}
-
-
-def obsidian_save(
-    content: str,
-    folder: str = "00_Raw",
-    title: Optional[str] = None,
-    *,
-    workspace_id: Optional[str] = None,
-    user_email: Optional[str] = None,
-) -> Dict[str, Any]:
-    root = knowledge_scope_root(workspace_id=workspace_id, user_email=user_email)
-    result = knowledge_save(
-        content,
-        folder,
-        title,
-        workspace_id=workspace_id,
-        user_email=user_email,
-    )
-    result["vault_root"] = str(root)
-    result["obsidian_uri_hint"] = f"obsidian://open?path={result['path']}"
-    return result
 
 
 def obsidian_search(

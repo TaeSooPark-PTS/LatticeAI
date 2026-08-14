@@ -1,0 +1,343 @@
+{
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "family": "static_ui",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {},
+  "operation_count": 9,
+  "operation_order": [
+    "GET /",
+    "GET /account",
+    "GET /admin",
+    "GET /app",
+    "GET /chat",
+    "GET /local/sysinfo",
+    "GET /manifest.json",
+    "GET /status",
+    "GET /sw.js"
+  ],
+  "path_count": 9,
+  "path_order": [
+    "/",
+    "/account",
+    "/admin",
+    "/app",
+    "/chat",
+    "/local/sysinfo",
+    "/manifest.json",
+    "/status",
+    "/sw.js"
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "description": "\ub85c\uadf8\uc778/\ud68c\uc6d0\uac00\uc785 \ud398\uc774\uc9c0. \ucd08\ub300 \uac8c\uc774\ud2b8 \ud65c\uc131\ud654 \uc2dc \ucf54\ub4dc \uac80\uc99d \ud6c4 \uc9c4\uc785.",
+        "operationId": "root__get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "lattice_invite",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lattice Invite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Root"
+      }
+    },
+    "/account": {
+      "get": {
+        "description": "Direct login/register page route used by logout and manual navigation.",
+        "operationId": "account_page_account_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "lattice_invite",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lattice Invite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Account Page"
+      }
+    },
+    "/admin": {
+      "get": {
+        "operationId": "admin_page_admin_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Page"
+      }
+    },
+    "/app": {
+      "get": {
+        "description": "React desktop single-page workspace shell.",
+        "operationId": "app_shell_app_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "lattice_invite",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lattice Invite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "App Shell"
+      }
+    },
+    "/chat": {
+      "get": {
+        "operationId": "chat_page_chat_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Chat Page"
+      }
+    },
+    "/local/sysinfo": {
+      "get": {
+        "description": "CPU / RAM / GPU(MLX) usage plus a plain-language readiness bucket.\n\n``readiness`` is ``roomy`` | ``tight`` | ``low`` so basic System copy\ndoes not re-interpret raw percents on the client.\n\nThe probe itself is three subprocesses \u2014 ``top -l 1`` alone samples for\nabout a second \u2014 so it runs on a worker thread. Run inline it held the\nevent loop for the whole sample, and this route is hit on the System\nscreen *and* during first-run analysis, i.e. exactly while an answer is\nstreaming: one status poll used to stall every open stream.",
+        "operationId": "local_sysinfo_local_sysinfo_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Local Sysinfo"
+      }
+    },
+    "/manifest.json": {
+      "get": {
+        "operationId": "manifest_manifest_json_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Manifest"
+      }
+    },
+    "/status": {
+      "get": {
+        "description": "\uc11c\ubc84 \uc0c1\ud0dc \ubc0f \ud604\uc7ac \ub85c\ub4dc\ub41c \ubaa8\ub378 \uc815\ubcf4\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+        "operationId": "status_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status"
+      }
+    },
+    "/sw.js": {
+      "get": {
+        "operationId": "service_worker_sw_js_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Service Worker"
+      }
+    }
+  },
+  "schema_count": 2,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Static assets, SPA shells and the host status/sysinfo surface served straight from the gateway.",
+  "target": "lattice-host (ServeDir + SPA shells)",
+  "wp": "I4"
+}

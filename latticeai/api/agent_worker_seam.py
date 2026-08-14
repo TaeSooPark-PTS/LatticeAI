@@ -1,23 +1,20 @@
-"""AI-Worker seam (v11.5.1, plan §Y1) — the three calls the Rust loop makes back.
+"""AI-Worker seam (v11.5.1, plan §Y1) — the two calls the Rust loop makes back.
 
 Once the agent loop moves into ``lattice-agent`` (plan §Y2), Python stops being
 the orchestrator and becomes exactly what the system diagram already draws: the
-**AI Worker**. It infers with the loaded model, it runs tool handlers, and it
-stages proposals. The Rust kernel decides *what* to do next; it has to call
-Python to actually do it.
+**AI Worker**. It infers with the loaded model and it runs tool handlers. The
+Rust kernel decides *what* to do next; it has to call Python to actually do it.
 
 Reconnaissance found no surface it could call:
 
 * there is no bare completion endpoint — every LLM route (``/chat``,
   ``/agent``) also writes history, assembles context, or drives the whole
   Python loop, none of which a Rust orchestrator wants;
-* HTTP cannot create a change proposal at all — ``ChangeProposalService.review``
-  is reachable only from the in-process agent runtime;
 * ``/tools/*`` is the **direct** surface: it runs ``enforce_policy``, which
   denies anything not auto-approved (403) and never stages a proposal. Correct
   for a human clicking a button, useless for a governed loop.
 
-So this module adds the three seams, and nothing else:
+So this module adds the two seams, and nothing else:
 
 ``POST /agent/llm``
     One completion. No history, no context assembly, no persistence of any
@@ -27,9 +24,9 @@ So this module adds the three seams, and nothing else:
     One governed tool call: the mode-invariant guards, the role check, then the
     shared ``pre_tool`` → execute → ``post_tool`` lifecycle.
 
-``POST /agent/change-proposal``
-    The governor's verdict, verbatim, so the Rust loop can take the
-    proposal-first path for edits to existing files.
+WP-P1 retired a third seam, ``POST /agent/change-proposal``: proposal state
+(the review queue, the staged diff, the Review Center) is native platform state
+now, and a worker that owns none of it has no verdict to give.
 
 Two boundaries stated here so the payloads are not read as more than they are:
 
@@ -114,21 +111,6 @@ class AgentToolRequest(BaseModel):
     workspace_id: Optional[str] = None
 
 
-class AgentChangeProposalRequest(BaseModel):
-    """A governor consultation for a write that may touch existing content.
-
-    ``policy`` is optional: the Rust kernel already holds the policy it
-    preflighted with, and passing it back keeps the two sides deciding on the
-    same facts. Omitted, the registry's own policy for this call is used.
-    """
-
-    tool: str
-    args: Dict[str, Any] = Field(default_factory=dict)
-    policy: Optional[Dict[str, Any]] = None
-    workspace_id: Optional[str] = None
-    conversation_id: Optional[str] = None
-
-
 def _seam_open() -> bool:
     """Whether this process is a worker the host opened the seam for."""
     return os.environ.get(SEAM_ENV_VAR) == "1"
@@ -166,7 +148,6 @@ def create_agent_worker_seam_router(
     dispatch_service: Any,
     execute_tool: Callable[[str, Dict[str, Any]], Any],
     hooks: Any,
-    change_proposals: Any,
     require_user: Callable[[Request], Any],
     enforce_rate_limit: Callable[[str, str], None],
 ) -> APIRouter:
@@ -319,59 +300,6 @@ def create_agent_worker_seam_router(
             return {"error": str(exc)}
         return {"result": result}
 
-    @router.post("/agent/change-proposal")
-    async def agent_change_proposal(
-        req: AgentChangeProposalRequest, request: Request
-    ):
-        """Ask the governor what should happen to this write.
-
-        The verdict is returned verbatim — ``{"decision": "allow_additive"}``
-        or ``{"decision": "proposed", "proposal": {...}}`` — because the Rust
-        loop has to act on the same facts the Review Center will show.
-
-        ``review`` answers ``None`` for "I have nothing to say about this call:
-        fall through to the normal gates". Three different situations collapse
-        into that one ``None`` (not a governed tool; no proposal required; the
-        edit could not be computed deterministically) and the service does not
-        distinguish them, so neither does this payload: ``{"decision": "none"}``
-        and nothing invented about why.
-
-        No mode-invariant guard here, because nothing executes: staging a
-        proposal writes a review item, and the write itself still has to come
-        back through ``/agent/tool`` — where the guards are.
-        """
-        _require_seam(request)
-        current_user = _admit(request)
-        language = resolve_language(request)
-        if change_proposals is None:
-            raise http_error(503, "agent_seam.proposals_unavailable", language)
-        tool = req.tool.strip()
-        if not tool:
-            raise http_error(422, "agent_seam.tool_required", language)
-        args = dict(req.args)
-        policy = (
-            dict(req.policy)
-            if req.policy is not None
-            else dict(dispatch_service.policy_for(tool, args))
-        )
-
-        def _review() -> Optional[Dict[str, Any]]:
-            return change_proposals.review(
-                tool,
-                args,
-                policy=policy,
-                user_email=current_user,
-                workspace_id=req.workspace_id,
-                conversation_id=req.conversation_id,
-            )
-
-        # Staging reads the target, computes a diff, and writes a review item —
-        # all blocking I/O, none of it belonging on the event loop.
-        verdict = await asyncio.to_thread(_review)
-        if verdict is None:
-            return {"decision": "none"}
-        return verdict
-
     return router
 
 
@@ -382,7 +310,6 @@ __all__ = [
     "MIN_TEMPERATURE",
     "SEAM_ENV_VAR",
     "SEAM_RATE_BUCKET",
-    "AgentChangeProposalRequest",
     "AgentLLMRequest",
     "AgentToolRequest",
     "create_agent_worker_seam_router",

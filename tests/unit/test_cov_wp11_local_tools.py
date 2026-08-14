@@ -2,9 +2,9 @@
 
 ``latticeai/tools/local_files.py`` is the last hop before real user files, so
 every refusal it can produce is a promise: an unreadable directory, a file that
-is a directory, an oversized read, a decode failure, an oversized write and a
-denied write all have to surface as a :class:`ToolError` the API can turn into
-a 400 — never as a raw ``OSError`` escaping into a 500.
+is a directory, an oversized read and a decode failure have to surface as a
+:class:`ToolError` the API can turn into a 400 — never as a raw ``OSError``
+escaping into a 500.
 
 The size caps are re-pointed at a few bytes rather than writing a 2 MB fixture,
 and the OS refusals are injected at the ``pathlib`` seam instead of relying on
@@ -72,43 +72,6 @@ def test_local_read_wraps_a_failing_read(tmp_path, monkeypatch):
         local_tools.local_read(str(target))
     assert "파일 읽기 실패" in str(excinfo.value)
     assert "device is busy" in str(excinfo.value)
-
-
-def test_local_write_refuses_content_over_the_cap(tmp_path, monkeypatch):
-    monkeypatch.setattr(local_tools, "LOCAL_MAX_FILE_BYTES", 4)
-    target = tmp_path / "out" / "note.txt"
-
-    with pytest.raises(ToolError) as excinfo:
-        local_tools.local_write(str(target), "이 내용은 캡보다 큽니다")
-    assert "내용이 너무 큽니다" in str(excinfo.value)
-    # Refused before any directory was created — nothing touched the disk.
-    assert not target.parent.exists()
-
-
-def test_local_write_surfaces_permission_error_as_tool_error(tmp_path, monkeypatch):
-    target = tmp_path / "note.txt"
-    real_write_text = Path.write_text
-
-    def denied(self, *args, **kwargs):
-        if self.name == "note.txt":
-            raise PermissionError("read-only filesystem")
-        return real_write_text(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "write_text", denied)
-
-    with pytest.raises(ToolError) as excinfo:
-        local_tools.local_write(str(target), "내용")
-    assert "쓰기 권한 없음" in str(excinfo.value)
-    assert not target.exists()
-
-
-def test_local_write_round_trips_within_the_cap(tmp_path):
-    target = tmp_path / "nested" / "note.txt"
-    result = local_tools.local_write(str(target), "안녕")
-
-    assert result["path"] == str(target)
-    assert result["bytes"] == len("안녕".encode())
-    assert local_tools.local_read(str(target))["content"] == "안녕"
 
 
 def test_desktop_bridge_status_declares_the_missing_bridge():

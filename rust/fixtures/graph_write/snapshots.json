@@ -1,0 +1,2116 @@
+{
+  "snapshots": [
+    {
+      "n": 0,
+      "op": "bootstrap",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "edges": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "chunks": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "nodes_v2": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "edges_v2": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "edge_occurrences": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 1,
+      "op": "ingest_content",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 14,
+          "sha256": "89b1a8d05be9821d4dd26a57898a086d944f32a5fc304c5bf63aa6b2d57c9e06"
+        },
+        "edges": {
+          "rows": 19,
+          "sha256": "21823f443f5a468cb7653e4605a347148ad8d503d20209cf1d05a09648379633"
+        },
+        "chunks": {
+          "rows": 1,
+          "sha256": "e3a57184feb3c37b9d75f06c332b139bcdc2eea6c5b433f7df8350482080e18f"
+        },
+        "nodes_v2": {
+          "rows": 14,
+          "sha256": "ce95ba8c1a6de3a994514b5f362512d33c70e17577f5cbadc1a91a2588e14eb4"
+        },
+        "edges_v2": {
+          "rows": 19,
+          "sha256": "e3bed3fc13618c1776878eae16da58c63440807fba5748b0aafbeea1928eaa3a"
+        },
+        "edge_occurrences": {
+          "rows": 19,
+          "sha256": "ac27d3243bd84536f7acf3867c33acd5639c39f7b7114951accc7efb200ddd24"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 14,
+          "sha256": "1f28ed0e17e28abeabf1c9df7fc1c256d2f6fc0e75194f9754541a5725f97f37"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 14,
+          "sha256": "15cec6350e6a4dd2147bf618f144c39bd92c5a4a8b1e7171d877260984359e6d"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 2,
+      "op": "ingest_content",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 14,
+          "sha256": "89b1a8d05be9821d4dd26a57898a086d944f32a5fc304c5bf63aa6b2d57c9e06"
+        },
+        "edges": {
+          "rows": 19,
+          "sha256": "21823f443f5a468cb7653e4605a347148ad8d503d20209cf1d05a09648379633"
+        },
+        "chunks": {
+          "rows": 1,
+          "sha256": "e3a57184feb3c37b9d75f06c332b139bcdc2eea6c5b433f7df8350482080e18f"
+        },
+        "nodes_v2": {
+          "rows": 14,
+          "sha256": "ce95ba8c1a6de3a994514b5f362512d33c70e17577f5cbadc1a91a2588e14eb4"
+        },
+        "edges_v2": {
+          "rows": 19,
+          "sha256": "e3bed3fc13618c1776878eae16da58c63440807fba5748b0aafbeea1928eaa3a"
+        },
+        "edge_occurrences": {
+          "rows": 38,
+          "sha256": "1ee3d6bf04b40919e3a899b4a736349a159c751c29bd66cd22a4b5a9a050ae5a"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 14,
+          "sha256": "1f28ed0e17e28abeabf1c9df7fc1c256d2f6fc0e75194f9754541a5725f97f37"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 14,
+          "sha256": "15cec6350e6a4dd2147bf618f144c39bd92c5a4a8b1e7171d877260984359e6d"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 3,
+      "op": "ingest_content",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 46,
+          "sha256": "5a1749e283d3ef97fd48ebac7c0f167958a1e1b34a940fbf66ec9fc7773fcd61"
+        },
+        "edges": {
+          "rows": 57,
+          "sha256": "4fcc857a64fb3cab80d6aa851232332f9e520d07f0b91cc6fdb3b6f473d9a357"
+        },
+        "chunks": {
+          "rows": 8,
+          "sha256": "db1d180184f4d30675f1cf4335e77a76da96b46189207db6e84a83a3d3aefade"
+        },
+        "nodes_v2": {
+          "rows": 46,
+          "sha256": "717269f29ce34d41c7928621133aec261ffe0a432adf161a97422e33e10d38a2"
+        },
+        "edges_v2": {
+          "rows": 57,
+          "sha256": "da21b03f8e144a2155d3608e16ec88c2e19a750355877169a6a3f1e91a0af1fb"
+        },
+        "edge_occurrences": {
+          "rows": 76,
+          "sha256": "5a002f590440dcfee8b53eac3e8dbd506225faf004943b24aa9396c4f9f12a9b"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 46,
+          "sha256": "207d5f1fcd6672a2931f15ca81f6dfa71235bcc35697c089d83a6b0246280ef5"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 46,
+          "sha256": "16b7ad9c67cda2b808ce84e2326f9da1a2024a5e80036ddf2a9cf49df23e61fe"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 4,
+      "op": "ingest_content",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 55,
+          "sha256": "c693e375c126912b2ef501d558deb54c1f7720e628142c611899ec4975bb089a"
+        },
+        "edges": {
+          "rows": 66,
+          "sha256": "18b3e98df7ba2ca8965c2c7e4e0311b28efac063fee8746627cc2225a686afd8"
+        },
+        "chunks": {
+          "rows": 9,
+          "sha256": "a2f321a95af18c0cfbcc3bb311a56dc2861c4c6f2961e68d4aeb555e89e63178"
+        },
+        "nodes_v2": {
+          "rows": 55,
+          "sha256": "69bc6583a0794f28268ecbdde449ae71d61eaca428a1596e5665ba97ed535d5f"
+        },
+        "edges_v2": {
+          "rows": 66,
+          "sha256": "47accc5c57737c60d74a58dd1239497366f45390a02976d9414c30dd6b5c4320"
+        },
+        "edge_occurrences": {
+          "rows": 85,
+          "sha256": "dae48b14179b2180cdb458064a8af2ee4b3f0420dc4431569c4ab61828912cca"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 55,
+          "sha256": "55629256bb682106dfb87fe89262d0c1bb8e685e5aae3c062566e18e81efaa3b"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 55,
+          "sha256": "d2a21024299dc374c809a79ce362f656dac340adfe96595f48507808122e1052"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 5,
+      "op": "ingest_file",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 64,
+          "sha256": "06134a6991e133da251fd580089d17eddb0ac8135dfc4dc33447c9f6260f3240"
+        },
+        "edges": {
+          "rows": 87,
+          "sha256": "cb07b0979ff01501221571c2cb97d8593dfddd8c30d2a7af2b90f9aff2cc232f"
+        },
+        "chunks": {
+          "rows": 10,
+          "sha256": "da56de7920d1295b36968c1dd789f6cfb1e6f6b134610add7b845472533f37a4"
+        },
+        "nodes_v2": {
+          "rows": 64,
+          "sha256": "b129d6eda2b5d188ded5ca9bf9ac00c3d3d0bb58023fbd48eb19084def918f5e"
+        },
+        "edges_v2": {
+          "rows": 87,
+          "sha256": "44cb5e53610831b6022acf55dbf720908e6d8b239f3b909e345bffcae9cba1b5"
+        },
+        "edge_occurrences": {
+          "rows": 107,
+          "sha256": "4cbb4d5eb6b5338ed7dfd92e3384de381af279973e13819e3ad05023b9734604"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 64,
+          "sha256": "fa95cc8d18fcafa69c2cbb534020a5c91a151b3c099cc2f03fcad935516a1b36"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 64,
+          "sha256": "6f76210421b58cb2d0499b0b2b65d23799c08a1ffc7cd738a36c6433ff3bfd17"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 6,
+      "op": "ingest_message",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 68,
+          "sha256": "4972b41fc71ca00a0429d0c4c7dd3c4c13273ca88bdc1429ef4d312e8d8cfe11"
+        },
+        "edges": {
+          "rows": 95,
+          "sha256": "f2698f1a97efacd8f9693776257d45e953b0b603d74cf5fe3a88572c31c5309e"
+        },
+        "chunks": {
+          "rows": 11,
+          "sha256": "8fd3798b5a31f68418e979a9661d7a47339c20b0e52568d17ecc818e4eeea183"
+        },
+        "nodes_v2": {
+          "rows": 68,
+          "sha256": "73ed796ed27ee81f3c5e38a818a393ff6b277293fe3808911f2dbfdb1398eca9"
+        },
+        "edges_v2": {
+          "rows": 95,
+          "sha256": "01904c41eb42ddf08653743d1308621f953f0d0f3d4e0b03dc5d4e55349c4533"
+        },
+        "edge_occurrences": {
+          "rows": 115,
+          "sha256": "613cab2117b285296488c8622a5d20aa13387bc98bda2693d5d28d2654b4545c"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 68,
+          "sha256": "6a741452d69d6ba8ab52eaff4ef49f0de921ca3b949c4cd910b8751b0ebb5000"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 68,
+          "sha256": "d58bf0a19957ebc67a329463ad99ad3d40781e47ff53b074a52353c8e3622a45"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 7,
+      "op": "ingest_message",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 71,
+          "sha256": "9144fe6b9b79689dfcd5c126e0b72bc899554a27c3f42fd712b577844e147244"
+        },
+        "edges": {
+          "rows": 98,
+          "sha256": "09eeabcf6fb9b9b4be2ee83100bc1fc3f1fb0f30c28a5fd57e2c29de52554369"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 71,
+          "sha256": "4921c8f72a061758e5b8bbe576273f39f893b45cc9b377d679f9a551395d6f6b"
+        },
+        "edges_v2": {
+          "rows": 98,
+          "sha256": "64bcb17580a6b4dd87d6a5ac1e965edd7dc27cafb897373050486bddb5c63928"
+        },
+        "edge_occurrences": {
+          "rows": 118,
+          "sha256": "ce597404a2ee67a0b07a69032d281c152c77a011e2c443a85ebc6152abd54041"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 71,
+          "sha256": "050ca62cfc85d62da8348dfcd5f7fe86d8d893b6d23eaad59204bdce30752def"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 71,
+          "sha256": "262420cc6862ac8fb88799d06156b70c7686fc5426240df7c4ec4c5f546939a6"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 8,
+      "op": "ingest_event",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 72,
+          "sha256": "c86dc9e905d202665f61b5ed710a7fa709a0dbffd7085b04e190519feba3e433"
+        },
+        "edges": {
+          "rows": 100,
+          "sha256": "23ee3e65640ff7d9b5486366a1dc10ef476233061953031e16621bc76fc2fb74"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 72,
+          "sha256": "c333cea442f475249ea36af5f8ffa5f165c374bed6db85dd3240e080e9c6406d"
+        },
+        "edges_v2": {
+          "rows": 100,
+          "sha256": "8aab45ebe7805cb22ae4315e2ffd891676ac14fce74b9835e772a3f27047d955"
+        },
+        "edge_occurrences": {
+          "rows": 120,
+          "sha256": "2db9013290efb9fad409968db11b3bdfb20a5414a92f0b8591305cd22b9cf225"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 72,
+          "sha256": "5b09816ea88f6d4890ea336a779dcf432da81708453a61dea45e0461a4ae8f78"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "node_fts": {
+          "rows": 72,
+          "sha256": "92e19ad4e938f20b12b58541fff3b2a7ea5015afe10b8956df112dc2089015d0"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 9,
+      "op": "record_ingestion",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 72,
+          "sha256": "c86dc9e905d202665f61b5ed710a7fa709a0dbffd7085b04e190519feba3e433"
+        },
+        "edges": {
+          "rows": 100,
+          "sha256": "23ee3e65640ff7d9b5486366a1dc10ef476233061953031e16621bc76fc2fb74"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 72,
+          "sha256": "c333cea442f475249ea36af5f8ffa5f165c374bed6db85dd3240e080e9c6406d"
+        },
+        "edges_v2": {
+          "rows": 100,
+          "sha256": "8aab45ebe7805cb22ae4315e2ffd891676ac14fce74b9835e772a3f27047d955"
+        },
+        "edge_occurrences": {
+          "rows": 120,
+          "sha256": "2db9013290efb9fad409968db11b3bdfb20a5414a92f0b8591305cd22b9cf225"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 72,
+          "sha256": "5b09816ea88f6d4890ea336a779dcf432da81708453a61dea45e0461a4ae8f78"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 1,
+          "sha256": "3bdf58d980cbf37c657f6c31648bf857ef08e785b35cec55211cb00f89bb8782"
+        },
+        "node_fts": {
+          "rows": 72,
+          "sha256": "92e19ad4e938f20b12b58541fff3b2a7ea5015afe10b8956df112dc2089015d0"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 10,
+      "op": "record_ingestion",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 72,
+          "sha256": "c86dc9e905d202665f61b5ed710a7fa709a0dbffd7085b04e190519feba3e433"
+        },
+        "edges": {
+          "rows": 100,
+          "sha256": "23ee3e65640ff7d9b5486366a1dc10ef476233061953031e16621bc76fc2fb74"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 72,
+          "sha256": "c333cea442f475249ea36af5f8ffa5f165c374bed6db85dd3240e080e9c6406d"
+        },
+        "edges_v2": {
+          "rows": 100,
+          "sha256": "8aab45ebe7805cb22ae4315e2ffd891676ac14fce74b9835e772a3f27047d955"
+        },
+        "edge_occurrences": {
+          "rows": 120,
+          "sha256": "2db9013290efb9fad409968db11b3bdfb20a5414a92f0b8591305cd22b9cf225"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 72,
+          "sha256": "5b09816ea88f6d4890ea336a779dcf432da81708453a61dea45e0461a4ae8f78"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "a98e74c2a3e67a6335c743902e64157f3952d977ad2f269f1c87ab220ee741ff"
+        },
+        "node_fts": {
+          "rows": 72,
+          "sha256": "92e19ad4e938f20b12b58541fff3b2a7ea5015afe10b8956df112dc2089015d0"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 11,
+      "op": "record_ingestion",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 72,
+          "sha256": "c86dc9e905d202665f61b5ed710a7fa709a0dbffd7085b04e190519feba3e433"
+        },
+        "edges": {
+          "rows": 100,
+          "sha256": "23ee3e65640ff7d9b5486366a1dc10ef476233061953031e16621bc76fc2fb74"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 72,
+          "sha256": "c333cea442f475249ea36af5f8ffa5f165c374bed6db85dd3240e080e9c6406d"
+        },
+        "edges_v2": {
+          "rows": 100,
+          "sha256": "8aab45ebe7805cb22ae4315e2ffd891676ac14fce74b9835e772a3f27047d955"
+        },
+        "edge_occurrences": {
+          "rows": 120,
+          "sha256": "2db9013290efb9fad409968db11b3bdfb20a5414a92f0b8591305cd22b9cf225"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 72,
+          "sha256": "5b09816ea88f6d4890ea336a779dcf432da81708453a61dea45e0461a4ae8f78"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 72,
+          "sha256": "92e19ad4e938f20b12b58541fff3b2a7ea5015afe10b8956df112dc2089015d0"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 12,
+      "op": "upsert_nodes",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 74,
+          "sha256": "b89e57d56f529d0d623d6e3cac39b20cb15b9fc4c547d50ee88b21a73b0a5a8a"
+        },
+        "edges": {
+          "rows": 100,
+          "sha256": "23ee3e65640ff7d9b5486366a1dc10ef476233061953031e16621bc76fc2fb74"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 74,
+          "sha256": "6e7dc6a06bfd7045c7338657e53e68d5f527ad15f97b2b69eca5230ca498fbc3"
+        },
+        "edges_v2": {
+          "rows": 100,
+          "sha256": "8aab45ebe7805cb22ae4315e2ffd891676ac14fce74b9835e772a3f27047d955"
+        },
+        "edge_occurrences": {
+          "rows": 120,
+          "sha256": "2db9013290efb9fad409968db11b3bdfb20a5414a92f0b8591305cd22b9cf225"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 74,
+          "sha256": "68f7838c58253c9debb7c3e0637eda1e74352d6d896338de484cd04ccc7e87ab"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 74,
+          "sha256": "559e4ec66974367d92692fedd287aeeb0a66f1f2e77144cac32779b454f300b8"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 13,
+      "op": "upsert_edges",
+      "tables": {
+        "graph_meta": {
+          "rows": 1,
+          "sha256": "cb0a6d6e240f463103580e524247bba06fb30d355821a8176d9a51edcf39f90b"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 74,
+          "sha256": "b89e57d56f529d0d623d6e3cac39b20cb15b9fc4c547d50ee88b21a73b0a5a8a"
+        },
+        "edges": {
+          "rows": 102,
+          "sha256": "6f5d073dd329de79974100c577bb4f6bacbdc822d97fc03213ccd2c08d9f472d"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 74,
+          "sha256": "6e7dc6a06bfd7045c7338657e53e68d5f527ad15f97b2b69eca5230ca498fbc3"
+        },
+        "edges_v2": {
+          "rows": 103,
+          "sha256": "76b6f0af80c7f7994bded01fa5558a4ed0a7ed58884dc5447adbe07f4e70f4cc"
+        },
+        "edge_occurrences": {
+          "rows": 123,
+          "sha256": "5dd3587678e242c65e8637930f44ced18f313a046486c0e445ae857efadfe18f"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 74,
+          "sha256": "68f7838c58253c9debb7c3e0637eda1e74352d6d896338de484cd04ccc7e87ab"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 74,
+          "sha256": "559e4ec66974367d92692fedd287aeeb0a66f1f2e77144cac32779b454f300b8"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 14,
+      "op": "curate",
+      "tables": {
+        "graph_meta": {
+          "rows": 2,
+          "sha256": "9317797439830e75fc54db5047a30ba097dd3c63360130b4890c18ed841f89c3"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 74,
+          "sha256": "b89e57d56f529d0d623d6e3cac39b20cb15b9fc4c547d50ee88b21a73b0a5a8a"
+        },
+        "edges": {
+          "rows": 102,
+          "sha256": "6f5d073dd329de79974100c577bb4f6bacbdc822d97fc03213ccd2c08d9f472d"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 74,
+          "sha256": "6e7dc6a06bfd7045c7338657e53e68d5f527ad15f97b2b69eca5230ca498fbc3"
+        },
+        "edges_v2": {
+          "rows": 103,
+          "sha256": "76b6f0af80c7f7994bded01fa5558a4ed0a7ed58884dc5447adbe07f4e70f4cc"
+        },
+        "edge_occurrences": {
+          "rows": 123,
+          "sha256": "5dd3587678e242c65e8637930f44ced18f313a046486c0e445ae857efadfe18f"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 74,
+          "sha256": "68f7838c58253c9debb7c3e0637eda1e74352d6d896338de484cd04ccc7e87ab"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 74,
+          "sha256": "559e4ec66974367d92692fedd287aeeb0a66f1f2e77144cac32779b454f300b8"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 15,
+      "op": "apply_promotions",
+      "tables": {
+        "graph_meta": {
+          "rows": 2,
+          "sha256": "917c4f5b9b27116f639335fc17e5aa47dd190a980f40cee815424d8604787960"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 75,
+          "sha256": "1b071af781276318111e9291114428405d67d7335fd1829951a39fa33fe9b497"
+        },
+        "edges": {
+          "rows": 105,
+          "sha256": "5a3b7ee940735c5baa93db474807fcf27c9405ea5706d259250bf248e56b57f0"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 75,
+          "sha256": "ec2aa9bce6efd03e0879e4a9fba4b5b30e057ad9f3a6891239fa3d9d28a01a47"
+        },
+        "edges_v2": {
+          "rows": 106,
+          "sha256": "f30e868edbcefedbb8a8942c57da9e28d6b33faca4f95213a30ddeb2b8e64bec"
+        },
+        "edge_occurrences": {
+          "rows": 126,
+          "sha256": "9598364cc34bef93442419f06c13bfc61b693ecff3bd680cdce00a84ce302172"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 75,
+          "sha256": "e458ee97ccc736a82d83fec62a4b50fb8981b05819fe453eab83263322d50849"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 75,
+          "sha256": "d1d1dfa318b924e9542f1b9569b29eed7042473f902433af52116eadd28d934e"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 16,
+      "op": "reject_promotions",
+      "tables": {
+        "graph_meta": {
+          "rows": 2,
+          "sha256": "a80fcd9c9bc657da4e3b18dc2203ad9643641ca32919ec6edcf54c7984dc65e2"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 75,
+          "sha256": "1b071af781276318111e9291114428405d67d7335fd1829951a39fa33fe9b497"
+        },
+        "edges": {
+          "rows": 105,
+          "sha256": "5a3b7ee940735c5baa93db474807fcf27c9405ea5706d259250bf248e56b57f0"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 75,
+          "sha256": "ec2aa9bce6efd03e0879e4a9fba4b5b30e057ad9f3a6891239fa3d9d28a01a47"
+        },
+        "edges_v2": {
+          "rows": 106,
+          "sha256": "f30e868edbcefedbb8a8942c57da9e28d6b33faca4f95213a30ddeb2b8e64bec"
+        },
+        "edge_occurrences": {
+          "rows": 126,
+          "sha256": "9598364cc34bef93442419f06c13bfc61b693ecff3bd680cdce00a84ce302172"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 75,
+          "sha256": "e458ee97ccc736a82d83fec62a4b50fb8981b05819fe453eab83263322d50849"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 75,
+          "sha256": "d1d1dfa318b924e9542f1b9569b29eed7042473f902433af52116eadd28d934e"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 17,
+      "op": "curate",
+      "tables": {
+        "graph_meta": {
+          "rows": 2,
+          "sha256": "a80fcd9c9bc657da4e3b18dc2203ad9643641ca32919ec6edcf54c7984dc65e2"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "959a398fa27b5ec47be6ca0146b290443ec92b0f91445d9a11442c51f73482a8"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "0e0e62fa06a5a7b917a1dd7f65e587004d2f1c1a88d91419f513135cf5334939"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "19fba7e06fd8523d1fd87e4293bc49589c4b36d56cfdb9bb33cd4ec44f757bff"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 18,
+      "op": "curate_noise",
+      "tables": {
+        "graph_meta": {
+          "rows": 2,
+          "sha256": "a80fcd9c9bc657da4e3b18dc2203ad9643641ca32919ec6edcf54c7984dc65e2"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "959a398fa27b5ec47be6ca0146b290443ec92b0f91445d9a11442c51f73482a8"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "0e0e62fa06a5a7b917a1dd7f65e587004d2f1c1a88d91419f513135cf5334939"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "19fba7e06fd8523d1fd87e4293bc49589c4b36d56cfdb9bb33cd4ec44f757bff"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 19,
+      "op": "curate_noise",
+      "tables": {
+        "graph_meta": {
+          "rows": 3,
+          "sha256": "c92ecc6428dd9b869d9c1a3c0e4fbe4316bfc0fab38f74b11fd86efa4335e1cb"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "959a398fa27b5ec47be6ca0146b290443ec92b0f91445d9a11442c51f73482a8"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "0e0e62fa06a5a7b917a1dd7f65e587004d2f1c1a88d91419f513135cf5334939"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "19fba7e06fd8523d1fd87e4293bc49589c4b36d56cfdb9bb33cd4ec44f757bff"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 20,
+      "op": "set_node_sensitivity",
+      "tables": {
+        "graph_meta": {
+          "rows": 3,
+          "sha256": "c92ecc6428dd9b869d9c1a3c0e4fbe4316bfc0fab38f74b11fd86efa4335e1cb"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "fcae039954651510d4c19542f3b48c1f6e1ef2cc86b6355900472021d504f80d"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "0e0e62fa06a5a7b917a1dd7f65e587004d2f1c1a88d91419f513135cf5334939"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "43a9cd18b2e8fd666989634fd93902104ea38351fe5716a3bbb7a345c117e505"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 21,
+      "op": "set_node_sensitivity",
+      "tables": {
+        "graph_meta": {
+          "rows": 3,
+          "sha256": "c92ecc6428dd9b869d9c1a3c0e4fbe4316bfc0fab38f74b11fd86efa4335e1cb"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "fcae039954651510d4c19542f3b48c1f6e1ef2cc86b6355900472021d504f80d"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "0e0e62fa06a5a7b917a1dd7f65e587004d2f1c1a88d91419f513135cf5334939"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "43a9cd18b2e8fd666989634fd93902104ea38351fe5716a3bbb7a345c117e505"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 22,
+      "op": "write_vectors",
+      "tables": {
+        "graph_meta": {
+          "rows": 3,
+          "sha256": "c92ecc6428dd9b869d9c1a3c0e4fbe4316bfc0fab38f74b11fd86efa4335e1cb"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "fcae039954651510d4c19542f3b48c1f6e1ef2cc86b6355900472021d504f80d"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "0e0e62fa06a5a7b917a1dd7f65e587004d2f1c1a88d91419f513135cf5334939"
+        },
+        "vector_index_operations": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "43a9cd18b2e8fd666989634fd93902104ea38351fe5716a3bbb7a345c117e505"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 23,
+      "op": "rebuild_vector_index",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "fcae039954651510d4c19542f3b48c1f6e1ef2cc86b6355900472021d504f80d"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "0e0e62fa06a5a7b917a1dd7f65e587004d2f1c1a88d91419f513135cf5334939"
+        },
+        "vector_index_operations": {
+          "rows": 1,
+          "sha256": "54c4515c1ba5c3fcc43409ccc8085aada1825261aa3efd783bb0c9ae1a1f4b66"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "43a9cd18b2e8fd666989634fd93902104ea38351fe5716a3bbb7a345c117e505"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 24,
+      "op": "rebuild_vector_index",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "fcae039954651510d4c19542f3b48c1f6e1ef2cc86b6355900472021d504f80d"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "21c14021db3719803f28df9d3603c5ffac367e48e2af19342df02636e649c025"
+        },
+        "vector_index_operations": {
+          "rows": 2,
+          "sha256": "2a877048bf90e73ec999945bd7a50b1d2edce82c0036aa3f7bc24822cb3cf0dd"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "43a9cd18b2e8fd666989634fd93902104ea38351fe5716a3bbb7a345c117e505"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 25,
+      "op": "rebuild_vector_index",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 78,
+          "sha256": "fcae039954651510d4c19542f3b48c1f6e1ef2cc86b6355900472021d504f80d"
+        },
+        "edges": {
+          "rows": 112,
+          "sha256": "bfe9a60f83af7d9bcd4c46b5872a02099c854b88a286429ee0766d152f3e3109"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "4217927074f5d7da74a44bce7c327eed724ecffb8c2b9570975c64653eafe6a2"
+        },
+        "nodes_v2": {
+          "rows": 78,
+          "sha256": "2b29761b6fdc82757927b83ce1f2653d077cd683c4dd3644d6699aa5764fd625"
+        },
+        "edges_v2": {
+          "rows": 113,
+          "sha256": "4d4caa46739854857e8d98f2938762a1c5f31922e360d3b8d1c5d9ea92dbfb7d"
+        },
+        "edge_occurrences": {
+          "rows": 133,
+          "sha256": "014e15ef00410a7a4202adf7bf23fa174589d11a9ea365dfb7456422f094cfc6"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 78,
+          "sha256": "21c14021db3719803f28df9d3603c5ffac367e48e2af19342df02636e649c025"
+        },
+        "vector_index_operations": {
+          "rows": 3,
+          "sha256": "fd9e139c6a8aa62cb988e12073e656ea68e9bf18b26b7458b2da814fa24f9ba4"
+        },
+        "ingestion_provenance": {
+          "rows": 2,
+          "sha256": "7907a23600e03677fd7dd1344a0fefa0355dab1fe0c671c62b8601374cb463ea"
+        },
+        "node_fts": {
+          "rows": 78,
+          "sha256": "43a9cd18b2e8fd666989634fd93902104ea38351fe5716a3bbb7a345c117e505"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 26,
+      "op": "import_graph_data",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 81,
+          "sha256": "0df766d6c8804a3dfd72cca39ee8808ceae0d9a174c19eff024099913da6a6d0"
+        },
+        "edges": {
+          "rows": 113,
+          "sha256": "fc08322033a6bb4432c68df06664f36c599b79a414dcebd722695c0cd9ff9afb"
+        },
+        "chunks": {
+          "rows": 13,
+          "sha256": "926a69908b9fd4244fce4191fe943d8a0b22f2eeb78bfaf9431f48f746d0e346"
+        },
+        "nodes_v2": {
+          "rows": 81,
+          "sha256": "4e0b35888c4bcf493507f76bde3192907fb76aafb6279a47b487318e9dabca3a"
+        },
+        "edges_v2": {
+          "rows": 114,
+          "sha256": "03a36b59e96120736df58b0fe3fa7ce5bbe82e5a3332811d5a37c0d11dff035f"
+        },
+        "edge_occurrences": {
+          "rows": 134,
+          "sha256": "8e00509cb7e452878f440635b41f01bbd0db27fc129b3941eb69c2d060e5dd6d"
+        },
+        "knowledge_sources": {
+          "rows": 1,
+          "sha256": "f5d6a918eb2130f358dcd942b4eca26b456a6dc26af6471d271c89f742067ceb"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 81,
+          "sha256": "5b656097260c3f53695a564e6cdf400d40568b7e888de03b180cda15634d3822"
+        },
+        "vector_index_operations": {
+          "rows": 4,
+          "sha256": "21d60ffb20cb1dc2bbf4f57bb2ae2676754a4e036486ca0a1420176e94ce701d"
+        },
+        "ingestion_provenance": {
+          "rows": 3,
+          "sha256": "5f496f632e751300d1e48e7c016897a749666a2e2ecfe26169cb7a0f709be883"
+        },
+        "node_fts": {
+          "rows": 81,
+          "sha256": "1c865284904aa4aacf821b6cb2542ed69acc66291ebdf0e3bef24110497d5bf3"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 27,
+      "op": "set_local_source_watch",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 81,
+          "sha256": "0df766d6c8804a3dfd72cca39ee8808ceae0d9a174c19eff024099913da6a6d0"
+        },
+        "edges": {
+          "rows": 113,
+          "sha256": "fc08322033a6bb4432c68df06664f36c599b79a414dcebd722695c0cd9ff9afb"
+        },
+        "chunks": {
+          "rows": 13,
+          "sha256": "926a69908b9fd4244fce4191fe943d8a0b22f2eeb78bfaf9431f48f746d0e346"
+        },
+        "nodes_v2": {
+          "rows": 81,
+          "sha256": "4e0b35888c4bcf493507f76bde3192907fb76aafb6279a47b487318e9dabca3a"
+        },
+        "edges_v2": {
+          "rows": 114,
+          "sha256": "03a36b59e96120736df58b0fe3fa7ce5bbe82e5a3332811d5a37c0d11dff035f"
+        },
+        "edge_occurrences": {
+          "rows": 134,
+          "sha256": "8e00509cb7e452878f440635b41f01bbd0db27fc129b3941eb69c2d060e5dd6d"
+        },
+        "knowledge_sources": {
+          "rows": 1,
+          "sha256": "c51ff0c808147ee3854c5728375e9a8c096f28992e182f46d17d5337c586dec2"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 81,
+          "sha256": "5b656097260c3f53695a564e6cdf400d40568b7e888de03b180cda15634d3822"
+        },
+        "vector_index_operations": {
+          "rows": 4,
+          "sha256": "21d60ffb20cb1dc2bbf4f57bb2ae2676754a4e036486ca0a1420176e94ce701d"
+        },
+        "ingestion_provenance": {
+          "rows": 3,
+          "sha256": "5f496f632e751300d1e48e7c016897a749666a2e2ecfe26169cb7a0f709be883"
+        },
+        "node_fts": {
+          "rows": 81,
+          "sha256": "1c865284904aa4aacf821b6cb2542ed69acc66291ebdf0e3bef24110497d5bf3"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 28,
+      "op": "set_local_source_watch",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 81,
+          "sha256": "0df766d6c8804a3dfd72cca39ee8808ceae0d9a174c19eff024099913da6a6d0"
+        },
+        "edges": {
+          "rows": 113,
+          "sha256": "fc08322033a6bb4432c68df06664f36c599b79a414dcebd722695c0cd9ff9afb"
+        },
+        "chunks": {
+          "rows": 13,
+          "sha256": "926a69908b9fd4244fce4191fe943d8a0b22f2eeb78bfaf9431f48f746d0e346"
+        },
+        "nodes_v2": {
+          "rows": 81,
+          "sha256": "4e0b35888c4bcf493507f76bde3192907fb76aafb6279a47b487318e9dabca3a"
+        },
+        "edges_v2": {
+          "rows": 114,
+          "sha256": "03a36b59e96120736df58b0fe3fa7ce5bbe82e5a3332811d5a37c0d11dff035f"
+        },
+        "edge_occurrences": {
+          "rows": 134,
+          "sha256": "8e00509cb7e452878f440635b41f01bbd0db27fc129b3941eb69c2d060e5dd6d"
+        },
+        "knowledge_sources": {
+          "rows": 1,
+          "sha256": "8c78e53c650044ce299949177fbd664b3ad161dd9e4ea9cb7138dbc04e58ab49"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 81,
+          "sha256": "5b656097260c3f53695a564e6cdf400d40568b7e888de03b180cda15634d3822"
+        },
+        "vector_index_operations": {
+          "rows": 4,
+          "sha256": "21d60ffb20cb1dc2bbf4f57bb2ae2676754a4e036486ca0a1420176e94ce701d"
+        },
+        "ingestion_provenance": {
+          "rows": 3,
+          "sha256": "5f496f632e751300d1e48e7c016897a749666a2e2ecfe26169cb7a0f709be883"
+        },
+        "node_fts": {
+          "rows": 81,
+          "sha256": "1c865284904aa4aacf821b6cb2542ed69acc66291ebdf0e3bef24110497d5bf3"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 29,
+      "op": "remove_local_source",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 81,
+          "sha256": "0df766d6c8804a3dfd72cca39ee8808ceae0d9a174c19eff024099913da6a6d0"
+        },
+        "edges": {
+          "rows": 113,
+          "sha256": "fc08322033a6bb4432c68df06664f36c599b79a414dcebd722695c0cd9ff9afb"
+        },
+        "chunks": {
+          "rows": 13,
+          "sha256": "926a69908b9fd4244fce4191fe943d8a0b22f2eeb78bfaf9431f48f746d0e346"
+        },
+        "nodes_v2": {
+          "rows": 81,
+          "sha256": "4e0b35888c4bcf493507f76bde3192907fb76aafb6279a47b487318e9dabca3a"
+        },
+        "edges_v2": {
+          "rows": 114,
+          "sha256": "03a36b59e96120736df58b0fe3fa7ce5bbe82e5a3332811d5a37c0d11dff035f"
+        },
+        "edge_occurrences": {
+          "rows": 134,
+          "sha256": "8e00509cb7e452878f440635b41f01bbd0db27fc129b3941eb69c2d060e5dd6d"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 81,
+          "sha256": "5b656097260c3f53695a564e6cdf400d40568b7e888de03b180cda15634d3822"
+        },
+        "vector_index_operations": {
+          "rows": 4,
+          "sha256": "21d60ffb20cb1dc2bbf4f57bb2ae2676754a4e036486ca0a1420176e94ce701d"
+        },
+        "ingestion_provenance": {
+          "rows": 3,
+          "sha256": "5f496f632e751300d1e48e7c016897a749666a2e2ecfe26169cb7a0f709be883"
+        },
+        "node_fts": {
+          "rows": 81,
+          "sha256": "1c865284904aa4aacf821b6cb2542ed69acc66291ebdf0e3bef24110497d5bf3"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 30,
+      "op": "delete_document_tree",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 76,
+          "sha256": "bcb2819c423cdbc8763b1d3ca6f7a836b7a08c4eec744ff8e6aa15cc15882d25"
+        },
+        "edges": {
+          "rows": 92,
+          "sha256": "44cd046f037422099785df1e107b6c6a0576914788d7a7636daf4ffa7e5d125f"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "e875946df247286a098bd78e0b56c1bd0f398cdcb2e3934a9628d192ee09b970"
+        },
+        "nodes_v2": {
+          "rows": 76,
+          "sha256": "63fb5b80047ebfc5d54ce933c500a0ee1bc50542c07366e2cb73c8bcf8225d71"
+        },
+        "edges_v2": {
+          "rows": 93,
+          "sha256": "ac9af0e61538288a906da61ff8b2706e5f3490f2dd33cb6117c075186796fe50"
+        },
+        "edge_occurrences": {
+          "rows": 113,
+          "sha256": "ee3a52697361df6cb657c1a00b1abd3c34427cf41935dcd7306be62c617f23d3"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 76,
+          "sha256": "47a06e64813503e058605ef1a6c01080a0f4421d1b482a109dea0416e1dea227"
+        },
+        "vector_index_operations": {
+          "rows": 4,
+          "sha256": "21d60ffb20cb1dc2bbf4f57bb2ae2676754a4e036486ca0a1420176e94ce701d"
+        },
+        "ingestion_provenance": {
+          "rows": 3,
+          "sha256": "5f496f632e751300d1e48e7c016897a749666a2e2ecfe26169cb7a0f709be883"
+        },
+        "node_fts": {
+          "rows": 76,
+          "sha256": "8919b93ac56a1af7e8d241975908c34e55771f7aef20ede134604f08db8f07d0"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 31,
+      "op": "import_graph_data",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 76,
+          "sha256": "bcb2819c423cdbc8763b1d3ca6f7a836b7a08c4eec744ff8e6aa15cc15882d25"
+        },
+        "edges": {
+          "rows": 92,
+          "sha256": "44cd046f037422099785df1e107b6c6a0576914788d7a7636daf4ffa7e5d125f"
+        },
+        "chunks": {
+          "rows": 12,
+          "sha256": "e875946df247286a098bd78e0b56c1bd0f398cdcb2e3934a9628d192ee09b970"
+        },
+        "nodes_v2": {
+          "rows": 76,
+          "sha256": "63fb5b80047ebfc5d54ce933c500a0ee1bc50542c07366e2cb73c8bcf8225d71"
+        },
+        "edges_v2": {
+          "rows": 93,
+          "sha256": "ac9af0e61538288a906da61ff8b2706e5f3490f2dd33cb6117c075186796fe50"
+        },
+        "edge_occurrences": {
+          "rows": 113,
+          "sha256": "ee3a52697361df6cb657c1a00b1abd3c34427cf41935dcd7306be62c617f23d3"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 76,
+          "sha256": "47a06e64813503e058605ef1a6c01080a0f4421d1b482a109dea0416e1dea227"
+        },
+        "vector_index_operations": {
+          "rows": 4,
+          "sha256": "21d60ffb20cb1dc2bbf4f57bb2ae2676754a4e036486ca0a1420176e94ce701d"
+        },
+        "ingestion_provenance": {
+          "rows": 3,
+          "sha256": "5f496f632e751300d1e48e7c016897a749666a2e2ecfe26169cb7a0f709be883"
+        },
+        "node_fts": {
+          "rows": 76,
+          "sha256": "8919b93ac56a1af7e8d241975908c34e55771f7aef20ede134604f08db8f07d0"
+        }
+      },
+      "user_version": 4
+    },
+    {
+      "n": 32,
+      "op": "import_graph_data",
+      "tables": {
+        "graph_meta": {
+          "rows": 4,
+          "sha256": "446b31e1f486c29bcf78d43896c3af9f139e1553c34a16b43088766d6c1c746c"
+        },
+        "kg_meta": {
+          "rows": 5,
+          "sha256": "1a39848a19f7c16a439288a30710a075e84a635c27f412af3090a182af817414"
+        },
+        "storage_meta": null,
+        "nodes": {
+          "rows": 1,
+          "sha256": "d80a7cd746ff1b674f41091c66bcb0d8ca3caedcefacdcf890bbc7763f2741e1"
+        },
+        "edges": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "chunks": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "nodes_v2": {
+          "rows": 1,
+          "sha256": "39b5ae54588c2da624d40efbe96d3a4b0cf932e250912a25e4c8e235777769b6"
+        },
+        "edges_v2": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "edge_occurrences": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "knowledge_sources": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "local_file_index": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "vector_embeddings": {
+          "rows": 1,
+          "sha256": "3332a0ae19d6e03537dbf925285eebdc742607c4c3358ba2305c91d98370fa79"
+        },
+        "vector_index_operations": {
+          "rows": 5,
+          "sha256": "20763cdd1f825f04dbfd6e2438717370dfc35c7a4f288595249b27339b3951cb"
+        },
+        "ingestion_provenance": {
+          "rows": 3,
+          "sha256": "5f496f632e751300d1e48e7c016897a749666a2e2ecfe26169cb7a0f709be883"
+        },
+        "node_fts": {
+          "rows": 1,
+          "sha256": "ca5934a4cc7bbea903178558f608a1302b462d4c8a42bf0a6c204bf6697e88cd"
+        }
+      },
+      "user_version": 4
+    }
+  ]
+}

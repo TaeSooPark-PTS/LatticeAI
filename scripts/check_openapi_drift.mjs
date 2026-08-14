@@ -27,8 +27,18 @@ function matches(left, right) {
 }
 
 try {
+  // P1 cutover: the worker spec is 28 routes. The committed contract is the
+  // composition of fragments + that worker spec, not the worker dump itself.
+  const workerSpec = join(tempRoot, "worker.json");
   runNode(join(repo, "scripts", "run_python.mjs"), [
     "scripts/export_openapi.py",
+    workerSpec,
+  ]);
+  runNode(join(repo, "scripts", "run_python.mjs"), [
+    "scripts/compose_openapi.py",
+    "--worker-spec",
+    workerSpec,
+    "--output",
     generatedSchema,
   ]);
   runNode(join(repo, "node_modules", "openapi-typescript", "bin", "cli.js"), [

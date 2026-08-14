@@ -1,0 +1,2853 @@
+{
+  "components": {
+    "schemas": {
+      "CurateNoiseRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "max_df_ratio": {
+            "default": 0.8,
+            "title": "Max Df Ratio",
+            "type": "number"
+          },
+          "max_removals": {
+            "default": 200,
+            "title": "Max Removals",
+            "type": "integer"
+          },
+          "min_corpus_docs": {
+            "default": 5,
+            "title": "Min Corpus Docs",
+            "type": "integer"
+          },
+          "min_doc_frequency": {
+            "default": 1,
+            "title": "Min Doc Frequency",
+            "type": "integer"
+          },
+          "normalize_verbs": {
+            "default": true,
+            "title": "Normalize Verbs",
+            "type": "boolean"
+          }
+        },
+        "title": "CurateNoiseRequest",
+        "type": "object"
+      },
+      "FolderIngestRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "background": {
+            "default": false,
+            "title": "Background",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "recursive": {
+            "default": true,
+            "title": "Recursive",
+            "type": "boolean"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "FolderIngestRequest",
+        "type": "object"
+      },
+      "FolderWatchEnableRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "kind": {
+            "default": "folder",
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "recursive": {
+            "default": true,
+            "title": "Recursive",
+            "type": "boolean"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "FolderWatchEnableRequest",
+        "type": "object"
+      },
+      "GraphNodeRequest": {
+        "properties": {
+          "depth": {
+            "default": 1,
+            "title": "Depth",
+            "type": "integer"
+          },
+          "include_neighbors": {
+            "default": true,
+            "title": "Include Neighbors",
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 100,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "node_id": {
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "GraphNodeRequest",
+        "type": "object"
+      },
+      "GraphSearchRequest": {
+        "properties": {
+          "expand_depth": {
+            "default": 1,
+            "title": "Expand Depth",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 30,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "GraphSearchRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HybridSearchRequest": {
+        "properties": {
+          "graph_limit": {
+            "default": 30,
+            "title": "Graph Limit",
+            "type": "integer"
+          },
+          "image_fusion": {
+            "default": false,
+            "title": "Image Fusion",
+            "type": "boolean"
+          },
+          "keyword_limit": {
+            "default": 30,
+            "title": "Keyword Limit",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 30,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "vector_limit": {
+            "default": 30,
+            "title": "Vector Limit",
+            "type": "integer"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "HybridSearchRequest",
+        "type": "object"
+      },
+      "IngestTabRequest": {
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "html": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html"
+          },
+          "selected_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Text"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "IngestTabRequest",
+        "type": "object"
+      },
+      "InteropIngestRequest": {
+        "description": "Read one local interop source through the one ingestion gate (v11.2.0).\n\n``source`` picks the bridge \u2014 ``notion`` (an export directory or ``.zip``),\n``git`` (a local repository), ``mail`` (``.eml``/``.ics`` files or a folder\nof them). Every one of them reads a path the user approves through the same\nlocal-read dance as ``/api/ingestion/folder``, and ``dry_run`` reports what\na real run would touch without writing anything.",
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "max_commits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Commits"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "source",
+          "path"
+        ],
+        "title": "InteropIngestRequest",
+        "type": "object"
+      },
+      "LocalAccessRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "LocalAccessRequest",
+        "type": "object"
+      },
+      "LocalKnowledgeAuditRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "include_ocr": {
+            "default": false,
+            "title": "Include Ocr",
+            "type": "boolean"
+          },
+          "max_files": {
+            "default": 50000,
+            "title": "Max Files",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "LocalKnowledgeAuditRequest",
+        "type": "object"
+      },
+      "LocalKnowledgeIndexRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "consent": {
+            "additionalProperties": true,
+            "title": "Consent",
+            "type": "object"
+          },
+          "include_ocr": {
+            "default": false,
+            "title": "Include Ocr",
+            "type": "boolean"
+          },
+          "max_files": {
+            "default": 5000,
+            "title": "Max Files",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "watch_enabled": {
+            "default": false,
+            "title": "Watch Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "LocalKnowledgeIndexRequest",
+        "type": "object"
+      },
+      "LocalKnowledgeWatchRequest": {
+        "properties": {
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id"
+        ],
+        "title": "LocalKnowledgeWatchRequest",
+        "type": "object"
+      },
+      "LocalTreeRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "max_items": {
+            "default": 200,
+            "title": "Max Items",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "LocalTreeRequest",
+        "type": "object"
+      },
+      "LocalWriteRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ],
+        "title": "LocalWriteRequest",
+        "type": "object"
+      },
+      "ObsidianSyncRequest": {
+        "description": "One-shot sync of an *external* Obsidian vault (v11.1.0).\n\n``path`` is the user's own vault folder, so it takes the same local-read\napproval dance as ``/api/ingestion/folder``. ``dry_run`` reports the note,\nlink, and tag counts a real run would touch without writing anything.",
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "ObsidianSyncRequest",
+        "type": "object"
+      },
+      "PromotionActionRequest": {
+        "properties": {
+          "ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ids"
+          }
+        },
+        "title": "PromotionActionRequest",
+        "type": "object"
+      },
+      "ReadUrlRequest": {
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ReadUrlRequest",
+        "type": "object"
+      },
+      "RelationshipSearchRequest": {
+        "properties": {
+          "limit": {
+            "default": 30,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "node_id": {
+            "default": "",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "query": {
+            "default": "",
+            "title": "Query",
+            "type": "string"
+          },
+          "relationship_type": {
+            "default": "",
+            "title": "Relationship Type",
+            "type": "string"
+          }
+        },
+        "title": "RelationshipSearchRequest",
+        "type": "object"
+      },
+      "SearchRequest": {
+        "properties": {
+          "limit": {
+            "default": 30,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SearchRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VectorSearchRequest": {
+        "properties": {
+          "limit": {
+            "default": 30,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "min_score": {
+            "default": 0.0,
+            "title": "Min Score",
+            "type": "number"
+          },
+          "query": {
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "VectorSearchRequest",
+        "type": "object"
+      }
+    }
+  },
+  "family": "knowledge_search",
+  "generated_by": "scripts/gen_openapi_fragments.py",
+  "greedy_path_params": {
+    "GET /knowledge-graph/neighbors/{node_id}": "node_id"
+  },
+  "operation_count": 55,
+  "operation_order": [
+    "POST /api/browser/ingest-current-tab",
+    "POST /api/browser/read-url",
+    "GET /api/graph",
+    "GET /api/graph/node",
+    "POST /api/graph/node",
+    "GET /api/graph/relationship",
+    "POST /api/graph/relationship",
+    "GET /api/index/queue",
+    "GET /api/index/status",
+    "POST /api/ingestion/folder",
+    "GET /api/ingestion/interop",
+    "POST /api/ingestion/interop",
+    "GET /api/ingestion/jobs",
+    "GET /api/ingestion/jobs/{job_id}",
+    "POST /api/ingestion/jobs/{job_id}/resume",
+    "POST /api/ingestion/obsidian",
+    "DELETE /api/ingestion/watch",
+    "GET /api/ingestion/watch",
+    "POST /api/ingestion/watch",
+    "GET /api/local-agent/status",
+    "POST /api/search/graph",
+    "GET /api/search/hybrid",
+    "POST /api/search/hybrid",
+    "GET /api/search/image-query",
+    "GET /api/search/keyword",
+    "POST /api/search/keyword",
+    "GET /api/search/vector",
+    "POST /api/search/vector",
+    "GET /knowledge-graph/context",
+    "POST /knowledge-graph/curate",
+    "POST /knowledge-graph/curate/noise",
+    "GET /knowledge-graph/documents",
+    "GET /knowledge-graph/graph",
+    "POST /knowledge-graph/local/audit",
+    "GET /knowledge-graph/local/health",
+    "POST /knowledge-graph/local/index",
+    "GET /knowledge-graph/local/roots",
+    "GET /knowledge-graph/local/sources",
+    "POST /knowledge-graph/local/tree",
+    "GET /knowledge-graph/local/watch/status",
+    "POST /knowledge-graph/local/watch/stop",
+    "GET /knowledge-graph/neighbors/{node_id}",
+    "GET /knowledge-graph/pipeline/status",
+    "GET /knowledge-graph/promotions",
+    "POST /knowledge-graph/promotions/apply",
+    "POST /knowledge-graph/promotions/reject",
+    "GET /knowledge-graph/provenance/coverage",
+    "GET /knowledge-graph/schema",
+    "GET /knowledge-graph/search",
+    "GET /knowledge-graph/stats",
+    "GET /local/list",
+    "POST /local/list",
+    "POST /local/read",
+    "GET /local/serve",
+    "POST /local/write"
+  ],
+  "path_count": 46,
+  "path_order": [
+    "/api/browser/ingest-current-tab",
+    "/api/browser/read-url",
+    "/api/graph",
+    "/api/graph/node",
+    "/api/graph/relationship",
+    "/api/index/queue",
+    "/api/index/status",
+    "/api/ingestion/folder",
+    "/api/ingestion/interop",
+    "/api/ingestion/jobs",
+    "/api/ingestion/jobs/{job_id}",
+    "/api/ingestion/jobs/{job_id}/resume",
+    "/api/ingestion/obsidian",
+    "/api/ingestion/watch",
+    "/api/local-agent/status",
+    "/api/search/graph",
+    "/api/search/hybrid",
+    "/api/search/image-query",
+    "/api/search/keyword",
+    "/api/search/vector",
+    "/knowledge-graph/context",
+    "/knowledge-graph/curate",
+    "/knowledge-graph/curate/noise",
+    "/knowledge-graph/documents",
+    "/knowledge-graph/graph",
+    "/knowledge-graph/local/audit",
+    "/knowledge-graph/local/health",
+    "/knowledge-graph/local/index",
+    "/knowledge-graph/local/roots",
+    "/knowledge-graph/local/sources",
+    "/knowledge-graph/local/tree",
+    "/knowledge-graph/local/watch/status",
+    "/knowledge-graph/local/watch/stop",
+    "/knowledge-graph/neighbors/{node_id}",
+    "/knowledge-graph/pipeline/status",
+    "/knowledge-graph/promotions",
+    "/knowledge-graph/promotions/apply",
+    "/knowledge-graph/promotions/reject",
+    "/knowledge-graph/provenance/coverage",
+    "/knowledge-graph/schema",
+    "/knowledge-graph/search",
+    "/knowledge-graph/stats",
+    "/local/list",
+    "/local/read",
+    "/local/serve",
+    "/local/write"
+  ],
+  "paths": {
+    "/api/browser/ingest-current-tab": {
+      "post": {
+        "description": "Ingest a payload captured from the local browser extension.",
+        "operationId": "ingest_current_tab_api_browser_ingest_current_tab_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestTabRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest Current Tab"
+      }
+    },
+    "/api/browser/read-url": {
+      "post": {
+        "description": "Fetch a public URL locally and ingest it as a web_url source.",
+        "operationId": "read_url_api_browser_read_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Url"
+      }
+    },
+    "/api/graph": {
+      "get": {
+        "operationId": "graph_api_graph_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 300,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph Api Graph Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph"
+      }
+    },
+    "/api/graph/node": {
+      "get": {
+        "operationId": "graph_node_api_graph_node_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_neighbors",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Neighbors",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Depth",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph Node Api Graph Node Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Node"
+      },
+      "post": {
+        "operationId": "graph_node_post_api_graph_node_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphNodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph Node Post Api Graph Node Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Node Post"
+      }
+    },
+    "/api/graph/relationship": {
+      "get": {
+        "operationId": "graph_relationship_api_graph_relationship_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "node_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "relationship_type",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Relationship Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph Relationship Api Graph Relationship Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Relationship"
+      },
+      "post": {
+        "operationId": "graph_relationship_post_api_graph_relationship_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph Relationship Post Api Graph Relationship Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Relationship Post"
+      }
+    },
+    "/api/index/queue": {
+      "get": {
+        "description": "The embed backlog, counted. Reads nothing else and writes nothing.",
+        "operationId": "index_queue_api_index_queue_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Index Queue"
+      }
+    },
+    "/api/index/status": {
+      "get": {
+        "operationId": "index_status_api_index_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Index Status Api Index Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Index Status"
+      }
+    },
+    "/api/ingestion/folder": {
+      "post": {
+        "description": "Ingest a local folder through the unified pipeline.\n\nReads local disk, so it follows the same approval dance as\n``/local/read`` and ``/knowledge-graph/local/index``: without\n``approved`` + ``approval_token`` the response is a\n``permission_required`` payload. ``background=true`` schedules a job\n(summary includes ``job_id``) and executes it after the response.",
+        "operationId": "ingestion_folder_api_ingestion_folder_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderIngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingestion Folder"
+      }
+    },
+    "/api/ingestion/interop": {
+      "get": {
+        "description": "Which interop bridges this machine can actually run, and why not.",
+        "operationId": "interop_status_api_ingestion_interop_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Interop Status"
+      },
+      "post": {
+        "description": "Read an approved local interop source through the one gate.\n\nSame approval dance and the same ``IngestionPipeline`` door as the\nvault bridge: no vendor API, no credentials, nothing leaves the\nmachine. ``dry_run`` writes nothing and reports what a real run would.",
+        "operationId": "interop_ingest_api_ingestion_interop_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InteropIngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Interop Ingest"
+      }
+    },
+    "/api/ingestion/jobs": {
+      "get": {
+        "description": "Recent background ingestion jobs (newest first).",
+        "operationId": "ingestion_jobs_api_ingestion_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingestion Jobs"
+      }
+    },
+    "/api/ingestion/jobs/{job_id}": {
+      "get": {
+        "description": "One job with its progress counters and (capped) error records.",
+        "operationId": "ingestion_job_detail_api_ingestion_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingestion Job Detail"
+      }
+    },
+    "/api/ingestion/jobs/{job_id}/resume": {
+      "post": {
+        "description": "Resume an interrupted/partial/failed job from its remaining items.",
+        "operationId": "ingestion_job_resume_api_ingestion_jobs__job_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingestion Job Resume"
+      }
+    },
+    "/api/ingestion/obsidian": {
+      "post": {
+        "description": "Ingest an approved external Obsidian vault through the one gate.\n\nEvery ``.md`` note goes through the same pipeline door as files and\nfolders; on top of that, in-vault links become ``REFERENCES`` edges\nbetween the note nodes and frontmatter tags become ``Topic`` links. A\nlink whose target is missing or ambiguous is reported in\n``links.unresolved`` rather than guessed at. Re-running is idempotent.\n\nReads local disk, so it follows the standard approval dance: without\n``approved`` + ``approval_token`` the answer is a ``permission_required``\npayload.",
+        "operationId": "ingestion_obsidian_api_ingestion_obsidian_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObsidianSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingestion Obsidian"
+      }
+    },
+    "/api/ingestion/watch": {
+      "delete": {
+        "description": "Opt back out of watch mode (removes the stored consent record).",
+        "operationId": "folder_watch_disable_api_ingestion_watch_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "watch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Watch Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Folder Watch Disable"
+      },
+      "get": {
+        "description": "Watch-mode status: stored opt-ins, poller state, last scan results.",
+        "operationId": "folder_watch_status_api_ingestion_watch_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Folder Watch Status"
+      },
+      "post": {
+        "description": "Explicitly opt a previously-ingested folder into watch mode.\n\nFollows the same local-read approval dance as ``/api/ingestion/folder``.\nEnabling snapshots the folder as the baseline; only *future* new or\nchanged files are re-ingested (through the normal pipeline, with the\nwatch owner's workspace scope).",
+        "operationId": "folder_watch_enable_api_ingestion_watch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderWatchEnableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Folder Watch Enable"
+      }
+    },
+    "/api/local-agent/status": {
+      "get": {
+        "description": "Real on-device runtime status \u2014 the 'Local Agent' is the Lattice\nserver running on this machine. Every field below is *probed*, not\nhardcoded: filesystem access is a real write/read/delete; the graph and\nwatcher are reached live; the mode/handshake are derived from those\nprobes. A failing subsystem yields ``degraded``/``error`` honestly.\n\nAllowed modes: offline \u00b7 starting \u00b7 online \u00b7 degraded \u00b7 error.",
+        "operationId": "local_agent_status_api_local_agent_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Local Agent Status"
+      }
+    },
+    "/api/search/graph": {
+      "post": {
+        "description": "Relationship-aware search: direct matches plus what they connect to.\n\nThe third retrieval channel. It was in ``_ScopedSearchService._SCOPED``\nfrom the start \u2014 so the workspace guard was ready for it \u2014 but no\nhandler ever called it, which made the allow-list entry the only\nevidence the channel was supposed to be reachable at all.",
+        "operationId": "graph_search_api_search_graph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph Search Api Search Graph Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Search"
+      }
+    },
+    "/api/search/hybrid": {
+      "get": {
+        "operationId": "hybrid_search_get_api_search_hybrid_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "image_fusion",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Image Fusion",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Hybrid Search Get Api Search Hybrid Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hybrid Search Get"
+      },
+      "post": {
+        "operationId": "hybrid_search_api_search_hybrid_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HybridSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Hybrid Search Api Search Hybrid Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hybrid Search"
+      }
+    },
+    "/api/search/image-query": {
+      "get": {
+        "description": "Whether a typed question can reach the image index on this install.",
+        "operationId": "image_query_status_api_search_image_query_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Image Query Status Api Search Image Query Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Image Query Status"
+      }
+    },
+    "/api/search/keyword": {
+      "get": {
+        "operationId": "keyword_search_get_api_search_keyword_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Keyword Search Get Api Search Keyword Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Keyword Search Get"
+      },
+      "post": {
+        "operationId": "keyword_search_api_search_keyword_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Keyword Search Api Search Keyword Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Keyword Search"
+      }
+    },
+    "/api/search/vector": {
+      "get": {
+        "operationId": "vector_search_get_api_search_vector_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_score",
+            "required": false,
+            "schema": {
+              "default": 0.0,
+              "title": "Min Score",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Vector Search Get Api Search Vector Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vector Search Get"
+      },
+      "post": {
+        "operationId": "vector_search_api_search_vector_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VectorSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Vector Search Api Search Vector Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vector Search"
+      }
+    },
+    "/knowledge-graph/context": {
+      "get": {
+        "operationId": "knowledge_graph_context_knowledge_graph_context_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 6,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Context"
+      }
+    },
+    "/knowledge-graph/curate": {
+      "post": {
+        "operationId": "knowledge_graph_curate_knowledge_graph_curate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Curate"
+      }
+    },
+    "/knowledge-graph/curate/noise": {
+      "post": {
+        "description": "Noise-reduction curation job (backlog #10).\n\nDry-run by default: reports which heuristic concept nodes would be\nremoved (low IDF / below the frequency floor) and which relation\nverbs would be normalized, without changing the graph. Set\n``dry_run=false`` to apply. User-created nodes are never removed.\nAdministrative like ``/knowledge-graph/curate`` when roles exist.",
+        "operationId": "knowledge_graph_curate_noise_knowledge_graph_curate_noise_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurateNoiseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Curate Noise"
+      }
+    },
+    "/knowledge-graph/documents": {
+      "get": {
+        "description": "Ingested documents (uploads + indexed local docs) with index state.\n\nBacks the Files view so uploaded content is visible end-to-end:\nupload \u2192 Files \u2192 Knowledge Graph \u2192 Hybrid Search \u2192 Chat.",
+        "operationId": "knowledge_graph_documents_knowledge_graph_documents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Documents"
+      }
+    },
+    "/knowledge-graph/graph": {
+      "get": {
+        "operationId": "knowledge_graph_data_knowledge_graph_graph_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 300,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Data"
+      }
+    },
+    "/knowledge-graph/local/audit": {
+      "post": {
+        "operationId": "knowledge_graph_local_audit_knowledge_graph_local_audit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalKnowledgeAuditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Local Audit"
+      }
+    },
+    "/knowledge-graph/local/health": {
+      "get": {
+        "description": "Per-folder memory state (v9.9.7): indexing coverage, failures with\ntheir stored reasons, and watch state.\n\nVector freshness rides along as an explicitly **global** figure \u2014 the\nvector index is not per-folder, and claiming otherwise would invent a\nnumber.",
+        "operationId": "knowledge_graph_local_health_knowledge_graph_local_health_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "error_samples",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "title": "Error Samples",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Local Health"
+      }
+    },
+    "/knowledge-graph/local/index": {
+      "post": {
+        "operationId": "knowledge_graph_local_index_knowledge_graph_local_index_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalKnowledgeIndexRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Local Index"
+      }
+    },
+    "/knowledge-graph/local/roots": {
+      "get": {
+        "operationId": "knowledge_graph_local_roots_knowledge_graph_local_roots_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Local Roots"
+      }
+    },
+    "/knowledge-graph/local/sources": {
+      "get": {
+        "operationId": "knowledge_graph_local_sources_knowledge_graph_local_sources_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Local Sources"
+      }
+    },
+    "/knowledge-graph/local/tree": {
+      "post": {
+        "operationId": "knowledge_graph_local_tree_knowledge_graph_local_tree_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalTreeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Local Tree"
+      }
+    },
+    "/knowledge-graph/local/watch/status": {
+      "get": {
+        "operationId": "knowledge_graph_local_watch_status_knowledge_graph_local_watch_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Local Watch Status"
+      }
+    },
+    "/knowledge-graph/local/watch/stop": {
+      "post": {
+        "operationId": "knowledge_graph_local_watch_stop_knowledge_graph_local_watch_stop_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalKnowledgeWatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Local Watch Stop"
+      }
+    },
+    "/knowledge-graph/neighbors/{node_id}": {
+      "get": {
+        "operationId": "knowledge_graph_neighbors_knowledge_graph_neighbors__node_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Neighbors"
+      }
+    },
+    "/knowledge-graph/pipeline/status": {
+      "get": {
+        "description": "Per-stage counts + status for the Capture 3-step journey ribbon.\n\nAggregates existing store data only \u2014 no schema change. Top-level\n``received`` / ``extracted`` / ``connected`` stay for simple clients;\n``stages`` is the single source of truth for count, pending, and\nstatus (``done`` / ``working`` / ``waiting``). Keys are omitted when\na value cannot be computed (never faked as 0 when the underlying\nsource is unavailable).",
+        "operationId": "knowledge_graph_pipeline_status_knowledge_graph_pipeline_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Pipeline Status"
+      }
+    },
+    "/knowledge-graph/promotions": {
+      "get": {
+        "description": "Pending curator promotions awaiting human review (review Wave 4).\n\nPopulated when ``curate()`` runs in review mode (explicit\n``review_mode=True`` or the LATTICEAI_GRAPH_PROMOTION_REVIEW env\nopt-in). Administrative like ``/knowledge-graph/curate``: the queue\ngoverns the shared graph.",
+        "operationId": "knowledge_graph_promotions_knowledge_graph_promotions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Promotions"
+      }
+    },
+    "/knowledge-graph/promotions/apply": {
+      "post": {
+        "description": "Apply pending promotions (all when ``ids`` is omitted).",
+        "operationId": "knowledge_graph_promotions_apply_knowledge_graph_promotions_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromotionActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Promotions Apply"
+      }
+    },
+    "/knowledge-graph/promotions/reject": {
+      "post": {
+        "description": "Reject pending promotions without writing (all when ``ids`` omitted).",
+        "operationId": "knowledge_graph_promotions_reject_knowledge_graph_promotions_reject_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromotionActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Promotions Reject"
+      }
+    },
+    "/knowledge-graph/provenance/coverage": {
+      "get": {
+        "operationId": "knowledge_graph_provenance_coverage_knowledge_graph_provenance_coverage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Provenance Coverage"
+      }
+    },
+    "/knowledge-graph/schema": {
+      "get": {
+        "operationId": "knowledge_graph_schema_knowledge_graph_schema_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Schema"
+      }
+    },
+    "/knowledge-graph/search": {
+      "get": {
+        "operationId": "knowledge_graph_search_knowledge_graph_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Search"
+      }
+    },
+    "/knowledge-graph/stats": {
+      "get": {
+        "operationId": "knowledge_graph_stats_knowledge_graph_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Stats"
+      }
+    },
+    "/local/list": {
+      "get": {
+        "operationId": "local_list_get_endpoint_local_list_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Local List Get Endpoint"
+      },
+      "post": {
+        "operationId": "local_list_endpoint_local_list_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalAccessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Local List Endpoint"
+      }
+    },
+    "/local/read": {
+      "post": {
+        "operationId": "local_read_endpoint_local_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalAccessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Local Read Endpoint"
+      }
+    },
+    "/local/serve": {
+      "get": {
+        "operationId": "local_serve_file_local_serve_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "approval_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Approval Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Local Serve File"
+      }
+    },
+    "/local/write": {
+      "post": {
+        "operationId": "local_write_endpoint_local_write_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Local Write Endpoint"
+      }
+    }
+  },
+  "schema_count": 22,
+  "source": "frontend/openapi.json",
+  "spec_version": "11.6.0",
+  "summary": "Knowledge graph, search, index jobs, local files, local knowledge roots and browser capture.",
+  "target": "lattice-ingest / lattice-retrieval",
+  "wp": "R6"
+}

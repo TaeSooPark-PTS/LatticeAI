@@ -21,6 +21,27 @@
     "specific, not less."
   ],
 
+  "11.6.0": {
+    "_why": [
+      "One Door release: the product server moved from Python/FastAPI to the",
+      "Rust lattice-host, every write moved into the native KG write engine,",
+      "and the Python package became a 28-route AI worker. The frontend",
+      "bundle is untouched — the same React sources, the same routes, the",
+      "same copy — so no captured screen changes on purpose, and all",
+      "thirteen are measured but not gated.",
+      "",
+      "Worth stating because it is the one thing that could surprise a",
+      "reader: the screens are served by a different process now, and the",
+      "capture still runs against tests/visual/mock_server.cjs, so these",
+      "shots prove the frontend did not move, not that the new server",
+      "renders them. The live proof for that is the gateway integration",
+      "test and the release smoke, not this gate.",
+      "",
+      "Known jitter: 05-memory-graph moves ~2-3% between captures from the",
+      "cytoscape layout (11.3.0-11.5.2 observed)."
+    ]
+  },
+
   "11.5.2": {
     "_why": [
       "Tight Ship release: deletions, consolidation and front-door fixes —",

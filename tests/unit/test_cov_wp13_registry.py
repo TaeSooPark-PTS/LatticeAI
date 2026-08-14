@@ -1,18 +1,16 @@
 """wp13 coverage — the ``latticeai.tools`` package seam itself.
 
-``TOOL_HANDLERS`` is the single name → invocation table, and three of its
-entries are more than a lambda: the xlsx and pptx handlers accept their
-structured argument as either real data or a JSON string (models emit both),
-and every knowledge tool goes through ``_knowledge_scope``, which refuses to
-run unless the caller injected an authenticated workspace *and* user. Those
-three, plus the public path resolver, are what this file drives — through
+``TOOL_HANDLERS`` is the single name → invocation table. Remaining handlers
+are read-only plus pointer tools; mutating creators live in ``lattice-agent``.
+Every knowledge tool goes through ``_knowledge_scope``, which refuses to run
+unless the caller injected an authenticated workspace *and* user. Those
+scopes, plus the public path resolver, are what this file drives — through
 ``execute_tool`` rather than by calling the private helpers, so the table
 wiring is under test too.
 """
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -62,69 +60,22 @@ def test_resolve_workspace_path_creates_the_workspace_on_demand(
     assert root.is_dir()
 
 
-# ── the xlsx / pptx argument adapters ────────────────────────────────────────
+# ── remaining dispatchable tools ─────────────────────────────────────────────
 
 
-def test_create_xlsx_handler_accepts_rows_as_data(workspace: Path) -> None:
-    result = execute_tool(
-        "create_xlsx",
-        {"rows": [["a", "b"], ["c", "d"]], "filename": "data.xlsx", "sheet_name": "Tab"},
-    )
+def test_list_dir_reads_the_workspace_through_the_handler_table(workspace: Path) -> None:
+    (workspace / "note.md").write_text("hello", encoding="utf-8")
 
-    from openpyxl import load_workbook
+    result = execute_tool("list_dir", {"path": "."})
 
-    sheet = load_workbook(workspace / "generated_spreadsheets" / "data.xlsx").active
-    assert result["rows"] == 2
-    assert sheet.title == "Tab"
-    assert [list(row) for row in sheet.iter_rows(values_only=True)] == [["a", "b"], ["c", "d"]]
+    names = {item["name"] for item in result["items"]}
+    assert "note.md" in names
 
 
-def test_create_xlsx_handler_accepts_rows_as_a_json_string(workspace: Path) -> None:
-    """Models routinely emit tool arguments as JSON text rather than as data."""
-    result = execute_tool("create_xlsx", {"rows": json.dumps([["x", 1]])})
+def test_todo_read_is_registered_and_returns_a_list(workspace: Path) -> None:
+    result = execute_tool("todo_read", {})
 
-    assert result["path"] == "generated_spreadsheets/spreadsheet.xlsx"
-    assert result["rows"] == 1
-
-
-def test_create_xlsx_handler_defaults_every_argument(workspace: Path) -> None:
-    result = execute_tool("create_xlsx", {})
-
-    from openpyxl import load_workbook
-
-    assert result["rows"] == 0
-    assert load_workbook(workspace / "generated_spreadsheets" / "spreadsheet.xlsx").active.title == (
-        "Sheet1"
-    )
-
-
-def test_create_pptx_handler_accepts_slides_as_a_json_string(workspace: Path) -> None:
-    result = execute_tool(
-        "create_pptx",
-        {
-            "title": "Roadmap",
-            "slides": json.dumps([{"title": "Now", "bullets": ["ship"]}]),
-            "filename": "plan.pptx",
-        },
-    )
-
-    from pptx import Presentation
-
-    deck = Presentation(str(workspace / "generated_presentations" / "plan.pptx"))
-    assert result["slides"] == 2
-    assert [slide.shapes.title.text for slide in deck.slides] == ["Roadmap", "Now"]
-
-
-def test_create_pptx_handler_defaults_to_an_empty_deck(workspace: Path) -> None:
-    result = execute_tool("create_pptx", {})
-
-    assert result["path"] == "generated_presentations/presentation.pptx"
-    assert result["slides"] == 1
-
-
-def test_a_malformed_json_argument_surfaces_as_a_json_error(workspace: Path) -> None:
-    with pytest.raises(json.JSONDecodeError):
-        execute_tool("create_xlsx", {"rows": "[[unquoted]]"})
+    assert "items" in result or "todos" in result or isinstance(result, dict)
 
 
 # ── _knowledge_scope ─────────────────────────────────────────────────────────
@@ -139,10 +90,8 @@ def vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 _SCOPED_TOOLS = [
-    ("knowledge_save", {"content": "body"}),
     ("knowledge_search", {"query": "body"}),
     ("knowledge_tree", {}),
-    ("obsidian_save", {"content": "body"}),
     ("obsidian_search", {"query": "body"}),
     ("obsidian_tree", {}),
 ]
@@ -168,14 +117,16 @@ def test_a_half_scoped_knowledge_call_is_refused_at_the_registry(vault: Path, sc
         execute_tool("knowledge_tree", dict(scope))
 
 
-def test_a_scoped_knowledge_call_writes_into_its_own_partition(vault: Path) -> None:
+def test_a_scoped_knowledge_call_reads_only_its_own_partition(vault: Path) -> None:
     scope = {"workspace_id": "ws-1", "user_email": "Owner@Example.com"}
+    root = knowledge_module.knowledge_scope_root(**scope)
+    note_dir = root / "00_Raw"
+    note_dir.mkdir(parents=True)
+    (note_dir / "n.md").write_text("scoped note", encoding="utf-8")
 
-    saved = execute_tool("knowledge_save", {"content": "scoped note", "title": "n", **scope})
     tree = execute_tool("knowledge_tree", dict(scope))
     found = execute_tool("knowledge_search", {"query": "scoped", **scope})
 
-    assert Path(saved["path"]).is_relative_to(Path(tree["root"]))
     assert [entry["relative_path"] for entry in tree["entries"]] == ["00_Raw/n.md"]
     assert len(found["results"]) == 1
     # The email is normalised before it becomes part of the partition digest.
@@ -186,10 +137,12 @@ def test_a_scoped_knowledge_call_writes_into_its_own_partition(vault: Path) -> N
 
 
 def test_scopes_cannot_read_each_others_notes(vault: Path) -> None:
-    execute_tool(
-        "knowledge_save",
-        {"content": "first tenant", "title": "a", "workspace_id": "ws-1", "user_email": "a@x.com"},
+    own_root = knowledge_module.knowledge_scope_root(
+        workspace_id="ws-1", user_email="a@x.com"
     )
+    note_dir = own_root / "00_Raw"
+    note_dir.mkdir(parents=True)
+    (note_dir / "a.md").write_text("first tenant", encoding="utf-8")
 
     other = execute_tool(
         "knowledge_search", {"query": "tenant", "workspace_id": "ws-2", "user_email": "a@x.com"}
@@ -204,6 +157,13 @@ def test_scopes_cannot_read_each_others_notes(vault: Path) -> None:
 def test_unknown_actions_are_rejected_by_name(workspace: Path) -> None:
     with pytest.raises(ToolError, match="Unknown action: not_a_tool"):
         execute_tool("not_a_tool", {})
+
+
+def test_mutating_handlers_are_not_registered() -> None:
+    registered = registered_tools()
+    assert "create_xlsx" not in registered
+    assert "write_file" not in registered
+    assert "knowledge_save" not in registered
 
 
 def test_every_scoped_knowledge_tool_is_actually_registered() -> None:
