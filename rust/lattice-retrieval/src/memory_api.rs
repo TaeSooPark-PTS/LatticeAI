@@ -15,9 +15,12 @@
 //!
 //! **Writes.** `prune` / `compact` / `clear` delete Workspace OS memories,
 //! which is RUST_PLATFORM state and therefore native. `rebuild` and every
-//! Self-Model write touch `nodes`/`edges`/`vector_embeddings`, which belong to
-//! the Python single writer, so they are delegated over
-//! `POST /worker/graph/mutate` (WAVE2_COMMON rule 6).
+//! Self-Model write touch `nodes`/`edges`/`vector_embeddings`, and those are
+//! native too since v11.7.0: `rebuild` through
+//! [`graph_native::dispatch`] onto [`lattice_core::graph_write::GraphWriter`],
+//! the Self-Model's four through [`self_model_write`], which owns the write
+//! side of `lattice_brain/self_model.py` because a proposal is a review item
+//! as well as a node.
 
 #![allow(
     dead_code,
@@ -71,6 +74,7 @@ mod kg_tests;
 pub mod recall;
 pub mod routes;
 pub mod self_model;
+pub mod self_model_write;
 pub mod service;
 pub mod shared;
 pub mod wsos;

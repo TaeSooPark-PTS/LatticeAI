@@ -50,14 +50,44 @@ export type ExplorerModel = ParsedGraph & {
 };
 
 const groupDefinitions = [
-  { id: "knowledge", labelKey: "brain.group.knowledge", color: "#20c997", types: ["topic", "concept", "entity", "decision", "insight", "claim", "fact"] },
-  { id: "source", labelKey: "brain.group.source", color: "#60a5fa", types: ["file", "document", "source", "chunk", "note", "url", "page", "image", "transcript"] },
-  { id: "activity", labelKey: "brain.group.activity", color: "#f59e0b", types: ["task", "workflow", "agent", "run", "approval", "hook"] },
-  { id: "memory", labelKey: "brain.group.memory", color: "#a78bfa", types: ["memory", "conversation", "message", "chat", "context"] },
-  { id: "people", labelKey: "brain.group.people", color: "#f472b6", types: ["person", "user", "team", "organization", "org"] },
-  { id: "system", labelKey: "brain.group.system", color: "#94a3b8", types: ["model", "skill", "plugin", "setting", "policy", "device", "storage"] },
-  { id: "other", labelKey: "brain.group.other", color: "#f8fafc", types: [] },
+  { id: "knowledge", labelKey: "brain.group.knowledge", token: "--knowledge", fallback: "205 55% 66%", types: ["topic", "concept", "entity", "decision", "insight", "claim", "fact"] },
+  { id: "source", labelKey: "brain.group.source", token: "--library", fallback: "195 45% 62%", types: ["file", "document", "source", "chunk", "note", "url", "page", "image", "transcript"] },
+  { id: "activity", labelKey: "brain.group.activity", token: "--act", fallback: "30 66% 62%", types: ["task", "workflow", "agent", "run", "approval", "hook"] },
+  { id: "memory", labelKey: "brain.group.memory", token: "--memory", fallback: "168 48% 58%", types: ["memory", "conversation", "message", "chat", "context"] },
+  { id: "people", labelKey: "brain.group.people", token: "--connection", fallback: "278 44% 72%", types: ["person", "user", "team", "organization", "org"] },
+  { id: "system", labelKey: "brain.group.system", token: "--fg-muted", fallback: "46 8% 66%", types: ["model", "skill", "plugin", "setting", "policy", "device", "storage"] },
+  { id: "other", labelKey: "brain.group.other", token: "--fg", fallback: "43 26% 94%", types: [] },
 ] as const;
+
+// Cytoscape's hsl() parser requires commas (`hsl(205, 55%, 66%)`). A modern
+// space-separated wrap of an HSL triple is valid CSS but paints as gray/black.
+const CYTOSCAPE_HSL = /^(-?[\d.]+)[\s,]+([\d.]+)%[\s,]+([\d.]+)%$/;
+const LAST_RESORT_COLOR = "hsl(205, 55%, 66%)";
+
+function asCytoscapeColor(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const unwrapped = /^hsla?\(\s*(.+?)\s*\)$/i.exec(trimmed)?.[1] ?? trimmed;
+  const triple = CYTOSCAPE_HSL.exec(unwrapped);
+  if (triple) return `hsl(${triple[1]}, ${triple[2]}%, ${triple[3]}%)`;
+  if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(trimmed) || /^rgba?\(/i.test(trimmed)) return trimmed;
+  return null;
+}
+
+/** Resolve a token triple (`--knowledge`) to a comma-separated `hsl()` Cytoscape can paint. */
+export function resolveTokenColor(token: string, fallback: string): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return asCytoscapeColor(raw) ?? asCytoscapeColor(fallback) ?? LAST_RESORT_COLOR;
+}
+
+export function graphGroupColor(groupId: string): string {
+  const definition = groupDefinition(groupId);
+  return resolveTokenColor(definition.token, definition.fallback);
+}
+
+export function graphInkColor(): string {
+  return resolveTokenColor("--fg", "43 26% 94%");
+}
 
 const groupLookup: Map<string, string> = new Map(groupDefinitions.flatMap((group) => group.types.map((type) => [type, group.id])));
 
@@ -141,7 +171,7 @@ export function parseGraph(data: unknown, language: Language): ParsedGraph {
   const groups = groupDefinitions.map((group) => ({
     id: group.id,
     label: t(language, group.labelKey),
-    color: group.color,
+    color: graphGroupColor(group.id),
     count: groupCounts.get(group.id) || 0,
     visibleCount: 0,
     collapsed: false,
@@ -193,7 +223,7 @@ export function buildExplorerModel({
     const current = aggregateNodes.get(aggregateId);
     aggregateNodes.set(aggregateId, {
       id: aggregateId,
-      group: { id: definition.id, label: group?.label || definition.id, color: definition.color, count: 0, visibleCount: 0, collapsed: true },
+      group: { id: definition.id, label: group?.label || definition.id, color: graphGroupColor(definition.id), count: 0, visibleCount: 0, collapsed: true },
       count: (current?.count || 0) + 1,
       maxImportance: Math.max(current?.maxImportance || 0, node.importance),
     });
@@ -231,8 +261,8 @@ export function buildExplorerModel({
         displayLabel: label,
         type: node.type,
         group: group?.label || definition.id,
-        color: definition.color,
-        borderColor: selectedId === node.id ? "#ffffff" : definition.color,
+        color: graphGroupColor(definition.id),
+        borderColor: selectedId === node.id ? graphInkColor() : graphGroupColor(definition.id),
         size: Math.round(20 + node.importance * 34 + Math.min(node.degree, 10) * 2),
       },
       // No "faded" class here: when a node is selected, the neighbour filter
@@ -253,7 +283,7 @@ export function buildExplorerModel({
       type: "Cluster",
       group: aggregate.group.label,
       color: aggregate.group.color,
-      borderColor: "#ffffff",
+      borderColor: graphInkColor(),
       size: Math.round(34 + Math.min(aggregate.count, 28) * 2 + aggregate.maxImportance * 16),
     },
     classes: "cluster",

@@ -1,9 +1,11 @@
 //! `SelfModelService` — what the Brain believes about its owner.
 //!
-//! Only the **read** is native. Every write in `lattice_brain/self_model.py`
-//! ends in `store._upsert_node` / `_upsert_edge` / `DELETE FROM nodes`, which
-//! are worker-owned tables (WP-I1 §2), so the four write routes delegate over
-//! `POST /worker/graph/mutate` instead of opening the database.
+//! This module is the **read** half. Every write in
+//! `lattice_brain/self_model.py` ends in `store._upsert_node` / `_upsert_edge`
+//! / `DELETE FROM nodes`; until v11.7.0 the four write routes delegated those
+//! over `POST /worker/graph/mutate`, a door the worker stopped serving in
+//! v11.6.0 — so they answered 404 on every live install. They are native now,
+//! in [`super::self_model_write`].
 //!
 //! The read reuses [`crate::self_model`] for the injected summary — the same
 //! function the document-generation context already assembles prompts with, so

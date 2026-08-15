@@ -23,12 +23,20 @@
 //!   `latticeai/services/folder_watch.py` — not an OS watcher, because polling
 //!   is what the product actually does and what a test can pin.
 //!
-//! ## What this crate deliberately does not do
+//! ## Where the graph write happens (corrected in v11.7.0)
 //!
-//! It never writes the knowledge graph. Detection, parsing, chunking and
-//! duplicate judgement happen here; the graph write stays with the Python
-//! worker, which is the single writer. [`worker::WorkerClient`] is the whole
-//! delegation seam, and the HTTP surface in [`api`] is dry-run only.
+//! This crate used to say it *never* writes the knowledge graph — detection
+//! here, the write delegated to the Python worker. That stopped being true in
+//! v11.6.0, when the worker became a pure-compute box: [`local_files_api`] and
+//! [`browser_api`] already write through `lattice_core::graph_write::GraphWriter`,
+//! and v11.7.0 finished the job by nativizing the watch path too
+//! ([`worker::NoteIngestor`], which replaced a `POST /knowledge-graph/ingest`
+//! the worker had stopped serving).
+//!
+//! So: **the writes in this crate are native, and the worker is asked only for
+//! compute** — `POST /worker/{parse,extract,embed}`, all of it through
+//! [`local_files_api::enrich`] so one failure mode is shared by every door.
+//! The dry-run HTTP surface in [`api`] still writes nothing at all.
 //!
 //! The parity proof lives in `tests/chunking_parity.rs`, against the goldens
 //! `scripts/generate_chunking_parity_fixtures.py` writes and
@@ -62,4 +70,4 @@ pub use pages::{citation_locator, page_for_offset, pdf_page_offsets};
 pub use pystr::{is_py_space, py_strip, py_suffix};
 pub use strategy::chunk_strategy_for;
 pub use watch::{ScanDiff, WatchConfig, WatchScanner, MAX_FILES_PER_SCAN};
-pub use worker::{NoteSubmission, WorkerClient, WorkerError};
+pub use worker::{NoteIngestError, NoteIngestor, NoteReceipt, NoteSubmission};

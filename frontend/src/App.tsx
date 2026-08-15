@@ -318,7 +318,7 @@ function BrainShell({
               return (
                 <a
                   key={item.id}
-                  className={`brain-utility-link text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition text-muted-foreground hover:text-foreground hover:bg-muted/60${item.id === active ? " is-active font-medium text-foreground bg-muted/80" : ""}`}
+                  className={`brain-utility-link${item.id === active ? " is-active" : ""}`}
                   href={`#/${item.path}`}
                   aria-current={item.id === active ? "page" : undefined}
                 >

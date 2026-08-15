@@ -26,7 +26,8 @@
   font-size: clamp(1.8rem, 4vw, 2.35rem);
   font-weight: 700;
   line-height: 1.2;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--lt-tracking-tight);
+  word-break: keep-all;
 }
 
 .page-copy {
@@ -110,16 +111,18 @@
   background: hsl(var(--primary));
 }
 
-.premium-surface,
-:root[data-theme="light"] .premium-surface {
+.premium-surface {
   border: 1px solid hsl(var(--border));
-  border-radius: var(--experience-radius);
-  background: hsl(var(--surface));
-  box-shadow: none;
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-1);
 }
 
 .data-panel {
   border-color: hsl(var(--border) / 0.86);
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-1);
 }
 
 /* The one panel on a screen that is waiting on the person. `.data-panel` sets
@@ -266,14 +269,6 @@
 
 .product-empty-state {
   min-height: 10rem;
-  border-color: hsl(var(--border));
-  border-radius: var(--experience-radius);
-  background: hsl(var(--muted) / 0.28);
-}
-
-.product-empty-state > :first-child {
-  border: 0;
-  background: hsl(var(--primary) / 0.1);
 }
 
 .brain-shell-content :is(input, textarea, select) {
@@ -560,9 +555,9 @@
 
 .capture-station {
   border: 1px solid hsl(var(--primary) / 0.28);
-  border-radius: var(--experience-radius, 0.9rem);
-  background: hsl(var(--card));
-  box-shadow: var(--elev-2, 0 6px 20px hsl(var(--foreground) / 0.06));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-2);
 }
 
 .capture-station-head {
@@ -573,7 +568,8 @@
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--lt-tracking-tight);
+  word-break: keep-all;
 }
 
 .capture-station-head p {
@@ -598,13 +594,13 @@
   gap: 0.4rem;
   padding: 0.45rem 0.85rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
-  background: hsl(var(--background));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface-sunken));
   color: hsl(var(--muted-foreground));
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  transition: background var(--lt-dur-2) var(--lt-ease), color var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease);
 }
 
 .capture-method-switch > button:hover {
@@ -614,8 +610,9 @@
 
 .capture-method-switch > button.is-active {
   border-color: hsl(var(--primary) / 0.65);
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--primary));
+  background: var(--grad-cta);
+  color: hsl(var(--primary-foreground));
+  box-shadow: var(--elev-2);
 }
 
 .capture-station-body {
@@ -666,17 +663,19 @@
   gap: 0.65rem;
   padding: 0.8rem 1rem;
   border: 1px dashed hsl(var(--border));
-  border-radius: var(--experience-radius, 0.9rem);
-  background: hsl(var(--muted) / 0.25);
+  border-radius: var(--lt-radius-xl);
+  background: hsl(var(--surface-sunken));
+  box-shadow: var(--elev-inset);
   color: hsl(var(--muted-foreground));
   text-align: left;
   cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease;
+  transition: background var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease);
 }
 
 .memory-map-entry:hover {
   border-color: hsl(var(--primary) / 0.5);
   background: hsl(var(--primary) / 0.07);
+  box-shadow: var(--elev-1);
 }
 
 .memory-map-entry-copy {
@@ -706,12 +705,13 @@
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
-  background: hsl(var(--background));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-1);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  transition: background var(--lt-dur-2) var(--lt-ease), color var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease);
 }
 
 .memory-subview-back:hover {
@@ -733,9 +733,9 @@
   gap: 0.75rem;
   padding: 1rem 1.15rem;
   border: 1px solid hsl(var(--primary) / 0.28);
-  border-radius: var(--experience-radius, 0.9rem);
-  background: hsl(var(--card));
-  box-shadow: var(--elev-2, 0 6px 20px hsl(var(--foreground) / 0.06));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-2);
 }
 
 .library-active-main {
@@ -814,12 +814,12 @@
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
-  background: hsl(var(--background));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface));
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  transition: background var(--lt-dur-2) var(--lt-ease), color var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease);
 }
 
 .library-active-switch-options > button:hover:not(:disabled) {
@@ -834,6 +834,15 @@
 
 .library-active-error {
   margin: 0;
-  color: hsl(var(--destructive, 0 72% 51%));
+  color: hsl(var(--danger-ink));
   font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capture-method-switch > button,
+  .memory-map-entry,
+  .memory-subview-back,
+  .library-active-switch-options > button {
+    transition: none;
+  }
 }

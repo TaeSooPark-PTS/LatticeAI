@@ -7,16 +7,16 @@
 //! write door, and the plan keeps it there on purpose. Nothing in this module
 //! claims it.
 //!
-//! ## Reads native, writes delegated
+//! ## Reads and writes, both native
 //!
 //! Ten of the fourteen are reads and are ported against the same
 //! `knowledge_graph.sqlite` Python reads, through
 //! [`lattice_core::read::read_tables`] so the `LATTICEAI_KG_READ_V2` view
 //! selection is the one selection. The other four — curate, noise curation and
-//! the two promotion actions — mutate the graph, so they go over
-//! [`lattice_core::worker::WorkerSeamClient`] to `POST /worker/graph/mutate`
-//! under the op names WP-I6 whitelisted. There is no code path here that opens
-//! a write connection to the Brain.
+//! the two promotion actions — mutate the graph, and since v11.6.0 they run on
+//! [`lattice_core::graph_write::GraphWriter`] in this process, under the op
+//! names `memory_api::graph_native::dispatch` accepts. No write here crosses a
+//! process boundary.
 //!
 //! ## Scoping, and the two shapes it takes
 //!
@@ -124,9 +124,6 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/knowledge-graph/neighbors/*node_id"),
 ];
 
-/// The seam path every graph write in this family travels.
-pub const GRAPH_MUTATE_PATH: &str = "/worker/graph/mutate";
-
 /// `_kg_constants.GRAPH_SCHEMA_VERSION`.
 pub const GRAPH_SCHEMA_VERSION: i64 = 1;
 /// `schema.KG_SCHEMA_V2_VERSION`.
@@ -213,7 +210,7 @@ use handlers::{
     provenance_coverage_route, schema_route, search_route, stats_route,
 };
 use ingest::ingest;
-use writes::{curate, curate_noise, promotions_apply, promotions_reject, seam_error};
+use writes::{curate, curate_noise, promotions_apply, promotions_reject};
 
 pub use reads::{
     filter_scoped, list_documents, neighbors, pending_promotions, provenance_coverage, scope_sql,
@@ -566,18 +563,11 @@ mod tests {
     }
 
     #[test]
-    fn a_worker_refusal_keeps_its_status_and_sentence() {
-        let refusal = seam_error(WorkerSeamError::Rejected {
-            path: GRAPH_MUTATE_PATH.into(),
-            status: 403,
-            detail: r#"{"detail":"관리자 권한이 필요합니다."}"#.into(),
-        });
-        assert_eq!(refusal.status(), 403);
-        let transport = seam_error(WorkerSeamError::Transport {
-            path: GRAPH_MUTATE_PATH.into(),
-            detail: "connection refused".into(),
-        });
-        assert_eq!(transport.status(), 502);
+    fn a_graph_without_a_write_engine_is_a_503_about_the_host() {
+        // The route's own `require_graph` answers the graph-disabled 404; this
+        // is the other refusal — the graph is on and nothing can write it.
+        let refusal = crate::search_api::detail(503, writes::WRITE_ENGINE_UNCONFIGURED);
+        assert_eq!(refusal.status(), 503);
     }
 
     #[test]

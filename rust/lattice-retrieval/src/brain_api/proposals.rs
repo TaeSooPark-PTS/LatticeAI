@@ -52,12 +52,11 @@ use serde_json::{json, Value};
 use crate::memory_api::shared::BrainState;
 use crate::memory_api::wsos;
 
+use super::desk::{approve_item, create_review, open_keys, pending_synthesis, SYNTHESIS_SOURCE};
 use super::proactive;
 use super::pyutil;
 use super::quality::content_signature;
 use super::sampling;
-
-const SYNTHESIS_SOURCE: &str = "kg_change_digest";
 const CONTRADICTION_KIND: &str = "contradiction";
 const CONCEPT_KIND: &str = "concept_cluster";
 const EDGE_KIND: &str = "missing_edge";
@@ -111,7 +110,13 @@ pub async fn synthesize(
             .unwrap_or(0)
         + links.get("suppressed").and_then(Value::as_i64).unwrap_or(0);
 
-    let brief = brief_section(&sample, &counts, proposed_total, &state.now());
+    let brief = brief_section(
+        &sample,
+        &counts,
+        proposed_total,
+        &state.now(),
+        state.now_utc(),
+    );
     let (threshold, pending, due_in) = state.synthesis_trigger();
     let trigger = serde_json::json!({
         "threshold": threshold,
@@ -339,23 +344,30 @@ pub async fn resolve_contradiction(
             format!("review item {item_id} carries no memory pair to resolve"),
         ));
     }
-    // Graph stamps go through the seam; the review item is platform state.
+    // Python's order, and it matters: `review_queue.approve` must return
+    // before a single column is stamped, so a queue that refuses leaves the
+    // graph untouched. The status it answers with is the one reported
+    // (`str(approved.get("status") or "")`), not a hard-coded "approved".
+    let moment = state.now();
+    let status = approve_item(state, item_id);
     let args = serde_json::json!({
         "older_id": older_id,
         "newer_id": newer_id,
         "resolution": resolution,
-        "at": state.now(),
+        "at": moment,
     });
+    // Native since v11.7.0 (`GraphWriter::stamp_node_validity`). It used to be
+    // a `POST /worker/graph/mutate` the worker stopped serving in v11.6.0, so
+    // every resolution silently reported `stamps: []`.
     let stamps = match state.mutate("stamp_contradiction", args).await {
         Ok(value) => value,
         Err(_) => Value::Array(Vec::new()),
     };
-    approve_item(state, item_id);
     let mut out = OrderedMap::new();
     out.insert("item_id", Value::String(item_id.to_string()));
     out.insert("resolution", Value::String(resolution.to_string()));
-    out.insert("status", Value::String("approved".to_string()));
-    out.insert("applied_at", Value::String(state.now()));
+    out.insert("status", Value::String(status));
+    out.insert("applied_at", Value::String(moment));
     out.insert("stamps", stamps);
     out.insert("available", Value::Bool(true));
     Ok(out)
@@ -393,7 +405,13 @@ pub async fn proactive_brief(
         "links": by_kind.get(EDGE_KIND).copied().unwrap_or(0),
         "consolidation": by_kind.get(CONSOLIDATION_KIND).copied().unwrap_or(0),
     });
-    let brief = brief_section(&sample, &counts, pending.len() as i64, &state.now());
+    let brief = brief_section(
+        &sample,
+        &counts,
+        pending.len() as i64,
+        &state.now(),
+        state.now_utc(),
+    );
     let items: Vec<Value> = pending
         .iter()
         .take(5)
@@ -441,13 +459,16 @@ pub async fn proactive_brief(
     section
 }
 
+/// `now_utc` is UTC epoch seconds; the headline prints a 7-day count, which is
+/// a threshold. See `BrainState::with_utc_clock`.
 fn brief_section(
     sample: &sampling::Sample,
     counts: &Value,
     review_total: i64,
     now: &str,
+    now_utc: f64,
 ) -> OrderedMap {
-    let recent = recent_window(&sample.nodes);
+    let recent = recent_window(&sample.nodes, now_utc);
     // The four digest kinds are what the *lines* report. The headline's
     // "검토할 거리" is every pending review item (including self_model_fact).
     let headline = format!(
@@ -492,8 +513,8 @@ fn brief_section(
     out
 }
 
-fn recent_window(nodes: &[Value]) -> i64 {
-    let cutoff = sampling::now_utc_secs() - 7.0 * 86_400.0;
+fn recent_window(nodes: &[Value], now_utc: f64) -> i64 {
+    let cutoff = now_utc - 7.0 * 86_400.0;
     nodes
         .iter()
         .filter(|node| {
@@ -628,7 +649,7 @@ fn propose_consolidation(
     sample: &sampling::Sample,
 ) -> OrderedMap {
     let stats = std::collections::HashMap::new();
-    let report = proactive::importance_report(sample, &stats, &state.now());
+    let report = proactive::importance_report(sample, &stats, &state.now(), state.now_utc());
     let candidates: Vec<Value> = report
         .get("candidates")
         .and_then(Value::as_array)
@@ -842,138 +863,4 @@ fn no_queue(detail: &str, now: &str) -> OrderedMap {
     out.insert("detail", Value::String(detail.to_string()));
     out.insert("generated_at", Value::String(now.to_string()));
     out
-}
-
-fn open_keys(state: &BrainState, workspace_id: Option<&str>) -> BTreeSet<String> {
-    let doc = wsos::load(state.store(), state.data_dir());
-    pending_synthesis(&doc, workspace_id)
-        .iter()
-        .filter_map(|item| {
-            item.get("payload")
-                .and_then(|p| p.get("proposal_key").or_else(|| p.get("key")))
-                .and_then(Value::as_str)
-                .map(str::to_string)
-                .or_else(|| {
-                    item.get("kind")
-                        .and_then(Value::as_str)
-                        .map(|kind| format!("{kind}:{}", pyutil::text_of(item.get("title"))))
-                })
-        })
-        .collect()
-}
-
-fn pending_synthesis(state: &Value, workspace_id: Option<&str>) -> Vec<Value> {
-    wsos::scoped(
-        state
-            .get("review_items")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default(),
-        workspace_id,
-    )
-    .into_iter()
-    .filter(|item| item.get("source").and_then(Value::as_str) == Some(SYNTHESIS_SOURCE))
-    .filter(|item| {
-        let status = item
-            .get("effective_status")
-            .or_else(|| item.get("status"))
-            .and_then(Value::as_str)
-            .unwrap_or("pending");
-        status == "pending"
-    })
-    .collect()
-}
-
-fn create_review(
-    state: &BrainState,
-    title: &str,
-    summary: &str,
-    kind: &str,
-    key: &str,
-    mut payload: Value,
-    user_email: &str,
-    workspace_id: Option<&str>,
-) -> Option<Value> {
-    if title.trim().is_empty() {
-        return None;
-    }
-    if let Some(object) = payload.as_object_mut() {
-        object.insert("proposal_key".into(), json!(key));
-        object.insert("summary_ko".into(), json!(summary));
-    }
-    let mut doc = wsos::load(state.store(), state.data_dir());
-    let now = state.now();
-    let workspace = workspace_id
-        .filter(|v| !v.is_empty())
-        .unwrap_or(wsos::DEFAULT_WORKSPACE_ID)
-        .to_string();
-    let seed = serde_json::json!([title, SYNTHESIS_SOURCE, kind, user_email, now]);
-    let digest = {
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(seed.to_string().as_bytes());
-        let hex: String = hasher
-            .finalize()
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect();
-        hex.chars().take(16).collect::<String>()
-    };
-    let mut item_id = format!("review-{digest}");
-    let existing: BTreeSet<String> = doc
-        .get("review_items")
-        .and_then(Value::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| item.get("id").and_then(Value::as_str).map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default();
-    let mut seq = 0u32;
-    while existing.contains(&item_id) {
-        seq += 1;
-        item_id = format!("review-{digest}{seq}");
-    }
-    let item = serde_json::json!({
-        "id": item_id,
-        "status": "pending",
-        "title": title,
-        "summary": summary,
-        "source": SYNTHESIS_SOURCE,
-        "kind": kind,
-        "payload": payload,
-        "provenance": {"pipeline": "brain-synthesis", "proposal_key": key},
-        "effective_status": "pending",
-        "snoozed_until": null,
-        "user_email": if user_email.is_empty() { Value::Null } else { Value::String(user_email.to_string()) },
-        "workspace_id": workspace,
-        "created_at": now,
-        "updated_at": now,
-    });
-    if let Some(object) = doc.as_object_mut() {
-        let items = object
-            .entry("review_items")
-            .or_insert_with(|| Value::Array(Vec::new()));
-        if let Some(list) = items.as_array_mut() {
-            list.push(item.clone());
-        }
-    }
-    wsos::save_state(state.store(), state.data_dir(), &doc).ok()?;
-    Some(item)
-}
-
-fn approve_item(state: &BrainState, item_id: &str) {
-    let mut doc = wsos::load(state.store(), state.data_dir());
-    if let Some(items) = doc.get_mut("review_items").and_then(Value::as_array_mut) {
-        for item in items {
-            if item.get("id").and_then(Value::as_str) == Some(item_id) {
-                if let Some(object) = item.as_object_mut() {
-                    object.insert("status".into(), Value::String("approved".into()));
-                    object.insert("updated_at".into(), Value::String(state.now()));
-                }
-            }
-        }
-    }
-    let _ = wsos::save_state(state.store(), state.data_dir(), &doc);
 }

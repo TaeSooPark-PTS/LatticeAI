@@ -1673,13 +1673,27 @@
       "request_body": {
         "until": "@ts"
       },
-      "status": 500,
+      "status": 200,
       "response_headers": {
-        "content-type": "text/plain; charset=utf-8"
+        "content-type": "application/json"
       },
       "response_body": {
-        "@text": "Internal Server Error"
-      }
+        "id": "$review_snooze",
+        "status": "snoozed",
+        "effective_status": "snoozed",
+        "title": "Fixture review to snooze",
+        "summary": "Will be snoozed.",
+        "source": "agent_followup",
+        "kind": "suggestion",
+        "payload": {},
+        "provenance": {},
+        "snoozed_until": "2099-01-01T00:00:00+00:00",
+        "user_email": "owner@lattice.test",
+        "workspace_id": "personal",
+        "created_at": "@ts",
+        "updated_at": "@ts"
+      },
+      "note": "divergence-from-oracle (v11.7.0): the Python oracle answered 500 here — an offset-aware `until` was written and then compared against a naive clock, so the TypeError escaped after the write had landed and the item stayed unreachable. Aware stamps are now normalised to UTC and the snooze succeeds."
     },
     {
       "family": "review_queue.py",
@@ -2836,13 +2850,14 @@
       "request_body": {
         "reason": "again"
       },
-      "status": 500,
+      "status": 409,
       "response_headers": {
-        "content-type": "text/plain; charset=utf-8"
+        "content-type": "application/json"
       },
       "response_body": {
-        "@text": "Internal Server Error"
-      }
+        "detail": "cannot 'dismiss' a review item in status 'dismissed'"
+      },
+      "note": "divergence-from-oracle (v11.7.0): the Python oracle answered 500 (an uncaught InvalidReviewTransition). Rejecting an already-rejected proposal is a conflict, and it now answers the same 409 detail the sibling review dismiss conflict answers — reject is a dismiss underneath, hence the wording."
     },
     {
       "family": "change_proposals.py",

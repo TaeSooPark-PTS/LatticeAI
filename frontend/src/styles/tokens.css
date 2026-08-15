@@ -5,37 +5,48 @@
   /* ── 먹빛 밤 (ink night) ──────────────────────────────────────────────
    * 인터페이스는 차분한 먹(잉크 네이비)과 옥빛(jade), 브레인만 따뜻한
    * 금빛으로 살아 있다. 라이트 테마와 같은 악센트 DNA를 공유한다.
-   * 토큰은 항상 hsl(var(--token)) 로 소비한다 — 값은 H S% L% 트리플. */
+   * 토큰은 항상 hsl(var(--token)) 로 소비한다 — 값은 HSL 트리플.
+   * 11.7.0: 표면 사다리 · 고도 · 그라데이션 · 테두리 · 타입 스케일을
+   * 한 어휘로 모은다. 글래스는 쓰지 않는다. */
 
-  /* surfaces */
-  --bg: 90 4% 9%;
-  --bg-elevated: 100 5% 12%;
-  --background: 90 4% 9%;
-  --surface: 100 5% 12%;
-  --surface-glass: 100 5% 12% / 0.96;
-  --card: 100 5% 12%;
+  /* surfaces — canvas → resting → raised → overlay */
+  --bg: 92 6% 8%;
+  --bg-elevated: 100 6% 11%;
+  --background: 92 6% 8%;
+  --surface: 100 6% 12%;
+  --surface-raised: 100 6% 14%;
+  --surface-sunken: 92 6% 7%;
+  --surface-overlay: 100 7% 13%;
+  --surface-glass: 100 6% 12%; /* opaque on purpose — no glass */
+  --card: 100 6% 12%;
   --card-foreground: 43 28% 93%;
-  --muted: 96 5% 17%;
-  --input: 90 6% 24%; /* input border tone (shadcn convention) */
+  --muted: 96 6% 17%;
+  --input: 90 6% 24%;
 
   /* text — 따뜻한 종이색 텍스트가 두 테마를 잇는다 */
-  --fg: 43 28% 93%;
-  --fg-muted: 48 8% 67%;
-  --foreground: 43 28% 93%;
-  --muted-foreground: 48 8% 67%;
+  --fg: 43 26% 94%;
+  --fg-muted: 46 8% 66%;
+  --fg-faint: 46 6% 50%;
+  --faint: 46 6% 50%;
+  --foreground: 43 26% 94%;
+  --muted-foreground: 46 8% 66%;
 
   /* interactive — 옥빛(jade) */
-  --primary: 163 37% 52%;
-  --primary-foreground: 100 5% 10%;
-  --secondary: 96 5% 18%;
-  --secondary-foreground: 43 28% 93%;
-  --accent: 163 37% 52%;
-  --ring: 163 37% 52%;
-  --border: 90 6% 21%;
+  --primary: 163 38% 52%;
+  --primary-foreground: 100 8% 9%;
+  --secondary: 96 6% 18%;
+  --secondary-foreground: 43 26% 94%;
+  --accent: 163 38% 52%;
+  --ring: 163 38% 52%;
+  --border: 90 7% 20%;
+  --border-subtle: 90 6% 16%;
+  --border-strong: 90 8% 28%;
 
   /* the living Brain — 금빛 시그니처 */
-  --brain-core: 36 59% 56%;
-  --brain-halo: 40 54% 70%;
+  --brain-core: 36 60% 56%;
+  --brain-halo: 40 54% 72%;
+  --brain-shade: 92 10% 6%;
+  --brain-sheen: 40 55% 96%;
 
   /* knowledge domains */
   --memory: 168 48% 58%;
@@ -52,6 +63,31 @@
   --danger: 8 70% 64%;
   --destructive: 8 70% 64%;
   --destructive-foreground: 30 40% 97%;
+  --warning-ink: 38 72% 68%;
+  --danger-ink: 8 72% 70%;
+
+  /* shadow ink — compose as hsl(var(--shadow-ink) / α) */
+  --shadow-ink: 92 12% 3%;
+  --scrim: 92 12% 3% / 0.42;
+
+  /* elevation — four steps + inset + focus. Theme-aware via --shadow-ink. */
+  --elev-0: none;
+  --elev-1: 0 1px 2px hsl(var(--shadow-ink) / 0.22), 0 4px 14px hsl(var(--shadow-ink) / 0.18);
+  --elev-2: 0 2px 6px hsl(var(--shadow-ink) / 0.2), 0 16px 36px hsl(var(--shadow-ink) / 0.28);
+  --elev-3: 0 8px 22px hsl(var(--shadow-ink) / 0.24), 0 28px 56px hsl(var(--shadow-ink) / 0.34);
+  --elev-4: 0 16px 40px hsl(var(--shadow-ink) / 0.3), 0 40px 84px hsl(var(--shadow-ink) / 0.42);
+  --elev-inset: inset 0 1px 2px hsl(var(--shadow-ink) / 0.34);
+  --elev-ring: 0 0 0 3px hsl(var(--primary) / 0.2);
+  --elev-focus: 0 0 0 1px hsl(var(--primary) / 0.5), 0 0 0 4px hsl(var(--primary) / 0.16);
+
+  /* gradients — full background values, not HSL triples */
+  --grad-field: radial-gradient(118% 78% at 50% -8%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 56%);
+  --grad-surface: linear-gradient(180deg, hsl(var(--surface-raised)) 0%, hsl(var(--surface)) 100%);
+  --grad-hero: radial-gradient(ellipse at 50% 8%, hsl(var(--brain-core) / 0.11) 0%, hsl(var(--primary) / 0.05) 44%, transparent 72%);
+  --grad-accent: linear-gradient(180deg, hsl(var(--primary) / 0.14), transparent);
+  --grad-brain: radial-gradient(circle at 32% 28%, hsl(var(--brain-halo) / 0.55), hsl(var(--brain-core) / 0.14) 72%);
+  --grad-cta: linear-gradient(180deg, color-mix(in srgb, hsl(var(--primary)) 86%, white), hsl(var(--primary)));
+  --grad-jade-wash: linear-gradient(135deg, hsl(var(--primary) / 0.1), transparent 58%);
 
   /* layout & reading measure tokens (R2) */
   --lt-measure-text: 68ch;
@@ -75,15 +111,46 @@
   --lt-gap-section: var(--lt-space-7);
 
   /* typography scale */
+  --lt-type-display: 2.25rem;
   --lt-type-hero: 1.75rem;
   --lt-type-title: 1.25rem;
+  --lt-type-lead: 1.0625rem;
   --lt-type-body: 0.9375rem;
   --lt-type-small: 0.8125rem;
+  --lt-type-caption: 0.75rem;
+  --lt-type-label: 0.6875rem;
+  --lt-leading-tight: 1.18;
+  --lt-leading-snug: 1.35;
+  --lt-leading-body: 1.6;
+  --lt-leading-loose: 1.72;
+  --lt-tracking-tight: -0.018em;
+  --lt-tracking-wide: 0.04em;
 
   /* radius */
+  --lt-radius-xs: 4px;
   --lt-radius-sm: 6px;
   --lt-radius-md: 8px;
   --lt-radius-lg: 12px;
+  --lt-radius-xl: 16px;
+  --lt-radius-2xl: 20px;
+  --lt-radius-pill: 999px;
+  --radius-sm: var(--lt-radius-sm);
+  --radius-md: var(--lt-radius-lg);
+  --radius-lg: var(--lt-radius-xl);
+
+  /* motion */
+  --lt-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --lt-dur-1: 90ms;
+  --lt-dur-2: 160ms;
+  --lt-dur-3: 240ms;
+  --lt-dur-4: 420ms;
+
+  /* stacking */
+  --lt-z-base: 1;
+  --lt-z-sticky: 20;
+  --lt-z-header: 40;
+  --lt-z-overlay: 60;
+  --lt-z-toast: 90;
 }
 
 :root[data-theme="light"] {
@@ -93,34 +160,43 @@
    * 높은 대비를 유지해 모든 연령대가 읽기 편하다. */
 
   /* surfaces */
-  --bg: 43 30% 95%;
-  --bg-elevated: 40 100% 99%;
-  --background: 43 30% 95%;
-  --surface: 40 100% 99%;
-  --surface-glass: 40 100% 99% / 0.96;
-  --card: 40 100% 99%;
-  --card-foreground: 40 9% 13%;
-  --muted: 42 24% 91%;
-  --input: 41 16% 78%; /* input border tone (shadcn convention) */
+  --bg: 42 28% 94%;
+  --bg-elevated: 40 70% 98%;
+  --background: 42 28% 94%;
+  --surface: 40 80% 99%;
+  --surface-raised: 40 100% 100%;
+  --surface-sunken: 42 24% 92%;
+  --surface-overlay: 40 80% 99%;
+  --surface-glass: 40 80% 99%;
+  --card: 40 80% 99%;
+  --card-foreground: 40 10% 12%;
+  --muted: 42 22% 91%;
+  --input: 41 16% 76%;
 
   /* text — 먹 */
-  --fg: 40 9% 13%;
-  --fg-muted: 41 7% 41%;
-  --foreground: 40 9% 13%;
-  --muted-foreground: 41 7% 41%;
+  --fg: 40 10% 12%;
+  --fg-muted: 41 8% 38%;
+  --fg-faint: 41 6% 50%;
+  --faint: 41 6% 50%;
+  --foreground: 40 10% 12%;
+  --muted-foreground: 41 8% 38%;
 
   /* interactive — 짙은 옥빛 */
-  --primary: 167 45% 28%;
+  --primary: 167 46% 27%;
   --primary-foreground: 40 40% 98%;
-  --secondary: 43 22% 91%;
+  --secondary: 43 20% 91%;
   --secondary-foreground: 228 22% 16%;
-  --accent: 167 45% 28%;
-  --ring: 167 45% 34%;
-  --border: 41 22% 86%;
+  --accent: 167 46% 27%;
+  --ring: 167 46% 32%;
+  --border: 41 18% 84%;
+  --border-subtle: 41 16% 90%;
+  --border-strong: 41 16% 74%;
 
   /* the living Brain — 금빛 시그니처 */
-  --brain-core: 36 59% 49%;
-  --brain-halo: 38 57% 66%;
+  --brain-core: 36 59% 47%;
+  --brain-halo: 38 57% 62%;
+  --brain-shade: 35 22% 28%;
+  --brain-sheen: 40 80% 99%;
 
   /* knowledge domains */
   --memory: 172 48% 32%;
@@ -137,4 +213,19 @@
   --danger: 8 64% 42%;
   --destructive: 8 64% 42%;
   --destructive-foreground: 40 40% 98%;
+  --warning-ink: 34 82% 32%;
+  --danger-ink: 8 64% 42%;
+
+  --shadow-ink: 35 18% 22%;
+  --scrim: 35 16% 12% / 0.28;
+
+  --elev-1: 0 1px 2px hsl(var(--shadow-ink) / 0.05), 0 4px 12px hsl(var(--shadow-ink) / 0.06);
+  --elev-2: 0 2px 6px hsl(var(--shadow-ink) / 0.06), 0 14px 28px hsl(var(--shadow-ink) / 0.09);
+  --elev-3: 0 8px 20px hsl(var(--shadow-ink) / 0.08), 0 24px 48px hsl(var(--shadow-ink) / 0.12);
+  --elev-4: 0 16px 36px hsl(var(--shadow-ink) / 0.1), 0 36px 72px hsl(var(--shadow-ink) / 0.16);
+  --elev-inset: inset 0 1px 2px hsl(var(--shadow-ink) / 0.08);
+
+  --grad-field: radial-gradient(118% 78% at 50% -8%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 58%);
+  --grad-hero: radial-gradient(ellipse at 50% 8%, hsl(var(--brain-core) / 0.08) 0%, hsl(var(--primary) / 0.04) 44%, transparent 72%);
+  --grad-cta: linear-gradient(180deg, color-mix(in srgb, hsl(var(--primary)) 82%, white), hsl(var(--primary)));
 }

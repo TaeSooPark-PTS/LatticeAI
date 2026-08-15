@@ -502,6 +502,100 @@ async fn extract_failure_is_best_effort_the_turn_still_lands() {
         concepts, 0,
         "a failed extract leaves the concept subgraph empty"
     );
+}
+
+#[tokio::test]
+async fn agreeing_embedder_supplies_chunk_vectors() {
+    let data = tempfile::tempdir().expect("data");
+    seed_users(data.path());
+    let auth = auth_for(data.path());
+    let db = data.path().join("knowledge_graph.sqlite");
+    let store = Arc::new(lattice_core::db::Store::open(&db).expect("store"));
+    let graph = lattice_core::graph_write::GraphWriter::open(
+        store,
+        data.path().join("knowledge_graph_blobs"),
+    )
+    .expect("graph");
+    let origin = {
+        let app = Router::new()
+            .route(
+                "/worker/extract",
+                post(|Json(_body): Json<Value>| async move {
+                    axum::Json(json!({
+                        "concepts": [],
+                        "triples": [],
+                        "semantic": [],
+                    }))
+                }),
+            )
+            .route(
+                "/worker/embed",
+                post(|Json(body): Json<Value>| async move {
+                    let model = lattice_core::embeddings::LocalEmbeddingModel::from_env();
+                    let vectors: Vec<Vec<f64>> = body["texts"]
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default()
+                        .iter()
+                        .map(|text| model.embed(text.as_str().unwrap_or("")))
+                        .collect();
+                    axum::Json(json!({
+                        "vectors": vectors,
+                        "dim": model.dim(),
+                        "provider": "hash",
+                        "model_id": model.model_id(),
+                        "kind": "passage",
+                    }))
+                }),
+            );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind");
+        let addr = listener.local_addr().expect("addr");
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, app.into_make_service()).await;
+        });
+        format!("http://{addr}")
+    };
+    let state = ChatState::new(
+        auth,
+        ChatConfig {
+            data_dir: data.path().to_path_buf(),
+            graph_db: Some(db.clone()),
+            agent_root: data.path().join("agent"),
+            ..ChatConfig::default()
+        },
+    )
+    .with_worker(ChatWorker::new(&origin).expect("worker"))
+    .with_graph(graph);
+
+    let turn = write_chat_turn(
+        &state,
+        "user",
+        "Lattice AI uses Graph RAG for retrieval.",
+        &meta("conv-chunks"),
+    )
+    .await;
+    assert!(turn.stored);
+    let ingested = turn.ingested.expect("graph on");
+    assert_eq!(ingested["status"], "ok");
+
+    let conn = rusqlite::Connection::open(&db).expect("db");
+    let chunks: i64 = conn
+        .query_row("SELECT COUNT(*) FROM chunks", [], |row| row.get(0))
+        .expect("chunks");
+    assert!(chunks >= 1, "a chat turn must write chunk rows");
+    let model: String = conn
+        .query_row(
+            "SELECT embedding_model FROM vector_embeddings WHERE item_type='chunk' LIMIT 1",
+            [],
+            |row| row.get(0),
+        )
+        .expect("chunk vector");
+    assert_eq!(
+        model,
+        lattice_core::embeddings::LocalEmbeddingModel::from_env().model_id()
+    );
     let messages: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM nodes WHERE type='Message'",

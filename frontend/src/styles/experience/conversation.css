@@ -105,9 +105,9 @@
 .brain-chat-home-card.has-messages > .brain-composer {
   width: 100%;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--surface));
-  box-shadow: var(--experience-shadow);
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-2);
   padding: 0.55rem;
 }
 
@@ -137,7 +137,7 @@
 
 .brain-composer:focus-within {
   border-color: hsl(var(--primary) / 0.62);
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08), var(--experience-shadow);
+  box-shadow: var(--elev-focus), var(--elev-2);
 }
 
 .brain-composer-actions {

@@ -12,8 +12,10 @@
 //! node is destructive and stays behind an explicit user flow.
 //!
 //! What happens to the diff is not this module's business. Detection stops
-//! here; [`crate::worker::WorkerClient`] hands the content to the Python worker,
-//! which remains the single writer of the graph.
+//! here; [`crate::worker::NoteIngestor`] writes the content into the Brain
+//! through this process's own `GraphWriter`. Until v11.7.0 that hand-off was a
+//! `POST` to the Python worker, which had stopped serving the route — so the
+//! scanner kept reporting healthy scans while nothing was being remembered.
 
 #![allow(
     dead_code,

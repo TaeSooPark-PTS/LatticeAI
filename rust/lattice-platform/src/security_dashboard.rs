@@ -1,8 +1,9 @@
 //! Security & audit command center — native (v11.6.0, WP-R2).
 //!
 //! Port of `latticeai/api/security_dashboard.py`. Spreadsheet export is the
-//! one branch that must not grow a Rust xlsx crate: it delegates to the
-//! worker's `POST /tools/create_xlsx` via [`WorkerSeamClient`]. The document
+//! one branch that must not grow a Rust xlsx crate: it asks the compute seam
+//! (`POST /worker/render/xlsx`) for the workbook's bytes via
+//! [`WorkerSeamClient`] and writes the response itself. The document
 //! parser/generator matrix stays in Python.
 
 #![allow(

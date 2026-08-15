@@ -306,8 +306,8 @@ describe("ReviewCard feedback", () => {
 
   it("shows a plain success with no detail", () => {
     const { container } = renderFeedback(item(), { tone: "success", message: "실행됨" });
-    expect(container.querySelector(".border-emerald-500\\/30")).toBeTruthy();
-    expect(container.querySelector(".border-amber-500\\/30")).toBeNull();
+    expect(container.querySelector(".review-card-feedback.is-ok")).toBeTruthy();
+    expect(container.querySelector(".review-card-feedback.is-error")).toBeNull();
   });
 
   it("swaps in the rebase recovery when a proposal approval hit the 409 guard", () => {

@@ -46,8 +46,7 @@
 )]
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use axum::body::Body;
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use lattice_auth::response::json_response;
 use lattice_auth::{Identity, OrderedMap};
@@ -129,17 +128,6 @@ pub(crate) fn json_ok(body: &OrderedMap) -> Response {
 pub(crate) fn json_status(status: StatusCode, body: &Value) -> Response {
     let text = serde_json::to_string(body).unwrap_or_else(|_| "{\"detail\":\"error\"}".into());
     json_response(status, &text, None)
-}
-
-pub(crate) fn internal_server_error() -> Response {
-    Response::builder()
-        .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .header(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("text/plain; charset=utf-8"),
-        )
-        .body(Body::from("Internal Server Error"))
-        .unwrap_or_else(|_| Response::new(Body::from("Internal Server Error")))
 }
 
 pub(crate) fn parse_object(bytes: &[u8]) -> Result<serde_json::Map<String, Value>, Response> {
@@ -268,30 +256,24 @@ fn civil_from_days(mut days: i64) -> (i32, u32, u32) {
     (y as i32, m as u32, d as u32)
 }
 
+/// One parsed ISO-8601 stamp.
+///
+/// `naive_secs` is the wall-clock reading with the offset *ignored*, which is
+/// what a naive `datetime.fromisoformat` produces; `utc_secs` is the instant
+/// the stamp actually names. They differ only for an offset-aware value, and
+/// keeping both is why an aware `snoozed_until` can be compared against the
+/// naive clock instead of raising (v11.6.0 answered 500 here).
 pub(crate) struct ParsedIso {
     pub(crate) aware: bool,
     pub(crate) naive_secs: i64,
+    pub(crate) utc_secs: i64,
 }
 
 pub(crate) fn parse_iso(value: &str) -> Option<ParsedIso> {
     if value.is_empty() {
         return None;
     }
-    let aware = value.contains('+') || value.ends_with('Z') || value.matches('-').count() > 2;
-    let core = value
-        .trim_end_matches('Z')
-        .split('+')
-        .next()
-        .unwrap_or(value);
-    let core = if let Some(idx) = core.rfind('-') {
-        if idx > 9 {
-            &core[..idx]
-        } else {
-            core
-        }
-    } else {
-        core
-    };
+    let (core, offset, aware) = split_offset(value);
     let (date, time) = core.split_once('T').or_else(|| core.split_once(' '))?;
     let mut d = date.split('-');
     let year: i32 = d.next()?.parse().ok()?;
@@ -302,10 +284,50 @@ pub(crate) fn parse_iso(value: &str) -> Option<ParsedIso> {
     let min: u32 = t.next()?.parse().ok()?;
     let sec_s = t.next().unwrap_or("0");
     let sec: u32 = sec_s.split('.').next().unwrap_or("0").parse().ok()?;
+    let naive_secs = ymd_hms_to_secs(year, month, day, hour, min, sec);
     Some(ParsedIso {
         aware,
-        naive_secs: ymd_hms_to_secs(year, month, day, hour, min, sec),
+        naive_secs,
+        utc_secs: naive_secs - offset,
     })
+}
+
+/// Split `<wall clock>` from its trailing UTC offset: the reading, the offset
+/// in seconds, and whether the stamp carried an offset at all.
+///
+/// `Z` and `+HH:MM` are unambiguous. A trailing `-HH:MM` is only an offset when
+/// the dash sits past the date (index > 9), which is the same guard the naive
+/// parse has always used — `2099-01-01T00:00:00` must not lose its day.
+fn split_offset(value: &str) -> (&str, i64, bool) {
+    if let Some(core) = value.strip_suffix('Z').or_else(|| value.strip_suffix('z')) {
+        return (core, 0, true);
+    }
+    let sign_at = value
+        .rfind('+')
+        .map(|idx| (idx, 1i64))
+        .or_else(|| value.rfind('-').filter(|idx| *idx > 9).map(|idx| (idx, -1)));
+    let Some((idx, sign)) = sign_at else {
+        return (value, 0, false);
+    };
+    let (core, raw) = value.split_at(idx);
+    let digits: String = raw[1..].chars().filter(char::is_ascii_digit).collect();
+    let part =
+        |range: std::ops::Range<usize>| digits.get(range).and_then(|text| text.parse::<i64>().ok());
+    let offset = match digits.len() {
+        // `+HH`
+        1 | 2 => digits.parse::<i64>().ok().map(|hours| hours * 3600),
+        // `+HHMM` / `+HH:MM`, and `+HHMMSS`, which Python also accepts.
+        4 | 6 => match (part(0..2), part(2..4)) {
+            (Some(hours), Some(minutes)) => {
+                Some(hours * 3600 + minutes * 60 + part(4..6).unwrap_or(0))
+            }
+            _ => None,
+        },
+        _ => None,
+    };
+    // An unreadable offset is treated as absent rather than guessed at, so the
+    // stamp still parses as the wall clock it plainly reads as.
+    (core, sign * offset.unwrap_or(0), offset.is_some())
 }
 
 fn ymd_hms_to_secs(year: i32, month: u32, day: u32, hour: u32, min: u32, sec: u32) -> i64 {
@@ -364,5 +386,70 @@ pub(crate) fn map_worker_error(error: WorkerSeamError) -> Response {
         )
     } else {
         http_detail(StatusCode::BAD_GATEWAY, &error.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parsed(text: &str) -> ParsedIso {
+        parse_iso(text).unwrap_or_else(|| panic!("{text} must parse"))
+    }
+
+    #[test]
+    fn a_naive_stamp_reads_as_itself_in_both_readings() {
+        let value = parsed("2099-01-01T00:00:00");
+        assert!(!value.aware);
+        assert_eq!(value.naive_secs, value.utc_secs);
+        assert_eq!(value.naive_secs, 4_070_908_800);
+        // Space separator and fractional seconds, as Python accepts them.
+        assert_eq!(parsed("2099-01-01 00:00:00.500").naive_secs, 4_070_908_800);
+        // Minutes only.
+        assert_eq!(parsed("2099-01-01T00:00").naive_secs, 4_070_908_800);
+    }
+
+    #[test]
+    fn an_offset_is_removed_from_the_wall_clock_to_give_the_instant() {
+        let utc = parsed("2099-01-01T00:00:00+00:00");
+        assert!(utc.aware);
+        assert_eq!(utc.utc_secs, 4_070_908_800);
+        assert_eq!(utc.utc_secs, utc.naive_secs);
+
+        // 09:00 in +09:00 is midnight UTC; 19:00 the previous day in -05:00 is
+        // the same instant. Both used to be a 500 rather than a comparison.
+        for text in [
+            "2099-01-01T09:00:00+09:00",
+            "2099-01-01T09:00:00+0900",
+            "2098-12-31T19:00:00-05:00",
+        ] {
+            let value = parsed(text);
+            assert!(value.aware, "{text}");
+            assert_eq!(value.utc_secs, 4_070_908_800, "{text}");
+            assert_ne!(value.naive_secs, value.utc_secs, "{text}");
+        }
+
+        for text in ["2099-01-01T00:00:00Z", "2099-01-01T00:00:00z"] {
+            let value = parsed(text);
+            assert!(value.aware, "{text}");
+            assert_eq!(value.utc_secs, 4_070_908_800, "{text}");
+        }
+        // Seconds in the offset, and an hours-only offset.
+        assert_eq!(parsed("2099-01-01T00:00:30+000030").utc_secs, 4_070_908_800);
+        assert_eq!(parsed("2099-01-01T09:00:00+09").utc_secs, 4_070_908_800);
+    }
+
+    #[test]
+    fn an_unreadable_offset_leaves_the_wall_clock_alone_and_junk_does_not_parse() {
+        // Five digits is not an offset shape; the reading stays the wall clock
+        // rather than becoming a guess, and the stamp does not claim to be
+        // offset-aware when nothing readable said so.
+        let value = parsed("2099-01-01T00:00:00+09000");
+        assert_eq!(value.utc_secs, value.naive_secs);
+        assert!(!value.aware);
+        assert!(parse_iso("").is_none());
+        assert!(parse_iso("next tuesday").is_none());
+        assert!(parse_iso("2099-01-01").is_none());
+        assert!(parse_iso("2099-13-XXT00:00:00").is_none());
     }
 }

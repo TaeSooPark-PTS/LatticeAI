@@ -69,7 +69,6 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use lattice_auth::{AuthState, OrderedMap};
 use lattice_core::db::tables::state_files;
 use lattice_core::db::RuntimeConfig;
-use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
@@ -91,23 +90,23 @@ const HEADER_TIMESTAMP: &str = "x-lattice-timestamp";
 const HEADER_NONCE: &str = "x-lattice-nonce";
 const HEADER_SIGNATURE: &str = "x-lattice-signature";
 
-/// Router state: auth, the data dir, and an optional graph-import seam.
+/// Router state: auth, the data dir, and the native graph writer.
+///
+/// There is no worker seam here any more: a received bundle is imported by
+/// [`lattice_core::graph_write::GraphWriter::import_graph_data`], and the
+/// `/worker/graph/mutate` delegation that used to stand behind it was retired
+/// with the Python write door in v11.6.0.
 #[derive(Clone)]
 pub struct NetworkState {
     pub auth: Arc<AuthState>,
     pub config: Arc<RuntimeConfig>,
     pub identity: Arc<DeviceIdentity>,
     pub peers: Arc<PeerRegistry>,
-    pub seam: Option<WorkerSeamClient>,
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
 }
 
 impl NetworkState {
-    pub fn new(
-        auth: Arc<AuthState>,
-        config: RuntimeConfig,
-        seam: Option<WorkerSeamClient>,
-    ) -> Self {
+    pub fn new(auth: Arc<AuthState>, config: RuntimeConfig) -> Self {
         let identity = Arc::new(DeviceIdentity::load_or_create(
             &config.state_file(state_files::DEVICE_IDENTITY),
         ));
@@ -119,7 +118,6 @@ impl NetworkState {
             config: Arc::new(config),
             identity,
             peers,
-            seam,
             graph: None,
         }
     }
@@ -289,38 +287,11 @@ async fn network_receive(
                     Ok(Err(err)) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
                     Err(err) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
                 }
-            } else if let Some(seam) = &state.seam {
-                match seam
-                    .post_json(
-                        "/worker/graph/mutate",
-                        &json!({"op":"import_graph_data","args":{"data": artifact, "mode": "merge"}}),
-                    )
-                    .await
-                {
-                    Ok(result) => {
-                        let mut map = OrderedMap::new();
-                        if let Some(obj) = result.get("result").and_then(Value::as_object) {
-                            for (k, v) in obj {
-                                map.insert(k.clone(), v.clone());
-                            }
-                        }
-                        map.insert(
-                            "peer",
-                            json!({
-                                "id": peer.get("id"),
-                                "name": peer.get("name"),
-                                "fingerprint": peer.get("fingerprint"),
-                            }),
-                        );
-                        json_ok(map)
-                    }
-                    Err(err) => detail(
-                        StatusCode::from_u16(err.status().unwrap_or(502))
-                            .unwrap_or(StatusCode::BAD_GATEWAY),
-                        &err.to_string(),
-                    ),
-                }
             } else {
+                // No native writer ⇒ no graph on this install. There is no
+                // second writer to ask: the worker's `/worker/graph/mutate`
+                // seam was retired in v11.6.0 and every import lands in
+                // `GraphWriter::import_graph_data` above.
                 detail(
                     StatusCode::BAD_REQUEST,
                     "Invalid Knowledge Graph export artifact.",

@@ -1,4 +1,12 @@
-//! Shared `workspace_os.json` store (marketplace / plugins / agents).
+//! The marketplace / plugins / agents view of `workspace_os.json`.
+//!
+//! Until v11.6.0 this was a **third** writer of that document: its own
+//! `read_to_string` → mutate → `atomic::write_text` with no lock and its own
+//! `dump_indent2` formatting, so a plugin toggle could erase a review item
+//! written a millisecond earlier (and rewrite the file in a different shape).
+//! It is now a view over the one [`WorkspaceOsStore`]: reads are that store's
+//! `load_state`, and every mutation runs inside its `mutate`, which holds the
+//! write lock across the load and the save.
 
 #![allow(
     dead_code,
@@ -45,39 +53,45 @@
     clippy::module_inception
 )]
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Arc;
 
 use serde_json::{json, Value};
 
-use super::http::{dump_indent2, json_hash, now_iso_seconds};
+use crate::workspace::store::{StoreError, WorkspaceOsStore};
+
+use super::http::{json_hash, now_iso_seconds};
 
 // ── workspace_os.json (shared by marketplace / plugins / agents) ───────────
 
 #[derive(Clone)]
 pub(crate) struct PlatformStore {
-    path: PathBuf,
+    os: Arc<WorkspaceOsStore>,
 }
 
 impl PlatformStore {
     pub(crate) fn new(data_dir: impl AsRef<Path>) -> Self {
         Self {
-            path: data_dir.as_ref().join("workspace_os.json"),
+            os: WorkspaceOsStore::shared(data_dir.as_ref()),
         }
     }
 
+    /// The document. Its defaults are the store's `default_state`, which is a
+    /// superset of the nine keys this view reads — including the same five
+    /// `agents`, so `list_agents` answers exactly what it used to.
     pub(crate) fn load(&self) -> Value {
-        if let Ok(text) = std::fs::read_to_string(&self.path) {
-            if let Ok(value) = serde_json::from_str::<Value>(&text) {
-                if value.is_object() {
-                    return value;
-                }
-            }
-        }
-        default_workspace_state()
+        self.os.load_state()
     }
 
-    pub(crate) fn save(&self, state: &Value) {
-        lattice_auth::atomic::write_text(&self.path, &dump_indent2(state));
+    /// Load, apply, save — under the store's lock, so a concurrent write to
+    /// another branch of the same document cannot be lost.
+    fn mutate<T>(&self, body: impl FnOnce(&mut Value) -> T) -> T {
+        let mut produced: Option<T> = None;
+        let _: Result<(), StoreError> = self.os.mutate(|state| {
+            produced = Some(body(state));
+            Ok(())
+        });
+        produced.expect("mutate always runs the body it was given")
     }
 
     fn scope<'a>(&self, requested: Option<&'a str>) -> &'a str {
@@ -149,57 +163,57 @@ impl PlatformStore {
         workspace_id: Option<&str>,
         memory_ids: Option<&[String]>,
     ) -> Value {
-        let mut state = self.load();
-        let scope = self.scope(workspace_id).to_string();
-        let memories: Vec<Value> = state
-            .get("memories")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|m| {
-                if let Some(email) = user_email {
-                    match m.get("user_email") {
-                        None | Some(Value::Null) => true,
-                        Some(Value::String(s)) => s == email,
-                        _ => false,
+        self.mutate(|state| {
+            let scope = self.scope(workspace_id).to_string();
+            let memories: Vec<Value> = state
+                .get("memories")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|m| {
+                    if let Some(email) = user_email {
+                        match m.get("user_email") {
+                            None | Some(Value::Null) => true,
+                            Some(Value::String(s)) => s == email,
+                            _ => false,
+                        }
+                    } else {
+                        true
                     }
-                } else {
-                    true
+                })
+                .filter(|m| {
+                    if let Some(ids) = memory_ids {
+                        m.get("id")
+                            .and_then(Value::as_str)
+                            .map(|id| ids.iter().any(|x| x == id))
+                            .unwrap_or(false)
+                    } else {
+                        true
+                    }
+                })
+                .collect();
+            let created = now_iso_seconds();
+            let hash_src = json!([label, scope, memories, created]);
+            let id = format!("memory-snapshot-{}", &json_hash(&hash_src)[..16]);
+            let snapshot = json!({
+                "id": id,
+                "label": label,
+                "reason": reason,
+                "workspace_id": scope,
+                "user_email": user_email,
+                "memory_count": memories.len(),
+                "memories": memories,
+                "created_at": created,
+            });
+            if let Some(obj) = state.as_object_mut() {
+                let list = obj.entry("memory_snapshots").or_insert_with(|| json!([]));
+                if let Some(arr) = list.as_array_mut() {
+                    arr.push(snapshot.clone());
                 }
-            })
-            .filter(|m| {
-                if let Some(ids) = memory_ids {
-                    m.get("id")
-                        .and_then(Value::as_str)
-                        .map(|id| ids.iter().any(|x| x == id))
-                        .unwrap_or(false)
-                } else {
-                    true
-                }
-            })
-            .collect();
-        let created = now_iso_seconds();
-        let hash_src = json!([label, scope, memories, created]);
-        let id = format!("memory-snapshot-{}", &json_hash(&hash_src)[..16]);
-        let snapshot = json!({
-            "id": id,
-            "label": label,
-            "reason": reason,
-            "workspace_id": scope,
-            "user_email": user_email,
-            "memory_count": memories.len(),
-            "memories": memories,
-            "created_at": created,
-        });
-        if let Some(obj) = state.as_object_mut() {
-            let list = obj.entry("memory_snapshots").or_insert_with(|| json!([]));
-            if let Some(arr) = list.as_array_mut() {
-                arr.push(snapshot.clone());
             }
-        }
-        self.save(&state);
-        snapshot
+            snapshot
+        })
     }
 
     pub(crate) fn create_workflow(
@@ -211,33 +225,33 @@ impl PlatformStore {
         user_email: Option<&str>,
         workspace_id: Option<&str>,
     ) -> Value {
-        let mut state = self.load();
-        let scope = self.scope(workspace_id).to_string();
-        let created = now_iso_seconds();
-        let hash_src = json!([name, steps, user_email, created]);
-        let id = format!("workflow-{}", &json_hash(&hash_src)[..16]);
-        let mut workflow = json!({
-            "id": id,
-            "name": if name.is_empty() { "Untitled workflow" } else { name },
-            "steps": steps,
-            "user_email": user_email,
-            "workspace_id": scope,
-            "metadata": metadata,
-            "events": [{"type": "created", "timestamp": created}],
-            "created_at": created,
-            "updated_at": created,
-        });
-        if !nodes.is_empty() {
-            workflow["nodes"] = json!(nodes);
-        }
-        if let Some(obj) = state.as_object_mut() {
-            let list = obj.entry("workflows").or_insert_with(|| json!([]));
-            if let Some(arr) = list.as_array_mut() {
-                arr.push(workflow.clone());
+        self.mutate(|state| {
+            let scope = self.scope(workspace_id).to_string();
+            let created = now_iso_seconds();
+            let hash_src = json!([name, steps, user_email, created]);
+            let id = format!("workflow-{}", &json_hash(&hash_src)[..16]);
+            let mut workflow = json!({
+                "id": id,
+                "name": if name.is_empty() { "Untitled workflow" } else { name },
+                "steps": steps,
+                "user_email": user_email,
+                "workspace_id": scope,
+                "metadata": metadata,
+                "events": [{"type": "created", "timestamp": created}],
+                "created_at": created,
+                "updated_at": created,
+            });
+            if !nodes.is_empty() {
+                workflow["nodes"] = json!(nodes);
             }
-        }
-        self.save(&state);
-        workflow
+            if let Some(obj) = state.as_object_mut() {
+                let list = obj.entry("workflows").or_insert_with(|| json!([]));
+                if let Some(arr) = list.as_array_mut() {
+                    arr.push(workflow.clone());
+                }
+            }
+            workflow
+        })
     }
 
     pub(crate) fn list_plugin_registry(&self) -> BTreeMap<String, Value> {
@@ -250,43 +264,43 @@ impl PlatformStore {
     }
 
     pub(crate) fn set_plugin_enabled(&self, plugin_id: &str, enabled: bool) -> Value {
-        let mut state = self.load();
-        let updated = now_iso_seconds();
-        let entry = {
-            let obj = state.as_object_mut().expect("state object");
-            let registry = obj.entry("plugin_registry").or_insert_with(|| json!({}));
-            let map = registry.as_object_mut().expect("registry object");
-            let slot = map
-                .entry(plugin_id.to_string())
-                .or_insert_with(|| json!({"id": plugin_id}));
-            slot["enabled"] = json!(enabled);
-            slot["updated_at"] = json!(updated);
-            slot.clone()
-        };
-        self.save(&state);
-        entry
+        self.mutate(|state| {
+            let updated = now_iso_seconds();
+            let entry = {
+                let obj = state.as_object_mut().expect("state object");
+                let registry = obj.entry("plugin_registry").or_insert_with(|| json!({}));
+                let map = registry.as_object_mut().expect("registry object");
+                let slot = map
+                    .entry(plugin_id.to_string())
+                    .or_insert_with(|| json!({"id": plugin_id}));
+                slot["enabled"] = json!(enabled);
+                slot["updated_at"] = json!(updated);
+                slot.clone()
+            };
+            entry
+        })
     }
 
     pub(crate) fn mark_plugin_uninstalled(&self, plugin_id: &str) -> Value {
-        let mut state = self.load();
-        let updated = now_iso_seconds();
-        let registry_entry = {
-            let obj = state.as_object_mut().expect("state object");
-            let registry = obj.entry("plugin_registry").or_insert_with(|| json!({}));
-            let map = registry.as_object_mut().expect("registry object");
-            let slot = map
-                .entry(plugin_id.to_string())
-                .or_insert_with(|| json!({"id": plugin_id}));
-            slot["installed"] = json!(false);
-            slot["enabled"] = json!(false);
-            slot["updated_at"] = json!(updated);
-            slot.clone()
-        };
-        self.save(&state);
-        json!({
-            "status": "ok",
-            "plugin_id": plugin_id,
-            "registry": registry_entry,
+        self.mutate(|state| {
+            let updated = now_iso_seconds();
+            let registry_entry = {
+                let obj = state.as_object_mut().expect("state object");
+                let registry = obj.entry("plugin_registry").or_insert_with(|| json!({}));
+                let map = registry.as_object_mut().expect("registry object");
+                let slot = map
+                    .entry(plugin_id.to_string())
+                    .or_insert_with(|| json!({"id": plugin_id}));
+                slot["installed"] = json!(false);
+                slot["enabled"] = json!(false);
+                slot["updated_at"] = json!(updated);
+                slot.clone()
+            };
+            json!({
+                "status": "ok",
+                "plugin_id": plugin_id,
+                "registry": registry_entry,
+            })
         })
     }
 
@@ -323,31 +337,31 @@ impl PlatformStore {
         metadata: Value,
         workspace_id: Option<&str>,
     ) -> Value {
-        let mut state = self.load();
-        let scope = self.scope(workspace_id).to_string();
-        let key = if scope == "personal" {
-            format!("{kind}:{template_id}")
-        } else {
-            format!("{scope}:{kind}:{template_id}")
-        };
-        let updated = now_iso_seconds();
-        let entry = json!({
-            "id": template_id,
-            "kind": kind,
-            "version": version,
-            "installed": true,
-            "workspace_id": scope,
-            "metadata": metadata,
-            "updated_at": updated,
-        });
-        if let Some(obj) = state.as_object_mut() {
-            let registry = obj.entry("template_registry").or_insert_with(|| json!({}));
-            if let Some(map) = registry.as_object_mut() {
-                map.insert(key, entry.clone());
+        self.mutate(|state| {
+            let scope = self.scope(workspace_id).to_string();
+            let key = if scope == "personal" {
+                format!("{kind}:{template_id}")
+            } else {
+                format!("{scope}:{kind}:{template_id}")
+            };
+            let updated = now_iso_seconds();
+            let entry = json!({
+                "id": template_id,
+                "kind": kind,
+                "version": version,
+                "installed": true,
+                "workspace_id": scope,
+                "metadata": metadata,
+                "updated_at": updated,
+            });
+            if let Some(obj) = state.as_object_mut() {
+                let registry = obj.entry("template_registry").or_insert_with(|| json!({}));
+                if let Some(map) = registry.as_object_mut() {
+                    map.insert(key, entry.clone());
+                }
             }
-        }
-        self.save(&state);
-        entry
+            entry
+        })
     }
 }
 
@@ -359,18 +373,4 @@ fn default_agents() -> Vec<Value> {
         json!({"id":"agent:researcher","name":"Researcher","role":"Finds and curates relevant workspace knowledge.","status":"available","relationships":["agent:planner"]}),
         json!({"id":"agent:release","name":"Release Agent","role":"Coordinates versioning, packaging, and release checks.","status":"available","relationships":["agent:reviewer"]}),
     ]
-}
-
-fn default_workspace_state() -> Value {
-    json!({
-        "agents": default_agents(),
-        "agent_runs": [],
-        "handoffs": [],
-        "workflows": [],
-        "workflow_runs": [],
-        "memories": [],
-        "memory_snapshots": [],
-        "plugin_registry": {},
-        "template_registry": {},
-    })
 }

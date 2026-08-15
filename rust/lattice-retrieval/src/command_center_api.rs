@@ -1,8 +1,11 @@
 //! `latticeai/api/command_center.py` — today's briefing and Cmd+K search.
 //!
-//! The knowledge group of `/api/command/search` is always empty: the Python
-//! original reads `payload['results']` while `keyword_search` answers
-//! `matches`. This port reproduces that bug; fixtures pin it.
+//! The knowledge group of `/api/command/search` used to be permanently empty:
+//! the Python original read `payload['results']` while `keyword_search` answers
+//! `matches`. v11.6.0 reproduced that bug and disclosed it; v11.7.0 fixes the
+//! key, which is the one place this family diverges from its oracle. The
+//! reasoning, and the three fixture cases whose bodies moved, are in
+//! [`search`]'s module header.
 
 #![allow(
     dead_code,

@@ -41,9 +41,9 @@
     gap: 0;
     min-height: calc(4.3rem + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid hsl(var(--border));
-    background: hsl(var(--surface) / 0.97);
+    background: hsl(var(--surface));
     padding: 0.35rem 0.35rem env(safe-area-inset-bottom, 0px);
-    backdrop-filter: blur(18px);
+    box-shadow: var(--elev-3);
   }
 
   .brain-mobile-nav-item {

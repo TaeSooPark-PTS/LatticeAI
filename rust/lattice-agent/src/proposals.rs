@@ -18,17 +18,22 @@
 //! goes through a port, [`ProposalStore`], exactly as the hook lifecycle does:
 //!
 //! * **In the product**, `lattice-platform` implements this trait for
-//!   `GovernanceState` and the host injects it. That is the only correct wiring
-//!   when the Review Center runs in the same process, because `GovernanceState`
-//!   holds the document in memory and mirrors it into SQLite: a second writer
-//!   appending to the JSON file alone would be invisible to it, and its next
-//!   save would overwrite the appended item.
+//!   `GovernanceState` and the host injects it. That is the correct wiring when
+//!   the Review Center runs in the same process, because the document has an
+//!   owner there — one write lock over the `workspace_os_state` SQLite row and
+//!   the JSON file it mirrors, and `load_state` reads the row first.
 //! * **Standalone** (this crate's own loop routes, with no Review Center),
 //!   [`JsonProposalStore`] appends to the same `workspace_os.json` in the same
 //!   shape, so a proposal staged by a bare `lattice-agent` is listed by a
 //!   Review Center opened over that data directory afterwards. The format's
 //!   owner is `lattice_platform::review_queue` — every field, the id
 //!   derivation and the file layout are that module's, mirrored here.
+//!
+//! Since v11.7.0 the second bullet is no longer a *hazard* in the first
+//! bullet's process: [`DocumentWriter`] is a process-wide port the host
+//! installs, and a `JsonProposalStore` built where an owner exists writes
+//! through it. What used to depend on every caller injecting the right store
+//! is now true by construction.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -84,17 +89,58 @@ pub trait ProposalStore: std::fmt::Debug + Send + Sync {
     fn create(&self, item: &NewReviewItem) -> Result<Value, String>;
 }
 
+/// The one owner of `workspace_os.json`, when this process has one.
+///
+/// The same inversion [`ProposalStore`] already uses, one level down. A
+/// `JsonProposalStore` is *correct standalone* and *wrong in the product*: it
+/// appends to the JSON file alone, while `lattice_platform`'s
+/// `WorkspaceOsStore` reads the `workspace_os_state` SQLite row first and
+/// rewrites the file from it. So a proposal staged through the JSON store in a
+/// process that also runs the Review Center is invisible to it and is
+/// overwritten by its next save.
+///
+/// Injecting the right store at every construction site means every future
+/// construction site has to remember (there are five today, and
+/// `LoopDeps::new`'s default is reached whenever a `LoopConfig` leaves
+/// `proposals: None`). Installing the owner once makes it true by
+/// construction instead: with a writer installed, [`JsonProposalStore`] stops
+/// being a second writer and becomes a *shape* — it still builds the review
+/// item, and the owner performs the write.
+pub trait DocumentWriter: Send + Sync {
+    /// Load, apply `body`, save — under the owner's write lock.
+    fn mutate(&self, body: &mut dyn FnMut(&mut Value)) -> Result<(), String>;
+}
+
+static DOCUMENT_WRITER: std::sync::OnceLock<Arc<dyn DocumentWriter>> = std::sync::OnceLock::new();
+
+/// Name the process's `workspace_os.json` owner. The first call wins.
+///
+/// A later call is refused (`false`) rather than swapping the document under a
+/// run that is mid-stage, the same rule
+/// `lattice_retrieval::memory_api::wsos::install_state_writer` follows.
+pub fn install_document_writer(writer: Arc<dyn DocumentWriter>) -> bool {
+    DOCUMENT_WRITER.set(writer).is_ok()
+}
+
+/// The installed owner, if the host wired one.
+pub fn document_writer() -> Option<&'static Arc<dyn DocumentWriter>> {
+    DOCUMENT_WRITER.get()
+}
+
 /// The standalone store: `<data_dir>/workspace_os.json`.
 ///
 /// Byte-compatible with `lattice_platform::review_queue` — see the module
-/// docs for when this is the wrong writer.
+/// docs, and [`DocumentWriter`] for what happens when the Review Center is in
+/// this process too.
 #[derive(Debug, Clone)]
 pub struct JsonProposalStore {
     data_dir: PathBuf,
     /// One writer at a time. Appending is read-modify-write over a whole
     /// document, so two runs staging at once would otherwise keep whichever
     /// wrote last and silently drop the other's proposal. Shared across clones;
-    /// it does not cover a second *process* (nor did Python's store).
+    /// it does not cover a second *process* (nor did Python's store), and it is
+    /// unused when a [`DocumentWriter`] is installed — that lock is the
+    /// document owner's, and is the only one the platform respects.
     lock: Arc<Mutex<()>>,
 }
 
@@ -132,22 +178,30 @@ impl ProposalStore for JsonProposalStore {
             // `WorkspaceReviewItems.create_review_item`'s own ValueError.
             return Err("title is required".into());
         }
+        if let Some(writer) = document_writer() {
+            // The owner holds its lock across the load and the save, so the id
+            // scan and the append below cannot be raced by a review action.
+            let mut stored: Option<Value> = None;
+            writer.mutate(&mut |state: &mut Value| {
+                let built = build_review_item(item, &existing_ids(state));
+                let Some(object) = state.as_object_mut() else {
+                    return;
+                };
+                let rows = object.entry("review_items").or_insert_with(|| json!([]));
+                if let Some(list) = rows.as_array_mut() {
+                    list.push(built.clone());
+                    stored = Some(built);
+                }
+            })?;
+            return stored.ok_or_else(|| "workspace_os.json review_items is not a list".into());
+        }
         let path = self.state_path();
         let _guard = self
             .lock
             .lock()
             .map_err(|_| "proposal store lock poisoned")?;
         let mut state = read_state(&path);
-        let existing: Vec<String> = state
-            .get("review_items")
-            .and_then(Value::as_array)
-            .map(|rows| {
-                rows.iter()
-                    .filter_map(|row| row.get("id").and_then(Value::as_str).map(str::to_string))
-                    .collect()
-            })
-            .unwrap_or_default();
-        let stored = build_review_item(item, &existing);
+        let stored = build_review_item(item, &existing_ids(&state));
         let rows = state
             .as_object_mut()
             .ok_or("workspace_os.json is not an object")?
@@ -159,6 +213,19 @@ impl ProposalStore for JsonProposalStore {
         write_state(&path, &mut state)?;
         Ok(stored)
     }
+}
+
+/// Every review-item id already in the document — the collision set.
+fn existing_ids(state: &Value) -> Vec<String> {
+    state
+        .get("review_items")
+        .and_then(Value::as_array)
+        .map(|rows| {
+            rows.iter()
+                .filter_map(|row| row.get("id").and_then(Value::as_str).map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// One review item, exactly as `lattice_platform::review_queue` builds it.

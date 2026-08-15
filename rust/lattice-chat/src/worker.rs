@@ -3,33 +3,32 @@
 //! Plan §설계 결정 6: the pipeline is Rust-orchestrated, but token generation
 //! never moves and the Brain keeps one writer. Wave 2.5 §W3a removed the fifth
 //! call — `POST /worker/chat/record-turn` — by making the whole redact → audit →
-//! store → ingest chain native ([`crate::turn`]). What is left is compute this
-//! process cannot do:
+//! store → ingest chain native ([`crate::turn`]). v11.7.0 removed the sixth,
+//! `POST /knowledge-graph/ingest`: the worker stopped serving product routes in
+//! v11.6.0, so every chat-generated file was being posted into a 404 while the
+//! reply still said `brain_ingest: {"status": "ok"}`. That write is native now
+//! ([`crate::intents`]). What is left is compute this process cannot do:
 //!
 //! | seam | why it is not native |
 //! |---|---|
 //! | `POST /worker/llm/stream` | MLX runs in that process. `/agent/llm` is buffered, and a buffered completion is not a chat stream. |
 //! | `POST /worker/embed` | the embedding provider lives there, and it — not a native guess — is the authority on which `(model_id, dim)` the vector index is filed under (W2 §1). |
-//! | `POST /knowledge-graph/ingest` | the file-ingest door the plan keeps until W1's writer serves it (I5 `worker_keep`). |
 //! | `GET /models` | the loaded-model table of the in-process MLX runtime (KEEP_WORKER). |
 //!
-//! There is deliberately **no** `record_turn` method here any more. Its absence
-//! is the point: `rg 'worker/chat/record-turn'` over this crate finds only the
-//! test that asserts the path is never requested.
+//! Every path this module names is on `rust/fixtures/worker_allowlist.json`,
+//! and `lattice-host`'s `no_source_file_names_a_stranded_worker_path` is the
+//! gate that keeps it that way. There is deliberately **no** `record_turn` and
+//! no `ingest` method here any more; their absence is the point.
 
 use std::time::Duration;
 
 use lattice_core::worker::{SseUpstream, WorkerSeamClient, WorkerSeamError};
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 
 /// `POST /worker/llm/stream` — the streaming completion seam.
 pub const LLM_STREAM_PATH: &str = "/worker/llm/stream";
 /// `POST /worker/embed` — W2's pure-compute embedding seam.
 pub const EMBED_PATH: &str = "/worker/embed";
-/// `POST /worker/graph/mutate` — WP-I6's graph write door.
-pub const GRAPH_MUTATE_PATH: &str = "/worker/graph/mutate";
-/// `POST /knowledge-graph/ingest` — the graph single-writer door.
-pub const INGEST_PATH: &str = "/knowledge-graph/ingest";
 /// `GET /models` — which models this worker actually holds.
 pub const MODELS_PATH: &str = "/models";
 
@@ -166,17 +165,6 @@ impl ChatWorker {
                 .unwrap_or_default()
                 .to_string(),
         })
-    }
-
-    /// `POST /knowledge-graph/ingest` — index one generated file into the Brain.
-    ///
-    /// Best-effort by contract (`_ingest_generated_file`): the caller turns a
-    /// failure into `{"status": "failed", "detail": …}` rather than losing the
-    /// file it just wrote.
-    pub async fn ingest(&self, item: &Map<String, Value>) -> Result<Value, WorkerSeamError> {
-        self.client
-            .post_json(INGEST_PATH, &Value::Object(item.clone()))
-            .await
     }
 
     /// `POST /worker/llm/stream` — the token stream, unbuffered.

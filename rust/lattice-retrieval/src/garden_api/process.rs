@@ -52,7 +52,7 @@ use axum::routing::{get, post};
 use axum::Router;
 use lattice_auth::OrderedMap;
 use lattice_core::graph_write::types::{
-    ExtractReply, IngestContentRequest, IngestionRecord, SuppliedVector,
+    ChunkPiece, ExtractReply, IngestContentRequest, IngestionRecord, SuppliedVector,
 };
 use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
@@ -195,32 +195,103 @@ async fn embed_via_seam(seam: Option<&WorkerSeamClient>, text: &str) -> Option<S
     if text.trim().is_empty() {
         return None;
     }
-    let seam = seam?;
-    let payload = seam
-        .post_json(EMBED_PATH, &json!({"texts": [text], "kind": "passage"}))
-        .await
-        .ok()?;
-    let values = payload
-        .get("vectors")
-        .and_then(Value::as_array)
-        .and_then(|rows| rows.first())
-        .and_then(Value::as_array)
-        .map(|row| row.iter().filter_map(Value::as_f64).collect::<Vec<f64>>())?;
-    if values.is_empty() {
-        return None;
-    }
+    let (model_id, dim, rows) = embed_texts_via_seam(seam, &[text.to_string()]).await?;
+    let values = rows.into_iter().next().filter(|row| !row.is_empty())?;
     Some(SuppliedVector {
-        model_id: payload
-            .get("model_id")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        dim: payload
-            .get("dim")
-            .and_then(Value::as_u64)
-            .unwrap_or(values.len() as u64) as usize,
+        model_id,
+        dim: if dim == 0 { values.len() } else { dim },
         values,
     })
+}
+
+async fn embed_texts_via_seam(
+    seam: Option<&WorkerSeamClient>,
+    texts: &[String],
+) -> Option<(String, usize, Vec<Vec<f64>>)> {
+    if texts.is_empty() {
+        return None;
+    }
+    let seam = seam?;
+    let payload = seam
+        .post_json(EMBED_PATH, &json!({"texts": texts, "kind": "passage"}))
+        .await
+        .ok()?;
+    let rows = payload.get("vectors").and_then(Value::as_array)?;
+    let values: Vec<Vec<f64>> = rows
+        .iter()
+        .map(|row| {
+            row.as_array()
+                .map(|cells| cells.iter().filter_map(Value::as_f64).collect())
+                .unwrap_or_default()
+        })
+        .collect();
+    if values.iter().all(|row| row.is_empty()) {
+        return None;
+    }
+    let model_id = payload
+        .get("model_id")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let dim = payload.get("dim").and_then(Value::as_u64).unwrap_or(0) as usize;
+    Some((model_id, dim, values))
+}
+
+/// Plain-window chunks (1200 / 160). lattice-retrieval cannot depend on
+/// lattice-ingest; this is the legacy `_chunks` walk the engine already hashes.
+fn plain_chunk_pieces(text: &str) -> Vec<ChunkPiece> {
+    const SIZE: usize = 1200;
+    const OVERLAP: usize = 160;
+    let cleaned: Vec<char> = text
+        .trim_matches(lattice_core::pytext::is_py_space)
+        .chars()
+        .collect();
+    if cleaned.is_empty() {
+        return Vec::new();
+    }
+    let mut pieces = Vec::new();
+    let mut start = 0usize;
+    while start < cleaned.len() {
+        let end = cleaned.len().min(start + SIZE);
+        let piece_text: String = cleaned[start..end].iter().collect();
+        let mut fields = serde_json::Map::new();
+        fields.insert("strategy".into(), json!("plain"));
+        fields.insert("start_char".into(), json!(start));
+        pieces.push(ChunkPiece {
+            text: piece_text,
+            fields,
+            embedding: None,
+        });
+        if end >= cleaned.len() {
+            break;
+        }
+        start = end.saturating_sub(OVERLAP);
+    }
+    pieces
+}
+
+fn attach_chunk_embeddings(
+    mut chunks: Vec<ChunkPiece>,
+    batch: Option<(String, usize, Vec<Vec<f64>>)>,
+    agrees: bool,
+) -> Vec<ChunkPiece> {
+    if !agrees {
+        return chunks;
+    }
+    let Some((model_id, dim, rows)) = batch else {
+        return chunks;
+    };
+    for (piece, values) in chunks.iter_mut().zip(rows) {
+        if values.is_empty() {
+            continue;
+        }
+        piece.embedding = Some(SuppliedVector {
+            model_id: model_id.clone(),
+            dim: if dim == 0 { values.len() } else { dim },
+            values,
+        });
+    }
+    chunks
 }
 
 /// `_ingest_note` — native `GraphWriter` ingest with W5 extract/embed enrichment.
@@ -247,6 +318,16 @@ async fn ingest_note(state: &BrainState, saved: &Saved) -> Vec<(&'static str, Va
         }
         None => true,
     };
+    let mut chunks = plain_chunk_pieces(&saved.text);
+    let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
+    let chunk_batch = embed_texts_via_seam(state.seam(), &chunk_texts).await;
+    let chunk_agrees = match chunk_batch.as_ref() {
+        Some((model_id, dim, _)) => {
+            model_id == graph.embedder().model_id() && *dim == graph.embedder().dim()
+        }
+        None => true,
+    };
+    chunks = attach_chunk_embeddings(chunks, chunk_batch, chunk_agrees);
     let title = saved.title.clone();
     let text = saved.text.clone();
     let source = saved.path.clone();
@@ -261,6 +342,7 @@ async fn ingest_note(state: &BrainState, saved: &Saved) -> Vec<(&'static str, Va
             text,
             source_uri: Some(source.clone()),
             metadata: metadata.clone(),
+            chunks,
             concepts: extracted.concepts,
             triples: extracted.triples,
             semantic: extracted.semantic,
@@ -311,4 +393,27 @@ async fn ingest_note(state: &BrainState, saved: &Saved) -> Vec<(&'static str, Va
         ),
         ("duplicate", Value::Bool(outcome.duplicate)),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_short_note_is_one_plain_chunk() {
+        let pieces = plain_chunk_pieces("  garden note about Lattice  ");
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].text, "garden note about Lattice");
+        assert_eq!(pieces[0].fields["strategy"], json!("plain"));
+        assert!(plain_chunk_pieces("\n\t").is_empty());
+    }
+
+    #[test]
+    fn a_long_note_windows_at_the_legacy_size() {
+        let text = "α".repeat(1300);
+        let pieces = plain_chunk_pieces(&text);
+        assert_eq!(pieces.len(), 2);
+        assert_eq!(pieces[0].text.chars().count(), 1200);
+        assert_eq!(pieces[1].fields["start_char"], json!(1040));
+    }
 }

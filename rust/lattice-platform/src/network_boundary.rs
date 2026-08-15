@@ -3,8 +3,8 @@
 //!
 //! The dial is stored in `<data_dir>/network_boundary.json` and the policy in
 //! `<data_dir>/hybrid_policy.json` — the same files Python reads and writes.
-//! Graph writes (`set_node_sensitivity`) go through
-//! `POST /worker/graph/mutate`.
+//! The one graph write here (`set_node_sensitivity`) is native: it calls
+//! [`lattice_core::graph_write::GraphWriter`] directly.
 
 #![allow(
     dead_code,
@@ -62,7 +62,6 @@ use axum::routing::{get, post};
 use axum::Router;
 use lattice_auth::{AuthState, OrderedMap};
 use lattice_core::db::RuntimeConfig;
-use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
 
 use crate::project_sessions::{detail, json_ok, missing_fields, parse_json_object};
@@ -97,16 +96,11 @@ pub struct NetworkBoundaryState {
     pub boundary: Arc<BoundaryStore>,
     pub policy: Arc<PolicyStore>,
     pub budgets: Arc<Mutex<HashMap<String, TokenBudget>>>,
-    pub seam: Option<WorkerSeamClient>,
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
 }
 
 impl NetworkBoundaryState {
-    pub fn new(
-        auth: Arc<AuthState>,
-        config: RuntimeConfig,
-        seam: Option<WorkerSeamClient>,
-    ) -> Self {
+    pub fn new(auth: Arc<AuthState>, config: RuntimeConfig) -> Self {
         let data = config.data_dir().to_path_buf();
         Self {
             auth,
@@ -114,7 +108,6 @@ impl NetworkBoundaryState {
             policy: Arc::new(PolicyStore::open(data.join("hybrid_policy.json"))),
             budgets: Arc::new(Mutex::new(HashMap::new())),
             config: Arc::new(config),
-            seam,
             graph: None,
         }
     }
@@ -425,40 +418,11 @@ async fn set_node_sensitivity(
             }
             Err(err) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
         }
-    } else if let Some(seam) = &state.seam {
-        let mut args = serde_json::Map::new();
-        args.insert("node_id".into(), json!(node_id));
-        args.insert("local_only".into(), json!(local_only));
-        if let Some(reason) = reason {
-            args.insert("reason".into(), json!(reason));
-        }
-        match seam
-            .post_json(
-                "/worker/graph/mutate",
-                &json!({"op":"set_node_sensitivity","args": args}),
-            )
-            .await
-        {
-            Ok(value) => {
-                let result = value.get("result").cloned().unwrap_or(value);
-                if result.get("ok").and_then(Value::as_bool) == Some(false) {
-                    return detail(
-                        StatusCode::NOT_FOUND,
-                        result
-                            .get("reason")
-                            .and_then(Value::as_str)
-                            .unwrap_or("node not found"),
-                    );
-                }
-                json_ok(result)
-            }
-            Err(err) => detail(
-                StatusCode::from_u16(err.status().unwrap_or(502))
-                    .unwrap_or(StatusCode::BAD_GATEWAY),
-                &err.to_string(),
-            ),
-        }
     } else {
+        // No native writer ⇒ no graph, so there is no node to mark. The
+        // `/worker/graph/mutate` delegation this used to fall back to was
+        // retired in v11.6.0; `GraphWriter::set_node_sensitivity` above is the
+        // only writer of `local_only`.
         detail(StatusCode::NOT_FOUND, "node not found")
     }
 }

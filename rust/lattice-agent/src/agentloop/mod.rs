@@ -178,11 +178,25 @@ pub fn default_scoped_knowledge_tools() -> BTreeSet<String> {
 impl LoopDeps {
     /// Production defaults around a worker and a workspace.
     pub fn new(worker: WorkerClient, workspace: Workspace) -> Self {
-        let native = Arc::new(NativeTools::new(
-            workspace.clone(),
-            ToolConfig::from_env(),
-            worker.clone(),
-        ));
+        Self::with_hook_sink(worker, workspace, None)
+    }
+
+    /// [`LoopDeps::new`], with the `pre_tool` / `post_tool` lifecycle wired.
+    ///
+    /// `hooks` is the host's registry adapter
+    /// (`lattice_platform::hooks::NativeHookSink`). `None` is the standalone
+    /// contract: no `hooks.json` in reach, so no user hook fires — which is
+    /// what a harness, a test and a host with no platform routes all want.
+    pub fn with_hook_sink(
+        worker: WorkerClient,
+        workspace: Workspace,
+        hooks: Option<Arc<dyn crate::tools::HookSink>>,
+    ) -> Self {
+        let mut tools = NativeTools::new(workspace.clone(), ToolConfig::from_env(), worker.clone());
+        if let Some(hooks) = hooks {
+            tools = tools.with_hooks(hooks);
+        }
+        let native = Arc::new(tools);
         Self {
             worker,
             native,

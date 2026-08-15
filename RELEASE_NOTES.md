@@ -1,3 +1,18 @@
+# [v11.7.0 - Clean Sweep] (2026-08-15)
+
+11.6.0이 공개로 남긴 구멍을 닫았습니다. command-search knowledge가
+결과를 돌려주고, 스누즈는 offset-aware를 받으며(잘못된 until은 422),
+이중 거절은 409입니다. 바이너리 업로드는 `/worker/parse`, 청크 벡터는
+네 문, 사용자 훅이 네이티브 도구에서 발화하고, `sanitize_write_content`가
+쓰기 경로에 걸리며, 리뷰 이벤트가 모든 변이 경로에서 기록되고,
+`workspace_os.json`은 writer가 하나입니다. One Door가 몰랐던 회귀 —
+Self-Model 쓰기 전면 정지, xlsx 502, chat/vault-watch 좌초 시임 — 을
+고쳤고, chronicle·briefing·insights 시계 시한폭탄을 해체했으며, 표면을
+elevation 언어로 다시 그렸습니다(유리 없음, ~103 KiB). 남은 구멍은
+노트에 그대로 적었습니다.
+
+See [RELEASE_NOTES_v11.7.0.md](RELEASE_NOTES_v11.7.0.md).
+
 # [v11.6.0 - One Door] (2026-08-15)
 
 제품 서버가 Rust 하나가 되었습니다: `lattice-host`가 **네이티브 420
@@ -115,7 +130,7 @@ See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 11.6.0**.
+This repository keeps public release history from **11.0.0 through 11.7.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only 11.x and this index follows the same
 boundary. Sub-11 note files remain in the tree as history; they are no longer
@@ -123,10 +138,11 @@ listed here as supported releases.
 
 ## Current Release
 
-- [v11.6.0 - One Door](RELEASE_NOTES_v11.6.0.md)
+- [v11.7.0 - Clean Sweep](RELEASE_NOTES_v11.7.0.md)
 
 ## Recent Release Notes
 
+- [v11.6.0 - One Door](RELEASE_NOTES_v11.6.0.md)
 - [v11.5.2 - Tight Ship](RELEASE_NOTES_v11.5.2.md)
 - [v11.5.1 - Rust Full Loop](RELEASE_NOTES_v11.5.1.md)
 - [v11.5.0 - Rust Complete](RELEASE_NOTES_v11.5.0.md)

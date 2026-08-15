@@ -483,8 +483,8 @@
 }
 
 .brain-quick-dot.is-low { background: hsl(var(--primary)); }
-.brain-quick-dot.is-medium { background: hsl(38 92% 50%); }
-.brain-quick-dot.is-high { background: hsl(0 72% 55%); }
+.brain-quick-dot.is-medium { background: hsl(var(--warning)); }
+.brain-quick-dot.is-high { background: hsl(var(--danger)); }
 
 .brain-quick-confirm {
   display: flex;
@@ -520,14 +520,14 @@
 
 .brain-quick-confirm button.is-primary {
   border-color: transparent;
-  background: hsl(0 72% 55%);
-  color: hsl(0 0% 100%);
+  background: hsl(var(--danger));
+  color: hsl(var(--destructive-foreground));
 }
 
 .brain-quick-error {
   width: 100%;
   margin: 0;
-  color: hsl(0 65% 45%);
+  color: hsl(var(--danger-ink));
   font-size: 0.68rem;
 }
 

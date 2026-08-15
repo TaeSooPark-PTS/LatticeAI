@@ -167,7 +167,9 @@ pub(crate) fn builtin_hooks() -> Vec<Value> {
     ]
 }
 
+mod sink;
 mod store;
+pub use sink::NativeHookSink;
 pub use store::HooksStore;
 use store::{alias_kind, HooksError};
 
@@ -199,6 +201,17 @@ impl HooksState {
     /// Build from an existing governance state.
     pub fn new(gov: GovernanceState) -> Self {
         let hooks = HooksStore::open(&gov.data_dir);
+        Self { gov, hooks }
+    }
+
+    /// Build over a registry somebody else opened.
+    ///
+    /// The host opens **one** [`HooksStore`] and hands it both to these routes
+    /// and to [`NativeHookSink`], for the reason `GovernanceState` is opened
+    /// once: the store keeps `hooks.json` and the run log in memory, so a
+    /// second instance over the same directory would not see the first one's
+    /// writes and would overwrite them on its next save.
+    pub fn with_store(gov: GovernanceState, hooks: HooksStore) -> Self {
         Self { gov, hooks }
     }
 }

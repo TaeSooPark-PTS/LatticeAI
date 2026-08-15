@@ -11,23 +11,53 @@ html {
 body {
   min-width: 320px;
   margin: 0;
-  background: hsl(var(--background));
+  background: var(--grad-field);
   color: hsl(var(--foreground));
   /* 한국어 우선 스택 — Pretendard가 설치돼 있으면 쓰고, 없으면 OS 한글 본문체로. */
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     "Apple SD Gothic Neo", Inter, "Segoe UI", "Malgun Gothic", "Noto Sans KR", sans-serif;
   letter-spacing: 0;
-  line-height: 1.55;
+  line-height: var(--lt-leading-body);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
 h2,
 h3,
 h4 {
-  letter-spacing: 0;
+  letter-spacing: var(--lt-tracking-tight);
+  line-height: var(--lt-leading-tight);
   overflow-wrap: break-word;
   word-break: keep-all; /* 한글 제목이 어절 단위로 줄바꿈되도록 */
+}
+
+h1 {
+  font-size: var(--lt-type-hero);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: var(--lt-type-title);
+  font-weight: 700;
+}
+
+h3 {
+  font-size: var(--lt-type-lead);
+  font-weight: 650;
+}
+
+h4 {
+  font-size: var(--lt-type-body);
+  font-weight: 650;
+}
+
+p {
+  line-height: var(--lt-leading-body);
+}
+
+small {
+  font-size: var(--lt-type-small);
 }
 
 body::selection {

@@ -126,14 +126,14 @@ function FileIntake() {
   return (
     <div className="space-y-4">
       <label
-        className="flex min-h-48 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-primary/30 bg-muted/20 p-6 text-center transition hover:border-primary/60 hover:bg-muted/40"
+        className="capture-dropzone"
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
           event.preventDefault();
           beginUpload(event.dataTransfer.files);
         }}
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="capture-dropzone-mark">
           <Upload className="h-6 w-6" />
         </div>
         <div className="space-y-1">

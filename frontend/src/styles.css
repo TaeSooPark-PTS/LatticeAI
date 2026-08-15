@@ -45,4 +45,13 @@
   --color-memory: hsl(var(--memory));
   --color-knowledge: hsl(var(--knowledge));
   --color-brain: hsl(var(--brain-core));
+  --color-surface-raised: hsl(var(--surface-raised));
+  --color-surface-sunken: hsl(var(--surface-sunken));
+  --color-fg-faint: hsl(var(--fg-faint));
+  --radius-xs: var(--lt-radius-xs);
+  --radius-sm: var(--lt-radius-sm);
+  --radius-md: var(--lt-radius-md);
+  --radius-lg: var(--lt-radius-lg);
+  --radius-xl: var(--lt-radius-xl);
+  --radius-2xl: var(--lt-radius-2xl);
 }

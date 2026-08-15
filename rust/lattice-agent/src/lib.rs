@@ -57,6 +57,7 @@ pub mod router;
 pub mod runbody;
 pub mod runs;
 pub mod sandbox;
+pub mod sanitize;
 pub mod state;
 pub mod tools;
 pub mod trace;
@@ -102,6 +103,7 @@ pub use permission::{block_reason_for_tool, non_auto_plan_steps};
 pub use policy::{PolicyTable, ToolPolicy};
 pub use router::router;
 pub use sandbox::{ErrorKind, ToolError, Workspace, MAX_COMMAND_OUTPUT, MAX_FILE_BYTES};
+pub use sanitize::{sanitize_write_content, SanitizeMeta};
 pub use tools::{
     is_native, CallScope, HookSink, NativeCall, NativeTools, ToolConfig, ToolHost, MUTATING_TOOLS,
     RENDER_TOOLS,

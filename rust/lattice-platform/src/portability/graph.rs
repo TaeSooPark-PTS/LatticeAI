@@ -59,7 +59,6 @@ use axum::Router;
 use lattice_auth::{AuthState, OrderedMap};
 use lattice_core::db::tables::state_files;
 use lattice_core::db::RuntimeConfig;
-use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
@@ -228,22 +227,10 @@ pub(crate) async fn import_graph(
             Ok(Err(err)) => detail(axum::http::StatusCode::BAD_REQUEST, &err.to_string()),
             Err(err) => detail(axum::http::StatusCode::BAD_GATEWAY, &err.to_string()),
         }
-    } else if let Some(seam) = &state.seam {
-        match seam
-            .post_json(
-                "/worker/graph/mutate",
-                &json!({"op":"import_graph_data","args":{"data": artifact, "mode": mode, "dry_run": dry_run}}),
-            )
-            .await
-        {
-            Ok(value) => json_ok(value.get("result").cloned().unwrap_or(value)),
-            Err(err) => detail(
-                axum::http::StatusCode::from_u16(err.status().unwrap_or(502))
-                    .unwrap_or(axum::http::StatusCode::BAD_GATEWAY),
-                &err.to_string(),
-            ),
-        }
     } else {
+        // `require_graph` above already refused a graph-less install, so this
+        // arm is the mis-wired one: a store without the native writer. The
+        // retired `/worker/graph/mutate` seam is not a second chance.
         detail(
             axum::http::StatusCode::BAD_REQUEST,
             "Invalid Knowledge Graph export artifact.",

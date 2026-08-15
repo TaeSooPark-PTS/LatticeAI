@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v11.6.0)
+# Lattice AI Feature Status (v11.7.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **11.6.0 — One Door**.
+Current release: **11.7.0 — Clean Sweep**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 11.0.0 and later in `RELEASE.md` and
@@ -106,6 +106,17 @@ and callback flows**. Both are recorded below with their reasons rather than
 quietly dropped, and the gaps this release carries openly are listed in Known
 Limitations.
 
+The 11.7.0 line is the clean sweep on top of that door: the three oracle bugs
+11.6.0 ported as-is (empty command-search knowledge, snooze 500, double-reject
+500) are fixed; the §5.3 holes (UTF-8-only upload enrich, primary-node
+vectors, silent user hooks, unsanitized native writes, missing review
+timeline events, two `workspace_os.json` writers) are closed; Self-Model
+writes, the xlsx export, chat `ingest_generated` and vault-watch — all
+stranded on retired seams — are native; replay clocks no longer detonate on
+a calendar date; and the SPA is restyled on an elevation ladder (no glass).
+What is still open is named in Known Limitations rather than described as
+"three leftovers" that no longer exist.
+
 ## Current Feature Status
 
 | Area | Status | Notes |
@@ -127,13 +138,13 @@ Limitations.
 | Fusion Strategy | Opt-in (default off) | `LATTICEAI_FUSION_STRATEGY=rrf` fuses channel *positions* (Reciprocal Rank Fusion) instead of the lexical channel's `1/rank` and the vector channel's normalized cosine, which are not on comparable scales. Per query class via a JSON object. Off everywhere by default: alpha fusion is the ranking this release's assertions describe. 11.2.0 adds the one-switch form (`LATTICEAI_FUSION_RRF`), **toggleable from the home dock's 기능 drawer**; a per-class pin still wins over it. |
 | Graph Candidate Expansion | Opt-in (default off) | `LATTICEAI_GRAPH_EXPANSION=1` adds the one-hop neighbours of the strongest hits to the candidate pool, so a node one edge away from the match is reachable at all. Capped at 5 candidates from 3 seeds, scored at half its seed's score, and reported in the result's `graph_expansion` block (seeds walked, candidates added, whether the cap bit, seeds that failed). **Toggleable from the home dock's 기능 drawer** since 11.2.0. |
 | Feature Toggles | Current | Every opt-in feature is a switch in the home dock's **기능** drawer (`GET/POST /api/features`, `latticeai/services/feature_toggles.py`) instead of an environment variable and a restart. The catalog is **server-rendered** — ids, labels, one-line explanations, defaults, and which choices are installable — so the panel cannot drift from what the server honours. Precedence is **user → env → default**, and the panel says which one answered: a switch nobody has moved still follows its environment variable (and its `FeatureGate` override) exactly as before, because the bound resolver has an opinion only where a person made a choice. Changes persist as atomic JSON under the data dir and take effect immediately — every catalogued switch is backed by a per-call gate, and the catalog reports `live` rather than asserting it. Covers `allow_multimodal`, `video_ingest`, `vault_watch`, `brain_network`, `synthesis`, `auto_vector_index`, `auto_late_fusion`, `fusion_rrf`, `graph_expansion`, and the `vector_backend` choice — where an uninstalled `hnsw` is shown **disabled with the import's own reason**, and refused by the writer, rather than hidden or silently downgraded. |
-| Self-Model (Personal Ontology) | Current (API only) | The Brain keeps a small, separately-governed subgraph about *its owner*: `Self` / `Preference` / `Habit` / `Relationship` node types (plus the existing `Decision`), rooted at `self:root` with `PART_OF` edges. Extraction is deterministic — first-person Korean and English phrasings, no model required — and **only ever proposes**: `POST /api/memory/self-model/propose` files each candidate in the Review Center, and `POST /api/memory/self-model/apply` writes it *after* the approval returns. The user owns it: `GET /api/memory/self-model` shows every fact and the exact summary that gets injected, `POST` corrects one, `DELETE /api/memory/self-model/{node_id}` forgets it — both direct, because it is their own profile. A summary rides along with document-generation context (empty profile → nothing injected, never more than half the context budget). |
+| Self-Model (Personal Ontology) | Current (API only) | The Brain keeps a small, separately-governed subgraph about *its owner*: `Self` / `Preference` / `Habit` / `Relationship` node types (plus the existing `Decision`), rooted at `self:root` with `PART_OF` edges. **11.7.0 restored the writes.** From 11.6.0 until this release the five mutating ops posted into the retired `/worker/graph/mutate` (404 on every install) and `resolve_contradiction` claimed "applied" while writing nothing; they now go through `self_model_write` + `GraphWriter`, and the nine recorded fixture bodies match byte-for-byte. Extraction is still deterministic — first-person Korean and English phrasings, no model required — and **only ever proposes**: `POST /api/memory/self-model/propose` files each candidate in the Review Center, and `POST /api/memory/self-model/apply` writes it *after* the approval returns. The user owns it: `GET /api/memory/self-model` shows every fact and the exact summary that gets injected, `POST` corrects one, `DELETE /api/memory/self-model/{node_id}` forgets it — both direct, because it is their own profile. A summary rides along with document-generation context (empty profile → nothing injected, never more than half the context budget). Still no dedicated screen, still no wording `refiner`, and `open_keys` still accepts `pending` only. |
 | Workspace Reorganization | Current (proposal-first) | "이 프로젝트를 정리해줘" produces a plan, not a tidy-up: `WorkspaceOSStore.propose_reorganization` asks the graph what each file is about and stages **one** `change_proposal` (kind `folder_reorganization`) describing every move into `topics/<주제>/`. Files the Brain cannot justify are reported as `unplaced` with a reason instead of being swept somewhere plausible, and **no deletion is ever proposed** — the planner has no delete path at all. Approving from the Review Center applies it through the same `ChangeProposalService` door every other staged change uses; a move whose source vanished or whose target now exists is skipped and reported, never forced. |
 | Change Governance | Current | `core/tool_governor.py` `MUTATING_TOOL_INVENTORY` requires every mutating tool to be governed or explicitly exempt (release-checked). File edits/deletions flow through change proposals that record a base content hash and re-check it for conflicts before applying atomically. `core/agent_eval.py` verifier fails closed to `NEEDS_REVIEW` on unverifiable or failing outcomes. |
 | Brain Brief | Current | MemoryService turns real workspace, conversation, graph, vector, and source-health signals into focus, evidence, and next actions. `GET /api/brain/proactive-brief` adds the proactive section — what the Brain noticed and what is waiting for a decision — read-only, counting the proposals already in the Review Center rather than raising new ones. |
 | Conversation | Current | Chat is the primary action. It refuses to fake model output when no model is loaded, surfaces memory proof when context exists, and routes explicit file actions into the governed workspace file tool. |
 | Knowledge Graph | Current | Memory graph exploration, graph read compatibility, provenance-aware retrieval, fail-closed workspace reads/traversal, explicit legacy-global compatibility, workspace-safe duplicate content, and KG v2 equivalence gates remain active. |
-| Source Capture | Current | Files, folders, notes, and web/source capture paths feed Brain memory and graph context through explicit user actions and the unified ingestion pipeline when available. A provenance record is keyed by its origin (node, content hash, source type, source URI, pipeline), so re-scanning an unchanged folder or vault updates one record per source instead of appending a duplicate — through 11.0.x the key included a wall-clock second, which made that behaviour depend on how fast the machine was. |
+| Source Capture | Current | Files, folders, notes, and web/source capture paths feed Brain memory and graph context through explicit user actions and the unified ingestion pipeline when available. **11.7.0:** `/upload/document` sends non-UTF-8 / known-binary bodies through `POST /worker/parse`; upload, browser-tab, garden-note and chat-turn doors batch-embed chunks when `(model_id, dim)` agrees. Vault-watch is a real poller joined to native note ingest (watched PDFs parse the same way). `POST /knowledge-graph/ingest` stays text-only by contract. A provenance record is keyed by its origin (node, content hash, source type, source URI, pipeline), so re-scanning an unchanged folder or vault updates one record per source instead of appending a duplicate — through 11.0.x the key included a wall-clock second, which made that behaviour depend on how fast the machine was. |
 | Local Models | Current | Setup and model recommendation flow remains explicit; model downloads and runtime installs require user action. The catalog is the 2026 generation, re-measured against the Hugging Face API on 2026-08-10: **Gemma 4** (E2B / E4B / 12B / 26B A4B / 31B), **Qwen3.6** (27B dense, 35B A3B MoE), **Qwen3.5 9B**, plus two text-only entries that own real tiers — **LFM2.5 2.6B**, the only model that runs comfortably on 8GB, and **GPT-OSS 20B**, the most-downloaded entry here. Each row states its own modality, so "reads pictures" is never implied. Repo ids are stored in the Hub's canonical casing (`gemma-4-12B-it-4bit`, not `-12b-`) so the download path, the on-disk cache directory and the catalog key are one string. |
 | Model Lifecycle | Current | The registry keeps **two lists**. *Recommended* entries are offered, listed and downloadable. *Recognised* entries (Qwen3-VL 4B/8B/30B, Qwen2.5-VL 7B, Llama 3.2 11B Vision, Llama 4 Scout, the Gemma 4 base builds) are superseded but real: never offered and never recommended, yet still resolvable so weights a user already downloaded keep their name, size and runtime profile instead of showing up as an unknown blob. Models that are **gone from the Hub** (`phi-3.5-vision-4bit`, `moondream2-4bit`) or **gated** (`google/gemma-3-*`, `meta-llama/*`) are deleted from both lists — recognising something nobody can obtain is noise, not compatibility. `model_compat` gained the matching families (`gpt_oss`, `lfm2`) and architecture map (`qwen3_5`, `qwen3_5_moe`, `gpt_oss`, `lfm2`, …) so a recognised model never falls back to the vision-less "unknown" profile. |
 | Model Verification | Current (static, not a load test) | `scripts/verify_hf_model_registry.py` re-measures every entry — recommended and recognised — through the public HF API: existence without credentials, gated flag, canonical casing, `library_name`/tags, config architecture, sibling files and their exact byte sum against the registry's recorded size. It **never downloads weights and never loads a model**, and no flag exists that could; the refreshed `verification_report.json` ships with the tree (18/18 present, 18/18 statically loadable, 0 bytes downloaded). The verdict is explicitly **static** — MLX library signal + an architecture with a loader in mlx-lm/mlx-vlm + community downloads — which means "nothing published rules out a load", **not** "this loaded". It cannot see a corrupt shard, an incompatible quantisation, a tokenizer mismatch, or an installed mlx-vlm older than the architecture. The loader plus the on-device smoke test remain the only authority on whether a model really runs. |
@@ -158,7 +169,7 @@ Limitations.
 | Video Ingestion | Opt-in (needs ffmpeg) | 11.2.0 implements it, behind the same `allow_multimodal` flag (default off) plus a video sub-switch (`LATTICEAI_ALLOW_VIDEO`, on within it). Up to four keyframes are extracted with `ffmpeg` and pushed through the **existing image path** — real `Image` nodes with OCR, caption, vector and thumbnail — joined to a first-class `Video` node (`NodeType.VIDEO`) by `CONTAINS_IMAGE`; a companion `.srt`/`.vtt` with the same basename becomes ordinary text chunks. Nothing is bundled: `ffmpeg` is looked up on PATH and, absent, the ingest still answers `status: "unavailable"` — the reason changed from *scope* to *this machine*, and `multimodal_status()` names which of the three applies. A video with no subtitles is kept and says its words are not searchable rather than leaving a blank card. **Toggleable from the home dock's 기능 drawer** since 11.2.0, shown as a sub-switch of multi-modal rather than a peer. Since 11.5.2 the verdict is reachable over HTTP: `GET /api/ingestion/multimodal` reports which of the three applies without attempting an ingest. |
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
 | Trusted Agent Loop | Current | LoopTrace observability + `loop` API payload, python-literal weak-model repair with escalating corrections, deterministic agent-eval CI gate, and proposal-first change governance (`/api/proposals`, 변경 제안 panel) where edits/deletions of existing files are reviewed before applying. |
-| Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. |
+| Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. **11.7.0:** the knowledge group reads `matches` (11.6.0 ported the oracle's empty-`results` bug and Cmd+K could never surface a node). Briefing freshness is frozen at capture in replay so the 45-day fuse cannot redden the fixture on 2026-09-28. |
 | Evidence → Action | Current | `POST /api/evidence/actions` composes evidence-scoped follow-up prompts (요약/체크리스트/문서/한 페이지) from an answer's real citations; deterministic and model-free, executed through the normal chat path. Unresolvable citations are reported, never dropped. |
 | Run Explanation | Current | Every agent run returns a deterministic `explanation` (why it ended, how much the model struggled, one concrete next step). It never upgrades a non-success; `ok` is true only for a verified `DONE`. Rendered on web and in VS Code (the Telegram surface was removed in 11.6.0 with the bridge). |
 | Project Sessions | Current | `/api/projects` keeps a project's produced files, open TODOs, and last honest verification across runs; `/agent` accepts `project_id` and folds each run's outcome (including the last failure's diagnosis) back in. |
@@ -176,7 +187,7 @@ Limitations.
 | Bulk Review Actions | Current | `POST /automation/reviews/bulk/{approve,dismiss}` decide up to 200 named items through the *same* single-item guards — an already-decided item still conflicts, a `change_proposal` still applies its staged content, and the audit trail records N decisions. The response carries a per-item verdict (`ok` / `not_found` / `conflict` / `failed`), so a partial success is legible instead of a single number. `ids` is required; there is no "approve everything pending". |
 | Selective Brain Network | Opt-in prototype (off by default) | `GET/POST /api/knowledge-graph/share*` export a *chosen* subgraph — node ids, node types, or source types, optionally one hop out — as a bundle signed by this device's Ed25519 identity, with a payload digest pinned inside the signed header. The receiving Brain verifies fail-closed and files every node as a **review proposal** carrying the sender's fingerprint; the graph changes only when a person accepts one item, and an edge into a node the receiver does not have is deferred and reported rather than written dangling. Everything is behind `LATTICEAI_BRAIN_NETWORK` (default off); while off the mutating routes answer 403 with the reason and `GET /api/knowledge-graph/share` still answers `enabled: false`. **Toggleable from the home dock's 기능 drawer** since 11.2.0, where it is the one switch that carries a caution line — it is the only one that sends knowledge off this machine. |
 | SSO / OIDC login | **Removed in 11.6.0** — reason stated | The worker mounts no `/auth/*` at all, so the OIDC login and callback flows went with `authlib` and `cryptography`. **The configuration surface remains** (the settings are still read and still shown), and **password login is native** in `lattice-auth` — sessions, roles, rate limits and CSRF included. Restoring the flows means porting them to `lattice-auth`, which is a decision this release did not take rather than one it hid. |
-| Release Assets | Current | 11.6.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 11.7.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -320,29 +331,25 @@ Limitations.
 - **The Telegram bridge and the SSO/OIDC login+callback flows were removed in
   11.6.0**, both as consequences of the worker boundary. The SSO configuration
   surface remains and password login is native.
-- **Three outbound seam calls still address the worker on retired paths**: the
-  `/clear` command's graph audit event is lost (the clear itself succeeds), a
-  garden note lands in the vault but not in the Brain, and **browser tab capture
-  fails outright**. The set is pinned by an integration test, so a fourth fails
-  the build.
-- **Upload extraction enrichment is UTF-8-text only**, and **supplied vectors
-  cover the primary ingest node** (chunks have their own door). In both cases the
-  node is still written and the Concept subgraph is visibly absent rather than
-  silently wrong.
-- **No user hook fires for a native tool** until a hook sink is wired, and
-  `sanitize_write_content` is not applied on the native write path — Python's
-  loop applied it but `/agent/tool` and `/tools/write_file` never did.
-- **`POST /worker/render/pdf` needs the `pdf` extra** (`reportlab`). Without it
-  the route says the renderer is unavailable instead of raising the undeclared
-  500 it used to.
+- **11.7.0 closed the three leftover seam leaks and the three ported oracle
+  bugs** that 11.6.0 listed here. Command-search knowledge returns results;
+  snooze accepts offset-aware datetimes (invalid `until` → 422); double-reject
+  is 409; binary upload parse, per-chunk vectors, native hooks, sanitize on
+  write, review timeline events, and a single `workspace_os.json` writer all
+  shipped. A static gate keeps a new stranded `/worker/` path from landing.
+- **`POST /worker/render/pdf` ships with `reportlab` as a required dependency**
+  (since 11.6.0). `ltcai[pdf]` remains an empty alias for older install lines.
 - **The six pyautogui pointer tools execute in the worker**, not natively. On a
   stock install they answer "unavailable" exactly as before; a user who installed
   `pyautogui` into the worker venv keeps working pointer control. Closing this
   needs a native actuator — a decision, not an oversight.
-- **Three oracle bugs were ported as they are** so the surface does not change
-  mid-release: `/api/command/search`'s knowledge group is always empty (`results`
-  vs `matches`), review snooze 500s on an offset-aware timestamp, and rejecting an
-  already-rejected proposal 500s.
+- **Named leftovers from the 11.7.0 sweep** (not silently dropped): Self-Model
+  `open_keys` accepts `pending` only (Python also accepted `snoozed`); there is
+  still no wording `refiner`; `delete_node` leaves the `PART_OF` edge, as
+  Python did; review timeline events are silent in a standalone retrieval
+  process with no owner installed; `POST /knowledge-graph/ingest` is text-only
+  by contract; every review mutation is two store cycles; the snooze-422
+  detail is raw English like its sibling refusals.
 - Agent/workflow simulation without a loaded LLM is deterministic and must stay
   labeled as model-free rather than autonomous model execution.
 - Local file privacy depends on the user's OS account, disk encryption, and
@@ -373,6 +380,7 @@ Limitations.
 
 The Git tree keeps supported release history from:
 
+- 11.7.0
 - 11.6.0
 - 11.5.2
 - 11.5.1

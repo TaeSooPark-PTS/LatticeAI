@@ -140,7 +140,7 @@ pub(crate) async fn create_item(
         Some(&user.email),
         scope.as_deref(),
     );
-    Ok(json_ok(&review_item_view(&item, None)?))
+    Ok(json_ok(&review_item_view(&item, None)))
 }
 
 pub(crate) async fn review_counts(
@@ -192,7 +192,7 @@ pub(crate) async fn get_item(
     let scope = gate_read(&headers);
     let item = load_review_item(&state, &item_id, scope.as_deref())
         .map_err(|_| not_found_localized(&headers, "review.item_not_found"))?;
-    Ok(json_ok(&review_item_view(&item, None)?))
+    Ok(json_ok(&review_item_view(&item, None)))
 }
 
 pub(crate) async fn approve_item(
@@ -203,7 +203,7 @@ pub(crate) async fn approve_item(
     let user = require_user(&state, &headers)?;
     let scope = gate_write(&headers);
     let item = approve_one(&state, &headers, &item_id, &user, scope.as_deref()).await?;
-    Ok(json_ok(&review_item_view(&item, None)?))
+    Ok(json_ok(&review_item_view(&item, None)))
 }
 
 pub(crate) async fn dismiss_item(
@@ -224,11 +224,17 @@ pub(crate) async fn dismiss_item(
             .map(str::to_string)
             .filter(|s| !s.is_empty())
     };
-    match transition_dismiss(&state, &item_id, scope.as_deref(), reason.as_deref()) {
-        Ok(item) => Ok(json_ok(&review_item_view(&item, None)?)),
+    match transition_dismiss(
+        &state,
+        &item_id,
+        scope.as_deref(),
+        reason.as_deref(),
+        "dismiss",
+    ) {
+        Ok(item) => Ok(json_ok(&review_item_view(&item, None))),
         Err(ReviewError::NotFound) => Err(not_found_localized(&headers, "review.item_not_found")),
         Err(ReviewError::Conflict(msg)) => Err(http_detail(StatusCode::CONFLICT, &msg)),
-        Err(ReviewError::View(resp)) => Err(resp),
+        Err(ReviewError::Invalid(msg)) => Err(http_detail(StatusCode::UNPROCESSABLE_ENTITY, &msg)),
         Err(ReviewError::Failed(msg)) => Err(http_detail(StatusCode::BAD_REQUEST, &msg)),
     }
 }
@@ -245,10 +251,10 @@ pub(crate) async fn snooze_item(
     require_field(&parsed, "until")?;
     let until = string_field(&parsed, "until");
     match transition_snooze(&state, &item_id, &until, scope.as_deref()) {
-        Ok(item) => Ok(json_ok(&review_item_view(&item, None)?)),
+        Ok(item) => Ok(json_ok(&review_item_view(&item, None))),
         Err(ReviewError::NotFound) => Err(not_found_localized(&headers, "review.item_not_found")),
         Err(ReviewError::Conflict(msg)) => Err(http_detail(StatusCode::CONFLICT, &msg)),
-        Err(ReviewError::View(resp)) => Err(resp),
+        Err(ReviewError::Invalid(msg)) => Err(http_detail(StatusCode::UNPROCESSABLE_ENTITY, &msg)),
         Err(ReviewError::Failed(msg)) => Err(http_detail(StatusCode::BAD_REQUEST, &msg)),
     }
 }
@@ -264,10 +270,10 @@ pub(crate) async fn unsnooze_item(
         item["status"] = json!("pending");
         item["snoozed_until"] = Value::Null;
     }) {
-        Ok(item) => Ok(json_ok(&review_item_view(&item, None)?)),
+        Ok(item) => Ok(json_ok(&review_item_view(&item, None))),
         Err(ReviewError::NotFound) => Err(not_found_localized(&headers, "review.item_not_found")),
         Err(ReviewError::Conflict(msg)) => Err(http_detail(StatusCode::CONFLICT, &msg)),
-        Err(ReviewError::View(resp)) => Err(resp),
+        Err(ReviewError::Invalid(msg)) => Err(http_detail(StatusCode::UNPROCESSABLE_ENTITY, &msg)),
         Err(ReviewError::Failed(msg)) => Err(http_detail(StatusCode::BAD_REQUEST, &msg)),
     }
 }
@@ -301,7 +307,7 @@ pub(crate) async fn run_now_item(
             "review item has no workflow to run",
         ));
     }
-    Ok(json_ok(&review_item_view(&stored, None)?))
+    Ok(json_ok(&review_item_view(&stored, None)))
 }
 
 pub(crate) async fn bulk_approve(
@@ -412,6 +418,7 @@ pub(crate) async fn bulk_one(
             } else {
                 Some(reason)
             },
+            "dismiss",
         )
     } else {
         approve_one_result(state, item_id, user, scope).await
@@ -442,10 +449,10 @@ pub(crate) async fn bulk_one(
             row.insert("item_status", Value::Null);
             row.insert("detail", json!(msg));
         }
-        Err(ReviewError::View(_)) => {
+        Err(ReviewError::Invalid(msg)) => {
             row.insert("status", json!("failed"));
             row.insert("item_status", Value::Null);
-            row.insert("detail", json!("internal error"));
+            row.insert("detail", json!(msg));
         }
     }
     row
@@ -471,7 +478,7 @@ pub(crate) async fn approve_one(
             }
             Err(http_detail(StatusCode::CONFLICT, &msg))
         }
-        Err(ReviewError::View(resp)) => Err(resp),
+        Err(ReviewError::Invalid(msg)) => Err(http_detail(StatusCode::UNPROCESSABLE_ENTITY, &msg)),
         Err(ReviewError::Failed(msg)) => Err(http_detail(StatusCode::BAD_REQUEST, &msg)),
     }
 }
@@ -484,7 +491,7 @@ pub(crate) async fn approve_one_result(
 ) -> Result<Value, ReviewError> {
     let stored = load_review_item(state, item_id, scope)?;
     if stored.get("source").and_then(Value::as_str) == Some("change_proposal") {
-        let effective = effective_status(&stored).map_err(ReviewError::View)?;
+        let effective = effective_status(&stored);
         if effective != "pending" && effective != "snoozed" {
             return Err(ReviewError::Conflict(format!(
                 "cannot 'approve' a review item in status '{}'",

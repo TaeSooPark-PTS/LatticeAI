@@ -27,7 +27,7 @@
   border-radius: 999px;
   font-size: 0.68rem;
   padding: 0.25rem 0.6rem;
-  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
+  box-shadow: var(--elev-1);
   white-space: nowrap;
   max-width: 160px;
   overflow: hidden;
@@ -100,12 +100,13 @@
   z-index: 10;
   font-size: 0.68rem;
   padding: 0.25rem 0.6rem;
-  background: hsl(var(--surface-glass));
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 999px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-pill);
+  box-shadow: var(--elev-1);
   cursor: pointer;
   opacity: 0.7;
-  transition: opacity 150ms;
+  transition: opacity var(--lt-dur-2) var(--lt-ease);
 }
 
 .brain-surface-control:hover { opacity: 1; }
@@ -149,12 +150,13 @@
   z-index: 10;
   font-size: 0.68rem;
   padding: 0.2rem 0.55rem;
-  background: hsl(var(--surface-glass));
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 999px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-pill);
+  box-shadow: var(--elev-1);
   cursor: pointer;
   color: hsl(var(--fg-muted));
-  transition: all 150ms;
+  transition: color var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease);
 }
 
 .brain-surface-control:hover {
@@ -274,11 +276,10 @@
   transform: translateX(-50%);
   justify-items: center;
   gap: 0.18rem;
-  border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: 999px;
-  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface));
   padding: 0.48rem 0.95rem;
-  backdrop-filter: blur(18px);
   box-shadow: var(--elev-2);
 }
 
@@ -342,9 +343,8 @@
 .brain-memory-ring span,
 .brain-memory-ring strong {
   border-radius: 999px;
-  background: hsl(var(--surface-glass));
+  background: hsl(var(--surface));
   box-shadow: var(--elev-1);
-  backdrop-filter: blur(16px);
 }
 
 .brain-memory-ring span {
@@ -387,12 +387,11 @@
   max-width: min(94vw, 31rem);
   transform: translateX(-50%);
   gap: 0.35rem;
-  border: 1px solid hsl(var(--border) / 0.52);
-  border-radius: 999px;
-  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface));
   padding: 0.32rem;
   box-shadow: var(--elev-2);
-  backdrop-filter: blur(18px);
 }
 
 .brain-depth-actions button {
@@ -424,12 +423,11 @@
   width: min(92vw, 35rem);
   transform: translateX(-50%);
   gap: 0.28rem;
-  border: 1px solid hsl(var(--border) / 0.48);
-  border-radius: 999px;
-  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface));
   padding: 0.32rem;
   box-shadow: var(--elev-2);
-  backdrop-filter: blur(18px);
 }
 
 .brain-depth-rail button {
@@ -477,10 +475,9 @@
   z-index: 4;
   transform: translate(-50%, -50%);
   border: 1px solid hsl(var(--border) / 0.72);
-  background: hsl(var(--surface-glass));
+  background: hsl(var(--surface));
   color: hsl(var(--fg));
   text-align: left;
-  backdrop-filter: blur(16px);
   animation: emerge-from-brain 680ms cubic-bezier(0.23, 1, 0.32, 1) both;
   animation-delay: var(--delay, 0ms);
 }
@@ -493,9 +490,7 @@
   border-color: hsl(var(--memory) / 0.38);
   border-radius: 10px;
   padding: 0.58rem 0.7rem;
-  box-shadow:
-    0 0 0 1px hsl(var(--memory) / 0.08) inset,
-    0 14px 32px hsl(190 35% 3% / 0.24);
+  box-shadow: var(--elev-1);
 }
 
 .memory-fragment span,
@@ -526,7 +521,7 @@
 .graph-node:focus-visible {
   border-color: hsl(var(--brain-core) / 0.66);
   outline: none;
-  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.08), 0 16px 38px hsl(200 35% 3% / 0.28);
+  box-shadow: var(--elev-2);
 }
 
 .memory-fragment.is-empty,
@@ -581,8 +576,7 @@
     radial-gradient(42% 46% at 50% 42%, hsl(var(--brain-core) / 0.12), transparent 72%),
     linear-gradient(145deg, hsl(var(--surface) / 0.92), hsl(var(--bg) / 0.84));
   padding: 0.8rem;
-  box-shadow: 0 28px 90px hsl(205 40% 3% / 0.46);
-  backdrop-filter: blur(22px);
+  box-shadow: var(--elev-3);
   pointer-events: auto;
 }
 

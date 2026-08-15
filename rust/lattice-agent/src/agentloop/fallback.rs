@@ -68,12 +68,15 @@ Use {{\"action\": \"final\", \"message\": \"...\"}} to finish.",
     /// Write the plan's file steps without asking the model for JSON.
     ///
     /// Deviation, stated rather than hidden: Python routes the content through
-    /// `generate_file_content`, whose extract → validate → repair pipeline lives
-    /// with the document generators in the worker. The native fallback asks the
-    /// worker for content over `/agent/llm` and writes it over `/agent/tool`,
-    /// where `sanitize_write_content` still applies — so the bytes that land are
-    /// validated, but the `generation.repaired` flag is only as good as what the
-    /// seam reports back.
+    /// `generate_file_content`, whose *generation* loop (prompt, retry, model
+    /// re-ask) lives with the document generators in the worker. The native
+    /// fallback asks the worker for content over `/agent/llm` once and then
+    /// writes it through [`Runtime::dispatch_step`] like any other write — so
+    /// the same extract → validate → repair pass runs
+    /// ([`crate::sanitize::sanitize_write_content`], v11.7.0) and
+    /// `generation.repaired` is this loop's own verdict rather than a flag
+    /// borrowed from the seam. What is still missing is only the *retry*: a
+    /// payload this pipeline had to repair is repaired, not regenerated.
     pub(super) async fn direct_file_path(
         &mut self,
         ctx: &mut AgentRunContext,

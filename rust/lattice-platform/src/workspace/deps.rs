@@ -13,9 +13,9 @@
 //!   integrator. Absent ⇒ the graph is off, which is a state Python models too
 //!   (`_workspace_graph()` answers `None`, `graph_stats_safe()` answers
 //!   `{"disabled": true}`).
-//! * **Graph writes** ([`GraphSeam`]) — every one of them goes over
-//!   `POST /worker/graph/mutate` (WAVE2_COMMON rule 6). There is one writer of
-//!   `knowledge_graph.sqlite` and it is the Python worker; this family asks.
+//! * **Graph writes** ([`GraphSeam`]) — every one of them runs on
+//!   [`lattice_core::graph_write::GraphWriter`], in this process. There is one
+//!   writer of `knowledge_graph.sqlite` and since v11.6.0 it is this binary.
 //!
 //! Everything else is a provider closure with an honest default. A default
 //! that cannot answer says so (`None`, `{"disabled": true}`, a 503) rather than
@@ -70,7 +70,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use lattice_core::graph_write::GraphWriter;
-use lattice_core::worker::{WorkerSeamClient, WorkerSeamError};
 use serde_json::{json, Value};
 
 use super::constants::WORKSPACE_OS_VERSION;
@@ -110,7 +109,7 @@ pub struct IngestEvent {
 }
 
 impl IngestEvent {
-    /// The `args` object `POST /worker/graph/mutate` expects for `ingest_event`.
+    /// The `args` object [`GraphSeam::mutate`] expects for `ingest_event`.
     pub fn as_args(&self) -> Value {
         json!({
             "event_type": self.event_type,
@@ -123,20 +122,24 @@ impl IngestEvent {
     }
 }
 
-/// How this family writes the knowledge graph: it does not — it asks.
+/// How this family writes the knowledge graph.
 ///
-/// [`GraphSeam::Absent`] is the graph-disabled install. [`GraphSeam::Worker`]
-/// is production. [`GraphSeam::Stub`] exists so the fixture replay can pin the
-/// *shape* of a mutation without standing up a Python worker; it is the only
-/// variant a test uses and no production path can reach it.
+/// [`GraphSeam::Absent`] is the graph-disabled install. [`GraphSeam::Native`]
+/// is production — [`GraphWriter`], in this process. [`GraphSeam::Stub`]
+/// exists so the fixture replay can pin the *shape* of a mutation without
+/// standing up a write engine; no production path can reach it.
+///
+/// There was a fourth variant, `Worker(WorkerSeamClient)`, that posted to the
+/// Python `POST /worker/graph/mutate` door. That door was retired in v11.6.0
+/// and the variant had no constructor left anywhere in the workspace, so it
+/// could only ever have been a 404 waiting to happen; it is deleted rather
+/// than kept as a plausible-looking option.
 #[derive(Clone)]
 pub enum GraphSeam {
     /// No graph on this install — every write is skipped, as Python skips it.
     Absent,
     /// Native write engine (W3b).
     Native(GraphWriter),
-    /// The real seam: `POST /worker/graph/mutate` on the worker origin.
-    Worker(WorkerSeamClient),
     /// A caller-supplied answer, for tests.
     Stub(Arc<dyn Fn(&str, &Value) -> Result<Value, String> + Send + Sync>),
 }
@@ -146,14 +149,10 @@ impl std::fmt::Debug for GraphSeam {
         formatter.write_str(match self {
             Self::Absent => "GraphSeam::Absent",
             Self::Native(_) => "GraphSeam::Native",
-            Self::Worker(_) => "GraphSeam::Worker",
             Self::Stub(_) => "GraphSeam::Stub",
         })
     }
 }
-
-/// The seam path every graph mutation in the product goes through.
-pub const GRAPH_MUTATE_PATH: &str = "/worker/graph/mutate";
 
 impl GraphSeam {
     /// Whether a write can even be attempted.
@@ -161,7 +160,7 @@ impl GraphSeam {
         !matches!(self, Self::Absent)
     }
 
-    /// Run one whitelisted op, returning the worker's `result` verbatim.
+    /// Run one whitelisted op, returning the write engine's result verbatim.
     pub async fn mutate(&self, op: &str, args: Value) -> Result<Value, String> {
         match self {
             Self::Absent => Err("knowledge graph is disabled".to_string()),
@@ -172,13 +171,6 @@ impl GraphSeam {
                 tokio::task::spawn_blocking(move || native_dispatch(&graph, &op, &args))
                     .await
                     .map_err(|error| error.to_string())?
-            }
-            Self::Worker(client) => {
-                let payload = json!({"op": op, "args": args});
-                match client.post_json(GRAPH_MUTATE_PATH, &payload).await {
-                    Ok(body) => Ok(body.get("result").cloned().unwrap_or(Value::Null)),
-                    Err(error) => Err(describe(&error)),
-                }
             }
         }
     }
@@ -312,14 +304,6 @@ fn native_dispatch(graph: &GraphWriter, op: &str, args: &Value) -> Result<Value,
         }
     };
     result.map_err(|error| error.to_string())
-}
-
-/// A seam refusal, rendered the way Python's `str(exc)` would read.
-fn describe(error: &WorkerSeamError) -> String {
-    match error.status() {
-        Some(status) => format!("{status}: {error}"),
-        None => error.to_string(),
-    }
 }
 
 /// A closure that answers a JSON payload.

@@ -74,12 +74,16 @@ use super::{consistency, proactive};
 /// `BrainIntelligenceService.insights`.
 pub async fn insights(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
     let sample = sampling::graph_sample(state, workspace_id).await;
-    build_insights(&sample, &state.now())
+    build_insights(&sample, &state.now(), state.now_utc())
 }
 
 /// The pure digest, so the windows can be tested without a store.
-pub fn build_insights(sample: &Sample, generated_at: &str) -> OrderedMap {
-    let now = sampling::now_utc_secs();
+///
+/// `now_utc` is UTC epoch seconds, injected: both windows below are thresholds,
+/// and the 7-day one is the tightest in the crate. See
+/// `BrainState::with_utc_clock`.
+pub fn build_insights(sample: &Sample, generated_at: &str, now_utc: f64) -> OrderedMap {
+    let now = now_utc;
     let recent_cutoff = now - (RECENT_DAYS * 86_400) as f64;
     let stale_cutoff = now - (STALE_DAYS * 86_400) as f64;
 
@@ -202,19 +206,23 @@ pub async fn garden_overview(
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
-    build_garden(&sample, &items, limit, &state.now())
+    build_garden(&sample, &items, limit, &state.now(), state.now_utc())
 }
 
 /// The pure four beds.
+///
+/// `now_utc` is UTC epoch seconds; the `recent` and `stale` beds are the same
+/// two thresholds `build_insights` uses. See `BrainState::with_utc_clock`.
 pub fn build_garden(
     sample: &Sample,
     contradictions: &[Value],
     limit: i64,
     generated_at: &str,
+    now_utc: f64,
 ) -> OrderedMap {
     // An explicit 0 clamps to 1 — `limit or 8` would silently re-expand it.
     let limit = limit.clamp(1, 50).max(1) as usize;
-    let now = sampling::now_utc_secs();
+    let now = now_utc;
     let recent_cutoff = now - (RECENT_DAYS * 86_400) as f64;
     let stale_cutoff = now - (STALE_DAYS * 86_400) as f64;
 
@@ -342,7 +350,7 @@ pub async fn importance_report(state: &BrainState, workspace_id: Option<&str>) -
         return importance_unavailable(&now);
     }
     let stats = proactive::access_stats(state, &sample.nodes).await;
-    let mut report = proactive::importance_report(&sample, &stats, &now);
+    let mut report = proactive::importance_report(&sample, &stats, &now, state.now_utc());
     report.insert("available", Value::Bool(true));
     report
 }
@@ -366,7 +374,7 @@ pub async fn quality_report(state: &BrainState, workspace_id: Option<&str>) -> O
     if !sample.available {
         return quality_unavailable(&now);
     }
-    let mut result = proactive::quality_report(&sample, &now);
+    let mut result = proactive::quality_report(&sample, &now, state.now_utc());
     result.insert("available", Value::Bool(true));
 
     // v11.1.0: decay is part of quality, and "the Brain is tidying up" is a
@@ -462,7 +470,7 @@ mod tests {
 
     #[test]
     fn the_digest_counts_windows_and_grounds_its_questions_in_real_titles() {
-        let digest = build_insights(&sample(), "@ts");
+        let digest = build_insights(&sample(), "@ts", sampling::now_utc_secs());
         assert_eq!(digest.get("window_days"), Some(&Value::from(7)));
         let activity = digest.get("activity").expect("activity");
         assert_eq!(activity["recent_nodes"], 5);
@@ -494,20 +502,26 @@ mod tests {
             edges: Vec::new(),
             available: true,
         };
-        let digest = build_insights(&sample, "@ts");
+        let digest = build_insights(&sample, "@ts", sampling::now_utc_secs());
         assert_eq!(
             digest.get("suggested_questions"),
             Some(&serde_json::json!([]))
         );
         assert_eq!(digest.get("graph_available"), Some(&Value::Bool(true)));
-        let empty = build_insights(&Sample::default(), "@ts");
+        let empty = build_insights(&Sample::default(), "@ts", sampling::now_utc_secs());
         assert_eq!(empty.get("graph_available"), Some(&Value::Bool(false)));
         assert_eq!(empty.get("activity").expect("activity")["recent_nodes"], 0);
     }
 
     #[test]
     fn the_garden_keeps_chunks_out_of_every_bed() {
-        let garden = build_garden(&sample(), &[serde_json::json!({"kind": "x"})], 5, "@ts");
+        let garden = build_garden(
+            &sample(),
+            &[serde_json::json!({"kind": "x"})],
+            5,
+            "@ts",
+            sampling::now_utc_secs(),
+        );
         let beds = garden.get("beds").expect("beds");
         assert_eq!(beds["recent"]["count"], 4, "the Chunk is not a plant");
         assert_eq!(beds["stale"]["count"], 1);
@@ -525,10 +539,10 @@ mod tests {
 
     #[test]
     fn an_explicit_zero_limit_clamps_to_one_rather_than_re_expanding() {
-        let garden = build_garden(&sample(), &[], 0, "@ts");
+        let garden = build_garden(&sample(), &[], 0, "@ts", sampling::now_utc_secs());
         let beds = garden.get("beds").expect("beds");
         assert_eq!(beds["recent"]["items"].as_array().expect("items").len(), 1);
-        let wide = build_garden(&sample(), &[], 500, "@ts");
+        let wide = build_garden(&sample(), &[], 500, "@ts", sampling::now_utc_secs());
         assert_eq!(
             wide.get("beds").expect("beds")["recent"]["items"]
                 .as_array()
@@ -536,7 +550,7 @@ mod tests {
                 .len(),
             4
         );
-        let negative = build_garden(&sample(), &[], -9, "@ts");
+        let negative = build_garden(&sample(), &[], -9, "@ts", sampling::now_utc_secs());
         assert_eq!(
             negative.get("beds").expect("beds")["stale"]["items"]
                 .as_array()
@@ -548,7 +562,7 @@ mod tests {
 
     #[test]
     fn an_unavailable_graph_produces_empty_beds_and_says_so() {
-        let garden = build_garden(&Sample::default(), &[], 8, "@ts");
+        let garden = build_garden(&Sample::default(), &[], 8, "@ts", sampling::now_utc_secs());
         assert_eq!(garden.get("available"), Some(&Value::Bool(false)));
         let beds = garden.get("beds").expect("beds");
         for name in ["recent", "contradictions", "stale", "frequent"] {

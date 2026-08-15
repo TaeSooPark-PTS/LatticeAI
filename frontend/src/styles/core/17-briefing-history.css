@@ -55,9 +55,10 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.6rem 0.85rem;
-  border-radius: 10px;
-  border: 1px solid hsl(var(--border) / 0.6);
-  background: hsl(var(--surface) / 0.9);
+  border-radius: var(--lt-radius-lg);
+  border: 1px solid hsl(var(--border));
+  background: var(--grad-surface);
+  box-shadow: var(--elev-1);
   color: hsl(var(--fg));
   cursor: pointer;
   text-align: left;
@@ -65,8 +66,8 @@
 }
 
 .brain-history-resume:hover:not(:disabled) {
-  border-color: hsl(var(--brain-core) / 0.55);
-  background: hsl(var(--brain-core) / 0.06);
+  border-color: hsl(var(--primary) / 0.55);
+  background: hsl(var(--primary) / 0.08);
 }
 
 .brain-history-resume:disabled {
@@ -126,34 +127,36 @@
 
 .brain-history-more:hover {
   color: hsl(var(--fg));
-  border-color: hsl(var(--brain-core) / 0.5);
+  border-color: hsl(var(--primary) / 0.5);
 }
 
 .brain-prompt-pill {
   padding: 0.5rem 1rem;
   border-radius: 999px;
-  background: hsl(var(--surface-glass));
-  border: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--elev-1);
   font-size: 0.76rem;
   color: hsl(var(--fg) / 0.8);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease), color var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease);
 }
 
 .brain-prompt-pill:hover {
-  background: hsl(var(--brain-core) / 0.08);
-  border-color: hsl(var(--brain-core) / 0.4);
-  color: hsl(var(--brain-core));
-  transform: translateY(-1px);
+  background: hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--primary) / 0.4);
+  color: hsl(var(--primary));
+  box-shadow: var(--elev-2);
 }
 
 .brain-brief-panel {
   width: min(680px, 100%);
   margin-top: 1rem;
   padding: 0.85rem;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 10px;
-  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-1);
   display: grid;
   gap: 0.75rem;
   text-align: left;
@@ -169,7 +172,7 @@
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: hsl(var(--brain-core));
+  color: hsl(var(--primary));
   letter-spacing: 0.04em;
 }
 
@@ -200,7 +203,7 @@
 }
 
 .brain-brief-focus svg {
-  color: hsl(var(--brain-core));
+  color: hsl(var(--primary));
   margin-top: 0.1rem;
 }
 
@@ -258,14 +261,14 @@
 }
 
 .brain-brief-actions button:hover {
-  background: hsl(var(--brain-core) / 0.08);
-  border-color: hsl(var(--brain-core) / 0.35);
-  transform: translateY(-1px);
+  background: hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--primary) / 0.35);
+  box-shadow: var(--elev-1);
 }
 
 .brain-brief-actions svg {
   grid-row: 1 / span 2;
-  color: hsl(var(--brain-core));
+  color: hsl(var(--primary));
   margin-top: 0.08rem;
 }
 
@@ -370,8 +373,7 @@
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid hsl(var(--border) / 0.5);
-  background: hsl(var(--surface) / 0.4);
-  backdrop-filter: blur(10px);
+  background: hsl(var(--bg-elevated));
 }
 
 .brain-header-presence {
@@ -413,18 +415,18 @@
 .brain-deeper-btn {
   font-size: 0.76rem;
   font-weight: 700;
-  color: hsl(var(--brain-core));
-  background: hsl(var(--brain-core) / 0.08);
-  border: 1px solid hsl(var(--brain-core) / 0.25);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border: 1px solid hsl(var(--primary) / 0.25);
   padding: 0.35rem 0.75rem;
-  border-radius: 999px;
+  border-radius: var(--lt-radius-pill);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease);
 }
 
 .brain-deeper-btn:hover {
-  background: hsl(var(--brain-core) / 0.15);
-  border-color: hsl(var(--brain-core) / 0.45);
+  background: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.45);
 }
 
 .brain-chat-home-card.has-messages .brain-stream {
@@ -460,8 +462,7 @@
   justify-content: center;
   align-items: flex-start;
   padding: 12vh 1rem 1rem;
-  background: hsl(var(--bg) / 0.55);
-  backdrop-filter: blur(3px);
+  background: hsl(var(--scrim));
 }
 
 .command-palette {
@@ -469,10 +470,10 @@
   max-height: 70vh;
   display: flex;
   flex-direction: column;
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 16px;
-  background: hsl(var(--surface));
-  box-shadow: 0 24px 64px hsl(var(--bg) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: hsl(var(--surface-overlay));
+  box-shadow: var(--elev-4);
   overflow: hidden;
 }
 
@@ -528,7 +529,7 @@
   gap: 0.55rem;
   width: 100%;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--lt-radius-md);
   background: transparent;
   color: hsl(var(--fg));
   padding: 0.5rem 0.6rem;
@@ -538,7 +539,7 @@
 }
 
 .command-palette-item.is-active {
-  background: hsl(var(--accent) / 0.14);
+  background: hsl(var(--primary) / 0.12);
 }
 
 .command-palette-item-title {
@@ -627,6 +628,6 @@
 }
 
 .daily-briefing-action:hover {
-  background: hsl(var(--accent) / 0.12);
+  background: hsl(var(--primary) / 0.1);
 }
 

@@ -51,6 +51,8 @@ pub fn cases_for(family: &str) -> Vec<Value> {
 pub struct Install {
     pub origin: String,
     pub token: String,
+    /// What `@today` resolves to. [`CAPTURE_DATE`], never the calendar's answer —
+    /// a replay that moved with the calendar would be a replay of nothing.
     pub today: String,
     _data: tempfile::TempDir,
     _home: tempfile::TempDir,
@@ -59,7 +61,14 @@ pub struct Install {
 }
 
 impl Install {
+    /// The replay install: every clock frozen at the capture.
     pub async fn start() -> Self {
+        Self::start_at(capture_utc_secs()).await
+    }
+
+    /// The same install with the UTC clock moved, for testing what the passage
+    /// of time does to a fixture. Nothing but a test should need this.
+    pub async fn start_at(now_utc: f64) -> Self {
         let data = tempfile::tempdir().expect("data");
         let home = tempfile::tempdir().expect("home");
         let data_dir = data.path().to_path_buf();
@@ -103,7 +112,10 @@ impl Install {
             .with_graph(graph)
             .with_seam(seam)
             .with_brain_dir(&brain_dir)
-            .with_clock(Arc::new(|| "2026-08-14T12:00:00".to_string()))
+            .with_clock(Arc::new(|| CAPTURE_NOON.to_string()))
+            // The instant the health/hygiene sections measure against. Without
+            // it the briefing fixture expires 45 days after the capture.
+            .with_utc_clock(Arc::new(move || now_utc))
             .with_synthesis_pending(15);
 
         let app = Router::new()
@@ -129,12 +141,20 @@ impl Install {
         Self {
             origin: format!("http://{addr}"),
             token,
-            today: chrono_today(),
+            today: CAPTURE_DATE.to_string(),
             _data: data,
             _home: home,
             _handle: handle,
             _worker: tokio::spawn(async {}),
         }
+    }
+
+    /// The sandbox data directory, holding the *copy* of the seeded store.
+    ///
+    /// Exposed so a test can assert what seeding produced. The committed
+    /// `brain_store.sqlite` is read-only to this harness and stays that way.
+    pub fn data_dir(&self) -> &Path {
+        self._data.path()
     }
 
     pub async fn replay_family(&self, family: &str) {
@@ -143,7 +163,12 @@ impl Install {
         }
     }
 
-    pub async fn replay_one(&self, case: &Value) {
+    /// Issue one fixture case and hand back `(status, content-type, body)`.
+    ///
+    /// Split out of [`Install::replay_one`] so a test can ask what a case
+    /// answers *without* asserting that it matches — which is what a falsifier
+    /// needs, since its whole point is an answer that must differ.
+    pub async fn issue(&self, case: &Value) -> (u16, String, String) {
         let name = case["name"].as_str().unwrap_or("?");
         let method = case["method"].as_str().expect("method");
         let mut path = case["path"].as_str().expect("path").to_string();
@@ -159,7 +184,8 @@ impl Install {
                             if name.contains("past") {
                                 "2020-01-01T00:00:00".to_string()
                             } else {
-                                format!("{}T12:00:00", self.today)
+                                // Deliberately not "now": see CAPTURE_END_OF_DAY.
+                                CAPTURE_END_OF_DAY.to_string()
                             }
                         }
                         Value::String(text) if text == "@any" => "not-a-timestamp".to_string(),
@@ -205,6 +231,12 @@ impl Install {
             .unwrap_or("")
             .to_string();
         let body = response.text().await.expect("text");
+        (status, content_type, body)
+    }
+
+    pub async fn replay_one(&self, case: &Value) {
+        let name = case["name"].as_str().unwrap_or("?");
+        let (status, content_type, body) = self.issue(case).await;
 
         let expected_status = case["status"].as_u64().unwrap() as u16;
         assert_eq!(status, expected_status, "{name} status");
@@ -230,7 +262,6 @@ impl Install {
                 || name.starts_with("brain_brief")
                 || name.starts_with("inspect_")
                 || name.starts_with("recall")
-                || name.contains("self_model")
                 || name == "find_duplicates"
             {
                 return;
@@ -248,7 +279,8 @@ impl Install {
 }
 
 pub(crate) mod match_util;
-pub(crate) mod seed;
+pub mod seed;
 pub use match_util::matches_token;
-use match_util::{chrono_today, first_diff, urlencoding_lite};
+pub use match_util::{capture_utc_secs, CAPTURE_DATE, CAPTURE_END_OF_DAY, CAPTURE_NOON};
+use match_util::{first_diff, urlencoding_lite};
 use seed::{seed_schema, seed_users, spawn_fake_worker};

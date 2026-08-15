@@ -1,14 +1,17 @@
-//! The dry-run routes and the worker delegation, over real sockets.
+//! The dry-run routes and the note ingest, over real sockets.
 //!
 //! Two things are being proved, and only one of them is about HTTP:
 //!
 //! * `/rust/ingest/plan` and `/rust/ingest/chunk` answer what they promise and
 //!   **write nothing** — the plan test asserts the folder is byte-for-byte
 //!   unchanged afterwards, which is the only honest way to test a dry run;
-//! * [`WorkerClient`] speaks the body the Python endpoint parses, and reports a
-//!   refusal as a refusal rather than swallowing it. The "worker" here is a
-//!   throwaway axum app on a loopback port, so nothing depends on a real
-//!   install being up.
+//! * [`NoteIngestor`] writes a watched note through `GraphWriter` in this
+//!   process, asks the worker only for the compute it owns, and **never** asks
+//!   it to write. The "worker" here is a throwaway axum app on a loopback port
+//!   that mounts `/knowledge-graph/ingest` as a tripwire: v11.6.0 removed that
+//!   route from the worker's allowlist while this crate still posted to it, so
+//!   the regression to guard is a request that should not exist rather than a
+//!   reply that should.
 
 #![allow(dead_code, unused_imports, unused_variables)]
 #![allow(clippy::all)]
@@ -19,8 +22,11 @@ use std::time::Duration;
 
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use lattice_core::db::Store;
+use lattice_core::graph_write::GraphWriter;
+use lattice_core::worker::WorkerSeamClient;
 use lattice_ingest::api::{router, IngestApiConfig, CHUNK_PATH, PLAN_PATH};
-use lattice_ingest::worker::{NoteSubmission, WorkerClient, WorkerError};
+use lattice_ingest::worker::{NoteIngestError, NoteIngestor, NoteSubmission};
 use serde_json::{json, Value};
 
 /// Serve `app` on a loopback port and return its origin.
@@ -286,32 +292,113 @@ async fn the_chunk_route_refuses_what_it_cannot_chunk() {
     handle.abort();
 }
 
-/// A stand-in worker that records what it was asked to ingest.
-fn fake_worker(seen: Arc<Mutex<Vec<Value>>>, status: u16) -> Router {
+/// Every path the stand-in worker was asked for, in order.
+#[derive(Clone, Default)]
+struct SeamLog {
+    paths: Arc<Mutex<Vec<String>>>,
+}
+
+impl SeamLog {
+    fn hit(&self, path: &str) {
+        self.paths.lock().expect("lock").push(path.to_string());
+    }
+
+    fn count(&self, path: &str) -> usize {
+        self.paths
+            .lock()
+            .expect("lock")
+            .iter()
+            .filter(|seen| *seen == path)
+            .count()
+    }
+}
+
+/// A stand-in worker: the two compute seams, plus the retired write door as a
+/// tripwire. `/knowledge-graph/ingest` is mounted **and answers 200**, so a
+/// request to it would look like a success from the client's side — which is
+/// exactly why "nobody asked" has to be asserted rather than inferred.
+fn fake_worker(seams: SeamLog, embedder: Option<(String, usize)>) -> Router {
     Router::new()
         .route(
+            "/worker/extract",
+            post({
+                let seams = seams.clone();
+                move |Json(_body): Json<Value>| {
+                    let seams = seams.clone();
+                    async move {
+                        seams.hit("/worker/extract");
+                        Json(json!({
+                            "concepts": [{"text": "회의록", "node_type": "Concept"}],
+                            "triples": [],
+                            "semantic": [],
+                        }))
+                    }
+                }
+            }),
+        )
+        .route(
+            "/worker/embed",
+            post({
+                let seams = seams.clone();
+                move |Json(body): Json<Value>| {
+                    let seams = seams.clone();
+                    let embedder = embedder.clone();
+                    async move {
+                        seams.hit("/worker/embed");
+                        let native = lattice_core::embeddings::LocalEmbeddingModel::from_env();
+                        let (model_id, dim) = embedder
+                            .unwrap_or_else(|| (native.model_id().to_string(), native.dim()));
+                        let vectors: Vec<Vec<f64>> = body["texts"]
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default()
+                            .iter()
+                            .map(|text| {
+                                let mut values = native.embed(text.as_str().unwrap_or(""));
+                                values.resize(dim, 0.0);
+                                values
+                            })
+                            .collect();
+                        Json(json!({
+                            "vectors": vectors,
+                            "dim": dim,
+                            "model_id": model_id,
+                            "kind": body["kind"].as_str().unwrap_or("passage"),
+                        }))
+                    }
+                }
+            }),
+        )
+        .route(
             "/knowledge-graph/ingest",
-            post(move |Json(body): Json<Value>| {
-                let seen = seen.clone();
-                async move {
-                    seen.lock().expect("lock").push(body);
-                    (
-                        axum::http::StatusCode::from_u16(status).expect("status"),
-                        Json(json!({"status": "ok", "duplicate": false, "node_id": "webdoc:abc"})),
-                    )
+            post({
+                let seams = seams.clone();
+                move |Json(_body): Json<Value>| {
+                    let seams = seams.clone();
+                    async move {
+                        seams.hit("/knowledge-graph/ingest");
+                        Json(json!({"status": "ok", "duplicate": false, "node_id": "webdoc:abc"}))
+                    }
                 }
             }),
         )
         .route("/health", get(|| async { "ok" }))
 }
 
+fn writer(dir: &Path) -> GraphWriter {
+    let store = Arc::new(Store::open(&dir.join("knowledge_graph.sqlite")).expect("store"));
+    GraphWriter::open(store, dir.join("knowledge_graph_blobs")).expect("writer")
+}
+
 #[tokio::test]
-async fn delegation_sends_the_body_the_python_endpoint_parses() {
-    let seen = Arc::new(Mutex::new(Vec::new()));
-    let (origin, handle) = serve(fake_worker(seen.clone(), 200)).await;
-    let client = WorkerClient::new(&origin)
-        .expect("client")
-        .with_header("x-lattice-test", "1");
+async fn a_watched_note_is_written_here_and_never_posted_to_the_worker() {
+    let seams = SeamLog::default();
+    let (origin, handle) = serve(fake_worker(seams.clone(), None)).await;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graph = writer(dir.path());
+    let ingestor = NoteIngestor::new(graph.clone())
+        .with_worker_origin(&origin)
+        .expect("seam");
 
     let note = NoteSubmission::from_watched_file(
         Path::new("/brain/notes"),
@@ -319,70 +406,147 @@ async fn delegation_sends_the_body_the_python_endpoint_parses() {
         "결정 사항을 정리했습니다.",
         Some("watch_abc"),
     );
-    let answer = client.submit_note(&note).await.expect("delegation");
-    assert_eq!(answer["status"], Value::from("ok"));
+    let receipt = ingestor
+        .ingest_note(&note, Some("owner@lattice.test"), Some("personal"))
+        .await
+        .expect("the note lands");
+    assert!(receipt.node_id.starts_with("webdoc:"), "{receipt:?}");
+    assert!(receipt.provenance_id.is_some());
+    assert!(receipt.indexed, "the seam's embedder is the native one");
 
-    let recorded = seen.lock().expect("lock").clone();
-    assert_eq!(recorded.len(), 1);
-    let body = &recorded[0];
-    assert_eq!(body["type"], Value::from("note"));
-    assert_eq!(body["title"], Value::from("2026-08-11.md"));
-    assert_eq!(body["content"], Value::from("결정 사항을 정리했습니다."));
+    // The whole point: the compute seams were asked, the write door was not.
+    assert_eq!(seams.count("/worker/extract"), 1);
     assert_eq!(
-        body["metadata"]["relative_path"],
-        Value::from("회의/2026-08-11.md")
+        seams.count("/worker/embed"),
+        2,
+        "once for the document vector, once for every chunk in a single batch \
+         — the `enrich` chain the upload door uses, not a second copy of it"
     );
-    assert_eq!(body["metadata"]["watch_id"], Value::from("watch_abc"));
-    assert_eq!(body["metadata"]["folder_watch"], Value::Bool(true));
+    assert_eq!(
+        seams.count("/knowledge-graph/ingest"),
+        0,
+        "the graph write is native; a request here means the watcher is posting \
+         into a route the worker stopped serving in v11.6.0"
+    );
+
+    // …and the note really is in the Brain, concept and vector included.
+    let node_id = receipt.node_id.clone();
+    let (documents, concepts, vectors): (i64, i64, i64) = graph
+        .store()
+        .with_read_conn(|conn| {
+            let documents = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM nodes WHERE id = ?1 AND type = 'Document'",
+                    [&node_id],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            let concepts = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM nodes WHERE type = 'Concept'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            let vectors = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM vector_embeddings WHERE item_id = ?1",
+                    [&node_id],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            Ok((documents, concepts, vectors))
+        })
+        .expect("read");
+    assert_eq!(documents, 1, "the watched note became a Document");
+    assert_eq!(concepts, 1, "the extract seam's concept was attached");
+    assert!(vectors >= 1, "the note is searchable by vector");
     handle.abort();
 }
 
 #[tokio::test]
-async fn a_refusal_is_reported_as_a_refusal() {
-    let seen = Arc::new(Mutex::new(Vec::new()));
-    let (origin, handle) = serve(fake_worker(seen, 403)).await;
-    let client = WorkerClient::new(&origin).expect("client");
-    let note = NoteSubmission::from_watched_file(Path::new("/root"), "a.md", "x", None);
-    match client.submit_note(&note).await {
-        Err(WorkerError::Rejected { status, detail }) => {
-            assert_eq!(status, 403);
-            assert!(!detail.is_empty());
-        }
-        other => panic!("expected a rejection, got {other:?}"),
-    }
+async fn a_divergent_embedder_supplies_its_vector_but_licenses_no_native_sync() {
+    // W2 §4: `similarity()` raises on a width mismatch, so a native re-embed
+    // under a model the provider does not use silently kills vector search.
+    // The supplied row is still filed; the incremental native sync is not run.
+    let seams = SeamLog::default();
+    let (origin, handle) = serve(fake_worker(
+        seams.clone(),
+        Some(("other-model:8".into(), 8)),
+    ))
+    .await;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let ingestor = NoteIngestor::new(writer(dir.path()))
+        .with_worker_origin(&origin)
+        .expect("seam");
+    let note = NoteSubmission::from_watched_file(Path::new("/root"), "a.md", "본문", None);
+    let receipt = ingestor
+        .ingest_note(&note, None, None)
+        .await
+        .expect("the note still lands");
+    assert!(
+        !receipt.indexed,
+        "a provider the native embedder cannot reproduce is backlog, not a write"
+    );
+    assert_eq!(seams.count("/knowledge-graph/ingest"), 0);
     handle.abort();
 }
 
 #[tokio::test]
-async fn an_unreachable_worker_is_an_error_not_a_silent_success() {
-    // Bind and immediately drop, so the port is almost certainly closed.
+async fn an_unreachable_worker_costs_the_note_its_concepts_not_its_place() {
+    // Bind and immediately drop, so the port is almost certainly closed. Before
+    // v11.7.0 this was the *whole* ingest path, and an unreachable worker meant
+    // the note was gone.
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind");
     let addr = listener.local_addr().expect("addr");
     drop(listener);
-    let client = WorkerClient::new(format!("http://{addr}")).expect("client");
-    let note = NoteSubmission::from_watched_file(Path::new("/root"), "a.md", "x", None);
-    assert!(matches!(
-        client.submit_note(&note).await,
-        Err(WorkerError::Transport(_))
-    ));
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graph = writer(dir.path());
+    let ingestor = NoteIngestor::new(graph.clone())
+        .with_worker_origin(format!("http://{addr}"))
+        .expect("seam");
+    let note = NoteSubmission::from_watched_file(Path::new("/root"), "a.md", "본문", None);
+    let receipt = ingestor
+        .ingest_note(&note, None, None)
+        .await
+        .expect("the note lands anyway");
+    let concepts: i64 = graph
+        .store()
+        .with_read_conn(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT COUNT(*) FROM nodes WHERE type = 'Concept'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0))
+        })
+        .expect("read");
+    assert_eq!(concepts, 0, "no seam, no concepts");
+    assert!(!receipt.node_id.is_empty(), "…but the note is in the Brain");
 }
 
 #[tokio::test]
-async fn a_worker_that_answers_with_html_is_malformed_not_ok() {
-    let app = Router::new().route(
-        "/knowledge-graph/ingest",
-        post(|| async { "<html>login</html>" }),
-    );
-    let (origin, handle) = serve(app).await;
-    let client = WorkerClient::new(&origin).expect("client");
-    let note = NoteSubmission::from_watched_file(Path::new("/root"), "a.md", "x", None);
+async fn an_empty_note_is_refused_before_anything_is_written() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graph = writer(dir.path());
+    let ingestor = NoteIngestor::new(graph.clone());
+    let blank = NoteSubmission::from_watched_file(Path::new("/root"), "a.md", "\t \n", None);
     assert!(matches!(
-        client.submit_note(&note).await,
-        Err(WorkerError::Malformed(_))
+        ingestor.ingest_note(&blank, None, None).await,
+        Err(NoteIngestError::Empty)
     ));
-    handle.abort();
+    let nodes: i64 = graph
+        .store()
+        .with_read_conn(|conn| {
+            Ok(conn
+                .query_row("SELECT COUNT(*) FROM nodes", [], |row| row.get(0))
+                .unwrap_or(0))
+        })
+        .expect("read");
+    assert_eq!(nodes, 0);
 }
 
 /// Percent-encode the few characters a temp path can contain that a query

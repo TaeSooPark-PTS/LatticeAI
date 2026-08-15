@@ -24,24 +24,82 @@ use lattice_retrieval::{
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-pub(crate) fn chrono_today() -> String {
-    // Naive local date, matching `date.today().isoformat()`.
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64;
-    let days = secs / 86_400;
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = mp + if mp < 10 { 3 } else { -9 };
-    let y = y + i64::from(m <= 2);
-    format!("{y:04}-{m:02}-{d:02}")
+/// The one day `brain_store.sqlite` was captured on.
+///
+/// `@today` used to resolve to the *replayer's* date, read from
+/// `SystemTime::now()`. That made `GET /api/chronicle/day/@today` pass on
+/// 2026-08-14 and fail on every day after it: the seeded store holds fifteen
+/// `ingestion_provenance` rows and they are all stamped this date, so asking for
+/// any other day correctly answers zero. The fixture was a bomb with a one-day
+/// fuse, and it went off.
+///
+/// The capture date is data, not a clock reading, so it is spelled here as data.
+/// The harness already freezes every clock it owns ([`CAPTURE_NOON`] for
+/// `BrainState`, `Clock::frozen` for auth); this closes the last one, and with it
+/// the last `SystemTime::now()` in the harness.
+pub const CAPTURE_DATE: &str = "2026-08-14";
+
+/// The frozen `now` every capture-era body was generated against.
+///
+/// Also the stamp the seed overlays write, so re-stamping the store and moving
+/// the clock stay one edit.
+pub const CAPTURE_NOON: &str = "2026-08-14T12:00:00";
+
+/// What `@ts` resolves to in a *query* — the last second of the capture day.
+///
+/// `/api/chronicle/as-of?ts=…` is cumulative, so its answer only holds if the
+/// instant is at or after every stamp in the store. The latest one is a
+/// conversation message at `2026-08-14T19:27:12.753680`; end-of-day clears it
+/// with room to spare and cannot drift into tomorrow. `the_capture_is_one_day`
+/// in `chronicle_replay.rs` re-checks both halves of that sentence.
+pub const CAPTURE_END_OF_DAY: &str = "2026-08-14T23:59:59";
+
+/// [`CAPTURE_END_OF_DAY`] as UTC epoch seconds — what the harness injects into
+/// `BrainState::with_utc_clock`.
+///
+/// The briefing's health report grades staleness as `now - 45 days` against each
+/// node's `updated_at`, and `parse_ts` reads the store's naive stamps as UTC.
+/// Left on the real clock, every sampled node in the capture goes stale together
+/// on 2026-09-28 and the pinned `"grade": "excellent"` becomes `"good"` — the
+/// same shape of bomb as `@today`, just with a 45-day fuse instead of a one-day
+/// one. Frozen here, the fixture grades what it graded at capture, forever.
+///
+/// Derived from the constant rather than written as a literal so the two cannot
+/// drift; `the_capture_instant_is_the_end_of_the_capture_day` checks the
+/// arithmetic against a known epoch.
+pub fn capture_utc_secs() -> f64 {
+    let (date, time) = CAPTURE_END_OF_DAY
+        .split_once('T')
+        .expect("CAPTURE_END_OF_DAY is `date` T `time`");
+    let mut ymd = date
+        .split('-')
+        .map(|part| part.parse::<i64>().expect("int"));
+    let (y, m, d) = (
+        ymd.next().expect("year"),
+        ymd.next().expect("month"),
+        ymd.next().expect("day"),
+    );
+    let mut hms = time
+        .split(':')
+        .map(|part| part.parse::<i64>().expect("int"));
+    let (hh, mm, ss) = (
+        hms.next().expect("hour"),
+        hms.next().expect("minute"),
+        hms.next().expect("second"),
+    );
+    (days_from_civil(y, m, d) * 86_400 + hh * 3600 + mm * 60 + ss) as f64
+}
+
+/// Howard Hinnant's `days_from_civil` — the inverse of the civil-from-days math
+/// the deleted `chrono_today` used, and the only date arithmetic left here.
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = y - i64::from(m <= 2);
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let mp = (m + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
 }
 
 pub(crate) fn urlencoding_lite(value: &str) -> String {

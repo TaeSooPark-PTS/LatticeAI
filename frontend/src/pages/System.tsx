@@ -70,15 +70,15 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
         <h1 className="page-title">{t(language, "system.title")}</h1>
         <p className="page-copy">{t(language, "system.body")}</p>
       </header>
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3" data-testid="system-tab-groups">
+      <div className="system-tab-groups" data-testid="system-tab-groups">
         {groups
           .map((group) => ({ group, items: visibleTabs.filter((item) => item.group === group.id) }))
           .filter(({ items }) => items.length > 0)
           .map(({ group, items }) => {
           const labelId = `system-group-${group.id}`;
           return (
-            <div key={group.id} className="flex flex-col gap-1.5">
-              <span id={labelId} className="px-1 text-xs font-medium text-muted-foreground">
+            <div key={group.id} className="system-tab-group">
+              <span id={labelId} className="system-tab-group-label">
                 {t(language, group.labelKey)}
               </span>
               <Tabs

@@ -95,7 +95,7 @@ export function PermissionModePanel() {
   }
 
   return (
-    <Card data-testid="permission-mode-panel">
+    <Card className="settings-dial" data-testid="permission-mode-panel">
       <CardHeader>
         <CardTitle>{t(language, "system.permission.title")}</CardTitle>
         <CardDescription>{t(language, "system.permission.hint")}</CardDescription>
@@ -123,9 +123,7 @@ export function PermissionModePanel() {
                   setAcknowledged(false);
                   apply.reset();
                 }}
-                className={`w-full rounded-md border p-3 text-left transition ${
-                  isDraft ? "border-primary bg-accent" : "border-border hover:bg-accent/50"
-                }`}
+                className={`settings-dial-option ${isDraft ? "is-active" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <strong className="text-sm">{optionLabel(option, language)}</strong>

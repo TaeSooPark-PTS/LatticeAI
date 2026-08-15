@@ -32,6 +32,10 @@ pub const DEFAULT_PUBLIC_MODEL: &str = "openai:gpt-4o-mini";
 /// `LATTICEAI_AUTO_READ_CHAT_PATHS` — off, and the handler refuses anyway.
 pub const AUTO_READ_ENV: &str = "LATTICEAI_AUTO_READ_CHAT_PATHS";
 /// `LATTICEAI_INGEST_GENERATED` — index generated files into the Brain.
+///
+/// On by default, and since v11.7.0 that default finally does something: the
+/// index write is native ([`crate::intents`]), where it used to be a `POST` to
+/// a worker route v11.6.0 retired.
 pub const INGEST_GENERATED_ENV: &str = "LATTICEAI_INGEST_GENERATED";
 
 /// Where the audit trail goes.
@@ -90,6 +94,10 @@ pub struct ChatConfig {
     /// `config.auto_read_chat_paths`.
     pub auto_read_chat_paths: bool,
     /// `LATTICEAI_INGEST_GENERATED` — index generated files into the Brain.
+    ///
+    /// Needs [`ChatState::graph`] bound to do anything: the write is native, so
+    /// a state with no writer reports no `brain_ingest` at all rather than a
+    /// receipt for something that did not happen.
     pub ingest_generated: bool,
 }
 

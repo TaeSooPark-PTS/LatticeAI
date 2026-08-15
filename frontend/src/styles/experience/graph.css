@@ -37,11 +37,11 @@
   min-height: 23rem;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.84);
-  border-radius: 24px;
+  border-radius: var(--lt-radius-2xl);
   background:
     radial-gradient(circle at 45% 48%, hsl(var(--brain-core) / 0.14), transparent 25%),
     radial-gradient(circle at 82% 52%, hsl(var(--memory) / 0.09), transparent 30%),
-    linear-gradient(145deg, hsl(var(--surface)), hsl(var(--muted) / 0.32));
+    var(--grad-surface);
   box-shadow: var(--elev-3);
 }
 
@@ -98,7 +98,7 @@
   padding: 0 0.65rem;
   font-size: 0.76rem;
   font-weight: 600;
-  transition: color 180ms ease, border-color 180ms ease, background 180ms ease, transform 180ms ease;
+  transition: color var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease), background var(--lt-dur-2) var(--lt-ease);
 }
 
 .brain-flow-source svg {
@@ -113,7 +113,6 @@
   border-color: hsl(var(--primary) / 0.32);
   background: hsl(var(--primary) / 0.09);
   color: hsl(var(--foreground));
-  transform: translateX(3px);
 }
 
 .brain-flow-transfer,
@@ -225,15 +224,14 @@
   box-shadow: var(--elev-1);
   padding: 0.42rem 0.55rem;
   text-align: left;
-  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  transition: border-color var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease);
 }
 
 .brain-flow-node:hover,
 .brain-flow-node:focus-visible {
   z-index: 6;
-  transform: translate(-50%, -50%) scale(1.04);
   border-color: hsl(var(--primary) / 0.55);
-  box-shadow: 0 12px 28px hsl(var(--primary) / 0.12);
+  box-shadow: var(--elev-2);
 }
 
 .brain-flow-node > span {

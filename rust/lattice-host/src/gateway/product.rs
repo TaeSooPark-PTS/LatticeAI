@@ -197,24 +197,23 @@ pub fn platform_router(state: &OneDoorState) -> Router {
     security.worker = Some(state.seam.clone());
 
     let mut setup_state = setup::SetupState::new(auth(), &data_dir);
-    setup_state.worker = Some(state.seam.clone());
     setup_state.graph = Some(state.graph.clone());
     setup_state.pipeline_available = true;
 
-    let mut network_state = network::NetworkState::new(auth(), state.config.clone(), None);
+    let mut network_state = network::NetworkState::new(auth(), state.config.clone());
     network_state.graph = Some(state.graph.clone());
 
-    let mut boundary =
-        network_boundary::NetworkBoundaryState::new(auth(), state.config.clone(), None);
+    let mut boundary = network_boundary::NetworkBoundaryState::new(auth(), state.config.clone());
     boundary.graph = Some(state.graph.clone());
 
-    let mut portability_state =
-        portability::PortabilityState::new(auth(), state.config.clone(), None);
+    let mut portability_state = portability::PortabilityState::new(auth(), state.config.clone());
     portability_state.graph = Some(state.graph.clone());
 
     // One handle, opened in `OneDoorState`, because the agent loop stages into
-    // the same document (§P1c). A second `GovernanceState::open` here would
-    // hold its own in-memory copy and overwrite the loop's staged proposals.
+    // the same document (§P1c). Both this router and the loop mutate
+    // `workspace_os.json`, and `GovernanceState` is a facade over the single
+    // `WorkspaceOsStore` handle: a second `GovernanceState::open` here would
+    // take a different lock over the same file.
     let governance = state.governance.clone();
 
     Router::new()
@@ -240,7 +239,13 @@ pub fn platform_router(state: &OneDoorState) -> Router {
         .merge(review_queue::router(governance.clone()))
         .merge(change_proposals::router(governance.clone()))
         .merge(automation::router(governance.clone()))
-        .merge(hooks::router(hooks::HooksState::new(governance)))
+        // The registry the agent loop's hook sink fires through, opened once in
+        // `OneDoorState` — see the field's comment for why a second one loses
+        // records rather than duplicating them.
+        .merge(hooks::router(hooks::HooksState::with_store(
+            governance,
+            state.hooks.clone(),
+        )))
         .merge(mcp::router(mcp::McpState::new(auth(), &data_dir)))
         .merge(marketplace::router(marketplace::MarketplaceState::new(
             auth(),

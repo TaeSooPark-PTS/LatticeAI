@@ -85,7 +85,11 @@ pub const SELF_ROOT_ID: &str = "self:root";
 pub const KIND_ORDER: [&str; 5] = ["trait", "preference", "habit", "decision", "relationship"];
 
 /// `KIND_LABELS` — the plain Korean the injected block speaks.
-fn kind_label(kind: &str) -> &'static str {
+///
+/// Also the label a Self-Model proposal's summary names
+/// (`memory_api::self_model_write`), so the wording a person approves and the
+/// wording the prompt carries come from one table.
+pub fn kind_label(kind: &str) -> &'static str {
     match kind {
         "trait" => "나",
         "preference" => "선호",

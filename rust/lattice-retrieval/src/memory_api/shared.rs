@@ -2,9 +2,9 @@
 //!
 //! One [`BrainState`] carries the four collaborators the Python routers were
 //! handed at composition time — the auth guard closures, the workspace read/
-//! write gate, the knowledge-graph store, and the seam the graph writes are
-//! delegated over — so a handler in any of the six families reaches them the
-//! same way. The response helpers below exist for the same reason: FastAPI's
+//! write gate, the knowledge-graph store, and the engine the graph writes run
+//! on — so a handler in any of the six families reaches them the same way. The
+//! response helpers below exist for the same reason: FastAPI's
 //! refusal bodies are a client contract (`frontend/src/api/base.ts` reads
 //! `detail`), and one renderer means they cannot drift between families.
 //!
@@ -80,6 +80,7 @@ use lattice_core::worker::WorkerSeamClient;
 use lattice_core::CoreError;
 
 use super::graph_native;
+use super::self_model_write;
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -91,6 +92,16 @@ pub const MAX_BODY_BYTES: usize = 4 * 1024 * 1024;
 
 /// `latticeai.core.timeutil.now_iso`, injectable so a test can freeze it.
 pub type NowFn = Arc<dyn Fn() -> String + Send + Sync>;
+
+/// UTC epoch seconds, injectable for the same reason [`NowFn`] is.
+///
+/// [`NowFn`] freezes the stamps a body *prints*; this freezes the ones it
+/// *measures against*. The briefing's health report is the reason it exists:
+/// staleness is `now - 45 days` versus each node's `updated_at`, so a fixture
+/// whose nodes are all stamped on one day grades "excellent" until that day is
+/// 45 days old and then grades "good" — a golden that expires without anyone
+/// touching it.
+pub type UtcNowFn = Arc<dyn Fn() -> f64 + Send + Sync>;
 
 /// `p_reinforce.BRAIN_DIR` — same env fallbacks, evaluated once at construct.
 fn default_brain_dir() -> PathBuf {
@@ -115,6 +126,7 @@ pub struct BrainState {
     seam: Option<WorkerSeamClient>,
     enable_graph: bool,
     now: NowFn,
+    now_utc: UtcNowFn,
     active_model: Option<NowFn>,
     brain_dir: PathBuf,
     synthesis_pending: Arc<AtomicI64>,
@@ -141,6 +153,7 @@ impl BrainState {
             seam: None,
             enable_graph: true,
             now: Arc::new(now_iso),
+            now_utc: Arc::new(crate::brain_api::sampling::now_utc_secs),
             active_model: None,
             brain_dir: default_brain_dir(),
             synthesis_pending: Arc::new(AtomicI64::new(0)),
@@ -221,6 +234,20 @@ impl BrainState {
     /// `latticeai.core.timeutil.now_iso()`.
     pub fn now(&self) -> String {
         (self.now)()
+    }
+
+    /// Freeze the instant the briefing *measures* against.
+    ///
+    /// Defaults to [`crate::brain_api::sampling::now_utc_secs`], so a host that
+    /// does not call this gets the real clock and byte-identical answers.
+    pub fn with_utc_clock(mut self, now_utc: UtcNowFn) -> Self {
+        self.now_utc = now_utc;
+        self
+    }
+
+    /// `datetime.now(timezone.utc).timestamp()` — UTC epoch seconds.
+    pub fn now_utc(&self) -> f64 {
+        (self.now_utc)()
     }
 
     /// Where `workspace_os.json` and `knowledge_graph.sqlite` live.
@@ -321,12 +348,11 @@ impl BrainState {
         self.store.read(work).await.map_err(store_failed)
     }
 
-    /// Delegate one whitelisted graph mutation to the Python single writer.
+    /// Run one whitelisted graph mutation on the native write engine.
     ///
-    /// Never a native write: `nodes`/`edges`/`chunks`/`vector_*` belong to the
-    /// worker (WP-I1 §2), and a second writer would race the one lock SQLite
-    /// has. The worker's own refusal status is mirrored rather than flattened
-    /// into a blanket 502, so a caller sees `400 op_not_allowed` as a 400.
+    /// Every one of them is native since v11.7.0. The refusal's own status is
+    /// kept rather than flattened into a blanket 502, so a caller still sees
+    /// `400 op_not_allowed` as a 400.
     pub async fn mutate(&self, op: &str, args: Value) -> Result<Value, Response> {
         self.mutate_detailed(op, args)
             .await
@@ -339,13 +365,23 @@ impl BrainState {
     /// catalog id (`not_found` is a 404 about the fact, everything else a 400),
     /// and parsing it back out of a rendered body would be a second, lossier
     /// error channel.
+    ///
+    /// Two families of op meet here and they are written by different code for
+    /// a reason: [`graph_native::dispatch`] covers the eleven ops the shared
+    /// write engine implements, and [`self_model_write::dispatch`] covers the
+    /// five this crate owns (the Self-Model's four writes and the
+    /// contradiction stamps), because those write *review items* as well as
+    /// nodes and the review queue is not `lattice-core`'s business.
     pub async fn mutate_detailed(&self, op: &str, args: Value) -> Result<Value, SeamRefusal> {
+        let Some(graph) = self.graph.clone() else {
+            return Err(SeamRefusal {
+                status: 503,
+                detail: WRITE_ENGINE_UNCONFIGURED.to_string(),
+            });
+        };
         if graph_native::is_writer_op(op) {
-            if let Some(graph) = self.graph.clone() {
-                let op = op.to_string();
-                return tokio::task::spawn_blocking(move || {
-                    graph_native::dispatch(&graph, &op, &args)
-                })
+            let op = op.to_string();
+            return tokio::task::spawn_blocking(move || graph_native::dispatch(&graph, &op, &args))
                 .await
                 .map_err(|error| SeamRefusal {
                     status: 500,
@@ -355,29 +391,19 @@ impl BrainState {
                     status: graph_native::status_for(&error),
                     detail: error.to_string(),
                 });
-            }
         }
-        let Some(seam) = self.seam.as_ref() else {
-            return Err(SeamRefusal {
-                status: 503,
-                detail: "the knowledge-graph write seam is not configured on this host".to_string(),
-            });
-        };
-        let payload = serde_json::json!({"op": op, "args": args});
-        match seam.post_json("/worker/graph/mutate", &payload).await {
-            Ok(value) => Ok(value.get("result").cloned().unwrap_or(Value::Null)),
-            Err(error) => Err(SeamRefusal {
-                // The worker's own refusal status is mirrored rather than
-                // flattened into a blanket 502, so `400 op_not_allowed` stays a
-                // 400 and a caller learns what it actually asked for.
-                status: error.status().unwrap_or(502),
-                detail: error.to_string(),
-            }),
-        }
+        self_model_write::dispatch(self, &graph, op, args).await
     }
 }
 
-/// What the graph-write seam refused with.
+/// The one sentence a caller gets when the graph is on but no writer was bound.
+///
+/// A mis-wired host, not a request problem — and the same wording
+/// `knowledge_graph_api::writes` answers with, because it is the same fault.
+pub const WRITE_ENGINE_UNCONFIGURED: &str =
+    "the knowledge-graph write engine is not configured on this host";
+
+/// What the graph-write refused with.
 #[derive(Debug, Clone)]
 pub struct SeamRefusal {
     /// The worker's own status, or `502` when the hop itself failed.

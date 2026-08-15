@@ -69,13 +69,9 @@
   gap: 0.6rem;
   width: 17.5rem;
   padding: 0.85rem 0.9rem;
-  border-radius: 0.9rem;
-  background: hsl(var(--card) / 0.97);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow:
-    0 18px 44px -16px hsl(var(--foreground) / 0.28),
-    inset 0 0 0 1px hsl(var(--border) / 0.35);
+  border-radius: var(--lt-radius-xl);
+  background: hsl(var(--surface-overlay));
+  box-shadow: var(--elev-3), inset 0 0 0 1px hsl(var(--border-subtle));
   text-align: left;
   white-space: normal;
 }
@@ -302,12 +298,8 @@
   gap: 0.3rem;
   padding: 0.3rem;
   border-radius: 999px;
-  background: hsl(var(--card) / 0.8);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow:
-    0 12px 30px -14px hsl(var(--foreground) / 0.2),
-    inset 0 0 0 1px hsl(var(--border) / 0.35);
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-2), inset 0 0 0 1px hsl(var(--border-subtle));
 }
 
 .brain-home-dock-rail > button {
@@ -381,9 +373,7 @@
 .brain-home-dock-scrim {
   position: absolute;
   inset: 0;
-  background: hsl(var(--background) / 0.5);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: hsl(var(--scrim));
 }
 
 .brain-home-drawer {
@@ -394,13 +384,9 @@
   display: flex;
   flex-direction: column;
   width: min(27rem, 94vw);
-  border-radius: 0 1.1rem 1.1rem 0;
-  background: hsl(var(--card) / 0.95);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow:
-    14px 0 44px -20px hsl(var(--foreground) / 0.4),
-    inset 0 0 0 1px hsl(var(--border) / 0.3);
+  border-radius: 0 var(--lt-radius-xl) var(--lt-radius-xl) 0;
+  background: hsl(var(--surface-overlay));
+  box-shadow: var(--elev-4), inset 0 0 0 1px hsl(var(--border-subtle));
   outline: none;
 }
 

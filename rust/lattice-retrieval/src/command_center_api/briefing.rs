@@ -77,15 +77,17 @@ pub async fn briefing(
     let scope = workspace_id.map(str::to_string);
     let graph = state.graph_enabled();
     let db_path = state.store().path().display().to_string();
+    // The instant the health and hygiene sections measure against, read once so
+    // both agree and so a replay can freeze it (`BrainState::with_utc_clock`).
+    let now_utc = state.now_utc();
 
     let snapshot = state
         .read(move |conn| {
             let knowledge = knowledge_section(conn, graph, scope.as_deref());
             let conversations = conversation_section(conn, &email, scope.as_deref());
-            let now_utc = crate::brain_api::sampling::now_utc_secs();
             let sample = health::graph_sample(conn, scope.as_deref(), graph);
             let health = health::health_report(conn, &db_path, &sample, graph, now_utc);
-            let hygiene = hygiene_section(conn, graph, &db_path);
+            let hygiene = hygiene_section(conn, graph, &db_path, now_utc);
             Ok((knowledge, conversations, health, hygiene))
         })
         .await?;
@@ -358,7 +360,12 @@ fn suggestion_section(items: &[suggestions::Suggestion]) -> OrderedMap {
     out
 }
 
-fn hygiene_section(conn: &rusqlite::Connection, graph: bool, db_path: &str) -> OrderedMap {
+fn hygiene_section(
+    conn: &rusqlite::Connection,
+    graph: bool,
+    db_path: &str,
+    now_utc: f64,
+) -> OrderedMap {
     let mut out = OrderedMap::new();
     out.insert("available", Value::Bool(false));
     out.insert("suggest_noise_curate", Value::Bool(false));
@@ -386,9 +393,8 @@ fn hygiene_section(conn: &rusqlite::Connection, graph: bool, db_path: &str) -> O
     if node_count < HYGIENE_MIN_NODES {
         return out;
     }
-    let now = crate::brain_api::sampling::now_utc_secs();
     if let Some(stamp) = last.as_deref() {
-        if !store::older_than_days(stamp, HYGIENE_STALE_DAYS, now) {
+        if !store::older_than_days(stamp, HYGIENE_STALE_DAYS, now_utc) {
             return out;
         }
     }

@@ -24,6 +24,17 @@
 //! lock across the load and the save. It cannot fix a second *process* writing
 //! the same file, but the gateway is one process and this is where the race
 //! actually happened.
+//!
+//! ## The lock only helps if there is one of it (v11.7.0)
+//!
+//! Until v11.6.0 the Review Center did **not** come through here: it kept its
+//! own in-memory copy of the same document and wrote the same file and the
+//! same SQLite row from its own module. One lock each is no lock at all, so a
+//! review write and a workspace write could still erase one another.
+//! [`crate::review_queue::GovernanceState`] is now a facade over this store,
+//! and the host hands it *this* `Arc` rather than opening a second one — so
+//! "the process has one writer" is true of the whole document, not of half of
+//! it. Anything else that wants to write `workspace_os.json` belongs here too.
 
 #![allow(
     dead_code,
@@ -69,8 +80,9 @@
     clippy::unused_self,
     clippy::module_inception
 )]
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use lattice_core::db::tables::{self, state_files};
 use serde_json::{json, Map, Value};
@@ -155,7 +167,43 @@ impl WorkspaceOsStore {
         }
     }
 
+    /// **The** store for `data_dir` in this process.
+    ///
+    /// [`Self::open`] hands back an independent handle, and an independent
+    /// handle is an independent [`Self::write_lock`] — which is how one file
+    /// ended up with five writers that could not see each other's mutations
+    /// (v11.6.0 §5.3). Construction sites are spread across six modules and
+    /// three crates, so the invariant cannot be "remember to pass the handle
+    /// around": it is registered here, keyed by the directory itself, and
+    /// every caller that names the same directory gets the same lock.
+    ///
+    /// The registry holds `Weak`s, so a store whose last user is gone (a test
+    /// tempdir) is dropped and a later `shared()` on the same path — a reused
+    /// temp name — builds a fresh one rather than resurrecting stale paths.
+    pub fn shared(data_dir: &Path) -> Arc<Self> {
+        static REGISTRY: Mutex<Option<HashMap<PathBuf, Weak<WorkspaceOsStore>>>> = Mutex::new(None);
+        // Created first: `canonicalize` needs the directory to exist, and
+        // without it `/tmp/x` and `/private/tmp/x` register as two stores.
+        let _ = std::fs::create_dir_all(data_dir);
+        let key = std::fs::canonicalize(data_dir).unwrap_or_else(|_| data_dir.to_path_buf());
+        let mut guard = REGISTRY.lock().unwrap_or_else(|error| {
+            REGISTRY.clear_poison();
+            error.into_inner()
+        });
+        let registry = guard.get_or_insert_with(HashMap::new);
+        if let Some(live) = registry.get(&key).and_then(Weak::upgrade) {
+            return live;
+        }
+        let store = Arc::new(Self::open(data_dir));
+        registry.insert(key, Arc::downgrade(&store));
+        registry.retain(|_, weak| weak.strong_count() > 0);
+        store
+    }
+
     /// Attach the realtime hook fired on every timeline event.
+    ///
+    /// Consuming, so it belongs to [`Self::open`]: a store handed out by
+    /// [`Self::shared`] is already someone else's too.
     pub fn with_event_sink(mut self, sink: EventSink) -> Self {
         self.event_sink = Some(sink);
         self
@@ -512,6 +560,37 @@ mod tests {
         assert!(dir.path().join(SNAPSHOTS_DIR_NAME).is_dir());
         assert!(dir.path().join(EXPORTS_DIR_NAME).is_dir());
         assert_eq!(store.state_path(), dir.path().join(STATE_FILE_NAME));
+    }
+
+    #[test]
+    fn the_registry_hands_the_same_store_to_every_caller_of_a_directory() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let first = WorkspaceOsStore::shared(dir.path());
+        let second = WorkspaceOsStore::shared(dir.path());
+        assert!(Arc::ptr_eq(&first, &second), "one directory, one store");
+        // A different directory is a different store, obviously.
+        let other = tempfile::tempdir().expect("tempdir");
+        assert!(!Arc::ptr_eq(
+            &first,
+            &WorkspaceOsStore::shared(other.path())
+        ));
+        // …and the sharing is what makes the lock mean something: a write
+        // through one handle is visible through the other.
+        first
+            .mutate(|state| {
+                state["identity"] = json!("shared");
+                Ok(())
+            })
+            .expect("mutate");
+        assert_eq!(second.load_state()["identity"], json!("shared"));
+
+        // Dropping every user releases the entry rather than pinning the path
+        // (and its open SQLite handle) for the life of the process.
+        let path = dir.path().to_path_buf();
+        drop(first);
+        drop(second);
+        let rebuilt = WorkspaceOsStore::shared(&path);
+        assert_eq!(rebuilt.data_dir(), path);
     }
 
     #[test]

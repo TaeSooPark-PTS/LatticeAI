@@ -38,8 +38,9 @@
 //! Every write goes through the WP-I1 writer pool
 //! ([`crate::db::Store::with_write_txn`]), which is `BEGIN IMMEDIATE` on a
 //! single write connection. **From Wave 3 on, Rust is the only writer of
-//! `knowledge_graph.sqlite`.** The Python `/worker/graph/mutate` seam exists
-//! only to carry Wave 2 across the gap and is retired by W3; once it is gone,
+//! `knowledge_graph.sqlite`.** The Python `/worker/graph/mutate` seam that
+//! carried Wave 2 across the gap was retired with the worker's write door in
+//! v11.6.0, and v11.7.0 removed the last source file that still named it, so
 //! nothing outside this module may open that file for writing. SQLite has one
 //! write lock per database, so a second writer buys nothing but `SQLITE_BUSY`
 //! against ourselves — and, worse, a second copy of the rules above.

@@ -208,52 +208,28 @@ pub(super) async fn watch_stop(
     if source_id.is_empty() {
         return detail(404, "source_id required");
     }
-    if let Some(graph) = state.graph().cloned() {
-        let sid = source_id.clone();
-        match tokio::task::spawn_blocking(move || graph.set_local_source_watch(&sid, false)).await {
-            Ok(Ok(_)) => {
-                return ok(&json!({
-                    "status": "ok",
-                    "watch": {"stopped": false, "source_id": source_id}
-                }));
-            }
-            Ok(Err(error)) => {
-                let message = error.to_string();
-                if message.contains("not found") {
-                    return detail(404, &format!("knowledge source not found: {source_id}"));
-                }
-                return detail(500, &message);
-            }
-            Err(error) => return detail(500, &error.to_string()),
-        }
-    }
-    let seam = match state.require_seam(lang) {
-        Ok(seam) => seam,
-        Err(refusal) => return refusal,
+    // One writer: `GraphWriter::set_local_source_watch`. The
+    // `/worker/graph/mutate` delegation that used to stand behind this was
+    // retired with the Python write door in v11.6.0, so a store without a
+    // native writer has nowhere to send the change and says so.
+    let Some(graph) = state.graph().cloned() else {
+        return detail(404, &format!("knowledge source not found: {source_id}"));
     };
-    match seam
-        .clone()
-        .post_json(
-            "/worker/graph/mutate",
-            &json!({
-                "op": "set_local_source_watch",
-                "args": {"source_id": source_id, "enabled": false}
-            }),
-        )
-        .await
-    {
-        Ok(_) => ok(&json!({
+    let sid = source_id.clone();
+    match tokio::task::spawn_blocking(move || graph.set_local_source_watch(&sid, false)).await {
+        Ok(Ok(_)) => ok(&json!({
             "status": "ok",
             "watch": {"stopped": false, "source_id": source_id}
         })),
-        Err(error) => {
+        Ok(Err(error)) => {
             let message = error.to_string();
             if message.contains("not found") {
                 detail(404, &format!("knowledge source not found: {source_id}"))
             } else {
-                super::http::seam_error(error)
+                detail(500, &message)
             }
         }
+        Err(error) => detail(500, &error.to_string()),
     }
 }
 

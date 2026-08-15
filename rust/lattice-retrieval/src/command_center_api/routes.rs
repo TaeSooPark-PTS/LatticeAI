@@ -120,6 +120,9 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
     let email = caller.email.clone();
     let scope = caller.scope.clone();
     let doc = wsos::load(state.store(), state.data_dir());
+    // `CommandCenterService(enable_graph=…)`: read before the closure takes over,
+    // because the knowledge group is the one group that needs a graph.
+    let enable_graph = state.graph_enabled();
     match state
         .read(move |conn| {
             let request = SearchRequest {
@@ -128,6 +131,7 @@ async fn command_search(State(state): State<BrainState>, request: Request) -> Re
                 workspace_id: scope.as_deref(),
                 state: &doc,
                 limit,
+                enable_graph,
             };
             let (kept, total) = search::groups(conn, &request);
             Ok(search::body(&request, kept, total, &now))

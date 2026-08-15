@@ -4,6 +4,7 @@
 @import "./experience/graph.css";
 @import "./experience/conversation-active.css";
 @import "./experience/capture.css";
+@import "./experience/product-pages.css";
 @import "./experience/graph-home.css";
 @import "./experience/graph-home-dock.css";
 /* The simplified first screen wins over the older graph-home layout. */

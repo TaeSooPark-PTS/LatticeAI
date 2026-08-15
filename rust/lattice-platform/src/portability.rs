@@ -1,8 +1,8 @@
 //! Knowledge-graph portability — native port of `latticeai/api/portability.py`.
 //!
 //! File operations (list / download / validate / backup ZIP / dry-run
-//! inspect) are native. Graph writes on import go through
-//! `POST /worker/graph/mutate` (`import_graph_data`). Encrypted-archive
+//! inspect) are native. So is the import write: `import_graph_data` runs on
+//! [`lattice_core::graph_write::GraphWriter`]. Encrypted-archive
 //! success with a live passphrase is a documented gap (nonce bytes).
 
 #![allow(
@@ -65,7 +65,6 @@ use axum::Router;
 use lattice_auth::{AuthState, OrderedMap};
 use lattice_core::db::tables::state_files;
 use lattice_core::db::RuntimeConfig;
-use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
@@ -118,16 +117,11 @@ pub struct PortabilityState {
     pub auth: Arc<AuthState>,
     pub config: Arc<RuntimeConfig>,
     pub identity: Arc<DeviceIdentity>,
-    pub seam: Option<WorkerSeamClient>,
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
 }
 
 impl PortabilityState {
-    pub fn new(
-        auth: Arc<AuthState>,
-        config: RuntimeConfig,
-        seam: Option<WorkerSeamClient>,
-    ) -> Self {
+    pub fn new(auth: Arc<AuthState>, config: RuntimeConfig) -> Self {
         let identity = Arc::new(DeviceIdentity::load_or_create(
             &config.state_file(state_files::DEVICE_IDENTITY),
         ));
@@ -135,7 +129,6 @@ impl PortabilityState {
             auth,
             config: Arc::new(config),
             identity,
-            seam,
             graph: None,
         }
     }

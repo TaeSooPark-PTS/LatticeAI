@@ -44,7 +44,6 @@
     clippy::unused_self,
     clippy::module_inception
 )]
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::body::Bytes;
@@ -58,6 +57,9 @@ use serde_json::{json, Value};
 use super::http::{
     detail, http_error, http_error_with, language, ok, optional, required, FieldSpec, Kind, Model,
     Query,
+};
+use super::watch_bridge::{
+    disable_watch, enable_watch, ensure_poller, read_watch_file, vault_watch_on,
 };
 use super::{forward, LocalFilesState};
 
@@ -427,12 +429,17 @@ pub(super) async fn watch_enable(
             "vault watch is off by default; turn it on to let an external vault re-sync in the background (LATTICEAI_VAULT_WATCH)",
         );
     }
-    ok(&enable_watch(
-        state.config.data_dir(),
+    let enabled = enable_watch(
+        &state,
         &path,
         kind,
         model.bool("recursive", true),
-    ))
+        &user,
+        model.get("workspace_id").and_then(Value::as_str),
+    );
+    // The declaration is persisted and its baseline taken; start delivering.
+    ensure_poller(&state);
+    ok(&enabled)
 }
 
 pub(super) async fn watch_disable(
@@ -549,169 +556,6 @@ fn which_git() -> bool {
         .unwrap_or(false)
 }
 
-fn watch_path(data_dir: &std::path::Path) -> PathBuf {
-    data_dir.join("folder_watch.json")
-}
-
-fn read_watch_file(data_dir: &std::path::Path) -> Value {
-    let path = watch_path(data_dir);
-    let stored = std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-        .unwrap_or_else(|| json!({"watches": []}));
-    let watches = stored
-        .get("watches")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let enabled = watches
-        .iter()
-        .filter(|watch| {
-            watch
-                .get("enabled")
-                .and_then(Value::as_bool)
-                .unwrap_or(false)
-        })
-        .count();
-    json!({
-        "enabled_count": enabled,
-        "polling": false,
-        "interval_seconds": 30.0,
-        "watches": watches,
-        "kinds": ["folder", "vault"],
-        "vault_watch": {
-            "name": "vault_watch",
-            "flag": "LATTICEAI_VAULT_WATCH",
-            "enabled": vault_watch_on(),
-            "default": false,
-            "source": if std::env::var("LATTICEAI_VAULT_WATCH").is_ok() { "env" } else { "default" },
-            "detail": "Watching an external vault re-syncs it in the background; it is off until you turn it on.",
-            "bridge_wired": false
-        },
-        "note": "Watch mode is opt-in and off by default. Deleted files are counted but never auto-removed from the Brain."
-    })
-}
-
-fn enable_watch(data_dir: &std::path::Path, path: &str, kind: &str, recursive: bool) -> Value {
-    let mut stored = std::fs::read_to_string(watch_path(data_dir))
-        .ok()
-        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-        .unwrap_or_else(|| json!({"watches": []}));
-    let id = format!("watch_{}", super::token_urlsafe(6));
-    let entry = json!({
-        "id": id,
-        "path": path,
-        "kind": kind,
-        "recursive": recursive,
-        "enabled": true,
-    });
-    if let Some(Value::Array(watches)) = stored.get_mut("watches") {
-        watches.push(entry.clone());
-    } else {
-        stored = json!({"watches": [entry.clone()]});
-    }
-    let _ = std::fs::create_dir_all(data_dir);
-    let _ = std::fs::write(
-        watch_path(data_dir),
-        serde_json::to_string_pretty(&stored).unwrap_or_else(|_| "{}".into()),
-    );
-    json!({
-        "status": "ok",
-        "watch": entry,
-    })
-}
-
-fn disable_watch(data_dir: &std::path::Path, watch_id: &str, path: &str) -> Option<Value> {
-    let raw = std::fs::read_to_string(watch_path(data_dir)).ok()?;
-    let mut stored: Value = serde_json::from_str(&raw).ok()?;
-    let watches = stored.get_mut("watches")?.as_array_mut()?;
-    let before = watches.len();
-    watches.retain(|watch| {
-        let id_hit =
-            !watch_id.is_empty() && watch.get("id").and_then(Value::as_str) == Some(watch_id);
-        let path_hit = !path.is_empty() && watch.get("path").and_then(Value::as_str) == Some(path);
-        !(id_hit || path_hit)
-    });
-    if watches.len() == before {
-        return None;
-    }
-    let _ = std::fs::write(
-        watch_path(data_dir),
-        serde_json::to_string_pretty(&stored).unwrap_or_else(|_| "{}".into()),
-    );
-    Some(json!({"status": "ok", "removed": true}))
-}
-
-fn vault_watch_on() -> bool {
-    matches!(
-        std::env::var("LATTICEAI_VAULT_WATCH")
-            .unwrap_or_default()
-            .trim()
-            .to_ascii_lowercase()
-            .as_str(),
-        "1" | "true" | "yes" | "on"
-    )
-}
-
-const EXTRACT_PATH: &str = "/worker/extract";
-const EMBED_PATH: &str = "/worker/embed";
-
-async fn extract_via_seam(
-    seam: Option<&lattice_core::worker::WorkerSeamClient>,
-    text: &str,
-    kind: &str,
-) -> lattice_core::graph_write::types::ExtractReply {
-    use lattice_core::graph_write::types::ExtractReply;
-    if text.trim().is_empty() {
-        return ExtractReply::default();
-    }
-    let Some(seam) = seam else {
-        return ExtractReply::default();
-    };
-    match seam
-        .post_json(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
-        .await
-    {
-        Ok(payload) => ExtractReply::from_json(&payload),
-        Err(_) => ExtractReply::default(),
-    }
-}
-
-async fn embed_via_seam(
-    seam: Option<&lattice_core::worker::WorkerSeamClient>,
-    text: &str,
-) -> Option<lattice_core::graph_write::types::SuppliedVector> {
-    if text.trim().is_empty() {
-        return None;
-    }
-    let seam = seam?;
-    let payload = seam
-        .post_json(EMBED_PATH, &json!({"texts": [text], "kind": "passage"}))
-        .await
-        .ok()?;
-    let values = payload
-        .get("vectors")
-        .and_then(Value::as_array)
-        .and_then(|rows| rows.first())
-        .and_then(Value::as_array)
-        .map(|row| row.iter().filter_map(Value::as_f64).collect::<Vec<f64>>())?;
-    if values.is_empty() {
-        return None;
-    }
-    Some(lattice_core::graph_write::types::SuppliedVector {
-        model_id: payload
-            .get("model_id")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        dim: payload
-            .get("dim")
-            .and_then(Value::as_u64)
-            .unwrap_or(values.len() as u64) as usize,
-        values,
-    })
-}
-
 /// `POST /upload/document` — parse via the worker, write via GraphWriter.
 pub(super) async fn upload_document(
     State(state): State<Arc<LocalFilesState>>,
@@ -725,18 +569,47 @@ pub(super) async fn upload_document(
     let Some(graph) = state.graph().cloned() else {
         return http_error(503, "capture.ingestion_disabled", lang);
     };
-    let filename = "upload.bin";
-    let text = std::str::from_utf8(&body).unwrap_or("").to_string();
+    let (filename, bytes) = super::enrich::unwrap_upload(&headers, &body);
+    let mime = super::enrich::mime_hint(&filename);
+    let parsed = if super::enrich::needs_parse(&filename, &bytes) {
+        super::enrich::parse_via_seam(state.seam(), &filename, &bytes).await
+    } else {
+        None
+    };
+    let text = if super::enrich::needs_parse(&filename, &bytes) {
+        parsed
+            .as_ref()
+            .map(super::enrich::parsed_text)
+            .unwrap_or_default()
+    } else {
+        std::str::from_utf8(&bytes).unwrap_or("").to_string()
+    };
     let extract_text = if text.trim().is_empty() {
         String::new()
     } else {
         format!("{filename}\n{text}")
     };
-    let extracted = extract_via_seam(state.seam(), &extract_text, "document").await;
-    let embedding = embed_via_seam(state.seam(), &extract_text).await;
+    let extracted = super::enrich::extract_via_seam(state.seam(), &extract_text, "document").await;
+    let embedding = super::enrich::embed_via_seam(state.seam(), &extract_text).await;
+    let mut chunks =
+        super::enrich::chunk_pieces_for(&text, &filename, mime.as_deref().unwrap_or(""));
+    let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
+    let chunk_batch = super::enrich::embed_texts_via_seam(state.seam(), &chunk_texts).await;
+    let chunk_agrees = match chunk_batch.as_ref() {
+        Some((model_id, dim, _)) => super::enrich::model_agrees(&graph, model_id, *dim),
+        None => true,
+    };
+    chunks = super::enrich::attach_chunk_embeddings(chunks, chunk_batch, chunk_agrees);
     let mut extracted_map = serde_json::Map::new();
     if !text.is_empty() {
         extracted_map.insert("content".into(), json!(text));
+    }
+    if let Some(parsed) = parsed {
+        for (key, value) in parsed {
+            if key != "content" && key != "filename" {
+                extracted_map.entry(key).or_insert(value);
+            }
+        }
     }
     let tmp = std::env::temp_dir().join(format!(
         "lattice-upload-{}",
@@ -745,13 +618,15 @@ pub(super) async fn upload_document(
             .map(|d| d.as_nanos())
             .unwrap_or(0)
     ));
-    if let Err(error) = std::fs::write(&tmp, &body) {
+    if let Err(error) = std::fs::write(&tmp, &bytes) {
         return detail(500, &error.to_string());
     }
     let request = lattice_core::graph_write::types::IngestFileRequest {
         path: tmp.clone(),
-        original_filename: Some(filename.into()),
+        original_filename: Some(filename),
+        mime_type: mime,
         extracted: extracted_map,
+        chunks,
         concepts: extracted.concepts,
         triples: extracted.triples,
         semantic: extracted.semantic,

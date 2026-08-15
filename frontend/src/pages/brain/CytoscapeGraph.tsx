@@ -3,6 +3,18 @@ import cytoscape, { type Core } from "cytoscape";
 import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import type { ExplorerModel } from "./graphExplorer";
+import { resolveTokenColor } from "./graphExplorer";
+
+function canvasTheme() {
+  return {
+    ink: resolveTokenColor("--fg", "43 26% 94%"),
+    field: resolveTokenColor("--bg", "92 6% 8%"),
+    edge: resolveTokenColor("--border-strong", "90 8% 28%"),
+    match: resolveTokenColor("--brain-halo", "40 54% 72%"),
+    connected: resolveTokenColor("--brain-core", "36 60% 56%"),
+    focus: resolveTokenColor("--primary", "163 38% 52%"),
+  };
+}
 
 export function CytoscapeGraph({
   model,
@@ -20,6 +32,7 @@ export function CytoscapeGraph({
   ariaLabel?: string;
 }) {
   const language = useAppStore((state) => state.language);
+  const theme = useAppStore((state) => state.theme);
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const cyRef = React.useRef<Core | null>(null);
   // Keyboard cursor over the visible nodes: the canvas itself is focusable and
@@ -28,6 +41,7 @@ export function CytoscapeGraph({
   React.useEffect(() => {
     if (!hostRef.current) return;
     cyRef.current?.destroy();
+    const paint = canvasTheme();
     cyRef.current = cytoscape({
       container: hostRef.current,
       elements: model.elements,
@@ -38,11 +52,11 @@ export function CytoscapeGraph({
             "background-color": "data(color)",
             "border-color": "data(borderColor)",
             "border-width": 1.5,
-            color: "#f8fafc",
+            color: paint.ink,
             label: "data(displayLabel)",
             "font-size": 10,
             "font-weight": 600,
-            "text-outline-color": "#071012",
+            "text-outline-color": paint.field,
             "text-outline-width": 2.5,
             width: "data(size)",
             height: "data(size)",
@@ -64,29 +78,30 @@ export function CytoscapeGraph({
           selector: "node.selected",
           style: {
             "border-width": 4,
+            "border-color": paint.focus,
           },
         },
         {
           selector: "node.match",
           style: {
             "border-width": 4,
-            "border-color": "#fef08a",
+            "border-color": paint.match,
           },
         },
         {
           selector: "node.kb-focus",
           style: {
             "border-width": 4,
-            "border-color": "#f8fafc",
+            "border-color": paint.ink,
           },
         },
         {
           selector: "edge",
           style: {
             width: "data(width)",
-            "line-color": "#64748b",
+            "line-color": paint.edge,
             "target-arrow-shape": "triangle",
-            "target-arrow-color": "#64748b",
+            "target-arrow-color": paint.edge,
             "curve-style": "bezier",
             "arrow-scale": 0.7,
             opacity: 0.72,
@@ -96,8 +111,8 @@ export function CytoscapeGraph({
           selector: "edge.connected",
           style: {
             width: 2.6,
-            "line-color": "#fef08a",
-            "target-arrow-color": "#fef08a",
+            "line-color": paint.connected,
+            "target-arrow-color": paint.connected,
             opacity: 1,
           },
         },
@@ -124,7 +139,7 @@ export function CytoscapeGraph({
     });
     setKbIndex(null);
     return () => cyRef.current?.destroy();
-  }, [model.elements, onSelect]);
+  }, [model.elements, onSelect, theme]);
 
   React.useEffect(() => {
     if (!cyRef.current) return;
@@ -184,9 +199,9 @@ export function CytoscapeGraph({
   };
 
   return (
-    <div className="relative">
+    <div className="graph-cy-wrap">
       {model.visibleNodes.length <= 1 ? (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-background/90 backdrop-blur border border-border px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground shadow-sm pointer-events-none">
+        <div className="graph-cy-hint">
           {t(language, "graph.search.hintSingle")}
         </div>
       ) : null}
@@ -197,7 +212,7 @@ export function CytoscapeGraph({
         aria-label={ariaLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="brain-grid h-[620px] min-h-[32rem] w-full overflow-hidden rounded-lg border border-border bg-background/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+        className="graph-cy-canvas"
       />
       <span className="sr-only" role="status" aria-live="polite">
         {kbNode ? kbNode.label : ""}

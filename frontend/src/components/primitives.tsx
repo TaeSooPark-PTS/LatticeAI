@@ -24,12 +24,12 @@ export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "o
 export function EmptyState({ title, detail }: { title?: string; detail?: React.ReactNode }) {
   const language = useAppStore((state) => state.language);
   return (
-    <div className="product-empty-state flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/24 p-6 text-center text-sm text-muted-foreground">
-      <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-card">
-        <Sparkles className="h-5 w-5 text-primary" />
+    <div className="product-empty-state">
+      <div className="product-empty-mark">
+        <Sparkles className="h-5 w-5" />
       </div>
-      <div className="text-base font-semibold text-foreground">{title || t(language, "ui.empty.title")}</div>
-      {detail ? <div className="max-w-md leading-6">{detail}</div> : null}
+      <div className="product-empty-title">{title || t(language, "ui.empty.title")}</div>
+      {detail ? <div className="product-empty-detail">{detail}</div> : null}
     </div>
   );
 }

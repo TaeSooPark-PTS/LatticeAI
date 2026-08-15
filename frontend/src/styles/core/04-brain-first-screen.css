@@ -370,11 +370,10 @@
   gap: 0.72rem;
   margin: 0 0 0.85rem;
   border: 1px solid hsl(var(--brain-core) / 0.36);
-  border-radius: 10px;
-  background: linear-gradient(135deg, hsl(var(--surface-glass)), hsl(var(--brain-core) / 0.07));
+  border-radius: var(--lt-radius-lg);
+  background: var(--grad-surface);
   padding: 0.82rem;
   box-shadow: var(--elev-2);
-  backdrop-filter: blur(18px);
 }
 
 .brain-command-head,

@@ -471,9 +471,10 @@
 /* Background ingestion jobs: progress, failures, resume. */
 .brain-jobs-panel {
   margin-top: 0.6rem;
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 10px;
-  background: hsl(var(--surface) / 0.58);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-1);
   padding: 0.6rem 0.7rem;
 }
 
@@ -506,7 +507,7 @@
 
 .brain-jobs-item.is-failed .brain-jobs-status,
 .brain-jobs-item.is-partial .brain-jobs-status {
-  color: hsl(var(--warning));
+  color: hsl(var(--warning-ink));
 }
 
 .brain-jobs-counts {
@@ -519,7 +520,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.24rem;
-  color: hsl(var(--warning));
+  color: hsl(var(--warning-ink));
   font-size: 0.6rem;
   font-weight: 700;
 }
@@ -561,7 +562,7 @@
 }
 
 .brain-jobs-resume:hover:not(:disabled) {
-  border-color: hsl(var(--brain-core) / 0.55);
+  border-color: hsl(var(--primary) / 0.55);
 }
 
 .brain-jobs-resume:disabled {
@@ -578,8 +579,9 @@
 .brain-emergence-timeline {
   margin: 0 0 1rem;
   border: 1px solid hsl(var(--memory) / 0.3);
-  border-radius: 10px;
+  border-radius: var(--lt-radius-xl);
   background: hsl(var(--memory) / 0.05);
+  box-shadow: var(--elev-1);
   padding: 0.72rem 0.78rem;
 }
 

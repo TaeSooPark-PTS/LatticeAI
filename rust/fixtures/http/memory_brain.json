@@ -62,7 +62,7 @@
     "Three cases answer with facts about the machine that captured them and are marked MACHINE-DEPENDENT in their note: local_knowledge/roots (this machine's home and mounted volumes), local_files/local_agent_status (platform, machine, python, pid — already tokenised) and local_files/ingestion_interop_status (whether git is installed). Replay their shape, not their values.",
     "The capture date appears as the '@today' token (in the chronicle day path and as-of query). A replayer substitutes its own date; nothing else in these files is dated, because every other timestamp is '@ts'.",
     "One list is '@any' because its ORDER is not determined by anything a caller can pin, even with the write clock frozen and PYTHONHASHSEED set: knowledge_graph/curate's 'skipped', whose equal-score candidates keep their clustering order. Its contents are stable and its member shape is in the case note; everything else in that answer is pinned.",
-    "Found while capturing, recorded rather than fixed: GET /api/command/search can never fill its 'knowledge' group — services/command_center.py reads payload['results'] from search_service.keyword_search, which answers 'matches'. The fixtures show the empty group, which is what the product does today."
+    "Found while capturing and fixed in v11.7.0: GET /api/command/search could never fill its 'knowledge' group — services/command_center.py read payload['results'] from search_service.keyword_search, which answers 'matches'. The Rust port reads the right key, so the group carries the lane's matches; the three cases whose recorded bodies show the empty group carry a DIVERGENCE FROM ORACLE note. Only the key changed: the call, the limit, the four-field projection and the graph-less empty answer are the oracle's."
   ],
   "cases": [
     {
@@ -1624,16 +1624,16 @@
           "status": "completed",
           "operation_id": "@any",
           "full": false,
-          "items_total": 64,
+          "items_total": 66,
           "items_indexed": 0,
-          "items_skipped": 64,
+          "items_skipped": 66,
           "duration_ms": "@any",
           "embedding_model": "lattice-local-hash-v1:384",
           "embedding_dim": 384
         }
       },
       "name": "rebuild",
-      "note": "Rebuild the vector index (the only real target)."
+      "note": "divergence-from-oracle (v11.7.0): the capture recorded 64 because `self_model_add` above it wrote its two nodes into that run's corpus and this replay's corpus is `brain_store.sqlite` (46 non-chunk nodes + 18 chunks). Until v11.7.0 `self_model_upsert` posted to the retired `POST /worker/graph/mutate` and wrote nothing at all, so 64 was reproduced by the write being broken. It is native now: 46 + 2 + 18 = 66, and `items_indexed: 0` still holds because `upsert_nodes` files each node's vector as it writes it."
     },
     {
       "family": "memory",
@@ -5391,12 +5391,48 @@
       },
       "response_body": {
         "query": "retrieval",
-        "groups": [],
-        "total": 0,
+        "groups": [
+          {
+            "kind": "knowledge",
+            "items": [
+              {
+                "id": "webdoc:8d1cf3b813efa206bad0a854",
+                "title": "Hybrid retrieval decision",
+                "summary": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns th",
+                "type": "Document"
+              },
+              {
+                "id": "webdoc:b4d2f4f2e3557369d4b546cc",
+                "title": "Contradiction seed",
+                "summary": "The retrieval weights are keyword 0.9 and vector 0.1. 이 문장은 위의 회의록과 상충하는 내용을 담고 있습니다.",
+                "type": "Document"
+              },
+              {
+                "id": "chunk:2ba4fa634cdc0381edf03fb1",
+                "title": "Contradiction seed chunk 1",
+                "summary": "The retrieval weights are keyword 0.9 and vector 0.1. 이 문장은 위의 회의록과 상충하는 내용을 담고 있습니다.",
+                "type": "Chunk"
+              },
+              {
+                "id": "chunk:7f1715f756bf0cf1d6f5951a",
+                "title": "handbook.md chunk 1",
+                "summary": "# Lattice handbook This document explains retrieval, the chronicle and the review queue in one place. 사용 안내서입니다.",
+                "type": "Chunk"
+              },
+              {
+                "id": "chunk:d663ec705687946669fce867",
+                "title": "Hybrid retrieval decision chunk 1",
+                "summary": "We decided the hybrid ranking keeps alpha fusion: the lexical channel scores one over rank and the vector channel is the max normalized score. Retrieval owns th",
+                "type": "Chunk"
+              }
+            ]
+          }
+        ],
+        "total": 5,
         "generated_at": "@ts"
       },
       "name": "search",
-      "note": "The Cmd+K unified search. Its knowledge group is empty on purpose-of-record: the service reads payload['results'] while search_service.keyword_search answers 'matches', so that group never fills. Captured as the behaviour is, not as it was meant to be."
+      "note": "The Cmd+K unified search. DIVERGENCE FROM ORACLE (v11.7.0, F-D): the Python capture answered groups:[] because _search_knowledge read payload['results'] while search_service.keyword_search answers 'matches', so the knowledge group could never fill. The Rust port fixes the key and this body is the port's own answer against the seeded store — the first summary is cut mid-word because _clip(summary, 160) is unchanged. Everything else (the four-field projection and its order, the limit, the lane's ordering) is still the oracle's."
     },
     {
       "family": "command_center",
@@ -5418,6 +5454,41 @@
         "query": "페이지",
         "groups": [
           {
+            "kind": "knowledge",
+            "items": [
+              {
+                "id": "airesponse:097dd9e780a500a6baee6ddb",
+                "title": "현재 페이지 URL: https://example.com/other",
+                "summary": "현재 페이지 URL: https://example.com/other",
+                "type": "AIResponse"
+              },
+              {
+                "id": "airesponse:26924af3eb594ec50c814539",
+                "title": "현재 페이지 URL: https://example.com/page",
+                "summary": "현재 페이지 URL: https://example.com/page",
+                "type": "AIResponse"
+              },
+              {
+                "id": "chunk:c29c60639bf2f17a72181ddb",
+                "title": "chunk 1",
+                "summary": "이 페이지 주소 알려줘",
+                "type": "Chunk"
+              },
+              {
+                "id": "conversation:4a0a339b0c6d:conv-chat-2",
+                "title": "현재 페이지 URL: https://example.com/other",
+                "summary": "현재 페이지 URL: https://example.com/other",
+                "type": "Chat"
+              },
+              {
+                "id": "message:29f8d189be7c6b5d31b0b36c",
+                "title": "이 페이지 주소 알려줘",
+                "summary": "이 페이지 주소 알려줘",
+                "type": "Message"
+              }
+            ]
+          },
+          {
             "kind": "conversation",
             "items": [
               {
@@ -5435,11 +5506,11 @@
             ]
           }
         ],
-        "total": 2,
+        "total": 7,
         "generated_at": "@ts"
       },
       "name": "search_conversation_hit",
-      "note": "A query that does reach the conversation group (it matches the chat history, which is the only group that can fill)."
+      "note": "A query that reaches two groups at once. DIVERGENCE FROM ORACLE (v11.7.0, F-D): the Python capture showed only the conversation group, because the knowledge group could never fill (payload['results'] vs 'matches'). The conversation group is byte-identical to the capture; the knowledge group and the new total are the fixed key's answer against the same seeded store."
     },
     {
       "family": "command_center",
@@ -5459,12 +5530,48 @@
       },
       "response_body": {
         "query": "가중치",
-        "groups": [],
-        "total": 0,
+        "groups": [
+          {
+            "kind": "knowledge",
+            "items": [
+              {
+                "id": "airesponse:f93d7c89fc5874afec4f66e9",
+                "title": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+                "summary": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query class.",
+                "type": "AIResponse"
+              },
+              {
+                "id": "chunk:b812eaf3f65a138d3f53ff26",
+                "title": "chunk 1",
+                "summary": "하이브리드 검색은 어떤 가중치를 쓰나요?",
+                "type": "Chunk"
+              },
+              {
+                "id": "concept:4a0a339b0c6d:가중치",
+                "title": "가중치",
+                "summary": "",
+                "type": "Concept"
+              },
+              {
+                "id": "conversation:4a0a339b0c6d:conv-fixture-1",
+                "title": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query c",
+                "summary": "키워드 0.35, 벡터 0.40, 그래프 0.25 가중치로 융합합니다. The weights are configurable per query class.",
+                "type": "Chat"
+              },
+              {
+                "id": "message:d4296bd346daee363770ced9",
+                "title": "하이브리드 검색은 어떤 가중치를 쓰나요?",
+                "summary": "하이브리드 검색은 어떤 가중치를 쓰나요?",
+                "type": "Message"
+              }
+            ]
+          }
+        ],
+        "total": 5,
         "generated_at": "@ts"
       },
       "name": "search_korean",
-      "note": "Same search for a Korean query."
+      "note": "Same search for a Korean query. DIVERGENCE FROM ORACLE (v11.7.0, F-D): was groups:[] for the same reason as the 'search' case. Nothing here is clipped — the first title looks cut but is stored that way (the ingester's own 80-character title), and every summary is under 160. The character-vs-byte behaviour of _clip is pinned by the unit tests in command_center_api::search instead, because a fixture that happens not to exercise it cannot."
     },
     {
       "family": "command_center",

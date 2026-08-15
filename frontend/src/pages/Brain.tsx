@@ -239,7 +239,8 @@ export function MemoryStatus({ data }: { data: Record<string, unknown> }) {
 function DigitalBrainExplorer({ data }: { data: unknown }) {
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
-  const parsed = React.useMemo(() => parseGraph(data, language), [data, language]);
+  const theme = useAppStore((state) => state.theme);
+  const parsed = React.useMemo(() => parseGraph(data, language), [data, language, theme]);
   const [search, setSearch] = React.useState("");
   const [groupFilter, setGroupFilter] = React.useState("all");
   const [minImportance, setMinImportance] = React.useState(mode === "basic" ? 0.1 : 0);
@@ -280,24 +281,23 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
     );
   }
   return (
-    <div className="space-y-4">
-      {/* Floating control bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div className="graph-explorer">
+      <div className="graph-explorer-toolbar">
+        <div className="graph-explorer-search">
+          <Search className="graph-explorer-search-icon" aria-hidden="true" />
           <Input
-            className="pl-9 bg-background/90"
+            className="graph-explorer-search-input"
             aria-label={t(language, "graph.search.aria")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={mode === "basic" ? t(language, "graph.search.basic") : t(language, "graph.search.advanced")}
           />
         </div>
-        <select className="h-9 rounded-md border border-border bg-background px-3 text-sm" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
+        <select className="graph-explorer-select" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
           <option value="all">{t(language, "graph.group.all")}</option>
           {model.groups.map((group) => <option key={group.id} value={group.id}>{group.label}</option>)}
         </select>
-        <select className="h-9 rounded-md border border-border bg-background px-3 text-sm" value={labelMode} onChange={(event) => setLabelMode(event.target.value as LabelMode)}>
+        <select className="graph-explorer-select" value={labelMode} onChange={(event) => setLabelMode(event.target.value as LabelMode)}>
           <option value="important">{t(language, "graph.labels.important")}</option>
           <option value="all">{t(language, "graph.labels.all")}</option>
           <option value="off">{t(language, "graph.labels.off")}</option>
@@ -307,9 +307,8 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
         </Button>
       </div>
 
-      {/* Main Canvas + Conditional Side Panel */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="flex-1 w-full min-w-0 space-y-3">
+      <div className="graph-explorer-stage">
+        <div className="graph-explorer-canvas-col">
           <CytoscapeGraph
             model={model}
             selectedId={selectedId}
@@ -318,15 +317,14 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
             ariaLabel={t(language, "graph.canvas.aria")}
           />
 
-          {/* Quiet bottom bar for stats & filters */}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground bg-card/60 p-2.5 rounded-lg border border-border">
-            <div className="flex items-center gap-3">
+          <div className="graph-explorer-meta">
+            <div className="graph-explorer-meta-stats">
               <span>{t(language, "graph.deep.summary", { nodes: fmtNumber(model.visibleNodes.length), edges: fmtNumber(model.visibleEdges.length), total: fmtNumber(model.totalNodes) })}</span>
               <Badge variant={model.hiddenByFilters ? "warning" : "success"}>
                 {model.hiddenByFilters ? t(language, "graph.filtered", { count: fmtNumber(model.hiddenByFilters) }) : t(language, "graph.allInView")}
               </Badge>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="graph-explorer-meta-tools">
               <Filter className="h-3.5 w-3.5" />
               <label htmlFor="importance">{t(language, "graph.importance")}</label>
               <input
@@ -337,7 +335,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                 step="0.05"
                 value={minImportance}
                 onChange={(event) => setMinImportance(Number(event.target.value))}
-                className="w-28"
+                className="graph-explorer-range"
                 aria-label={t(language, "graph.minImportance.aria")}
               />
               <Badge variant="muted">{Math.round(minImportance * 100)}%+</Badge>
@@ -346,14 +344,15 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="graph-explorer-groups">
             {model.groups.map((group) => (
               <button
                 key={group.id}
+                type="button"
                 onClick={() => toggleGroup(group.id)}
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs hover:bg-muted"
+                className="graph-explorer-chip"
               >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
+                <span className="graph-explorer-chip-swatch" style={{ backgroundColor: group.color }} />
                 <span>{group.label}</span>
                 <Badge variant={group.collapsed ? "warning" : "muted"}>{group.collapsed ? t(language, "graph.collapsed") : fmtNumber(group.count)}</Badge>
               </button>
@@ -361,7 +360,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
           </div>
         </div>
 
-        <aside className="w-full lg:w-80 space-y-3 flex-shrink-0">
+        <aside className="graph-explorer-aside">
           {selectedId ? (
             <Card>
               <CardHeader>
@@ -419,11 +418,11 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                     key={node.id}
                     type="button"
                     onClick={() => setSelectedId(node.id)}
-                    className="w-full text-left p-2 rounded-md hover:bg-muted border border-transparent hover:border-border transition-colors flex items-center justify-between gap-2"
+                    className="graph-explorer-pick"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{node.label}</div>
-                      <div className="text-xs text-muted-foreground truncate">{graphTypeLabel(node.type, language)}</div>
+                    <div className="graph-explorer-pick-copy">
+                      <div className="graph-explorer-pick-title">{node.label}</div>
+                      <div className="graph-explorer-pick-meta">{graphTypeLabel(node.type, language)}</div>
                     </div>
                     <Badge variant="muted">{Math.round(node.importance * 100)}%</Badge>
                   </button>

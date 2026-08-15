@@ -1,22 +1,28 @@
 //! `CommandCenterService.search` — the Cmd+K answer, across three surfaces.
 //!
-//! ## The knowledge group can never fill, and that is the captured behaviour
+//! ## The knowledge group fills now: a deliberate divergence from the oracle
 //!
-//! `_search_knowledge` calls `SearchService.keyword_search(...)` and then reads
-//! `payload.get("results")`. That service answers `{"query", "mode",
+//! Python's `_search_knowledge` called `SearchService.keyword_search(...)` and
+//! then read `payload.get("results")`. That service answers `{"query", "mode",
 //! "matches"}` — there is no `results` key and there never has been — so the
-//! knowledge group is `[]` on every query, and `search()` drops it because it
-//! only keeps groups whose `items` are non-empty. `memory_brain.json`'s
-//! `search` and `search_korean` cases record exactly that: `groups: []` for a
-//! query the graph *does* know about.
+//! knowledge group was `[]` on every query, and `search()` dropped it because it
+//! only keeps groups whose `items` are non-empty. Cmd+K could never surface a
+//! knowledge node; the one third of the feature that gave the palette its reason
+//! to exist was dead on arrival. v11.6.0 ported the bug faithfully and disclosed
+//! it (§5.2); v11.7.0 fixes it.
 //!
-//! This port answers the same empty list, and does **not** perform the discarded
-//! keyword search: the call has no side effect, its result is thrown away on
-//! every branch (including the `except`), so running it would only spend a graph
-//! read to produce `[]`. If Python ever fixes the key, this comment is where the
-//! port has to change — reinstate `crate::service::keyword_search` here and take
-//! its `matches`, and regenerate the two fixture cases, because the answer they
-//! pin will change.
+//! What is fixed is **only the key**. Everything else is the oracle's code read
+//! literally: the same `keyword_search(query, limit=limit, **graph_scope_kwargs)`
+//! call, the same `[:limit]` slice on top of a lane that already capped itself,
+//! the same four-field projection in the same order
+//! (`id` / `_clip(title, 120)` / `_clip(summary, 160)` / `type`), the same
+//! `except Exception: return []`, and the same `self._enable_graph` guard that
+//! makes a graph-less install answer an empty group rather than an error.
+//!
+//! Three fixture cases pinned the empty group and no longer can (`search`,
+//! `search_conversation_hit`, `search_korean`) — see `tests/command_replay.rs`
+//! and the DIVERGENCE FROM ORACLE notes those cases carry in
+//! `rust/fixtures/http/memory_brain.json`.
 
 #![allow(
     dead_code,
@@ -62,12 +68,15 @@
     clippy::unused_self,
     clippy::module_inception
 )]
+use std::collections::BTreeSet;
+
 use lattice_auth::OrderedMap;
 use rusqlite::Connection;
 use serde_json::Value;
 
 use super::store::{clip, py_text};
 use crate::history::{self, HistoryScope};
+use crate::service::{self, Scope};
 
 /// `_SEARCH_HISTORY_LIMIT`.
 const SEARCH_HISTORY_LIMIT: i64 = 2000;
@@ -82,6 +91,9 @@ pub(crate) struct SearchRequest<'a> {
     pub(crate) state: &'a Value,
     /// `max(1, min(int(limit or 8), 20))`, already applied.
     pub(crate) limit: i64,
+    /// `CommandCenterService._enable_graph` — a graph-less install still
+    /// answers, it just answers without the knowledge group.
+    pub(crate) enable_graph: bool,
 }
 
 /// The three groups, and the total across all of them.
@@ -90,7 +102,7 @@ pub(crate) struct SearchRequest<'a> {
 /// empty — which, since an empty group contributes zero, is the same number.
 pub(crate) fn groups(conn: &Connection, request: &SearchRequest<'_>) -> (Vec<Value>, i64) {
     let built = [
-        ("knowledge", knowledge()),
+        ("knowledge", knowledge(conn, request)),
         ("conversation", conversations(conn, request)),
         ("automation", automations(request)),
     ];
@@ -108,9 +120,57 @@ pub(crate) fn groups(conn: &Connection, request: &SearchRequest<'_>) -> (Vec<Val
     (kept, total)
 }
 
-/// `_search_knowledge` — see this module's header for why it is always empty.
-fn knowledge() -> Vec<Value> {
-    Vec::new()
+/// `_search_knowledge` — the lexical lane, projected down to four fields.
+///
+/// The oracle read `payload["results"]`; the producer emits `matches`. This
+/// reads `matches` (the one divergence, see the module header) and is otherwise
+/// the oracle line for line.
+fn knowledge(conn: &Connection, request: &SearchRequest<'_>) -> Vec<Value> {
+    // `if self._search is None or not self._enable_graph: return []`. The search
+    // service is not optional in this port — it is a function in this crate — so
+    // only the graph switch survives as a condition.
+    if !request.enable_graph {
+        return Vec::new();
+    }
+    // `graph_scope_kwargs(workspace_id)`: a named workspace reads only itself and
+    // never the legacy pool; an unscoped caller reads everything it may.
+    let scope = Scope {
+        allowed_workspaces: request.workspace_id.map(|id| {
+            let mut set = BTreeSet::new();
+            set.insert(id.to_string());
+            set
+        }),
+        include_legacy_global: request.workspace_id.is_none(),
+    };
+    // `except Exception: LOGGER.exception(...); return []` — an unreadable graph
+    // costs the group, never the query.
+    let Ok(payload) = service::keyword_search(conn, request.query, request.limit, &scope) else {
+        return Vec::new();
+    };
+    payload
+        .get("matches")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        // `[:limit]`. The lane already caps itself at `limit`, and scoping can
+        // only shorten the list, so this slice is the oracle's belt to its own
+        // braces — kept because a future lane change must not widen the group.
+        .take(request.limit.max(0) as usize)
+        .map(|item| {
+            let mut hit = OrderedMap::new();
+            hit.insert("id", item.get("id").cloned().unwrap_or(Value::Null));
+            hit.insert(
+                "title",
+                Value::String(clip(item.get("title").unwrap_or(&Value::Null), 120)),
+            );
+            hit.insert(
+                "summary",
+                Value::String(clip(item.get("summary").unwrap_or(&Value::Null), 160)),
+            );
+            hit.insert("type", item.get("type").cloned().unwrap_or(Value::Null));
+            serde_json::to_value(&hit).unwrap_or(Value::Null)
+        })
+        .collect()
 }
 
 /// `_search_conversations` — newest first, one hit per conversation.
@@ -222,7 +282,146 @@ mod tests {
             workspace_id: None,
             state: doc,
             limit,
+            enable_graph: true,
         }
+    }
+
+    /// A graph the lexical lane can actually answer from.
+    fn graph() -> (tempfile::TempDir, Connection) {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let conn = Connection::open(dir.path().join("g.sqlite")).expect("open");
+        conn.execute_batch(
+            "CREATE TABLE nodes(id TEXT PRIMARY KEY, type TEXT, title TEXT, summary TEXT,
+                                metadata_json TEXT, updated_at TEXT);
+             CREATE TABLE nodes_v2(id TEXT PRIMARY KEY, workspace_id TEXT);
+             INSERT INTO nodes VALUES
+               ('a','Decision','Alpha ranking','  about   ranking  ','{}','2026-01-02T00:00:00'),
+               ('b','Concept','Beta ranking',NULL,'{}','2026-01-03T00:00:00'),
+               ('c','Concept','Gamma','unrelated','{}','2026-01-01T00:00:00');
+             INSERT INTO nodes_v2 VALUES ('a','w1'),('b','w1'),('c','w2');",
+        )
+        .expect("schema");
+        (dir, conn)
+    }
+
+    #[test]
+    fn the_knowledge_group_carries_the_lanes_matches() {
+        let (_dir, conn) = graph();
+        let doc = state();
+        let hits = knowledge(&conn, &request("ranking", &doc, 8));
+        assert_eq!(
+            hits.len(),
+            2,
+            "`matches`, not the oracle's absent `results`"
+        );
+        let keys: Vec<&str> = hits[0]
+            .as_object()
+            .expect("object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(
+            keys,
+            vec!["id", "title", "summary", "type"],
+            "the four fields _search_knowledge projects, in its order"
+        );
+        assert_eq!(hits[0]["id"], "a");
+        assert_eq!(hits[0]["title"], "Alpha ranking");
+        assert_eq!(
+            hits[0]["summary"], "about ranking",
+            "the lane cleaned the whitespace before _clip saw it"
+        );
+        assert_eq!(hits[0]["type"], "Decision");
+        assert_eq!(hits[1]["id"], "b");
+        assert_eq!(
+            hits[1]["summary"], "",
+            "a NULL summary is \"\", never null: str(None or \"\")"
+        );
+        // The group is no longer dropped, and it counts toward `total`.
+        let (kept, total) = groups(&conn, &request("ranking", &doc, 8));
+        assert_eq!(kept[0]["kind"], "knowledge");
+        assert_eq!(kept[0]["items"].as_array().expect("items").len(), 2);
+        assert_eq!(total, 2, "no conversation table and no matching workflow");
+    }
+
+    #[test]
+    fn the_knowledge_group_clips_titles_at_120_and_summaries_at_160_characters() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let conn = Connection::open(dir.path().join("g.sqlite")).expect("open");
+        conn.execute_batch(
+            "CREATE TABLE nodes(id TEXT PRIMARY KEY, type TEXT, title TEXT, summary TEXT,
+                                metadata_json TEXT, updated_at TEXT);
+             CREATE TABLE nodes_v2(id TEXT PRIMARY KEY, workspace_id TEXT);",
+        )
+        .expect("schema");
+        conn.execute(
+            "INSERT INTO nodes VALUES ('long','Document',?,?,'{\"topic\":\"ranking\"}',
+                                       '2026-01-05T00:00:00')",
+            rusqlite::params!["가".repeat(150), "나".repeat(400)],
+        )
+        .expect("row");
+        conn.execute("INSERT INTO nodes_v2 VALUES ('long','w1')", [])
+            .expect("v2");
+        let doc = state();
+        let hits = knowledge(&conn, &request("ranking", &doc, 8));
+        assert_eq!(hits.len(), 1, "matched through metadata_json");
+        assert_eq!(
+            hits[0]["title"].as_str().expect("title").chars().count(),
+            120,
+            "characters, not bytes"
+        );
+        assert_eq!(
+            hits[0]["summary"]
+                .as_str()
+                .expect("summary")
+                .chars()
+                .count(),
+            160
+        );
+    }
+
+    #[test]
+    fn the_knowledge_group_honours_the_limit_and_the_workspace() {
+        let (_dir, conn) = graph();
+        let doc = state();
+        assert_eq!(knowledge(&conn, &request("ranking", &doc, 1)).len(), 1);
+        let scoped = SearchRequest {
+            workspace_id: Some("w2"),
+            ..request("ranking", &doc, 8)
+        };
+        assert!(
+            knowledge(&conn, &scoped).is_empty(),
+            "w2 owns only the node that does not match"
+        );
+        let other = SearchRequest {
+            workspace_id: Some("w1"),
+            ..request("ranking", &doc, 8)
+        };
+        assert_eq!(knowledge(&conn, &other).len(), 2);
+    }
+
+    #[test]
+    fn a_graph_less_install_and_an_unreadable_graph_both_cost_only_the_group() {
+        let (_dir, conn) = graph();
+        let doc = state();
+        let off = SearchRequest {
+            enable_graph: false,
+            ..request("ranking", &doc, 8)
+        };
+        assert!(knowledge(&conn, &off).is_empty());
+        assert_eq!(
+            groups(&conn, &off).0.len(),
+            0,
+            "search() drops a group whose items are empty"
+        );
+        // No `nodes` table at all: the lane raises and `_search_knowledge`
+        // swallows it, so the query still answers.
+        let broken = Connection::open_in_memory().expect("memory");
+        assert!(knowledge(&broken, &request("ranking", &doc, 8)).is_empty());
+        let (kept, total) = groups(&broken, &request("digest", &doc, 8));
+        assert_eq!(kept.len(), 1, "the automation group still answers");
+        assert_eq!(kept[0]["kind"], "automation");
+        assert_eq!(total, 2);
     }
 
     #[test]
@@ -246,11 +445,6 @@ mod tests {
             3,
             "\"\" in name is True; the caller is what stops an empty query earlier"
         );
-    }
-
-    #[test]
-    fn the_knowledge_group_is_empty_by_record() {
-        assert!(knowledge().is_empty());
     }
 
     #[test]

@@ -104,8 +104,8 @@ export function ReviewInbox() {
   if (reviews.isLoading) return <LoadingPanel title={t(language, "review.inbox.title")} />;
 
   return (
-    <div className="review-inbox space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/40 pb-4">
+    <div className="review-inbox">
+      <div className="review-inbox-head">
         <div>
           <h2 className="text-xl font-bold">{t(language, "review.inbox.title")}</h2>
           <p className="text-sm text-muted-foreground">{t(language, "review.inbox.description")}</p>

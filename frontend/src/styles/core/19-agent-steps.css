@@ -20,23 +20,13 @@
 
 .brain-approval-note.is-expired,
 .brain-approval-note.is-error {
-  border-color: hsl(38 92% 42% / 0.5);
-  background: hsl(38 92% 50% / 0.1);
-  color: hsl(38 92% 70%);
+  border-color: hsl(var(--warning) / 0.5);
+  background: hsl(var(--warning) / 0.1);
+  color: hsl(var(--warning-ink));
 }
 
-:root[data-theme="light"] .brain-approval-head,
-:root[data-theme="light"] .brain-approval-actions .brain-approval-primary {
-  color: hsl(30 80% 32%);
-}
-
-:root[data-theme="light"] .brain-approval-note.is-expired,
-:root[data-theme="light"] .brain-approval-note.is-error {
-  color: hsl(30 70% 32%);
-}
-
-:root[data-theme="light"] .brain-approval-edit-error {
-  color: hsl(0 62% 40%);
+.brain-approval-edit-error {
+  color: hsl(var(--danger-ink));
 }
 
 /* ── Answer grounding badge (근거 있음/근거 없음) ───────────────────────────
@@ -126,11 +116,11 @@
 
 .brain-step-item.is-error .brain-step-dot,
 .brain-step-item.is-blocked .brain-step-dot {
-  background: hsl(0 72% 52%);
+  background: hsl(var(--danger));
 }
 
 .brain-step-item.is-proposed .brain-step-dot {
-  background: hsl(38 92% 50%);
+  background: hsl(var(--warning));
 }
 
 .brain-step-label {
@@ -140,11 +130,11 @@
 
 .brain-step-item.is-error .brain-step-label,
 .brain-step-item.is-blocked .brain-step-label {
-  color: hsl(0 80% 72%);
+  color: hsl(var(--danger-ink));
 }
 
 .brain-step-item.is-proposed .brain-step-label {
-  color: hsl(38 92% 68%);
+  color: hsl(var(--warning-ink));
 }
 
 .brain-step-meta {
@@ -162,14 +152,7 @@
   font-size: 0.6rem;
 }
 
-:root[data-theme="light"] .brain-step-item.is-error .brain-step-label,
-:root[data-theme="light"] .brain-step-item.is-blocked .brain-step-label {
-  color: hsl(0 62% 40%);
-}
 
-:root[data-theme="light"] .brain-step-item.is-proposed .brain-step-label {
-  color: hsl(30 80% 34%);
-}
 
 @media (prefers-reduced-motion: no-preference) {
   .brain-step-dot.is-live {

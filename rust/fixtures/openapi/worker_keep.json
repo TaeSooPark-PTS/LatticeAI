@@ -1565,7 +1565,7 @@
   },
   "schema_count": 18,
   "source": "frontend/openapi.json",
-  "spec_version": "11.6.0",
+  "spec_version": "11.7.0",
   "summary": "The 25 KEEP_WORKER routes from scout_routes.md, the graph single-writer seam, and POST /engines/pull-model: the surface whose handler stays inside the Python worker's interpreter.",
   "target": "Python AI worker (proxy allowlist)",
   "wp": "\u2014"

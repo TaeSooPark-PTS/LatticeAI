@@ -55,6 +55,16 @@ pub struct LoopConfig {
     /// **must** inject that store instead — see [`crate::proposals`] for why a
     /// second writer on the same file is not a second opinion but a lost item.
     pub proposals: Option<Arc<dyn crate::proposals::ProposalStore>>,
+    /// The `pre_tool` / `post_tool` sink every run's native tools fire through.
+    ///
+    /// `None` means no `hooks.json` is in reach of this process and no user
+    /// hook fires — the standalone contract. A host that mounts `/api/hooks`
+    /// **must** inject a sink over the very [`HooksStore`] those routes use,
+    /// for the reason the proposal store is injected: the registry keeps the
+    /// document and the run log in memory.
+    ///
+    /// [`HooksStore`]: https://docs.rs/lattice-platform
+    pub hooks: Option<Arc<dyn crate::tools::HookSink>>,
 }
 
 impl LoopConfig {
@@ -65,12 +75,19 @@ impl LoopConfig {
             runs_dir: crate::runs::default_runs_dir(),
             client: None,
             proposals: None,
+            hooks: None,
         }
     }
 
     /// Stage proposals into `store` — the Review Center's, in the product.
     pub fn with_proposals(mut self, store: Arc<dyn crate::proposals::ProposalStore>) -> Self {
         self.proposals = Some(store);
+        self
+    }
+
+    /// Fire `pre_tool` / `post_tool` through `sink` — the hooks registry's.
+    pub fn with_hooks(mut self, sink: Arc<dyn crate::tools::HookSink>) -> Self {
+        self.hooks = Some(sink);
         self
     }
 
@@ -107,12 +124,17 @@ impl LoopState {
         &self.store
     }
 
-    /// The ports one run needs: the body's, with the host's proposal store.
+    /// The ports one run needs: the body's, with the host's proposal store and
+    /// the host's hook sink.
     ///
-    /// Every `Runtime` these routes build comes through here, so the injected
-    /// store cannot be forgotten on one of the four paths.
+    /// Every `Runtime` these routes build comes through here, so neither
+    /// injection can be forgotten on one of the four paths.
     fn deps_for(&self, body: &RunBody) -> crate::agentloop::LoopDeps {
-        let mut deps = body.to_deps(self.config.worker(), self.workspace.clone());
+        let mut deps = body.to_deps_with_hooks(
+            self.config.worker(),
+            self.workspace.clone(),
+            self.config.hooks.clone(),
+        );
         if let Some(store) = &self.config.proposals {
             deps.proposals = Arc::clone(store);
         }

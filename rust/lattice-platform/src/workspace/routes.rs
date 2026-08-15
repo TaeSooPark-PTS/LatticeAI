@@ -136,11 +136,15 @@ pub struct WorkspaceState {
 
 impl WorkspaceState {
     /// Open the store under `data_dir` and attach default (graph-absent) deps.
+    ///
+    /// `shared`, not `open`: every family that writes this document must hold
+    /// the same handle, and the Review Center / marketplace / designer reach
+    /// the store through the same registry (v11.7.0 §F-A).
     pub fn new(auth: Arc<AuthState>, data_dir: impl AsRef<Path>) -> Self {
         let data_dir = data_dir.as_ref().to_path_buf();
         Self {
             auth,
-            store: Arc::new(WorkspaceOsStore::open(&data_dir)),
+            store: WorkspaceOsStore::shared(&data_dir),
             deps: WorkspaceDeps::default(),
             vscode: VsCodePresence::new(),
             data_dir,

@@ -14,7 +14,7 @@
 }
 
 .brain-graph-focus-meta {
-  color: hsl(var(--brain-core)) !important;
+  color: hsl(var(--brain-core));
   font-weight: 600;
 }
 
@@ -38,14 +38,11 @@
 
 .brain-care-panel {
   display: grid;
-  border: 1px solid hsl(var(--border) / 0.64);
-  border-radius: 10px;
-  background:
-    linear-gradient(135deg, hsl(var(--surface-glass)), hsl(var(--bg) / 0.68)),
-    linear-gradient(90deg, hsl(var(--memory) / 0.08), transparent 45%, hsl(var(--brain-core) / 0.08));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
   overflow: hidden;
   box-shadow: var(--elev-2);
-  backdrop-filter: blur(18px);
 }
 
 .brain-care-summary {
@@ -274,8 +271,8 @@
 }
 
 .brain-care-archive input:focus {
-  border-color: hsl(var(--brain-core) / 0.68);
-  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.1);
+  border-color: hsl(var(--primary) / 0.68);
+  box-shadow: var(--elev-focus);
 }
 
 .brain-care-archive-actions {
@@ -339,6 +336,8 @@
 .admin-console-header h1 {
   font-size: clamp(1.75rem, 4vw, 3rem);
   line-height: 1;
+  letter-spacing: var(--lt-tracking-tight);
+  word-break: keep-all;
 }
 
 .admin-console-header span,
@@ -373,15 +372,16 @@
   align-items: center;
   gap: 0.45rem;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 999px;
-  background: hsl(var(--surface-glass));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-1);
   color: hsl(var(--fg));
   padding: 0 0.85rem;
 }
 
 .admin-back-button:hover,
 .admin-back-button:focus-visible {
-  border-color: hsl(var(--brain-core) / 0.72);
+  border-color: hsl(var(--primary) / 0.72);
   outline: none;
 }
 
@@ -398,13 +398,10 @@
 
 .admin-metric,
 .admin-panel {
-  border: 1px solid hsl(var(--border) / 0.68);
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg, hsl(var(--surface-glass)), hsl(var(--bg) / 0.68)),
-    linear-gradient(90deg, hsl(var(--memory) / 0.06), transparent 42%, hsl(var(--knowledge) / 0.06));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
   box-shadow: var(--elev-2);
-  backdrop-filter: blur(18px);
 }
 
 .admin-metric {
@@ -420,8 +417,8 @@
   height: 2.1rem;
   place-items: center;
   border-radius: 10px;
-  background: hsl(var(--brain-core) / 0.12);
-  color: hsl(var(--brain-core));
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
 }
 
 .admin-metric strong {
@@ -630,13 +627,13 @@
 }
 
 .admin-runtime-row .is-ok {
-  background: hsl(151 65% 36% / 0.13);
-  color: hsl(151 48% 32%);
+  background: hsl(var(--success) / 0.13);
+  color: hsl(var(--success));
 }
 
 .admin-runtime-row .is-warn {
-  background: hsl(36 88% 52% / 0.14);
-  color: hsl(30 82% 35%);
+  background: hsl(var(--warning) / 0.14);
+  color: hsl(var(--warning-ink));
 }
 
 .brain-document-input,

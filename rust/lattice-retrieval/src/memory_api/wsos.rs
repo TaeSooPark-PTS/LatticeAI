@@ -329,6 +329,121 @@ pub fn list_memory_snapshots(state: &Value, workspace_id: Option<&str>, limit: i
     items
 }
 
+/// The owner of `workspace_os.json` + the `workspace_os_state` row.
+///
+/// This crate cannot name `lattice_platform::workspace::WorkspaceOsStore` —
+/// the dependency runs the other way — so it declares the port and the host
+/// installs the implementation, exactly as `lattice-agent` declares
+/// `ProposalStore` for the Review Center. Without one installed the writes
+/// below stay what they were: correct on their own, unaware of anybody else's.
+pub trait StateWriter: Send + Sync {
+    /// Load, apply `body`, save — under the owner's write lock.
+    fn mutate(&self, body: &mut dyn FnMut(&mut Value)) -> Result<(), String>;
+
+    /// Append one timeline event through the owner.
+    ///
+    /// Needed because this crate writes **review items** (synthesis and
+    /// Self-Model proposals), and every other writer of `review_items` records
+    /// a `review_item_created` / `review_item_updated` event after the save.
+    /// Recording it here by hand would append to `timeline` without the
+    /// owner's 10,000-entry cap or its realtime echo, so the port carries it
+    /// instead: the implementation is
+    /// `WorkspaceOsStore::record_timeline_event`, one function.
+    fn record_event(
+        &self,
+        area: &str,
+        event_type: &str,
+        payload: Value,
+        workspace_id: Option<&str>,
+    ) -> Result<(), String>;
+}
+
+/// `review_queue::REVIEW_TIMELINE_AREA`.
+///
+/// The three constants below are `lattice_platform::review_queue`'s, spelled
+/// again because the dependency runs the other way. `lattice-host`'s
+/// `the_review_event_vocabulary_is_one_vocabulary` asserts the two spellings
+/// are equal — it is the one crate that can see both.
+pub const REVIEW_TIMELINE_AREA: &str = "review";
+/// `review_queue::REVIEW_ITEM_CREATED_EVENT`.
+pub const REVIEW_ITEM_CREATED_EVENT: &str = "review_item_created";
+/// `review_queue::REVIEW_ITEM_UPDATED_EVENT`.
+pub const REVIEW_ITEM_UPDATED_EVENT: &str = "review_item_updated";
+
+/// Record one review-queue timeline event, after the item was saved.
+///
+/// The payload is built key-for-key the way
+/// `review_queue::GovernanceState::record_review_event` builds it, in the same
+/// insertion order, so a reader cannot tell which crate wrote the row —
+/// `action` is the Review Center's vocabulary (`create` / `approve` / …).
+///
+/// Without an installed writer this is a no-op rather than a second, unbounded
+/// appender: a standalone `lattice-retrieval` has no timeline reader either,
+/// and `timeline`'s cap belongs to the document's owner.
+pub fn record_review_event(item: &Value, action: &str) {
+    let Some(writer) = state_writer() else {
+        return;
+    };
+    let workspace = item
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(DEFAULT_WORKSPACE_ID)
+        .to_string();
+    let event_type = if action == "create" {
+        REVIEW_ITEM_CREATED_EVENT
+    } else {
+        REVIEW_ITEM_UPDATED_EVENT
+    };
+    let payload = serde_json::json!({
+        "item_id": item.get("id").cloned().unwrap_or(Value::Null),
+        "action": action,
+        "status": item.get("status").cloned().unwrap_or(Value::Null),
+        "source": item.get("source").cloned().unwrap_or(Value::Null),
+        "workspace_id": workspace,
+    });
+    let _ = writer.record_event(
+        REVIEW_TIMELINE_AREA,
+        event_type,
+        payload,
+        Some(workspace.as_str()),
+    );
+}
+
+static STATE_WRITER: std::sync::OnceLock<Arc<dyn StateWriter>> = std::sync::OnceLock::new();
+
+/// Name the process's state writer. The first call wins; later ones are
+/// refused (`false`) rather than swapping the document under a live route.
+pub fn install_state_writer(writer: Arc<dyn StateWriter>) -> bool {
+    STATE_WRITER.set(writer).is_ok()
+}
+
+/// The installed writer, if the host wired one.
+pub fn state_writer() -> Option<&'static Arc<dyn StateWriter>> {
+    STATE_WRITER.get()
+}
+
+/// Load, apply, save — atomically when a writer is installed.
+///
+/// This is the shape every caller should reach for: it holds the owner's lock
+/// across the read and the write, so a concurrent review-item append or
+/// workspace mutation cannot be erased by a stale snapshot. `save_state`
+/// remains for callers that already hold a whole document.
+pub fn mutate_state(
+    store: &Arc<Store>,
+    data_dir: &Path,
+    mut body: impl FnMut(&mut Value),
+) -> Result<(), CoreError> {
+    if let Some(writer) = state_writer() {
+        return writer
+            .mutate(&mut body)
+            .map_err(|error| CoreError::Runtime(format!("workspace state write failed: {error}")));
+    }
+    let mut state = load(store, data_dir);
+    body(&mut state);
+    write_through(store, data_dir, &state)
+}
+
 /// `WorkspaceOSStore.delete_memory` — remove one row, mirror, and say so.
 ///
 /// Platform state, so this is a native write (WP-I1 §2). The timeline event
@@ -340,32 +455,49 @@ pub fn delete_memory(
     data_dir: &Path,
     memory_id: &str,
 ) -> Result<bool, CoreError> {
-    let mut state = load(store, data_dir);
-    let rows = memories(&state);
-    if !rows
-        .iter()
-        .any(|row| row.get("id").and_then(Value::as_str) == Some(memory_id))
-    {
-        return Ok(false);
-    }
-    let kept: Vec<Value> = rows
-        .into_iter()
-        .filter(|row| row.get("id").and_then(Value::as_str) != Some(memory_id))
-        .collect();
-    if let Some(object) = state.as_object_mut() {
-        object.insert("memories".to_string(), Value::Array(kept));
-    }
-    save(store, data_dir, &state)?;
-    Ok(true)
+    let mut removed = false;
+    mutate_state(store, data_dir, |state| {
+        let rows = memories(state);
+        if !rows
+            .iter()
+            .any(|row| row.get("id").and_then(Value::as_str) == Some(memory_id))
+        {
+            return;
+        }
+        let kept: Vec<Value> = rows
+            .into_iter()
+            .filter(|row| row.get("id").and_then(Value::as_str) != Some(memory_id))
+            .collect();
+        if let Some(object) = state.as_object_mut() {
+            object.insert("memories".to_string(), Value::Array(kept));
+        }
+        removed = true;
+    })?;
+    Ok(removed)
 }
 
 /// `save_state` — the SQLite row is the source of truth, the JSON its mirror.
+///
+/// The caller loaded and mutated a whole document, so the read-modify-write
+/// window is theirs; what this can still guarantee is that the write itself
+/// goes through the one owner (same lock, same bytes, same version stamp).
+/// Callers that can express their change as a closure should use
+/// [`mutate_state`] instead, which closes the window too.
 pub fn save_state(store: &Arc<Store>, data_dir: &Path, state: &Value) -> Result<(), CoreError> {
-    save(store, data_dir, state)
+    if let Some(writer) = state_writer() {
+        let replacement = state.clone();
+        return writer
+            .mutate(&mut |current: &mut Value| *current = replacement.clone())
+            .map_err(|error| CoreError::Runtime(format!("workspace state write failed: {error}")));
+    }
+    write_through(store, data_dir, state)
 }
 
-/// `save_state` — the SQLite row is the source of truth, the JSON its mirror.
-fn save(store: &Arc<Store>, data_dir: &Path, state: &Value) -> Result<(), CoreError> {
+/// The unowned write: the SQLite row, then the JSON mirror.
+///
+/// Only reached when no [`StateWriter`] is installed — a standalone
+/// `lattice-retrieval` process, and the tests that exercise this module.
+fn write_through(store: &Arc<Store>, data_dir: &Path, state: &Value) -> Result<(), CoreError> {
     let payload = serde_json::to_string(state).map_err(|error| {
         CoreError::Runtime(format!("workspace state is not serialisable: {error}"))
     })?;

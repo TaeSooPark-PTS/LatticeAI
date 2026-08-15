@@ -48,9 +48,9 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
         <LanguageSwitcher compact />
       </header>
 
-      <section className="admin-metrics-statement px-4 py-3 border border-border/40 rounded-lg bg-muted/25 text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" aria-label={t(language, "admin.overview")}>
-        <div className="flex items-center gap-2 font-medium text-foreground">
-          <ShieldCheck className={`h-4 w-4 ${hasIssue ? "text-amber-500" : "text-emerald-500"}`} />
+      <section className="admin-metrics-statement" aria-label={t(language, "admin.overview")}>
+        <div className="admin-metrics-statement-main">
+          <ShieldCheck className={`h-4 w-4 ${hasIssue ? "is-warn" : "is-ok"}`} />
           <span>
             {hasIssue
               ? t(language, "admin.health.attention", { count: String(healthData?.issue_count || 1) })

@@ -75,17 +75,27 @@ use super::sampling::{self, Sample, STALE_DAYS};
 pub async fn health_report(state: &BrainState, workspace_id: Option<&str>) -> OrderedMap {
     let sample = sampling::graph_sample(state, workspace_id).await;
     let index_status = read_index_status(state).await;
-    build_health_report(&sample, index_status.as_ref(), &state.now())
+    build_health_report(
+        &sample,
+        index_status.as_ref(),
+        &state.now(),
+        state.now_utc(),
+    )
 }
 
 /// The pure half, so the scoring can be tested without a store.
+///
+/// `now_utc` is UTC epoch seconds, injected because `freshness_dimension`'s
+/// 45-day line is a threshold: a store whose nodes share one stamp does not
+/// decay, it flips. See `BrainState::with_utc_clock`.
 pub fn build_health_report(
     sample: &Sample,
     index_status: Option<&OrderedMap>,
     generated_at: &str,
+    now_utc: f64,
 ) -> OrderedMap {
     let mut dimensions = OrderedMap::new();
-    dimensions.insert("freshness", freshness_dimension(sample));
+    dimensions.insert("freshness", freshness_dimension(sample, now_utc));
     dimensions.insert("connectivity", connectivity_dimension(sample));
     dimensions.insert("embedding_coverage", embedding_dimension(index_status));
     dimensions.insert("consistency", consistency_dimension(sample));
@@ -189,11 +199,11 @@ fn unavailable(reason: &str) -> Value {
 }
 
 /// How much of the sampled knowledge saw a recent update.
-fn freshness_dimension(sample: &Sample) -> Value {
+fn freshness_dimension(sample: &Sample, now_utc: f64) -> Value {
     if !(sample.available && !sample.nodes.is_empty()) {
         return unavailable(sampling::no_graph_reason(sample.available));
     }
-    let cutoff = sampling::now_utc_secs() - (STALE_DAYS * 86_400) as f64;
+    let cutoff = now_utc - (STALE_DAYS * 86_400) as f64;
     let known: Vec<f64> = sample
         .nodes
         .iter()
@@ -538,7 +548,12 @@ mod tests {
             edges: vec![edge("e1", "a", "b", "RELATED_TO")],
             available: true,
         };
-        let report = build_health_report(&sample, Some(&status(1.0, 10, 10, 0, "ready")), "@ts");
+        let report = build_health_report(
+            &sample,
+            Some(&status(1.0, 10, 10, 0, "ready")),
+            "@ts",
+            sampling::now_utc_secs(),
+        );
         assert_eq!(report.get("overall_score"), Some(&Value::from(100)));
         assert_eq!(report.get("grade"), Some(&Value::from("excellent")));
         assert_eq!(
@@ -559,7 +574,12 @@ mod tests {
     #[test]
     fn an_empty_index_is_unavailable_rather_than_a_perfect_hundred() {
         let empty = Sample::default();
-        let report = build_health_report(&empty, Some(&status(1.0, 0, 0, 0, "ready")), "@ts");
+        let report = build_health_report(
+            &empty,
+            Some(&status(1.0, 0, 0, 0, "ready")),
+            "@ts",
+            sampling::now_utc_secs(),
+        );
         assert_eq!(report.get("overall_score"), Some(&Value::Null));
         assert_eq!(report.get("grade"), Some(&Value::Null));
         let dims = report.get("dimensions").expect("dimensions");
@@ -585,12 +605,17 @@ mod tests {
     fn a_store_that_reports_no_coverage_ratio_is_not_graded() {
         let mut status = OrderedMap::new();
         status.insert("status", Value::from("ready"));
-        let report = build_health_report(&Sample::default(), Some(&status), "@ts");
+        let report = build_health_report(
+            &Sample::default(),
+            Some(&status),
+            "@ts",
+            sampling::now_utc_secs(),
+        );
         assert_eq!(
             report.get("dimensions").expect("dimensions")["embedding_coverage"]["reason"],
             "this knowledge store does not report vector index coverage"
         );
-        let none = build_health_report(&Sample::default(), None, "@ts");
+        let none = build_health_report(&Sample::default(), None, "@ts", sampling::now_utc_secs());
         assert_eq!(
             none.get("dimensions").expect("dimensions")["embedding_coverage"]["status"],
             "unavailable"
@@ -614,6 +639,7 @@ mod tests {
             &sample,
             Some(&status(0.5, 10, 5, 5, "needs_reindex")),
             "@ts",
+            sampling::now_utc_secs(),
         );
         let actions = report
             .get("recommended_actions")
@@ -653,7 +679,7 @@ mod tests {
             edges: Vec::new(),
             available: true,
         };
-        let report = build_health_report(&sample, None, "@ts");
+        let report = build_health_report(&sample, None, "@ts", sampling::now_utc_secs());
         let dims = report.get("dimensions").expect("dimensions");
         assert_eq!(
             dims["consistency"]["reason"],
@@ -683,7 +709,12 @@ mod tests {
             let mut status = OrderedMap::new();
             status.insert("status", Value::from("ready"));
             status.insert("scale", json_of(&scale));
-            let report = build_health_report(&Sample::default(), Some(&status), "@ts");
+            let report = build_health_report(
+                &Sample::default(),
+                Some(&status),
+                "@ts",
+                sampling::now_utc_secs(),
+            );
             assert_eq!(
                 report.get("grade"),
                 Some(&Value::from(grade)),

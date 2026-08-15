@@ -390,13 +390,52 @@ impl Runtime {
             policy,
         } = call;
         let risk = risk_level(policy);
-        // `write_file`'s content is written as the model produced it. Python's
-        // *loop* ran `sanitize_write_content` here; neither `/agent/tool` nor
-        // `/tools/write_file` ever did, so the native loop has never had it and
-        // making the write native does not change that. It is a real gap, owned
-        // by the artifact pipeline rather than by this dispatcher — the W4
-        // wiring note carries it rather than a silent re-implementation that
-        // could disagree with the one door Python documents.
+        // ArtifactWritePipeline (`_dispatch_step`): the executor's `args.content`
+        // is untrusted model output, so the same extract → validate → repair
+        // guarantee as the direct chat path applies here and a weak model
+        // driving the JSON loop can never persist a fenced, chatty or truncated
+        // payload. Content that already validates is returned byte-for-byte, so
+        // only a rewrite is recorded — an untouched write carries no
+        // `content_sanitize` key at all, exactly as Python's does not.
+        let mut cleaned_args: Option<Map<String, Value>> = None;
+        let mut sanitize_meta: Option<Value> = None;
+        if name == "write_file" {
+            if let Some(content) = args.get("content").and_then(Value::as_str) {
+                let target = path_arg(args).unwrap_or_default();
+                // `str(ctx.plan.get("goal") or thoughts or name)`.
+                let request = ctx
+                    .plan
+                    .get("goal")
+                    .filter(|goal| is_truthy(goal))
+                    .map(py_str)
+                    .unwrap_or_else(|| {
+                        if thoughts.is_empty() {
+                            name.to_string()
+                        } else {
+                            thoughts.to_string()
+                        }
+                    });
+                let (cleaned, meta) =
+                    crate::sanitize::sanitize_write_content(&target, content, &request);
+                if meta.sanitized {
+                    let mut rewritten = args.clone();
+                    rewritten.insert("content".into(), json!(cleaned));
+                    cleaned_args = Some(rewritten);
+                    sanitize_meta = Some(meta.to_value());
+                    ctx.trace.repair(
+                        "execute",
+                        &[if meta.repaired {
+                            "artifact_repair".to_string()
+                        } else {
+                            "artifact_sanitize".to_string()
+                        }],
+                    );
+                }
+            }
+        }
+        // Everything below reads the rewritten arguments, so the transcript
+        // records the bytes that were actually written.
+        let args: &Map<String, Value> = cleaned_args.as_ref().unwrap_or(args);
         let step_index = 1 + ctx
             .transcript
             .iter()
@@ -464,11 +503,14 @@ impl Runtime {
                     "args": Value::Object(args.clone()),
                     "risk": risk, "governance": policy, "result": result,
                 });
-                // The worker owns sanitation; when it reports what it did, the
+                // A worker handler that sanitizes reports it in its result; the
                 // flag is hoisted onto the step so the critic's artifact
-                // checklist sees it. When it does not, the checklist honestly
-                // says "written as produced".
+                // checklist sees it either way. The loop's own pass above wins,
+                // because it is the pass that produced the bytes on disk.
                 if let Some(meta) = result.get("content_sanitize") {
+                    step["content_sanitize"] = meta.clone();
+                }
+                if let Some(meta) = &sanitize_meta {
                     step["content_sanitize"] = meta.clone();
                 }
                 ctx.transcript.push(step);
@@ -560,5 +602,136 @@ impl Runtime {
             Ok(action) => json!({"path": path, "ok": true, "action": action}),
             Err(error) => json!({"path": path, "ok": false, "error": error.to_string()}),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::agentloop::{default_file_create_actions, harness::harness};
+    use crate::runbody::collect_artifacts;
+    use crate::transcript::artifact_checklist;
+
+    const FINAL: &str = r#"{"action": "final", "message": "done"}"#;
+
+    fn write_action(path: &str, content: &str) -> String {
+        json!({"thoughts": "writing", "action": "write_file",
+               "args": {"path": path, "content": content}})
+        .to_string()
+    }
+
+    /// One scripted write, run through the loop, with what landed on disk.
+    async fn wrote(path: &str, content: &str) -> (String, AgentRunContext, Value) {
+        let mut harness = harness(&[&write_action(path, content), FINAL]).await;
+        harness.request.permission_mode = Some("trusted".into());
+        let mut ctx = harness.context();
+        ctx.state = AgentState::Executing;
+        harness
+            .runtime
+            .execute(&mut ctx, &harness.request)
+            .await
+            .expect("execute");
+        let on_disk = std::fs::read_to_string(harness.root.join(path)).expect("file");
+        let summary = ctx.trace.summary();
+        (on_disk, ctx, summary)
+    }
+
+    #[tokio::test]
+    async fn a_fenced_payload_is_cleaned_before_the_disk_and_the_artifacts_say_so() {
+        let dirty = "Sure! Here you go:\n```html\n\
+<!DOCTYPE html><html><body>ok</body></html>\n```\nLet me know!";
+        let (on_disk, ctx, summary) = wrote("page.html", dirty).await;
+        assert_eq!(
+            on_disk, "<!DOCTYPE html><html><body>ok</body></html>",
+            "the fences and the chat never reach the file"
+        );
+        let step = &ctx.transcript[0];
+        assert_eq!(
+            step["args"]["content"],
+            json!(on_disk),
+            "the transcript records the bytes that were written"
+        );
+        assert_eq!(step["content_sanitize"]["sanitized"], json!(true));
+        assert_eq!(step["content_sanitize"]["repaired"], json!(false));
+        assert_eq!(
+            step["content_sanitize"]["reason"],
+            json!("HTML document is wrapped in prose or fences")
+        );
+        assert_eq!(summary["repairs"]["artifact_sanitize"], json!(1));
+
+        let actions = default_file_create_actions();
+        let artifacts = collect_artifacts(&ctx.transcript, &actions);
+        assert_eq!(
+            artifacts[0]["repaired"],
+            json!(false),
+            "extraction is not a repair"
+        );
+        assert_eq!(artifacts[0]["previewable"], json!(true));
+        let checklist = artifact_checklist(&ctx.transcript, &actions);
+        assert_eq!(
+            checklist,
+            vec![json!({"path": "page.html", "sanitized": true, "repaired": false})],
+            "the critic sees a real flag rather than a default"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_truncated_document_is_repaired_and_the_artifact_is_flagged() {
+        let truncated = "<!DOCTYPE html><html><head><title>t</title></head><body><p>hi</p>";
+        let (on_disk, ctx, summary) = wrote("report.html", truncated).await;
+        assert!(on_disk.ends_with("</body>\n</html>"), "{on_disk}");
+        assert_eq!(
+            ctx.transcript[0]["content_sanitize"]["repaired"],
+            json!(true)
+        );
+        assert_eq!(summary["repairs"]["artifact_repair"], json!(1));
+        let artifacts = collect_artifacts(&ctx.transcript, &default_file_create_actions());
+        assert_eq!(
+            artifacts[0]["repaired"],
+            json!(true),
+            "a deterministic scaffold is never presented as model output"
+        );
+    }
+
+    #[tokio::test]
+    async fn clean_content_is_written_verbatim_and_carries_no_sanitize_key() {
+        // Python's FG-06b: an untouched write records nothing, so a UI that
+        // badges `content_sanitize` badges only the writes that needed it.
+        let clean = "<!DOCTYPE html><html><head><title>t</title></head><body>ok</body></html>";
+        let (on_disk, ctx, summary) = wrote("page.html", clean).await;
+        assert_eq!(on_disk, clean);
+        assert!(ctx.transcript[0].get("content_sanitize").is_none());
+        assert_eq!(summary["repairs"], json!({}));
+        let artifacts = collect_artifacts(&ctx.transcript, &default_file_create_actions());
+        assert_eq!(artifacts[0]["repaired"], json!(false));
+    }
+
+    #[tokio::test]
+    async fn only_write_file_content_is_sanitized() {
+        // Python sanitized `write_file` and nothing else: an `edit_file`
+        // replacement is a diff against a file the user already has, not a
+        // model's idea of a whole document.
+        let mut harness = harness(&[
+            &write_action("note.md", "# Title\n\nBody.\n"),
+            &json!({"thoughts": "editing", "action": "edit_file",
+                    "args": {"path": "note.md", "old_string": "Body.",
+                             "new_string": "Sure! Here you go:"}})
+            .to_string(),
+            FINAL,
+        ])
+        .await;
+        harness.request.permission_mode = Some("trusted".into());
+        let mut ctx = harness.context();
+        ctx.state = AgentState::Executing;
+        harness
+            .runtime
+            .execute(&mut ctx, &harness.request)
+            .await
+            .expect("execute");
+        assert_eq!(
+            std::fs::read_to_string(harness.root.join("note.md")).expect("file"),
+            "# Title\n\nSure! Here you go:\n"
+        );
+        assert!(ctx.transcript[1].get("content_sanitize").is_none());
     }
 }

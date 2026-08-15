@@ -17,8 +17,8 @@
   padding: 1rem;
   border: 1px solid hsl(var(--border) / 0.62);
   border-radius: 10px;
-  background: hsl(var(--background) / 0.54);
-  backdrop-filter: blur(18px);
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-1);
 }
 
 .workspace-ribbon h1 {
@@ -80,7 +80,7 @@
   background:
     linear-gradient(135deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.76)),
     linear-gradient(90deg, hsl(var(--primary) / 0.12), transparent 42%, hsl(var(--act) / 0.08));
-  box-shadow: 0 18px 52px hsl(200 22% 3% / 0.26);
+  box-shadow: var(--elev-3);
 }
 
 .arrival-copy {
@@ -180,8 +180,7 @@
 
 .command-scrim {
   padding: 1rem;
-  background: hsl(var(--background) / 0.78);
-  backdrop-filter: blur(18px);
+  background: hsl(var(--scrim));
 }
 
 .command-panel {
@@ -191,7 +190,7 @@
   border: 1px solid hsl(var(--border));
   border-radius: 10px;
   background: hsl(var(--card) / 0.96);
-  box-shadow: 0 24px 70px hsl(200 22% 3% / 0.34);
+  box-shadow: var(--elev-4);
 }
 
 .command-search {
@@ -235,7 +234,7 @@
   padding: 1rem;
   border-right: 1px solid hsl(var(--border));
   background: hsl(var(--card) / 0.98);
-  box-shadow: 18px 0 48px hsl(200 22% 3% / 0.34);
+  box-shadow: var(--elev-4);
 }
 
 .drawer-header {
@@ -257,7 +256,6 @@ html, body, #root {
 }
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", Inter, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -268,7 +266,7 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(120% 80% at 50% 20%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 55%);
+  background: var(--grad-field);
   position: relative;
   overflow: hidden;
 }
@@ -294,10 +292,9 @@ body {
   margin: 0 auto 1.1rem;
   border: 1px solid hsl(var(--border) / 0.66);
   border-radius: 16px;
-  background: hsl(var(--surface-glass));
+  background: hsl(var(--bg-elevated));
   padding: 0.4rem 0.55rem;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 10px 32px hsl(228 30% 4% / 0.14);
+  box-shadow: var(--elev-1);
 }
 
 .brain-shell-brand {
@@ -321,7 +318,7 @@ body {
   background:
     radial-gradient(circle at 32% 30%, hsl(var(--brain-core) / 0.9), hsl(var(--brain-core) / 0.55)),
     hsl(var(--surface));
-  color: hsl(228 24% 12%);
+  color: hsl(var(--primary-foreground));
   box-shadow: 0 0 14px hsl(var(--brain-core) / 0.35);
 }
 
@@ -369,8 +366,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 55;
-  background: hsl(228 26% 5% / 0.45);
-  backdrop-filter: blur(2px);
+  background: hsl(var(--scrim));
 }
 
 .brain-sidebar {
@@ -394,7 +390,7 @@ body {
 .brain-sidebar.is-open {
   transform: none;
   visibility: visible;
-  box-shadow: 0 24px 70px hsl(228 30% 4% / 0.35);
+  box-shadow: var(--elev-4);
 }
 
 .brain-sidebar-head {

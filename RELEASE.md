@@ -13,6 +13,45 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.7.0 — Clean Sweep (2026-08-15)
+
+11.6.0이 공개로 남긴 백로그를 닫고, One Door가 몰랐던 회귀를 고치고,
+표면을 먹빛/한지 elevation 언어로 다시 그린 릴리스. 문은 그대로 —
+네이티브 420 / 41, 워커 28, allowlist에 `/worker/parse`와
+`/worker/render/*` 유지.
+
+- **§5.2 오라클 버그 3건을 고침**: command-search knowledge가
+  `matches`를 읽고 결과를 반환. 스누즈가 offset-aware datetime을
+  받고 잘못된 `until`은 422. 이중 거절은 409(형제 dismiss와 바이트
+  동일). 옛 고장을 고정하던 픽스처는 의도적 발산으로 갱신.
+- **§5.3 구멍 폐쇄**: 바이너리 업로드는 `/worker/parse`. 청크 벡터가
+  네 ingest 문에. 사용자 훅이 네이티브 도구에서 발화(`HookSink`).
+  `sanitize_write_content`가 루프와 `/tools/write_file`에. 리뷰 변이
+  경로마다 `review_item_created/updated`. `workspace_os.json`은
+  writer 하나(`WorkspaceOsStore` + 레지스트리 + 포트).
+- **몰랐던 회귀**: Self-Model 쓰기 5경로가 은퇴 시임으로 404 —
+  네이티브 복구, 녹화된 본문 9건 바이트 동일. `resolve_contradiction`이
+  "적용됨"이라고 거짓말하던 것 포함. xlsx 보안보내기 502 →
+  `/worker/render/xlsx`. chat `ingest_generated`는 11.5.2에서도
+  스키마 400. vault-watch는 픽스처만 있고 폴러가 없었음 — 지금은
+  네이티브 노트 ingest. 좌초 경로 정적 게이트(디코이 증명).
+- **시한폭탄 해체**: chronicle `@today`, briefing freshness,
+  insights/garden/proactive(08-21), health(09-28), quality(11-12).
+  시계 시임 + falsifier + 4시간대 증명.
+- **UI**: 유리 없음, elevation 사다리, 토큰 네이티브 cytoscape,
+  번들 ~103 KiB. a11y/레이아웃 계약 유지.
+- **남은 구멍은 공개**: `open_keys` pending-only, refiner 없음,
+  `delete_node`의 `PART_OF` 잔여, owner 없는 리뷰 이벤트 침묵,
+  KG-api 텍스트 전용 ingest, 리뷰 변이 = 스토어 사이클 2회,
+  snooze 422는 영문 리터럴.
+
+빌드 산출물은 `dist/ltcai-11.7.0-py3-none-any.whl`,
+`dist/ltcai-11.7.0.tar.gz`, `ltcai-11.7.0.tgz`, `dist/ltcai-11.7.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.7.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.7.0.md](RELEASE_NOTES_v11.7.0.md)
+
 ## v11.6.0 — One Door (2026-08-15)
 
 제품 서버가 Rust 하나로 통합된 릴리스. Python은 웹 애플리케이션이 아니라

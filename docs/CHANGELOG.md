@@ -4,6 +4,50 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.7.0] - 2026-08-15 — Clean Sweep
+
+### Added
+- 네이티브 훅 싱크(`HooksStore` → `HookSink`): 사용자 `pre_tool` /
+  `post_tool`이 네이티브 도구에서 발화하고 `hooks_runs.json`에 같은
+  13키 레코드를 남김(상한 100).
+- `review_item_created` / `review_item_updated` 타임라인 이벤트 —
+  모든 변이 리뷰 경로에서 저장 후 1회. `run_now`는 쓰기가 없어 무발화.
+- vault-watch 폴러: enable 시 기동, 마지막 watch disable 시 정지,
+  재시작 시 resume. 감시 `.pdf`/`.docx`는 `/worker/parse`.
+- 좌초 워커 경로 정적 게이트(디코이 증명). 부채 레지스터 비움.
+- 전면 시각 재설계: elevation 사다리, gradient/border 토큰, 유리 제거,
+  토큰 네이티브 cytoscape. 13 스크린 클레임.
+
+### Changed
+- `workspace_os.json` writer 통합 — `WorkspaceOsStore` 하나 +
+  디렉터리 키 레지스트리 + retrieval/agent 포트. 스탬프는
+  `CARGO_PKG_VERSION`.
+- 네 ingest 문(upload / browser-tab / garden note / chat turn)이
+  청크 배치 임베드를 붙임. `(model_id, dim)` 불일치 시 벡터 없음.
+- `/upload/document`가 바이너리 본문을 `/worker/parse`로 보냄.
+- 보안보내기 xlsx가 `/worker/render/xlsx`를 사용.
+- UI 표면이 먹빛 밤 / 한지 낮 elevation 언어. 번들 ~103 KiB gzip.
+
+### Fixed
+- command-search knowledge 그룹이 `matches`를 읽어 결과를 반환
+  (오라클은 `results`를 읽어 항상 비었음).
+- 리뷰 스누즈 offset-aware datetime → 200, 잘못된 `until` → 422.
+- 이중 거절 → 409 (형제 dismiss와 바이트 동일).
+- Self-Model 쓰기 5경로가 은퇴 시임으로 전면 정지 — 네이티브 복구,
+  녹화된 본문 9건 바이트 동일. `resolve_contradiction`이 빈 stamps로
+  "적용됨"을 주장하던 거짓말 포함.
+- chat `ingest_generated` 스키마 400 (11.5.2에서도 깨져 있었음)과
+  vault-watch 미배선.
+- chronicle `@today` 달력 결합, briefing/insights/garden/proactive/
+  health/quality 신선도 퓨즈. 시계 시임 + falsifier + 4시간대.
+
+### Known issues
+- `open_keys`는 `pending`만 (Python은 snoozed도). 추출 refiner 없음.
+  `delete_node`는 `PART_OF`를 남김. owner 없는 리뷰 이벤트는 침묵.
+  KG-api ingest는 텍스트 전용. 리뷰 변이 = 스토어 사이클 2회.
+  snooze 422 detail은 영문 리터럴. 전문은
+  [RELEASE_NOTES_v11.7.0.md](../RELEASE_NOTES_v11.7.0.md).
+
 ## [11.6.0] - 2026-08-15 — One Door
 
 ### Added

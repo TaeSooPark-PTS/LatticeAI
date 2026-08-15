@@ -210,6 +210,74 @@ impl GraphWriter {
         })
     }
 
+    /// Remove exactly one node — the legacy row and its `nodes_v2` projection.
+    ///
+    /// `Ok(false)` means there was no such row. Deliberately narrower than
+    /// [`Self::delete_document_tree`]: it removes nothing the caller did not
+    /// name, and in particular it leaves the node's edges in place. That is
+    /// `delete_self_model_fact`'s Python behaviour verbatim
+    /// (`DELETE FROM nodes WHERE id=?` plus the v2 row, nothing else) — a
+    /// Self-Model fact's only edge is `PART_OF self:root`, and re-adding the
+    /// same fact re-upserts it.
+    pub fn delete_node(&self, node_id: &str) -> Result<bool, CoreError> {
+        let node_id = node_id.trim().to_string();
+        if node_id.is_empty() {
+            return Ok(false);
+        }
+        self.store.with_write_txn(|txn| {
+            let removed =
+                txn.execute("DELETE FROM nodes WHERE id=?", rusqlite::params![node_id])?;
+            delete_nodes_v2(txn, std::slice::from_ref(&node_id))?;
+            Ok(removed > 0)
+        })
+    }
+
+    /// `KGStoreV2.stamp_node_validity` — write a node's validity window.
+    ///
+    /// Only the fields actually supplied are written; `None` leaves the stored
+    /// value alone, so a second resolution cannot silently un-supersede an
+    /// earlier one. `Ok(false)` means nothing was written — either no field was
+    /// supplied or there is no such row.
+    pub fn stamp_node_validity(
+        &self,
+        node_id: &str,
+        valid_from: Option<&str>,
+        valid_to: Option<&str>,
+        superseded_by: Option<&str>,
+    ) -> Result<bool, CoreError> {
+        let node_id = node_id.trim().to_string();
+        let fields: Vec<(&str, &str)> = [
+            ("valid_from", valid_from),
+            ("valid_to", valid_to),
+            ("superseded_by", superseded_by),
+        ]
+        .into_iter()
+        .filter_map(|(column, value)| value.map(|value| (column, value)))
+        .collect();
+        if node_id.is_empty() || fields.is_empty() {
+            return Ok(false);
+        }
+        // The column names are this function's own three literals, never a
+        // caller's string, so the format! cannot carry a caller's SQL.
+        let assignments = fields
+            .iter()
+            .map(|(column, _)| format!("{column}=?"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        self.store.with_write_txn(|txn| {
+            let mut params: Vec<&dyn rusqlite::ToSql> = fields
+                .iter()
+                .map(|(_, value)| value as &dyn ToSql)
+                .collect();
+            params.push(&node_id);
+            let updated = txn.execute(
+                &format!("UPDATE nodes_v2 SET {assignments} WHERE id=?"),
+                params.as_slice(),
+            )?;
+            Ok(updated > 0)
+        })
+    }
+
     /// `set_local_source_watch` — turn a connected folder's watcher on or off.
     pub fn set_local_source_watch(
         &self,

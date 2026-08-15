@@ -15,9 +15,8 @@
   z-index: 18;
   min-height: 4rem;
   border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--background) / 0.94);
+  background: hsl(var(--bg-elevated));
   padding: 0.65rem 0.25rem;
-  backdrop-filter: blur(16px);
 }
 
 .brain-header-presence .brain-presence {
@@ -82,8 +81,9 @@
 }
 
 .brain-message.user .brain-message-bubble {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--muted) / 0.58);
+  border: 1px solid hsl(var(--primary) / 0.22);
+  background: hsl(var(--primary) / 0.12);
+  box-shadow: var(--elev-1);
   padding: 0.82rem 1rem;
 }
 

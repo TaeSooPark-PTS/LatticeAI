@@ -236,6 +236,34 @@ describe("CytoscapeGraph", () => {
     expect(second.destroyed).toBe(true);
   });
 
+  it("paints node labels with complete comma-hsl colors Cytoscape can parse", () => {
+    document.documentElement.style.setProperty("--fg", "40 10% 12%");
+    document.documentElement.style.setProperty("--bg", "42 28% 94%");
+    document.documentElement.style.setProperty("--border-strong", "41 16% 74%");
+    render(<CytoscapeGraph model={THREE} selectedId={null} onSelect={vi.fn()} fitSignal={0} />);
+    const styles = (lastCy().options.style as Array<{ selector: string; style: Record<string, string> }>);
+    const node = styles.find((entry) => entry.selector === "node")?.style;
+    expect(node?.color).toBe("hsl(40, 10%, 12%)");
+    expect(node?.["text-outline-color"]).toBe("hsl(42, 28%, 94%)");
+    expect(styles.find((entry) => entry.selector === "edge")?.style["line-color"]).toBe("hsl(41, 16%, 74%)");
+    document.documentElement.style.removeProperty("--fg");
+    document.documentElement.style.removeProperty("--bg");
+    document.documentElement.style.removeProperty("--border-strong");
+  });
+
+  it("rebuilds canvas paint when the theme flips", () => {
+    const onSelect = vi.fn();
+    useAppStore.setState({ theme: "dark" } as never);
+    const { rerender } = render(
+      <CytoscapeGraph model={THREE} selectedId={null} onSelect={onSelect} fitSignal={0} />,
+    );
+    const first = lastCy();
+    useAppStore.setState({ theme: "light" } as never);
+    rerender(<CytoscapeGraph model={THREE} selectedId={null} onSelect={onSelect} fitSignal={0} />);
+    expect(first.destroyed).toBe(true);
+    expect(lastCy()).not.toBe(first);
+  });
+
   it("shows the narrow-search hint only when at most one node is visible", () => {
     const { unmount } = render(
       <CytoscapeGraph model={makeModel([makeNode("only")])} selectedId={null} onSelect={vi.fn()} fitSignal={0} />,

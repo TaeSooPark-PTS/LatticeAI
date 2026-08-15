@@ -143,7 +143,7 @@
   },
   "schema_count": 0,
   "source": "frontend/openapi.json",
-  "spec_version": "11.6.0",
+  "spec_version": "11.7.0",
   "summary": "Legacy HTML page routes that only render or redirect to an SPA shell, living in feature modules today.",
   "target": "lattice-host (SPA shell routes)",
   "wp": "I4"

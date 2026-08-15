@@ -132,12 +132,20 @@ pub fn scheduler_with_graph(
 /// `proposals` is the store a paused-for-approval run stages into. The loop's
 /// own default (`JsonProposalStore`) appends to `workspace_os.json` directly,
 /// which is wrong whenever `lattice_platform`'s Review Center is mounted in
-/// this process: `GovernanceState` holds that document in memory and mirrors it
-/// into SQLite, so a JSON-only append is invisible to it and is overwritten by
-/// its next save. The caller therefore names the writer — the product hands the
-/// very `GovernanceState` the Review Center routes were built from
+/// this process: the document has an owner there — `WorkspaceOsStore`, whose
+/// `load_state` reads the `workspace_os_state` SQLite row *before* the file —
+/// so a JSON-only append is invisible to it and is overwritten by its next
+/// save. The caller therefore names the writer: the product hands the very
+/// `GovernanceState` the Review Center routes were built from
 /// ([`super::GatewayState::agent_loop_config`]), and a host with no product
-/// mounted has no Review Center to disagree with and hands the JSON store.
+/// mounted has no owner to disagree with and hands the JSON store.
+///
+/// v11.7.0 added a second, lower guard for the same hazard —
+/// `OneDoorState::open` installs `lattice_agent::proposals::DocumentWriter`,
+/// so a `JsonProposalStore` built *anywhere* in a process that has an owner
+/// writes through it. Naming the store here is still right (it is what makes
+/// the id the loop reports the Review Center's own); the install is what makes
+/// forgetting to harmless.
 pub fn agent_loop_config(
     worker_origin: &str,
     client: reqwest::Client,
@@ -148,6 +156,9 @@ pub fn agent_loop_config(
         runs_dir: lattice_agent::runs::default_runs_dir(),
         client: Some(client),
         proposals: None,
+        // The hooks registry is the product's, so `OneDoorState` binds it —
+        // a host with no `/api/hooks` mounted has no registry to fire through.
+        hooks: None,
     }
     .with_proposals(proposals)
 }

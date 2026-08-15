@@ -68,11 +68,11 @@ label:has(> input[type="radio"]) {
 button:not(:disabled),
 a[href] {
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    box-shadow 150ms ease,
-    transform 150ms ease;
+    background-color var(--lt-dur-2) var(--lt-ease),
+    border-color var(--lt-dur-2) var(--lt-ease),
+    color var(--lt-dur-2) var(--lt-ease),
+    box-shadow var(--lt-dur-2) var(--lt-ease),
+    transform var(--lt-dur-2) var(--lt-ease);
 }
 
 /* A hover that is felt, not guessed. Kept subtle so dense screens stay calm. */
@@ -92,7 +92,7 @@ button:not(:disabled):hover {
 :where(button, a[href], input, textarea, select, summary, [tabindex]):focus-visible {
   outline: 2px solid hsl(var(--primary) / 0.85);
   outline-offset: 2px;
-  border-radius: 10px;
+  border-radius: var(--lt-radius-md);
 }
 
 /* 5 · A primary action always looks like the primary action -------------- */
@@ -103,7 +103,7 @@ button:not(:disabled):hover {
 
 .brain-composer-submit:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px hsl(var(--primary) / 0.22);
+  box-shadow: var(--elev-2);
 }
 
 @media (prefers-reduced-motion: reduce) {

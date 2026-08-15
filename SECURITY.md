@@ -3,22 +3,24 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.6.0 — One Door**.
+Current release: **11.7.0 — Clean Sweep**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 11.6.0. Security
+The public Git tree keeps release history from 11.0.0 through 11.7.0. Security
 support follows that same product era: **only 11.x receives fixes.**
 
 11.6.0 rebuilt the product server in Rust and reduced the Python package to a
-pure-compute AI worker. A fix for the 11.6 line is a fix to a different program
-than the one 10.x and 9.x shipped, so backporting it would be a claim this
-project cannot honour. Those release notes stay in the tree as history; the
-support line does not.
+pure-compute AI worker; 11.7.0 is the same program with the disclosed holes
+closed. A fix for the 11.7 line is a fix to a different program than the one
+10.x and 9.x shipped, so backporting it would be a claim this project cannot
+honour. Those release notes stay in the tree as history; the support line does
+not.
 
 | Version | Support |
 | --- | --- |
-| 11.6.x (latest) | Supported |
+| 11.7.x (latest) | Supported |
+| 11.6.x | Supported |
 | 11.5.x | Supported |
 | 11.4.x | Supported |
 | 11.3.x | Supported |

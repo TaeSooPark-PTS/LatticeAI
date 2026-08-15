@@ -94,11 +94,10 @@
 .brain-overview-panel {
   margin: 0 0 1rem;
   border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: 10px;
-  background: hsl(var(--surface-glass));
+  border-radius: var(--lt-radius-lg);
+  background: var(--grad-surface);
   padding: 0.8rem;
   box-shadow: var(--elev-2);
-  backdrop-filter: blur(18px);
 }
 
 .brain-overview-head {
@@ -414,7 +413,7 @@
   font-size: 1.05rem;
   line-height: 1.45;
   white-space: pre-wrap;
-  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.12);
+  box-shadow: var(--elev-1);
 }
 
 .brain-message.user .brain-message-bubble {
@@ -624,7 +623,7 @@
 .brain-code-save-error {
   display: block;
   padding: 0.4rem 0.8rem 0.55rem;
-  color: hsl(0 72% 52%);
+  color: hsl(var(--danger-ink));
   font-size: 0.76rem;
 }
 

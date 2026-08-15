@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { buildExplorerModel, parseGraph, type GraphEdge, type GraphNode, type ParsedGraph } from "./graphExplorer";
+import { buildExplorerModel, graphGroupColor, graphInkColor, parseGraph, resolveTokenColor, type GraphEdge, type GraphNode, type ParsedGraph } from "./graphExplorer";
 
 const NO_COLLAPSE = new Set<string>();
 
@@ -300,7 +300,7 @@ describe("buildExplorerModel", () => {
     const result = model(graph, { selectedId: "hub" });
     const hub = result.elements.find((element) => element.data.id === "hub");
     expect(String(hub?.classes)).toContain("selected");
-    expect(hub?.data.borderColor).toBe("#ffffff");
+    expect(hub?.data.borderColor).toBe(graphInkColor());
   });
 
   it("marks search matches", () => {
@@ -445,7 +445,7 @@ describe("buildExplorerModel hand-built graphs", () => {
     const result = model(graph);
     const element = result.elements.find((item) => item.data.id === "x");
     // The last definition ("other") supplies colour and grouping.
-    expect(element?.data.color).toBe("#f8fafc");
+    expect(element?.data.color).toBe(graphGroupColor("other"));
     expect(element?.data.group).toBe("other");
   });
 
@@ -467,5 +467,40 @@ describe("buildExplorerModel hand-built graphs", () => {
     const result = model(graph, { collapsedGroups: new Set(["knowledge"]), maxNodes: 2 });
     expect(result.visibleNodes.map((node) => node.id)).toEqual(["anchor"]);
     expect(result.elements.filter((element) => element.data.source)).toEqual([]);
+  });
+});
+
+describe("resolveTokenColor", () => {
+  it("wraps a live CSS token as comma-separated hsl() Cytoscape can parse", () => {
+    document.documentElement.style.setProperty("--knowledge", "205 55% 66%");
+    expect(resolveTokenColor("--knowledge", "0 0% 50%")).toBe("hsl(205, 55%, 66%)");
+    document.documentElement.style.removeProperty("--knowledge");
+  });
+
+  it("uses the fallback triple when the token is empty", () => {
+    expect(resolveTokenColor("--no-such-graph-token", "43 26% 94%")).toBe("hsl(43, 26%, 94%)");
+  });
+
+  it("rewrites an already-wrapped space hsl() into comma form", () => {
+    document.documentElement.style.setProperty("--knowledge", "hsl(205 55% 66%)");
+    expect(resolveTokenColor("--knowledge", "0 0% 50%")).toBe("hsl(205, 55%, 66%)");
+    document.documentElement.style.removeProperty("--knowledge");
+  });
+
+  it("keeps a comma hsl() wrapper and passes hex or rgb through", () => {
+    document.documentElement.style.setProperty("--knowledge", "hsl(205, 55%, 66%)");
+    expect(resolveTokenColor("--knowledge", "0 0% 50%")).toBe("hsl(205, 55%, 66%)");
+    document.documentElement.style.setProperty("--knowledge", "#3488c4");
+    expect(resolveTokenColor("--knowledge", "0 0% 50%")).toBe("#3488c4");
+    document.documentElement.style.setProperty("--knowledge", "rgb(52, 136, 196)");
+    expect(resolveTokenColor("--knowledge", "0 0% 50%")).toBe("rgb(52, 136, 196)");
+    document.documentElement.style.removeProperty("--knowledge");
+  });
+
+  it("falls back when the token is not a color, then last-resorts off gray", () => {
+    document.documentElement.style.setProperty("--knowledge", "not-a-color");
+    expect(resolveTokenColor("--knowledge", "168 48% 58%")).toBe("hsl(168, 48%, 58%)");
+    expect(resolveTokenColor("--knowledge", "also-bad")).toBe("hsl(205, 55%, 66%)");
+    document.documentElement.style.removeProperty("--knowledge");
   });
 });

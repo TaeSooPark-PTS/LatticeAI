@@ -31,6 +31,7 @@ use lattice_auth::{AuthConfig, AuthState};
 use lattice_core::db::{RuntimeConfig, Store};
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
+use lattice_platform::hooks::{HooksStore, NativeHookSink};
 use lattice_platform::review_queue::GovernanceState;
 use lattice_platform::workspace::{WorkspaceDeps, WorkspaceService, WorkspaceState};
 
@@ -74,12 +75,26 @@ pub struct OneDoorState {
     /// automation and hooks all read and write through this one handle.
     ///
     /// Built here rather than inside the platform router because the agent loop
-    /// stages proposals into it too, and `GovernanceState` keeps the document in
-    /// memory: a second instance over the same directory would not see the
-    /// other's writes and would overwrite them on its next save. Cloning shares
-    /// the `Arc<Mutex<…>>`, so every clone is the same document.
+    /// stages proposals into it too. Since v11.7.0 `GovernanceState` is a
+    /// *facade* over one `WorkspaceOsStore` handle — it holds no copy of the
+    /// document, and every mutation is a load-apply-save under that store's
+    /// write lock. What must not be duplicated is therefore the **handle**: a
+    /// second `GovernanceState::open` over the same directory would take a
+    /// second lock, so a review write and a workspace write could interleave
+    /// and the loser's change would vanish. Cloning shares the `Arc`, so every
+    /// clone writes under the one lock.
     pub governance: GovernanceState,
-    /// The loop orchestrator's configuration, already bound to [`Self::governance`].
+    /// The hooks registry: `hooks.json` plus the `hooks_runs.json` log.
+    ///
+    /// Opened here for the reason [`Self::governance`] is: it holds both
+    /// documents in memory, and the agent loop is a *second producer of runs*
+    /// now that user `pre_tool` / `post_tool` hooks fire for native tools
+    /// (v11.7.0). A second `HooksStore::open` over the same directory would
+    /// not see this one's records and would overwrite them on its next save,
+    /// so `/api/hooks` and the loop share this handle.
+    pub hooks: HooksStore,
+    /// The loop orchestrator's configuration, already bound to
+    /// [`Self::governance`] and [`Self::hooks`].
     pub loop_config: LoopConfig,
 }
 
@@ -146,12 +161,46 @@ impl OneDoorState {
             });
         let resolver = Arc::new(workspace_state.resolver());
 
-        let governance =
-            GovernanceState::open(Arc::clone(&auth), &data_dir, agent_root, Some(seam.clone()));
+        // One store, two families. `GovernanceState::open` would build a second
+        // `WorkspaceOsStore` over the same `workspace_os.json` — a second lock,
+        // so a review write and a workspace write could interleave and the
+        // loser's change would vanish. Sharing the `Arc` is what makes the
+        // single-writer guarantee hold across the whole process (§F-A).
+        let governance = GovernanceState::with_store(
+            Arc::clone(&auth),
+            Arc::clone(&workspace_state.store),
+            agent_root,
+            Some(seam.clone()),
+        );
         // §P1c's integrator item: staging is in-process now, so the loop writes
         // through the Review Center's own handle rather than a JSON store the
         // Review Center would neither see nor preserve.
         let loop_config = loop_config.with_proposals(Arc::new(governance.clone()));
+        // …and the same for the memory tiers and brain synthesis, which write
+        // review items and memories into that document from `lattice-retrieval`.
+        // That crate cannot name the platform's store (the dependency runs the
+        // other way), so it declares the port and this is the one place that
+        // owns both types (§F-A).
+        let shared_writer = Arc::new(SharedStateWriter(Arc::clone(&workspace_state.store)));
+        lattice_retrieval::memory_api::wsos::install_state_writer(shared_writer.clone());
+        // …and once more for `lattice-agent`'s `JsonProposalStore` (§F-G). The
+        // loop is handed `governance` two lines up, so the *default* store is
+        // never the one that stages in this process — but "no future caller
+        // forgets" is a rule nobody can enforce by reading. With the owner
+        // installed, a `JsonProposalStore` built anywhere in this process
+        // writes through the same lock, the same SQLite row and the same
+        // mirror file instead of appending to a document the Review Center
+        // would overwrite.
+        lattice_agent::proposals::install_document_writer(shared_writer);
+        // v11.7.0 F-BC: the same argument, one document over. A user `pre_tool`
+        // hook can block a native write and every fire is logged, so the loop
+        // and `/api/hooks` must be looking at one registry.
+        let hooks = HooksStore::open(&data_dir);
+        let loop_config = loop_config.with_hooks(Arc::new(NativeHookSink::new(
+            hooks.clone(),
+            // `dispatch_tool(source="agent")` — what the loop called itself.
+            "agent",
+        )));
 
         Ok(Self {
             static_dir: resolve_static_root(config.static_dir()),
@@ -168,6 +217,7 @@ impl OneDoorState {
             workspace_state,
             resolver,
             governance,
+            hooks,
             loop_config,
         })
     }
@@ -196,6 +246,56 @@ impl OneDoorState {
                 })
                 .map_err(|err| err.to_string())
         })
+    }
+}
+
+/// The `workspace_os.json` port both leaf crates declare, answered by the
+/// platform store that owns the document.
+///
+/// Three crates want the same thing — load, apply, save, under one lock — and
+/// the only reason this adapter exists is that `lattice-retrieval` and
+/// `lattice-agent` cannot name `lattice-platform` (the dependency runs the
+/// other way, and inverting it for one file write would be an architecture
+/// change rather than a fix). This host is the one place that can see all
+/// three types, so it is where they are joined.
+struct SharedStateWriter(Arc<lattice_platform::workspace::WorkspaceOsStore>);
+
+impl SharedStateWriter {
+    fn apply(&self, body: &mut dyn FnMut(&mut serde_json::Value)) -> Result<(), String> {
+        self.0
+            .mutate(|state| {
+                body(state);
+                Ok(())
+            })
+            .map_err(|error| error.to_string())
+    }
+}
+
+impl lattice_retrieval::memory_api::wsos::StateWriter for SharedStateWriter {
+    fn mutate(&self, body: &mut dyn FnMut(&mut serde_json::Value)) -> Result<(), String> {
+        self.apply(body)
+    }
+
+    fn record_event(
+        &self,
+        area: &str,
+        event_type: &str,
+        payload: serde_json::Value,
+        workspace_id: Option<&str>,
+    ) -> Result<(), String> {
+        // `record_timeline_event` is the owner's: it caps the timeline at
+        // 10,000 entries and echoes to the realtime sink. A review item this
+        // process wrote from `lattice-retrieval` therefore reaches the same
+        // readers as one the Review Center wrote itself.
+        self.0
+            .record_timeline_event(area, event_type, payload, workspace_id);
+        Ok(())
+    }
+}
+
+impl lattice_agent::proposals::DocumentWriter for SharedStateWriter {
+    fn mutate(&self, body: &mut dyn FnMut(&mut serde_json::Value)) -> Result<(), String> {
+        self.apply(body)
     }
 }
 

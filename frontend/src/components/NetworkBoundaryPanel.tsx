@@ -136,7 +136,7 @@ export function NetworkBoundaryPanel() {
   }
 
   return (
-    <Card data-testid="network-boundary-panel">
+    <Card className="settings-dial" data-testid="network-boundary-panel">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe className="h-4 w-4" aria-hidden="true" />
@@ -171,9 +171,7 @@ export function NetworkBoundaryPanel() {
                   setAcknowledged(false);
                   apply.reset();
                 }}
-                className={`w-full rounded-md border p-3 text-left transition ${
-                  isDraft ? "border-primary bg-accent" : "border-border hover:bg-accent/50"
-                }`}
+                className={`settings-dial-option ${isDraft ? "is-active" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <strong className="text-sm">{optionLabel(option, language)}</strong>

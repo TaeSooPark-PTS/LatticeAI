@@ -12,13 +12,14 @@
 }
 
 .ritual-card {
-  background: hsl(var(--surface-glass));
-  border: 1px solid hsl(var(--border) / 0.65);
-  border-radius: 16px;
+  background: var(--grad-surface);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  box-shadow: var(--elev-1);
   padding: 1.25rem 1.5rem;
   text-align: left;
   margin-bottom: 1rem;
-  transition: border-color 180ms ease, transform 180ms ease;
+  transition: border-color var(--lt-dur-2) var(--lt-ease), transform var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease);
 }
 
 .ritual-card:hover {
@@ -68,22 +69,22 @@
 .ritual-full-button {
   min-height: 2.9rem;
   border: 1px solid hsl(var(--primary) / 0.7);
-  border-radius: 10px;
-  background: hsl(var(--primary));
+  border-radius: var(--lt-radius-lg);
+  background: var(--grad-cta);
   color: hsl(var(--primary-foreground));
   padding: 0 1.2rem;
   font-weight: 700;
   cursor: pointer;
   margin-top: 1rem;
-  box-shadow: 0 8px 24px hsl(var(--primary) / 0.2);
-  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  box-shadow: var(--elev-2);
+  transition: transform var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease);
 }
 
 .ritual-full-button:hover,
 .ritual-full-button:focus-visible {
   transform: translateY(-1px);
   border-color: hsl(var(--ring));
-  box-shadow: 0 12px 30px hsl(var(--primary) / 0.28);
+  box-shadow: var(--elev-3);
   outline: none;
 }
 
@@ -215,10 +216,11 @@
   padding: 1.15rem 1.35rem;
   margin-bottom: 0.7rem;
   cursor: pointer;
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
   background: hsl(var(--surface));
-  transition: all 160ms ease;
+  box-shadow: var(--elev-1);
+  transition: border-color var(--lt-dur-2) var(--lt-ease), background var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease);
 }
 
 .ritual-model-card::after {
@@ -371,10 +373,10 @@
    form is what the eye lands on without being told. */
 .ritual-login-card {
   padding: 1.35rem 1.4rem 1.2rem;
-  border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 16px;
-  background: hsl(var(--surface));
-  box-shadow: var(--elev-2, 0 10px 28px hsl(var(--fg) / 0.07));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-2);
   text-align: left;
 }
 
@@ -460,9 +462,9 @@
   gap: 0.4rem;
   padding: 1.1rem 1.25rem 1.2rem;
   border: 1px solid hsl(var(--primary) / 0.42);
-  border-radius: 16px;
-  background: hsl(var(--surface));
-  box-shadow: 0 10px 30px hsl(var(--primary) / 0.1);
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-2);
   text-align: left;
 }
 

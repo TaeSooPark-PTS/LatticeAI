@@ -63,7 +63,7 @@ use axum::routing::post;
 use axum::Router;
 use lattice_auth::AuthState;
 use lattice_core::db::{tables, RuntimeConfig};
-use lattice_core::graph_write::types::{ExtractReply, IngestContentRequest, SuppliedVector};
+use lattice_core::graph_write::types::IngestContentRequest;
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Map, Value};
@@ -315,14 +315,33 @@ async fn ingest_current_tab(
     } else {
         format!("{title}\n{text}")
     };
-    let extracted = extract_via_seam(state.seam.as_ref(), &extract_text, "document").await;
-    let embedding = embed_via_seam(state.seam.as_ref(), &extract_text).await;
+    let extracted = crate::local_files_api::enrich::extract_via_seam(
+        state.seam.as_ref(),
+        &extract_text,
+        "document",
+    )
+    .await;
+    let embedding =
+        crate::local_files_api::enrich::embed_via_seam(state.seam.as_ref(), &extract_text).await;
     let native_agrees = match embedding.as_ref() {
         Some(vector) => {
             vector.model_id == graph.embedder().model_id() && vector.dim == graph.embedder().dim()
         }
         None => true,
     };
+    let mut chunks = crate::local_files_api::enrich::chunk_pieces_for(&text, &title, "text/html");
+    let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
+    let chunk_batch =
+        crate::local_files_api::enrich::embed_texts_via_seam(state.seam.as_ref(), &chunk_texts)
+            .await;
+    let chunk_agrees = match chunk_batch.as_ref() {
+        Some((model_id, dim, _)) => {
+            crate::local_files_api::enrich::model_agrees(&graph, model_id, *dim)
+        }
+        None => true,
+    };
+    chunks =
+        crate::local_files_api::enrich::attach_chunk_embeddings(chunks, chunk_batch, chunk_agrees);
     let (outcome, title) = match tokio::task::spawn_blocking(move || {
         let request = IngestContentRequest {
             source_type: "browser_tab".into(),
@@ -333,6 +352,7 @@ async fn ingest_current_tab(
             workspace_id,
             captured_at,
             metadata,
+            chunks,
             concepts: extracted.concepts,
             triples: extracted.triples,
             semantic: extracted.semantic,
@@ -371,57 +391,6 @@ async fn ingest_current_tab(
             });
     }
     ok(&payload)
-}
-
-const EXTRACT_PATH: &str = "/worker/extract";
-const EMBED_PATH: &str = "/worker/embed";
-
-async fn extract_via_seam(seam: Option<&WorkerSeamClient>, text: &str, kind: &str) -> ExtractReply {
-    if text.trim().is_empty() {
-        return ExtractReply::default();
-    }
-    let Some(seam) = seam else {
-        return ExtractReply::default();
-    };
-    match seam
-        .post_json(EXTRACT_PATH, &json!({"text": text, "kind": kind}))
-        .await
-    {
-        Ok(payload) => ExtractReply::from_json(&payload),
-        Err(_) => ExtractReply::default(),
-    }
-}
-
-async fn embed_via_seam(seam: Option<&WorkerSeamClient>, text: &str) -> Option<SuppliedVector> {
-    if text.trim().is_empty() {
-        return None;
-    }
-    let seam = seam?;
-    let payload = seam
-        .post_json(EMBED_PATH, &json!({"texts": [text], "kind": "passage"}))
-        .await
-        .ok()?;
-    let values = payload
-        .get("vectors")
-        .and_then(Value::as_array)
-        .and_then(|rows| rows.first())
-        .and_then(Value::as_array)
-        .map(|row| row.iter().filter_map(Value::as_f64).collect::<Vec<f64>>())?;
-    if values.is_empty() {
-        return None;
-    }
-    Some(SuppliedVector {
-        model_id: payload
-            .get("model_id")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        dim: payload
-            .get("dim")
-            .and_then(Value::as_u64)
-            .unwrap_or(values.len() as u64) as usize,
-        values,
-    })
 }
 
 async fn forward(

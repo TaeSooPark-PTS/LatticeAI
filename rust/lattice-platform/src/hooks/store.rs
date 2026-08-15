@@ -533,12 +533,29 @@ impl HooksStore {
             "target_event": event,
             "target_kind": hook.get("kind"),
         });
-        let mut inner = self.inner.lock().expect("hooks lock");
-        inner.runs.push_front(entry.clone());
-        self.persist(&inner);
+        self.record_run(entry.clone());
         entry
     }
+
+    /// `_record_run` — newest first, bounded, persisted.
+    ///
+    /// The bound is Python's `run_log_limit=100` (`deque(maxlen=…)`), which the
+    /// port had dropped while `POST /api/hooks/run` was the only producer. It
+    /// is load-bearing now that [`super::sink::NativeHookSink`] records a run
+    /// per native tool call: without it `hooks_runs.json` would grow for the
+    /// life of the install.
+    pub(crate) fn record_run(&self, entry: Value) {
+        let mut inner = self.inner.lock().expect("hooks lock");
+        inner.runs.push_front(entry);
+        while inner.runs.len() > RUN_LOG_LIMIT {
+            inner.runs.pop_back();
+        }
+        self.persist(&inner);
+    }
 }
+
+/// `HooksRegistry(run_log_limit=100)`.
+pub(crate) const RUN_LOG_LIMIT: usize = 100;
 
 fn materialize(inner: &HooksInner) -> Vec<Value> {
     let mut hooks = Vec::new();

@@ -21,6 +21,39 @@
     "specific, not less."
   ],
 
+  "11.7.0": {
+    "_why": [
+      "Full visual redesign of the SPA. Tokens gained a surface ladder,",
+      "theme-aware elevation, gradient, border, type, radius and motion",
+      "vocabulary. Residual glass (backdrop-filter + translucent surfaces)",
+      "was replaced with solid elevated surfaces. Shell, LivingBrain, home,",
+      "conversation and onboarding restyle against that language; every",
+      "captured screen inherits the new field, type, and shadow."
+    ],
+    "01-login.png": { "min_pct": 1.5 },
+    "02-recommended-models.png": { "min_pct": 1.5 },
+    "03-install-load-progress.png": {
+      "_why": [
+        "Onboarding progress chrome inherited the Clean Sweep tokens/type.",
+        "Layout is the same four-step card as 11.6.0; LivingBrain animation",
+        "states aligned so the whole-image delta is 1.64% — above the static",
+        "1.5% floor, well below the 8% live-noise floor. Gating at 8% would",
+        "only pass by capturing a different orb frame, which is not a redesign."
+      ],
+      "min_pct": 1.5
+    },
+    "04-brain-chat-home.png": { "min_pct": 8.0 },
+    "05-memory-graph.png": { "min_pct": 1.5 },
+    "06-capture.png": { "min_pct": 1.5 },
+    "07-model-library.png": { "min_pct": 1.5 },
+    "08-system.png": { "min_pct": 1.5 },
+    "09-automation-runs.png": { "min_pct": 1.5 },
+    "10-admin-console.png": { "min_pct": 1.5 },
+    "11-knowledge-journey.png": { "min_pct": 1.5 },
+    "12-review-center.png": { "min_pct": 1.5 },
+    "13-chronicle.png": { "min_pct": 1.5 }
+  },
+
   "11.6.0": {
     "_why": [
       "One Door release: the product server moved from Python/FastAPI to the",

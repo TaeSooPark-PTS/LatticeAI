@@ -2,8 +2,7 @@
 //!
 //! Port of `latticeai/api/setup.py`. `/setup/scan` is client-critical
 //! onboarding; `/setup/install` is SSE with **no Accept negotiation**. Demo
-//! corpus deletes go through the worker graph-mutation seam
-//! (`delete_document_tree`).
+//! corpus deletes are native: `GraphWriter::delete_document_tree`.
 
 #![allow(
     dead_code,
@@ -59,7 +58,6 @@ use axum::routing::{get, post};
 use axum::Router;
 use lattice_auth::pyjson::dumps_spaced;
 use lattice_auth::{AuthState, OrderedMap};
-use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Map, Value};
 
 use crate::admin::{json_ok, language_from, message_error, workspace_from_headers};
@@ -169,7 +167,7 @@ pub struct IngestResult {
     pub detail: Option<String>,
 }
 
-/// In-process demo corpus + optional worker for `delete_document_tree`.
+/// In-process demo corpus. `delete_document_tree` is the graph's own.
 #[derive(Clone, Default)]
 pub struct DemoStore {
     inner: Arc<Mutex<Vec<Map<String, Value>>>>,
@@ -259,7 +257,6 @@ impl DemoStore {
 pub struct SetupState {
     pub auth: Arc<AuthState>,
     pub demo: Option<DemoStore>,
-    pub worker: Option<WorkerSeamClient>,
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
     /// When false, demo routes 503 (`capture.ingestion_disabled`).
     pub pipeline_available: bool,
@@ -274,7 +271,6 @@ impl SetupState {
         Self {
             auth,
             demo: Some(DemoStore::new()),
-            worker: None,
             graph: None,
             pipeline_available: true,
             data_dir: data_dir.into(),
@@ -686,27 +682,11 @@ async fn demo_remove(
                     .and_then(Value::as_u64)
                     .unwrap_or(removed_nodes);
             }
-        } else if let Some(worker) = state.worker.as_ref() {
-            let mut args = Map::new();
-            args.insert("node_id".into(), json!(node_id));
-            let mut payload = Map::new();
-            payload.insert("op".into(), json!("delete_document_tree"));
-            payload.insert("args".into(), Value::Object(args));
-            if let Ok(reply) = worker
-                .post_json("/worker/graph/mutate", &Value::Object(payload))
-                .await
-            {
-                if let Some(result) = reply.get("result") {
-                    if let Some(status) = result.get("status").and_then(Value::as_str) {
-                        outcome_status = status.to_string();
-                    }
-                    removed_nodes = result
-                        .get("removed_nodes")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(removed_nodes);
-                }
-            }
         }
+        // Without a native writer the demo rows are dropped from the setup
+        // store and the graph keeps its nodes; the `/worker/graph/mutate`
+        // delegation that used to run here was retired in v11.6.0, and the
+        // reported `status`/`removed_nodes` stay the store's own record.
         let mut row = OrderedMap::new();
         row.insert("node_id", json!(node_id));
         row.insert("title", doc.get("title").cloned().unwrap_or(Value::Null));

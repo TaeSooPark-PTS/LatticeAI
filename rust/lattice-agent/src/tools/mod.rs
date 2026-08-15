@@ -38,8 +38,16 @@
 //! What is *not* retired is a **user-registered** hook: those carry a shell
 //! command, run as a subprocess, and a `pre_tool` one can block. That is a real
 //! feature over a registry (`hooks.json`) this crate does not own, so the
-//! lifecycle survives as a port — [`HookSink`] — that the gateway wires. Until
-//! it does, no user hook fires for a native tool; the wiring note says so.
+//! lifecycle survives as a port — [`HookSink`] — that the gateway wires.
+//!
+//! Since v11.7.0 the gateway does wire it: `lattice_platform::hooks::
+//! NativeHookSink` is the production implementation (the registry is above this
+//! crate in the dependency graph, so the adapter lives with the registry), it
+//! arrives through `LoopConfig::with_hooks`, and both construction sites —
+//! [`crate::runbody::RunBody::to_deps_with_hooks`] and
+//! [`crate::agentloop::LoopDeps::with_hook_sink`] — carry it. A user
+//! `pre_tool` hook can now block a native write, and every fire is recorded in
+//! `hooks_runs.json` where `GET /api/hooks/runs` shows it.
 
 pub mod args;
 pub mod authorize;
@@ -250,7 +258,7 @@ impl NativeTools {
         authorize::check_role(call.tool, call.policy, &self.config.role)?;
         if let Some(hooks) = &self.hooks {
             let keys: Vec<String> = call.args.keys().cloned().collect();
-            if let Err(reason) = hooks.pre_tool(call.tool, &keys, call.scope) {
+            if let Err(reason) = pre_tool(hooks, call.tool, keys, call.scope).await {
                 let reason = if reason.is_empty() {
                     format!("Tool '{}' blocked by a pre_tool hook.", call.tool)
                 } else {
@@ -261,10 +269,11 @@ impl NativeTools {
         }
         let outcome = self.dispatch(call).await;
         if let Some(hooks) = &self.hooks {
-            match &outcome {
-                Ok(_) => hooks.post_tool(call.tool, "ok", "", call.scope),
-                Err(error) => hooks.post_tool(call.tool, "error", &error.message, call.scope),
-            }
+            let (status, detail) = match &outcome {
+                Ok(_) => ("ok", String::new()),
+                Err(error) => ("error", error.message.clone()),
+            };
+            post_tool(hooks, call.tool, status, detail, call.scope).await;
         }
         outcome
     }
@@ -325,6 +334,48 @@ impl NativeTools {
         let args = args.clone();
         blocking(move || tool(&brain_dir, &args)).await
     }
+}
+
+/// `pre_tool`, off the reactor.
+///
+/// A user hook is a **subprocess** with a twenty-second ceiling, and the trait
+/// is synchronous because Python's is. Running it on the event loop would stall
+/// every other request behind somebody's shell script (the v10.9.0 lesson), so
+/// the sink is called from a blocking thread like every other syscall here.
+async fn pre_tool(
+    hooks: &Arc<dyn HookSink>,
+    tool: &str,
+    keys: Vec<String>,
+    scope: &CallScope,
+) -> Result<(), String> {
+    let (hooks, tool, scope) = (Arc::clone(hooks), tool.to_string(), scope.clone());
+    match tokio::task::spawn_blocking(move || hooks.pre_tool(&tool, &keys, &scope)).await {
+        Ok(verdict) => verdict,
+        // "A misbehaving hook never breaks the dispatch" (`_run_one`): a sink
+        // that panicked did not block, and the tool runs.
+        Err(_) => Ok(()),
+    }
+}
+
+/// `post_tool`, off the reactor, awaited so the run is recorded before the
+/// result is returned — Python fires it before it hands the value back.
+async fn post_tool(
+    hooks: &Arc<dyn HookSink>,
+    tool: &str,
+    status: &str,
+    detail: String,
+    scope: &CallScope,
+) {
+    let (hooks, tool, status, scope) = (
+        Arc::clone(hooks),
+        tool.to_string(),
+        status.to_string(),
+        scope.clone(),
+    );
+    let _ = tokio::task::spawn_blocking(move || {
+        hooks.post_tool(&tool, &status, &detail, &scope);
+    })
+    .await;
 }
 
 /// `asyncio.to_thread`: file tools open files, and this server has one event

@@ -53,9 +53,10 @@
   max-width: 620px;
   margin: 0 auto 1rem;
   padding: 1rem;
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 10px;
-  background: hsl(var(--bg) / 0.48);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-lg);
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-1);
   text-align: left;
 }
 

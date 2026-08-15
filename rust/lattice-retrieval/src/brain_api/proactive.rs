@@ -322,11 +322,15 @@ pub fn detect_contradictions(nodes: &[Value], edges: &[Value]) -> OrderedMap {
 }
 
 /// `ProactiveBrain.quality_report` over an already-taken sample.
-pub fn quality_report(sample: &Sample, generated_at: &str) -> OrderedMap {
+///
+/// `now_utc` is UTC epoch seconds, injected rather than read: the staleness
+/// cutoff below is a threshold, and a fixture whose nodes all carry one stamp
+/// crosses it all at once. See `BrainState::with_utc_clock`.
+pub fn quality_report(sample: &Sample, generated_at: &str, now_utc: f64) -> OrderedMap {
     let duplicates = find_duplicates(&sample.nodes, NEAR_THRESHOLD, MAX_PAIRS);
     let contradictions = detect_contradictions(&sample.nodes, &sample.edges);
 
-    let cutoff = sampling::now_utc_secs() - (QUALITY_STALE_DAYS.max(1) * 86_400) as f64;
+    let cutoff = now_utc - (QUALITY_STALE_DAYS.max(1) * 86_400) as f64;
     let mut stale: Vec<&Value> = Vec::new();
     let mut dated = 0i64;
     for node in &sample.nodes {
@@ -518,6 +522,7 @@ pub fn importance_report(
     sample: &Sample,
     stats: &HashMap<String, f64>,
     generated_at: &str,
+    now_utc: f64,
 ) -> OrderedMap {
     let mut degree: HashMap<String, i64> = HashMap::new();
     for edge in &sample.edges {
@@ -528,7 +533,10 @@ pub fn importance_report(
             }
         }
     }
-    let now = sampling::now_utc_secs();
+    // A smooth decay, not a threshold — the common factor cancels out of the
+    // ordering — but `age_days` is printed, so it is injected too rather than
+    // left as the one clock read this family still made.
+    let now = now_utc;
     let half_life = HALF_LIFE_DAYS.max(0.5);
     let mut scored: Vec<Value> = Vec::new();
     for node in &sample.nodes {

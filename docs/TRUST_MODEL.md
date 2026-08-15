@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.6.0 — One Door**.
+Current release: **11.7.0 — Clean Sweep**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -179,7 +179,7 @@ async fn get_proposal(
     require_user(&state, &headers)?;
     let scope = gate_read(&headers);
     match load_proposal(&state, &item_id, scope.as_deref()) {
-        Ok(item) => Ok(json_ok(&review_item_raw_view(&item).map_err(|e| e)?)),
+        Ok(item) => Ok(json_ok(&review_item_raw_view(&item))),
         Err(ProposalConflict::NotFound(msg)) => Err(http_detail(StatusCode::NOT_FOUND, &msg)),
         Err(ProposalConflict::BadRequest(msg)) => Err(http_detail(StatusCode::BAD_REQUEST, &msg)),
         Err(other) => Err(http_detail(StatusCode::BAD_REQUEST, &format!("{other:?}"))),
@@ -254,18 +254,7 @@ async fn reject_proposal(
         .chars()
         .take(500)
         .collect::<String>();
-    // InvalidReviewTransition (already dismissed) is *not* caught by the
-    // Python router — it 500s. Reproduce that.
-    let dismissed =
-        match crate::review_queue::list_review_items(&state, scope.as_deref(), None, None)
-            .into_iter()
-            .find(|item| crate::review_queue::map_str(item, "id") == item_id)
-        {
-            Some(_) => dismiss_or_500(&state, &item_id, scope.as_deref(), &reason)?,
-            None => {
-                return Err(http_detail(StatusCode::NOT_FOUND, &item_id));
-            }
-        };
+    let dismissed = reject_dismiss(&state, &item_id, scope.as_deref(), &reason)?;
     let mut body = OrderedMap::new();
     body.insert("item", dismissed);
     body.insert("applied", json!(false));
@@ -273,102 +262,41 @@ async fn reject_proposal(
     Ok(json_ok(&body))
 }
 
-fn dismiss_or_500(
+/// Reject == dismiss, through the Review Center's own transition.
+///
+/// v11.6.0 rejected an already-rejected proposal with a **500**: Python's
+/// router did not catch `InvalidReviewTransition`, and this module reproduced
+/// the escape faithfully, down to a hand-copied dismiss so the review queue's
+/// own conflict could not be reused. A second rejection is not a server fault
+/// — it is the caller telling us something we already did — so it now answers
+/// **409** with the very detail the sibling
+/// `POST /automation/reviews/{id}/dismiss` answers with, from the very same
+/// guard. The wording stays `cannot 'dismiss' …` because the transition
+/// underneath *is* the dismiss; only the timeline label says `reject`.
+fn reject_dismiss(
     state: &GovernanceState,
     item_id: &str,
     scope: Option<&str>,
     reason: &str,
 ) -> Result<Value, Response> {
-    let stored = load_review_item(state, item_id, scope)
-        .map_err(|_| crate::review_queue::internal_server_error())?;
-    let status = stored
-        .get("status")
-        .and_then(Value::as_str)
-        .unwrap_or("pending");
-    if status != "pending" && status != "snoozed" {
-        // Uncaught InvalidReviewTransition.
-        return Err(crate::review_queue::internal_server_error());
-    }
-    match crate::review_queue::load_review_item(state, item_id, scope) {
-        Ok(_) => {
-            // Re-enter through the same dismiss path the review queue uses.
-            // We cannot call the private transition; apply a public update.
-            reject_update(state, item_id, scope, reason)
-        }
-        Err(_) => Err(http_detail(StatusCode::NOT_FOUND, item_id)),
-    }
-}
-
-fn reject_update(
-    state: &GovernanceState,
-    item_id: &str,
-    scope: Option<&str>,
-    reason: &str,
-) -> Result<Value, Response> {
-    // Duplicate a dismiss with an optional reason. The review-queue module
-    // already implements this; we call approve-shaped update via a tiny
-    // public wrapper by creating a review-queue dismiss through the store.
-    let updated = dismiss_native(state, item_id, scope, reason).map_err(|err| match err {
+    let updated = crate::review_queue::transition_dismiss(
+        state,
+        item_id,
+        scope,
+        (!reason.is_empty()).then_some(reason),
+        "reject",
+    )
+    .map_err(|error| match error {
+        // FileNotFoundError(item_id) → the detail is the bare id, as the
+        // load-side 404 on this route already is.
         ReviewError::NotFound => http_detail(StatusCode::NOT_FOUND, item_id),
-        ReviewError::Conflict(_) => crate::review_queue::internal_server_error(),
-        ReviewError::View(resp) => resp,
-        ReviewError::Failed(msg) => http_detail(StatusCode::BAD_REQUEST, &msg),
+        ReviewError::Conflict(detail) => http_detail(StatusCode::CONFLICT, &detail),
+        ReviewError::Invalid(detail) => http_detail(StatusCode::UNPROCESSABLE_ENTITY, &detail),
+        ReviewError::Failed(detail) => http_detail(StatusCode::BAD_REQUEST, &detail),
     })?;
-    review_item_raw_view(&updated)
-        .map(crate::review_queue::into_value)
-        .map_err(|e| e)
-}
-
-fn dismiss_native(
-    state: &GovernanceState,
-    item_id: &str,
-    scope: Option<&str>,
-    reason: &str,
-) -> Result<Value, ReviewError> {
-    // Use the same field patch as ReviewQueueService.dismiss.
-    let stored = load_review_item(state, item_id, scope)?;
-    let status = stored
-        .get("status")
-        .and_then(Value::as_str)
-        .unwrap_or("pending");
-    if status != "pending" && status != "snoozed" {
-        return Err(ReviewError::Conflict(format!(
-            "cannot 'dismiss' a review item in status '{status}'"
-        )));
-    }
-    state.update_state(|doc| {
-        let rows = doc
-            .as_object_mut()
-            .and_then(|obj| obj.get_mut("review_items"))
-            .and_then(Value::as_array_mut)
-            .ok_or(ReviewError::NotFound)?;
-        let item = rows
-            .iter_mut()
-            .find(|row| row.get("id").and_then(Value::as_str) == Some(item_id))
-            .ok_or(ReviewError::NotFound)?;
-        if let Some(wanted) = scope {
-            let stored_ws = item
-                .get("workspace_id")
-                .and_then(Value::as_str)
-                .unwrap_or("personal");
-            if stored_ws != wanted {
-                return Err(ReviewError::NotFound);
-            }
-        }
-        item["status"] = json!("dismissed");
-        if item.get("snoozed_until").map_or(false, |v| !v.is_null()) {
-            item["snoozed_until"] = Value::Null;
-        }
-        if !reason.is_empty() {
-            let mut provenance = item.get("provenance").cloned().unwrap_or_else(|| json!({}));
-            if let Some(obj) = provenance.as_object_mut() {
-                obj.insert("dismiss_reason".into(), json!(reason));
-            }
-            item["provenance"] = provenance;
-        }
-        item["updated_at"] = json!(crate::review_queue::now_iso());
-        Ok(item.clone())
-    })
+    Ok(crate::review_queue::into_value(review_item_raw_view(
+        &updated,
+    )))
 }
 
 fn raw_pending(state: &GovernanceState, scope: Option<&str>, user: Option<&str>) -> Vec<Value> {
@@ -380,7 +308,7 @@ fn raw_pending(state: &GovernanceState, scope: Option<&str>, user: Option<&str>)
             .collect();
     ids.into_iter()
         .filter_map(|id| load_review_item(state, &id, scope).ok())
-        .filter_map(|item| review_item_raw_view(&item).ok())
+        .map(|item| review_item_raw_view(&item))
         .map(crate::review_queue::into_value)
         .collect()
 }
@@ -458,8 +386,7 @@ pub async fn apply_proposal(
     // Status flip after the write landed — never before, so a conflict leaves
     // the proposal pending and re-approvable once the file is rebased.
     let approved = mark_approved(state, item_id, scope)?;
-    let view = review_item_raw_view(&approved)
-        .map_err(|_| ProposalConflict::BadRequest("failed to render approved item".into()))?;
+    let view = review_item_raw_view(&approved);
     // `_audit("change_proposal_applied", …)` — the review timeline doubles as
     // the change audit log, and the applying half of it used to be recorded by
     // the Python service the worker route reached.
@@ -485,36 +412,25 @@ pub async fn apply_proposal(
     Ok(result)
 }
 
+/// Flip the item to `approved` — through the Review Center's write funnel, so
+/// an approval that lands here emits the same timeline event an approval that
+/// lands through `/automation/reviews/{id}/approve` does, exactly once.
 fn mark_approved(
     state: &GovernanceState,
     item_id: &str,
     scope: Option<&str>,
 ) -> Result<Value, ProposalConflict> {
-    state.update_state(|doc| {
-        let rows = doc
-            .as_object_mut()
-            .and_then(|obj| obj.get_mut("review_items"))
-            .and_then(Value::as_array_mut)
-            .ok_or_else(|| ProposalConflict::NotFound(item_id.to_string()))?;
-        let item = rows
-            .iter_mut()
-            .find(|row| row.get("id").and_then(Value::as_str) == Some(item_id))
-            .ok_or_else(|| ProposalConflict::NotFound(item_id.to_string()))?;
-        if let Some(wanted) = scope {
-            let stored_ws = item
-                .get("workspace_id")
-                .and_then(Value::as_str)
-                .unwrap_or("personal");
-            if stored_ws != wanted {
-                return Err(ProposalConflict::NotFound(item_id.to_string()));
-            }
-        }
+    crate::review_queue::update_review_item(state, item_id, scope, "approve", |item| {
         item["status"] = json!("approved");
         if item.get("snoozed_until").map_or(false, |v| !v.is_null()) {
             item["snoozed_until"] = Value::Null;
         }
-        item["updated_at"] = json!(crate::review_queue::now_iso());
-        Ok(item.clone())
+    })
+    .map_err(|error| match error {
+        ReviewError::Conflict(detail)
+        | ReviewError::Invalid(detail)
+        | ReviewError::Failed(detail) => ProposalConflict::BadRequest(detail),
+        ReviewError::NotFound => ProposalConflict::NotFound(item_id.to_string()),
     })
 }
 

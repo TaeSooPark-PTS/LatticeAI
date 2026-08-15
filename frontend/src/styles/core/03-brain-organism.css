@@ -7,7 +7,7 @@
   width: 58%;
   height: 8%;
   border-radius: 999px;
-  background: radial-gradient(ellipse at center, hsl(228 30% 6% / 0.4), transparent 70%);
+  background: radial-gradient(ellipse at center, hsl(var(--shadow-ink) / 0.42), transparent 70%);
   transform: translateX(-50%) translateZ(-60px);
   filter: blur(7px);
   pointer-events: none;
@@ -15,7 +15,7 @@
 }
 
 :root[data-theme="light"] .brain-organism::after {
-  background: radial-gradient(ellipse at center, hsl(35 30% 30% / 0.3), transparent 70%);
+  background: radial-gradient(ellipse at center, hsl(var(--shadow-ink) / 0.28), transparent 70%);
 }
 
 @keyframes brain-shadow-breathe {
@@ -151,18 +151,18 @@
   box-shadow:
     /* 상단 좌측 하이라이트 / 하단 우측 음영 — 구의 라이팅 */
     inset 20px 26px 52px hsl(var(--brain-halo) / 0.2),
-    inset -26px -34px 64px hsl(228 32% 6% / 0.42),
+    inset -26px -34px 64px hsl(var(--brain-shade) / 0.42),
     0 0 72px hsl(var(--brain-core) / 0.3),
-    0 22px 52px hsl(22 20% 3% / 0.5);
+    0 22px 52px hsl(var(--shadow-ink) / 0.5);
   transition: box-shadow 520ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :root[data-theme="light"] .brain-core {
   box-shadow:
-    inset 20px 26px 52px hsl(40 60% 98% / 0.55),
-    inset -26px -34px 64px hsl(35 30% 40% / 0.28),
+    inset 20px 26px 52px hsl(var(--brain-sheen) / 0.55),
+    inset -26px -34px 64px hsl(var(--brain-shade) / 0.28),
     0 0 60px hsl(var(--brain-core) / 0.22),
-    0 22px 48px hsl(35 30% 30% / 0.28);
+    0 22px 48px hsl(var(--shadow-ink) / 0.22);
 }
 
 .brain-body-motion {
@@ -177,7 +177,7 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 18px 30px hsl(200 80% 4% / 0.46));
+  filter: drop-shadow(0 18px 30px hsl(var(--shadow-ink) / 0.46));
 }
 
 /* 좌우로 천천히 몸을 트는 느린 회전 — 정면 고정이 아니라는 신호 */
@@ -553,11 +553,10 @@
   min-width: 0;
   min-height: min(64vh, 42rem);
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 10px;
-  background: hsl(var(--surface-glass));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
   box-shadow: var(--elev-2);
   overflow: hidden;
-  backdrop-filter: blur(14px);
 }
 
 .brain-chat-home-head {
@@ -590,5 +589,24 @@
   color: hsl(var(--fg-muted));
   font-size: 0.95rem;
   line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-organism::after,
+  .brain-vital-ring,
+  .brain-orbit,
+  .brain-vital-spark,
+  .brain-body-motion,
+  .brain-lobe,
+  .brain-bridge,
+  .brain-stem,
+  .brain-sheen,
+  .brain-fold,
+  .brain-aura,
+  .thought-particle,
+  .memory-ripple,
+  .brain-presence-label .dot {
+    animation: none;
+  }
 }
 

@@ -1,4 +1,4 @@
-//! Delegated knowledge-graph writes over the worker seam.
+//! Native knowledge-graph writes: curation and the two promotion actions.
 
 #![allow(
     dead_code,
@@ -60,7 +60,6 @@ use crate::memory_api::graph_native;
 use rusqlite::Connection;
 use serde_json::{json, Value};
 
-use super::GRAPH_MUTATE_PATH;
 use crate::search_api::{
     engine_error, graph_disabled, http_error, language, ok, optional, Kind, Model, Query,
     RetrievalApiState,
@@ -77,58 +76,45 @@ const CURATE_NOISE_REQUEST: &[crate::search_api::FieldSpec] = &[
 
 const PROMOTION_ACTION_REQUEST: &[crate::search_api::FieldSpec] = &[optional("ids", Kind::Array)];
 
-// ── the four delegated writes ───────────────────────────────────────────────
+// ── the four native writes ──────────────────────────────────────────────────
 
-/// `POST /worker/graph/mutate` with one whitelisted op, and its answer verbatim.
+/// One whitelisted op on the write engine, and its answer verbatim.
 ///
 /// The route returns the store's return value, which is what
-/// `graph().curate()` returns in Python; the seam wraps it as
-/// `{"op", "result"}` and this unwraps it again, so a client sees exactly what
-/// it saw before the move.
+/// `graph().curate()` returned in Python — the worker seam that used to wrap
+/// it as `{"op", "result"}` and unwrap it again is gone, so there is one
+/// fewer shape to keep honest and a client still sees what it always saw.
+///
+/// `require_graph` in every caller has already refused a graph-less install
+/// (404, `_require_graph()`'s sentence). This arm is the *mis-wired* one — a
+/// store opened without a [`lattice_core::graph_write::GraphWriter`] — and it
+/// says exactly that rather than inventing a delegate that no longer exists.
 async fn mutate(
     state: &RetrievalApiState,
     lang: &str,
     op: &str,
     args: Value,
 ) -> Result<Value, Response> {
-    if let Some(graph) = state.graph().cloned() {
-        let op = op.to_string();
-        return tokio::task::spawn_blocking(move || graph_native::dispatch(&graph, &op, &args))
-            .await
-            .map_err(|error| crate::search_api::detail(500, &error.to_string()))?
-            .map_err(|error| {
-                crate::search_api::detail(graph_native::status_for(&error), &error.to_string())
-            });
-    }
-    let seam: &WorkerSeamClient = state.require_seam(lang)?;
-    let body = json!({ "op": op, "args": args });
-    match seam.post_json(GRAPH_MUTATE_PATH, &body).await {
-        Ok(answer) => Ok(answer.get("result").cloned().unwrap_or(Value::Null)),
-        Err(error) => Err(seam_error(error)),
-    }
+    let Some(graph) = state.graph().cloned() else {
+        let _ = lang;
+        return Err(crate::search_api::detail(503, WRITE_ENGINE_UNCONFIGURED));
+    };
+    let op = op.to_string();
+    tokio::task::spawn_blocking(move || graph_native::dispatch(&graph, &op, &args))
+        .await
+        .map_err(|error| crate::search_api::detail(500, &error.to_string()))?
+        .map_err(|error| {
+            crate::search_api::detail(graph_native::status_for(&error), &error.to_string())
+        })
 }
 
-/// A refused delegation, reported with the worker's own status where it gave
-/// one — a 403 from the worker must not reach the browser as a blanket 502.
-pub(crate) fn seam_error(error: WorkerSeamError) -> Response {
-    match error {
-        WorkerSeamError::Rejected {
-            status, ref detail, ..
-        } => {
-            // The worker already answered in the product's own error shape;
-            // pass its status through and keep its sentence.
-            let parsed: Option<Value> = serde_json::from_str(detail).ok();
-            let message = parsed
-                .as_ref()
-                .and_then(|value| value.get("detail"))
-                .and_then(Value::as_str)
-                .map(str::to_string)
-                .unwrap_or_else(|| detail.clone());
-            crate::search_api::detail(status, &message)
-        }
-        other => crate::search_api::detail(502, &other.to_string()),
-    }
-}
+/// The one sentence a caller gets when the graph is on but no writer was bound.
+///
+/// Deliberately the same wording `memory_api::shared::BrainState::mutate_detailed`
+/// answers with: it is the same mis-wiring, and two spellings of one fault
+/// would read as two faults.
+pub(crate) const WRITE_ENGINE_UNCONFIGURED: &str =
+    "the knowledge-graph write engine is not configured on this host";
 
 pub(crate) async fn curate(
     State(state): State<Arc<RetrievalApiState>>,

@@ -329,13 +329,21 @@ pub(crate) async fn write_file(
         Ok(p) => p,
         Err(r) => return r,
     };
+    // v11.7.0: the write-side guarantee reaches this endpoint too. Python
+    // applied `sanitize_write_content` in the agent loop only, so a fenced or
+    // chatty payload posted here was persisted verbatim — the artifact
+    // pipeline's remaining hole, closed. Content that already validates is
+    // returned byte-for-byte, so a hand-authored file is never rewritten, and
+    // the response shape (`{path, bytes}`) is unchanged: `bytes` is what
+    // landed, which is what it always claimed to be.
+    let (content, _sanitize) = lattice_agent::sanitize::sanitize_write_content(path, content, "");
     if content.as_bytes().len() as u64 > MAX_FILE_BYTES {
         return tool_err("Content is too large to write.");
     }
     if let Some(parent) = target.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    if std::fs::write(&target, content).is_err() {
+    if std::fs::write(&target, &content).is_err() {
         return tool_err("Content is too large to write.");
     }
     let bytes = target.metadata().map(|m| m.len()).unwrap_or(0);

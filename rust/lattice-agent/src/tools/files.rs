@@ -26,10 +26,21 @@ const TODO_ALLOWED_STATUS: [&str; 3] = ["completed", "in_progress", "pending"];
 const MAX_TODOS: usize = 50;
 
 /// `write_file(path, content)`.
+///
+/// The content passes [`crate::sanitize::sanitize_write_content`] before it
+/// reaches a disk (v11.7.0). Python ran that pipeline in the *loop* only, so a
+/// direct dispatch — `/agent/tool`, a hook, the harness — wrote whatever the
+/// model produced; this is the door that closes. Content that already validates
+/// is returned byte-for-byte, so nothing a person authored is touched, and the
+/// loop's own pass (`agentloop::gates`) is an identity transform when it gets
+/// here. The **result shape stays `{path, bytes}`**: the transcript's
+/// `content_sanitize` is the loop's to record, and a new key here would change
+/// what every existing reader of a tool result sees.
 pub fn write_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let path = args::required_str(args, "path")?;
     let content = args::optional_str(args, "content", "")?;
     let target = workspace.resolve(&path)?;
+    let (content, _sanitize) = crate::sanitize::sanitize_write_content(&path, &content, "");
     if content.len() as u64 > MAX_FILE_BYTES {
         return Err(ToolError::tool("Content is too large to write."));
     }
@@ -44,6 +55,12 @@ pub fn write_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
 }
 
 /// `edit_file(path, old_string, new_string, replace_all=False)`.
+///
+/// **Not** sanitized, which is Python's scope and not an oversight:
+/// `new_string` is a fragment spliced into a file the user already has, so it
+/// has no file type to validate against and no document shape to repair to.
+/// Running the write-side pipeline over a replacement would judge a line of
+/// CSS as if it were a stylesheet and "repair" it into one.
 pub fn edit_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let path = args::required_str(args, "path")?;
     let old = args::required_str(args, "old_string")?;

@@ -60,6 +60,7 @@ pub(crate) fn seed_schema(dir: &Path) {
         // stay next to the temp copy.
         std::fs::copy(&source, &dest).expect("copy brain_store.sqlite");
         let conn = rusqlite::Connection::open(&dest).expect("sqlite");
+        seed_naive_provenance_stamps(&conn);
         seed_history_overlay(&conn);
         seed_embedding_padding(&conn);
         seed_vector_jobs_table(&conn);
@@ -137,7 +138,7 @@ pub(crate) fn seed_embedding_padding(conn: &rusqlite::Connection) {
     if ready >= 63 {
         return;
     }
-    let stamp = "2026-08-14T12:00:00";
+    let stamp = super::match_util::CAPTURE_NOON;
     let model = "lattice-local-hash-v1:384";
     let needed = 63 - ready;
     let has_raw = table_has_column(conn, "nodes", "raw_json");
@@ -251,7 +252,7 @@ pub(crate) fn seed_review_items(conn: &rusqlite::Connection) {
 /// Self-model nodes written after `--seed-store-only` persist (briefing /
 /// synthesize later phases). Chronicle entities count them.
 pub(crate) fn seed_chronicle_padding(conn: &rusqlite::Connection) {
-    let stamp = "2026-08-14T12:00:00";
+    let stamp = super::match_util::CAPTURE_NOON;
     let _ = conn.execute(
         "INSERT OR IGNORE INTO nodes_v2(
             id, type, legacy_type, label, summary, attrs,
@@ -287,6 +288,34 @@ pub(crate) fn seed_chronicle_padding(conn: &rusqlite::Connection) {
             [stamp],
         );
     }
+}
+
+/// Drop the `+00:00` the capture left on fifteen `captured_at` stamps.
+///
+/// The second wall-clock coupling in this family, and a nastier one than
+/// `@today` because it hides until you change machines. `chronicle_api::pytime`
+/// documents its own precondition: "nothing in the product writes [an offset];
+/// every stored stamp comes from `now_iso()`, which is naive". The committed
+/// store breaks it — `ingestion_provenance.captured_at` is
+/// `2026-08-14T12:00:00+00:00` — so `_local` does what Python's `astimezone`
+/// does and moves those rows into the *runner's* zone. At UTC or KST they stay
+/// on the capture day and everything passes; at UTC+14 they land on the 15th and
+/// `/api/chronicle/overview` answers a two-day `series` against a one-day
+/// fixture. Verified: `TZ=Pacific/Kiritimati` failed, `TZ=UTC` and
+/// `TZ=Etc/GMT+12` passed.
+///
+/// Normalising the copy to the naive form the product actually writes is a fix
+/// to the *fixture's* fidelity, not to behaviour: `_local` leaves a naive stamp
+/// alone, so every zone now reads what UTC read before. No fixture pins the
+/// offset spelling (checked: zero `+00:00` anywhere in `memory_brain.json`).
+/// The committed file is never touched — this runs on the temp copy.
+pub(crate) fn seed_naive_provenance_stamps(conn: &rusqlite::Connection) {
+    let _ = conn.execute(
+        "UPDATE ingestion_provenance
+            SET captured_at = substr(captured_at, 1, length(captured_at) - 6)
+          WHERE captured_at LIKE '%+00:00'",
+        [],
+    );
 }
 
 pub(crate) fn seed_vector_jobs_table(conn: &rusqlite::Connection) {
@@ -354,15 +383,18 @@ pub(crate) fn seed_history_overlay(conn: &rusqlite::Connection) {
     if already > 0 {
         return;
     }
+    // Stamped on the capture day like everything else, so the chronicle's
+    // day/as-of routes see one day and only one.
+    let date = super::match_util::CAPTURE_DATE;
     conn.execute(
         "INSERT INTO conversation_messages
          (conversation_id, role, content, user_email, timestamp, workspace_id)
          VALUES
          ('conv-chat-1', 'assistant', '현재 페이지 URL: https://example.com/page',
-          'owner@fixture.local', '2026-08-14T10:00:00', 'personal'),
+          'owner@fixture.local', ?1 || 'T10:00:00', 'personal'),
          ('conv-chat-2', 'assistant', '현재 페이지 URL: https://example.com/other',
-          'owner@fixture.local', '2026-08-14T10:01:00', 'personal')",
-        [],
+          'owner@fixture.local', ?1 || 'T10:01:00', 'personal')",
+        [date],
     )
     .expect("history");
 }
@@ -372,7 +404,7 @@ pub(crate) fn seed_history_overlay(conn: &rusqlite::Connection) {
 /// ran the full ingest pipeline; here we write the same *counts* so the
 /// read-only Brain routes see the fixture's numbers.
 pub(crate) fn seed_capture_graph(conn: &rusqlite::Connection) {
-    let stamp = "2026-08-14T12:00:00";
+    let stamp = super::match_util::CAPTURE_NOON;
     let model = "lattice-local-hash-v1:384";
     // First eight ids must sort first (ORDER BY updated_at DESC, id ASC).
     let visible: &[(&str, &str, &str)] = &[
@@ -574,58 +606,25 @@ pub(crate) fn fact_id(kind: &str, text: &str) -> String {
     format!("self:{kind}:{}", &hex[..12])
 }
 
+/// How many times the retired `POST /worker/graph/mutate` was asked for.
+///
+/// It is mounted as a **tripwire**, not a stand-in: every graph write this
+/// crate makes is native since v11.7.0, and a fixture that still passes
+/// because a stand-in answered would be the fixture testing the stand-in.
+pub(crate) static GRAPH_MUTATE_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
 pub(crate) async fn spawn_fake_worker() -> String {
     async fn mutate(Json(body): Json<Value>) -> impl IntoResponse {
+        GRAPH_MUTATE_CALLS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let op = body.get("op").and_then(Value::as_str).unwrap_or("");
-        let args = body.get("args").cloned().unwrap_or(json!({}));
-        let result = match op {
-            "rebuild_vector_index" => json!({
-                "status": "completed",
-                "operation_id": "vector-op:fixture",
-                "full": false,
-                "items_total": 64,
-                "items_indexed": 0,
-                "items_skipped": 64,
-                "duration_ms": 1,
-                "embedding_model": "lattice-local-hash-v1:384",
-                "embedding_dim": 384
-            }),
-            "self_model_upsert" => {
-                let kind = args
-                    .get("kind")
-                    .and_then(Value::as_str)
-                    .unwrap_or("preference");
-                let text = args.get("text").and_then(Value::as_str).unwrap_or("");
-                let normalised = text
-                    .trim()
-                    .trim_end_matches(['.', '。', '!', '?', '！', '？', ',', '、']);
-                json!({
-                    "id": fact_id(kind, normalised),
-                    "kind": kind,
-                    "type": "Preference",
-                    "text": normalised,
-                    "origin": "user",
-                    "confidence": 1.0,
-                    "signal": "user_edit",
-                    "workspace_id": args.get("workspace_id").cloned().unwrap_or(json!("personal"))
-                })
-            }
-            "self_model_delete" => json!({"deleted": false}),
-            "self_model_propose" => json!({
-                "available": true,
-                "proposed": [],
-                "proposed_count": 0
-            }),
-            "self_model_apply" => {
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(json!({"detail": "not-a-proposal"})),
-                )
-                    .into_response();
-            }
-            _ => json!({"ok": true}),
-        };
-        (StatusCode::OK, Json(json!({"op": op, "result": result}))).into_response()
+        // A 200 with a plausible body, so a caller that still reaches here is
+        // caught by the assertion rather than by an error it might swallow.
+        (
+            StatusCode::OK,
+            Json(json!({"op": op, "result": {"ok": true}})),
+        )
+            .into_response()
     }
 
     async fn ingest(Json(_body): Json<Value>) -> impl IntoResponse {

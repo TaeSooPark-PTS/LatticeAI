@@ -4,7 +4,7 @@
   display: grid;
   place-items: center;
   padding: 2.5rem 1.25rem;
-  background: radial-gradient(100% 70% at 50% 15%, hsl(var(--bg-elevated)), hsl(var(--bg)));
+  background: var(--grad-field);
 }
 
 .product-flow-shell .living-brain { transform: scale(0.82); }
@@ -305,7 +305,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  background: radial-gradient(120% 80% at 50% 15%, hsl(var(--bg-elevated)), hsl(var(--bg)));
+  background: var(--grad-field);
 }
 
 .ritual-container {
@@ -370,19 +370,20 @@
 }
 
 .ritual-value-card {
-  border: 1px solid hsl(var(--border) / 0.54);
-  border-radius: 10px;
-  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-lg);
+  background: hsl(var(--surface));
+  box-shadow: var(--elev-1);
   padding: 0.78rem 0.82rem;
   text-align: left;
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: transform var(--lt-dur-2) var(--lt-ease), border-color var(--lt-dur-2) var(--lt-ease), box-shadow var(--lt-dur-2) var(--lt-ease);
 }
 
 .ritual-value-card:hover,
 .ritual-value-card:focus-within {
   transform: translateY(-1px);
   border-color: hsl(var(--primary) / 0.55);
-  box-shadow: 0 8px 22px hsl(var(--primary) / 0.09);
+  box-shadow: var(--elev-2);
 }
 
 .ritual-value-label {
@@ -405,14 +406,14 @@
 
 .ritual-secondary-button {
   min-height: 2.75rem;
-  border: 1px solid hsl(var(--border) / 0.64);
-  border-radius: 10px;
-  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-lg);
+  background: hsl(var(--surface));
   color: hsl(var(--fg));
   padding: 0 1.1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease;
+  transition: border-color var(--lt-dur-2) var(--lt-ease), background var(--lt-dur-2) var(--lt-ease);
 }
 
 .ritual-secondary-button:hover,

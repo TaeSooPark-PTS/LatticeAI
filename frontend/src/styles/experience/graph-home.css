@@ -211,12 +211,12 @@
   transform: translateX(-50%);
   border: 1px solid hsl(var(--border) / 0.7);
   border-radius: 999px;
-  background: hsl(var(--surface) / 0.88);
+  background: hsl(var(--surface));
   color: hsl(var(--muted-foreground));
   padding: 0 0.55rem;
   font-size: 0.6rem;
   white-space: nowrap;
-  backdrop-filter: blur(10px);
+  box-shadow: var(--elev-1);
 }
 
 .brain-flow-organism-vital i {
@@ -294,9 +294,9 @@
   margin: 0;
   border: 1px solid hsl(var(--border) / 0.78);
   border-radius: 10px;
-  background: hsl(var(--surface) / 0.9);
+  background: hsl(var(--surface));
   padding: 0.42rem 0.7rem;
-  backdrop-filter: blur(12px);
+  box-shadow: var(--elev-1);
 }
 
 .brain-flow-path li > span {

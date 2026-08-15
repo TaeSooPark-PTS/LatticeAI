@@ -66,10 +66,16 @@ use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
+pub(crate) mod enrich;
 pub mod http;
 mod ingest;
 mod knowledge;
 mod local;
+mod watch_bridge;
+
+// The watch bridge moved out of `ingest` in v11.7.0; the crate-level names
+// stay where callers already found them.
+pub use watch_bridge::{resume_watches, scan_watches};
 
 pub use http::{detail, language, ok, FieldSpec, Kind, Model, Query};
 
@@ -379,6 +385,11 @@ impl LocalFilesState {
 
 /// The twenty-four ported routes.
 pub fn router(state: Arc<LocalFilesState>) -> Router {
+    // Resume the folder watches a previous run left declared. Their snapshots
+    // are on disk, so this ingests what changed while the process was down and
+    // nothing else. A no-op with no watches declared, and outside a Tokio
+    // runtime, so building a router in a plain `#[test]` stays synchronous.
+    resume_watches(&state);
     Router::new()
         .route("/api/local-agent/status", get(local::agent_status))
         .route("/local/list", get(local::list_get).post(local::list_post))

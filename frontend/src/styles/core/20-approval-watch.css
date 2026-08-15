@@ -96,23 +96,18 @@
 }
 
 .brain-approval-countdown.is-urgent {
-  color: hsl(38 92% 68%);
+  color: hsl(var(--warning-ink));
 }
 
 .brain-approval-card.is-urgent {
-  border-color: hsl(38 92% 42% / 0.85);
-  background: hsl(38 92% 50% / 0.14);
+  border-color: hsl(var(--warning) / 0.85);
+  background: hsl(var(--warning) / 0.14);
 }
 
 .brain-approval-urgency {
-  color: hsl(38 92% 70%);
+  color: hsl(var(--warning-ink));
   font-size: 0.68rem;
   font-weight: 700;
-}
-
-:root[data-theme="light"] .brain-approval-countdown.is-urgent,
-:root[data-theme="light"] .brain-approval-urgency {
-  color: hsl(30 80% 32%);
 }
 
 /* Expired note gains the "다시 계획하기" action when the server offered a
@@ -125,9 +120,9 @@
 }
 
 .brain-approval-replan {
-  border: 1px solid hsl(38 92% 42% / 0.7);
+  border: 1px solid hsl(var(--warning) / 0.7);
   border-radius: 999px;
-  background: hsl(38 92% 50% / 0.14);
+  background: hsl(var(--warning) / 0.14);
   color: inherit;
   padding: 0.26rem 0.72rem;
   font-size: 0.76rem;
@@ -137,7 +132,7 @@
 
 .brain-approval-replan:hover,
 .brain-approval-replan:focus-visible {
-  background: hsl(38 92% 50% / 0.24);
+  background: hsl(var(--warning) / 0.24);
 }
 
 /* Paused approvals that survived a reload — inform only, never pretend the
@@ -146,10 +141,10 @@
   display: grid;
   gap: 0.4rem;
   margin: 0 0 0.6rem;
-  border: 1px solid hsl(38 92% 42% / 0.5);
+  border: 1px solid hsl(var(--warning) / 0.5);
   border-left-width: 4px;
-  border-radius: 10px;
-  background: hsl(38 92% 50% / 0.08);
+  border-radius: var(--lt-radius-lg);
+  background: hsl(var(--warning) / 0.08);
   padding: 0.5rem 0.7rem;
 }
 
@@ -160,7 +155,7 @@
 }
 
 .brain-pending-approvals span {
-  color: hsl(38 92% 70%);
+  color: hsl(var(--warning-ink));
   font-size: 0.76rem;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -169,10 +164,6 @@
 .brain-pending-approvals small {
   color: hsl(var(--fg-muted));
   font-size: 0.68rem;
-}
-
-:root[data-theme="light"] .brain-pending-approvals span {
-  color: hsl(30 70% 32%);
 }
 
 /* ── Watch health card (folder watch mode) ─────────────────────────────── */
@@ -298,13 +289,9 @@
 }
 
 .brain-created-file-brain.is-failed {
-  border-color: hsl(38 92% 42% / 0.55);
-  background: hsl(38 92% 50% / 0.14);
-  color: hsl(38 92% 68%);
-}
-
-:root[data-theme="light"] .brain-created-file-brain.is-failed {
-  color: hsl(30 80% 34%);
+  border-color: hsl(var(--warning) / 0.55);
+  background: hsl(var(--warning) / 0.14);
+  color: hsl(var(--warning-ink));
 }
 
 /* ── Source chunk modal (citation → 원문) ────────────────────────────────

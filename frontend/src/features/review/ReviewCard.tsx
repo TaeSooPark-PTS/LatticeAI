@@ -116,7 +116,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
     // a plain div maps to the `banner` landmark, so an inbox of N cards was
     // announcing N page banners. Wrapping the card scopes the header to it and
     // makes each item one navigable unit.
-    <article aria-labelledby={titleId} className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
+    <article aria-labelledby={titleId} className="review-card">
       {/* Header Bar */}
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/40 pb-3">
         <div className="min-w-0 flex-1 space-y-1">
@@ -153,9 +153,9 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
           ) : null}
 
           {snoozed ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+            <div className="review-card-snooze">
               <div>
-                <div className="font-semibold text-amber-600">{formatSnoozedUntil(language, item.snoozed_until)}</div>
+                <div className="review-card-snooze-title">{formatSnoozedUntil(language, item.snoozed_until)}</div>
                 <p className="text-muted-foreground text-[11px]">{t(language, "review.snoozed.detail")}</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => onAction(item, "unsnooze")} disabled={!actionable} className="h-7 text-xs">
@@ -274,7 +274,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
           {feedback?.conflict && isProposal ? (
             <ProposalConflictNote language={language} itemId={item.id} />
           ) : feedback ? (
-            <p className={`text-xs p-2 rounded border ${feedback.tone === "error" ? "border-amber-500/30 bg-amber-500/10 text-warning" : "border-emerald-500/30 bg-emerald-500/10 text-success"}`}>
+            <p className={`review-card-feedback ${feedback.tone === "error" ? "is-error" : "is-ok"}`}>
               {feedback.message} - {t(language, "review.feedback.open")}
               {feedback.detail && feedback.detail !== feedback.message ? (
                 <span className="mt-0.5 block text-[11px] opacity-75">{feedback.detail}</span>

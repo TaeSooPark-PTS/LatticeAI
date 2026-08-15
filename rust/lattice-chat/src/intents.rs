@@ -15,6 +15,7 @@ use lattice_agent::inference::{infer_file_target, infer_project_manifest};
 use lattice_agent::sandbox::Workspace;
 use lattice_agent::state::AgentState;
 use lattice_auth::OrderedMap;
+use lattice_core::graph_write::types::{ExtractReply, IngestionRecord, SuppliedVector};
 use lattice_core::messages::{self, LANGUAGE_HEADER};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
@@ -448,6 +449,37 @@ pub async fn direct_file_action(
     Some(json_body(StatusCode::OK, &rendered))
 }
 
+/// `POST /worker/extract` — W5's LLM-first concept / triple / semantic seam.
+const EXTRACT_PATH: &str = "/worker/extract";
+
+/// `_ingest_generated_file` — index a just-generated file into the Brain.
+///
+/// The knowledge promise is "what Lattice makes, Lattice remembers": without
+/// this, generated files are invisible to recall until the user re-uploads
+/// them. Best-effort and additive — an ingestion problem never fails the file
+/// creation, and `LATTICEAI_INGEST_GENERATED=0` disables it.
+///
+/// **v11.7.0 correction.** This posted the item to
+/// `POST {worker}/knowledge-graph/ingest` until now. v11.6.0 took that route
+/// off the worker (it is absent from `rust/fixtures/worker_allowlist.json`), so
+/// the call 404'd — and because the fixture worker answered it, the reply still
+/// said `{"status": "ok"}` while nothing had been remembered. The write is
+/// native now, through the same [`GraphWriter`](lattice_core::graph_write::GraphWriter)
+/// door the upload path uses, with the W5 extract / W2 embed chain around it:
+///
+/// * [`GraphWriter::ingest_file`] because the material *is* a file on disk —
+///   that is what `IngestionItem(source_type="file", path=…)` routed to
+///   (`_ingest_file` → `ingest_document`), so the node id stays
+///   `file:<scoped hash of the bytes>` and the blob sidecar is still written;
+/// * the content is handed over as `extracted["content"]`, exactly as the
+///   native `POST /upload/document` door hands a parsed upload over, so the
+///   node's text is searchable rather than just its filename;
+/// * `write_vectors` runs only when the seam's embedder is the one this process
+///   would file the row under (W2 §4), and `record_ingestion` captures
+///   provenance whether or not it did.
+///
+/// The four reported keys are unchanged, so every client that reads
+/// `brain_ingest` reads the same shape — it is finally telling the truth.
 async fn ingest_generated(
     state: &ChatState,
     rel_path: &str,
@@ -459,51 +491,134 @@ async fn ingest_generated(
     if !state.config.ingest_generated {
         return None;
     }
-    let worker = state.worker.as_ref()?;
-    let mut item = Map::new();
-    item.insert("source_type".into(), json!("file"));
-    item.insert(
-        "title".into(),
-        json!(Path::new(rel_path)
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or(rel_path)),
-    );
-    item.insert("text".into(), json!(content));
-    item.insert(
-        "path".into(),
-        json!(state
-            .config
-            .agent_root
-            .join(rel_path)
-            .to_string_lossy()
-            .into_owned()),
-    );
-    item.insert(
-        "source_uri".into(),
-        json!(format!("workspace://{rel_path}")),
-    );
-    item.insert("owner".into(), json!(effective_email));
-    item.insert("workspace_id".into(), json!(workspace_id));
-    item.insert("conversation_id".into(), json!(conversation_id));
-    item.insert(
-        "metadata".into(),
-        json!({"origin": "generated_file", "route": "direct_write_file"}),
-    );
-    match worker.ingest(&item).await {
-        Ok(payload) => Some(json!({
-            "status": payload.get("status").cloned().unwrap_or(json!("ok")),
-            "node_id": payload.get("node_id").cloned().unwrap_or_else(|| {
-                json!(scoped_file_id(content, workspace_id))
-            }),
-            "chunk_count": payload.get("chunk_count").cloned().unwrap_or(json!(0)),
-            "duplicate": payload.get("duplicate").cloned().unwrap_or(json!(false)),
-        })),
-        Err(error) => Some(json!({
-            "status": "failed",
-            "detail": error.to_string().chars().take(200).collect::<String>(),
-        })),
+    let graph = state.graph.clone()?;
+    let filename = Path::new(rel_path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(rel_path)
+        .to_string();
+    let enrichment = format!("{filename}\n{content}");
+    let extracted = extract_for_file(state, &enrichment).await;
+    let embedding = embed_for_file(state, &enrichment).await;
+    let native_agrees = match embedding.as_ref() {
+        Some(vector) => {
+            vector.model_id == graph.embedder().model_id() && vector.dim == graph.embedder().dim()
+        }
+        None => true,
+    };
+
+    let mut extracted_content = Map::new();
+    if !content.is_empty() {
+        extracted_content.insert("content".into(), json!(content));
     }
+    let mut metadata = Map::new();
+    metadata.insert("origin".into(), json!("generated_file"));
+    metadata.insert("route".into(), json!("direct_write_file"));
+    let path = state.config.agent_root.join(rel_path);
+    let source_uri = format!("workspace://{rel_path}");
+    let request = lattice_core::graph_write::types::IngestFileRequest {
+        path,
+        original_filename: Some(filename.clone()),
+        uploader: effective_email.map(str::to_string),
+        conversation_id: conversation_id.map(str::to_string),
+        extracted: extracted_content,
+        source_type: Some("file".into()),
+        source_uri: Some(source_uri.clone()),
+        owner: effective_email.map(str::to_string),
+        workspace_id: workspace_id.map(str::to_string),
+        concepts: extracted.concepts,
+        triples: extracted.triples,
+        semantic: extracted.semantic,
+        embedding,
+        ..Default::default()
+    };
+    let owner = request.owner.clone();
+    let workspace = request.workspace_id.clone();
+    let written = tokio::task::spawn_blocking(move || {
+        let outcome = graph.ingest_file(&request)?;
+        let embedded = native_agrees
+            && !outcome.node_id.is_empty()
+            && graph.write_vectors(&outcome.node_id).status != "failed";
+        // Provenance must never turn an already-persisted file into a failure.
+        let _ = graph.record_ingestion(&IngestionRecord {
+            node_id: outcome.node_id.clone(),
+            source_type: "file".into(),
+            pipeline: "unified-ingestion".into(),
+            source_uri: Some(source_uri),
+            content_hash: outcome.content_hash.clone(),
+            title: Some(filename),
+            owner,
+            workspace_id: workspace,
+            captured_at: outcome.captured_at.clone(),
+            embedded,
+            duplicate: outcome.duplicate,
+            chunk_count: outcome.chunk_count as i64,
+            metadata,
+            ..Default::default()
+        });
+        Ok::<_, lattice_core::CoreError>(outcome)
+    })
+    .await;
+    match written {
+        Ok(Ok(outcome)) => Some(json!({
+            "status": "ok",
+            "node_id": outcome.node_id,
+            "chunk_count": outcome.chunk_count,
+            "duplicate": outcome.duplicate,
+        })),
+        Ok(Err(error)) => Some(failed_ingest(&error.to_string())),
+        Err(error) => Some(failed_ingest(&error.to_string())),
+    }
+}
+
+/// `{"status": "failed", "detail": …}` — the shape the clients already parse.
+fn failed_ingest(detail: &str) -> Value {
+    json!({
+        "status": "failed",
+        "detail": detail.chars().take(200).collect::<String>(),
+    })
+}
+
+/// Ask `/worker/extract` about a generated file, best-effort.
+///
+/// The same `kind` the garden and upload doors use for a document, so a file
+/// Lattice wrote and the same file uploaded produce one concept subgraph rather
+/// than two subtly different ones. No worker, or a failed call, means no
+/// concepts — never a lost file.
+async fn extract_for_file(state: &ChatState, text: &str) -> ExtractReply {
+    if text.trim().is_empty() {
+        return ExtractReply::default();
+    }
+    let Some(worker) = state.worker.as_ref() else {
+        return ExtractReply::default();
+    };
+    let body = json!({"text": text, "kind": "document"});
+    match worker.client().post_json(EXTRACT_PATH, &body).await {
+        Ok(payload) => ExtractReply::from_json(&payload),
+        Err(_) => ExtractReply::default(),
+    }
+}
+
+/// Ask `/worker/embed` for the file's passage vector, best-effort.
+async fn embed_for_file(state: &ChatState, text: &str) -> Option<SuppliedVector> {
+    if text.trim().is_empty() {
+        return None;
+    }
+    let worker = state.worker.as_ref()?;
+    let reply = worker.embed(&[text.to_string()], "passage").await.ok()?;
+    let values = reply.vectors.into_iter().next()?;
+    if values.is_empty() {
+        return None;
+    }
+    Some(SuppliedVector {
+        dim: if reply.dim == 0 {
+            values.len()
+        } else {
+            reply.dim
+        },
+        model_id: reply.model_id,
+        values,
+    })
 }
 
 /// Persist both sides of an intent exchange through the native turn chain.
@@ -629,5 +744,158 @@ mod tests {
             })
             .unwrap();
         assert_eq!(count, 1);
+    }
+
+    /// A state with a Brain, an agent workspace and **no worker** — the shape
+    /// that used to make `ingest_generated` return `None` and, with a worker,
+    /// made it post into a route that no longer exists.
+    fn brain_state(
+        dir: &Path,
+    ) -> (
+        crate::state::ChatState,
+        lattice_core::graph_write::GraphWriter,
+    ) {
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        use lattice_auth::AuthConfig;
+        use lattice_core::db::Store;
+        use lattice_core::graph_write::GraphWriter;
+
+        use crate::state::{ChatConfig, ChatState};
+
+        let mut env = HashMap::new();
+        env.insert(
+            "LATTICEAI_DATA_DIR".into(),
+            dir.to_string_lossy().into_owned(),
+        );
+        let auth = lattice_auth::AuthState::new(AuthConfig::from_map(&env, None));
+        let store = Arc::new(Store::open(&dir.join("knowledge_graph.sqlite")).unwrap());
+        let graph = GraphWriter::open(store, dir.join("knowledge_graph_blobs")).unwrap();
+        let agent_root = dir.join("agent");
+        std::fs::create_dir_all(&agent_root).unwrap();
+        let state = ChatState::new(
+            auth,
+            ChatConfig {
+                data_dir: dir.to_path_buf(),
+                graph_db: Some(dir.join("knowledge_graph.sqlite")),
+                agent_root,
+                ..ChatConfig::default()
+            },
+        )
+        .with_graph(graph.clone());
+        (state, graph)
+    }
+
+    #[tokio::test]
+    async fn a_generated_file_is_written_through_the_graph_writer() {
+        let dir = tempfile::tempdir().unwrap();
+        let (state, graph) = brain_state(dir.path());
+        std::fs::write(state.config.agent_root.join("메모.md"), b"Hello Lattice").unwrap();
+
+        let receipt = ingest_generated(
+            &state,
+            "메모.md",
+            "Hello Lattice",
+            Some("owner@lattice.test"),
+            Some("personal"),
+            Some("conv-1"),
+        )
+        .await
+        .expect("the Brain is bound, so there is a receipt");
+        assert_eq!(receipt["status"], "ok");
+        assert_eq!(
+            receipt["node_id"],
+            json!(scoped_file_id("Hello Lattice", Some("personal"))),
+            "the id is the scoped hash of the bytes on disk — the same id the \
+             retired route's fixture pinned"
+        );
+        assert_eq!(receipt["chunk_count"], 0);
+        assert_eq!(receipt["duplicate"], false);
+
+        let node_id = receipt["node_id"].as_str().unwrap().to_string();
+        let (node_type, title, summary, metadata): (String, String, String, String) = graph
+            .store()
+            .with_read_conn(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT type, title, summary, metadata_json FROM nodes WHERE id = ?1",
+                        [&node_id],
+                        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                    )
+                    .expect("the generated file is a node"))
+            })
+            .unwrap();
+        assert_eq!(node_type, "Document");
+        assert_eq!(title, "메모.md");
+        assert_eq!(
+            summary, "Hello Lattice",
+            "the text is searchable, not just the name"
+        );
+        let metadata: Value = serde_json::from_str(&metadata).unwrap();
+        assert_eq!(metadata["source_uri"], "workspace://메모.md");
+        assert_eq!(metadata["source_type"], "file");
+        assert_eq!(metadata["owner"], "owner@lattice.test");
+        assert_eq!(metadata["workspace_id"], "personal");
+        assert_eq!(metadata["conversation_id"], "conv-1");
+
+        let provenance: i64 = graph
+            .store()
+            .with_read_conn(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM ingestion_provenance WHERE source_type = 'file'",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .unwrap_or(0))
+            })
+            .unwrap();
+        assert_eq!(provenance, 1);
+
+        // Writing the same file again is the same node, reported as such.
+        let again = ingest_generated(
+            &state,
+            "메모.md",
+            "Hello Lattice",
+            Some("owner@lattice.test"),
+            Some("personal"),
+            Some("conv-1"),
+        )
+        .await
+        .expect("receipt");
+        assert_eq!(again["duplicate"], true);
+    }
+
+    #[tokio::test]
+    async fn without_a_brain_or_with_the_gate_off_nothing_is_claimed() {
+        let dir = tempfile::tempdir().unwrap();
+        let (state, _graph) = brain_state(dir.path());
+        std::fs::write(state.config.agent_root.join("a.md"), b"x").unwrap();
+
+        // Gate off: no ingest, and no `brain_ingest` key for a client to read.
+        let mut off = state.clone();
+        off.config.ingest_generated = false;
+        assert!(ingest_generated(&off, "a.md", "x", None, None, None)
+            .await
+            .is_none());
+
+        // No Brain bound: the same silence, rather than a "failed" receipt for
+        // something that was never attempted.
+        let mut brainless = state.clone();
+        brainless.graph = None;
+        assert!(ingest_generated(&brainless, "a.md", "x", None, None, None)
+            .await
+            .is_none());
+
+        // A file that is not on disk is a named failure, not a false "ok".
+        let missing = ingest_generated(&state, "gone.md", "x", None, None, None)
+            .await
+            .expect("receipt");
+        assert_eq!(missing["status"], "failed");
+        assert!(
+            missing["detail"].as_str().unwrap_or_default().len() <= 200,
+            "the detail is truncated for a log line"
+        );
     }
 }

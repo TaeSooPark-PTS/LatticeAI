@@ -63,7 +63,15 @@ use crate::admin::{
 
 use super::*;
 
-const CREATE_XLSX: &str = "/tools/create_xlsx";
+/// The compute seam that builds a workbook: `rows` in, bytes out.
+///
+/// This used to be `/tools/create_xlsx`, which is a **product** route this
+/// process mounts itself (`tools::meta::create_xlsx`) — the worker stopped
+/// serving it in v11.6.0, so the xlsx export has been posting into a 404 ever
+/// since. `/worker/render/xlsx` is the surviving door and the one
+/// `tools::meta::create_document` already uses; it is on
+/// `rust/fixtures/worker_allowlist.json`.
+const RENDER_XLSX: &str = "/worker/render/xlsx";
 
 pub(crate) async fn security_export(
     State(state): State<SecurityState>,
@@ -193,7 +201,7 @@ async fn excel_via_worker(state: &SecurityState, rows: &[Value]) -> Result<Vec<u
     let Some(worker) = state.worker.as_ref() else {
         return Err(detail_status(
             StatusCode::BAD_GATEWAY,
-            "xlsx export requires the document worker (POST /tools/create_xlsx).",
+            "xlsx export requires the document worker (POST /worker/render/xlsx).",
         ));
     };
     let headers = sheet_headers(rows);
@@ -214,35 +222,31 @@ async fn excel_via_worker(state: &SecurityState, rows: &[Value]) -> Result<Vec<u
                 .collect(),
         );
     }
+    // The request body is `RenderXlsxRequest` verbatim (`rows` / `filename` /
+    // `sheet_name`), which is the same triple `create_xlsx` posted — only the
+    // door changed, so the workbook a person downloads is unchanged.
     let mut body = OrderedMap::new();
     body.insert("rows", json!(table));
     body.insert("filename", json!("security_export.xlsx"));
     body.insert("sheet_name", json!("security_export"));
     let payload = serde_json::to_value(&body).unwrap_or(json!({}));
-    let reply = worker.post_json(CREATE_XLSX, &payload).await.map_err(|e| {
+    let reply = worker.post_json(RENDER_XLSX, &payload).await.map_err(|e| {
         detail_status(
             StatusCode::from_u16(e.status().unwrap_or(502)).unwrap_or(StatusCode::BAD_GATEWAY),
             &e.to_string(),
         )
     })?;
-    if let Some(path) = reply.get("path").and_then(Value::as_str) {
-        if let Ok(bytes) = std::fs::read(path) {
-            return Ok(bytes);
-        }
-        // Relative path — try as-is from cwd, then from data_dir.
-        let via_data = state.data_dir.join(path);
-        if let Ok(bytes) = std::fs::read(&via_data) {
-            return Ok(bytes);
-        }
-    }
-    if let Some(b64) = reply.get("bytes_b64").and_then(Value::as_str) {
+    // The render seam answers with the bytes themselves — it never names a
+    // path, because the file it would name lives on the worker's disk and this
+    // process is the one that decides where a document lands.
+    if let Some(b64) = reply.get("content_b64").and_then(Value::as_str) {
         if let Ok(bytes) = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b64) {
             return Ok(bytes);
         }
     }
     Err(detail_status(
         StatusCode::BAD_GATEWAY,
-        "worker create_xlsx did not return a readable spreadsheet",
+        "worker render/xlsx did not return a readable spreadsheet",
     ))
 }
 

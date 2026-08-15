@@ -238,16 +238,28 @@ async fn spawn_fake_worker(
             }),
         )
         .route(
+            // A tripwire, not a seam. v11.6.0 took this route off the worker,
+            // and until v11.7.0 chat still posted every generated file to it —
+            // invisibly, because a fake worker like this one answered. It is
+            // still mounted **and still answers 200** so that "nobody asked" is
+            // an observation rather than a 404 that would look the same.
             "/knowledge-graph/ingest",
-            post(|Json(body): Json<Value>| async move {
-                let text = body.get("text").and_then(Value::as_str).unwrap_or("");
-                let workspace = body.get("workspace_id").and_then(Value::as_str);
-                axum::Json(json!({
-                    "status": "ok",
-                    "node_id": scoped_file_id(text, workspace),
-                    "chunk_count": 0,
-                    "duplicate": false,
-                }))
+            post({
+                let seams = seams.clone();
+                move |Json(body): Json<Value>| {
+                    let seams = seams.clone();
+                    async move {
+                        seams.hit("/knowledge-graph/ingest");
+                        let text = body.get("text").and_then(Value::as_str).unwrap_or("");
+                        let workspace = body.get("workspace_id").and_then(Value::as_str);
+                        axum::Json(json!({
+                            "status": "ok",
+                            "node_id": scoped_file_id(text, workspace),
+                            "chunk_count": 0,
+                            "duplicate": false,
+                        }))
+                    }
+                }
             }),
         )
         .route(
@@ -297,6 +309,8 @@ struct Install {
     origin: String,
     token: String,
     auth: Arc<AuthState>,
+    seams: SeamLog,
+    graph_db: PathBuf,
     _data: tempfile::TempDir,
     _agent: tempfile::TempDir,
     _handle: tokio::task::JoinHandle<()>,
@@ -325,16 +339,29 @@ impl Install {
             .sessions()
             .create("user:owner", Some("owner@fixture.local"));
 
-        let worker_origin = spawn_fake_worker(loaded, current, SeamLog::default(), frames).await;
+        let seams = SeamLog::default();
+        let worker_origin = spawn_fake_worker(loaded, current, seams.clone(), frames).await;
         let worker = ChatWorker::new(&worker_origin).expect("worker");
+        let graph_db = data.path().join("knowledge_graph.sqlite");
         let chat_config = ChatConfig {
             data_dir: data.path().to_path_buf(),
-            graph_db: Some(data.path().join("knowledge_graph.sqlite")),
+            graph_db: Some(graph_db.clone()),
             agent_root: agent.path().to_path_buf(),
             ..ChatConfig::default()
         };
+        // WP-W1's write engine, built the way the integrator builds it. This
+        // replay had no writer bound until v11.7.0, which is why the stranded
+        // `POST /knowledge-graph/ingest` looked healthy: the fake worker was
+        // the only thing answering, and it always said "ok".
+        let store = Arc::new(lattice_core::db::Store::open(&graph_db).expect("store"));
+        let graph = lattice_core::graph_write::GraphWriter::open(
+            store,
+            data.path().join("knowledge_graph_blobs"),
+        )
+        .expect("graph writer");
         let state = ChatState::new(Arc::clone(&auth), chat_config)
             .with_worker(worker)
+            .with_graph(graph)
             .with_workspace(Arc::new(Personal));
         let app = router(state);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -352,6 +379,8 @@ impl Install {
             origin: format!("http://{addr}"),
             token,
             auth,
+            seams,
+            graph_db,
             _data: data,
             _agent: agent,
             _handle: handle,
@@ -472,6 +501,55 @@ async fn replay_chat_and_history_fixtures() {
     for case in cases() {
         install.replay(&case).await;
     }
+
+    // The two `direct_write_file` fixtures pin `brain_ingest.node_id` as
+    // `file:<scoped hash of the content>`; the replay above already proved the
+    // reply matches. This proves *where the answer came from*: the Brain in
+    // this process, not a worker that would 404 in production.
+    assert_eq!(
+        install.seams.count("/knowledge-graph/ingest"),
+        0,
+        "generated-file ingest is native — a request here means chat is posting \
+         into a route the worker stopped serving in v11.6.0"
+    );
+    let conn = Connection::open(&install.graph_db).expect("db");
+    let mut statement = conn
+        .prepare("SELECT id, title FROM nodes WHERE type = 'Document' ORDER BY id")
+        .expect("select");
+    let documents: Vec<(String, String)> = statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .expect("rows")
+        .filter_map(Result::ok)
+        .collect();
+    let ids: Vec<&str> = documents.iter().map(|(id, _)| id.as_str()).collect();
+    assert!(
+        ids.contains(&"file:fce1110ff985bba9cad1f594")
+            && ids.contains(&"file:9f033e8b2619a947d73cfadd"),
+        "both fixture-generated files are Document nodes in the Brain: {documents:?}"
+    );
+    let titles: Vec<&str> = documents.iter().map(|(_, title)| title.as_str()).collect();
+    assert!(titles.contains(&"fixture-note.md"), "{documents:?}");
+    // The file's text, not just its name, is what the node carries — the
+    // native upload door's `extracted["content"]` contract.
+    let summary: String = conn
+        .query_row(
+            "SELECT summary FROM nodes WHERE id = 'file:fce1110ff985bba9cad1f594'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("summary");
+    assert_eq!(summary, "Hello Lattice");
+    let provenance: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM ingestion_provenance WHERE source_type = 'file'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("provenance");
+    assert_eq!(
+        provenance, 2,
+        "every generated file records where it came from"
+    );
 }
 
 #[tokio::test]

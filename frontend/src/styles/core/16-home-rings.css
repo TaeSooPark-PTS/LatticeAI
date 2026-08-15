@@ -167,7 +167,7 @@
   border: 1px solid hsl(var(--border) / 0.6);
   background: hsl(var(--surface) / 0.94);
   text-align: left;
-  box-shadow: 0 10px 28px hsl(228 30% 8% / 0.12);
+  box-shadow: var(--elev-2);
 }
 
 .brain-ring-peek header {

@@ -53,18 +53,14 @@
 .living-brain {
   position: relative;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.76);
-  border-radius: 10px;
-  background:
-    linear-gradient(145deg, hsl(var(--card) / 0.94), hsl(210 18% 9% / 0.82)),
-    linear-gradient(90deg, hsl(var(--primary) / 0.12), transparent 40%, hsl(var(--library) / 0.1));
-  box-shadow: 0 20px 60px hsl(200 22% 3% / 0.24);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-xl);
+  background: var(--grad-surface);
+  box-shadow: var(--elev-3);
 }
 
 :root[data-theme="light"] .living-brain {
-  background:
-    linear-gradient(145deg, hsl(var(--card) / 0.96), hsl(196 24% 94% / 0.82)),
-    linear-gradient(90deg, hsl(var(--primary) / 0.12), transparent 42%, hsl(var(--library) / 0.1));
+  background: var(--grad-surface);
 }
 
 .brain-presence-head,
@@ -116,7 +112,7 @@
   width: min(92%, 29rem);
   aspect-ratio: 11 / 9;
   overflow: visible;
-  filter: drop-shadow(0 22px 34px hsl(180 70% 4% / 0.48));
+  filter: drop-shadow(0 22px 34px hsl(var(--shadow-ink) / 0.42));
 }
 
 .brain-mass {
@@ -236,11 +232,11 @@
   min-height: 2.5rem;
   border: 1px solid hsl(var(--border));
   border-radius: 999px;
-  background: hsl(var(--background) / 0.76);
+  background: hsl(var(--surface-overlay));
   padding: 0 0.85rem;
   font-size: 0.86rem;
   font-weight: 700;
-  backdrop-filter: blur(16px);
+  box-shadow: var(--elev-1);
 }
 
 .living-brain[data-activity="thinking"] .thought-path {

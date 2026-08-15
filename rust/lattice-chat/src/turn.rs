@@ -51,7 +51,7 @@ use std::path::PathBuf;
 
 use lattice_auth::OrderedMap;
 use lattice_core::graph_write::types::{
-    ExtractReply, IngestMessageRequest, IngestionRecord, SuppliedVector,
+    ChunkPiece, ExtractReply, IngestMessageRequest, IngestionRecord, SuppliedVector,
 };
 use lattice_core::graph_write::GraphWriter;
 use rusqlite::Connection;
@@ -561,6 +561,56 @@ async fn vector_identity(
     (VectorIdentity::Agrees, Some(supplied))
 }
 
+/// Plain-window chunks (1200 / 160). lattice-chat cannot depend on lattice-ingest.
+fn plain_chunk_pieces(text: &str) -> Vec<ChunkPiece> {
+    let cleaned: Vec<char> = text
+        .trim_matches(lattice_core::pytext::is_py_space)
+        .chars()
+        .collect();
+    let mut pieces = Vec::new();
+    let mut start = 0usize;
+    while start < cleaned.len() {
+        let end = cleaned.len().min(start + 1200);
+        let mut fields = Map::new();
+        fields.insert("strategy".into(), json!("plain"));
+        fields.insert("start_char".into(), json!(start));
+        pieces.push(ChunkPiece {
+            text: cleaned[start..end].iter().collect(),
+            fields,
+            embedding: None,
+        });
+        if end >= cleaned.len() {
+            break;
+        }
+        start = end.saturating_sub(160);
+    }
+    pieces
+}
+
+/// Batch-embed chunk texts. Seam / model disagreement → no supplied vectors.
+async fn supply_chunk_vectors(state: &ChatState, mut chunks: Vec<ChunkPiece>) -> Vec<ChunkPiece> {
+    let (Some(worker), Some(graph)) = (state.worker.as_ref(), state.graph.as_ref()) else {
+        return chunks;
+    };
+    let texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
+    let Ok(reply) = worker.embed(&texts, "passage").await else {
+        return chunks;
+    };
+    if reply.model_id != graph.embedder().model_id() || reply.dim != graph.embedder().dim() {
+        return chunks;
+    }
+    for (piece, values) in chunks.iter_mut().zip(reply.vectors) {
+        if !values.is_empty() {
+            piece.embedding = Some(SuppliedVector {
+                values,
+                model_id: reply.model_id.clone(),
+                dim: reply.dim,
+            });
+        }
+    }
+    chunks
+}
+
 /// Ask `/worker/extract` for this turn's concept subgraph.
 ///
 /// Skipped when there is no text (Python's extractors return empty for that
@@ -612,6 +662,14 @@ pub async fn write_chat_turn(
     } else {
         (VectorIdentity::NotAsked, None)
     };
+    let mut chunks = if graph.is_some() {
+        plain_chunk_pieces(&message)
+    } else {
+        Vec::new()
+    };
+    if matches!(vector_identity, VectorIdentity::Agrees) && !chunks.is_empty() {
+        chunks = supply_chunk_vectors(state, chunks).await;
+    }
     let ingest = graph.as_ref().map(|_| IngestMessageRequest {
         role: role.to_string(),
         content: message.clone(),
@@ -628,7 +686,7 @@ pub async fn write_chat_turn(
         conversation_id: meta.conversation_id.map(str::to_string),
         workspace_id: meta.workspace_id.map(str::to_string),
         raw: item.as_object().cloned(),
-        chunks: Vec::new(),
+        chunks,
         concepts: extracted.concepts,
         triples: extracted.triples,
         semantic: extracted.semantic,

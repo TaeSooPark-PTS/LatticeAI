@@ -161,12 +161,10 @@ impl Install {
             .merge(network::router(NetworkState::new(
                 Arc::clone(&auth),
                 runtime.clone(),
-                None,
             )))
             .merge(network_boundary::router(NetworkBoundaryState::new(
                 Arc::clone(&auth),
                 runtime.clone(),
-                None,
             )))
             .merge(realtime::router(RealtimeState::new(Arc::clone(&auth))))
             .merge(computer_use::router(ComputerUseState::new(
@@ -177,7 +175,6 @@ impl Install {
             .merge(portability::router(PortabilityState::new(
                 Arc::clone(&auth),
                 runtime,
-                None,
             )))
             .merge(voice::router())
             .layer(from_fn_with_state(Arc::clone(&auth), csrf_guard));

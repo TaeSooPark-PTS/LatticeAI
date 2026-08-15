@@ -5,8 +5,24 @@
 //! Approving a `change_proposal` item applies the staged file natively, under
 //! the agent sandbox ([`crate::change_proposals`] — the worker seam it used to
 //! go through was retired in v11.6.0 §P1a); promoting an `agent_followup`
-//! writes a workflow draft and delegates `ingest_event` to
-//! `POST /worker/graph/mutate`.
+//! writes a workflow draft and calls `ingest_event` on the native write
+//! engine.
+//!
+//! ## One writer for `workspace_os.json` (v11.7.0)
+//!
+//! Until v11.6.0 this family kept its **own** copy of the document — an
+//! `Arc<Mutex<Value>>` loaded once at `open` and written back on every
+//! mutation — while [`crate::workspace::WorkspaceOsStore`] wrote the same file
+//! and the same SQLite row with a reload-per-mutation discipline. Two stores
+//! over one document is last-writer-wins: a workspace-side write (a timeline
+//! event, a memory, a snapshot) landing between this family's load and its save
+//! was silently erased, and this family's cache never saw it at all.
+//!
+//! [`GovernanceState`] is now a thin facade over one [`WorkspaceOsStore`]
+//! handle, so there is exactly one lock, one merge policy and one version
+//! stamp. The host clones the *same* `Arc` into both
+//! ([`GovernanceState::with_store`]), which is what makes the guarantee hold
+//! process-wide rather than per-family.
 
 #![allow(
     dead_code,
@@ -71,6 +87,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 use crate::change_proposals::{self, ProposalConflict};
+use crate::workspace::store::{StoreError, WorkspaceOsStore};
 
 mod handlers;
 mod http;
@@ -82,18 +99,17 @@ use handlers::{
     approve_item, bulk_approve, bulk_dismiss, create_item, dismiss_item, get_item, list_items,
     review_counts, run_now_item, snooze_item, unsnooze_item,
 };
-use os::{load_workspace_os, save_workspace_os};
 
 pub(crate) use handlers::approve_one;
 pub(crate) use http::{
-    gate_read, gate_write, http_detail, internal_server_error, into_value, json_hash, json_ok,
-    json_status, language, localized, map_str, map_worker_error, not_found_localized, now_iso,
-    parse_object, parse_object_optional, require_admin, require_field, require_user, sha256_text,
-    string_field, string_field_or,
+    gate_read, gate_write, http_detail, into_value, json_hash, json_ok, json_status, language,
+    localized, map_str, map_worker_error, not_found_localized, now_iso, parse_object,
+    parse_object_optional, require_admin, require_field, require_user, sha256_text, string_field,
+    string_field_or,
 };
 pub(crate) use store::{
     create_review_item, list_review_items, load_review_item, review_item_raw_view,
-    review_item_view, ReviewError,
+    review_item_view, transition_dismiss, update_review_item, ReviewError,
 };
 pub(crate) use workflows::{
     create_workflow, daily_memory_digest_definition, get_workflow, list_agent_runs,
@@ -116,8 +132,14 @@ pub const MOUNTED: &[(&str, &str)] = &[
 ];
 
 const DEFAULT_WORKSPACE_ID: &str = "personal";
-const WORKSPACE_OS_VERSION: &str = "11.5.2";
 const BULK_ACTION_CAP: usize = 200;
+
+/// Timeline `area` every review-item event is filed under.
+pub const REVIEW_TIMELINE_AREA: &str = "review";
+/// Timeline `event_type` for a review item that has just been created.
+pub const REVIEW_ITEM_CREATED_EVENT: &str = "review_item_created";
+/// Timeline `event_type` for a review item whose status has just changed.
+pub const REVIEW_ITEM_UPDATED_EVENT: &str = "review_item_updated";
 
 const REVIEW_SOURCES: &[&str] = &[
     "agent_followup",
@@ -156,15 +178,16 @@ pub struct GovernanceState {
     pub agent_root: PathBuf,
     /// Worker seam (apply + hook run + graph mutate).
     pub worker: Option<WorkerSeamClient>,
-    inner: Arc<Mutex<OsInner>>,
-}
-
-struct OsInner {
-    state: Value,
+    /// The one workspace-OS store. Cloning a `GovernanceState` shares it.
+    os: Arc<WorkspaceOsStore>,
 }
 
 impl GovernanceState {
-    /// Open (or start) the on-disk workspace OS document.
+    /// Open (or join) the workspace OS document under `data_dir`.
+    ///
+    /// `WorkspaceOsStore::shared` is what makes this safe to call from
+    /// anywhere: naming the same directory twice yields the same handle, so
+    /// this cannot become the second writer it used to be.
     pub fn open(
         auth: Arc<AuthState>,
         data_dir: impl Into<PathBuf>,
@@ -172,34 +195,110 @@ impl GovernanceState {
         worker: Option<WorkerSeamClient>,
     ) -> Self {
         let data_dir = data_dir.into();
-        let agent_root = agent_root.into();
-        let _ = std::fs::create_dir_all(&data_dir);
-        let _ = std::fs::create_dir_all(&agent_root);
-        let state = load_workspace_os(&data_dir);
-        Self {
+        Self::with_store(
             auth,
-            data_dir,
+            WorkspaceOsStore::shared(&data_dir),
             agent_root,
             worker,
-            inner: Arc::new(Mutex::new(OsInner { state })),
+        )
+    }
+
+    /// The Review Center over a workspace-OS store somebody else opened.
+    ///
+    /// This is the product wiring: the host hands the very `Arc` the Workspace
+    /// OS routes were built from, so a review write and a workspace write take
+    /// the same lock and neither can erase the other.
+    pub fn with_store(
+        auth: Arc<AuthState>,
+        os: Arc<WorkspaceOsStore>,
+        agent_root: impl Into<PathBuf>,
+        worker: Option<WorkerSeamClient>,
+    ) -> Self {
+        let agent_root = agent_root.into();
+        let _ = std::fs::create_dir_all(&agent_root);
+        Self {
+            auth,
+            data_dir: os.data_dir().to_path_buf(),
+            agent_root,
+            worker,
+            os,
         }
+    }
+
+    /// The store this state reads and writes through.
+    pub fn store(&self) -> &Arc<WorkspaceOsStore> {
+        &self.os
     }
 
     /// The workspace-OS JSON document.
     pub fn state_path(&self) -> PathBuf {
-        self.data_dir.join(state_files::WORKSPACE_OS)
+        self.os.state_path().to_path_buf()
     }
 
     pub(crate) fn with_state<T>(&self, f: impl FnOnce(&Value) -> T) -> T {
-        let guard = self.inner.lock().expect("workspace os lock");
-        f(&guard.state)
+        f(&self.os.load_state())
     }
 
+    /// Load, mutate, save — under the store's lock, as one step.
+    ///
+    /// The body cannot refuse; [`Self::try_update_state`] is the one that can.
     pub(crate) fn update_state<T>(&self, f: impl FnOnce(&mut Value) -> T) -> T {
-        let mut guard = self.inner.lock().expect("workspace os lock");
-        let out = f(&mut guard.state);
-        save_workspace_os(&self.data_dir, &guard.state);
-        out
+        let mut produced: Option<T> = None;
+        let _: Result<(), StoreError> = self.os.mutate(|doc| {
+            produced = Some(f(doc));
+            Ok(())
+        });
+        produced.expect("mutate always runs the body it was given")
+    }
+
+    /// [`Self::update_state`] for a body that can refuse: on `Err` the
+    /// document is left exactly as it was, rather than re-saved unchanged.
+    pub(crate) fn try_update_state<T, E>(
+        &self,
+        f: impl FnOnce(&mut Value) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let mut refusal: Option<E> = None;
+        let outcome = self.os.mutate(|doc| match f(doc) {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                refusal = Some(error);
+                // The payload is never read: `mutate` only distinguishes
+                // "saved" from "left alone", and the caller's own error is
+                // what comes back out.
+                Err(StoreError::Value(String::new()))
+            }
+        });
+        match outcome {
+            Ok(value) => Ok(value),
+            Err(_) => Err(refusal.expect("a refusal is the only way mutate fails here")),
+        }
+    }
+
+    /// Record one review-item timeline event — the single payload shape every
+    /// review-mutating route ends up emitting.
+    ///
+    /// Called **after** the mutation has been saved, never from inside a
+    /// `mutate` body: `record_timeline_event` takes the same lock.
+    pub(crate) fn record_review_event(&self, event_type: &str, item: &Value, action: &str) {
+        let workspace = item
+            .get("workspace_id")
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+            .unwrap_or(DEFAULT_WORKSPACE_ID)
+            .to_string();
+        let payload = json!({
+            "item_id": item.get("id").cloned().unwrap_or(Value::Null),
+            "action": action,
+            "status": item.get("status").cloned().unwrap_or(Value::Null),
+            "source": item.get("source").cloned().unwrap_or(Value::Null),
+            "workspace_id": workspace,
+        });
+        self.os.record_timeline_event(
+            REVIEW_TIMELINE_AREA,
+            event_type,
+            payload,
+            Some(workspace.as_str()),
+        );
     }
 
     /// Seed a Daily Memory Digest recipe workflow (test / fixture setup).

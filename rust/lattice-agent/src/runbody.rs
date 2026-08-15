@@ -173,6 +173,19 @@ impl RunBody {
 
     /// The ports this body configures around a worker and a workspace.
     pub fn to_deps(&self, worker: WorkerClient, workspace: Workspace) -> LoopDeps {
+        self.to_deps_with_hooks(worker, workspace, None)
+    }
+
+    /// [`RunBody::to_deps`], with the host's `pre_tool` / `post_tool` sink.
+    ///
+    /// The sink is the host's, never the body's: a request cannot name the
+    /// hooks that will judge it any more than it can name its own role.
+    pub fn to_deps_with_hooks(
+        &self,
+        worker: WorkerClient,
+        workspace: Workspace,
+        hooks: Option<std::sync::Arc<dyn crate::tools::HookSink>>,
+    ) -> LoopDeps {
         let policies = self.policies.clone().unwrap_or_default();
         // Absent `tool_names` means the escalation hint names whatever the
         // policy table knows, which is the closest honest stand-in for
@@ -184,13 +197,17 @@ impl RunBody {
         // The native tools take the run's role and the run's denylist, so a
         // request that carries its own policy table is refused against *that*
         // table's prefixes rather than a second built-in copy.
-        let native = std::sync::Arc::new(crate::tools::NativeTools::new(
+        let mut tools = crate::tools::NativeTools::new(
             workspace.clone(),
             crate::tools::ToolConfig::from_env()
                 .with_role(self.user_role.clone())
                 .with_blocked_write_prefixes(policies.blocked_write_prefixes.clone()),
             worker.clone(),
-        ));
+        );
+        if let Some(hooks) = hooks {
+            tools = tools.with_hooks(hooks);
+        }
+        let native = std::sync::Arc::new(tools);
         LoopDeps {
             native,
             policies,
