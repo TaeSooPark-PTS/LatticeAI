@@ -1,7 +1,5 @@
 //! Replay browser validation / private-host / auth branches.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;

@@ -59,9 +59,10 @@ pub const AGENT_TOOL_SEAM_ENV: &str = "LATTICEAI_AGENT_TOOL_SEAM";
 /// down because the obvious conclusion is the wrong one. The gateway now owns
 /// the browser-facing surface and applies its own Origin guard, so it is
 /// tempting to stop injecting this. But the proxy allowlist still forwards
-/// browser-facing writes — `POST /models/load`, `POST /engines/pull-model`,
-/// `POST /tools/read_document` — and a proxied request arrives at the worker
-/// carrying the browser's session cookie *and* its `Origin: …:{gateway port}`.
+/// browser-facing writes — `POST /models/load`, `POST /engines/prepare-model`,
+/// `DELETE /models/unload/{model_id}` — and a proxied request arrives at the
+/// worker carrying the browser's session cookie *and* its
+/// `Origin: …:{gateway port}`.
 /// Without this variable the worker's own guard sees a cross-site origin and
 /// answers 403, so loading a model from the SPA would stop working. WP-I2 §4
 /// states the rule: do not drop it while any browser-facing path proxies.

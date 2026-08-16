@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

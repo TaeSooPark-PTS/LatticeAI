@@ -5,63 +5,17 @@
 //! `latticeai/api/health.py`.
 //!
 //! Not claimed (KEEP_WORKER / in-process MLX runtime):
-//! `GET /models`, `POST /models/load`, `POST /models/switch/{model_id}`,
-//! `DELETE /models/unload/{model_id}`, `DELETE /models/unload-all`,
+//! `GET /models`, `POST /models/load`, `DELETE /models/unload/{model_id}`,
 //! `POST /engines/prepare-model`, `POST /engines/prepare-model/stream`.
 //!
-//! `POST /engines/pull-model` is **not** mounted either, as of the v11.6.0
-//! gateway integration (§4a). R10 mounted a native auth+consent check in front
-//! of a 501, which is a worse answer than the working Python one: the pull is
-//! `huggingface_hub` / `ollama` running inside the worker's own interpreter,
-//! i.e. model management, which is the same reason `/models/load` and
-//! `/engines/prepare-model` stay there. It moved to `worker_keep` in
-//! `scripts/openapi_route_families.json` and onto the gateway's proxy
-//! allowlist (`worker_profile.WORKER_ROUTES`).
+//! Three more used to be listed here and are now gone from the product
+//! entirely (v11.8.0): `POST /models/switch/{model_id}`,
+//! `DELETE /models/unload-all` and `POST /engines/pull-model` had no caller in
+//! any surface — this crate, the SPA client, either extension, or the Tauri
+//! shell — so they were deleted from the worker rather than ported here. What
+//! the product actually sends is `/models/load` (which switches) and
+//! `/engines/prepare-model` (which downloads on consent, then loads).
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -72,7 +26,7 @@ use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
 use lattice_auth::body::{optional, parse_model, required};
-use lattice_auth::messages::{detail_error, resolve_language};
+use lattice_auth::messages::detail_error;
 use lattice_auth::pyjson::OrderedMap;
 use lattice_auth::response::json_response;
 use lattice_auth::{AuthState, Identity};
@@ -530,32 +484,10 @@ pub fn keep_worker_paths() -> &'static [(&'static str, &'static str)] {
     &[
         ("GET", "/models"),
         ("POST", "/models/load"),
-        ("POST", "/models/switch/{model_id}"),
         ("DELETE", "/models/unload/{model_id}"),
-        ("DELETE", "/models/unload-all"),
         ("POST", "/engines/prepare-model"),
         ("POST", "/engines/prepare-model/stream"),
-        // §4a: the pull runs huggingface_hub / ollama in the worker's
-        // interpreter, so it is model management like the six above.
-        ("POST", "/engines/pull-model"),
     ]
-}
-
-/// Combined R10 mounted table (permission + catalog + workflow) for the
-/// OpenAPI fragment assertion. Workflow and permission contribute theirs.
-pub fn fragment_mounted(
-    permission: &[(&str, &str)],
-    workflow: &[(&str, &str)],
-) -> Vec<(String, String)> {
-    let mut rows: Vec<(String, String)> = permission
-        .iter()
-        .chain(MOUNTED.iter())
-        .chain(workflow.iter())
-        .map(|(method, path)| ((*method).to_string(), (*path).to_string()))
-        .collect();
-    rows.sort();
-    rows.dedup();
-    rows
 }
 
 #[cfg(test)]
@@ -566,8 +498,7 @@ mod tests {
     fn keep_worker_paths_are_not_mounted() {
         for (method, path) in keep_worker_paths() {
             assert!(
-                !MOUNTED.iter().any(|(m, p)| m == method
-                    && (*p == *path || p.contains("switch") && path.contains("switch"))),
+                !MOUNTED.iter().any(|(m, p)| m == method && *p == *path),
                 "{method} {path} must stay on the worker"
             );
         }
@@ -575,6 +506,26 @@ mod tests {
         assert!(!MOUNTED.iter().any(|(_, p)| p.starts_with("/models/load")));
         assert!(!MOUNTED.iter().any(|(_, p)| p.contains("prepare-model")));
         assert!(!MOUNTED.iter().any(|(_, p)| p.contains("unload")));
+    }
+
+    /// v11.8.0 deleted these from the worker for having no caller. This crate
+    /// did not inherit them: a route nothing called is not a porting backlog.
+    #[test]
+    fn the_routes_v11_8_0_deleted_were_not_picked_up_here() {
+        for gone in [
+            "/models/switch/{model_id}",
+            "/models/unload-all",
+            "/engines/pull-model",
+        ] {
+            assert!(
+                !MOUNTED.iter().any(|(_, p)| *p == gone),
+                "{gone} was deleted, not migrated"
+            );
+            assert!(
+                !keep_worker_paths().iter().any(|(_, p)| *p == gone),
+                "{gone} no longer exists on the worker either"
+            );
+        }
     }
 
     #[test]

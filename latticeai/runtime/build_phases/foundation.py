@@ -189,16 +189,12 @@ def phase_brain(ctx: RuntimeContext) -> None:
     """
     ctx.enter("brain")
 
-    from lattice_brain.ingestion import IngestionPipeline
     from latticeai.core.embedding_providers import (
         resolve_embedder,
         resolve_embedding_profile,
     )
     from latticeai.runtime.brain_runtime import build_embedder_runtime
-    from latticeai.services.multimodal_ports import (
-        build_multimodal_ports,
-        multimodal_enabled,
-    )
+    from latticeai.services.multimodal_ports import build_multimodal_ports
     from latticeai.services.voice_capture import VoiceCaptureService
 
     # Resolve the configured embedding provider once. Degrades to the offline
@@ -228,18 +224,13 @@ def phase_brain(ctx: RuntimeContext) -> None:
     # The transcriber is resolved through the voice service so a voice memo and
     # a scanned ``.m4a`` are transcribed by the same thing — or, far more often,
     # by the same nothing.
+    #
+    # The service itself is not published on the context: v11.8.0 deleted its
+    # one route (``GET /api/capture/voice/status``, which nothing called), so
+    # what the rest of the build needs from it is the port it resolves, and
+    # that travels in ``MULTIMODAL_PORTS``.
     voice_capture = VoiceCaptureService(transcriber=None)
     multimodal_ports = build_multimodal_ports(
         transcriber=voice_capture.multimodal_ports().transcriber
     )
-    # The capability probe behind ``GET /api/ingestion/multimodal``. It answers
-    # what this machine *could* do with a picture, a recording or a video; the
-    # ingest door itself is native (§W3b), which is why nothing is passed here
-    # for it to write through.
-    ctx.set(
-        VOICE_CAPTURE=voice_capture,
-        MULTIMODAL_PORTS=multimodal_ports,
-        INGESTION_PIPELINE=IngestionPipeline(
-            allow_multimodal=multimodal_enabled(), multimodal=multimodal_ports
-        ),
-    )
+    ctx.set(MULTIMODAL_PORTS=multimodal_ports)

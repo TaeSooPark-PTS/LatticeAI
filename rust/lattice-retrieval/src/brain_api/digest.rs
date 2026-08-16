@@ -15,53 +15,6 @@
 //! Honest when empty: an unavailable graph produces empty beds and
 //! `available: false`, never invented plants.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::useless_format,
-    clippy::collapsible_str_replace,
-    clippy::manual_repeat_n,
-    clippy::module_inception
-)]
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -243,8 +196,10 @@ pub fn build_garden(
         }
     }
     let key = |node: &&Value| pyutil::field_text(node, "updated_at");
-    recent.sort_by(|left, right| key(right).cmp(&key(left)));
-    stale.sort_by(|left, right| key(left).cmp(&key(right)));
+    // Both are stable sorts, so nodes with equal stamps keep the order the
+    // sample walked them in — which is what Python's `sorted` guarantees too.
+    recent.sort_by_key(|node| std::cmp::Reverse(key(node)));
+    stale.sort_by_key(|node| key(node));
 
     // "Frequent" is degree, not a guess: how many relations point at a node.
     let mut degree = pyutil::Counter::new();
@@ -430,7 +385,7 @@ mod tests {
 
     fn stamp(days_ago: f64) -> String {
         let secs = sampling::now_utc_secs() - days_ago * 86_400.0;
-        format!("{}", iso_of(secs))
+        iso_of(secs).to_string()
     }
 
     fn iso_of(secs: f64) -> String {

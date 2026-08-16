@@ -1,31 +1,25 @@
-"""client_ip trusted-proxy handling — forwarded headers must not be spoofable.
+"""Trusted-proxy allowlist — a forwarded front door must not be spoofable.
 
-client_ip is the per-IP rate-limit key. If X-Forwarded-For were trusted
-unconditionally, anyone could rotate the header to reset their rate limit. These
-tests pin the rule: forwarded headers are honoured ONLY from a configured
-trusted proxy; otherwise the peer address wins.
+``client_ip`` and the per-IP login limiter it keyed left for ``lattice-auth``
+with the rest of the front door (v11.6.0, removed here in 11.8.0). The
+allowlist they shared did **not**: it is still what
+:func:`latticeai.core.http_origin.peer_may_forward` — and through it the CSRF
+origin check — asks before believing an ``X-Forwarded-Host``. If that answer
+were unconditional, any machine that can reach this worker could name itself
+the front door and pass a cross-origin write off as same-origin.
+
+These tests pin the rule on the code that now enforces it: loopback is
+believed, an operator-listed proxy is believed, and nothing else is —
+including a peer that is not an address at all.
 """
 
+import ipaddress
+
 import pytest
-from fastapi import HTTPException
 
 from latticeai.core import security
-from latticeai.core.security import (
-    check_ip_rate_limit,
-    client_ip,
-    configure_trusted_proxies,
-)
-
-
-class _FakeClient:
-    def __init__(self, host):
-        self.host = host
-
-
-class _FakeRequest:
-    def __init__(self, peer, headers=None):
-        self.client = _FakeClient(peer) if peer else None
-        self.headers = headers or {}
+from latticeai.core.http_origin import effective_host, peer_may_forward
+from latticeai.core.security import configure_trusted_proxies
 
 
 @pytest.fixture(autouse=True)
@@ -35,72 +29,72 @@ def _reset_trusted_proxies():
     configure_trusted_proxies("")
 
 
-# ── default (no trusted proxy): forwarded headers are ignored ─────────────────
-def test_spoofed_xff_ignored_by_default():
-    req = _FakeRequest("203.0.113.9", {"X-Forwarded-For": "1.2.3.4"})
-    assert client_ip(req) == "203.0.113.9"
+# ── default (no trusted proxy): only loopback may forward ────────────────────
+def test_loopback_may_forward_without_any_configuration():
+    assert peer_may_forward("127.0.0.1") is True
+    assert peer_may_forward("::1") is True
 
 
-def test_spoofed_cf_connecting_ip_ignored_by_default():
-    req = _FakeRequest("203.0.113.9", {"CF-Connecting-IP": "1.2.3.4"})
-    assert client_ip(req) == "203.0.113.9"
+def test_an_off_loopback_peer_may_not_forward_by_default():
+    assert peer_may_forward("203.0.113.9") is False
+    assert effective_host(
+        host="worker.local",
+        forwarded_host="evil.example",
+        peer="203.0.113.9",
+    ) == "worker.local"
 
 
-def test_peer_used_when_no_headers():
-    req = _FakeRequest("198.51.100.7")
-    assert client_ip(req) == "198.51.100.7"
+def test_an_absent_or_unparseable_peer_may_never_forward():
+    """A request whose origin we cannot establish is the one to distrust."""
+    assert peer_may_forward(None) is False
+    assert peer_may_forward("") is False
+    assert peer_may_forward("unix-socket-peer") is False
 
 
-def test_unknown_when_no_client():
-    req = _FakeRequest(None)
-    assert client_ip(req) == "unknown"
-
-
-# ── trusted proxy: forwarded client IP is honoured ────────────────────────────
-def test_trusted_proxy_honored_exact_ip():
+# ── configured proxy: the forwarded authority is honoured ────────────────────
+def test_a_listed_proxy_may_forward_by_exact_ip():
     configure_trusted_proxies("203.0.113.9")
-    req = _FakeRequest("203.0.113.9", {"X-Forwarded-For": "1.2.3.4"})
-    assert client_ip(req) == "1.2.3.4"
+    assert peer_may_forward("203.0.113.9") is True
+    assert effective_host(
+        host="worker.local",
+        forwarded_host="app.example",
+        peer="203.0.113.9",
+    ) == "app.example"
 
 
-def test_trusted_proxy_honored_cidr():
+def test_a_listed_proxy_may_forward_by_cidr():
     configure_trusted_proxies("10.0.0.0/8, 192.168.0.0/16")
-    req = _FakeRequest("10.4.5.6", {"X-Forwarded-For": "1.2.3.4, 10.4.5.6"})
-    assert client_ip(req) == "1.2.3.4"
+    assert peer_may_forward("10.4.5.6") is True
+    assert peer_may_forward("192.168.1.1") is True
 
 
-def test_untrusted_peer_ignores_xff_even_with_proxies_configured():
+def test_a_peer_outside_the_list_still_may_not_forward():
     configure_trusted_proxies("10.0.0.0/8")
-    req = _FakeRequest("203.0.113.9", {"X-Forwarded-For": "1.2.3.4"})
-    assert client_ip(req) == "203.0.113.9"
+    assert peer_may_forward("203.0.113.9") is False
 
 
-def test_trusted_proxy_with_garbage_xff_falls_back_to_peer():
-    configure_trusted_proxies("203.0.113.9")
-    req = _FakeRequest("203.0.113.9", {"X-Forwarded-For": "not-an-ip"})
-    assert client_ip(req) == "203.0.113.9"
+def test_a_non_address_peer_cannot_match_a_configured_network(monkeypatch):
+    """A UNIX socket or a bad ASGI server must not unlock spoofing."""
+    monkeypatch.setattr(security, "_trusted_proxies", [ipaddress.ip_network("10.0.0.0/8")])
+    assert security._peer_is_trusted_proxy("10.1.2.3") is True
+    assert security._peer_is_trusted_proxy("unix-socket-peer") is False
+    assert security._peer_is_trusted_proxy("") is False
 
 
-# ── parsing ───────────────────────────────────────────────────────────────────
-def test_configure_skips_invalid_entries():
+# ── parsing ──────────────────────────────────────────────────────────────────
+def test_configure_skips_invalid_entries_and_empty_disables_trust():
     assert configure_trusted_proxies("10.0.0.0/8, nonsense, 1.1.1.1") == 2
     assert configure_trusted_proxies("") == 0
     assert security._trusted_proxies == []
+    assert configure_trusted_proxies(["10.0.0.0/8", "", "nope"]) == 1
+    assert configure_trusted_proxies(None) == 0
 
 
-# ── the actual anti-bypass guarantee ──────────────────────────────────────────
-def test_rate_limit_cannot_be_bypassed_by_rotating_xff():
-    """An attacker rotating X-Forwarded-For keeps the SAME rate-limit key."""
-    keys = set()
-    for spoof in ("1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4", "5.5.5.5", "6.6.6.6"):
-        req = _FakeRequest("203.0.113.50", {"X-Forwarded-For": spoof})
-        keys.add(client_ip(req))
-    assert keys == {"203.0.113.50"}  # every request maps to one key
-
-    # And that key trips the limit after max_calls, regardless of the spoofing.
-    ip = "203.0.113.50"
-    for _ in range(5):
-        check_ip_rate_limit(ip, "login-bypass-test", max_calls=5, window_secs=300)
-    with pytest.raises(HTTPException) as exc:
-        check_ip_rate_limit(ip, "login-bypass-test", max_calls=5, window_secs=300)
-    assert exc.value.status_code == 429
+# ── the actual anti-spoofing guarantee ───────────────────────────────────────
+def test_rotating_the_forwarded_host_never_moves_the_front_door():
+    """An attacker rotating X-Forwarded-Host keeps the SAME effective host."""
+    hosts = {
+        effective_host(host="worker.local", forwarded_host=claim, peer="203.0.113.50")
+        for claim in ("a.example", "b.example", "c.example", "d.example")
+    }
+    assert hosts == {"worker.local"}

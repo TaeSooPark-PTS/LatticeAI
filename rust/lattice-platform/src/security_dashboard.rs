@@ -6,66 +6,20 @@
 //! [`WorkerSeamClient`] and writes the response itself. The document
 //! parser/generator matrix stays in Python.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::extract::{Path, Query, State};
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::http::HeaderMap;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
-use lattice_auth::{AuthState, Identity, OrderedMap};
+use lattice_auth::{AuthState, Identity};
 use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Map, Value};
 
 use crate::admin::{
-    append_audit_event, audit_log_path, build_sensitivity_report, classify_sensitive_message,
-    detail_status, json_ok, json_status, load_audit_log, load_chat_history, now_iso,
-    redact_secret_text, redact_structure, today_str, tz_name,
+    append_audit_event, audit_log_path, classify_sensitive_message, load_audit_log,
+    load_chat_history, today_str,
 };
 
 pub const MOUNTED: &[(&str, &str)] = &[
@@ -234,7 +188,7 @@ pub(crate) fn summarize_user_risk(history: &[Value], files: &[Value]) -> Vec<Map
             .and_then(Value::as_str)
             .unwrap_or(email.as_str())
             .to_string();
-        let bucket = buckets.entry(email).or_insert_with(|| empty_bucket());
+        let bucket = buckets.entry(email).or_insert_with(empty_bucket);
         bucket.insert("user".into(), json!(nickname));
         bump(bucket, "total_chats");
         let cls = classify_sensitive_message(item, idx);

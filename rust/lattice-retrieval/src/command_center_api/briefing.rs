@@ -1,53 +1,5 @@
 //! `CommandCenterService.briefing` — the seven sections and the quick actions.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::useless_format,
-    clippy::collapsible_str_replace,
-    clippy::manual_repeat_n,
-    clippy::module_inception,
-    clippy::manual_unwrap_or_default
-)]
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -57,7 +9,7 @@ use crate::memory_api::shared::BrainState;
 use crate::memory_api::wsos;
 
 use super::health;
-use super::store::{self, clip, py_round_int};
+use super::store::{self, clip};
 use super::suggestions;
 
 const RECENT_NODE_LIMIT: usize = 6;
@@ -103,7 +55,9 @@ pub async fn briefing(
             state: &doc,
             enable_graph: graph,
         };
-        match state
+        // A read failure leaves the section empty rather than failing the whole
+        // briefing — the other six sections are already in hand.
+        state
             .read({
                 let email = user_email.to_string();
                 let scope = workspace_id.map(str::to_string);
@@ -121,10 +75,7 @@ pub async fn briefing(
                 }
             })
             .await
-        {
-            Ok(items) => items,
-            Err(_) => Vec::new(),
-        }
+            .unwrap_or_default()
     };
     let suggestion_section = suggestion_section(&suggestion_items);
 
@@ -508,9 +459,4 @@ fn action(id: &str, kind: &str, count: i64, target: &str, endpoint: Option<&str>
         out.insert("endpoint", Value::String(endpoint.to_string()));
     }
     json(&out)
-}
-
-#[allow(dead_code)]
-fn _round(value: f64) -> i64 {
-    py_round_int(value)
 }

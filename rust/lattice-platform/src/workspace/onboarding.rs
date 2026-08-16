@@ -10,50 +10,6 @@
 //! (`workspace_onboarding_step/error_unknown_step`) would fail on, and the
 //! decision of what those routes should answer is not this port's to make.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use serde_json::{json, Map, Value};
 
 use super::constants::{ONBOARDING_STATUSES, ONBOARDING_STEPS};
@@ -113,6 +69,9 @@ fn truthy(value: Option<&Value>) -> bool {
 /// `update_onboarding_step`.
 ///
 /// Returns the fresh [`status`] payload, which is what the route answers.
+// Eight parameters because `update_onboarding_step` takes eight; the port
+// keeps the original's argument list so the two can be read side by side.
+#[allow(clippy::too_many_arguments)]
 pub fn update_step(
     store: &WorkspaceOsStore,
     step: &str,

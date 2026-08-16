@@ -41,54 +41,14 @@ _PLATFORM = platform.system()  # "Darwin" | "Windows" | "Linux"
 AGENT_ROOT = Path(os.getenv("LATTICEAI_AGENT_ROOT") or "agent_workspace").resolve()
 MAX_FILE_BYTES = 512_000
 MAX_COMMAND_SECONDS = 30
-MAX_BUILD_SECONDS = 180
-MAX_DEPLOY_SECONDS = 300
 MAX_COMMAND_OUTPUT = 12_000
 
-BLOCKED_COMMANDS = {
-    "rm",
-    "rmdir",
-    "sudo",
-    "su",
-    "chmod",
-    "chown",
-    "curl",
-    "wget",
-    "ssh",
-    "scp",
-    "rsync",
-    "dd",
-    "mkfs",
-    "diskutil",
-    "launchctl",
-}
-
-ALLOWED_COMMANDS = {
-    "pwd",
-    "ls",
-    "find",
-    "cat",
-    "head",
-    "tail",
-    "wc",
-    "rg",
-    "git",
-}
-
-BUILD_SCRIPT_NAMES = {"build", "compile", "typecheck", "test"}
-DEPLOY_SCRIPT_NAMES = {
-    "deploy",
-    "preview",
-    "release",
-    "package",
-    "dist",
-    "make",
-    "build:installer",
-    "build:pkg",
-    "build:exe",
-    "package:mac",
-    "package:win",
-}
+# The build/deploy script allow-lists and their longer timeouts used to live
+# here too. `run_build` / `run_deploy` are native (`lattice-agent`'s
+# `tools::shell`, which carries its own `BUILD_SCRIPT_NAMES`,
+# `DEPLOY_SCRIPT_NAMES`, `MAX_BUILD_SECONDS` and `MAX_DEPLOY_SECONDS`), so the
+# copies here had no reader in this interpreter — a second, unenforced
+# allow-list that could drift from the one that actually gates a subprocess.
 
 ALLOWED_GIT_SUBCOMMANDS = {"status", "diff", "log", "show"}
 

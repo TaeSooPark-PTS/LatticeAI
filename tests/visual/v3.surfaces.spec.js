@@ -112,7 +112,7 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
   // Escape closes the peek and keeps the user on the home surface.
   await page.keyboard.press("Escape");
   await expect(peek).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
 
   // "Open this layer" from the graph ring hands off to the memory graph view.
   await page.locator(".ring-label-right").click();
@@ -143,7 +143,7 @@ test("memory opens with search and can reveal the connections map", async ({ pag
   await expect(page.locator("body")).toContainText("Workspace Health");
 
   await page.getByRole("link", { name: "대화", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
   await expect(page.locator("[data-testid='brain-cytoscape']")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -171,7 +171,7 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await expect(shellMenu).toBeVisible();
   await page.getByRole("button", { name: "메뉴 닫기" }).last().click();
   await expect(page.locator("section[aria-label='Brain Chat Home']")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
   // The memory-map hint moved off the reading line into the stats badge's
   // popover: hover (or click) is the gesture that asks for it.
   await expect(page.locator("body")).not.toContainText("Brain 그림을 누르면 기억 지도를 볼 수 있어요.");
@@ -403,7 +403,7 @@ test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
   expect(bottomBar.count).toBe(5);
   expect(bottomBar.navWidth - bottomBar.right).toBeLessThan(bottomBar.navWidth / bottomBar.count / 2);
 
-  await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
   await expect(page.getByTestId("brain-knowledge-flow").getByTestId("living-brain")).toBeVisible();
   await expect(page.getByTestId("brain-attach-toggle")).toBeVisible();
   await expect(page.getByPlaceholder("질문하거나, 자료를 붙여 넣거나, 할 일을 적어보세요")).toBeVisible();
@@ -446,7 +446,7 @@ test("legacy entry URLs still arrive at the Brain app", async ({ page }) => {
   await bypassProductFlow(page);
   await page.goto("/chat");
   await expect(page).toHaveURL(/\/app#\/chat$/);
-  await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
 
   await page.goto("/graph");
   await expect(page).toHaveURL(/\/app#\/knowledge-graph$/);

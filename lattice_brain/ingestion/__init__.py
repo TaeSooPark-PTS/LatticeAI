@@ -16,8 +16,12 @@ asks this worker for:
   of a parse request rather than of a write;
 * ``hashing`` — ``content_hash_text`` and the file digest, which decide
   idempotency and must produce the same bytes on both sides;
-* ``quality`` — the advisory extraction score behind ``POST /worker/parse``;
-* ``pipeline`` — the multi-modal capability probe.
+* ``quality`` — the advisory extraction score behind ``POST /worker/parse``.
+
+``pipeline`` was a fifth: an ``IngestionPipeline`` reduced to a single
+capability probe, whose one route (``GET /api/ingestion/multimodal``) had no
+caller. v11.8.0 removed the route and the class with it — the gates it read
+still live in ``constants``, where anything that needs them can ask directly.
 """
 
 from __future__ import annotations
@@ -78,7 +82,6 @@ from .hashing import _file_digest as _file_digest
 from .hashing import content_hash_text as content_hash_text
 from .models import IngestionItem as IngestionItem
 from .models import IngestionResult as IngestionResult
-from .pipeline import IngestionPipeline as IngestionPipeline
 from .quality import _BOILERPLATE_LINE_MARKERS as _BOILERPLATE_LINE_MARKERS
 from .quality import _CAPTURE_REASON_LABELS as _CAPTURE_REASON_LABELS
 from .quality import _WEB_SOURCE_TYPES as _WEB_SOURCE_TYPES

@@ -143,6 +143,7 @@ export function BrainHomeDock({
             <button
               key={id}
               type="button"
+              className={id === "conversations" ? "is-continuity" : undefined}
               data-testid={`brain-dock-${id}`}
               aria-expanded={open && tab === id}
               onClick={() => openTab(id)}

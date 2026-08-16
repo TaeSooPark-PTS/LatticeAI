@@ -12,8 +12,9 @@
 //!   `review_item_created` / `review_item_updated` event — and every route that
 //!   changes nothing records none.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
+// The shared harness is written for every suite that includes it, so a
+// helper this one does not call still reads as dead in this binary.
+#[allow(dead_code)]
 mod review_queue_harness;
 
 use std::collections::HashMap;
@@ -130,6 +131,10 @@ async fn creating_a_review_item_records_one_created_event_whichever_door_it_came
     );
 }
 
+/// One status route to exercise:
+/// `(method, path, body, item id, expected action, expected status)`.
+type StatusCase<'a> = (&'a str, String, Option<Value>, &'a str, &'a str, &'a str);
+
 #[tokio::test]
 async fn every_status_route_records_exactly_one_updated_event() {
     let install = Install::start().await;
@@ -140,7 +145,7 @@ async fn every_status_route_records_exactly_one_updated_event() {
     let proposal_apply = install.bind("$proposal_apply");
     let proposal_reject = install.bind("$proposal_reject");
 
-    let cases: Vec<(&str, String, Option<Value>, &str, &str, &str)> = vec![
+    let cases: Vec<StatusCase<'_>> = vec![
         (
             "POST",
             format!("/automation/reviews/{approve}/approve"),

@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import logging
 import sys
-import traceback
 from typing import Optional
 
 logger = logging.getLogger("latticeai.suppressed")
@@ -63,22 +62,4 @@ def quiet(reason: Optional[str] = None, *, level: int = logging.DEBUG) -> None:
         )
 
 
-def quiet_summary(reason: Optional[str] = None) -> str:
-    """One-line description of the live exception, for callers that report it."""
-    exc_type, exc, _ = sys.exc_info()
-    if exc is None:
-        return ""
-    name = getattr(exc_type, "__name__", "Exception")
-    text = str(exc).strip() or name
-    return f"{reason}: {text}" if reason else text
-
-
-def format_suppressed() -> str:
-    """Full traceback of the live exception as text (for diagnostics payloads)."""
-    exc_type, exc, tb = sys.exc_info()
-    if exc is None:
-        return ""
-    return "".join(traceback.format_exception(exc_type, exc, tb))
-
-
-__all__ = ["quiet", "quiet_summary", "format_suppressed"]
+__all__ = ["quiet"]

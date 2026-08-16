@@ -88,9 +88,12 @@ MAGIC_NUMBERS = {
 
 ## 수집 & 그래프 포터빌리티 보안 (v3.6.0)
 
-- **수집 라이프사이클**: 모든 수집은 `IngestionPipeline.ingest` → `dispatch_tool`
-  를 거쳐 `pre_tool`/`post_tool` 훅이 발화됩니다. `pre_tool`이 차단하면 수집은
-  정직하게 `status="blocked"`로 거부됩니다(권한 게이트·민감정보 가드 적용).
+- **수집 라이프사이클**: 모든 수집은 네이티브 ingest 문(`lattice-ingest` →
+  `lattice_core::graph_write`) → 도구 디스패치를 거쳐 `pre_tool`/`post_tool`
+  훅이 발화됩니다. `pre_tool`이 차단하면 수집은 정직하게 `status="blocked"`로
+  거부됩니다(권한 게이트·민감정보 가드 적용). v3.6.0에 이 계약을 세운 것은
+  Python `IngestionPipeline.ingest`였고, v11.6.0이 문을 Rust로 옮기면서 계약은
+  그대로 유지했습니다.
 - **웹 URL 읽기**(`/api/browser/read-url`): `http(s)`만 허용하고 DNS의 모든 결과에서
   loopback/private/link-local/multicast/reserved 주소를 거부합니다. 검증한 IP에 연결을
   고정해 DNS rebinding을 막고, redirect마다 재검증하며 환경 proxy를 사용하지

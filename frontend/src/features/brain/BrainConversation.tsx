@@ -333,29 +333,28 @@ export function BrainConversation({
                   trailing={modelReady ? null : <ModelMissingNotice language={language} />}
                 />
 
-                {/* The box you type into — the primary focus of the screen.
-                    Capture (문서 · 이미지 · 파일 · 폴더 · 노트 · 웹) folds
-                    behind the composer's + so the station floor stays quiet. */}
-                <div className="brain-composer-wrapper">
-                  <BrainComposer
-                    language={language}
-                    draft={draft}
-                    streaming={streaming}
-                    imageData={imageData}
-                    uploadingDocument={uploadingDocument}
-                    onDraftChange={onDraftChange}
-                    onImageDataChange={onImageDataChange}
-                    onUploadDocument={onUploadDocument}
-                    onSend={onSend}
-                    onStop={onStop}
-                    attachments={ingestionDock}
-                  />
-                </div>
+                {/* Composer + autonomy stay one unit so a tall station cannot
+                    park the dial on the floor with a dead band under the box. */}
+                <div className="brain-writing-desk">
+                  <div className="brain-composer-wrapper">
+                    <BrainComposer
+                      language={language}
+                      draft={draft}
+                      streaming={streaming}
+                      imageData={imageData}
+                      uploadingDocument={uploadingDocument}
+                      onDraftChange={onDraftChange}
+                      onImageDataChange={onImageDataChange}
+                      onUploadDocument={onUploadDocument}
+                      onSend={onSend}
+                      onStop={onStop}
+                      attachments={ingestionDock}
+                    />
+                  </div>
 
-                {/* The station's floor answers one question — how far Brain may
-                    go on its own. */}
-                <div className="brain-station-toolbar" role="group" aria-label={t(language, "brain.station.toolbar.aria")}>
-                  <BrainQuickControls language={language} />
+                  <div className="brain-station-toolbar" role="group" aria-label={t(language, "brain.station.toolbar.aria")}>
+                    <BrainQuickControls language={language} />
+                  </div>
                 </div>
               </section>
 

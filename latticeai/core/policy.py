@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Set
+from typing import Dict, List, Set
 
 ROLE_CAPABILITIES: Dict[str, Set[str]] = {
     "owner": {"all"},
@@ -46,8 +46,3 @@ def role_has_capability(role: str, capability: str) -> bool:
 def require_capability(role: str, capability: str) -> None:
     if not role_has_capability(role, capability):
         raise PermissionError(f"role '{normalize_role(role)}' lacks capability '{capability}'")
-
-
-def policy_matrix(roles: Iterable[str] | None = None) -> List[Dict[str, object]]:
-    selected = list(roles or ROLE_CAPABILITIES.keys())
-    return [{"role": normalize_role(role), "caps": capabilities_for_role(role)} for role in selected]

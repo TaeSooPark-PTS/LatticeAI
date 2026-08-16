@@ -26,14 +26,18 @@ Removed layers stay listed in `legacy_compatibility.REMOVED_SHIMS` and in the
 
 ## Legacy Debt Gate
 
-Two gates keep the debt paid down:
+**One** gate keeps the debt paid down:
 
-- `scripts/check_legacy_debt.mjs` (part of `npm run lint`) — fails if a
-  disallowed root-level Python module reappears, or if any source tree imports
-  a removed root shim.
 - `tests/unit/test_legacy_root_shims.py` — asserts removed shims stay
-  unimportable, canonical replacements import, and the registry in
-  `latticeai.core.legacy_compatibility` matches reality.
+  unimportable and canonical replacements import.
+
+There used to be two. `scripts/check_legacy_debt.mjs` stated the same rule in
+JavaScript as part of `npm run lint`, and by 11.8.0 the two implementations had
+drifted apart — at which point having both was worse than having one, because
+neither could be trusted as the answer. The Python test is authoritative and the
+mjs mirror was deleted. `latticeai.core.legacy_compatibility` went with the
+platform code in 11.6.0; the registry it held described modules that no longer
+exist to shim.
 
 ## Root Module Map (removed in 9.9.1)
 

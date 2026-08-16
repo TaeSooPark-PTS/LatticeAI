@@ -14,6 +14,9 @@
 //!    reads back without losing the item — the byte-compatibility claim its
 //!    doc comment makes, checked rather than asserted in prose.
 
+// The shared harness is written for every suite that includes it, so a
+// helper this one does not call still reads as dead in this binary.
+#[allow(dead_code)]
 mod review_queue_harness;
 
 use std::sync::Arc;

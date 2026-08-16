@@ -6,11 +6,11 @@ import { t, type Language } from "@/i18n";
 import type { BrainReadiness, KnowledgeGraphModel, MemoryFragment } from "./types";
 
 /**
- * The home hero: the Brain itself, a greeting, and one plain sentence. What is
+ * The home hero: the Brain itself and a direct invitation to type. What is
  * remembered lives in a compact stats badge that opens a summary popover on
- * hover or click — the number itself stays out of the reading line so the
- * first screen is a thought, not a dashboard. Everything graph-shaped stays
- * behind the Brain: click the organism (or the popover's CTA) to open the map.
+ * hover or click — calm, secondary, never competing with the composer below.
+ * Everything graph-shaped stays behind the Brain: click the organism (or the
+ * popover's CTA) to open the map.
  */
 export const BrainHomeHero = React.memo(function BrainHomeHero({
   language,
@@ -43,20 +43,32 @@ export const BrainHomeHero = React.memo(function BrainHomeHero({
   return (
     <section className="brain-hero" data-testid="brain-knowledge-flow" aria-labelledby="brain-home-title">
       {/* LivingBrain renders its own button, so this is a sizing wrapper only —
-          a button nested in a button would be invalid. */}
-      <div className="brain-hero-organism">
-        <LivingBrain
-          state={brainState}
-          intensity={intensity}
-          size="normal"
-          depth={readiness.depth}
-          showLabel={false}
-          onInteract={onExploreBrain}
-        />
+          a button nested in a button would be invalid. Growth rings are CSS
+          decoration around that wrapper; they read readiness.state the screen
+          already has — no extra fetch. */}
+      <div
+        className="brain-hero-organism"
+        data-growth={readiness.state}
+        data-testid="brain-hero-organism"
+      >
+        <i className="brain-growth-ring is-inner" aria-hidden="true" />
+        <i className="brain-growth-ring is-mid" aria-hidden="true" />
+        <i className="brain-growth-ring is-outer" aria-hidden="true" />
+        <div className="brain-hero-orb">
+          <LivingBrain
+            state={brainState}
+            intensity={intensity}
+            size="normal"
+            depth={readiness.depth}
+            showLabel={false}
+            onInteract={onExploreBrain}
+          />
+        </div>
       </div>
+      <p className="brain-hero-growing">{t(language, "brain.home.growing")}</p>
 
       <div className="brain-hero-header-text">
-        <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
+        <h1 id="brain-home-title">{t(language, "brain.home.askTitle")}</h1>
         {empty ? (
           <p className="brain-hero-line">{t(language, "brain.hero.empty")}</p>
         ) : (

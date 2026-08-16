@@ -1,28 +1,9 @@
 //! Shared replay harness for the R1 workspace families.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports)]
-#![allow(clippy::field_reassign_with_default, clippy::unnecessary_sort_by)]
-
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
 
-use axum::extract::RawQuery;
-use axum::http::HeaderMap;
-use axum::routing::get;
-use axum::Router;
-use lattice_auth::{AuthConfig, AuthState, Clock, OrderedMap};
-use lattice_platform::invitations::{self, InvitationsState};
-use lattice_platform::permissions::{self, PermissionGateway, PermissionsState};
-use lattice_platform::ui_redirects;
-use lattice_platform::workspace::{
-    self, GraphReads, GraphSeam, WorkspaceDeps, WorkspaceProviders, WorkspaceState,
-};
+use lattice_platform::workspace::GraphReads;
 use serde_json::{json, Value};
 
 pub const WORKSPACE_FIXTURE: &str = "workspace.json";

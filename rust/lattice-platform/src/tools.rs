@@ -5,68 +5,18 @@
 //! policy. Traversal denials are the exact Python `ToolError` / i18n bodies
 //! the fixtures pin.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use axum::extract::{Query, State};
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::http::StatusCode;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
-use lattice_agent::sandbox::{Workspace, MAX_FILE_BYTES};
-use lattice_agent::{command, is_circuit_breaker};
+use lattice_agent::sandbox::Workspace;
 use lattice_auth::{AuthState, Identity, OrderedMap};
 use serde_json::{json, Value};
 
-use crate::mcp::{
-    detail, json_status, json_text, localized, missing_fields, parse_json_object, requested_scope,
-    require_admin, require_user, sha256_hex,
-};
+use crate::mcp::{detail, json_status};
 
 pub(crate) mod downloads;
 pub(crate) mod fs;
@@ -230,13 +180,16 @@ pub(crate) fn enforce(
     trusted_admin: bool,
 ) -> Result<(), Response> {
     let g = gov_named(name).unwrap_or_else(default_gov);
-    if matches!(name, "run_command" | "build_project" | "deploy_project") && !trusted_admin {
-        if identity.role != "admin" && identity.role != "owner" && !identity.is_local_owner() {
-            return Err(detail(
-                StatusCode::FORBIDDEN,
-                &format!("'{name}' 툴은 관리자 전용입니다."),
-            ));
-        }
+    if matches!(name, "run_command" | "build_project" | "deploy_project")
+        && !trusted_admin
+        && identity.role != "admin"
+        && identity.role != "owner"
+        && !identity.is_local_owner()
+    {
+        return Err(detail(
+            StatusCode::FORBIDDEN,
+            &format!("'{name}' 툴은 관리자 전용입니다."),
+        ));
     }
     if !trusted_admin
         && !g.auto_approve
@@ -249,7 +202,7 @@ pub(crate) fn enforce(
     Ok(())
 }
 
-pub(crate) fn resolve<'a>(ws: &'a Workspace, path: &str) -> Result<PathBuf, Response> {
+pub(crate) fn resolve(ws: &Workspace, path: &str) -> Result<PathBuf, Response> {
     ws.resolve(path).map_err(|e| tool_err(&e.message))
 }
 

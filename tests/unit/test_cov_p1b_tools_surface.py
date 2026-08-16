@@ -1,15 +1,17 @@
-"""Coverage for surviving compute tools and the two /tools routes."""
+"""Coverage for the surviving compute tools.
+
+The two ``/tools/*`` HTTP routes this module also covered went in v11.8.0 with
+``latticeai/api/tools.py``: nothing called them, and the parser behind
+``read_document`` is still exercised through ``POST /worker/parse``.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 import latticeai.tools as tools
-from latticeai.api.tools import create_tools_router
 from latticeai.tools import ToolError
 from latticeai.tools import commands as command_tools
 from latticeai.tools.filesystem import (
@@ -30,7 +32,6 @@ def workspace(tmp_path: Path, monkeypatch):
     (root / "notes").mkdir()
     (root / "notes" / "a.md").write_text("hello lattice\nsecond line\n", encoding="utf-8")
     monkeypatch.setattr(tools, "AGENT_ROOT", root)
-    monkeypatch.setattr("latticeai.api.tools.AGENT_ROOT", root)
     return root
 
 
@@ -97,17 +98,3 @@ def test_knowledge_and_local_reads(tmp_path: Path, monkeypatch, workspace):
     read = local_read(str(workspace / "notes" / "a.md"))
     assert read
 
-
-def test_tools_router_read_document_and_pdf(workspace):
-    app = FastAPI()
-    app.include_router(create_tools_router(require_user=lambda _r: "owner@example.com"))
-    client = TestClient(app, raise_server_exceptions=False)
-
-    ok = client.post("/tools/read_document", json={"path": "notes/a.md"})
-    assert ok.status_code == 200
-    denied = client.post("/tools/read_document", json={"path": "/etc/passwd"})
-    assert denied.status_code == 403
-    missing = client.get("/tools/pdf_pages", params={"path": "notes/missing.pdf"})
-    assert missing.status_code == 404
-    broken = client.get("/tools/pdf_pages", params={"path": "notes/a.md"})
-    assert broken.status_code == 500

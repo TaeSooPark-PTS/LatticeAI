@@ -1,8 +1,8 @@
 //! The embedding port, pinned bit-for-bit against CPython.
 //!
-//! `rust/fixtures/golden/embeddings_golden.json` is written by
-//! `scripts/generate_rust_parity_fixtures.py` from the real
-//! `lattice_brain.embeddings` model. If any of these assertions fail, the vector
+//! `rust/fixtures/golden/embeddings_golden.json` was taken from the real
+//! `lattice_brain.embeddings` model and is now **frozen** — see
+//! `rust/fixtures/golden/FROZEN.md`. If any of these assertions fail, the vector
 //! lane is scoring against different vectors than the ones Python indexed —
 //! which shows up as a subtly different ranking, never as an error.
 

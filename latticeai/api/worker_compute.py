@@ -3,8 +3,14 @@
 Plan §설계 결정 2 (revised) hands **every write** to Rust — platform state and
 the knowledge graph both. What is left for Python is the part Rust cannot do
 without shipping a model runtime and half of PyPI: turning text into vectors,
-turning a document into text, turning a spec into document bytes, turning audio
-into a transcript, and turning a picture into facts about it.
+turning a document into text, turning a spec into document bytes, and turning
+audio into a transcript.
+
+A ninth seam, ``POST /worker/multimodal/describe``, was here until v11.8.0. It
+wrapped :func:`lattice_brain.multimodal.extract_image_facts` for a native image
+ingest that was never built, so nothing in the tree ever called it — not
+``lattice-ingest``, not the gateway. The Brain Core functions behind it are
+untouched; what went is the door nobody opened.
 
 ``worker_seams.py`` holds the *state* seams (``/worker/chat/record-turn``,
 ``/worker/graph/mutate``) that Wave 2 codes against and Wave 2.5 §W3 retires.
@@ -13,7 +19,7 @@ here opens a database, writes a file, or reaches a store. Each handler is a
 function of its request body, so a caller can retry it, cache it, or run two of
 them at once without asking who else is writing.
 
-The five seams, and what each was extracted from:
+The eight seams, and what each was extracted from:
 
 ``POST /worker/embed``
     ``EmbeddingProvider.embed_batch`` on the *resolved* provider — the same
@@ -30,21 +36,14 @@ The five seams, and what each was extracted from:
 
 ``POST /worker/render/{docx,xlsx,pptx,pdf}``
     The *building* half of ``tools.documents.create_*`` — same libraries, same
-    layout decisions, same filename sanitising — with ``save(path)`` replaced by
-    ``save(BytesIO)``. Rust places the file; this seam never learns where.
+    layout decisions — with ``save(path)`` replaced by ``save(BytesIO)``. Rust
+    places the file, sanitises the name and resolves the target; this seam
+    never learns where and answers with bytes only.
 
 ``POST /worker/asr``
     ``VoiceCaptureService._transcribe``'s contract without the ingest: the same
     injected transcriber port, the same container whitelist and size ceiling,
     and the same refusal to call an empty transcript "text".
-
-``POST /worker/multimodal/describe``
-    :func:`lattice_brain.multimodal.extract_image_facts` plus
-    :func:`~lattice_brain.multimodal.image_quality_score` — exactly what
-    ``IngestionRoutingMixin._ingest_image`` computes before it writes a node.
-    The describe step *is* separable here because Brain Core already split it:
-    observing an image and writing it are two functions, and only the first one
-    is compute.
 
 ``POST /worker/extract``
     :func:`~lattice_brain.graph._kg_common.extraction._extract_concepts` (LLM-first),
@@ -85,7 +84,7 @@ from latticeai.services.voice_capture import (
     SUPPORTED_AUDIO_EXTENSIONS,
 )
 from latticeai.tools import _CJK_FONT_CANDIDATES, ToolError
-from latticeai.tools.documents import _body_to_str, _safe_filename, read_document
+from latticeai.tools.documents import _body_to_str, read_document
 
 logger = logging.getLogger(__name__)
 
@@ -106,16 +105,6 @@ EXTRACT_LIMITS: Dict[str, int] = {"message": 12, "document": 15}
 #: imported: it is a literal at that call site, and importing a literal out of a
 #: write-side module would tie this compute seam to a module W1 is replacing.
 PASSAGE_MAX_CHARS = 50_000
-
-#: Render kind → the suffix ``_safe_filename`` enforces. Same table as
-#: ``documents._DOCUMENT_TOOL_TARGETS``, minus the output directory: where the
-#: file lands is Rust's decision now, so this seam does not carry it.
-RENDER_SUFFIXES: Dict[str, str] = {
-    "docx": ".docx",
-    "xlsx": ".xlsx",
-    "pptx": ".pptx",
-    "pdf": ".pdf",
-}
 
 #: The CJK-capable fonts ``create_pdf`` looks for, as a module attribute so a
 #: test can point the probe at a font that exists (and at one that does not)
@@ -415,16 +404,6 @@ class AsrRequest(BaseModel):
     filename: Optional[str] = None
 
 
-class DescribeRequest(BaseModel):
-    """One picture, with the two observation switches ``extract_image_facts`` takes."""
-
-    content_b64: str
-    mime: Optional[str] = None
-    filename: Optional[str] = None
-    ocr: bool = True
-    thumbnail: bool = True
-
-
 class ExtractRequest(BaseModel):
     """The text one ingest door would hand ``_extract_concepts``."""
 
@@ -484,18 +463,16 @@ def create_worker_compute_router(
     *,
     embedder: Any,
     transcriber: Optional[Callable[[str], str]] = None,
-    multimodal_ports: Any = None,
     require_user: Callable[[Request], Any],
     enforce_rate_limit: Callable[[str, str], None],
 ) -> APIRouter:
-    """The nine compute seams, wired to what this worker actually resolved.
+    """The eight compute seams, wired to what this worker actually resolved.
 
     ``embedder`` is the :class:`~latticeai.core.embedding_providers.text.ResolvedEmbedder`
     ``phase_brain`` built (``None`` ⇒ 503, because a worker with no embedder is
-    a configuration rather than a crash). ``transcriber`` and
-    ``multimodal_ports`` are the same injected ports the voice and ingestion
-    paths hold; absent, the relevant seam reports the absence instead of
-    inventing a transcript or a caption.
+    a configuration rather than a crash). ``transcriber`` is the injected port
+    the voice path holds; absent, ``/worker/asr`` reports the absence instead of
+    inventing a transcript.
     """
     router = APIRouter()
 
@@ -522,11 +499,18 @@ def create_worker_compute_router(
     async def _render(
         kind: str,
         builder: Callable[[], bytes],
-        filename: str,
         language: str,
         **extra: Any,
     ) -> Dict[str, Any]:
-        """Build one document off the event loop and hand back its bytes."""
+        """Build one document off the event loop and hand back its bytes.
+
+        The reply is the bytes and what they cost, and nothing about *where*
+        they go: ``lattice-agent``'s ``documents::document_output_target`` runs
+        its own ``safe_filename`` and ``Workspace::resolve`` over the request's
+        ``filename`` **before** it calls here, and writes to the target it
+        resolved. A second sanitisation on this side produced a name no caller
+        ever read — two spellings of one rule, one of them invisible.
+        """
         try:
             payload = await asyncio.to_thread(builder)
         except ToolError as exc:
@@ -541,7 +525,6 @@ def create_worker_compute_router(
                 500, "worker_compute.render_failed", language, kind=kind, reason=str(exc)
             ) from exc
         return {
-            "filename": _safe_filename(filename, RENDER_SUFFIXES[kind]),
             "content_b64": base64.b64encode(payload).decode("ascii"),
             "bytes": len(payload),
             **extra,
@@ -616,7 +599,6 @@ def create_worker_compute_router(
         return await _render(
             "docx",
             lambda: build_docx_bytes(req.title, req.body),
-            req.filename,
             resolve_language(request),
         )
 
@@ -628,7 +610,6 @@ def create_worker_compute_router(
         return await _render(
             "xlsx",
             lambda: build_xlsx_bytes(req.rows, req.sheet_name),
-            req.filename,
             resolve_language(request),
             rows=len(req.rows),
         )
@@ -641,7 +622,6 @@ def create_worker_compute_router(
         return await _render(
             "pptx",
             lambda: build_pptx_bytes(req.title, req.slides),
-            req.filename,
             resolve_language(request),
             slides=len(req.slides) + 1,
         )
@@ -654,7 +634,6 @@ def create_worker_compute_router(
         return await _render(
             "pdf",
             lambda: build_pdf_bytes(req.title, req.body),
-            req.filename,
             resolve_language(request),
         )
 
@@ -731,64 +710,6 @@ def create_worker_compute_router(
             "detail": "",
         }
 
-    @router.post("/worker/multimodal/describe")
-    async def worker_multimodal_describe(req: DescribeRequest, request: Request):
-        """Everything ``_ingest_image`` knows before it writes a node.
-
-        ``metadata`` is ``ImageFacts.as_metadata()`` — the exact dict
-        ``write_image_memory`` merges onto the node — and ``index_text`` is the
-        exact text it chunks. ``embedding`` is present only when a vision model
-        produced one, which is the one property an image vector must have.
-        """
-        _require_seam(request)
-        _admit(request)
-        language = resolve_language(request)
-        data = _decode(req.content_b64, language)
-        suffix = _suffix_for(req.filename, req.mime, ".png")
-
-        from lattice_brain.ingestion import _quality_level
-        from lattice_brain.multimodal import (
-            MODALITY_IMAGE,
-            MultimodalPorts,
-            extract_image_facts,
-            image_quality_score,
-        )
-
-        ports = multimodal_ports or MultimodalPorts()
-        with _temp_payload(data, suffix) as tmp_path:
-            facts = await asyncio.to_thread(
-                lambda: extract_image_facts(
-                    tmp_path, ports=ports, ocr=req.ocr, thumbnail=req.thumbnail
-                )
-            )
-        quality = image_quality_score(facts)
-        return {
-            "modality": MODALITY_IMAGE,
-            "readable": facts.readable,
-            "error": facts.error,
-            "width": facts.width,
-            "height": facts.height,
-            "format": facts.image_format,
-            "mode": facts.mode,
-            "ocr_status": facts.ocr_status,
-            "ocr_text": facts.ocr_text,
-            "ocr_detail": facts.ocr_detail,
-            "caption_status": facts.caption_status,
-            "caption": facts.caption,
-            "embedding_status": facts.embedding_status,
-            "embedding": facts.embedding,
-            "embedding_detail": facts.embedding_detail,
-            "thumbnail": facts.thumbnail,
-            "index_text": facts.index_text(),
-            "metadata": facts.as_metadata(),
-            "quality": {
-                "score": quality["score"],
-                "level": _quality_level(quality["score"]),
-                "reasons": quality["reasons"],
-            },
-            "ports": ports.describe(),
-        }
-
     @router.post("/worker/extract")
     async def worker_extract(req: ExtractRequest, request: Request):
         """Concepts, triples and Task/Decision items for this text.
@@ -821,10 +742,8 @@ __all__ = [
     "EXTRACT_KINDS",
     "EXTRACT_LIMITS",
     "PASSAGE_MAX_CHARS",
-    "RENDER_SUFFIXES",
     "WORKER_COMPUTE_MESSAGES",
     "AsrRequest",
-    "DescribeRequest",
     "EmbedRequest",
     "ExtractRequest",
     "ParseRequest",

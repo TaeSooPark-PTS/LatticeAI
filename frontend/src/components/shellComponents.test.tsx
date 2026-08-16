@@ -1,9 +1,6 @@
 /**
- * Three small components that carry disproportionate weight and had no test.
+ * Small components that carry disproportionate weight and had no test.
  *
- * `FeedbackState` is the shared "nothing here" / "that failed" surface — the
- * difference between an empty list and a broken one, which is the honesty
- * contract the whole product rests on.
  * `AdminAccessGate` is an access affordance: showing the console to someone in
  * basic mode, or hiding the promotion path, are both user-visible bugs.
  * `CoreServiceUnavailableBanner` is what tells a user the local service is down
@@ -17,83 +14,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminAccessGate } from "./AdminAccessGate";
 import { CoreServiceUnavailableBanner } from "./CoreServiceUnavailableBanner";
-import { FeedbackState } from "./FeedbackState";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useAppStore, type WorkspaceMode } from "@/store/appStore";
 
 beforeEach(() => {
   useAppStore.setState({ language: "en", mode: "basic" });
   window.location.hash = "";
-});
-
-describe("FeedbackState", () => {
-  it("announces an error assertively and an empty state politely", () => {
-    const { rerender } = render(
-      <FeedbackState tone="error" language="en" title="Could not load" />,
-    );
-    expect(screen.getByRole("alert")).toBeTruthy();
-
-    rerender(<FeedbackState tone="empty" language="en" title="Nothing yet" />);
-    expect(screen.getByRole("status")).toBeTruthy();
-  });
-
-  it("shows the title, and the body only when there is one", () => {
-    const { rerender, container } = render(
-      <FeedbackState tone="empty" language="en" title="Nothing yet" />,
-    );
-    expect(screen.getByText("Nothing yet")).toBeTruthy();
-    expect(container.querySelectorAll(".feedback-state-body span")).toHaveLength(0);
-
-    rerender(
-      <FeedbackState tone="empty" language="en" title="Nothing yet" body="Add a file" />,
-    );
-    expect(screen.getByText("Add a file")).toBeTruthy();
-  });
-
-  it("offers a default retry action for errors", () => {
-    const onAction = vi.fn();
-    render(
-      <FeedbackState tone="error" language="en" title="Could not load" onAction={onAction} />,
-    );
-    const button = screen.getByRole("button");
-    fireEvent.click(button);
-    expect(onAction).toHaveBeenCalledOnce();
-    expect(button.textContent?.trim().length).toBeGreaterThan(0);
-  });
-
-  it("does not invent a retry button for an empty state", () => {
-    render(
-      <FeedbackState tone="empty" language="en" title="Nothing yet" onAction={vi.fn()} />,
-    );
-    expect(screen.queryByRole("button")).toBeNull();
-  });
-
-  it("renders no action when there is a label but nothing to call", () => {
-    render(
-      <FeedbackState tone="error" language="en" title="Broken" actionLabel="Try again" />,
-    );
-    expect(screen.queryByRole("button")).toBeNull();
-  });
-
-  it("marks the compact variant so dense panels can shrink it", () => {
-    const { container } = render(
-      <FeedbackState tone="empty" language="en" title="Nothing" compact />,
-    );
-    expect(container.querySelector(".feedback-state")?.className).toContain("is-compact");
-  });
-
-  it("offers a custom action for an empty state, without the retry icon", () => {
-    const onAction = vi.fn();
-    render(
-      <FeedbackState tone="empty" language="en" title="Nothing yet" actionLabel="Add a file" onAction={onAction} />,
-    );
-    const button = screen.getByRole("button");
-    expect(button.textContent).toContain("Add a file");
-    // The spinning-arrow icon belongs to retries, not to invitations.
-    expect(button.querySelector("svg")).toBeNull();
-    fireEvent.click(button);
-    expect(onAction).toHaveBeenCalledOnce();
-  });
 });
 
 describe("AdminAccessGate", () => {

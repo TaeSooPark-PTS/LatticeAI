@@ -14,12 +14,11 @@ from latticeai.core.http_origin import (
     request_external_origin,
 )
 from latticeai.core.io_utils import atomic_write_json, sha256_file
-from latticeai.core.messages import bilingual, http_error, translate
+from latticeai.core.messages import http_error, translate
 from latticeai.core.module_probe import module_available
 from latticeai.core.policy import (
     capabilities_for_role,
     normalize_role,
-    policy_matrix,
     require_capability,
     role_has_capability,
 )
@@ -87,14 +86,9 @@ def test_policy_roles():
     with pytest.raises(PermissionError):
         require_capability("user", "admin:users")
     assert "chat" in capabilities_for_role("member")
-    matrix = policy_matrix(["owner", "viewer"])
-    assert matrix[0]["role"] == "owner"
 
 
-def test_messages_bilingual_and_unknown_key():
-    pair = bilingual("안녕", "hello")
-    assert pair["ko"] == "안녕"
-    assert pair["en"] == "hello"
+def test_messages_unknown_key():
     assert translate("nope.missing") == "nope.missing"
     err = http_error(400, "nope.missing", "en")
     assert err.status_code == 400

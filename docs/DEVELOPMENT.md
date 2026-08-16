@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; supported
@@ -53,7 +53,6 @@ Run the smallest affected gate while iterating. Before committing broad runtime,
 API, UI, or release work, run:
 
 ```bash
-npm run check:python
 npm run lint
 npm run typecheck
 npm run test:frontend
@@ -61,9 +60,21 @@ npm run test:unit
 npm run docs:check-links
 ```
 
-`npm run lint` runs the Python Ruff baseline, frontend TypeScript lint gate,
-visual smoke syntax checks, an exact generated-OpenAPI drift check, i18n literal
-checks, and browser-extension syntax/behavior tests.
+`npm run lint` is **ten** gates since 11.8.0, in order: `lint:python`
+(ruff + mypy), `lint:visual`, `lint:frontend`, `frontend:openapi:check`,
+`check_i18n_literals.mjs`, `check:i18n-namespaces`, `check:bundle`,
+`check:server-i18n`, `check_release_evidence_bound.mjs`, and
+`check:max-file-lines`. Three left in 11.8.0: `check:python` (ruff already
+parses every file on every CI test leg), `check:legacy-debt` (the mjs mirror had
+drifted from the Python test that states the same rule — the Python test is
+authoritative), and the extension tests, which CI now invokes directly on the
+3.11 + ubuntu leg.
+
+Coverage floors are not symmetrical, and the difference is deliberate rather
+than an oversight: **Python is a line-coverage floor of 90**
+(`[tool.coverage.report] fail_under = 90`, branch measurement off) and the
+frontend still pins **100% on all four vitest metrics**. Run
+`npm run test:coverage` / `npm run test:frontend:coverage` to see either.
 
 Use these when the change touches the relevant surface:
 
@@ -140,7 +151,8 @@ pre-tool/post-tool lifecycle:
 
 - browser `read-url` ingestion dispatches `tool.kg_ingest.*` events;
 - browser `ingest-current-tab` ingestion dispatches the same lifecycle;
-- `IngestionPipeline` remains the common ingestion boundary behind those routes.
+- the native ingest door in `lattice-ingest` (writing through `graph_write`)
+  remains the single ingestion boundary behind those routes.
 
 ## Documentation Sync
 
@@ -158,10 +170,13 @@ For user-facing, API, runtime, release, or packaging changes, check:
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 9.9.0 release work, exact artifacts are:
+For 11.8.0 release work, exact artifacts are:
 
-- `dist/ltcai-9.9.0-py3-none-any.whl`
-- `dist/ltcai-9.9.0.tar.gz`
-- `ltcai-9.9.0.tgz`
-- `dist/ltcai-9.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.0_aarch64.dmg`
+- `dist/ltcai-11.8.0-py3-none-any.whl`
+- `dist/ltcai-11.8.0.tar.gz`
+- `ltcai-11.8.0.tgz`
+- `dist/ltcai-11.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg`
+
+The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
+checks the names and presence, not a Developer ID signature.

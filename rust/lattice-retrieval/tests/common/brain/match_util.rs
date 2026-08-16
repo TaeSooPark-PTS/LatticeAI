@@ -1,28 +1,6 @@
 //! Token matching used by the brain HTTP replay harness.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports)]
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Duration;
-
-use axum::extract::Json;
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::post;
-use axum::Router;
-use lattice_auth::{AuthConfig, AuthState, Clock, OrderedMap};
-use lattice_core::db::{RuntimeConfig, Store};
-use lattice_core::worker::WorkerSeamClient;
-use lattice_retrieval::memory_api::shared::BrainState;
-use lattice_retrieval::{
-    brain_api, chronicle_api, command_center_api, evidence_api, garden_api, memory_api,
-};
-use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
+use serde_json::Value;
 
 /// The one day `brain_store.sqlite` was captured on.
 ///

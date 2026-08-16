@@ -5,71 +5,16 @@
 //! [`lattice_core::graph_write::GraphWriter`]. Encrypted-archive
 //! success with a live passphrase is a documented gap (nonce bytes).
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::useless_format,
-    clippy::collapsible_str_replace,
-    clippy::manual_repeat_n,
-    clippy::module_inception
-)]
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::body::Bytes;
-use axum::extract::{Path as AxumPath, Query, State};
-use axum::http::HeaderMap;
-use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
-use lattice_auth::{AuthState, OrderedMap};
+use lattice_auth::AuthState;
 use lattice_core::db::tables::state_files;
 use lattice_core::db::RuntimeConfig;
-use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 
 use crate::network::DeviceIdentity;
-use crate::project_sessions::{detail, json_ok, message_detail, missing_body, parse_json_object};
 
 /// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[

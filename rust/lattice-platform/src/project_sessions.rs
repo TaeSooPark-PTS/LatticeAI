@@ -4,51 +4,7 @@
 //! session under `<data_dir>/project_sessions/`. A live install migrates in
 //! place.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::body::Bytes;
@@ -114,18 +70,6 @@ pub fn router(state: ProjectSessionsState) -> Router {
         .with_state(state)
 }
 
-#[derive(Debug, Default)]
-struct ListQuery {
-    status: String,
-}
-
-impl ListQuery {
-    fn from_raw(raw: Option<&str>) -> Self {
-        let status = query_value(raw, "status").unwrap_or_else(|| "active".into());
-        Self { status }
-    }
-}
-
 async fn list_projects(
     State(state): State<ProjectSessionsState>,
     headers: HeaderMap,
@@ -139,7 +83,6 @@ async fn list_projects(
         .get("status")
         .cloned()
         .unwrap_or_else(|| "active".into());
-    let _ = ListQuery::from_raw(Some(&format!("status={query}")));
     let store = ProjectStore::new(state.root());
     let user = email_or_none(&identity.email);
     let workspace = workspace_of(&headers);
@@ -316,9 +259,10 @@ fn parse_create(bytes: &[u8]) -> Result<(String, String), Response> {
     }
 }
 
-fn parse_update(
-    bytes: &[u8],
-) -> Result<(Option<String>, Option<String>, Option<String>), Response> {
+/// `(title, goal, status)` — each present only when the PATCH body named it.
+type UpdateFields = (Option<String>, Option<String>, Option<String>);
+
+fn parse_update(bytes: &[u8]) -> Result<UpdateFields, Response> {
     let object = parse_object(bytes)?;
     let title = match object.get("title") {
         None => None,
@@ -640,15 +584,6 @@ fn civil_from_days(days: i64) -> (i32, u32, u32) {
     (year as i32, m as u32, d as u32)
 }
 
-fn query_value(raw: Option<&str>, key: &str) -> Option<String> {
-    raw.and_then(|q| {
-        q.split('&').find_map(|pair| {
-            let (k, v) = pair.split_once('=')?;
-            (k == key).then(|| v.to_string())
-        })
-    })
-}
-
 pub(crate) fn json_ok(body: impl serde::Serialize) -> Response {
     let text = serde_json::to_string(&body).unwrap_or_else(|_| "{}".into());
     json_response(StatusCode::OK, &text, None)
@@ -803,22 +738,6 @@ pub(crate) fn message_detail(status: u16, id: &str, headers: &HeaderMap) -> Resp
     )
 }
 
-#[allow(dead_code)]
-pub(crate) fn exports_dir(config: &RuntimeConfig) -> PathBuf {
-    config.state_file(state_files::WORKSPACE_EXPORTS)
-}
-
-#[allow(dead_code)]
 pub(crate) fn now_iso_utc() -> String {
     now_iso()
-}
-
-#[allow(dead_code)]
-pub(crate) fn atomic_json(path: &Path, value: &impl serde::Serialize) {
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    if let Ok(text) = serde_json::to_string_pretty(value) {
-        atomic::write_text(path, &text);
-    }
 }

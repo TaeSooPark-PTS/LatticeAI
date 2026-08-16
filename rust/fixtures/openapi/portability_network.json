@@ -3057,7 +3057,7 @@
   },
   "schema_count": 34,
   "source": "frontend/openapi.json",
-  "spec_version": "11.7.0",
+  "spec_version": "11.8.0",
   "summary": "Portability/backup/share, peer network, network boundary, realtime, project sessions and computer use.",
   "target": "lattice-platform (portability)",
   "wp": "R9"

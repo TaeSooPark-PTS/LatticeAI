@@ -1,14 +1,8 @@
 {
-  "count": 28,
+  "count": 19,
   "generated_by": "scripts/gen_worker_allowlist_fixture.py",
   "note": "The gateway's reverse proxy allowlist. Generated from latticeai.runtime.build_phases.worker_profile.worker_route_keys() by scripts/gen_worker_allowlist_fixture.py; a path absent here is answered natively or 404, never forwarded.",
   "routes": [
-    {
-      "axum": "/models/unload-all",
-      "group": "product",
-      "method": "DELETE",
-      "path": "/models/unload-all"
-    },
     {
       "axum": "/models/unload/*model_id",
       "group": "product",
@@ -16,28 +10,10 @@
       "path": "/models/unload/{model_id:path}"
     },
     {
-      "axum": "/api/capture/voice/status",
-      "group": "product",
-      "method": "GET",
-      "path": "/api/capture/voice/status"
-    },
-    {
-      "axum": "/api/embeddings/providers",
-      "group": "product",
-      "method": "GET",
-      "path": "/api/embeddings/providers"
-    },
-    {
       "axum": "/api/embeddings/status",
       "group": "product",
       "method": "GET",
       "path": "/api/embeddings/status"
-    },
-    {
-      "axum": "/api/ingestion/multimodal",
-      "group": "product",
-      "method": "GET",
-      "path": "/api/ingestion/multimodal"
     },
     {
       "axum": "/health",
@@ -50,12 +26,6 @@
       "group": "product",
       "method": "GET",
       "path": "/models"
-    },
-    {
-      "axum": "/tools/pdf_pages",
-      "group": "product",
-      "method": "GET",
-      "path": "/tools/pdf_pages"
     },
     {
       "axum": "/worker/sysinfo",
@@ -88,28 +58,10 @@
       "path": "/engines/prepare-model/stream"
     },
     {
-      "axum": "/engines/pull-model",
-      "group": "product",
-      "method": "POST",
-      "path": "/engines/pull-model"
-    },
-    {
       "axum": "/models/load",
       "group": "product",
       "method": "POST",
       "path": "/models/load"
-    },
-    {
-      "axum": "/models/switch/*model_id",
-      "group": "product",
-      "method": "POST",
-      "path": "/models/switch/{model_id:path}"
-    },
-    {
-      "axum": "/tools/read_document",
-      "group": "product",
-      "method": "POST",
-      "path": "/tools/read_document"
     },
     {
       "axum": "/worker/asr",
@@ -134,12 +86,6 @@
       "group": "state_seam",
       "method": "POST",
       "path": "/worker/llm/stream"
-    },
-    {
-      "axum": "/worker/multimodal/describe",
-      "group": "compute_seam",
-      "method": "POST",
-      "path": "/worker/multimodal/describe"
     },
     {
       "axum": "/worker/parse",

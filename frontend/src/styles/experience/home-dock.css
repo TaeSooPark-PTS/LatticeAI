@@ -26,19 +26,19 @@
 .brain-hero-stats-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.16rem 0.62rem;
+  gap: var(--lt-space-2);
+  min-height: 2rem;
+  padding: 0.22rem 0.72rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--lt-radius-pill);
   background: hsl(var(--muted) / 0.55);
   box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.4);
   color: hsl(var(--muted-foreground));
-  font-size: 0.76rem;
+  font-size: var(--lt-type-small);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: var(--lt-leading-snug);
   white-space: nowrap;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
 }
 
 .brain-hero-stats-badge:hover,
@@ -295,27 +295,29 @@
 .brain-home-dock-rail {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem;
-  border-radius: 999px;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--lt-space-1);
+  padding: var(--lt-space-1);
+  border-radius: var(--lt-radius-pill);
   background: hsl(var(--surface));
-  box-shadow: var(--elev-2), inset 0 0 0 1px hsl(var(--border-subtle));
+  box-shadow: var(--elev-2);
 }
 
 .brain-home-dock-rail > button {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.44rem 0.95rem;
+  gap: var(--lt-space-2);
+  min-height: 2.75rem;
+  padding: 0.5rem 1.05rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--lt-radius-pill);
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--lt-type-body);
+  font-weight: 650;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
 }
 
 .brain-home-dock-rail > button:hover {
@@ -328,39 +330,46 @@
   color: hsl(var(--foreground));
 }
 
+.brain-home-dock-rail > button.is-continuity {
+  color: hsl(var(--foreground));
+}
+
 .brain-dock-count {
-  padding: 0.05rem 0.42rem;
-  border-radius: 999px;
+  padding: 0.08rem 0.48rem;
+  border-radius: var(--lt-radius-pill);
   background: hsl(var(--muted) / 0.8);
   color: hsl(var(--muted-foreground));
-  font-size: 0.7rem;
+  font-size: var(--lt-type-caption);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-/* Desktop: the rail leaves the flow and docks on the canvas's left edge, a
-   fixed column that never competes with the station for height. */
-@media (min-width: 1200px) {
+.brain-home-dock-rail > button.is-continuity .brain-dock-count {
+  background: hsl(var(--primary) / 0.18);
+  color: hsl(var(--primary));
+}
+
+/* The rail stays in the reading path — a labeled continuity bar under the
+   composer, not a floating column on the canvas edge. A side rail was easy
+   to miss; "지난 대화" in the flow is the one-interaction resume. */
+
+.brain-home-dock-rail > button:focus-visible {
+  outline: none;
+  box-shadow: var(--elev-focus);
+}
+
+@media (max-width: 640px) {
   .brain-home-dock-rail {
-    position: fixed;
-    top: 50%;
-    left: max(0.9rem, calc(50vw - 28rem - 6.75rem));
-    z-index: 60;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.25rem;
-    padding: 0.4rem 0.35rem;
-    border-radius: 1.15rem;
-    transform: translateY(-50%);
+    width: 100%;
+    border-radius: var(--lt-radius-xl);
   }
 
   .brain-home-dock-rail > button {
-    flex-direction: column;
-    gap: 0.22rem;
-    padding: 0.55rem 0.55rem 0.5rem;
-    border-radius: 0.85rem;
-    font-size: 0.68rem;
-    font-weight: 650;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 2.6rem;
+    padding: 0.4rem 0.55rem;
+    font-size: var(--lt-type-small);
   }
 }
 

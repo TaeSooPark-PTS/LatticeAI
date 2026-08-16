@@ -1,17 +1,15 @@
 //! Python↔Rust chunking parity, over the committed goldens.
 //!
-//! Same corpus, same strategies, same files that
-//! `tests/unit/test_chunking_parity_contract.py` re-asserts against the Python
-//! functions. Comparison is **exact**: every chunk's text, both of its offsets,
-//! its metadata, its id and its two lengths, compared as `serde_json::Value`,
-//! so a drifting boundary, a renamed key and an `int` that became a `float` all
-//! fail the same way.
+//! Same corpus, same strategies, same files the Python chunker produced.
+//! Comparison is **exact**: every chunk's text, both of its offsets, its
+//! metadata, its id and its two lengths, compared as `serde_json::Value`, so a
+//! drifting boundary, a renamed key and an `int` that became a `float` all fail
+//! the same way.
 //!
-//! Regenerate with
-//! `.venv/bin/python scripts/generate_chunking_parity_fixtures.py`.
+//! The goldens are **frozen** — `rust/fixtures/chunking/FROZEN.md` records what
+//! wrote them, and there is nothing left to regenerate them with. If one of
+//! them and this crate disagree, the chunker changed.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -40,7 +38,8 @@ fn read_json(name: &str) -> Value {
     let path = golden_dir().join(name);
     let raw = std::fs::read_to_string(&path).unwrap_or_else(|err| {
         panic!(
-            "missing fixture {} ({err}) — run scripts/generate_chunking_parity_fixtures.py",
+            "missing fixture {} ({err}) — these goldens are frozen and \
+             committed; see rust/fixtures/chunking/FROZEN.md",
             path.display()
         )
     });

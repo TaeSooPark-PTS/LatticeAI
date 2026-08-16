@@ -137,4 +137,16 @@ mod tests {
         }
         assert_eq!(capabilities_for_role("viewer").len(), 3);
     }
+
+    #[test]
+    fn user_is_member_under_another_name() {
+        // Python spells both rows out and they are identical. `lattice-agent`'s
+        // tool authorizer folds an unknown role onto `user` and looks it up
+        // here, so the day these two diverge is the day that fold changes
+        // meaning — which is a decision, not a typo.
+        assert_eq!(
+            capabilities_for_role("user"),
+            capabilities_for_role("member")
+        );
+    }
 }

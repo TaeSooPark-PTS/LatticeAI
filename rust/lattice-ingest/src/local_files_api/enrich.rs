@@ -24,13 +24,6 @@ const PARSEABLE_EXTS: &[&str] = &[".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".m
 /// Binary (non-UTF-8) document types — always go through `/worker/parse`.
 const BINARY_EXTS: &[&str] = &[".pdf", ".docx", ".xlsx", ".pptx", ".doc", ".odt", ".epub"];
 
-/// Deterministic one-page PDF used by the binary-upload unit tests.
-/// Magic `%PDF` only; the HTTP test mocks `/worker/parse`. Do not regenerate.
-pub(crate) const TINY_PDF: &[u8] = b"%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000101 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n147\n%%EOF\n";
-
-/// Deterministic ZIP-shaped DOCX stub (PK magic). Tests mock the parse seam.
-pub(crate) const TINY_DOCX: &[u8] = b"PK\x03\x04word/document.xml LatticeAI-docx-fixture";
-
 /// Filename + raw file bytes from an upload request.
 ///
 /// Multipart (`file` field, SPA/Telegram) is unwrapped so the blob we store
@@ -472,6 +465,13 @@ fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 mod tests {
     use super::*;
     use axum::http::HeaderValue;
+
+    /// Deterministic one-page PDF used by the binary-upload unit tests.
+    /// Magic `%PDF` only; the HTTP test mocks `/worker/parse`. Do not regenerate.
+    const TINY_PDF: &[u8] = b"%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000101 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n147\n%%EOF\n";
+
+    /// Deterministic ZIP-shaped DOCX stub (PK magic). Tests mock the parse seam.
+    const TINY_DOCX: &[u8] = b"PK\x03\x04word/document.xml LatticeAI-docx-fixture";
 
     #[test]
     fn base64_matches_the_standard_alphabet() {

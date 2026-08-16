@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`
@@ -142,8 +142,12 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
   범위 없는 로컬 폴더는 개인 Brain으로 재투영하되 기존 노드 ID는 보존하며,
   같은 폴더를 다른 워크스페이스로 조용히 재할당하지 않는다.
 
-구현: `lattice_brain/ingestion/` (`IngestionPipeline`) 가 단일 진입점이며,
-파일/로컬폴더/URL/브라우저 탭/텍스트를 모두 이 형태로 정규화한다.
+구현: 단일 진입점은 v11.6.0부터 Rust의 네이티브 ingest 문
+(`lattice-ingest` → `lattice_core::graph_write`)이며, 파일/로컬폴더/URL/
+브라우저 탭/텍스트를 모두 이 형태로 정규화한다. `lattice_brain/ingestion/`은
+양쪽이 공유하는 어휘 — 라우팅 상수, DTO, 콘텐츠 해시, 추출 품질 점수 — 만
+남았고, v11.8.0이 마지막 잔재였던 `IngestionPipeline` 능력 프로브 클래스를
+그 유일한 호출 라우트와 함께 삭제했다.
 
 ---
 

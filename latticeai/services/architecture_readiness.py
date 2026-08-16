@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-ARCHITECTURE_VERSION_TARGET = "11.7.0"
+ARCHITECTURE_VERSION_TARGET = "11.8.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",
@@ -156,31 +156,28 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             ["from fastapi import HTTPException", "raise HTTPException"],
         )
     )
-    # The Python agent loop package is gone. The compatibility alias is now
-    # scanned on the two Python files that still talk about permission mode.
-    agent_alias_forbidden = [
-        finding
-        for relative_path in (
-            "latticeai/core/agent_permission.py",
-            "latticeai/api/agent_worker_seam.py",
-        )
-        for finding in _forbidden_patterns(
-            root,
-            relative_path,
-            ["AgentRuntime = SingleAgentRuntime"],
-        )
-    ]
+    # The Python agent loop package is gone, and 11.8.0 removed the last of its
+    # gate tables (``core/agent_permission.py``) once the Rust goldens froze.
+    # The compatibility alias is scanned on the one Python file that still
+    # talks about permission mode: the worker seam the native loop calls.
+    agent_alias_forbidden = _forbidden_patterns(
+        root,
+        "latticeai/api/agent_worker_seam.py",
+        ["AgentRuntime = SingleAgentRuntime"],
+    )
 
     gates = [
         ArchitectureGate(
             id="agent-runtime",
             title="AgentRuntime boundary",
             status="complete" if (
-                _symbol_exists("latticeai.core.agent_permission.block_reason_for_tool")
+                _symbol_exists(
+                    "latticeai.api.agent_worker_seam.create_agent_worker_seam_router"
+                )
                 and not agent_alias_forbidden
             ) else "incomplete",
             evidence=[
-                "latticeai.core.agent_permission.block_reason_for_tool",
+                "rust/lattice-agent/src/permission.rs block_reason_for_tool (native owner)",
                 "latticeai.api.agent_worker_seam.create_agent_worker_seam_router",
                 "tests/unit/test_agent_worker_seam.py",
             ],
@@ -256,8 +253,10 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             title="Legacy shim sunset plan",
             status="complete" if shim_report["status"] == "managed" else "incomplete",
             evidence=[
+                # The standalone `check_legacy_debt.mjs` scanner retired once
+                # the shim layer hit zero; `legacy_shim_report` *is* the check
+                # now, and its status is what this gate reads.
                 "latticeai.services.architecture_readiness.legacy_shim_report",
-                "scripts/check_legacy_debt.mjs",
                 "tests/unit/test_legacy_root_shims.py",
             ],
         ),
@@ -291,7 +290,7 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         "refactoring_order": list(PREFERRED_REFACTORING_ORDER),
         "boundaries": {
             "agent-runtime": {
-                "owner": "latticeai.core.agent_permission.block_reason_for_tool",
+                "owner": "lattice-agent::permission::block_reason_for_tool",
                 "surface": "/agent/llm + /agent/tool",
                 "status": "worker-seam",
             },

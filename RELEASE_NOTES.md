@@ -1,3 +1,19 @@
+# [v11.8.0 - Travel Light] (2026-08-16)
+
+11.7.0이 백로그를 비운 뒤 남아 있던 무게를 덜어냈습니다. 호출자가 없던 아홉
+라우트를 end-to-end로 지워 워커 표면은 **28 → 19**가 되었고(`pypdfium2`
+의존성도 함께 빠짐), 약 191개 파일을 덮고 있던 Rust blanket `#![allow]`
+헤더를 걷어 드러난 약 650건의 진단을 원인에서 고쳤습니다(워크스페이스 허용
+0건 추가, 지역 억제 8개). 702행짜리 판정 그리드 둘은 이름 붙은 단위 테스트로
+대체하고 남은 둘은 171 대표행 + 드리프트 가드로 줄였으며, 테스트 바이너리는
+98 → 56, 로컬 lint 체인은 13 → 10, `agent-smoke.yml`은 이중 fail-open이라
+삭제했습니다. 그 과정에서 실제 버그 하나 — 워커가 기동 이후의 로그인을
+보지 못하던 `SessionStore` — 를 고쳤고, Brain Chat Home을 자라는 Brain과
+히어로 컴포저로 다시 그렸습니다. 커버리지 강제 바닥이 100 → 90(라인)으로
+내려간 것을 포함해, 닫지 않은 것은 노트에 그대로 적었습니다.
+
+See [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).
+
 # [v11.7.0 - Clean Sweep] (2026-08-15)
 
 11.6.0이 공개로 남긴 구멍을 닫았습니다. command-search knowledge가
@@ -130,7 +146,7 @@ See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 11.7.0**.
+This repository keeps public release history from **11.0.0 through 11.8.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only 11.x and this index follows the same
 boundary. Sub-11 note files remain in the tree as history; they are no longer
@@ -138,10 +154,11 @@ listed here as supported releases.
 
 ## Current Release
 
-- [v11.7.0 - Clean Sweep](RELEASE_NOTES_v11.7.0.md)
+- [v11.8.0 - Travel Light](RELEASE_NOTES_v11.8.0.md)
 
 ## Recent Release Notes
 
+- [v11.7.0 - Clean Sweep](RELEASE_NOTES_v11.7.0.md)
 - [v11.6.0 - One Door](RELEASE_NOTES_v11.6.0.md)
 - [v11.5.2 - Tight Ship](RELEASE_NOTES_v11.5.2.md)
 - [v11.5.1 - Rust Full Loop](RELEASE_NOTES_v11.5.1.md)

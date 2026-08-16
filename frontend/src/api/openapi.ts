@@ -1558,23 +1558,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/capture/voice/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Voice Status */
-        get: operations["voice_status_api_capture_voice_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/chronicle/as-of": {
         parameters: {
             query?: never;
@@ -1652,23 +1635,6 @@ export interface paths {
         };
         /** Command Search */
         get: operations["command_search_api_command_search_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/embeddings/providers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Embeddings Providers */
-        get: operations["embeddings_providers_api_embeddings_providers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2148,32 +2114,6 @@ export interface paths {
          * @description Resume an interrupted/partial/failed job from its remaining items.
          */
         post: operations["ingestion_job_resume_api_ingestion_jobs__job_id__resume_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ingestion/multimodal": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Ingestion Multimodal Status
-         * @description What this install will do with a picture, a recording, or a video.
-         *
-         *     FEATURE_STATUS has described this answer — including which of the three
-         *     reasons a video would be refused for — since 11.2.0, but the pipeline
-         *     method that produces it had no route, so no surface could ever show it
-         *     and "why was my video not indexed?" had no answer short of reading the
-         *     server's environment.
-         */
-        get: operations["ingestion_multimodal_status_api_ingestion_multimodal_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3854,23 +3794,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/engines/pull-model": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Pull Ollama Model */
-        post: operations["pull_ollama_model_engines_pull_model_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/engines/verify-cloud": {
         parameters: {
             query?: never;
@@ -5085,40 +5008,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/models/switch/{model_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Switch Model */
-        post: operations["switch_model_models_switch__model_id__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/models/unload-all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Unload All Models */
-        delete: operations["unload_all_models_models_unload_all_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/models/unload/{model_id}": {
         parameters: {
             query?: never;
@@ -6298,26 +6187,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/tools/pdf_pages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Tools Pdf Pages
-         * @description Render PDF pages as base64 PNG images using pypdfium2 (Apache-2.0).
-         */
-        get: operations["tools_pdf_pages_tools_pdf_pages_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/tools/permissions": {
         parameters: {
             query?: never;
@@ -6352,23 +6221,6 @@ export interface paths {
         put?: never;
         /** Tools Preview Url */
         post: operations["tools_preview_url_tools_preview_url_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/tools/read_document": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Tools Read Document */
-        post: operations["tools_read_document_tools_read_document_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8955,16 +8807,6 @@ export interface components {
             ids: string[];
             /** Kind */
             kind?: string | null;
-        };
-        /** PullModelRequest */
-        PullModelRequest: {
-            /**
-             * Allow Download
-             * @default false
-             */
-            allow_download: boolean;
-            /** Model */
-            model: string;
         };
         /** ReadUrlRequest */
         ReadUrlRequest: {
@@ -12642,26 +12484,6 @@ export interface operations {
             };
         };
     };
-    voice_status_api_capture_voice_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     chronicle_as_of_api_chronicle_as_of_get: {
         parameters: {
             query: {
@@ -12792,28 +12614,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    embeddings_providers_api_embeddings_providers_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
@@ -13722,26 +13522,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    ingestion_multimodal_status_api_ingestion_multimodal_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };
@@ -16882,39 +16662,6 @@ export interface operations {
             };
         };
     };
-    pull_ollama_model_engines_pull_model_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PullModelRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     engines_verify_cloud_engines_verify_cloud_post: {
         parameters: {
             query?: never;
@@ -18815,57 +18562,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    switch_model_models_switch__model_id__post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    unload_all_models_models_unload_all_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };
@@ -20814,38 +20510,6 @@ export interface operations {
             };
         };
     };
-    tools_pdf_pages_tools_pdf_pages_get: {
-        parameters: {
-            query: {
-                path: string;
-                approval_token?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     tools_permissions_tools_permissions_get: {
         parameters: {
             query?: never;
@@ -20867,39 +20531,6 @@ export interface operations {
         };
     };
     tools_preview_url_tools_preview_url_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ToolPathRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    tools_read_document_tools_read_document_post: {
         parameters: {
             query?: never;
             header?: never;

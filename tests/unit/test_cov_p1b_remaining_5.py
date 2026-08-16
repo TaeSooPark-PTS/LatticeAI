@@ -2,7 +2,7 @@
 
 Covers model_engines ensure/install/pull, model_runtime download/engines/loading,
 lifespan, CSRF middleware, users KG migration, filesystem/knowledge leftovers,
-tools/search routers, quiet/sessions/config/agent_permission.
+tools/search routers, quiet/sessions/config.
 """
 
 from __future__ import annotations
@@ -174,13 +174,9 @@ def test_fourth_wave_last_gaps(tmp_path: Path, monkeypatch):
         model_router=FakeRouter(),
         require_user=lambda r: "u",
         require_admin=lambda r: ("u", {}),
-        normalize_local_model_request=lambda *a, **k: "m",
-        download_hf_model=lambda *a, **k: {},
         prepare_and_load_model=lambda *a, **k: {},
         prepare_and_load_model_stream=lambda *a, **k: iter(()),
         sse_event=lambda e, d: "",
-        ensure_ollama_server=lambda: None,
-        local_binary=lambda n: None,
         engine_status=engines,
         filter_lower_family_versions=lambda items: list(items),
         list_compat_profiles=lambda: [],

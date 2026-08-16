@@ -1,12 +1,31 @@
 //! Python↔Rust safety-kernel parity, over the committed decision grid.
 //!
-//! Same modes, same tools, same real policies, same argument variants, same
-//! goldens that `tests/unit/test_agent_kernel_parity_contract.py` re-asserts
-//! against the Python kernel. Comparison is **exact** — a `null` that became
+//! Same tools, same real policies, same argument variants, same goldens the
+//! Python kernel produced. Comparison is **exact** — a `null` that became
 //! `false`, a message whose punctuation drifted, or a breaker that stopped
 //! firing all fail the same way.
 //!
-//! Regenerate with `.venv/bin/python scripts/generate_agent_parity_fixtures.py`.
+//! ## The goldens are frozen (v11.8.0)
+//!
+//! There is no generator any more: the Python kernel these were captured from
+//! is gone, and `rust/fixtures/agent/FROZEN.md` records what each file is and
+//! what was removed. Two things changed with the freeze, both recorded there:
+//!
+//! * **`decisions__trusted.json` and `decisions__bypass.json` are deleted.**
+//!   Between them they were 1,404 rows over 11 distinct verdicts, because the
+//!   grid is a cross product of tools and argument variants and the same
+//!   verdict repeats for every row in a class. The mode gating they proved now
+//!   has in-crate unit tests that name one case per verdict — see
+//!   `permission::tests::{trusted,bypass}_reproduces_every_verdict_class_of_the_retired_grid`
+//!   and the `effective_auto_approve` tests in `mode`.
+//! * **`calls.json` and `decisions__strict.json` are trimmed to 171 rows**
+//!   from 702 — one row per distinct
+//!   `(tool, breaker, classification, policy, auto_approve, block_reason,
+//!   stage_proposal)` class. Rows were deleted, never rewritten: the surviving
+//!   171 are byte-identical to the ones the generator emitted.
+//!
+//! `strict` is the mode kept whole because it is the one that gates
+//! everything: its grid is where a missing refusal shows up.
 
 mod common;
 
@@ -32,6 +51,13 @@ use lattice_agent::policy::{PolicyTable, ToolPolicy};
 use lattice_agent::pyshlex;
 use lattice_agent::sandbox::{MAX_COMMAND_OUTPUT, MAX_COMMAND_SECONDS, MAX_FILE_BYTES};
 use serde_json::{json, Map, Value};
+
+/// The modes whose decision grid is still committed.
+///
+/// The manifest still lists all three, because it records what the Python
+/// generator ran; `the_committed_grids_are_a_subset_of_the_manifests_modes`
+/// keeps the two from drifting apart in the direction that would matter.
+const GOLDEN_MODES: &[&str] = &["strict"];
 
 fn args_of(variant: &str) -> Map<String, Value> {
     manifest()["arg_variants"][variant]
@@ -159,8 +185,9 @@ fn every_call_matches_its_breaker_and_classification_golden() {
     }
     assert_no_failures(rows.len(), failures, "calls");
     assert!(
-        rows.len() >= 500,
-        "the decision grid is the coverage — keep it wide"
+        rows.len() >= 170,
+        "the decision grid is the coverage — one row per equivalence class, \
+         and rows may only be deleted when a class is genuinely gone"
     );
 }
 
@@ -171,8 +198,8 @@ fn every_mode_matches_its_decision_golden() {
     let mut checked = 0usize;
     let mut failures = Vec::new();
 
-    for mode_name in manifest()["modes"].as_array().expect("modes") {
-        let mode_name = mode_name.as_str().expect("mode");
+    for mode_name in GOLDEN_MODES {
+        let mode_name = *mode_name;
         let mode = normalize_mode(mode_name);
         let golden = read_golden(&format!("decisions__{mode_name}.json"));
         assert_eq!(golden["mode"], json!(mode_name));
@@ -233,8 +260,8 @@ fn proposal_staging_matches_the_golden_for_every_mode() {
     let mut checked = 0usize;
     let mut failures = Vec::new();
 
-    for mode_name in manifest()["modes"].as_array().expect("modes") {
-        let mode_name = mode_name.as_str().expect("mode");
+    for mode_name in GOLDEN_MODES {
+        let mode_name = *mode_name;
         let mode = normalize_mode(mode_name);
         for case in cases(
             &read_golden(&format!("decisions__{mode_name}.json")),
@@ -267,8 +294,8 @@ fn every_plan_matches_its_approval_golden() {
     let mut checked = 0usize;
     let mut failures = Vec::new();
 
-    for mode_name in manifest()["modes"].as_array().expect("modes") {
-        let mode_name = mode_name.as_str().expect("mode");
+    for mode_name in GOLDEN_MODES {
+        let mode_name = *mode_name;
         let mode = normalize_mode(mode_name);
         let golden = read_golden(&format!("decisions__{mode_name}.json"));
         for case in cases(&golden, "plan_cases") {
@@ -315,6 +342,38 @@ fn every_plan_matches_its_approval_golden() {
         }
     }
     assert_no_failures(checked, failures, "plans");
+}
+
+#[test]
+fn the_committed_grids_are_a_subset_of_the_manifests_modes() {
+    // The manifest records what the Python generator ran; `GOLDEN_MODES` records
+    // which of those grids is still committed. A mode may leave the second list
+    // (its coverage moves in-crate); a mode that is in neither has quietly lost
+    // both, and a `GOLDEN_MODES` entry with no manifest mode would be a typo.
+    let modes: Vec<&str> = manifest()["modes"]
+        .as_array()
+        .expect("modes")
+        .iter()
+        .map(|value| value.as_str().expect("mode"))
+        .collect();
+    for name in GOLDEN_MODES {
+        assert!(modes.contains(name), "{name} is not a mode the kernel has");
+        assert!(
+            common::golden_path(&format!("decisions__{name}.json")).exists(),
+            "{name} is listed as committed but its grid is missing"
+        );
+    }
+    for name in &modes {
+        if GOLDEN_MODES.contains(name) {
+            continue;
+        }
+        // Retired grids: the mode's gating lives in `lattice_agent::permission`
+        // and `lattice_agent::mode` unit tests now, one case per verdict class.
+        assert!(
+            !common::golden_path(&format!("decisions__{name}.json")).exists(),
+            "decisions__{name}.json is back — add {name} to GOLDEN_MODES"
+        );
+    }
 }
 
 #[test]

@@ -28,15 +28,18 @@ either, and both say so the same way.
 
 v11.6.0 took the *ingest* half away: ``POST /api/capture/voice`` is a native
 route that stores the memo itself and asks ``POST /worker/asr`` for the words.
-What is left is the transcriber and the two questions only this process can
-answer about it — can it hear, and what will it accept.
+v11.8.0 took the report away too — ``GET /api/capture/voice/status`` had no
+caller, and a capability answer nobody asks for is a second copy of the same
+facts ``/worker/asr`` already returns per call. What is left is the port
+itself: the transcriber, the two module constants ``/worker/asr`` enforces
+against, and the conversion into the shape Brain Core accepts.
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 if TYPE_CHECKING:  # import-time isolation: the port is a callable, not a class
     from lattice_brain.multimodal import MultimodalPorts
@@ -62,35 +65,12 @@ class TranscriptionUnavailable(RuntimeError):
 
 
 class VoiceCaptureService:
-    """The local transcriber, and the honest report of whether there is one."""
+    """The local transcriber port, and the honest refusal when there is none."""
 
     def __init__(
-        self,
-        *,
-        transcriber: Optional[Callable[[str], str]] = None,
-        max_bytes: int = MAX_AUDIO_BYTES,
+        self, *, transcriber: Optional[Callable[[str], str]] = None
     ) -> None:
         self._transcriber = transcriber
-        self._max_bytes = max(1, int(max_bytes))
-
-    # ── capability ───────────────────────────────────────────────────────
-    def status(self) -> Dict[str, Any]:
-        """What this install can actually do with a voice memo, honestly."""
-        return {
-            # Storing the memo is native (``POST /api/capture/voice`` in
-            # lattice-platform), so capture is always available to a caller
-            # that reached this answer through the gateway. Only the
-            # transcriber is a fact about this process.
-            "capture": True,
-            "transcription": self._transcriber is not None,
-            "supported_extensions": sorted(SUPPORTED_AUDIO_EXTENSIONS),
-            "max_bytes": self._max_bytes,
-            "detail": (
-                "음성 메모를 글로 바꿔 Brain에 저장합니다."
-                if self._transcriber is not None
-                else "이 컴퓨터에는 음성 인식기가 없어서, 메모는 저장되지만 글로 바뀌지는 않습니다."
-            ),
-        }
 
     def multimodal_ports(self) -> "MultimodalPorts":
         """This service's transcriber, shaped for the ingestion pipeline.

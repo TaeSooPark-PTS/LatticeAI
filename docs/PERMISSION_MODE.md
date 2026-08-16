@@ -97,18 +97,23 @@ before routers are mounted would otherwise pin the store to the fallback
 
 ## Code map
 
+The dial is native. v11.6.0 moved the agent loop into `lattice-agent` and the
+routes into `lattice-platform`; v11.8.0 deleted the last Python module that
+still carried a copy of the gate helpers (`latticeai/core/agent_permission.py`,
+whose only readers were already ported).
+
 | Module | Role |
 |--------|------|
-| `latticeai/core/permission_mode.py` | Pure decision table |
-| `latticeai/core/agent_permission.py` | Agent plan/tool gate helpers |
-| `latticeai/core/agent/` | `SingleAgentRuntime` gates (mode-aware in-line: `planning.py` for the plan gate, `execution.py` for the per-tool gates) |
+| `rust/lattice-agent/src/mode.rs` | Pure decision table (port of `latticeai.core.permission_mode`) |
+| `rust/lattice-agent/src/permission.rs` | Plan/tool gate helpers — the ordered block-reason chain |
+| `rust/lattice-agent/src/breaker.rs` | Mode-invariant circuit breakers |
+| `rust/lattice-agent/src/agentloop/gates.rs` | The gates one executor step passes, in the order that decides it |
+| `rust/lattice-agent/src/agentloop/planning.rs` | The plan gate |
+| `rust/lattice-platform/src/permission_mode.rs` | HTTP routes + persistence (`permission_mode.json`, atomic replace) |
+| `rust/lattice-auth/src/policy.rs` | The tool policy table the gates read |
 | `frontend/src/components/PermissionModePanel.tsx` | Settings selector |
-| `latticeai/services/permission_mode_service.py` | Persistence |
-| `latticeai/runtime/permission_mode_wiring.py` | Process-wide service + router mount |
-| `latticeai/runtime/chat_wiring.py` | Agent runtime injection |
-| `latticeai/runtime/router_registration.py` | HTTP mount |
-| `latticeai/services/tool_dispatch.py` | `enforce_policy` + `build_agent_runtime` |
-| `latticeai/api/permission_mode.py` | HTTP routes |
+| `frontend/src/lib/permissionCopy.ts` | The plain-language wording for each mode |
+| `latticeai/core/permission_mode.py` | The worker's own `is_circuit_breaker`, asked by `POST /agent/tool` — the mode-invariant refusal holds on the executing side too, not only at the gate that dispatched |
 
 ## AGENTS.md note
 

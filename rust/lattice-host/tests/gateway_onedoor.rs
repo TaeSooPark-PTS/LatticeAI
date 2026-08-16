@@ -53,6 +53,20 @@ use serde_json::Value;
 /// chain. A new entry is a regression.
 const KNOWN_STRANDED_SEAM_CALLS: [&str; 0] = [];
 
+/// Fixture-recorded routes that no longer exist anywhere (v11.8.0).
+///
+/// `(method, path, why)`. The HTTP fixtures are a frozen record of what the
+/// Python surface answered while it existed, so they still carry these; the
+/// product does not. Probing them below asserts the front door's **own** 404
+/// rather than skipping, so "deleted" stays a checked fact: if one were
+/// re-mounted, or the proxy allowlist regrew it, this fails.
+const DELETED_ROUTES: &[(&str, &str, &str)] = &[(
+    "GET",
+    "/api/capture/voice/status",
+    "the ASR capability probe. No surface ever called it, and POST /worker/asr \
+     reports per call whether this machine heard anything",
+)];
+
 /// The committed HTTP fixtures, one file per work package.
 const FIXTURE_FILES: [&str; 9] = [
     "workspace.json",
@@ -254,6 +268,19 @@ async fn every_mounted_family_answers_and_nothing_leaks_to_the_worker() {
                 )
             });
             let status = response.status();
+            if let Some((_, _, why)) = DELETED_ROUTES
+                .iter()
+                .find(|(method, path, _)| *method == probe.method && *path == probe.path)
+            {
+                assert!(
+                    is_unmounted(response).await,
+                    "{} {} was deleted ({why}) — the front door must answer its \
+                     own 404, not mount it and not forward it",
+                    probe.method,
+                    probe.path,
+                );
+                continue;
+            }
             assert!(
                 !is_unmounted(response).await,
                 "{file} · {} · {} — {} {} is not mounted on the One Door router \
@@ -454,14 +481,25 @@ const NOT_WORKER_CALLS: &[(&str, &str)] = &[
 /// a path that is dead: licensing `/worker/graph/mutate` globally would let the
 /// next call site walk straight back in behind an exemption written for a test
 /// assertion. So this list carries the file too, and the file has to match.
-const NOT_WORKER_CALLS_IN: &[(&str, &str, &str)] = &[(
-    "/worker/graph/mutate",
-    "lattice-host/src/gateway/allowlist.rs",
-    "the retired graph-write seam, named only by the proxy allowlist's own unit \
-     test, which asserts this path is NOT forwarded. Keeping one negative \
-     assertion is what stops it being quietly re-allowlisted; no other file in \
-     rust/*/src names it (§F-G)",
-)];
+const NOT_WORKER_CALLS_IN: &[(&str, &str, &str)] = &[
+    (
+        "/worker/graph/mutate",
+        "lattice-host/src/gateway/allowlist.rs",
+        "the retired graph-write seam, named only by the proxy allowlist's own \
+         unit test, which asserts this path is NOT forwarded. Keeping one \
+         negative assertion is what stops it being quietly re-allowlisted; no \
+         other file in rust/*/src names it (§F-G)",
+    ),
+    (
+        "/worker/multimodal/describe",
+        "lattice-host/src/gateway/allowlist.rs",
+        "the image-describe compute seam, deleted in v11.8.0 for having no \
+         caller. Named only by the proxy allowlist's own unit test, which \
+         asserts it is NOT forwarded — same reason as the line above: an \
+         unregenerated fixture would keep proxying it, and the browser would \
+         then get the *worker's* 404 instead of the front door's",
+    ),
+];
 
 /// Seam calls that still name a path the worker stopped serving.
 ///

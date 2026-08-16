@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
-import sqlite3
 import uuid
-from contextlib import closing
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -83,11 +81,6 @@ def load_users_file(path: Path) -> Dict[str, Any]:
     return migrated
 
 
-def save_users_file(path: Path, users: Dict[str, Any]) -> None:
-    migrated, _, _ = migrate_users(users)
-    atomic_write_json(path, migrated)
-
-
 def user_id_for_email(users: Dict[str, Any], email: Optional[str]) -> Optional[str]:
     if not email:
         return None
@@ -98,34 +91,3 @@ def user_id_for_email(users: Dict[str, Any], email: Optional[str]) -> Optional[s
     if isinstance(user, dict):
         return user.get("id") or stable_user_id(normalized)
     return stable_user_id(normalized)
-
-
-def migrate_knowledge_graph_identity(db_path: Path, email_to_id: Dict[str, str]) -> int:
-    """Rewrite KG owner/creator identity columns from email to stable UUIDs."""
-    if not db_path.exists() or not email_to_id:
-        return 0
-    changed = 0
-    with closing(sqlite3.connect(db_path)) as conn, conn:
-        tables = {
-            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        }
-        for email, user_id in email_to_id.items():
-            normalized = normalize_email(email)
-            if "nodes_v2" in tables:
-                cur = conn.execute("UPDATE nodes_v2 SET owner_id=? WHERE LOWER(owner_id)=?", (user_id, normalized))
-                changed += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
-            if "edges_v2" in tables:
-                cur = conn.execute("UPDATE edges_v2 SET created_by=? WHERE LOWER(created_by)=?", (user_id, normalized))
-                changed += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
-            if "ingestion_provenance" in tables:
-                cur = conn.execute("UPDATE ingestion_provenance SET owner=? WHERE LOWER(owner)=?", (user_id, normalized))
-                changed += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
-        if changed:
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS kg_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-            )
-            conn.execute(
-                "INSERT OR REPLACE INTO kg_meta(key, value) VALUES('identity_uuid_migrated_at', ?)",
-                (_now(),),
-            )
-    return changed

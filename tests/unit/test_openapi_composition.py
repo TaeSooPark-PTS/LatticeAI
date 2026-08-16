@@ -90,8 +90,8 @@ def test_every_committed_operation_has_exactly_one_family(spec, mapping):
         f"unmapped={sorted(set(keys) - set(mapping['operations']))[:10]} "
         f"orphans={sorted(set(mapping['operations']) - set(keys))[:10]}"
     )
-    assert len(keys) == mapping["source"]["operations"] == 463
-    assert len(spec["paths"]) == mapping["source"]["paths"] == 421
+    assert len(keys) == mapping["source"]["operations"] == 455
+    assert len(spec["paths"]) == mapping["source"]["paths"] == 413
 
 
 def test_family_names_are_the_plan_work_packages(mapping):
@@ -117,12 +117,28 @@ def test_family_is_derived_from_the_module_unless_overridden(mapping):
     assert modules == set(mapping["module_family"]), "module_family lists a module with no routes"
 
 
+#: The eight operations v11.8.0 deleted end-to-end. Each had no caller — no
+#: frontend fetch, no extension call, no Rust proxy target — so the handler, the
+#: contract entry and the route→family row left together. Named here because a
+#: route that quietly comes back is a route nothing asked for.
+DELETED_IN_11_8_0 = (
+    "GET /api/embeddings/providers",
+    "GET /tools/pdf_pages",
+    "POST /tools/read_document",
+    "GET /api/ingestion/multimodal",
+    "GET /api/capture/voice/status",
+    "POST /models/switch/{model_id}",
+    "DELETE /models/unload-all",
+    "POST /engines/pull-model",
+)
+
+
 def test_the_worker_surface_is_the_keep_worker_set(mapping):
-    """worker_keep: scout's 25, the graph single writer, and the model pull."""
+    """worker_keep: scout's KEEP_WORKER set and the graph single writer, less
+    the eight caller-less routes v11.8.0 deleted."""
     worker = {key for key, entry in mapping["operations"].items() if entry["family"] == "worker_keep"}
-    assert len(worker) == 27
+    assert len(worker) == 19
     for key in (
-        "POST /engines/pull-model",
         "GET /health",
         "POST /agent/llm",
         "POST /agent/tool",
@@ -132,13 +148,27 @@ def test_the_worker_surface_is_the_keep_worker_set(mapping):
         "GET /api/embeddings/status",
         "GET /models",
         "POST /engines/prepare-model/stream",
-        "POST /tools/read_document",
         "POST /upload/document",
         "POST /api/capture/voice",
         "POST /knowledge-graph/ingest",
     ):
         assert key in worker, f"{key} must stay inside the Python worker box"
     assert "POST /chat" not in worker, "chat orchestration moves to lattice-chat"
+
+
+def test_the_routes_deleted_in_11_8_0_left_the_whole_contract(spec, mapping):
+    """Deleting a handler is only half of it — the contract must shrink too."""
+    committed = {key for key, _, _ in generator.spec_operations(spec)}
+    for key in DELETED_IN_11_8_0:
+        assert key not in committed, f"{key} still has a public contract entry"
+        assert key not in mapping["operations"], f"{key} still has a family"
+        assert key not in mapping["overrides"], f"{key} still has an override"
+        assert key not in mapping["greedy_path_params"], f"{key} still has a converter"
+    for path in ("/tools/read_document", "/engines/pull-model", "/models/unload-all"):
+        assert path not in spec["paths"], f"{path} survived as an empty path item"
+    assert "PullModelRequest" not in spec["components"]["schemas"], (
+        "the pull-model body schema outlived its only operation"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -155,7 +185,7 @@ def test_committed_fragments_compose_into_the_committed_spec():
 def test_compose_cli_is_green_and_reports_what_it_proved(capsys):
     assert composer.main([]) == 0
     out = capsys.readouterr().out
-    assert "421 paths / 463 operations" in out
+    assert "413 paths / 455 operations" in out
     assert "byte-identical" in out
 
 
@@ -176,7 +206,7 @@ def test_generation_is_deterministic(spec, mapping, rendered, tmp_path):
 
 def test_generator_cli_writes_the_committed_tree(tmp_path, capsys):
     assert generator.main(["--out", str(tmp_path)]) == 0
-    assert "421 paths / 463 operations" in capsys.readouterr().out
+    assert "413 paths / 455 operations" in capsys.readouterr().out
     for path in generator.FRAGMENT_DIR.glob("*.json"):
         assert (tmp_path / path.name).read_text(encoding="utf-8") == path.read_text(encoding="utf-8")
 
@@ -223,7 +253,7 @@ def test_greedy_path_params_reach_the_family_that_must_port_them(mapping):
     """
     greedy = mapping["greedy_path_params"]
     assert set(greedy) <= set(mapping["operations"])
-    assert len(greedy) == 14
+    assert len(greedy) == 13
     assert greedy["GET /workspace/relationships/{node_id}"] == "node_id"
     carried: dict[str, str] = {}
     for path in sorted(generator.FRAGMENT_DIR.glob("*.json")):
@@ -240,7 +270,7 @@ def test_greedy_path_params_reach_the_family_that_must_port_them(mapping):
 def test_index_totals_and_hashes_describe_the_files_on_disk():
     index = generator.load_json(generator.FRAGMENT_DIR / generator.INDEX_NAME)
     assert index["serialization"] == generator.SERIALIZATION
-    assert index["totals"] == {"families": 13, "operations": 463, "paths": 421, "schemas": 172}
+    assert index["totals"] == {"families": 13, "operations": 455, "paths": 413, "schemas": 171}
     for entry in index["fragments"]:
         text = (generator.FRAGMENT_DIR / entry["file"]).read_text(encoding="utf-8")
         assert generator.sha256_text(text) == entry["sha256"]
@@ -415,7 +445,6 @@ def test_internal_worker_seams_are_exempt_from_the_subset_check(tmp_path, capsys
         "/worker/render/pptx",
         "/worker/render/pdf",
         "/worker/asr",
-        "/worker/multimodal/describe",
         "/worker/extract",
     }
 

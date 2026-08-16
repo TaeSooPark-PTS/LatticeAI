@@ -40,7 +40,7 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await expect(page.locator("body")).toContainText("모델을 준비하고 시작합니다.");
   await page.getByRole("button", { name: "준비하고 시작하기" }).click();
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("전체 지식 그래프");
   expect(errors).toEqual([]);
 });
@@ -50,7 +50,7 @@ test("the Brain home is one screen: Brain, composer, add material, quiet setting
   await page.setViewportSize({ width: 1280, height: 800 });
   await openBrain(page);
 
-  await expect(page.getByRole("heading", { name: "말하고, 넣으면, Brain이 연결합니다." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain에게 물어보세요." })).toBeVisible();
   const stage = page.getByTestId("brain-home-stage");
   const livingBrain = page.getByTestId("brain-knowledge-flow").getByTestId("living-brain");
   await expect(stage).toBeVisible();
@@ -86,9 +86,9 @@ test("the Brain home is one screen: Brain, composer, add material, quiet setting
   await expect(toolbar.getByTestId("brain-ingestion-dock")).toHaveCount(0);
   await expect(stage.locator("> .brain-home-station")).toHaveCount(1);
 
-  // The dock rail is on the canvas edge with its four drawers closed. 11.2.0
-  // added 기능 (the opt-in switchboard) as a fourth rail item and *not* as a
-  // card: the canvas keeps exactly the station and the deck.
+  // The dock is a labeled continuity bar in the reading path, four drawers
+  // closed. 11.2.0 added 기능 (the opt-in switchboard) as a fourth rail item
+  // and *not* as a card: the canvas keeps exactly the station and the deck.
   for (const dockButton of ["brain-dock-conversations", "brain-dock-stats", "brain-dock-map", "brain-dock-features"]) {
     await expect(page.getByTestId(dockButton)).toBeVisible();
   }

@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

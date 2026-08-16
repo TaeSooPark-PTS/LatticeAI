@@ -13,62 +13,6 @@
 //! the only intentional difference, and it changes no output because nothing
 //! writes between them inside a request.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-use std::collections::BTreeSet;
-use std::path::Path;
-
-use lattice_auth::OrderedMap;
-use lattice_core::CoreError;
-use rusqlite::Connection;
-use serde_json::Value;
-
-use super::kg;
-use super::shared::BrainState;
-use super::wsos;
-
 /// `memory_service.constants.TIERS`.
 pub const TIERS: [&str; 6] = [
     "workspace",
@@ -103,6 +47,7 @@ pub use snapshot::{brain_readiness, conversations, scoped_conversations, Snapsho
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
 
     #[test]
     fn readiness_scores_the_way_the_product_grades_a_brain() {

@@ -13,8 +13,6 @@
 //! in its own test binary — a writer installed inside the shared harness would
 //! redirect every other test's staging into it.
 
-#![allow(clippy::all)]
-
 use std::sync::Arc;
 
 use lattice_agent::proposals::{

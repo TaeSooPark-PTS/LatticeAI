@@ -2,7 +2,7 @@
 
 Covers model_engines ensure/install/pull, model_runtime download/engines/loading,
 lifespan, CSRF middleware, users KG migration, filesystem/knowledge leftovers,
-tools/search routers, quiet/sessions/config/agent_permission.
+tools/search routers, quiet/sessions/config.
 """
 
 from __future__ import annotations
@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import io
 import json
-import sqlite3
 import subprocess
 import urllib.error
 from pathlib import Path
@@ -28,10 +27,7 @@ from latticeai.core.csrf import (
 from latticeai.core.users import (
     ensure_user_identity,
     load_users_file,
-    migrate_knowledge_graph_identity,
     migrate_users,
-    save_users_file,
-    stable_user_id,
     user_id_for_email,
 )
 from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
@@ -702,39 +698,12 @@ def test_users_migrate_and_kg_identity(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("latticeai.core.users.shutil.copy2", boom_copy)
     loaded = load_users_file(good)
     assert "a@b.com" in loaded
-    save_users_file(tmp_path / "out.json", loaded)
 
     assert user_id_for_email({}, None) is None
     assert user_id_for_email({}, "user:abc").startswith("user:")
     assert user_id_for_email(loaded, "a@b.com")
     assert user_id_for_email({}, "ghost@x.com").startswith("user:")
 
-    assert migrate_knowledge_graph_identity(tmp_path / "missing.db", {"a": "b"}) == 0
-    assert migrate_knowledge_graph_identity(tmp_path / "users.json", {}) == 0
-
-    db = tmp_path / "kg.db"
-    with sqlite3.connect(db) as conn:
-        conn.execute("CREATE TABLE nodes_v2 (owner_id TEXT)")
-        conn.execute("CREATE TABLE edges_v2 (created_by TEXT)")
-        conn.execute("CREATE TABLE ingestion_provenance (owner TEXT)")
-        conn.execute("INSERT INTO nodes_v2 VALUES ('alice@example.com')")
-        conn.execute("INSERT INTO edges_v2 VALUES ('Alice@Example.com')")
-        conn.execute("INSERT INTO ingestion_provenance VALUES ('alice@example.com')")
-        conn.commit()
-    uid = stable_user_id("alice@example.com")
-    changed_n = migrate_knowledge_graph_identity(db, {"alice@example.com": uid})
-    assert changed_n >= 3
-    with sqlite3.connect(db) as conn:
-        owners = [row[0] for row in conn.execute("SELECT owner_id FROM nodes_v2")]
-        assert owners == [uid]
-        meta = list(conn.execute("SELECT key FROM kg_meta"))
-        assert meta
-
-    empty_db = tmp_path / "empty.db"
-    with sqlite3.connect(empty_db) as conn:
-        conn.execute("CREATE TABLE other (x TEXT)")
-        conn.commit()
-    assert migrate_knowledge_graph_identity(empty_db, {"a@b.c": "user:x"}) == 0
 
 def test_filesystem_remaining_branches(tmp_path: Path, monkeypatch):
     import latticeai.tools as tools

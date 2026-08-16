@@ -17,7 +17,6 @@
 //! The watched vault is a tempdir of its own, never the data directory — a
 //! scanner pointed at the data directory would ingest `users.json`.
 
-#![allow(clippy::all)]
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;

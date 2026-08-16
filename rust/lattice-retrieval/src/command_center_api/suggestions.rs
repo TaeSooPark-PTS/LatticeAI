@@ -14,60 +14,15 @@
 //! `elif kg_related == 0` penalty branch, while `None` (graph unreadable) takes
 //! neither.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::collections::{BTreeSet, HashSet};
 use std::sync::OnceLock;
 
 use fancy_regex::Regex;
-use lattice_auth::OrderedMap;
 use lattice_core::pytext::{round_to, strip, truncate_chars};
 use rusqlite::Connection;
 use serde_json::Value;
 
-use super::store::{clip, py_text, stable_id};
+use super::store::{py_text, stable_id};
 use crate::history::{self, HistoryScope};
 
 /// `_MIN_PATTERN_COUNT`.
@@ -275,7 +230,7 @@ fn question_confidence(
         Some(_) => score -= UNGROUNDED_PENALTY,
         None => {}
     }
-    round_to(score.max(0.0).min(1.0), 2)
+    round_to(score.clamp(0.0, 1.0), 2)
 }
 
 /// `_source_confidence` — note there is no lower clamp here, only `min(1.0, …)`.
@@ -490,30 +445,36 @@ fn similarity(left: &BTreeSet<String>, right: &BTreeSet<String>) -> f64 {
     intersection / union
 }
 
-/// `_suggestion_section` — count the uninstalled, render the first three.
-pub(crate) fn section_items(items: &[Suggestion]) -> (i64, Vec<Value>) {
-    let open: Vec<&Suggestion> = items.iter().filter(|item| !item.installed).collect();
-    let top = open
-        .iter()
-        .take(3)
-        .map(|item| {
-            let mut entry = OrderedMap::new();
-            entry.insert("id", Value::String(item.id.clone()));
-            entry.insert("kind", Value::String(item.kind.to_string()));
-            entry.insert(
-                "title",
-                Value::String(clip(&Value::String(item.title.clone()), 120)),
-            );
-            serde_json::to_value(&entry).unwrap_or(Value::Null)
-        })
-        .collect();
-    (open.len() as i64, top)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lattice_auth::OrderedMap;
     use serde_json::json;
+
+    use super::super::store::clip;
+
+    /// `_suggestion_section` — count the uninstalled, render the first three.
+    ///
+    /// The briefing renders its sections through the command-center handlers;
+    /// this stays here as the shape the section assertion below pins.
+    fn section_items(items: &[Suggestion]) -> (i64, Vec<Value>) {
+        let open: Vec<&Suggestion> = items.iter().filter(|item| !item.installed).collect();
+        let top = open
+            .iter()
+            .take(3)
+            .map(|item| {
+                let mut entry = OrderedMap::new();
+                entry.insert("id", Value::String(item.id.clone()));
+                entry.insert("kind", Value::String(item.kind.to_string()));
+                entry.insert(
+                    "title",
+                    Value::String(clip(&Value::String(item.title.clone()), 120)),
+                );
+                serde_json::to_value(&entry).unwrap_or(Value::Null)
+            })
+            .collect();
+        (open.len() as i64, top)
+    }
 
     #[test]
     fn tokens_drop_stopwords_and_single_characters() {

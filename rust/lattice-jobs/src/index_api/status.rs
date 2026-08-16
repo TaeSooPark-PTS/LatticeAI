@@ -1,49 +1,5 @@
 //! `KnowledgeGraphStore.index_status()` — the expensive half of GET /api/index/status.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::collections::BTreeMap;
 
 use lattice_auth::OrderedMap;
@@ -213,8 +169,7 @@ pub fn index_status(conn: &Connection) -> Result<Value, CoreError> {
     let model_id = model.model_id().to_string();
     let model_dim = model.dim() as i64;
 
-    let mut counts_by_type: Vec<(String, i64)> = Vec::new();
-    {
+    let counts_by_type: Vec<(String, i64)> = {
         let mut statement = conn.prepare(
             "SELECT item_type, COUNT(*) AS count FROM vector_embeddings GROUP BY item_type",
         )?;
@@ -224,8 +179,8 @@ pub fn index_status(conn: &Connection) -> Result<Value, CoreError> {
                 row.get::<_, i64>(1)?,
             ))
         })?;
-        counts_by_type = rows.filter_map(Result::ok).collect();
-    }
+        rows.filter_map(Result::ok).collect()
+    };
 
     let items = source_items(conn)?;
 

@@ -60,6 +60,29 @@ afterEach(() => {
 });
 
 describe("BrainHomeHero", () => {
+  it("leads with the invitation to type, not a metaphor", () => {
+    renderHero();
+    expect(screen.getByRole("heading", { name: t("ko", "brain.home.askTitle") })).toBeTruthy();
+    expect(screen.getByText(t("ko", "brain.hero.line"))).toBeTruthy();
+  });
+
+  it("shows the Brain growing from the readiness the screen already has", () => {
+    const { container, unmount } = renderHero();
+    const host = screen.getByTestId("brain-hero-organism");
+    expect(host).toHaveAttribute("data-growth", "alive");
+    expect(container.querySelectorAll(".brain-growth-ring")).toHaveLength(3);
+    expect(screen.getByText(t("ko", "brain.home.growing"))).toBeTruthy();
+    unmount();
+
+    renderHero({ readiness: makeReadiness({ state: "quiet" }) });
+    expect(screen.getByTestId("brain-hero-organism")).toHaveAttribute("data-growth", "quiet");
+  });
+
+  it("marks a forming Brain as still growing", () => {
+    renderHero({ readiness: makeReadiness({ state: "forming" }) });
+    expect(screen.getByTestId("brain-hero-organism")).toHaveAttribute("data-growth", "forming");
+  });
+
   it("greets with the empty line when nothing is remembered yet", () => {
     renderHero({
       readiness: makeReadiness({ signals: { memoryCount: 0, conceptCount: 0, relationshipCount: 0, healthySources: 0 } }),
@@ -85,6 +108,12 @@ describe("BrainHomeHero", () => {
       graph: makeGraph({ nodes: [], edges: [] }),
     });
     expect(screen.getByTestId("brain-hero-stats")).toBeTruthy();
+  });
+
+  it("renders the growing caption in English", () => {
+    renderHero({ language: "en" });
+    const caption = screen.getByText(t("en", "brain.home.growing"));
+    expect(caption.textContent).toBe("Your memory is growing");
   });
 
   it("renders the trailing slot only when given", () => {

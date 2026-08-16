@@ -7,12 +7,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from fastapi import HTTPException
 
 from latticeai.core.security import (
     _is_secret_key,
-    bytes_match_extension,
-    check_ip_rate_limit,
     enforce_rate_limit,
     redact_secret_text,
     redact_secrets,
@@ -22,7 +19,7 @@ from latticeai.tools import ToolError
 from latticeai.tools.filesystem import grep, inspect_html, preview_url, todo_read
 
 
-def test_redact_and_magic_and_rate_limits():
+def test_redact_and_rate_limits():
     assert redact_secret_text("") == ""
     assert "REDACTED" in redact_secret_text("api_key=sk-abcdefghijklmnopqrstuv")
     assert "REDACTED" in redact_secret_text("sk-abcdefghijklmnopqrstuvwxyz1234")
@@ -38,15 +35,6 @@ def test_redact_and_magic_and_rate_limits():
     assert redacted["api_key"] == "[REDACTED_SECRET]"
     assert redacted["ok"] == "visible"
     assert redacted["num"] == 1
-
-    assert bytes_match_extension(b"hello", ".txt") is True
-    assert bytes_match_extension(b"\xff\xd8\xffabc", ".jpg") is True
-    assert bytes_match_extension(b"nope", ".jpg") is False
-
-    check_ip_rate_limit("1.2.3.4", "login", max_calls=2, window_secs=60)
-    check_ip_rate_limit("1.2.3.4", "login", max_calls=2, window_secs=60)
-    with pytest.raises(HTTPException):
-        check_ip_rate_limit("1.2.3.4", "login", max_calls=2, window_secs=60)
 
     enforce_rate_limit("", "chat", enabled=True)
     enforce_rate_limit("a@b.c", "chat", enabled=False)

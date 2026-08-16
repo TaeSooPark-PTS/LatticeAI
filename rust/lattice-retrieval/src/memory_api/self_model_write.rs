@@ -1,48 +1,3 @@
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-
 //! The Self-Model's write side — native (v11.7.0).
 //!
 //! Port of the write half of `lattice_brain/self_model.py`, plus
@@ -301,6 +256,9 @@ fn next_boundary(text: &str, from: usize) -> usize {
 }
 
 /// `_write_fact` — the root (if needed), the fact node, and the `PART_OF` edge.
+// Eight parameters because `_write_fact` takes eight; the port keeps the
+// original's argument list so the two can be read side by side.
+#[allow(clippy::too_many_arguments)]
 fn write_fact(
     graph: &GraphWriter,
     kind: &str,
@@ -449,6 +407,10 @@ fn delete(graph: &GraphWriter, args: &Value, now: &str) -> Result<Value, SeamRef
     Ok(json!({"status": "ok", "id": node_id, "deleted_at": now}))
 }
 
+/// One row of a contradiction resolution's plan:
+/// `(node_id, valid_from, valid_to, superseded_by)`.
+type TemporalEdit<'a> = (&'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>);
+
 /// `_stamp_resolution` — the validity stamps one contradiction resolution writes.
 fn stamp_contradiction(graph: &GraphWriter, args: &Value) -> Result<Value, SeamRefusal> {
     let older = args
@@ -466,7 +428,7 @@ fn stamp_contradiction(graph: &GraphWriter, args: &Value) -> Result<Value, SeamR
         .unwrap_or_default();
     // `(node_id, valid_from, valid_to, superseded_by)` — the caller validated
     // `resolution`, so the third arm is `keep_both_temporal`.
-    let plan: Vec<(&str, Option<&str>, Option<&str>, Option<&str>)> = match resolution {
+    let plan: Vec<TemporalEdit<'_>> = match resolution {
         KEEP_OLD => vec![(newer, None, Some(moment), Some(older))],
         REPLACE => vec![
             (older, None, Some(moment), Some(newer)),

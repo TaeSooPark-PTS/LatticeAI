@@ -16,8 +16,6 @@ def test_worker_app_is_the_only_application_factory():
 def test_v14_router_and_service_modules_import_independently():
     for module_name in (
         "latticeai.api.agent_worker_seam",
-        "latticeai.api.local_files",
-        "latticeai.api.tools",
         "latticeai.api.models",
         "latticeai.api.health",
         "latticeai.api.search",
@@ -66,11 +64,14 @@ def test_worker_app_factory_is_importable_without_create_app():
     assert not hasattr(factory, "create_app")
 
 
-def test_ingestion_pipeline_still_imports_from_the_compute_package():
-    import lattice_brain.ingestion as pipeline
+def test_the_ingestion_package_is_vocabulary_and_compute_only():
+    """No write door, and since v11.8.0 no capability probe either."""
+    import lattice_brain.ingestion as ingestion
 
-    assert hasattr(pipeline, "IngestionPipeline")
-    assert not hasattr(pipeline, "BackgroundIngestionQueue")
+    assert hasattr(ingestion, "assess_extraction_quality")
+    assert hasattr(ingestion, "content_hash_text")
+    assert not hasattr(ingestion, "IngestionPipeline")
+    assert not hasattr(ingestion, "BackgroundIngestionQueue")
 
 
 def test_review_queue_is_no_longer_a_python_store():

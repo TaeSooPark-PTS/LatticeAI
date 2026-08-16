@@ -1,29 +1,7 @@
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports)]
-#![allow(clippy::field_reassign_with_default, clippy::unnecessary_sort_by)]
-
 use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
+use std::path::Path;
 
-use axum::extract::RawQuery;
-use axum::http::HeaderMap;
-use axum::routing::get;
-use axum::Router;
-use lattice_auth::{AuthConfig, AuthState, Clock, OrderedMap};
-use lattice_platform::invitations::{self, InvitationsState};
-use lattice_platform::permissions::{self, PermissionGateway, PermissionsState};
-use lattice_platform::ui_redirects;
-use lattice_platform::workspace::{
-    self, GraphReads, GraphSeam, WorkspaceDeps, WorkspaceProviders, WorkspaceState,
-};
-use serde_json::{json, Value};
-
-use super::*;
+use serde_json::Value;
 
 pub(crate) fn substitute_tokens(value: &mut Value, symbols: &HashMap<String, String>) {
     match value {
@@ -52,7 +30,7 @@ pub(crate) fn substitute_symbols(value: &mut Value, symbols: &HashMap<String, St
 
 pub(crate) fn substitute_symbol_text(text: &mut String, symbols: &HashMap<String, String>) {
     let mut pairs: Vec<_> = symbols.iter().collect();
-    pairs.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+    pairs.sort_by_key(|pair| std::cmp::Reverse(pair.0.len()));
     for (symbol, replacement) in pairs {
         *text = replace_symbol(text, symbol, replacement);
     }

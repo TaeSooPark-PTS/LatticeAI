@@ -1,34 +1,23 @@
 """Failure paths of the request-facing guards.
 
-Each test here drives one guard with input it cannot parse — a stored password
-hash with no salt separator, a hostname where an address is expected, a peer
-that is not an IP at all, a server host that was never configured. These are
-the branches an attacker reaches first, and every one of them must fail closed
-rather than raise or fall through.
+Each test here drives one guard with input it cannot parse — a hostname where
+an address is expected, a peer that is not an IP at all, a server host that
+was never configured. These are the branches an attacker reaches first, and
+every one of them must fail closed rather than raise or fall through.
+
+Password hashing left with the front door (``lattice-auth`` owns credentials
+since v11.6.0); the ``client_ip`` resolver went with it in 11.8.0. What
+remains of the forwarded-header rule is the allowlist itself, pinned here and
+in ``test_proxy_trust.py``.
 """
 
 from __future__ import annotations
 
 import ipaddress
-from types import SimpleNamespace
-from typing import Dict
 
 from latticeai.core import security
 from latticeai.core.csrf import CSRFOriginPolicy
-from latticeai.core.security import hash_password, host_is_loopback, verify_password
-
-
-# ── password verification ─────────────────────────────────────────────────
-def test_a_stored_hash_in_the_wrong_shape_is_rejected_not_raised():
-    assert verify_password("hunter2", "no-separator-here") is False
-    assert verify_password("hunter2", "") is False
-    assert verify_password("hunter2", "salt:not-hex") is False
-
-
-def test_a_well_formed_hash_still_verifies():
-    stored = hash_password("hunter2")
-    assert verify_password("hunter2", stored) is True
-    assert verify_password("hunter3", stored) is False
+from latticeai.core.security import host_is_loopback
 
 
 # ── loopback detection ────────────────────────────────────────────────────
@@ -46,22 +35,17 @@ def test_the_real_loopback_addresses_still_pass():
 
 
 # ── forwarded-header trust ────────────────────────────────────────────────
-def _request(peer: str, headers: Dict[str, str]):
-    return SimpleNamespace(client=SimpleNamespace(host=peer), headers=headers)
-
-
 def test_a_peer_that_is_not_an_address_can_never_be_a_trusted_proxy(monkeypatch):
     """A non-IP peer (a UNIX socket, a bad ASGI server) must not unlock spoofing."""
     monkeypatch.setattr(security, "_trusted_proxies", [ipaddress.ip_network("10.0.0.0/8")])
-    spoofed = {"X-Forwarded-For": "203.0.113.7"}
 
-    assert security.client_ip(_request("10.1.2.3", spoofed)) == "203.0.113.7"
-    assert security.client_ip(_request("unix-socket-peer", spoofed)) == "unix-socket-peer"
+    assert security._peer_is_trusted_proxy("10.1.2.3") is True
+    assert security._peer_is_trusted_proxy("unix-socket-peer") is False
 
 
 def test_no_configured_proxy_means_the_header_is_ignored(monkeypatch):
     monkeypatch.setattr(security, "_trusted_proxies", [])
-    assert security.client_ip(_request("203.0.113.9", {"X-Forwarded-For": "10.0.0.1"})) == "203.0.113.9"
+    assert security._peer_is_trusted_proxy("203.0.113.9") is False
 
 
 # ── CSRF origin policy ────────────────────────────────────────────────────

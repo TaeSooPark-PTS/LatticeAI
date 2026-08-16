@@ -1,8 +1,15 @@
 # Model Robustness Benchmarks
 
 > Status: reference 2026-07-21
+>
+> **Dated snapshot.** The harness this page documents no longer exists in the
+> tree: `scripts/bench_models.py` went with the Python agent loop when 11.5.1
+> ported it to Rust, and `latticeai.core.agent_eval` / `scripts/agent_eval.py`
+> followed (the last of them deleted in 11.8.0). The methodology and the
+> honesty notes below are kept as the record of how these numbers were produced
+> and what they did and did not mean — not as instructions you can run today.
 
-Methodology and results for `scripts/bench_models.py`, a harness that measures
+Methodology and results for `scripts/bench_models.py`, a harness that measured
 how well the agent loop turns model output into executable actions across model
 quality tiers. Companion to [CI & Release Gates](CI_AND_RELEASE_GATES.md).
 

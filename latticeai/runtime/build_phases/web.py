@@ -110,9 +110,9 @@ def build_worker_app_shell(ctx: RuntimeContext):
       opaque network error.
     * **The CSRF origin guard** is what makes ``LATTICEAI_CSRF_TRUSTED_ORIGINS``
       load-bearing for the gateway (v11.6.0 gateway integration §3): a proxied
-      browser write — ``POST /models/load``, ``POST /engines/pull-model``,
-      ``POST /tools/read_document`` — arrives carrying the browser's session
-      cookie *and* ``Origin: …:{gateway port}``, and without the host's
+      browser write — ``POST /models/load``, ``POST /engines/prepare-model``,
+      ``DELETE /models/unload/{model_id}`` — arrives carrying the browser's
+      session cookie *and* ``Origin: …:{gateway port}``, and without the host's
       injected trust list this guard would answer 403.
     """
     from fastapi import FastAPI

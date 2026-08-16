@@ -1,8 +1,8 @@
 """Drive leftover P1b modules toward 100% lines+branches.
 
 Covers model_engines ensure/install/pull, model_runtime download/engines/loading,
-lifespan, CSRF middleware, users KG migration, filesystem/knowledge leftovers,
-tools/search routers, quiet/sessions/config/agent_permission.
+lifespan, CSRF middleware, users migration, filesystem/knowledge leftovers,
+the search router, quiet/sessions/config.
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from latticeai.core.agent_permission import block_reason_for_tool, non_auto_plan_steps
 from latticeai.core.config import (
     Config,
     _bool,
@@ -32,7 +31,7 @@ from latticeai.core.config import (
     _value,
     default_data_dir,
 )
-from latticeai.core.quiet import format_suppressed, quiet, quiet_summary
+from latticeai.core.quiet import quiet
 from latticeai.core.sessions import (
     SessionStore,
     _entry_created_at,
@@ -123,7 +122,6 @@ def _fast_deadline(monkeypatch, module, start=1000.0, step=1000.0):
 
 def test_knowledge_remaining_branches(tmp_path: Path, monkeypatch):
     from latticeai.tools.knowledge import (
-        _safe_brain_folder,
         knowledge_scope_root,
         knowledge_search,
         knowledge_tree,
@@ -135,10 +133,6 @@ def test_knowledge_remaining_branches(tmp_path: Path, monkeypatch):
     brain.mkdir()
     monkeypatch.setattr("latticeai.tools.knowledge.BRAIN_DIR", brain)
     monkeypatch.setattr("latticeai.tools.knowledge.STRUCTURE", {"10_Wiki": "x", "00_Raw": "y"})
-
-    with pytest.raises(ToolError):
-        _safe_brain_folder("nope")
-    assert _safe_brain_folder("10_Wiki") == "10_Wiki"
 
     assert knowledge_scope_root() == brain
     with pytest.raises(ToolError):
@@ -165,97 +159,6 @@ def test_knowledge_remaining_branches(tmp_path: Path, monkeypatch):
     assert "vault_root" in obs
     assert obsidian_tree()["root"]
 
-def test_tools_router_toolerror_and_pdf_success(tmp_path: Path, monkeypatch):
-    import latticeai.tools as tools
-    from latticeai.api.tools import create_tools_router
-
-    root = tmp_path / "agent"
-    root.mkdir()
-    (root / "notes").mkdir()
-    (root / "notes" / "a.md").write_text("hello", encoding="utf-8")
-    pdf_path = root / "notes" / "tiny.pdf"
-    pdf_path.write_bytes(_tiny_pdf_bytes())
-    monkeypatch.setattr(tools, "AGENT_ROOT", root)
-    monkeypatch.setattr("latticeai.api.tools.AGENT_ROOT", root)
-
-    def boom_dispatch(*_a, **_k):
-        raise ToolError("cannot parse")
-
-    monkeypatch.setattr("latticeai.api.tools.dispatch_tool", boom_dispatch)
-    app = FastAPI()
-    app.include_router(create_tools_router(require_user=lambda _r: "owner@example.com"))
-    client = TestClient(app, raise_server_exceptions=False)
-    bad = client.post("/tools/read_document", json={"path": "notes/a.md"})
-    assert bad.status_code == 400
-
-    # restore dispatch and hit absolute confined path
-    monkeypatch.undo()
-    monkeypatch.setattr(tools, "AGENT_ROOT", root)
-    monkeypatch.setattr("latticeai.api.tools.AGENT_ROOT", root)
-    app2 = FastAPI()
-    app2.include_router(create_tools_router(require_user=lambda _r: "owner@example.com"))
-    client2 = TestClient(app2, raise_server_exceptions=False)
-    abs_ok = client2.post("/tools/read_document", json={"path": str(root / "notes" / "a.md")})
-    assert abs_ok.status_code in {200, 400}
-
-    class FakeImage:
-        def save(self, buf, format="PNG"):
-            buf.write(b"\x89PNG\r\n\x1a\n")
-
-    class FakeBitmap:
-        def to_pil(self):
-            return FakeImage()
-
-    class FakePage:
-        def render(self, scale=1.5):
-            return FakeBitmap()
-
-    class FakeDoc:
-        def __len__(self):
-            return 2
-
-        def __getitem__(self, i):
-            return FakePage()
-
-        def close(self):
-            raise RuntimeError("close fail")
-
-    fake = types.ModuleType("pypdfium2")
-    fake.PdfDocument = lambda _p: FakeDoc()
-    monkeypatch.setitem(sys.modules, "pypdfium2", fake)
-    pages = client2.get("/tools/pdf_pages", params={"path": "notes/tiny.pdf", "approval_token": "tok"})
-    assert pages.status_code == 200
-    body = pages.json()
-    assert body["total"] == 2
-    assert body["pages"]
-
-    # also try a real renderer if present
-    try:
-        import pypdfium2 as real_pdfium  # noqa: F401
-    except Exception:
-        return
-
-def _tiny_pdf_bytes() -> bytes:
-    try:
-        import pypdfium2 as pdfium
-
-        buf = io.BytesIO()
-        doc = pdfium.PdfDocument.new()
-        doc.new_page(20, 20)
-        doc.save(buf)
-        doc.close()
-        return buf.getvalue()
-    except Exception:
-        return (
-            b"%PDF-1.1\n"
-            b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-            b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-            b"3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\n"
-            b"xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n"
-            b"0000000052 00000 n \n0000000101 00000 n \n"
-            b"trailer<</Size 4/Root 1 0 R>>\nstartxref\n149\n%%EOF\n"
-        )
-
 def test_search_router_remaining_lines():
     from latticeai.api.search import create_search_router
 
@@ -278,9 +181,6 @@ def test_search_router_remaining_lines():
     assert ok.status_code == 200
     err = client.get("/api/embeddings/status", params={"refresh": True})
     assert err.status_code == 404
-    providers = client.get("/api/embeddings/providers")
-    assert providers.status_code == 200
-    assert providers.json()["providers"]
 
     app2 = FastAPI()
     app2.include_router(
@@ -291,15 +191,13 @@ def test_search_router_remaining_lines():
         )
     )
     client2 = TestClient(app2, raise_server_exceptions=False)
-    listed = client2.get("/api/embeddings/providers")
-    assert listed.json()["active"] == "hash"
+    resolved = client2.get("/api/embeddings/status")
+    assert resolved.json()["resolved"]["active_provider"] == "hash"
 
 def test_quiet_remaining():
     from latticeai.core import quiet as quiet_mod
 
     quiet()
-    assert quiet_summary() == ""
-    assert format_suppressed() == ""
 
     quiet_mod.logger.setLevel(logging.DEBUG)
 
@@ -313,8 +211,6 @@ def test_quiet_remaining():
         outer()
     except ValueError:
         quiet("optional probe")
-        assert "deep-fail" in quiet_summary("probe")
-        assert "ValueError" in format_suppressed()
         quiet()
 
 def test_sessions_remaining(tmp_path: Path, monkeypatch):
@@ -427,72 +323,6 @@ def test_config_remaining(tmp_path: Path, monkeypatch):
 
     live = Config.from_env(None, base_dir=tmp_path)
     assert live.app_mode in {"local", "public"}
-
-def test_agent_permission_remaining():
-    steps = [
-        {"action": ""},
-        {"action": "read_file"},
-        {"action": "write_file"},
-        {"action": "governed_tool"},
-    ]
-    gov = {
-        "read_file": {"auto_approve": True, "risk": "read", "destructive": False},
-        "write_file": {"auto_approve": False, "risk": "write", "destructive": False},
-    }
-    out = non_auto_plan_steps("strict", steps, gov, governed_tools=["governed_tool"])
-    assert "write_file" in out
-    assert "governed_tool" not in out
-    assert "read_file" not in out
-    out = non_auto_plan_steps("bypass", steps, {}, governed_tools=None)
-    assert isinstance(out, list)
-
-    assert block_reason_for_tool("strict", "rm", {"destructive": True}, {"path": "/"})
-    assert block_reason_for_tool("strict", "rm", {"risk": "write"}, {"path": "/"})
-    assert (
-        block_reason_for_tool(
-            "strict",
-            "write_file",
-            {"auto_approve": False, "risk": "write"},
-            {},
-            approved_by_human=True,
-        )
-        is None
-    )
-    assert (
-        block_reason_for_tool(
-            "strict",
-            "write_file",
-            {"auto_approve": False, "risk": "write"},
-            {},
-            governor_allows_additive=True,
-        )
-        is None
-    )
-    assert (
-        block_reason_for_tool(
-            "bypass",
-            "write_file",
-            {"auto_approve": False, "risk": "write", "sandbox": "workspace"},
-            {},
-        )
-        is None
-    )
-    assert (
-        block_reason_for_tool(
-            "strict",
-            "read_file",
-            {"auto_approve": True, "risk": "read"},
-            {},
-        )
-        is None
-    )
-    blocked = block_reason_for_tool(
-        "strict",
-        "write_file",
-        {"auto_approve": False, "risk": "write"},
-        {},
-    )
-    assert blocked and "requires explicit approval" in blocked
 
 def test_high_leftover_engine_download_loading_lifespan(monkeypatch, tmp_path: Path):
     # cached download without progress_emit (120->129)
@@ -719,16 +549,6 @@ def test_core_leftovers_users_sessions_config_quiet_permission(tmp_path: Path, m
     monkeypatch.setattr(quiet_mod.sys, "exc_info", lambda: (ValueError, ValueError("x"), None))
     quiet_mod.logger.setLevel(logging.DEBUG)
     quiet("no-tb")
-
-    # dead-looking permission branches via monkeypatch
-    monkeypatch.setattr("latticeai.core.agent_permission.is_circuit_breaker", lambda *a, **k: None)
-    reason = block_reason_for_tool("strict", "rm", {"destructive": True, "risk": "destructive"}, {})
-    assert reason and "destructive" in reason
-    monkeypatch.setattr("latticeai.core.agent_permission.effective_auto_approve", lambda *a, **k: False)
-    monkeypatch.setattr("latticeai.core.agent_permission.is_circuit_breaker", lambda *a, **k: None)
-    assert (
-        block_reason_for_tool("strict", "read", {"auto_approve": True, "risk": "read"}, {}) is None
-    )
 
     from latticeai.core.permission_mode import effective_auto_approve
 

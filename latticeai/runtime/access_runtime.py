@@ -45,8 +45,10 @@ def build_access_runtime(
     # extend this trust to public or non-loopback bindings, even if an invalid
     # caller constructs this runtime with ``require_auth=False`` directly.
     externally_reachable = is_externally_reachable(config)
+    # One flag, not two: "authentication is required" is exactly
+    # ``not trusted_local_owner``, so deriving it separately only creates a
+    # pair that a later edit can put out of step.
     trusted_local_owner = not require_auth and not externally_reachable
-    effective_require_auth = bool(require_auth or externally_reachable)
 
     def get_user_role(email: str, users: Optional[Dict] = None) -> str:
         users = users or load_users()
@@ -128,9 +130,10 @@ def build_access_runtime(
             # shared local vaults, and Local User profile behavior compatible;
             # get_user_role() supplies the explicit owner authorization role.
             return ""
-        if effective_require_auth and not email:
-            raise http_exception(status_code=401, detail="인증이 필요합니다.")
-        return email or ""  # pragma: no cover — unreachable: trusted_local_owner is the exact complement of effective_require_auth
+        # Reaching here means the caller is not the trusted local owner and no
+        # session produced an email — i.e. authentication is required and was
+        # not supplied. There is no third outcome to fall through to.
+        raise http_exception(status_code=401, detail="인증이 필요합니다.")
 
     def require_admin(request: request_type) -> tuple[str, Dict]:
         users = load_users()

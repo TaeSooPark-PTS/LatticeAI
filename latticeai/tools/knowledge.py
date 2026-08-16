@@ -11,12 +11,6 @@ from latticeai.services.p_reinforce import BRAIN_DIR, STRUCTURE
 from latticeai.tools import ToolError
 
 
-def _safe_brain_folder(folder: str) -> str:
-    if folder not in STRUCTURE:
-        raise ToolError(f"Unknown knowledge folder: {folder}")
-    return folder
-
-
 def _scope_digest(kind: str, value: str) -> str:
     digest = hashlib.sha256(f"{kind}\0{value}".encode("utf-8")).hexdigest()[:24]
     return f"{kind}-{digest}"

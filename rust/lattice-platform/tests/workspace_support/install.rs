@@ -1,12 +1,6 @@
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports)]
-#![allow(clippy::field_reassign_with_default, clippy::unnecessary_sort_by)]
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,12 +8,12 @@ use axum::extract::RawQuery;
 use axum::http::HeaderMap;
 use axum::routing::get;
 use axum::Router;
-use lattice_auth::{AuthConfig, AuthState, Clock, OrderedMap};
+use lattice_auth::{AuthConfig, AuthState, Clock};
 use lattice_platform::invitations::{self, InvitationsState};
 use lattice_platform::permissions::{self, PermissionGateway, PermissionsState};
 use lattice_platform::ui_redirects;
 use lattice_platform::workspace::{
-    self, GraphReads, GraphSeam, WorkspaceDeps, WorkspaceProviders, WorkspaceState,
+    self, GraphSeam, WorkspaceDeps, WorkspaceProviders, WorkspaceState,
 };
 use serde_json::{json, Value};
 
@@ -71,19 +65,21 @@ impl Install {
             .sessions()
             .create("user:member", Some("member@lattice.test"));
 
-        let mut providers = WorkspaceProviders::default();
-        providers.settings = Arc::new(|| {
-            json!({
-                "mode": "local",
-                "host": "127.0.0.1",
-                "port": 4825,
-                "require_auth": true,
-                "enable_graph": true,
-                "allow_local_models": false,
-                "static_dir": "/repo/static",
-                "data_dir": "",
-            })
-        });
+        let mut providers = WorkspaceProviders {
+            settings: Arc::new(|| {
+                json!({
+                    "mode": "local",
+                    "host": "127.0.0.1",
+                    "port": 4825,
+                    "require_auth": true,
+                    "enable_graph": true,
+                    "allow_local_models": false,
+                    "static_dir": "/repo/static",
+                    "data_dir": "",
+                })
+            }),
+            ..WorkspaceProviders::default()
+        };
         providers.graph_reads = Some(Arc::new(FixtureGraph::new()));
         providers.watcher_status = Some(Arc::new(
             || json!({"available": true, "error": "", "debounce_seconds": 5.0, "active": {}}),
@@ -405,7 +401,7 @@ impl Install {
     pub fn bind(&self, text: &str) -> String {
         let mut out = text.to_string();
         let mut pairs: Vec<_> = self.symbols.iter().collect();
-        pairs.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        pairs.sort_by_key(|pair| std::cmp::Reverse(pair.0.len()));
         for (symbol, value) in pairs {
             out = out.replace(symbol, value);
         }

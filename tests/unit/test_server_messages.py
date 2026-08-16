@@ -127,7 +127,6 @@ def test_http_error_carries_the_localized_detail():
 MIGRATED_ROUTERS = [
     "latticeai/api/agent_worker_seam.py",
     "latticeai/api/models.py",
-    "latticeai/api/tools.py",
     "latticeai/api/worker_compute.py",
     "latticeai/api/worker_seams.py",
 ]

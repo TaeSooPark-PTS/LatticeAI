@@ -35,8 +35,8 @@
 //!   gateway inventing one would be this hop claiming authority it does not
 //!   have. It carries no body and changes nothing.
 //! * **Greedy converters are prefixes.** FastAPI's `{model_id:path}` matches
-//!   slashes, so `/models/switch/mlx-community/Qwen3-8B` is one route. The
-//!   fixture records the axum spelling (`/models/switch/*model_id`) and the
+//!   slashes, so `/models/unload/mlx-community/Qwen3-8B` is one route. The
+//!   fixture records the axum spelling (`/models/unload/*model_id`) and the
 //!   matcher treats everything after the prefix as the parameter — refusing an
 //!   empty one, because `*name` requires at least one character.
 
@@ -252,7 +252,7 @@ mod tests {
             (Method::POST, "/worker/llm/stream"),
             (Method::GET, "/models"),
             (Method::POST, "/models/load"),
-            (Method::POST, "/engines/pull-model"),
+            (Method::POST, "/engines/prepare-model"),
         ] {
             assert!(allowlist.allows(&method, path), "{method} {path}");
         }
@@ -273,6 +273,29 @@ mod tests {
         }
     }
 
+    /// v11.8.0 deleted nine caller-less worker routes. The fixture is the
+    /// gateway's only source of truth for what may be forwarded, so an
+    /// unregenerated fixture would keep proxying paths the worker 404s — and
+    /// a request for one would come back as the *worker's* 404, which reads
+    /// like a live route with a bad argument.
+    #[test]
+    fn the_routes_v11_8_0_deleted_are_no_longer_forwarded() {
+        let allowlist = Allowlist::shared();
+        for (method, path) in [
+            (Method::GET, "/api/embeddings/providers"),
+            (Method::GET, "/tools/pdf_pages"),
+            (Method::POST, "/tools/read_document"),
+            (Method::GET, "/api/ingestion/multimodal"),
+            (Method::GET, "/api/capture/voice/status"),
+            (Method::POST, "/models/switch/gemma-3"),
+            (Method::DELETE, "/models/unload-all"),
+            (Method::POST, "/engines/pull-model"),
+            (Method::POST, "/worker/multimodal/describe"),
+        ] {
+            assert!(!allowlist.allows(&method, path), "{method} {path}");
+        }
+    }
+
     #[test]
     fn the_method_has_to_match() {
         let allowlist = Allowlist::shared();
@@ -287,16 +310,15 @@ mod tests {
     #[test]
     fn a_greedy_converter_matches_slashes_and_refuses_an_empty_parameter() {
         let allowlist = Allowlist::shared();
-        assert!(allowlist.allows(&Method::POST, "/models/switch/gemma-3"));
+        assert!(allowlist.allows(&Method::DELETE, "/models/unload/gemma-3"));
         assert!(allowlist.allows(
-            &Method::POST,
-            "/models/switch/mlx-community/Qwen3-8B-Instruct-4bit"
+            &Method::DELETE,
+            "/models/unload/mlx-community/Qwen3-8B-Instruct-4bit"
         ));
-        assert!(allowlist.allows(&Method::DELETE, "/models/unload/mlx-community/Qwen3-8B"));
         // `/*name` needs at least one character after the slash.
-        assert!(!allowlist.allows(&Method::POST, "/models/switch/"));
+        assert!(!allowlist.allows(&Method::DELETE, "/models/unload/"));
         // …and the prefix is a prefix of a path, not of a name.
-        assert!(!allowlist.allows(&Method::POST, "/models/switcheroo"));
+        assert!(!allowlist.allows(&Method::DELETE, "/models/unloaded"));
     }
 
     #[test]

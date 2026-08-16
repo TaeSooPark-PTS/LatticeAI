@@ -181,11 +181,6 @@ MESSAGES: Dict[str, Dict[str, str]] = {
 }
 
 
-def bilingual(ko: str, en: str) -> Dict[str, str]:
-    """One Korean/English phrase pair, in the shape every caller renders."""
-    return {"ko": ko, "en": en}
-
-
 def resolve_language(request: Any, default: str = DEFAULT_LANGUAGE) -> str:
     """Language for this request: the product's choice, then the browser's.
 

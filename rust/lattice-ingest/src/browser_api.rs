@@ -7,50 +7,6 @@
 //! payload that already has text is ingested here through `GraphWriter`
 //! plus the W5 extract/embed enrichment chain.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::net::{IpAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
@@ -106,8 +62,6 @@ pub struct BrowserState {
     auth: Arc<AuthState>,
     seam: Option<WorkerSeamClient>,
     graph: Option<GraphWriter>,
-    #[allow(dead_code)]
-    config: RuntimeConfig,
 }
 
 impl std::fmt::Debug for BrowserState {
@@ -141,7 +95,6 @@ impl BrowserState {
             auth,
             seam: None,
             graph,
-            config,
         }
     }
 
@@ -270,11 +223,9 @@ async fn ingest_current_tab(
         return http_error(413, "capture.payload_too_large", lang);
     }
     let mut text = model.str("text").trim().to_string();
-    if text.is_empty() {
-        if !model.str("html").is_empty() {
-            let (_title, extracted) = extract_readable_text(model.str("html"));
-            text = extracted;
-        }
+    if text.is_empty() && !model.str("html").is_empty() {
+        let (_title, extracted) = extract_readable_text(model.str("html"));
+        text = extracted;
     }
     if text.is_empty() {
         text = model.str("selected_text").trim().to_string();

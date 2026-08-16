@@ -1,67 +1,12 @@
 //! Git, shell, network, and project script tools.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-use axum::extract::{Query, State};
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::extract::State;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
-use axum::routing::{get, post};
-use axum::Router;
-use lattice_agent::sandbox::{Workspace, MAX_FILE_BYTES};
 use lattice_agent::{command, is_circuit_breaker};
-use lattice_auth::{AuthState, Identity, OrderedMap};
 use serde_json::{json, Value};
 
-use crate::mcp::{
-    detail, json_status, json_text, localized, missing_fields, parse_json_object, requested_scope,
-    require_admin, require_user, sha256_hex,
-};
+use crate::mcp::{detail, parse_json_object, require_admin, require_user};
 
 use super::{relative, resolve, tool_err, tool_ok, ToolsState};
 

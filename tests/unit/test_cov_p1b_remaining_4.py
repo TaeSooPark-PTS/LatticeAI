@@ -2,7 +2,7 @@
 
 Covers model_engines ensure/install/pull, model_runtime download/engines/loading,
 lifespan, CSRF middleware, users KG migration, filesystem/knowledge leftovers,
-tools/search routers, quiet/sessions/config/agent_permission.
+tools/search routers, quiet/sessions/config.
 """
 
 from __future__ import annotations
@@ -298,10 +298,7 @@ def test_kg_hooks_access_readiness_and_profiles(tmp_path: Path, monkeypatch):
         _classify_node_type,
         _infer_edge,
     )
-    from lattice_brain.graph._kg_common.text import (
-        _chunks,
-        citation_locator,
-    )
+    from lattice_brain.graph._kg_common.text import _chunks
     from lattice_brain.runtime.hooks import dispatch_tool
     from latticeai.runtime.access_runtime import build_access_runtime
     from latticeai.services.product_readiness import (
@@ -313,7 +310,6 @@ def test_kg_hooks_access_readiness_and_profiles(tmp_path: Path, monkeypatch):
     assert _classify_node_type("helper", "def helper():\n    return 1") == "Code"
 
     assert _chunks("abc", size=10, overlap=0)
-    assert citation_locator("not-a-dict") == ""
 
     now = __import__("datetime").datetime.now()
     iso = now.isoformat()
@@ -499,7 +495,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     from fastapi import APIRouter, HTTPException
 
     from lattice_brain.graph import _kg_fsutil as fs
-    from lattice_brain.graph._kg_common.text import _code_chunks
     from lattice_brain.runtime.hooks import dispatch_tool
     from latticeai.core.embedding_providers.base import EmbeddingProvider, _RemoteConfig
     from latticeai.core.embedding_providers.profiles import resolve_embedding_profile
@@ -539,9 +534,6 @@ def test_third_wave_close_remaining_gaps(tmp_path: Path, monkeypatch):
     assert fs._excluded_directory_reason(tmp_path / "node_modules") == "excluded_folder"
     linux = Path("/var/lib")
     fs._excluded_directory_reason(linux, os_type="linux")
-
-    # monster code chunk with pack is None
-    _code_chunks("print(1)\n" + ("x" * 4000), size=100, overlap=0)
 
     # hooks args.keys() raise on a dict subclass
     class BadDict(dict):

@@ -5,53 +5,6 @@
 //! owner actions (`require_admin`). Device identity lives in
 //! `device_identity.key`, the same state file Python uses.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::useless_format,
-    clippy::collapsible_str_replace,
-    clippy::manual_repeat_n,
-    clippy::module_inception
-)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -204,8 +157,8 @@ async fn network_unpair(
         return refusal;
     }
     match state.peers.remove_peer(&peer_id) {
-        Ok(result) => json_ok(result),
-        Err(_) => detail(StatusCode::NOT_FOUND, &format!("Unknown peer: {peer_id}")),
+        Some(result) => json_ok(result),
+        None => detail(StatusCode::NOT_FOUND, &format!("Unknown peer: {peer_id}")),
     }
 }
 
@@ -282,10 +235,10 @@ async fn network_receive(
                                 "fingerprint": peer.get("fingerprint"),
                             }),
                         );
-                        return json_ok(map);
+                        json_ok(map)
                     }
-                    Ok(Err(err)) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
-                    Err(err) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
+                    Ok(Err(err)) => detail(StatusCode::BAD_GATEWAY, &err.to_string()),
+                    Err(err) => detail(StatusCode::BAD_GATEWAY, &err.to_string()),
                 }
             } else {
                 // No native writer ⇒ no graph on this install. There is no
@@ -452,7 +405,9 @@ impl PeerRegistry {
         Ok(peer)
     }
 
-    pub fn remove_peer(&self, peer_id: &str) -> Result<OrderedMap, ()> {
+    /// Drop a peer. `None` is "no such peer" — the one failure, so there is
+    /// nothing for an error type to carry.
+    pub fn remove_peer(&self, peer_id: &str) -> Option<OrderedMap> {
         let peers = self.load();
         let kept: Vec<OrderedMap> = peers
             .into_iter()
@@ -460,13 +415,13 @@ impl PeerRegistry {
             .collect();
         let original = self.load();
         if kept.len() == original.len() {
-            return Err(());
+            return None;
         }
         self.save(&kept);
         let mut map = OrderedMap::new();
         map.insert("status", json!("removed"));
         map.insert("peer_id", json!(peer_id));
-        Ok(map)
+        Some(map)
     }
 
     pub fn verify_peer_request(
@@ -542,7 +497,7 @@ fn decode_b64(text: &str) -> Option<Vec<u8>> {
     }
     let pad = (4 - text.len() % 4) % 4;
     let mut padded = text.to_string();
-    padded.extend(std::iter::repeat('=').take(pad));
+    padded.extend(std::iter::repeat_n('=', pad));
     base64::engine::general_purpose::URL_SAFE
         .decode(&padded)
         .ok()

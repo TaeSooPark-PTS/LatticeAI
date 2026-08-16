@@ -13,6 +13,79 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.8.0 — Travel Light (2026-08-16)
+
+11.7.0이 백로그를 비운 다음에 남아 있던 것 — 호출자 없는 라우트, 하중을
+받지 않는 게이트, 같은 것을 두 번 증명하는 골든, 진단을 통째로 덮고 있던
+lint 억제 헤더 — 을 덜어낸 릴리스. 문은 그대로(네이티브 420 / 41),
+바뀐 것은 워커 표면이 **28 → 19 라우트**라는 점.
+
+- **게이트 다이어트**: `agent-smoke.yml` 삭제(모델 없는 러너에서 이중
+  fail-open이라 초록불이 아무 것도 뜻하지 않았음), `ci.yml` 중복 스텝 제거
+  (4레그 매트릭스는 유지 — OpenAPI/product-readiness/확장 테스트는 3.11+
+  ubuntu 레그에서만, 커버리지 레그는 pytest 이중 실행 중단), `release.yml`은
+  릴리스 스텝만, dependency-audit은 cron 전용, visual은 push+nightly,
+  e2e-sidecar는 nightly 전용, 모든 워크플로에 `concurrency` +
+  `timeout-minutes`. 로컬 lint 체인 13 → 10. 커버리지 게이트는 **라인 90**
+  (분기 게이트 제거).
+- **Rust 린트 재무장**: `lattice-{platform,retrieval,ingest,jobs}`의 약
+  191개 파일 blanket `#![allow]` 헤더 제거, 드러난 **약 650건**의
+  clippy/rustc 진단을 원인에서 수정. 워크스페이스 수준 허용 **0건 추가**,
+  남긴 억제는 이유가 붙은 지역 `#[allow(clippy::too_many_arguments)]`
+  8개뿐. 죽은 코드 삭제(`workspace_scope` 모듈, `WORKSPACE_OS_VERSION`
+  상수, 호출자 0 항목 16개), `ROLE_CAPABILITIES`를 `lattice-auth` 단일
+  출처로, `PhaseBudgets`에 토큰 상한 8192(MIN 128 / MAX 8192).
+- **통합 테스트 파일 98 → 56** (lattice-platform 43 → 11) — 파일 하나가
+  링크되는 바이너리 하나입니다. 테스트 함수는 삭제 없이 주제별로 합침.
+- **골든 축소**: agent `decisions__trusted` / `decisions__bypass` 그리드
+  (각 702행) 삭제 → 모든 판정 클래스를 덮는 이름 붙은 단위 테스트.
+  `decisions__strict`와 `calls`는 702 → **171 대표행**(등가류당 한 행) +
+  드리프트 가드. 모든 픽스처 계열이 `FROZEN.md`를 가짐(신규
+  `chunking/FROZEN.md` 포함). retrieval/graph_write/agent_loop/http 골든은
+  무변경.
+- **중복 검증·죽은 코드 제거**: `core/agent_permission.py`, 죽은 보안
+  헬퍼(`hash/verify_password`, `check_ip_rate_limit`,
+  `configure_trusted_proxies`, `client_ip`, `bytes_match_extension`),
+  `_kg_common/text.py`의 죽은 청커(+호출자 0 함수 9개), 렌더 시임의
+  `_safe_filename` 이중 살균, 얼어붙은 픽스처의 생성기 2종,
+  `scripts/{brain_quality_eval,agent_eval,check_python,bench_agent_smoke}.py`,
+  `check_legacy_debt.mjs`(드리프트한 거울 — 파이썬 테스트가 권위).
+  product-readiness 증거는 Rust 픽스처로 재지정, 판정은 **COMPLETE 10/10**.
+- **워커 표면 28 → 19**: 호출자 0인 아홉 라우트를 end-to-end 삭제
+  (`GET /api/embeddings/providers`, `POST /tools/read_document`,
+  `GET /tools/pdf_pages`, `POST /worker/multimodal/describe`,
+  `GET /api/ingestion/multimodal`, `POST /models/switch/{model_id}`,
+  `DELETE /models/unload-all`, `POST /engines/pull-model`,
+  `GET /api/capture/voice/status`). `latticeai/api/{tools,local_files,
+  voice_capture}.py`와 `lattice_brain/ingestion/pipeline.py` 삭제,
+  `pypdfium2` 의존성 제거, `rust/fixtures/worker_allowlist.json` 28 → 19,
+  Rust KEEP 표·게이트웨이 allowlist 갱신 + 네거티브 테스트.
+- **실제 버그 수정**: `SessionStore`가 미스 시 `sessions.json`을 다시 읽음
+  (stat 가드 + 1초 throttle, 같은 락). v11.6.0부터 writer는 `lattice-auth`인데
+  워커는 기동 시 한 번만 읽어, **워커가 뜬 뒤의 로그인이 워커에게 보이지
+  않았음** — `REQUIRE_AUTH`에서는 파일에 있는 토큰에 401. 테스트 9개 추가.
+- **Brain Chat Home 전면 재설계**(3패스): 컴포저가 히어로, LivingBrain 3배
+  (1440에서 60px → 179px) + 금빛/옥빛 성장 링과 준비도에 묶인 '기억이 자라고
+  있어요' 캡션, 풀캔버스 그리드(왼쪽 Brain / 가운데 컴포저·스타터 / 오른쪽
+  제안), 바닥 연속성 바(지난 대화·현황·기억 지도·기능), 잉크+옥빛+금빛 토큰
+  통일, `prefers-reduced-motion` 폴백. 죽은 컴포넌트 `FeedbackState.tsx` ·
+  `DepthEmergence.tsx` 삭제.
+- **정직한 고지**: 커버리지 강제 바닥이 100 → 90으로 내려감(실측은 100%),
+  멀티모달 이미지/비디오 절반은 HTTP 문 없이 Brain Core에 남음, DMG는
+  ad-hoc 서명(미서명), 삭제된 라우트의 메시지 카탈로그 키는 얼어붙은
+  픽스처에 의도적으로 잔존, `tests/visual/mock_server`의 고아 mock 라우트
+  하나는 증거 해시 결속 때문에 다음 캡처 사이클에 정리.
+- 플로어: pytest **1,153** · vitest **1,761 / 100 파일** · cargo **1,733 /
+  75 바이너리** · clippy `-D warnings` 깨끗. 순 diff 424 파일 ·
+  +4,604 / −22,165.
+
+빌드 산출물은 `dist/ltcai-11.8.0-py3-none-any.whl`,
+`dist/ltcai-11.8.0.tar.gz`, `ltcai-11.8.0.tgz`, `dist/ltcai-11.8.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md)
+
 ## v11.7.0 — Clean Sweep (2026-08-15)
 
 11.6.0이 공개로 남긴 백로그를 닫고, One Door가 몰랐던 회귀를 고치고,

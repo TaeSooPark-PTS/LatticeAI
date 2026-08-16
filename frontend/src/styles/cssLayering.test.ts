@@ -64,6 +64,7 @@ const SHEETS = [
   "frontend/src/styles/experience/product-pages.css",
   "frontend/src/styles/experience/chronicle.css",
   "frontend/src/styles/experience/responsive.css",
+  "frontend/src/styles/experience/home-canvas.css",
   "frontend/src/styles/experience/affordance.css",
 ];
 

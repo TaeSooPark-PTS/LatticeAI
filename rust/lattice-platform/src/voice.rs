@@ -1,67 +1,24 @@
-//! Voice-capture family — KEEP_WORKER routes stay on the Python worker.
+//! Voice-capture family.
 //!
-//! Scout + the plan's final worker surface keep both voice-capture routes
-//! in process with the ASR port:
+//! `POST /api/capture/voice` is native since W3b: this module stores the memo
+//! and asks the worker's `POST /worker/asr` for the words.
 //!
-//! * `GET  /api/capture/voice/status`
-//! * `POST /api/capture/voice`
-//!
-//! This module therefore mounts nothing. The three HTTP fixtures for
-//! `voice_capture.py` are the status route; they are listed as KEEP gaps,
-//! not replayed here.
+//! `GET /api/capture/voice/status` was the family's other half and was
+//! KEEP_WORKER — a capability probe answered inside the interpreter holding
+//! the transcriber. v11.8.0 deleted it: no surface ever called it, and
+//! `/worker/asr` already reports per call whether it heard anything. It is
+//! therefore neither mounted here nor on the worker, and it is off the
+//! gateway's proxy allowlist. Its `voice_capture.py` HTTP fixtures stay in
+//! `rust/fixtures/http/tools_misc.json` as the frozen record of what the route
+//! answered while it existed.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 /// Routes this crate must **not** claim — they stay on the worker allowlist.
-pub const KEEP: &[(&str, &str)] = &[
-    ("GET", "/api/capture/voice/status"),
-    ("POST", "/api/capture/voice"),
-];
+/// Empty since v11.8.0: the one entry was the status probe, now deleted
+/// outright. Kept as a declared, empty table so the parity test still asserts
+/// the family claims nothing it should not.
+pub const KEEP: &[(&str, &str)] = &[];
 
-/// Native mounts. `POST /api/capture/voice` is product-native (W3b);
-/// status stays KEEP (ASR probe). Spec for both still lives in worker_keep.json.
+/// Native mounts. Spec still lives in worker_keep.json.
 pub const MOUNTED: &[(&str, &str)] = &[("POST", "/api/capture/voice")];
 
 /// Voice capture state.
@@ -80,7 +37,7 @@ pub fn router() -> axum::Router {
     router_with(VoiceState::default())
 }
 
-/// Native voice router. `GET /api/capture/voice/status` stays on the worker.
+/// Native voice router — the whole surviving family.
 pub fn router_with(state: VoiceState) -> axum::Router {
     use axum::routing::post;
     axum::Router::new()

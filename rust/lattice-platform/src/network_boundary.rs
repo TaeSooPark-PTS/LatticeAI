@@ -6,50 +6,6 @@
 //! The one graph write here (`set_node_sensitivity`) is native: it calls
 //! [`lattice_core::graph_write::GraphWriter`] directly.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -95,7 +51,7 @@ pub struct NetworkBoundaryState {
     pub config: Arc<RuntimeConfig>,
     pub boundary: Arc<BoundaryStore>,
     pub policy: Arc<PolicyStore>,
-    pub budgets: Arc<Mutex<HashMap<String, TokenBudget>>>,
+    pub(crate) budgets: Arc<Mutex<HashMap<String, TokenBudget>>>,
     pub graph: Option<lattice_core::graph_write::GraphWriter>,
 }
 
@@ -411,12 +367,10 @@ async fn set_node_sensitivity(
                             .unwrap_or("node not found"),
                     );
                 }
-                return json_ok(result);
+                json_ok(result)
             }
-            Ok(Err(err)) => {
-                return detail(StatusCode::BAD_REQUEST, &err.to_string());
-            }
-            Err(err) => return detail(StatusCode::BAD_GATEWAY, &err.to_string()),
+            Ok(Err(err)) => detail(StatusCode::BAD_REQUEST, &err.to_string()),
+            Err(err) => detail(StatusCode::BAD_GATEWAY, &err.to_string()),
         }
     } else {
         // No native writer ⇒ no graph, so there is no node to mark. The
@@ -525,7 +479,7 @@ fn preview_nodes(config: &RuntimeConfig, keywords: &[String], top_k: usize) -> V
             }
         }
     }
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.sort_by_key(|entry| std::cmp::Reverse(entry.0));
     scored.into_iter().take(top_k).map(|(_, n)| n).collect()
 }
 
@@ -876,7 +830,7 @@ fn merge_obj(target: &mut Value, patch: &Value) {
     }
 }
 
-struct TokenBudget {
+pub(crate) struct TokenBudget {
     max_tokens_per_turn: u64,
     max_tokens_per_session: u64,
     session_used: u64,

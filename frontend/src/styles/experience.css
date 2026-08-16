@@ -16,5 +16,8 @@
 /* 11.3.0's 연대기: growth curve, activity grid, day story, rewind. */
 @import "./experience/chronicle.css";
 @import "./experience/responsive.css";
+/* Full-canvas home + Living Brain growth. After responsive so it can
+   reopen the 72/76rem shell without losing mobile stacking. */
+@import "./experience/home-canvas.css";
 /* Last: app-wide control affordances settle over every screen. */
 @import "./experience/affordance.css";

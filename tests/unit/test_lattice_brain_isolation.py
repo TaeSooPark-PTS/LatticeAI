@@ -88,19 +88,22 @@ def test_lattice_brain_usable_in_isolation(tmp_path):
         data_dir.mkdir(parents=True, exist_ok=True)
 
         from lattice_brain import LocalEmbeddingModel, extract_image_facts
-        from lattice_brain.graph._kg_common.text import chunk_strategy_for
-        from lattice_brain.ingestion.pipeline import IngestionPipeline
+        from lattice_brain.graph._kg_common import _extract_concepts, _extract_triples
+        from lattice_brain.ingestion.quality import assess_extraction_quality
 
         model = LocalEmbeddingModel()
         vector = model.embed("isolation note")
         assert len(vector) > 0
 
-        strategy = chunk_strategy_for("note.md", content_type="text/plain")
-        assert strategy
+        # The extraction half is what `POST /worker/extract` answers with, so
+        # it is what has to stand up without `latticeai` on the path.
+        concepts = _extract_concepts("Graph RAG uses SQLite for storage.", limit=5)
+        assert concepts
+        assert isinstance(_extract_triples("Graph RAG uses SQLite.", concepts), list)
 
-        pipe = IngestionPipeline()
-        status = pipe.multimodal_status()
-        assert isinstance(status, dict)
+        # The advisory score `POST /worker/parse` attaches, same requirement.
+        quality = assess_extraction_quality("Graph RAG uses SQLite for storage.")
+        assert quality["level"]
 
         leaked = [m for m in sys.modules if m == "latticeai" or m.startswith("latticeai.")]
         assert not leaked, leaked

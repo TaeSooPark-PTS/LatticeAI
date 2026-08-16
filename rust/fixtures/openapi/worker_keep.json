@@ -423,24 +423,6 @@
         "title": "PrepareModelRequest",
         "type": "object"
       },
-      "PullModelRequest": {
-        "properties": {
-          "allow_download": {
-            "default": false,
-            "title": "Allow Download",
-            "type": "boolean"
-          },
-          "model": {
-            "title": "Model",
-            "type": "string"
-          }
-        },
-        "required": [
-          "model"
-        ],
-        "title": "PullModelRequest",
-        "type": "object"
-      },
       "ToolDocxRequest": {
         "properties": {
           "body": {
@@ -460,28 +442,6 @@
           }
         },
         "title": "ToolDocxRequest",
-        "type": "object"
-      },
-      "ToolPathRequest": {
-        "properties": {
-          "approval_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Approval Token"
-          },
-          "path": {
-            "default": ".",
-            "title": "Path",
-            "type": "string"
-          }
-        },
-        "title": "ToolPathRequest",
         "type": "object"
       },
       "ToolPdfRequest": {
@@ -600,67 +560,50 @@
   "family": "worker_keep",
   "generated_by": "scripts/gen_openapi_fragments.py",
   "greedy_path_params": {
-    "DELETE /models/unload/{model_id}": "model_id",
-    "POST /models/switch/{model_id}": "model_id"
+    "DELETE /models/unload/{model_id}": "model_id"
   },
-  "operation_count": 27,
+  "operation_count": 19,
   "operation_order": [
     "POST /agent/change-proposal",
     "POST /agent/llm",
     "POST /agent/tool",
     "POST /api/capture/voice",
-    "GET /api/capture/voice/status",
-    "GET /api/embeddings/providers",
     "GET /api/embeddings/status",
     "POST /api/index/drain",
     "POST /api/index/rebuild",
-    "GET /api/ingestion/multimodal",
     "POST /engines/prepare-model",
     "POST /engines/prepare-model/stream",
-    "POST /engines/pull-model",
     "GET /health",
     "POST /knowledge-graph/ingest",
     "GET /models",
     "POST /models/load",
-    "POST /models/switch/{model_id}",
-    "DELETE /models/unload-all",
     "DELETE /models/unload/{model_id}",
     "POST /tools/create_docx",
     "POST /tools/create_pdf",
     "POST /tools/create_pptx",
     "POST /tools/create_xlsx",
-    "GET /tools/pdf_pages",
-    "POST /tools/read_document",
     "POST /upload/document"
   ],
-  "path_count": 27,
+  "path_count": 19,
   "path_order": [
     "/agent/change-proposal",
     "/agent/llm",
     "/agent/tool",
     "/api/capture/voice",
-    "/api/capture/voice/status",
-    "/api/embeddings/providers",
     "/api/embeddings/status",
     "/api/index/drain",
     "/api/index/rebuild",
-    "/api/ingestion/multimodal",
     "/engines/prepare-model",
     "/engines/prepare-model/stream",
-    "/engines/pull-model",
     "/health",
     "/knowledge-graph/ingest",
     "/models",
     "/models/load",
-    "/models/switch/{model_id}",
-    "/models/unload-all",
     "/models/unload/{model_id}",
     "/tools/create_docx",
     "/tools/create_pdf",
     "/tools/create_pptx",
     "/tools/create_xlsx",
-    "/tools/pdf_pages",
-    "/tools/read_document",
     "/upload/document"
   ],
   "paths": {
@@ -811,42 +754,6 @@
         "summary": "Voice Capture"
       }
     },
-    "/api/capture/voice/status": {
-      "get": {
-        "operationId": "voice_status_api_capture_voice_status_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Voice Status"
-      }
-    },
-    "/api/embeddings/providers": {
-      "get": {
-        "operationId": "embeddings_providers_api_embeddings_providers_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Embeddings Providers Api Embeddings Providers Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Embeddings Providers"
-      }
-    },
     "/api/embeddings/status": {
       "get": {
         "operationId": "embeddings_status_api_embeddings_status_get",
@@ -973,23 +880,6 @@
         "summary": "Index Rebuild"
       }
     },
-    "/api/ingestion/multimodal": {
-      "get": {
-        "description": "What this install will do with a picture, a recording, or a video.\n\nFEATURE_STATUS has described this answer \u2014 including which of the three\nreasons a video would be refused for \u2014 since 11.2.0, but the pipeline\nmethod that produces it had no route, so no surface could ever show it\nand \"why was my video not indexed?\" had no answer short of reading the\nserver's environment.",
-        "operationId": "ingestion_multimodal_status_api_ingestion_multimodal_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Ingestion Multimodal Status"
-      }
-    },
     "/engines/prepare-model": {
       "post": {
         "operationId": "engines_prepare_model_engines_prepare_model_post",
@@ -1060,42 +950,6 @@
           }
         },
         "summary": "Engines Prepare Model Stream"
-      }
-    },
-    "/engines/pull-model": {
-      "post": {
-        "operationId": "pull_ollama_model_engines_pull_model_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PullModelRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Pull Ollama Model"
       }
     },
     "/health": {
@@ -1200,59 +1054,6 @@
           }
         },
         "summary": "Load Model"
-      }
-    },
-    "/models/switch/{model_id}": {
-      "post": {
-        "operationId": "switch_model_models_switch__model_id__post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "model_id",
-            "required": true,
-            "schema": {
-              "title": "Model Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Switch Model"
-      }
-    },
-    "/models/unload-all": {
-      "delete": {
-        "operationId": "unload_all_models_models_unload_all_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Unload All Models"
       }
     },
     "/models/unload/{model_id}": {
@@ -1436,96 +1237,6 @@
         "summary": "Tools Create Xlsx"
       }
     },
-    "/tools/pdf_pages": {
-      "get": {
-        "description": "Render PDF pages as base64 PNG images using pypdfium2 (Apache-2.0).",
-        "operationId": "tools_pdf_pages_tools_pdf_pages_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "path",
-            "required": true,
-            "schema": {
-              "title": "Path",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "approval_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Approval Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Tools Pdf Pages"
-      }
-    },
-    "/tools/read_document": {
-      "post": {
-        "operationId": "tools_read_document_tools_read_document_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ToolPathRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Tools Read Document"
-      }
-    },
     "/upload/document": {
       "post": {
         "operationId": "upload_document_upload_document_post",
@@ -1563,10 +1274,10 @@
       }
     }
   },
-  "schema_count": 18,
+  "schema_count": 16,
   "source": "frontend/openapi.json",
-  "spec_version": "11.7.0",
-  "summary": "The 25 KEEP_WORKER routes from scout_routes.md, the graph single-writer seam, and POST /engines/pull-model: the surface whose handler stays inside the Python worker's interpreter.",
+  "spec_version": "11.8.0",
+  "summary": "The surface whose handler stays inside the Python worker's interpreter: scout_routes.md's KEEP_WORKER set and the graph single-writer seam, less the eight caller-less routes v11.8.0 deleted end-to-end (embeddings providers, the two document-tool reads, the multimodal and voice-status probes, model switch/unload-all and engine pull-model).",
   "target": "Python AI worker (proxy allowlist)",
   "wp": "\u2014"
 }

@@ -57,12 +57,14 @@ def test_the_keep_worker_surface_is_the_remaining_compute_and_status_routes():
     # §4a restored POST /engines/pull-model. W5 added /worker/extract (9).
     # WP-P1 retired POST /agent/change-proposal (17) and the record-turn
     # seam (2): proposal state and the history chain are both native now.
-    assert len(WORKER_ROUTES) == 17
-    assert len(set(WORKER_ROUTES)) == 17
+    # v11.8.0 retired the nine routes with no caller anywhere in the tree:
+    # eight product ones (17 → 9) and POST /worker/multimodal/describe (9 → 8).
+    assert len(WORKER_ROUTES) == 9
+    assert len(set(WORKER_ROUTES)) == 9
     assert len(GRAPH_WRITER_ROUTES) == 0
     assert len(WORKER_SEAM_ROUTES) == 2
-    assert len(WORKER_COMPUTE_ROUTES) == 9
-    assert len(worker_route_keys()) == 28
+    assert len(WORKER_COMPUTE_ROUTES) == 8
+    assert len(worker_route_keys()) == 19
 
 
 def test_the_new_seams_are_absent_from_the_committed_product_contract():

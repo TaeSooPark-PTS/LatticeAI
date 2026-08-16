@@ -54,15 +54,19 @@ def test_in_process_worker_hits_every_product_get(worker):
         "/health",
         "/models",
         "/api/embeddings/status",
-        "/api/embeddings/providers",
-        "/api/ingestion/multimodal",
-        "/api/capture/voice/status",
     ):
         assert worker.get(path).status_code < 500, path
 
 
-def test_in_process_worker_pdf_pages_needs_a_path(worker):
-    assert worker.get("/tools/pdf_pages").status_code in {400, 404, 422}
+def test_in_process_worker_answers_404_for_the_routes_v11_8_0_removed(worker):
+    """A deleted route is gone from the built app, not merely unmounted."""
+    for path in (
+        "/api/embeddings/providers",
+        "/api/ingestion/multimodal",
+        "/api/capture/voice/status",
+        "/tools/pdf_pages",
+    ):
+        assert worker.get(path).status_code == 404, path
 
 
 def test_in_process_worker_closed_seams_are_404(worker):
@@ -213,18 +217,17 @@ def test_session_store_create_get_expire_and_migrate(tmp_path: Path):
 
 
 def test_users_file_roundtrip_and_identity(tmp_path: Path):
+    from latticeai.core.io_utils import atomic_write_json
     from latticeai.core.users import (
         load_users_file,
-        migrate_knowledge_graph_identity,
         migrate_users,
-        save_users_file,
         stable_user_id,
         user_id_for_email,
     )
 
     path = tmp_path / "users.json"
     assert load_users_file(path) == {}
-    save_users_file(path, {"Alice@Example.com": {"role": "admin"}})
+    atomic_write_json(path, {"Alice@Example.com": {"role": "admin"}})
     loaded = load_users_file(path)
     assert "alice@example.com" in loaded
     assert loaded["alice@example.com"]["id"].startswith("user:")
@@ -244,9 +247,7 @@ def test_users_file_roundtrip_and_identity(tmp_path: Path):
     assert user_id_for_email(migrated, None) is None
     assert user_id_for_email(migrated, "user:already") == "user:already"
     assert user_id_for_email({}, "ghost@x.com") == stable_user_id("ghost@x.com")
-
-    db = tmp_path / "missing.sqlite"
-    assert migrate_knowledge_graph_identity(db, email_to_id) == 0
+    assert set(email_to_id) == {"a@b.c"}
 
 
 def test_worker_app_main_uses_config(monkeypatch, tmp_path: Path):

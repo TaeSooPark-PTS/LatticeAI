@@ -1,14 +1,5 @@
 //! Shared replay harness for WP-R8 families.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(
-    clippy::too_many_arguments,
-    clippy::unnecessary_sort_by,
-    clippy::field_reassign_with_default
-)]
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};

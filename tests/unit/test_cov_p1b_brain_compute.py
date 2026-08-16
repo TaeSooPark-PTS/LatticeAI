@@ -6,7 +6,6 @@ from pathlib import Path
 
 from lattice_brain.graph.json_utils import _json, _safe_loads
 from lattice_brain.ingestion.hashing import _file_digest, content_hash_text
-from lattice_brain.ingestion.pipeline import IngestionPipeline
 from lattice_brain.ingestion.quality import assess_extraction_quality
 from lattice_brain.multimodal.common import detect_modality
 from lattice_brain.utils import now_iso, parse_iso, sha256_file, utc_now_iso
@@ -50,7 +49,6 @@ def test_hooks_and_process_audit(tmp_path, monkeypatch):
         CommandConfirmationError,
         append_process_audit_event,
         command_plan,
-        command_plan_for_commands,
         confirmation_token,
         redact_command,
         require_command_confirmation,
@@ -68,7 +66,6 @@ def test_hooks_and_process_audit(tmp_path, monkeypatch):
     assert "[REDACTED]" in " ".join(redacted) or any("REDACTED" in part for part in redacted)
     plan = command_plan(["echo", "hi"], name="n", cwd=str(tmp_path))
     assert plan["confirmation_token"]
-    assert command_plan_for_commands([["echo", "a"]], name="n")["command_count"] == 1
     token = confirmation_token(["echo", "hi"], cwd=str(tmp_path))
     verify_command_confirmation(["echo", "hi"], token, cwd=str(tmp_path))
     try:
@@ -79,8 +76,7 @@ def test_hooks_and_process_audit(tmp_path, monkeypatch):
     append_process_audit_event("engine_install", plan=plan, status="started")
 
 
-def test_ingestion_pipeline_status_and_modality():
-    pipe = IngestionPipeline()
-    status = pipe.multimodal_status()
-    assert isinstance(status, dict)
-    assert detect_modality("note.png") in {"image", None} or True
+def test_modality_is_detected_from_the_filename():
+    assert detect_modality("note.png") == "image"
+    assert detect_modality("memo.m4a") == "audio"
+    assert detect_modality("notes.md") == "text"

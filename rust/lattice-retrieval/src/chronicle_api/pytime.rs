@@ -29,50 +29,6 @@
 //! router renders as the same 422 a client gets for any other unreadable
 //! stamp. Recorded rather than hidden.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 /// A naive civil timestamp — Python's `datetime` with `tzinfo=None`.
 ///
 /// The field order is the derive order, so `Ord` is chronological and
@@ -182,27 +138,31 @@ pub fn strip(text: &str) -> String {
     lattice_core::pytext::strip(text)
 }
 
-/// `chronicle.parse_day` — `YYYY-MM-DD` normalized, or `Err` for the 422.
+/// `chronicle.parse_day` — `YYYY-MM-DD` normalized, or `None` for the 422.
 ///
 /// Python matches `\d{4}-\d{2}-\d{2}` with `re`, whose `\d` is Unicode-aware,
 /// then hands the text to `date.fromisoformat`, which is ASCII-only. A
 /// non-ASCII digit therefore passes the regex and fails the constructor —
 /// `ValueError` either way, which is why this checks ASCII digits directly.
-pub fn parse_day(value: &str) -> Result<String, ()> {
+///
+/// There is one failure, not several, so this answers `Option` rather than a
+/// `Result` whose error carries nothing.
+pub fn parse_day(value: &str) -> Option<String> {
     let text = strip(value);
     let chars: Vec<char> = text.chars().collect();
     if chars.len() != 10 || chars[4] != '-' || chars[7] != '-' {
-        return Err(());
+        return None;
     }
-    let (year, month, day) = date_fields(&chars, true).ok_or(())?;
-    check_date(year, month, day).ok_or(())?;
-    Ok(format!("{year:04}-{month:02}-{day:02}"))
+    let (year, month, day) = date_fields(&chars, true)?;
+    check_date(year, month, day)?;
+    Some(format!("{year:04}-{month:02}-{day:02}"))
 }
 
-/// `chronicle.parse_timestamp` — the store's own stamp format, or the 422.
-pub fn parse_timestamp(value: &str) -> Result<String, ()> {
-    let parsed = parse_iso(strip(value).as_str()).ok_or(())?;
-    Ok(local(parsed).iso_seconds())
+/// `chronicle.parse_timestamp` — the store's own stamp format, or `None` for
+/// the 422.
+pub fn parse_timestamp(value: &str) -> Option<String> {
+    let parsed = parse_iso(strip(value).as_str())?;
+    Some(local(parsed).iso_seconds())
 }
 
 // ── datetime.fromisoformat ──────────────────────────────────────────────────
@@ -542,7 +502,7 @@ mod tests {
             "",
             "٢٠٢٦-٠٨-١١",
         ] {
-            assert!(parse_day(bad).is_err(), "{bad} must be a 422");
+            assert!(parse_day(bad).is_none(), "{bad} must be a 422");
         }
         assert_eq!(
             parse_timestamp("2026-08-11T09:00:00.987654").expect("stamp"),
@@ -553,7 +513,7 @@ mod tests {
             "2020-01-01T00:00:00"
         );
         for bad in ["", "   ", "not-a-timestamp"] {
-            assert!(parse_timestamp(bad).is_err(), "{bad} must be a 422");
+            assert!(parse_timestamp(bad).is_none(), "{bad} must be a 422");
         }
     }
 

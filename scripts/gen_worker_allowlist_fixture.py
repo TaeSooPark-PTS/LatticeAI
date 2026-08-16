@@ -10,10 +10,10 @@ time.
 Two spellings per route, because the two runtimes disagree about path syntax
 and only one of them can be the file's:
 
-* ``path`` is FastAPI's, converters included (``/models/switch/{model_id:path}``).
+* ``path`` is FastAPI's, converters included (``/models/unload/{model_id:path}``).
   It is what ``APIRoute.path`` returns, so the Python side compares without
   normalisation.
-* ``axum`` is the same route as axum 0.7 spells it (``/models/switch/*model_id``).
+* ``axum`` is the same route as axum 0.7 spells it (``/models/unload/*model_id``).
   A ``{name:path}`` converter matches slashes; a plain ``:name`` capture does
   not, so an id containing a ``/`` would 404 at the front door while working
   against the worker directly. WP-I5's ``greedy_path_params`` records the same

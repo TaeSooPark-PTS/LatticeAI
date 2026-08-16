@@ -207,18 +207,18 @@ export function LivingBrain({
                 <stop offset="100%" stopColor="hsl(var(--brain-shade) / 0.28)" />
               </radialGradient>
               <radialGradient id={gradients.right} cx="62%" cy="24%" r="88%">
-                <stop offset="0%" stopColor="hsl(var(--connection) / 0.66)" />
-                <stop offset="46%" stopColor="hsl(var(--connection) / 0.32)" />
-                <stop offset="80%" stopColor="hsl(var(--connection) / 0.14)" />
+                <stop offset="0%" stopColor="hsl(var(--primary) / 0.55)" />
+                <stop offset="46%" stopColor="hsl(var(--memory) / 0.34)" />
+                <stop offset="80%" stopColor="hsl(var(--brain-core) / 0.16)" />
                 <stop offset="100%" stopColor="hsl(var(--brain-shade) / 0.3)" />
               </radialGradient>
               <radialGradient id={gradients.bridge} cx="50%" cy="30%" r="80%">
-                <stop offset="0%" stopColor="hsl(var(--memory) / 0.55)" />
-                <stop offset="100%" stopColor="hsl(var(--memory) / 0.1)" />
+                <stop offset="0%" stopColor="hsl(var(--brain-halo) / 0.5)" />
+                <stop offset="100%" stopColor="hsl(var(--primary) / 0.12)" />
               </radialGradient>
               <linearGradient id={gradients.stem} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--knowledge) / 0.42)" />
-                <stop offset="100%" stopColor="hsl(var(--knowledge) / 0.08)" />
+                <stop offset="0%" stopColor="hsl(var(--primary) / 0.38)" />
+                <stop offset="100%" stopColor="hsl(var(--brain-shade) / 0.12)" />
               </linearGradient>
               <linearGradient id={gradients.sheen} x1="0" y1="0" x2="0.4" y2="1">
                 <stop offset="0%" stopColor="hsl(var(--brain-sheen) / 0.5)" />

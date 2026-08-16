@@ -12,8 +12,9 @@
 //! never called). This file pins what the recorded bodies cannot: that the
 //! rows land in `knowledge_graph.sqlite` and `workspace_os.json`.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
+// The shared harness is written for every suite that includes it, so a
+// helper this one does not call still reads as dead in this binary.
+#[allow(dead_code)]
 mod common;
 
 use common::brain::Install;

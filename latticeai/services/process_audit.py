@@ -8,7 +8,7 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 _SECRET_RE = re.compile(
     r"(api[_-]?key|access[_-]?token|auth[_-]?token|bearer|client[_-]?secret|password|secret|token)",
@@ -99,27 +99,6 @@ def command_plan(
         "command_hash": command_hash(command, cwd=cwd),
         "confirmation_token": confirmation_token(command, cwd=cwd, purpose=purpose),
         "requires_admin": bool(requires_admin),
-        "cwd": cwd,
-        "metadata": dict(metadata or {}),
-    }
-
-
-def command_plan_for_commands(
-    commands: Iterable[Sequence[Any]],
-    *,
-    name: str,
-    purpose: str = "installer",
-    cwd: Optional[str] = None,
-    metadata: Optional[Mapping[str, Any]] = None,
-) -> dict[str, Any]:
-    normalized = [_normalize_command(command) for command in commands]
-    digest = _digest_payload({"purpose": purpose, "commands": normalized, "cwd": cwd or ""})
-    return {
-        "name": name,
-        "purpose": purpose,
-        "command_count": len(normalized),
-        "command_hash": digest,
-        "confirmation_token": digest[:16],
         "cwd": cwd,
         "metadata": dict(metadata or {}),
     }

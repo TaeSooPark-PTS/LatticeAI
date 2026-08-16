@@ -29,13 +29,6 @@ from lattice_brain.graph._kg_common.extraction import (
     _semantic_items,
     _topic_candidates,
 )
-from lattice_brain.ingestion.pipeline import IngestionPipeline
-from lattice_brain.multimodal.common import (
-    VIDEO_UNAVAILABLE_DETAIL,
-)
-from lattice_brain.multimodal.ports import (
-    MultimodalPorts,
-)
 from lattice_brain.quiet import quiet
 
 
@@ -108,69 +101,6 @@ def _install_router(monkeypatch, router, *, loop_running: bool) -> None:
     monkeypatch.setattr(kg_extraction, "get_llm_router", lambda: router)
     monkeypatch.setattr(asyncio, "get_event_loop", lambda: _FakeLoop(loop_running))
 
-
-@pytest.fixture(autouse=True)
-def _reset_ingestion_gates(monkeypatch):
-    from lattice_brain.ingestion.constants import MULTIMODAL_GATE, VIDEO_GATE
-
-    monkeypatch.delenv("LATTICEAI_ALLOW_MULTIMODAL", raising=False)
-    monkeypatch.delenv("LATTICEAI_ALLOW_VIDEO", raising=False)
-    MULTIMODAL_GATE.reset()
-    VIDEO_GATE.reset()
-    yield
-    MULTIMODAL_GATE.reset()
-    VIDEO_GATE.reset()
-
-def test_ingestion_pipeline_status_and_video_refusal_reasons(monkeypatch):
-    from lattice_brain.ingestion import pipeline as pipeline_mod
-    from lattice_brain.ingestion.constants import (
-        ALLOW_MULTIMODAL_ENV,
-        ALLOW_VIDEO_ENV,
-        MULTIMODAL_GATE,
-        VIDEO_GATE,
-    )
-
-    off = IngestionPipeline()
-    status = off.multimodal_status()
-    assert status["enabled"] is False
-    assert status["image"] is False
-    assert status["audio"] is False
-    assert status["video"] is False
-    assert ALLOW_MULTIMODAL_ENV in status["video_detail"]
-
-    opted = IngestionPipeline(allow_multimodal=True)
-    assert opted._allow_multimodal is True
-
-    MULTIMODAL_GATE.set(True)
-    gated = IngestionPipeline()
-    assert gated._allow_multimodal is True
-
-    VIDEO_GATE.set(False)
-    monkeypatch.setattr(pipeline_mod, "ffmpeg_available", lambda: True)
-    no_video = IngestionPipeline(allow_multimodal=True)
-    refused = no_video.multimodal_status()
-    assert refused["video"] is False
-    assert ALLOW_VIDEO_ENV in refused["video_detail"]
-
-    VIDEO_GATE.set(True)
-    monkeypatch.setattr(pipeline_mod, "ffmpeg_available", lambda: False)
-    no_decoder = IngestionPipeline(allow_multimodal=True)
-    detail = no_decoder.multimodal_status()
-    assert detail["video"] is False
-    assert detail["video_detail"] == VIDEO_UNAVAILABLE_DETAIL
-
-    with_port = IngestionPipeline(
-        allow_multimodal=True,
-        multimodal=MultimodalPorts(keyframe_extractor=lambda *_a, **_k: []),
-    )
-    ready = with_port.multimodal_status()
-    assert ready["video"] is True
-    assert ready["video_detail"] is None
-    assert ready["keyframes"] is True
-
-    monkeypatch.setattr(pipeline_mod, "ffmpeg_available", lambda: True)
-    with_ffmpeg = IngestionPipeline(allow_multimodal=True)
-    assert with_ffmpeg.multimodal_status()["video"] is True
 
 def test_runtime_package_lazy_exports():
     import lattice_brain.runtime as runtime_pkg

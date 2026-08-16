@@ -1,11 +1,13 @@
 //! Python↔Rust parity for the Phase-1 search engines, over the committed fixture.
 //!
-//! Same database, same queries, same golden files that
-//! `tests/unit/test_rust_parity_contract.py` re-asserts against the Python
-//! engines. Comparison is exact; the shared plumbing lives in `common`.
+//! Same database, same queries, same golden files the Python engines produced.
+//! Comparison is exact; the shared plumbing lives in `common`. The goldens are
+//! **frozen** — see `rust/fixtures/golden/FROZEN.md`; if one of them and this
+//! crate disagree, the engine changed.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
+// The shared harness is written for every suite that includes it, so a
+// helper this one does not call still reads as dead in this binary.
+#[allow(dead_code)]
 mod common;
 
 use common::{allowed_set, diff, golden, manifest, open_store, pin_environment};

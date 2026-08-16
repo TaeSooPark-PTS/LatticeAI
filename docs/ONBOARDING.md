@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

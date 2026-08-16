@@ -4,10 +4,6 @@
 //! the scheduler calls the right endpoint with the right body and behaves when
 //! the answer is a 500.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};

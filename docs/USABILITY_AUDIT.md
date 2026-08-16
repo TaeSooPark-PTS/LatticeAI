@@ -86,6 +86,11 @@ Heuristics:
 
 ## Journey 4 — Brain hierarchy
 
+> **Dated snapshot (2026-07-21).** `DepthEmergence.tsx` was deleted in v11.8.0
+> when the Brain home was redesigned; the depth-tiered reveal it describes is no
+> longer how the home discloses structure. The findings below are kept as the
+> record of what was evaluated at the time, not as current-truth surface notes.
+
 Surface: `frontend/src/features/brain/DepthEmergence.tsx`,
 `.../BrainMemoryLayer.tsx`.
 

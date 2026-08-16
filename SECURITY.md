@@ -3,23 +3,24 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 11.7.0. Security
+The public Git tree keeps release history from 11.0.0 through 11.8.0. Security
 support follows that same product era: **only 11.x receives fixes.**
 
 11.6.0 rebuilt the product server in Rust and reduced the Python package to a
-pure-compute AI worker; 11.7.0 is the same program with the disclosed holes
-closed. A fix for the 11.7 line is a fix to a different program than the one
-10.x and 9.x shipped, so backporting it would be a claim this project cannot
-honour. Those release notes stay in the tree as history; the support line does
-not.
+pure-compute AI worker; 11.7.0 closed the holes that door disclosed, and 11.8.0
+narrowed the worker further — from 28 routes to **19**. A fix for the 11.8 line
+is a fix to a different program than the one 10.x and 9.x shipped, so
+backporting it would be a claim this project cannot honour. Those release notes
+stay in the tree as history; the support line does not.
 
 | Version | Support |
 | --- | --- |
-| 11.7.x (latest) | Supported |
+| 11.8.x (latest) | Supported |
+| 11.7.x | Supported |
 | 11.6.x | Supported |
 | 11.5.x | Supported |
 | 11.4.x | Supported |
@@ -46,9 +47,17 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI v9.9.0 is a local-first Digital Brain. It keeps user knowledge,
+Lattice AI is a local-first Digital Brain. It keeps user knowledge,
 conversation context, Knowledge Graph data, and archives local by default while
 making external paths explicit.
+
+Since 11.6.0 the product server is `lattice-host` (Rust) and the Python package
+is an AI worker reached only over loopback. **11.8.0 narrowed that worker from
+28 routes to 19**: nine routes with no caller anywhere in the tree were deleted
+end to end — route, implementation, allowlist entry and gateway table — and
+negative tests now assert that the gateway no longer forwards them. A route
+that nothing calls is still an attack surface, so the smallest honest worker is
+the one that answers only what the product actually asks for.
 
 ### Default Secure Settings
 
@@ -64,7 +73,7 @@ making external paths explicit.
 | Docker Postgres setup | Disabled | Requires explicit consent |
 | Production CSP | Strict local app policy | External script/frame/object blocked by default |
 | Chat auto file read | Disabled | Arbitrary path reads require explicit approval |
-| Telegram inbound access | Deny by default | Requires an explicit chat-ID allowlist and dedicated server session token |
+| Telegram inbound access | Removed in 11.6.0 | The bridge left with the platform code that became the AI worker; nothing replaces it |
 | Legacy-global graph reads | Disabled | Must be explicitly requested for compatibility |
 | Invitation authorization | Signed and expiring | Static authorization cookies and built-in invitation codes are rejected |
 
@@ -75,6 +84,17 @@ making external paths explicit.
   deployments also set `Secure`.
 - Session tokens are stored locally only as SHA-256 hashes; deleted or disabled
   accounts invalidate existing sessions on the next request.
+- **The worker reads the session file rather than caching it forever (11.8.0).**
+  `lattice-auth` is the only writer of `sessions.json`; the worker only reads.
+  It used to load that file once at boot, so a login that happened afterwards
+  did not exist as far as the worker was concerned — silently under
+  `trusted_local_owner`, and as a flat 401 under `LATTICEAI_REQUIRE_AUTH=true`
+  for a token sitting in the file. A lookup that misses now re-reads before
+  giving up, guarded so a token-guessing burst cannot become a disk-read burst:
+  the re-read is skipped when the file's `mtime_ns`/`size` are unchanged, and
+  otherwise throttled to one parse per second, both under the lock that guards
+  the map. This makes valid sessions visible, never invalid ones — an expired or
+  unknown token still fails after the re-read.
 - The local data directory is mode `0700` and atomic JSON/session files are mode
   `0600` on POSIX filesystems.
 - Enterprise SSO paths are explicit configuration paths.
@@ -129,6 +149,24 @@ making external paths explicit.
   notifications contain only a token hint and an optional configured review UI
   link, never the full approval token.
 
+### What 11.8.0 Deleted, And Why It Is Not A Weakening
+
+11.8.0 removed several Python helpers whose names read as security controls:
+`hash_password` / `verify_password`, `check_ip_rate_limit`,
+`configure_trusted_proxies`, `client_ip`, and `bytes_match_extension`. None of
+them was enforcing anything. Password verification, rate limiting, trusted-proxy
+resolution and client-IP derivation all became `lattice-auth`'s and the
+gateway's in 11.6.0, when the front door moved to Rust; these copies had no
+caller left in the worker. Deleting a second, unreachable implementation removes
+the chance that a future reader hardens the wrong one.
+
+The guards that *are* load-bearing were kept and are unchanged: the CSRF origin
+guard on the proxied worker writes, auth before any decode or compute, the
+signature check on uploads, the mode-invariant circuit breakers in the Rust
+kernel, `sanitize_write_content` on every native write path, and the committed
+worker allowlist — now 19 entries, with tests asserting the nine deleted routes
+are answered `404` rather than forwarded.
+
 ### External Communication
 
 There is no default telemetry. Prompts, files, graph content, and archives do
@@ -138,7 +176,6 @@ External communication requires explicit configuration and user/admin action:
 
 - cloud model calls;
 - model downloads;
-- Telegram bridge, only for explicitly allowed chat IDs;
 - Brain Network peer exchange;
 - Docker/Postgres scale setup;
 - update checks;
@@ -152,9 +189,8 @@ variables, and streams at most 4 MiB of textual content.
 
 | Variable | Requirement | Purpose |
 | --- | --- | --- |
-| `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS` | Required when Telegram is enabled | Comma-separated inbound Telegram chat-ID allowlist; missing/empty means deny all |
-| `LATTICEAI_SERVER_SESSION_TOKEN` | Required when Telegram is enabled | Dedicated bearer used by the bridge for local Lattice AI API calls |
 | `LATTICEAI_PERMISSION_UI_URL` | Optional | Base URL for human permission-review links; approval tokens are never appended or sent |
+| `LATTICEAI_REQUIRE_AUTH` | Optional, default off on loopback | Forces authentication even in local mode; forced on for public or non-loopback binding |
 | `LATTICEAI_INVITE_GATE_ENABLED` | Optional, default off | Enables invitation onboarding without reopening unrestricted registration |
 | `LATTICEAI_INVITE_CODE` | Recommended when the invitation gate is enabled | Operator-generated random invitation code; when omitted, a private per-install value is generated and persisted—there is no shared default |
 
@@ -174,8 +210,6 @@ If exposing Lattice AI beyond localhost:
 3. Put the app behind HTTPS.
 4. Mount persistent storage.
 5. Review CORS, auth, rate limits, and graph exposure settings before use.
-6. Keep Telegram disabled, or set both its chat-ID allowlist and dedicated
-   server session token before enabling it.
 
 ## Known Limitations
 

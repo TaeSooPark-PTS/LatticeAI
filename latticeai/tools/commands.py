@@ -1,4 +1,12 @@
-"""Command/build/deploy and read-only git tools (no shell, allow-listed)."""
+"""Read-only git tools (no shell, allow-listed subcommands).
+
+``run_command`` and its sandbox left the worker in v11.6.0 §W4 — execution is
+``lattice-agent``'s. The flag/binary allowlists that only that validator read
+went with it in 11.8.0; what is left here is the four git readers ``POST
+/agent/tool`` still dispatches, and the two argument guards they apply:
+remote targets are refused outright, and a revision may not carry ``..``,
+``:``, ``/``, ``\\`` or a leading ``-``.
+"""
 
 from __future__ import annotations
 
@@ -14,20 +22,6 @@ from latticeai.tools import (
     _relative,
     _resolve_path,
 )
-
-# find(1) flags that execute or delete; checked in run_command.
-_BLOCKED_FIND_FLAGS = {
-    "-delete",
-    "-exec",
-    "-execdir",
-    "-fls",
-    "-fprint",
-    "-fprintf",
-    "-ok",
-    "-okdir",
-}
-_BLOCKED_RG_FLAGS = {"--pre", "--pre-glob"}
-_SAFE_EXECUTABLE_PATH = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin"
 
 
 def _run_git(args: List[str], cwd: Optional[str] = None) -> Dict[str, Any]:

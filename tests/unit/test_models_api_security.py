@@ -15,17 +15,8 @@ class _FakeRouter:
     def detected_cloud_models(self):
         return []
 
-    def switch_model(self, model_id):
-        if model_id not in self.loaded_model_ids:
-            raise KeyError(model_id)
-        self.current_model_id = model_id
-
     def unload_model(self, model_id):
         self.loaded_model_ids = [item for item in self.loaded_model_ids if item != model_id]
-
-    def unload_all(self):
-        self.loaded_model_ids = []
-        self.current_model_id = None
 
 
 def _models_client(
@@ -60,13 +51,9 @@ def _models_client(
             model_router=_FakeRouter(),
             require_user=require_user,
             require_admin=require_admin,
-            normalize_local_model_request=lambda model, _engine=None: model,
-            download_hf_model=lambda model, provider: calls.append(("pull", {"model": model, "provider": provider})) or {},
             prepare_and_load_model=prepare_and_load_model,
             prepare_and_load_model_stream=prepare_and_load_model_stream,
             sse_event=lambda event, data: f"event: {event}\ndata: {data}\n\n",
-            ensure_ollama_server=lambda: None,
-            local_binary=lambda _binary: None,
             engine_status=lambda: [],
             filter_lower_family_versions=lambda items: items,
             list_compat_profiles=lambda: [],
@@ -99,13 +86,10 @@ def test_model_endpoints_reject_anonymous_callers(method, path, payload):
     ("method", "path", "payload"),
     [
         ("get", "/models", None),
-        ("post", "/engines/pull-model", {"model": "example/model", "allow_download": True}),
         ("post", "/engines/prepare-model", {"model": "example/model"}),
         ("post", "/engines/prepare-model/stream", {"model": "example/model"}),
         ("post", "/models/load", {"model_id": "openai:test"}),
-        ("post", "/models/switch/loaded-model", None),
         ("delete", "/models/unload/loaded-model", None),
-        ("delete", "/models/unload-all", None),
     ],
 )
 def test_model_inventory_and_lifecycle_are_admin_only_in_auth_mode(method, path, payload):

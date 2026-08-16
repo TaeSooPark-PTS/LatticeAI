@@ -38,9 +38,9 @@
 //! [`local_files_api::enrich`] so one failure mode is shared by every door.
 //! The dry-run HTTP surface in [`api`] still writes nothing at all.
 //!
-//! The parity proof lives in `tests/chunking_parity.rs`, against the goldens
-//! `scripts/generate_chunking_parity_fixtures.py` writes and
-//! `tests/unit/test_chunking_parity_contract.py` re-asserts from the Python side.
+//! The parity proof lives in `tests/chunking_parity.rs`, against goldens taken
+//! from the Python chunker and now frozen — see
+//! `rust/fixtures/chunking/FROZEN.md`.
 
 // The HTTP modules answer `Result<T, axum::response::Response>`: the error is
 // the rendered refusal, as in `lattice-auth`. Allowed once at the root.

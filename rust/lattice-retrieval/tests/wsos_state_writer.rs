@@ -7,7 +7,6 @@
 //! lives in its own test binary: installing a writer inside the lib tests
 //! would redirect every other test's writes into it.
 
-#![allow(clippy::all)]
 use std::sync::{Arc, Mutex};
 
 use lattice_retrieval::memory_api::wsos::{

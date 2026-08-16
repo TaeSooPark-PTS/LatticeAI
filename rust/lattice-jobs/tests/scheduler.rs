@@ -1,8 +1,9 @@
 //! The scheduler against a fake worker: what it calls, what it does when the
 //! answer is a 500, and what `/host/jobs` says about all of it.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
+// The shared harness is written for every suite that includes it, so a
+// helper this one does not call still reads as dead in this binary.
+#[allow(dead_code)]
 mod common;
 
 use std::sync::Arc;

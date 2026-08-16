@@ -62,6 +62,8 @@ describe("BrainHome first entry", () => {
     const station = container.querySelector("[data-testid='brain-home-station']") as HTMLElement;
     expect(station.querySelector("textarea")).toBeTruthy();
     expect(station.querySelector(".brain-station-toolbar")).toBeTruthy();
+    expect(station.querySelector(".brain-writing-desk .brain-composer-wrapper")).toBeTruthy();
+    expect(station.querySelector(".brain-writing-desk .brain-station-toolbar")).toBeTruthy();
     expect(station.querySelector(".brain-home-prompt-strip")).toBeNull();
     expect(station.querySelector("[data-testid='brain-secondary-deck']")).toBeNull();
     expect(station.querySelector("[data-testid='brain-home-dock']")).toBeNull();

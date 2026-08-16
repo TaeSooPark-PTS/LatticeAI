@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above
@@ -149,10 +149,13 @@ evaluated; changes to it must keep these invariants:
 - Weak-model tolerance lives in `extract_action_details`: think-block strip,
   fence extraction, object slicing, trailing-comma repair, python-literal
   repair. New tolerances must be deterministic and reported in `repairs`.
-- `scripts/agent_eval.py` is a CI gate: a deterministic scripted-model
-  scenario suite (happy path, weak-model gauntlet, correction escalation,
-  destructive block, loop detection, critic retry, garbage termination) that
-  must stay at 100% scenario pass.
+- The loop verifier fails closed: an outcome that cannot be verified resolves
+  to `NEEDS_REVIEW` and enters the review queue rather than being reported as
+  success. It lives in `lattice-agent` (`agentloop/verification.rs`) since the
+  loop moved to Rust, and its verdicts are covered by that crate's own tests.
+  There is **no** `scripts/agent_eval.py` — the scripted-model harness stopped
+  being a CI gate and was deleted in 11.8.0 rather than left as a script that
+  looked like one.
 - Change governance is proposal-first (`latticeai/core/tool_governor.py` +
   `latticeai/services/change_proposals.py`): additive creates run with
   minimal friction; mutations/deletions of existing files are staged as

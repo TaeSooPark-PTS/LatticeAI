@@ -12,15 +12,6 @@
 //! purpose: sibling work packages own their own test files in this directory and
 //! a shared `common` would be a shared file.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(
-    clippy::too_many_arguments,
-    clippy::unnecessary_sort_by,
-    clippy::field_reassign_with_default
-)]
-
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 

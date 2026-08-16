@@ -1,49 +1,5 @@
 //! Auth, JSON, and time helpers shared by the R7 families.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::http::{HeaderMap, StatusCode};
@@ -256,16 +212,15 @@ fn civil_from_days(mut days: i64) -> (i32, u32, u32) {
     (y as i32, m as u32, d as u32)
 }
 
-/// One parsed ISO-8601 stamp.
+/// One parsed ISO-8601 stamp, reduced to the instant it names.
 ///
-/// `naive_secs` is the wall-clock reading with the offset *ignored*, which is
-/// what a naive `datetime.fromisoformat` produces; `utc_secs` is the instant
-/// the stamp actually names. They differ only for an offset-aware value, and
-/// keeping both is why an aware `snoozed_until` can be compared against the
-/// naive clock instead of raising (v11.6.0 answered 500 here).
+/// The wall-clock reading with the offset ignored is what a naive
+/// `datetime.fromisoformat` produces; `utc_secs` is that reading with the
+/// offset applied. Folding the two into one field is why an aware
+/// `snoozed_until` can be compared against the naive clock instead of raising
+/// (v11.6.0 answered 500 here). The naive reading and the offset-aware flag are
+/// [`split_offset`]'s business, and that is where they are proven.
 pub(crate) struct ParsedIso {
-    pub(crate) aware: bool,
-    pub(crate) naive_secs: i64,
     pub(crate) utc_secs: i64,
 }
 
@@ -273,7 +228,7 @@ pub(crate) fn parse_iso(value: &str) -> Option<ParsedIso> {
     if value.is_empty() {
         return None;
     }
-    let (core, offset, aware) = split_offset(value);
+    let (core, offset, _aware) = split_offset(value);
     let (date, time) = core.split_once('T').or_else(|| core.split_once(' '))?;
     let mut d = date.split('-');
     let year: i32 = d.next()?.parse().ok()?;
@@ -286,8 +241,6 @@ pub(crate) fn parse_iso(value: &str) -> Option<ParsedIso> {
     let sec: u32 = sec_s.split('.').next().unwrap_or("0").parse().ok()?;
     let naive_secs = ymd_hms_to_secs(year, month, day, hour, min, sec);
     Some(ParsedIso {
-        aware,
-        naive_secs,
         utc_secs: naive_secs - offset,
     })
 }
@@ -397,24 +350,36 @@ mod tests {
         parse_iso(text).unwrap_or_else(|| panic!("{text} must parse"))
     }
 
+    /// The naive reading and the offset-aware flag live in [`split_offset`];
+    /// `ParsedIso` keeps only the instant. These two helpers name them so the
+    /// assertions below read the same as when the struct carried all three.
+    fn offset_secs(text: &str) -> i64 {
+        split_offset(text).1
+    }
+
+    fn aware(text: &str) -> bool {
+        split_offset(text).2
+    }
+
     #[test]
     fn a_naive_stamp_reads_as_itself_in_both_readings() {
         let value = parsed("2099-01-01T00:00:00");
-        assert!(!value.aware);
-        assert_eq!(value.naive_secs, value.utc_secs);
-        assert_eq!(value.naive_secs, 4_070_908_800);
+        assert!(!aware("2099-01-01T00:00:00"));
+        // No offset to remove, so the instant *is* the wall-clock reading.
+        assert_eq!(offset_secs("2099-01-01T00:00:00"), 0);
+        assert_eq!(value.utc_secs, 4_070_908_800);
         // Space separator and fractional seconds, as Python accepts them.
-        assert_eq!(parsed("2099-01-01 00:00:00.500").naive_secs, 4_070_908_800);
+        assert_eq!(parsed("2099-01-01 00:00:00.500").utc_secs, 4_070_908_800);
         // Minutes only.
-        assert_eq!(parsed("2099-01-01T00:00").naive_secs, 4_070_908_800);
+        assert_eq!(parsed("2099-01-01T00:00").utc_secs, 4_070_908_800);
     }
 
     #[test]
     fn an_offset_is_removed_from_the_wall_clock_to_give_the_instant() {
         let utc = parsed("2099-01-01T00:00:00+00:00");
-        assert!(utc.aware);
+        assert!(aware("2099-01-01T00:00:00+00:00"));
         assert_eq!(utc.utc_secs, 4_070_908_800);
-        assert_eq!(utc.utc_secs, utc.naive_secs);
+        assert_eq!(offset_secs("2099-01-01T00:00:00+00:00"), 0);
 
         // 09:00 in +09:00 is midnight UTC; 19:00 the previous day in -05:00 is
         // the same instant. Both used to be a 500 rather than a comparison.
@@ -424,14 +389,14 @@ mod tests {
             "2098-12-31T19:00:00-05:00",
         ] {
             let value = parsed(text);
-            assert!(value.aware, "{text}");
+            assert!(aware(text), "{text}");
             assert_eq!(value.utc_secs, 4_070_908_800, "{text}");
-            assert_ne!(value.naive_secs, value.utc_secs, "{text}");
+            assert_ne!(offset_secs(text), 0, "{text}");
         }
 
         for text in ["2099-01-01T00:00:00Z", "2099-01-01T00:00:00z"] {
             let value = parsed(text);
-            assert!(value.aware, "{text}");
+            assert!(aware(text), "{text}");
             assert_eq!(value.utc_secs, 4_070_908_800, "{text}");
         }
         // Seconds in the offset, and an hours-only offset.
@@ -444,9 +409,9 @@ mod tests {
         // Five digits is not an offset shape; the reading stays the wall clock
         // rather than becoming a guess, and the stamp does not claim to be
         // offset-aware when nothing readable said so.
-        let value = parsed("2099-01-01T00:00:00+09000");
-        assert_eq!(value.utc_secs, value.naive_secs);
-        assert!(!value.aware);
+        assert_eq!(parsed("2099-01-01T00:00:00+09000").utc_secs, 4_070_908_800);
+        assert_eq!(offset_secs("2099-01-01T00:00:00+09000"), 0);
+        assert!(!aware("2099-01-01T00:00:00+09000"));
         assert!(parse_iso("").is_none());
         assert!(parse_iso("next tuesday").is_none());
         assert!(parse_iso("2099-01-01").is_none());

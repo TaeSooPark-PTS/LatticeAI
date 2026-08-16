@@ -1,9 +1,27 @@
-"""Password hashing, rate limiting, IP detection, file-magic validation."""
+"""Token hashing, secret redaction, and the worker's per-user rate limiter.
+
+What is *not* here any more, and why: password hashing / verification, the
+``client_ip`` resolver with its per-IP login limiter, and the file-magic
+extension check were all ported to ``lattice-auth`` / ``lattice-chat`` in
+v11.6.0, when the front door and every write moved to Rust. They were left
+behind as fully orphaned Python — no route, no service, no script called them
+— and a second copy of an authentication rule that nothing enforces is worse
+than no copy: it reads like a live guard.
+
+What stays, stays because something still calls it:
+
+* :func:`enforce_rate_limit` — charged by every ``/worker/*`` and ``/agent/*``
+  seam through ``_admit``.
+* :func:`redact_secret_text` / :func:`redact_secrets` — and they additionally
+  generate the Rust redaction fixture via ``scripts/gen_redact_fixture.py``.
+* the trusted-proxy allowlist — ``_peer_is_trusted_proxy`` is what
+  :mod:`latticeai.core.http_origin` (and through it the CSRF check) asks before
+  believing an ``X-Forwarded-Host``.
+"""
 
 import hashlib
 import ipaddress
 import re
-import secrets
 import threading
 import time
 from typing import Any, Dict, List
@@ -26,21 +44,6 @@ def sha256_hex(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    key = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1)
-    return f"{salt}:{key.hex()}"
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    try:
-        salt, key_hex = hashed.split(":", 1)
-        key = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1)
-        return secrets.compare_digest(key.hex(), key_hex)
-    except Exception:
-        return False
-
-
 def host_is_loopback(host: str) -> bool:
     if host in {"localhost", "127.0.0.1", "::1"}:
         return True
@@ -50,15 +53,15 @@ def host_is_loopback(host: str) -> bool:
         return False
 
 
-# ── Trusted-proxy handling ────────────────────────────────────────────────────
-# ``client_ip`` is the key used for IP rate limiting (login / register) and for
-# audit logging. A forwarded header (``X-Forwarded-For`` / ``CF-Connecting-IP``)
-# is *client-controllable*, so honoring it unconditionally lets anyone spoof
-# their source IP and bypass per-IP rate limits. We therefore trust those headers
-# ONLY when the direct peer is a configured trusted proxy (e.g. the Cloudflare /
-# Vercel edge in front of the app). Default: no trusted proxies → use the peer
-# address, which is the safe, local-first behaviour.
-_FORWARDED_HEADERS = ("CF-Connecting-IP", "X-Forwarded-For")
+# ── Trusted-proxy allowlist ──────────────────────────────────────────────────
+# The per-IP login limiter this list was born for is ``lattice-auth``'s now, and
+# ``client_ip`` went with it. The list itself is still load-bearing on this
+# side: :func:`latticeai.core.http_origin.peer_may_forward` — and through it the
+# CSRF front-door check — asks ``_peer_is_trusted_proxy`` whether an
+# ``X-Forwarded-Host`` from this peer may be believed. Off loopback the answer
+# is "only for an operator-listed proxy", which is what makes forging a front
+# door from another machine impossible. ``configure_trusted_proxies`` is the one
+# way that list is ever non-empty, so it stays with the guard it feeds.
 _trusted_proxies: List["ipaddress._BaseNetwork"] = []
 
 
@@ -94,46 +97,6 @@ def _peer_is_trusted_proxy(peer: str) -> bool:
     except ValueError:
         return False
     return any(addr in net for net in _trusted_proxies)
-
-
-def client_ip(request) -> str:
-    peer = request.client.host if request.client else ""
-    # Only a trusted proxy's forwarded headers are honoured; otherwise the
-    # client-supplied header is ignored so per-IP rate limits cannot be spoofed.
-    if _peer_is_trusted_proxy(peer):
-        for header in _FORWARDED_HEADERS:
-            val = request.headers.get(header)
-            if val:
-                candidate = val.split(",")[0].strip()
-                try:
-                    ipaddress.ip_address(candidate)
-                    return candidate
-                except ValueError:
-                    quiet()
-                    continue
-    return peer or "unknown"
-
-
-_FILE_MAGIC: Dict[str, List[bytes]] = {
-    ".pdf":  [b"%PDF-"],
-    ".docx": [b"PK\x03\x04"],
-    ".xlsx": [b"PK\x03\x04"],
-    ".pptx": [b"PK\x03\x04"],
-    ".zip":  [b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"],
-    ".png":  [b"\x89PNG\r\n\x1a\n"],
-    ".jpg":  [b"\xff\xd8\xff"],
-    ".jpeg": [b"\xff\xd8\xff"],
-    ".gif":  [b"GIF87a", b"GIF89a"],
-}
-
-
-def bytes_match_extension(data: bytes, ext: str) -> bool:
-    ext = (ext or "").lower()
-    signatures = _FILE_MAGIC.get(ext)
-    if not signatures:
-        return True
-    head = data[:16]
-    return any(head.startswith(sig) for sig in signatures)
 
 
 SECRET_KEY_HINTS = (
@@ -207,23 +170,6 @@ def redact_secrets(value: Any) -> Any:
     if isinstance(value, tuple):
         return tuple(redact_secrets(item) for item in value)
     return value
-
-
-# ── IP-based rate limiting (registration / login) ────────────────────────────
-_ip_rate_windows: dict = {}
-_ip_rate_lock = threading.Lock()
-
-
-def check_ip_rate_limit(ip: str, action: str, max_calls: int, window_secs: float) -> None:
-    key = (ip, action)
-    now = time.time()
-    cutoff = now - window_secs
-    with _ip_rate_lock:
-        calls = [t for t in _ip_rate_windows.get(key, []) if t > cutoff]
-        if len(calls) >= max_calls:
-            raise HTTPException(status_code=429, detail="요청이 너무 많습니다. 잠시 후 다시 시도하세요.")
-        calls.append(now)
-        _ip_rate_windows[key] = calls
 
 
 # ── Per-user token-bucket rate limiting ──────────────────────────────────────

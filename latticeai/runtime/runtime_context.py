@@ -81,9 +81,7 @@ class RuntimeContext:
     # ── phase 4: the compute ports ───────────────────────────────────────
     EMBEDDING_PROFILE: Any
     EMBEDDER: Any
-    VOICE_CAPTURE: Any
     MULTIMODAL_PORTS: Any
-    INGESTION_PIPELINE: Any
 
     # ── phase 5: domain singletons ───────────────────────────────────────
     model_router: Any

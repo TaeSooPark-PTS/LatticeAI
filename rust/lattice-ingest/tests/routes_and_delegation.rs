@@ -13,8 +13,6 @@
 //!   the regression to guard is a request that should not exist rather than a
 //!   reply that should.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -24,7 +22,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use lattice_core::db::Store;
 use lattice_core::graph_write::GraphWriter;
-use lattice_core::worker::WorkerSeamClient;
 use lattice_ingest::api::{router, IngestApiConfig, CHUNK_PATH, PLAN_PATH};
 use lattice_ingest::worker::{NoteIngestError, NoteIngestor, NoteSubmission};
 use serde_json::{json, Value};

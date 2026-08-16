@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -40,7 +40,7 @@ flowchart TB
       corec["lattice-core<br/>store · embeddings · <b>graph_write</b>"]
       hostc["lattice-host<br/>gateway · supervisor · static UI"]
     end
-    subgraph closures["11.7.0 native closures"]
+    subgraph closures["Native closures (11.7.0)"]
       direction LR
       hooks["HooksStore → HookSink<br/>user hooks fire on native tools"]
       sanitize["sanitize on every write path<br/>loop + /tools/write_file"]
@@ -66,7 +66,7 @@ flowchart TB
   subgraph worker["Python AI Worker — compute only (latticeai.worker_app)"]
     direction LR
     llm["Inference<br/>/agent/llm · /worker/llm/stream"]
-    compute["Compute seams — 28 routes, unchanged allowlist<br/>/worker/{embed,extract,parse,asr,<br/>multimodal/describe,render/docx|pdf|pptx|xlsx}"]
+    compute["Compute seams — 19 routes since 11.8.0<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx}"]
     catalog["Model + engine catalog<br/>/models · /engines/* · /worker/sysinfo · /health"]
     llm ~~~ compute ~~~ catalog
   end
@@ -83,7 +83,7 @@ flowchart TB
 
   user --> surfaces
   surfaces --> host
-  door -- "28 allow-listed routes only<br/>(streaming, SSE, X-Forwarded-*)" --> gates
+  door -- "19 allow-listed routes only<br/>(streaming, SSE, X-Forwarded-*)" --> gates
   gates --> worker
   compute -- "/worker/parse · /worker/render/*" --> ingestc
   corec -- "<b>single writer — RUST</b>" --> data
@@ -104,11 +104,14 @@ flowchart TB
   style cloud stroke-dasharray: 5 5
 ```
 
-One Door is still the top of this diagram. 11.7.0 fills in what that door
-was still missing:
+One Door is still the top of this diagram. 11.7.0 filled in what that door
+was missing; 11.8.0 took away what it was carrying for nobody:
 
-- **The worker is still not a server of the product.** It answers the same
-  **28** compute routes. `/worker/parse` (binary upload / watched PDF) and
+- **The worker is not a server of the product, and it is smaller.** 11.8.0
+  cut it from **28 routes to 19** by deleting nine that no caller anywhere
+  in the tree reached — route, implementation, allowlist entry and gateway
+  table together, with negative tests asserting the door now answers `404`
+  instead of forwarding. `/worker/parse` (binary upload / watched PDF) and
   `/worker/render/*` (including the xlsx security export) stay on the
   committed allowlist; nothing product-shaped and no KG write went back
   into Python. A decoy-proven static gate fails the build if a source file
@@ -180,15 +183,18 @@ Key boundaries:
   (with an installed `DocumentWriter`, the same `WorkspaceOsStore` lock).
 - `latticeai.worker_app` is the only application the Python package builds.
   `create_worker_app` is a seven-phase bootstrap (platform, config, identity,
-  brain, domain, web, features) over a 47-field runtime context, and it serves
-  28 routes: `/agent/{llm,tool}`, `/worker/{llm/stream,sysinfo,embed,extract,
-  parse,asr,multimodal/describe,render/{docx,pdf,pptx,xlsx}}`, the model and
-  engine catalog, `/tools/{read_document,pdf_pages}`, the embeddings and
-  multimodal status probes, and `/health`. `create_app` no longer exists.
+  brain, domain, web, features) over a 47-field runtime context, and since
+  11.8.0 it serves **19** routes: `/agent/{llm,tool}`,
+  `/worker/{llm/stream,sysinfo,embed,extract,parse,asr,
+  render/{docx,pdf,pptx,xlsx}}`, the model and engine catalog,
+  `GET /api/embeddings/status`, and `/health`. `create_app` no longer exists.
 - `lattice_brain` is now the compute half of the Brain: the local embedding
-  model, the multimodal fact extractors, the text/extraction helpers and the
-  capability-only ingestion pipeline. The graph store, conversations, storage
-  engines, portability and the workflow engine moved to Rust.
+  model, the multimodal fact extractors, and the text/extraction helpers. The
+  graph store, conversations, storage engines, portability and the workflow
+  engine moved to Rust; `ingestion` kept only the shared vocabulary (routing
+  constants, DTOs, hashing, the advisory extraction score) after 11.8.0
+  deleted the capability-probe `IngestionPipeline` with the route that was
+  its only caller.
 
 ## First Screen Composition
 
@@ -369,7 +375,7 @@ through an immutable typed context instead of ambient locals.
 | `brain` | the resolved embedder, `MultimodalPorts`, a capability-only ingestion pipeline. No graph store, no conversations, no workspace OS |
 | `domain` | `LLMRouter`, tool-dispatch configuration |
 | `web` | lifespan (model autoload + idle unload), the FastAPI shell, the model runtime |
-| `features` | the six routers that carry the 28 routes |
+| `features` | four routers — `/health`, the MLX model lifecycle, the embedder report, and the Rust loop's `/agent/*` seam. It mounted three more until 11.8.0 (the `/tools/*` document parser, the multi-modal capability probe, the voice capability probe); none had a caller |
 
 Important expectations:
 
@@ -378,25 +384,36 @@ Important expectations:
   host injects, and auth runs **before** any decode or compute so a 401 costs
   nothing;
 - the CSRF origin guard stays, because browser-facing writes on a handful of
-  paths (`/models/load`, `/engines/pull-model`, `/tools/read_document`) are
-  still proxied and arrive carrying the gateway's `Origin`. That is why the
-  supervisor injects `LATTICEAI_CSRF_TRUSTED_ORIGINS`;
+  paths (`/models/load`, `/engines/prepare-model`) are still proxied and arrive
+  carrying the gateway's `Origin`. That is why the supervisor injects
+  `LATTICEAI_CSRF_TRUSTED_ORIGINS`;
 - keep HTTP errors at the route boundary and model errors in services;
 - **launch through uvicorn's factory form.** `python -m latticeai.worker_app`
   exports `main()` but has no `__main__` guard, so the module form imports and
   exits without binding. The supervisor runs
   `python -m uvicorn latticeai.worker_app:create_worker_app --factory`.
 
-The 28 routes, by group:
+The 19 routes, by group:
 
 | Group | Routes |
 |---|---|
 | Agent seam (2) | `POST /agent/llm` · `POST /agent/tool` |
 | State seams (2) | `GET /worker/sysinfo` · `POST /worker/llm/stream` |
-| Compute seams (9) | `POST /worker/{embed,extract,parse,asr,multimodal/describe}` · `POST /worker/render/{docx,pdf,pptx,xlsx}` |
-| Models + engines (8) | `GET /models` · `POST /models/{load,switch/{id}}` · `DELETE /models/{unload/{id},unload-all}` · `POST /engines/{prepare-model,prepare-model/stream,pull-model}` |
-| Documents (2) | `POST /tools/read_document` · `GET /tools/pdf_pages` |
-| Status (5) | `GET /health` · `GET /api/embeddings/{status,providers}` · `GET /api/ingestion/multimodal` · `GET /api/capture/voice/status` |
+| Compute seams (8) | `POST /worker/{embed,extract,parse,asr}` · `POST /worker/render/{docx,pdf,pptx,xlsx}` |
+| Models + engines (5) | `GET /models` · `POST /models/load` · `DELETE /models/unload/{id}` · `POST /engines/{prepare-model,prepare-model/stream}` |
+| Status (2) | `GET /health` · `GET /api/embeddings/status` |
+
+**11.8.0 deleted nine routes** that no caller in the tree reached, and the
+groups above are what is left. The nine were `GET /api/embeddings/providers`,
+`POST /tools/read_document`, `GET /tools/pdf_pages`,
+`POST /worker/multimodal/describe`, `GET /api/ingestion/multimodal`,
+`POST /models/switch/{model_id}`, `DELETE /models/unload-all`,
+`POST /engines/pull-model` and `GET /api/capture/voice/status`. Their modules
+(`latticeai/api/{tools,local_files,voice_capture}.py`,
+`lattice_brain/ingestion/pipeline.py`) went with them, `pypdfium2` left with
+`/tools/pdf_pages`, and `rust/lattice-host/src/gateway/allowlist.rs` carries a
+test asserting the gateway no longer forwards any of the nine. Document parsing
+was never lost: `POST /worker/parse` is the door the product actually uses.
 
 `rust/fixtures/worker_allowlist.json` is that list projected into the gateway,
 generated by `scripts/gen_worker_allowlist_fixture.py` from
@@ -436,32 +453,43 @@ no `(method, path)` is claimed twice *before* the router is built.
 
 ### The parity contract runs both ways
 
-`scripts/generate_rust_parity_fixtures.py` builds `rust/fixtures/parity_store.sqlite`
-and the golden files through the **real Python write and read paths**, and both
-runtimes are then held to them: `tests/unit/test_rust_parity_contract.py` re-runs
-the Python engines against the committed goldens, and `rust/lattice-retrieval/tests/parity.rs`
-runs the Rust ones. Comparison is exact `serde_json::Value` equality over the
+`scripts/generate_rust_parity_fixtures.py` built `rust/fixtures/parity_store.sqlite`
+and the golden files through the **real Python write and read paths** while those
+paths still existed. Both runtimes were then held to them; since 11.6.0 removed
+the Python side, the surviving half is `rust/lattice-retrieval/tests/{parity,
+suites}.rs` (plus `lattice-core`'s `tests/golden_embeddings.rs`) running against
+the committed files. Comparison is exact `serde_json::Value` equality over the
 whole response, so a drifting float, a renamed key, a missing honesty field and a
-reordered tie all fail the same way. A semantic change on the Python side cannot
-silently invalidate the goldens, and a Rust port cannot quietly narrow the claim.
+reordered tie all fail the same way. A Rust port cannot quietly narrow the claim,
+and the fixtures cannot be quietly re-cut to match it — that is what the
+`FROZEN.md` beside each family is for.
 
 Since 11.6.0 the generators are frozen: the Python sources several of them
-imported no longer exist, so `rust/fixtures/{golden,graph_write,http,agent_loop,
-agent}/FROZEN.md` records commit `fc65e60` as the last tree that could
-regenerate them, and the committed files are the contract. That is stated rather
-than hidden, because a golden nothing can reproduce is a spec nobody can check.
+imported no longer exist, so every fixture family carries a `FROZEN.md` naming
+the last tree that could regenerate it, and the committed files are the
+contract. 11.8.0 finished that accounting — it deleted the two generators that
+were still on disk but could no longer run
+(`scripts/generate_agent_parity_fixtures.py`,
+`scripts/generate_chunking_parity_fixtures.py`, whose Python chunker and agent
+permission module went with them) and added the missing
+`rust/fixtures/chunking/FROZEN.md`. A generator that cannot regenerate its own
+output is not a tool, it is a claim; the gates below are what actually holds
+these files. That is stated rather than hidden, because a golden nothing can
+reproduce is a spec nobody can check.
 
-**Seven** golden families exist, each generated from the real Python original:
+**Seven** golden families exist, each generated from the real Python original.
+The "Held by" column names what fails when a port drifts — for the frozen
+families that is a committed fixture plus its test, not a regeneration:
 
-| Family | What is pinned | Generator |
+| Family | What is pinned | Held by |
 |---|---|---|
-| Retrieval | 142 goldens: keyword / vector / hybrid answers, the service-layer three-channel fusion, graph search, relationship search and traversal | `scripts/generate_rust_parity_fixtures.py` |
-| Chunking | The four typed strategies over boundary cases, Korean and English, and the PDF page-offset arithmetic | `scripts/generate_chunking_parity_fixtures.py` |
-| Agent kernel | 2,358 decisions: mode normalization, effective auto-approve, circuit breakers, proposal staging, tool classification, and the `run_command` validator verdicts | `scripts/generate_agent_parity_fixtures.py` |
-| Context / history | 109 goldens: the assembler's section order and greedy budget truncation, the live `build_recent_chat_context` (a family added in 11.5.2 — it caught Rust returning empty for Python's keep-everything `limit=0` tail slice), the history reads with their scoping and grouping, doc-gen search and multi-hop context | `scripts/generate_rust_parity_fixtures.py` + `scripts/parity_fixture_corpus_{docgen,context}.py` |
-| Agent loop | Ten scripted trajectories replayed byte-identically against the real Python runtime (audit trail included), plus the helper tables — plan normalization, action extraction, and since 11.5.2 `document_targets` and `agent_profiles` (97 rows), the last two `/agent` hot-path twins | `scripts/generate_agent_loop_fixtures.py` |
-| **Graph write** (11.6.0) | A **32-step battery** driven through the real Python store, dumping **every table after every step**, plus the final store and a `sqlite_master` master of all **67 objects** (implicit indexes and FTS shadow tables included). Zero tolerated differences | `scripts/gen_graph_write_goldens.py` |
-| **HTTP surface** (11.6.0) | **1,487 recorded request/response cases** across twelve fixture files — admin, auth/security, chat, knowledge/search, mcp/ecosystem, memory/brain, platform, review/proposals, static UI, tools, worker tools, workspace — captured from the real Python app while it still served them, and replayed against the native routes | frozen at `fc65e60` |
+| Retrieval | 142 goldens: keyword / vector / hybrid answers, the service-layer three-channel fusion, graph search, relationship search and traversal | `rust/lattice-retrieval/tests/{parity,suites}.rs` over `rust/fixtures/golden/` (frozen at `fc65e60`) |
+| Chunking | The four typed strategies over boundary cases, Korean and English, and the PDF page-offset arithmetic | `rust/lattice-ingest/tests/chunking_parity.rs` over the committed `rust/fixtures/chunking/` (frozen at `e94ae6d`) |
+| Agent kernel | Mode normalization, effective auto-approve, circuit breakers, proposal staging, tool classification, and the `run_command` validator verdicts. 11.8.0 deleted the `decisions__trusted` and `decisions__bypass` grids (702 rows each) in favour of named unit tests per verdict class, and trimmed `decisions__strict` and `calls` from 702 rows to **171 representative rows** — one per equivalence class, with a drift guard that fails when the kernel grows a class the sample does not cover | `rust/lattice-agent/tests/parity.rs` over the committed `rust/fixtures/agent/golden/` (frozen at `e94ae6d`) |
+| Context / history | 109 goldens: the assembler's section order and greedy budget truncation, the live `build_recent_chat_context` (a family added in 11.5.2 — it caught Rust returning empty for Python's keep-everything `limit=0` tail slice), the history reads with their scoping and grouping, doc-gen search and multi-hop context | `rust/lattice-retrieval/tests/{parity,suites}.rs` over `rust/fixtures/golden/` (frozen at `fc65e60`) |
+| Agent loop | Ten scripted trajectories replayed byte-identically against the real Python runtime (audit trail included), plus the helper tables — plan normalization, action extraction, and since 11.5.2 `document_targets` and `agent_profiles` (97 rows), the last two `/agent` hot-path twins | `rust/lattice-agent/tests/agent_loop.rs` over `rust/fixtures/agent_loop/` (frozen at `fc65e60`) |
+| **Graph write** (11.6.0) | A **32-step battery** driven through the real Python store, dumping **every table after every step**, plus the final store and a `sqlite_master` master of all **67 objects** (implicit indexes and FTS shadow tables included). Zero tolerated differences | `rust/lattice-core/tests/graph_write_{parity,schema}.rs` over `rust/fixtures/graph_write/` (frozen at `fc65e60`) |
+| **HTTP surface** (11.6.0) | **1,487 recorded request/response cases** across twelve fixture files — admin, auth/security, chat, knowledge/search, mcp/ecosystem, memory/brain, platform, review/proposals, static UI, tools, worker tools, workspace — captured from the real Python app while it still served them, and replayed against the native routes | the per-crate `*_replay.rs` / `*_parity.rs` tests over `rust/fixtures/http/` (frozen at `fc65e60`) |
 
 The clock is a parameter, not a call: `hybrid_search` takes `now_secs`, because a
 golden file that reads the wall clock is not a golden file.
@@ -614,6 +642,30 @@ What that costs, said plainly:
   the build if a new literal names a path that is not on the allowlist, on
   `NOT_WORKER_CALLS`, or on a file-scoped exemption.
 
+## Travel Light — what 11.8.0 took out (and what replaced it)
+
+11.7.0 emptied the backlog. 11.8.0 removed what the tree was still carrying for
+nobody. Every deletion below either had no caller or had a second, better owner;
+none of them was traded for a smaller claim without saying so.
+
+| Removed | Why it was carrying nothing | What holds the ground now |
+|---|---|---|
+| Nine worker routes (`/api/embeddings/providers`, `/tools/read_document`, `/tools/pdf_pages`, `/worker/multimodal/describe`, `/api/ingestion/multimodal`, `/models/switch/{id}`, `/models/unload-all`, `/engines/pull-model`, `/api/capture/voice/status`) | No caller anywhere in the tree — not the SPA, not the extensions, not the host | The allowlist is 19; `gateway/allowlist.rs` asserts the nine are no longer forwarded, and the Rust KEEP tables name them as deliberately dropped |
+| `latticeai/api/{tools,local_files,voice_capture}.py`, `lattice_brain/ingestion/pipeline.py`, the `pypdfium2` dependency | The modules existed only to serve those routes | Document parsing is `POST /worker/parse`; the ingestion vocabulary (constants, DTOs, hashing, quality) stayed |
+| `latticeai/core/agent_permission.py` and dead security helpers (`hash_password`/`verify_password`, `check_ip_rate_limit`, `configure_trusted_proxies`, `client_ip`, `bytes_match_extension`) | Second implementations of decisions the Rust front door has owned since 11.6.0 | `lattice-auth` and `lattice-agent`'s kernel — one implementation each |
+| The dead chunker in `_kg_common/text.py` and nine zero-caller functions | Chunking moved to `lattice-ingest` in 11.5.0 | `rust/lattice-ingest/tests/chunking_parity.rs` over the frozen chunking goldens |
+| `scripts/{generate_agent_parity_fixtures,generate_chunking_parity_fixtures,agent_eval,brain_quality_eval,check_python,bench_agent_smoke}.py`, `scripts/check_legacy_debt.mjs` | Generators whose sources are gone; harnesses that had stopped being gates; an mjs mirror that had drifted from the Python rule it copied | `FROZEN.md` per fixture family; the Python legacy-shim test is authoritative; ruff parses every file on every CI leg |
+| Two 702-row agent decision grids | Three files repeating the same equivalence classes in different modes; a red diff nobody could read | Named unit tests per verdict class, plus 171 representative rows and a drift guard on the two surviving files |
+| `.github/workflows/agent-smoke.yml` | Hosted runners have no MLX model, so it failed open and then reported that fail-open as a pass | Nothing — stated rather than replaced. Restoring it needs a real-model runner |
+| Rust `workspace_scope`, `WORKSPACE_OS_VERSION`, 16 zero-caller items, 42 test binaries' worth of file splitting | Dead or duplicated | `WorkspaceOsStore` stamps `CARGO_PKG_VERSION`; 56 test binaries carry the same 1,733 tests |
+| `FeedbackState.tsx`, `DepthEmergence.tsx` | Rendered nowhere after the home redesign | The redesigned Brain home |
+
+Two changes in that pass are **reductions in what is enforced**, and they are
+listed as such rather than as cleanups: the Python coverage gate went from
+`fail_under = 100` on lines and branches to line-only 90, and the local lint
+chain went from thirteen gates to ten. The measured coverage figure did not
+move; the promise did.
+
 ## Brain Core
 
 `lattice_brain` is the durable product core. It owns:
@@ -692,8 +744,9 @@ what makes that cache safe.
 node. `VectorEmbedQueue` is that worker's memory: a durable `vector_jobs`
 table in the brain database, `schedule()` on a failed inline sync,
 `tick()`/`tick_async()` to drain, bounded retries, then a terminal `failed`
-row that stays visible. It is caller-driven on purpose (`IngestionPipeline
-.drain_vector_queue`), because who runs the worker is a deployment decision.
+row that stays visible. Draining is caller-driven on purpose, because who runs
+the worker is a deployment decision; since 11.6.0 the caller is
+`lattice-jobs`'s scheduler, which holds a `GraphWriter` and drains natively.
 
 `graph/fusion.py` gains two opt-in retrieval options, both off by default so
 the shipped ranking is the one every existing assertion describes:
@@ -706,9 +759,11 @@ and counted in the result's `graph_expansion` block).
 
 Pictures and recordings are ordinary graph citizens behind one flag:
 `allow_multimodal` (constructor argument or `LATTICEAI_ALLOW_MULTIMODAL`),
-**default off**. With it off, `IngestionPipeline._modality_for` returns
-`"text"` for everything and no routing decision is reached — the folder-scan
-allow-list, node ids, and node types are what they were before this release.
+**default off**. With it off the routing tables answer `"text"` for everything
+and no modality decision is reached — the folder-scan allow-list, node ids, and
+node types are what they were before this release. The gate lives in
+`lattice_brain.ingestion.constants` and is read by `lattice-ingest`, which owns
+the routing decision since 11.6.0.
 
 Since 11.2.0 that flag is read through a :class:`lattice_brain.gates.FeatureGate`
 rather than copied into `self` at construction, so a settings surface can move
@@ -742,9 +797,12 @@ pipeline routes:
   retrieval path. Extraction needs `ffmpeg` on PATH (`shutil.which`, seamed as
   `multimodal._which_ffmpeg`) or an injected `MultimodalPorts.
   keyframe_extractor`; with neither, the ingest still answers
-  `status: "unavailable"` and `IngestionPipeline._video_refusal()` names which
-  of the three reasons applies (multi-modal off, `LATTICEAI_ALLOW_VIDEO` off,
-  no decoder). Frames are written under `blob_dir/video_frames/<hash>/` so a
+  `status: "unavailable"` and names which of the three reasons applies
+  (multi-modal off, `LATTICEAI_ALLOW_VIDEO` off, no decoder). 11.8.0 deleted
+  the HTTP probe that reported that verdict without ingesting
+  (`GET /api/ingestion/multimodal`) because nothing called it; the refusal
+  itself still travels with the ingest attempt. Frames are written under
+  `blob_dir/video_frames/<hash>/` so a
   cited still is still there next time, and a backup that copies blobs copies
   them.
 
@@ -759,6 +817,15 @@ injected callable in `MultimodalPorts`, built by
 | `caption` | `VisionCaptioner` — a loaded VLM only | no `caption` key at all |
 | `embedding` | `VisionEmbeddingProvider` (CLIP-family) | `vision_embedding: "unavailable"` |
 | transcript | `VoiceCaptureService`'s transcriber port | memo kept, `searchable: false` |
+
+**Since 11.8.0 the image and video halves of this module have no HTTP door.**
+`POST /worker/multimodal/describe` was the only one, and what it wrapped was a
+native image ingest that was never built — so the seam answered a question
+nobody asked. The audio half still has one (`POST /worker/asr`). The observation
+functions stay in Brain Core under direct unit test, the module header says so
+in the file itself, and restoring the seam is a handful of lines on the day a
+native image ingest needs it. Documenting the gap is the point: a route kept
+"just in case" is surface that has to be defended anyway.
 
 The caption rule is absolute: **a caption exists only when a vision-language
 model wrote one.** 11.1.0 removed `lattice_brain.embeddings.VisionStub`, which
@@ -929,7 +996,7 @@ The 8.0 architecture contract remains active in 10.3.0:
 - AgentRuntime and WorkflowEngine expose release-checkable orchestration
   boundaries while preserving legacy run compatibility.
 
-Change governance and agent-eval extend the contract:
+Change governance extends the contract:
 
 - `core/tool_governor.py` owns a `MUTATING_TOOL_INVENTORY` so every mutating
   tool is either governed (proposal-first) or explicitly exempt, and coverage is
@@ -938,9 +1005,14 @@ Change governance and agent-eval extend the contract:
   (`services/change_proposals.py`, `/api/proposals`): each proposal records a
   base content hash, and application re-checks that hash to detect conflicting
   edits before writing atomically.
-- `core/agent_eval.py` runs a fail-closed verifier: unverifiable or failing
-  outcomes resolve to `NEEDS_REVIEW` and enter the review queue rather than
-  being reported as success.
+- The loop's verifier fails closed: unverifiable or failing outcomes resolve to
+  `NEEDS_REVIEW` and enter the review queue rather than being reported as
+  success. It is `lattice-agent`'s (`agentloop/verification.rs`) since the loop
+  moved to Rust in 11.5.1; the Python `core/agent_eval.py` and its
+  `scripts/agent_eval.py` harness are gone, the last of them deleted in 11.8.0.
+  No gate was lost with them: the harness ran a scripted model over a scenario
+  list and had already stopped being invoked by CI, while the fail-closed
+  verdict itself is covered by the kernel's own tests.
 - `core/permission_mode.py` adds an autonomy dial (`strict` / `trusted` /
   `bypass`) *on top of* those gates rather than replacing them: a mode only
   widens what may run without an extra approval prompt. Circuit breakers —
@@ -958,18 +1030,26 @@ estimates with figures.
 
 ```mermaid
 flowchart LR
-  subgraph py["Python — 39,054 statements · 11,014 branches"]
+  subgraph py["Python — the AI worker only"]
     direction TB
-    pyt["pytest<br/>6,490 tests"]
-    pycov["coverage<br/><b>100.00%</b> lines+branches · floor 100"]
-    pymypy["mypy<br/><b>297 / 297</b> modules"]
+    pyt["pytest<br/>1,153 unit tests"]
+    pycov["coverage<br/>measured 100% · <b>floor: lines 90</b><br/>branch gate removed in 11.8.0"]
+    pymypy["mypy<br/>strict, whole package"]
     pyruff["ruff<br/>16 rule groups"]
     pyt --> pycov
   end
 
+  subgraph rs["Rust — the product server"]
+    direction TB
+    rst["cargo test<br/>1,733 tests · 75 binaries<br/>(56 integration test files, from 98)"]
+    rsclippy["clippy --all-targets<br/><b>-D warnings</b>, no blanket allows"]
+    rsgold["goldens<br/>7 frozen families"]
+    rst --> rsgold
+  end
+
   subgraph fe["Frontend"]
     direction TB
-    fet["vitest<br/>1,671 tests"]
+    fet["vitest<br/>1,761 tests · 100 files"]
     fecov["coverage<br/><b>100%</b> · thresholds gated"]
     fets["tsc --noEmit<br/>strict"]
     fet --> fecov
@@ -977,8 +1057,8 @@ flowchart LR
 
   subgraph e2e["Whole-product"]
     direction TB
-    play["Playwright<br/>33 visual specs"]
-    eval["agent_eval<br/>23 / 23"]
+    play["Playwright<br/>4 visual specs · 40 cases"]
+    readiness["product readiness<br/>COMPLETE 10 / 10"]
     smoke["release smoke<br/>5 artifacts"]
   end
 
@@ -986,21 +1066,26 @@ flowchart LR
   pycov --> gate
   pymypy --> gate
   pyruff --> gate
+  rsclippy --> gate
+  rsgold --> gate
   fets --> gate
   fecov --> gate
   play --> gate
-  eval --> gate
+  readiness --> gate
   smoke --> gate
 
   gate -- "blocks merge" --> main[("main")]
 ```
 
-Since 11.0.0 there is no dashed box: both coverage figures are enforced
-floors. Python coverage is `fail_under = 100` — every statement that ships
-executes under the suite, with exactly eight reasoned `pragma: no cover`
-lines (each names why its branch is unreachable) plus the generic
-`TYPE_CHECKING` / `NotImplementedError` / `@abstractmethod` patterns.
-Frontend coverage has pinned 100% on all four vitest metrics since 10.10.0.
+Both coverage figures are enforced floors, but they are not the same floor.
+Frontend coverage has pinned 100% on all four vitest metrics since 10.10.0 and
+still does. **Python coverage moved in 11.8.0 from `fail_under = 100` on lines
+*and* branches to `fail_under = 90` on lines, with branch measurement off.**
+The measured figure is still 100% — that is what this release's run reports —
+but the gate holds 90, and the honest way to state that is that the enforced
+claim got smaller while the measurement did not. The reasoned `pragma: no cover`
+lines and the generic `TYPE_CHECKING` / `NotImplementedError` /
+`@abstractmethod` exclusions are unchanged.
 
 Two figures moved earlier for reasons worth recording:
 
@@ -1104,10 +1189,10 @@ archives are user-controlled portability paths.
 ### External vault interop (11.1.0)
 
 `services/obsidian_bridge.py` reads an Obsidian vault the user owns and feeds it
-to `IngestionPipeline.ingest` — the same single door as files, folders, web
-captures, and chat. It is deliberately *not* a second write path: the bridge
-parses, resolves, and reports; the pipeline hashes, dedupes, embeds, and records
-provenance.
+to the one ingest door — the same door as files, folders, web captures, and
+chat, which is `lattice-ingest` calling `graph_write` since 11.6.0. It is
+deliberately *not* a second write path: the bridge parses, resolves, and
+reports; the ingest door hashes, dedupes, embeds, and records provenance.
 
 Two structural writes sit on top of the ingest, and both go through the store's
 public `import_graph_data` seam rather than reaching into graph internals:
@@ -1141,7 +1226,7 @@ the next restart.
 
 `services/interop_bridges.py` generalizes the vault bridge's skeleton — scan →
 `dry_run`? → ingest → wire structure → report — so that Notion, Git, email and
-calendar enter through the *same* `IngestionPipeline` door and share the same
+calendar enter through the *same* native ingest door and share the same
 row builders (`edge_row` / `topic_row`, which `obsidian_bridge` now calls too).
 `InteropBridge` subclasses own exactly one thing: turning a local path into
 `BridgeItem` values.
@@ -1336,13 +1421,16 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.7.0 exact artifact names:
+11.8.0 exact artifact names:
 
-- `dist/ltcai-11.7.0-py3-none-any.whl`
-- `dist/ltcai-11.7.0.tar.gz`
-- `ltcai-11.7.0.tgz`
-- `dist/ltcai-11.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.7.0_aarch64.dmg`
+- `dist/ltcai-11.8.0-py3-none-any.whl`
+- `dist/ltcai-11.8.0.tar.gz`
+- `ltcai-11.8.0.tgz`
+- `dist/ltcai-11.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg`
+
+The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
+far. First launch needs the usual Gatekeeper step.
 
 Do not document or use wildcard artifact upload commands.
 
@@ -1351,8 +1439,10 @@ Do not document or use wildcard artifact upload commands.
 - The Python package no longer ships a root compatibility module: `server.py`
   went with `create_app`, and `uvicorn server:app` has nothing to serve. The
   worker is started as `python -m uvicorn latticeai.worker_app:create_worker_app
-  --factory`, and the product is started by the `lattice-host` binary. The
-  legacy debt gate (`scripts/check_legacy_debt.mjs`) still keeps the root clean.
+  --factory`, and the product is started by the `lattice-host` binary. A Python
+  test in `tests/unit/` keeps the root clean; 11.8.0 deleted the mjs mirror of
+  that rule (`scripts/check_legacy_debt.mjs`) because the two implementations
+  had already drifted and only one of them could be right.
 - The **Telegram bridge** and the **SSO OIDC login/callback flows** were removed
   in 11.6.0 as consequences of the worker boundary. The SSO configuration
   surface remains and password login is native.
@@ -1361,12 +1451,16 @@ Do not document or use wildcard artifact upload commands.
   request.
 - Cloud models, Docker, Brain Network, update checks and marketplace refreshes
   are not default local behavior. The optional PostgreSQL scale/migration
-  tooling is not part of the 11.7.0 worker.
-- Honest leftovers from the sweep — `open_keys` pending-only, no extraction
+  tooling is not part of the 11.8.0 worker.
+- The **image and video multimodal functions have no HTTP door** since 11.8.0.
+  They stay in Brain Core under unit test with the reason in the module header.
+- The **Python coverage gate is a line floor of 90** since 11.8.0; the measured
+  figure is 100%, but the enforced claim is the smaller one.
+- Honest leftovers carried forward — `open_keys` pending-only, no extraction
   refiner, `delete_node` leaving `PART_OF`, review events silent without an
   installed owner, KG-api ingest text-only, two store cycles per review
   mutation — are listed in
-  [RELEASE_NOTES_v11.7.0.md](RELEASE_NOTES_v11.7.0.md) §6.
+  [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md) §8.
 - Package registry publication is owner-run and can lag behind the GitHub
   release.
 - Local data protection depends on the user's machine, OS account, backups, and

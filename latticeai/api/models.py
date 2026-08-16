@@ -2,15 +2,24 @@
 
 Extracted from ``server_app.py`` in v1.3.0 with the whole ``/models*`` +
 ``/engines*`` + ``/setup/set-api-key`` surface. v11.6.0 kept the eight routes
-that are *this interpreter's* business — loading, switching and unloading MLX
-models, and the resolve → download-if-consented → load → smoke prepare flow —
-and moved the rest to ``lattice-host``: engine installation and cloud-key
-verification are host operations, ``/setup/set-api-key`` is account state, and
-the two catalogue reads (``/models/compat-profiles``, ``/models/recommendations``)
-are product views.
+that are *this interpreter's* business and moved the rest to ``lattice-host``:
+engine installation and cloud-key verification are host operations,
+``/setup/set-api-key`` is account state, and the two catalogue reads
+(``/models/compat-profiles``, ``/models/recommendations``) are product views.
 
-The download itself stays because it is ``huggingface_hub`` / ``ollama``
-running here (v11.6.0 gateway integration §4a).
+v11.8.0 took three of those eight away, because nothing called them — not the
+Rust surface, not the SPA client, not either extension:
+
+* ``POST /engines/pull-model`` — every caller reaches a download through
+  ``/engines/prepare-model``, which resolves, downloads on consent, loads and
+  smoke-tests in one step. The bare pull was the older door, and with it went
+  this module's only use of ``huggingface_hub`` / ``ollama`` (both still run
+  here, under ``services/model_loading.py``, for the prepare flow).
+* ``POST /models/switch/{model_id:path}`` — ``/models/load`` is what every
+  surface sends, and it switches as part of loading.
+* ``DELETE /models/unload-all`` — unloading is per-model everywhere.
+
+What is left is list, load, unload-one and the two prepare flows.
 
 Mirrors the established router-factory convention: the heavy provider/runtime
 helpers are injected as bound service callables. This module owns the sole
@@ -21,14 +30,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import subprocess
 from typing import Any, Callable, Dict, List, NoReturn, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from latticeai.core.messages import http_error, resolve_language, translate
+from latticeai.core.messages import http_error, resolve_language
 from latticeai.services.model_errors import ModelRuntimeError
 
 
@@ -76,11 +84,6 @@ class LoadModelRequest(BaseModel):
 
 
 
-class PullModelRequest(BaseModel):
-    model: str
-    allow_download: bool = False
-
-
 class PrepareModelRequest(BaseModel):
     model: str
     engine: Optional[str] = None
@@ -94,13 +97,9 @@ def create_models_router(
     model_router: Any,
     require_user: Callable[[Request], str],
     require_admin: Callable[[Request], tuple],
-    normalize_local_model_request: Callable[..., str],
-    download_hf_model: Callable[..., Dict],
     prepare_and_load_model: Callable[..., Any],
     prepare_and_load_model_stream: Callable[..., Any],
     sse_event: Callable[[str, Dict], str],
-    ensure_ollama_server: Callable[[], None],
-    local_binary: Callable[[str], Optional[str]],
     engine_status: Callable[[], List[Dict]],
     filter_lower_family_versions: Callable[[List[Dict]], List[Dict]],
     list_compat_profiles: Callable[[], Any],
@@ -289,80 +288,6 @@ def create_models_router(
 
     # ── Engines ───────────────────────────────────────────────────────────
 
-
-    @router.post("/engines/pull-model")
-    async def pull_ollama_model(req: PullModelRequest, request: Request):
-        _authorize_model_admin(request)
-        if not req.allow_download:
-            raise HTTPException(
-                status_code=403,
-                detail=translate("models.download_consent_required", resolve_language(request)),
-            )
-        model_ref = normalize_local_model_request(req.model, None)
-        if not model_ref:
-            raise http_error(400, "models.identifier_empty", resolve_language(request))
-
-        if ":" in model_ref and model_ref.split(":", 1)[0].strip().lower() in {"ollama", "vllm", "lmstudio", "llamacpp", "local_mlx", "mlx"}:
-            provider, model_name = model_ref.split(":", 1)
-            provider = provider.strip().lower()
-            model_name = model_name.strip()
-        else:
-            provider, model_name = "local_mlx", model_ref
-
-        if not model_name:
-            raise http_error(400, "models.name_empty", resolve_language(request))
-
-        if provider == "ollama":
-            try:
-                # Starts the daemon and waits for it — blocking, like the pull
-                # below, and for the same reason it may not run on the loop.
-                await asyncio.to_thread(ensure_ollama_server)
-            except ModelRuntimeError as exc:
-                _raise_model_http(exc)
-            ollama = local_binary("ollama")
-            if not ollama:
-                raise http_error(400, "models.ollama_missing", resolve_language(request))
-            try:
-                # A model pull is minutes of network I/O. Held on the event loop
-                # it stalled every other request — including the health check the
-                # UI uses to decide the server is alive — until the pull finished.
-                completed = await asyncio.to_thread(
-                    lambda: subprocess.run(
-                        [ollama, "pull", model_name],
-                        capture_output=True, text=True, timeout=900, check=False,
-                    )
-                )
-            except subprocess.TimeoutExpired:
-                raise http_error(408, "models.download_timeout", resolve_language(request))
-            if completed.returncode != 0:
-                raise HTTPException(
-                    status_code=500,
-                    detail=completed.stderr[-2000:]
-                    or translate("models.pull_failed", resolve_language(request)),
-                )
-            return {"provider": provider, "model": model_name, "returncode": completed.returncode}
-
-        if provider == "lmstudio":
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "LM Studio 모델은 Lattice에서 Hugging Face로 pull하지 않습니다. "
-                    "LM Studio 앱에서 모델을 다운로드하고 Local Server를 켠 뒤 모델을 로드하세요. "
-                    "그러면 모델 선택창에 실제 /v1/models 항목이 표시됩니다."
-                ),
-            )
-
-        if provider in {"vllm", "llamacpp", "local_mlx", "mlx"}:
-            download_provider = "local_mlx" if provider == "mlx" else provider
-            try:
-                # Multi-gigabyte Hugging Face download; same rule as the pull above.
-                result = await asyncio.to_thread(download_hf_model, model_name, download_provider)
-            except ModelRuntimeError as exc:
-                _raise_model_http(exc)
-            return {"provider": provider, "model": model_name, "returncode": 0, **result}
-
-        raise http_error(400, "models.download_not_automated", resolve_language(request), provider=provider)  # pragma: no cover — every prefix the check above accepts is handled, and the fallback is local_mlx
-
     @router.post("/engines/prepare-model")
     async def engines_prepare_model(req: PrepareModelRequest, request: Request):
         current_user = _authorize_model_admin(request, req.user_email)
@@ -484,27 +409,10 @@ def create_models_router(
                 detail=friendly_model_runtime_error(e, model_id=req.model_id, engine=req.engine),
             )
 
-    @router.post("/models/switch/{model_id:path}")
-    async def switch_model(model_id: str, request: Request):
-        _authorize_model_admin(request)
-        try:
-            _router.switch_model(model_id)
-            return {"status": "ok", "current": _router.current_model_id}
-        except KeyError:
-            raise http_error(404, "chat.model_not_loaded", resolve_language(request), model=model_id)
-
     @router.delete("/models/unload/{model_id:path}")
     async def unload_model(model_id: str, request: Request):
         _authorize_model_admin(request)
         _router.unload_model(model_id)
         return {"status": "ok", "unloaded": model_id}
-
-    @router.delete("/models/unload-all")
-    async def unload_all_models(request: Request):
-        _authorize_model_admin(request)
-        unloaded = _router.loaded_model_ids
-        _router.unload_all()
-        return {"status": "ok", "unloaded": unloaded}
-
 
     return router

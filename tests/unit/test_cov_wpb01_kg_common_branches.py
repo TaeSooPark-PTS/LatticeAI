@@ -1,9 +1,12 @@
-"""wpb01 branch coverage — ``lattice_brain.graph._kg_common`` chunking + concepts.
+"""wpb01 branch coverage — ``lattice_brain.graph._kg_common`` windowing + concepts.
 
-Covers the loop/guard directions the chunkers never take through
-``typed_chunks`` (which pre-filters empty text and clamps the overlap), plus
-the two rejection paths of the rule-based concept extractor and the
-"classification found nothing" exits of ``_classify_node_type``.
+Covers the loop/guard direction ``_chunks`` only takes with an out-of-range
+overlap, plus the two rejection paths of the rule-based concept extractor and
+the "classification found nothing" exits of ``_classify_node_type``.
+
+The typed chunker these branches used to be reached through was removed in
+11.8.0 — chunking is ``lattice-ingest``'s, pinned by
+``rust/lattice-ingest/tests/chunking_parity.rs``.
 """
 
 from __future__ import annotations
@@ -17,41 +20,23 @@ from lattice_brain.graph._kg_common import (  # noqa: E402
     _chunks,
     _classify_node_type,
     _extract_concepts_rules,
-    _markdown_section_spans,
-    _plain_windows,
-    _prose_chunks,
-    typed_chunks,
 )
 
-# ── chunk walks that end by exhausting the string, not by hitting the break ──
+# ── the chunk walk that ends by exhausting the string, not by the break ──────
 
 
 def test_chunks_with_a_negative_overlap_skips_past_the_end_and_stops() -> None:
     """A negative overlap advances the cursor beyond the text: the walk ends.
 
-    ``typed_chunks`` clamps overlap to ``[0, size-1]``; ``_chunks`` itself does
-    not, so this is the only way its ``while`` condition — rather than the
-    ``end >= len`` break — terminates the walk.
+    Nothing clamps ``_chunks``'s own overlap, so this is the only way its
+    ``while`` condition — rather than the ``end >= len`` break — terminates
+    the walk.
     """
     assert _chunks("abcdefgh", size=3, overlap=-10) == ["abc"]
 
 
-def test_plain_windows_of_empty_text_is_empty() -> None:
-    assert _plain_windows("", 100, 10) == []
-
-
-def test_prose_chunks_of_empty_text_is_empty() -> None:
-    assert _prose_chunks("", 100, 10) == []
-
-
-def test_markdown_section_spans_of_empty_text_is_empty() -> None:
-    assert _markdown_section_spans("") == []
-
-
-def test_typed_chunks_still_short_circuits_blank_text() -> None:
-    """The public entry point never reaches the empty-input walks above."""
-    assert typed_chunks("   ", strategy="prose") == []
-    assert typed_chunks("", strategy="markdown") == []
+def test_chunks_of_blank_text_is_empty() -> None:
+    assert _chunks("   ") == []
 
 
 # ── rule-based concept extraction rejections ────────────────────────────────

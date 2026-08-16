@@ -24,13 +24,14 @@ import { join } from "node:path";
 const API_DIR = "latticeai/api";
 
 // Routers whose user-facing details are in the message catalog. Append here
-// when a router is migrated — never remove. Module names carry no extension:
-// `check_legacy_debt.mjs` rejects a bare "<module>.py" literal in scripts/,
-// which is how the removed root shims used to be referenced.
+// when a router is migrated. A name is removed only when the router itself is
+// deleted — never to quiet a failure — and the loop below turns a stale name
+// into an error rather than a skip, so the two cases cannot be confused.
+// `tools` left this list in v11.8.0 with `latticeai/api/tools.py`, whose two
+// routes had no caller anywhere in the tree.
 const LOCALIZED = [
   "agent_worker_seam",
   "models",
-  "tools",
   "worker_compute",
   "worker_seams",
 ];

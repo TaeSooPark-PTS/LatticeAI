@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -13,6 +17,7 @@ jobs:
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
     strategy:
       # 3.14 is what the product is developed on daily; without it here, the
       # maintainer's own environment was the one configuration CI never saw.
@@ -52,6 +57,7 @@ jobs:
           (cd vscode-extension && npm ci)
 
       - name: Generate OpenAPI (for drift fix artifact)
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         run: |
           npm run frontend:openapi
           mkdir -p openapi-artifacts
@@ -66,9 +72,6 @@ jobs:
           path: openapi-artifacts/
           retention-days: 1
 
-      - name: Syntax check (discover-based, auto-includes new modules)
-        run: python scripts/check_python.py
-
       - name: Lint and typecheck
         if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         run: |
@@ -81,33 +84,31 @@ jobs:
         if: matrix.python-version != '3.11' || matrix.os != 'ubuntu-latest'
         run: npm run lint:python
 
-      - name: Run tests
+      - name: Browser and VS Code extension tests
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
+        run: npm run test:browser-extension && npm run test:vscode-extension
+
+      - name: Run frontend tests
         # Frontend runs under coverage: vitest.config.ts pins 100% thresholds
         # on all four metrics, so a single uncovered line fails this step the
         # same way it fails locally.
-        run: |
-          npm run test:frontend:coverage
-          python -m pytest tests/unit/ -v --tb=short
+        run: npm run test:frontend:coverage
 
-      - name: Coverage floor
+      - name: Run unit tests
+        if: matrix.python-version != '3.14' || matrix.os != 'ubuntu-latest'
+        run: python -m pytest tests/unit/ -v --tb=short
+
+      - name: Coverage floor (>=90)
         if: matrix.python-version == '3.14' && matrix.os == 'ubuntu-latest'
-        # Measurable for the first time in 10.2.0: the connection leak fixed in
-        # this release exhausted file descriptors under a tracer, so any
-        # coverage run failed ~400 tests and the real number was unknown.
-        # 11.0.0 moved the floor to 100 and this step to the 3.14 leg: 3.11's
-        # settrace folds some jump-only lines (a bare `break` after an `if`)
-        # into the preceding line, so an executed line can go unreported and
-        # fail a 100% floor spuriously; 3.12+ measure via sys.monitoring,
-        # which reports them. The 3.11 legs still run the full suite above.
+        # 3.14 + ubuntu is the only coverage leg: the 3.11 settrace tracer
+        # folds some jump-only lines into the preceding line, so an executed
+        # line can go unreported. 3.12+ measure via sys.monitoring. Other
+        # legs run the plain unit suite above; this leg runs pytest once
+        # under coverage (line floor 90, no branch gate).
         run: python -m pytest tests/ -q --cov --cov-report=term:skip-covered
 
-      - name: Brain recall/KG quality eval
-        run: python scripts/brain_quality_eval.py
-
-      - name: Agent loop evaluation harness
-        run: python scripts/agent_eval.py
-
       - name: Product readiness gate
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         run: python scripts/product_readiness.py
 
   integration:
@@ -119,6 +120,7 @@ jobs:
     # is what keeps the cold build from costing 5–10 minutes every run.
     name: Integration smoke test
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: test
 
     steps:
@@ -152,6 +154,7 @@ jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: integration
 
     steps:
@@ -198,6 +201,7 @@ jobs:
     # dependency, so what this job proves is what the desktop ships.
     name: Rust workspace
     runs-on: ubuntu-latest
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

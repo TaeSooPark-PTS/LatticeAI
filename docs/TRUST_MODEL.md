@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.7.0 — Clean Sweep**.
+Current release: **11.8.0 — Travel Light**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -2,53 +2,6 @@
 //!
 //! Port of `latticeai/api/marketplace.py` + `latticeai/core/marketplace.py`.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::useless_format,
-    clippy::collapsible_str_replace,
-    clippy::manual_repeat_n,
-    clippy::module_inception
-)]
 use std::path::Path;
 use std::sync::Arc;
 
@@ -80,7 +33,7 @@ const TEMPLATE_KINDS: &[&str] = &["plugin", "workflow", "agent", "ingestion_brid
 #[derive(Clone)]
 pub struct MarketplaceState {
     pub auth: Arc<AuthState>,
-    pub store: PlatformStore,
+    pub(crate) store: PlatformStore,
 }
 
 impl MarketplaceState {
@@ -368,11 +321,6 @@ async fn install_template(
     json_text(StatusCode::OK, &text)
 }
 
-#[derive(Debug, serde::Deserialize, Default)]
-struct CloneBody {
-    name: Option<String>,
-}
-
 async fn clone_template(
     State(state): State<MarketplaceState>,
     headers: HeaderMap,
@@ -390,7 +338,6 @@ async fn clone_template(
             Err(r) => return r,
         }
     };
-    let _ = CloneBody::default();
     let template = match get_template(&kind, &template_id) {
         Ok(t) => t,
         Err(r) => return r,
@@ -410,8 +357,7 @@ async fn clone_template(
     let slug = new_name
         .to_lowercase()
         .replace(' ', "-")
-        .replace('(', "")
-        .replace(')', "");
+        .replace(['(', ')'], "");
     let mut clone = template.clone();
     let orig_id = template.get("id").and_then(Value::as_str).unwrap_or("");
     let id = format!("{orig_id}-copy-{slug}");

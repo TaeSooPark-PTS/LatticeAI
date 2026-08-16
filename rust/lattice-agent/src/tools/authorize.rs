@@ -15,74 +15,32 @@
 use crate::policy::ToolPolicy;
 use crate::sandbox::ToolError;
 
-/// `ROLE_CAPABILITIES` (`latticeai.core.policy`). `owner` holds `all`.
-const ROLE_CAPABILITIES: [(&str, &[&str]); 4] = [
-    ("owner", &["all"]),
-    (
-        "admin",
-        &[
-            "admin:audit",
-            "admin:policies",
-            "admin:roles",
-            "admin:security",
-            "admin:users",
-            "chat",
-            "desktop:control",
-            "files",
-            "pipeline",
-            "search",
-            "workspace:manage",
-            "workspace:members",
-            "workspace:read",
-            "workspace:write",
-        ],
-    ),
-    (
-        "member",
-        &[
-            "chat",
-            "files",
-            "pipeline",
-            "search",
-            "workspace:read",
-            "workspace:write",
-        ],
-    ),
-    ("viewer", &["chat", "search", "workspace:read"]),
-];
-
 /// `user` is the fallback role and shares `member`'s capabilities.
 const DEFAULT_ROLE: &str = "user";
 
-/// `normalize_role`: lowercased, and anything unknown is `user`.
+/// `normalize_role`: trimmed, lowercased, and anything unknown is `user`.
+///
+/// The table itself lives once, in [`lattice_auth::policy`] — this is the same
+/// `ROLE_CAPABILITIES` the admin console reads, not a second transcription of
+/// it. The one thing added here is the `trim`: a role read out of a header or a
+/// session field can arrive with whitespace, and ` Admin ` must not silently
+/// become `user`. Trimming first makes `lattice_auth::normalize_role` a no-op on
+/// the value, so the two agree on every input this one accepts.
 pub fn normalize_role(role: &str) -> String {
     let lowered = role.trim().to_lowercase();
-    let lowered = if lowered.is_empty() {
-        DEFAULT_ROLE.to_string()
-    } else {
-        lowered
-    };
-    if lowered == DEFAULT_ROLE || ROLE_CAPABILITIES.iter().any(|(name, _)| *name == lowered) {
-        lowered
-    } else {
-        DEFAULT_ROLE.to_string()
+    if lowered.is_empty() {
+        return DEFAULT_ROLE.to_string();
     }
+    lattice_auth::normalize_role(&lowered).to_string()
 }
 
 /// `role_has_capability`.
+///
+/// `user` is a row of its own in the shared table, byte-identical to `member` —
+/// which is how Python spells it too, and why the fold this function used to do
+/// by hand is no longer needed.
 pub fn role_has_capability(role: &str, capability: &str) -> bool {
-    let role = normalize_role(role);
-    // `user` is not a table row in this port because it is byte-identical to
-    // `member`; Python spells both out and the equality is asserted below.
-    let lookup = if role == DEFAULT_ROLE {
-        "member"
-    } else {
-        &role
-    };
-    let Some((_, capabilities)) = ROLE_CAPABILITIES.iter().find(|(name, _)| *name == lookup) else {
-        return false;
-    };
-    capabilities.contains(&"all") || capabilities.contains(&capability)
+    lattice_auth::role_has_capability(&normalize_role(role), capability)
 }
 
 /// `ToolRegistry.admin_only_tools`: derived from the policy, never listed.

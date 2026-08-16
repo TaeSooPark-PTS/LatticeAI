@@ -29,12 +29,16 @@ from __future__ import annotations
 
 from typing import Any, List, Set, Tuple
 
-#: ``(method, path)`` for each product route v11.6.0 leaves in Python —
+#: ``(method, path)`` for each product route the worker still serves —
 #: docs/v11.6.0_ONE_DOOR_PLAN.md §최종 Python 워커 표면, cross-checked against
 #: the KEEP_WORKER table of the route scout, then narrowed by §W3b (ingest,
-#: drain/rebuild, voice capture and the four document creators went native) and
-#: widened by §4a (the model pull came back). Paths are FastAPI's, converters
-#: included, so this compares to ``APIRoute.path`` without normalisation.
+#: drain/rebuild, voice capture and the four document creators went native),
+#: widened by §4a (the model pull came back) and narrowed again by v11.8.0,
+#: which deleted the eight product routes with no caller anywhere in the tree:
+#: the embedding-provider catalogue, both ``/tools/*`` document reads, the
+#: multi-modal and voice capability probes, and three model-lifecycle doors
+#: (see below). Paths are FastAPI's, converters included, so this compares to
+#: ``APIRoute.path`` without normalisation.
 #:
 #: This tuple, through :func:`worker_route_keys`, is the **one** source of the
 #: gateway's proxy allowlist. ``rust/fixtures/worker_allowlist.json`` is its
@@ -53,27 +57,16 @@ WORKER_ROUTES: Tuple[Tuple[str, str], ...] = (
     ("GET", "/health"),
     # embedding production (drain/rebuild are native — W3b)
     ("GET", "/api/embeddings/status"),
-    ("GET", "/api/embeddings/providers"),
-    # MLX model + engine lifecycle (in-process only)
+    # MLX model + engine lifecycle (in-process only). v11.8.0 dropped
+    # ``/models/switch``, ``/models/unload-all`` and ``/engines/pull-model``:
+    # nothing in the tree called them, and the surfaces that do this work send
+    # ``/models/load`` and ``/engines/prepare-model``, which switch and
+    # download as part of what they already do.
     ("GET", "/models"),
     ("POST", "/models/load"),
-    ("POST", "/models/switch/{model_id:path}"),
     ("DELETE", "/models/unload/{model_id:path}"),
-    ("DELETE", "/models/unload-all"),
     ("POST", "/engines/prepare-model"),
     ("POST", "/engines/prepare-model/stream"),
-    # The download itself is huggingface_hub / ollama running in *this*
-    # interpreter, which is the same reason the six lines above stay: model
-    # management is the worker's box. The gateway proxies it rather than
-    # shipping a native consent check in front of a 501 (v11.6.0 gateway
-    # integration §4a).
-    ("POST", "/engines/pull-model"),
-    # document parser (create_* + upload are native — W3b)
-    ("POST", "/tools/read_document"),
-    ("GET", "/tools/pdf_pages"),
-    ("GET", "/api/ingestion/multimodal"),
-    # local ASR status (POST /api/capture/voice is native — W3b)
-    ("GET", "/api/capture/voice/status"),
 )
 
 #: Retired by W3b — ingest is native. Kept as an empty tuple so imports
@@ -93,8 +86,10 @@ WORKER_SEAM_ROUTES: Tuple[Tuple[str, str], ...] = (
 #: The pure-compute seams of Wave 2.5 §W2 (``latticeai/api/worker_compute.py``).
 #: Kept apart from :data:`WORKER_SEAM_ROUTES` because they age in the opposite
 #: direction: the state seams above are retired once §W3 lands the native write
-#: engine, while these nine are what the worker is *for* once Rust owns every
-#: write. Mounted here and nowhere else.
+#: engine, while these eight are what the worker is *for* once Rust owns every
+#: write. Mounted here and nowhere else. ``/worker/multimodal/describe`` was the
+#: ninth until v11.8.0 — it described an image for a native image ingest that
+#: was never built, and no caller ever appeared.
 WORKER_COMPUTE_ROUTES: Tuple[Tuple[str, str], ...] = (
     ("POST", "/worker/embed"),
     ("POST", "/worker/parse"),
@@ -103,7 +98,6 @@ WORKER_COMPUTE_ROUTES: Tuple[Tuple[str, str], ...] = (
     ("POST", "/worker/render/pptx"),
     ("POST", "/worker/render/pdf"),
     ("POST", "/worker/asr"),
-    ("POST", "/worker/multimodal/describe"),
     ("POST", "/worker/extract"),
 )
 
@@ -148,16 +142,15 @@ def phase_worker_routes(ctx: Any) -> None:
         )
     )
     # The compute seams take the *resolved* embedder and the same injected
-    # multimodal ports the ingestion path holds, so a vector or a caption
-    # produced through HTTP is the one this process would have produced
-    # in-process. ``getattr`` because a worker built without a Brain still boots
-    # — each seam reports the absence rather than failing construction.
+    # transcriber the voice path holds, so a vector or a transcript produced
+    # through HTTP is the one this process would have produced in-process.
+    # ``getattr`` because a worker built without a Brain still boots — each seam
+    # reports the absence rather than failing construction.
     ports = getattr(ctx, "MULTIMODAL_PORTS", None)
     app.include_router(
         create_worker_compute_router(
             embedder=getattr(ctx, "EMBEDDER", None),
             transcriber=getattr(ports, "transcriber", None),
-            multimodal_ports=ports,
             require_user=ctx.require_user,
             enforce_rate_limit=ctx.enforce_rate_limit,
         )

@@ -80,6 +80,8 @@ describe("BrainHomeDock rail", () => {
     for (const id of ["conversations", "stats", "map", "features"]) {
       expect(rail(id)).toHaveAttribute("aria-expanded", "false");
     }
+    expect(rail("conversations")).toHaveClass("is-continuity");
+    expect(rail("stats")).not.toHaveClass("is-continuity");
     expect(rail("conversations").querySelector(".brain-dock-count")?.textContent).toBe("2");
     expect(drawer()).toBeNull();
     unmount();

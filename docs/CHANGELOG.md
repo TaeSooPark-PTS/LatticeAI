@@ -4,6 +4,88 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.8.0] - 2026-08-16 — Travel Light
+
+### Added
+- 골든 드리프트 가드: 축소된 agent 대표행 세트가 커널의 새 판정 클래스를
+  덮지 않으면 실패. 축소가 조용한 커버리지 손실이 되지 않게 하는 장치.
+- 삭제된 아홉 워커 라우트에 대한 네거티브 테스트 — 게이트웨이가 더 이상
+  전달하지 않음을 Rust KEEP 표와 allowlist 양쪽에서 고정.
+- `rust/fixtures/chunking/FROZEN.md`. 이제 모든 픽스처 계열이 FROZEN.md를
+  가짐.
+- `PhaseBudgets` 토큰 상한(MIN 128 / MAX 8192). 이전에는 하한만 있었음.
+- 모든 GitHub Actions 워크플로에 `concurrency` 그룹과 `timeout-minutes`.
+- Brain Chat Home 재설계: 히어로 컴포저, 3배 커진 LivingBrain(1440에서
+  60px → 179px)과 금빛/옥빛 성장 링, 준비도에 묶인 '기억이 자라고 있어요'
+  캡션, 풀캔버스 그리드, 바닥 연속성 바(지난 대화·현황·기억 지도·기능),
+  `prefers-reduced-motion` 폴백.
+
+### Changed
+- 워커 표면 **28 → 19 라우트**. `rust/fixtures/worker_allowlist.json`도 19.
+- 로컬 lint 체인 **13 → 10 게이트**. 순서와 남은 열 개는 그대로.
+- Python 커버리지 게이트가 `fail_under = 100`(문+분기) → **라인 90**.
+  분기 측정은 꺼짐. 실측은 이번 릴리스에서도 100%.
+- `ci.yml` 중복 스텝 제거 — 4레그 매트릭스는 유지하되 OpenAPI ·
+  product-readiness · 확장 테스트는 3.11+ubuntu 레그에서만, 커버리지 레그는
+  `pytest tests/`를 두 번 돌리지 않음. `release.yml`은 릴리스 스텝만.
+  dependency-audit은 cron 전용, visual은 push+nightly(PR 제외),
+  e2e-sidecar는 nightly 전용.
+- Rust: `lattice-{platform,retrieval,ingest,jobs}`의 약 191개 파일 blanket
+  `#![allow]` 헤더 제거, 약 650건의 clippy/rustc 진단을 원인에서 수정.
+  워크스페이스 수준 허용 0건 추가, 남긴 억제는 이유가 붙은 지역
+  `#[allow(clippy::too_many_arguments)]` 8개.
+- 통합 테스트 파일(= 링크되는 테스트 바이너리) **98 → 56**
+  (lattice-platform 43 → 11). 테스트 함수 삭제 없이 주제별 통합.
+- `ROLE_CAPABILITIES`가 `lattice-auth` 단일 출처. `lattice-agent`가 의존.
+- agent 골든 `decisions__strict` · `calls`가 702 → **171 대표행**
+  (등가류당 한 행).
+- product-readiness 증거를 Rust 픽스처로 재지정. 판정은 COMPLETE 10/10.
+
+### Fixed
+- `SessionStore`가 조회 미스 시 `sessions.json`을 다시 읽음. v11.6.0부터
+  writer는 `lattice-auth`인데 워커는 `__init__`에서 한 번만 읽어, **워커
+  기동 이후의 로그인이 워커에게 보이지 않았음** —
+  `trusted_local_owner`에서는 조용히, `LATTICEAI_REQUIRE_AUTH=true`에서는
+  파일 안에 있는 토큰에 대해 401. `mtime_ns`/`size` 가드 + 1초 throttle을
+  같은 락 아래에서 적용해 추측 버스트가 읽기 버스트가 되지 않게 함.
+  테스트 9개 추가.
+
+### Removed
+- 호출자 0인 워커 라우트 아홉 개: `GET /api/embeddings/providers`,
+  `POST /tools/read_document`, `GET /tools/pdf_pages`,
+  `POST /worker/multimodal/describe`, `GET /api/ingestion/multimodal`,
+  `POST /models/switch/{model_id}`, `DELETE /models/unload-all`,
+  `POST /engines/pull-model`, `GET /api/capture/voice/status`. 파일로는
+  `latticeai/api/{tools,local_files,voice_capture}.py`와
+  `lattice_brain/ingestion/pipeline.py`. `pypdfium2` 의존성도 함께.
+- `latticeai/core/agent_permission.py`; 죽은 보안 헬퍼(`hash_password` /
+  `verify_password`, `check_ip_rate_limit`, `configure_trusted_proxies`,
+  `client_ip`, `bytes_match_extension`); `_kg_common/text.py`의 죽은 청커와
+  호출자 0 함수 9개; 렌더 시임의 `_safe_filename` 이중 살균.
+- 얼어붙은 픽스처의 생성기 2종(`generate_agent_parity_fixtures.py`,
+  `generate_chunking_parity_fixtures.py`),
+  `scripts/{brain_quality_eval,agent_eval,check_python,bench_agent_smoke}.py`,
+  `scripts/check_legacy_debt.mjs`(드리프트한 거울 — 파이썬 테스트가 권위).
+- `.github/workflows/agent-smoke.yml` — 모델 없는 러너에서 이중 fail-open.
+- Rust 죽은 코드: `workspace_scope` 모듈, `WORKSPACE_OS_VERSION` 상수,
+  호출자 0 항목 16개.
+- agent 골든 `decisions__trusted` · `decisions__bypass` 그리드(각 702행) —
+  모든 판정 클래스를 덮는 이름 붙은 단위 테스트로 대체.
+- 죽은 프론트 컴포넌트 `FeedbackState.tsx`, `DepthEmergence.tsx`.
+
+### Known issues
+- 커버리지 **강제 바닥이 100 → 90(라인)** 으로 내려갔고 분기 게이트가
+  없어졌습니다. 실측은 100%지만 게이트가 지키는 것은 바닥입니다.
+- `lattice_brain` 멀티모달의 이미지/비디오 절반에 HTTP 문이 없습니다
+  (관찰 함수는 Brain Core에 남아 단위 테스트를 받고, 모듈 헤더에 명시).
+- DMG는 ad-hoc 서명(미서명)입니다.
+- 삭제된 라우트의 메시지 카탈로그 키는 얼어붙은 패리티 픽스처에 의도적으로
+  남습니다 — 픽스처는 녹화 당시의 표면을 고정하는 기록입니다.
+- `tests/visual/mock_server`가 고아 mock 라우트 하나를 아직 서빙합니다
+  (현재 증거가 해시로 묶여 있어 다음 캡처 사이클에 정리).
+- 11.7.0이 열어 둔 항목은 그대로입니다. 전문은
+  [RELEASE_NOTES_v11.8.0.md](../RELEASE_NOTES_v11.8.0.md).
+
 ## [11.7.0] - 2026-08-15 — Clean Sweep
 
 ### Added

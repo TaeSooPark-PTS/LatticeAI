@@ -1,7 +1,15 @@
-//! Replay knowledge-graph + search records from knowledge_search.json.
+//! Replay knowledge-graph + search records from `knowledge_search.json`, and
+//! the three `memory_brain.json` families that share the brain harness:
+//! `memory`, `garden` and `evidence_actions`.
+//!
+//! Four test binaries collapsed into one; three of them were a single
+//! `replay_family` call around the same `common::brain` install.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
+// The shared harness is written for every suite that includes it, so a
+// helper this one does not call still reads as dead in this binary.
+#[allow(dead_code)]
+mod common;
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -229,4 +237,34 @@ async fn search_and_kg_replay_auth_and_validation_branches() {
         }
     }
     assert!(checked > 10, "replayed {checked} cases");
+}
+
+// ── memory_brain.json: the families that share the brain harness ──
+
+#[tokio::test]
+async fn memory_replays_the_python_oracle() {
+    let install = common::brain::Install::start().await;
+    install.replay_family("memory").await;
+    // Every Self-Model write and the vector rebuild are native since v11.7.0.
+    // Until then they posted to `POST /worker/graph/mutate`, which the Python
+    // worker stopped serving in v11.6.0 — so on a live install the four
+    // Self-Model routes answered 404 while this replay stayed green against a
+    // stand-in that still mounted it. The stand-in is now a tripwire.
+    assert_eq!(
+        common::brain::seed::GRAPH_MUTATE_CALLS.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "a memory route still delegated a graph write to the retired seam"
+    );
+}
+
+#[tokio::test]
+async fn garden_replays_the_python_oracle() {
+    let install = common::brain::Install::start().await;
+    install.replay_family("garden").await;
+}
+
+#[tokio::test]
+async fn evidence_replays_the_python_oracle() {
+    let install = common::brain::Install::start().await;
+    install.replay_family("evidence_actions").await;
 }

@@ -13,50 +13,6 @@
 //! `sorted(..., reverse=True)[:4]` is stable in Python and `sort_by` is stable
 //! in Rust, so ties keep the order they were appended in.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -144,7 +100,7 @@ pub fn brain_proof(
     let graph_count = count_of(&sources, "graph");
     let vector_count = count_of(&sources, "vector");
 
-    let cap = limit.min(8).max(1) as usize;
+    let cap = limit.clamp(1, 8) as usize;
     let items: Vec<Value> = recall
         .get("results")
         .and_then(Value::as_array)
@@ -273,6 +229,9 @@ fn proof_item(item: &Value) -> Value {
 }
 
 /// `MemoryBriefMixin.brain_brief`.
+// Eight parameters because the Python mixin method takes eight; the signature
+// is the port's contract and a params struct would only rename them.
+#[allow(clippy::too_many_arguments)]
 pub fn brain_brief(
     snapshot: &Snapshot,
     manager: &OrderedMap,
@@ -377,7 +336,7 @@ pub fn brain_brief(
     signals.insert("vector_items", Value::from(vector_items));
     signals.insert("healthy_sources", Value::from(healthy_sources));
 
-    let cap = limit.min(6).max(1) as usize;
+    let cap = limit.clamp(1, 6) as usize;
     let mut proof_block = OrderedMap::new();
     proof_block.insert(
         "query",
@@ -723,13 +682,13 @@ fn proactive_actions(
             .unwrap_or_default(),
     );
     let mut rows: Vec<OrderedMap> = Vec::new();
-    let mut row = |id: &str,
-                   intent: &str,
-                   stem: &str,
-                   route: Option<&str>,
-                   prompt: String,
-                   priority: i64,
-                   context: Option<Value>| {
+    let row = |id: &str,
+               intent: &str,
+               stem: &str,
+               route: Option<&str>,
+               prompt: String,
+               priority: i64,
+               context: Option<Value>| {
         let mut entry = OrderedMap::new();
         entry.insert("id", Value::String(id.to_string()));
         entry.insert("intent", Value::String(intent.to_string()));

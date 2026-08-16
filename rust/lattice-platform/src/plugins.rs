@@ -4,50 +4,6 @@
 //! Plugin directory resolution matches `persistence_runtime.py`:
 //! `LATTICEAI_PLUGINS_DIR` or `<base_dir>/plugins`.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -95,7 +51,7 @@ const PLUGIN_PROVIDES: &[&str] = &["skills", "tools", "workflows", "actions"];
 #[derive(Clone)]
 pub struct PluginsState {
     pub auth: Arc<AuthState>,
-    pub store: PlatformStore,
+    pub(crate) store: PlatformStore,
     pub plugins_dir: PathBuf,
 }
 
@@ -148,7 +104,7 @@ fn valid_id(id: &str) -> bool {
 }
 
 fn valid_semver(v: &str) -> bool {
-    let mut parts = v.split(|c| c == '.' || c == '-');
+    let mut parts = v.split(['.', '-']);
     let mut nums = 0;
     for part in parts.by_ref() {
         if nums >= 3 {
@@ -188,7 +144,7 @@ fn valid_semver(v: &str) -> bool {
 fn version_tuple(version: &str) -> (u32, u32, u32) {
     let cleaned = version.trim().trim_start_matches(">=").trim();
     let mut nums = [0u32; 3];
-    for (i, part) in cleaned.split(|c| c == '.' || c == '-').take(3).enumerate() {
+    for (i, part) in cleaned.split(['.', '-']).take(3).enumerate() {
         nums[i] = part.parse().unwrap_or(0);
     }
     (nums[0], nums[1], nums[2])

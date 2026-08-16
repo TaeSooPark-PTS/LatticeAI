@@ -36,9 +36,15 @@ imports nothing from ``latticeai``.
 
 v11.6.0 removed the *writing* half — ``write_image_memory``,
 ``write_video_memory``, the keyframe writer and the node-id helpers. Extraction
-returns facts; ``lattice-core``'s graph write engine turns them into nodes. What
-is left here is exactly what ``POST /worker/multimodal/describe`` and
-``POST /worker/asr`` answer with.
+returns facts; ``lattice-core``'s graph write engine turns them into nodes.
+
+The audio half is what ``POST /worker/asr`` answers with. The image and video
+halves currently have **no HTTP door**: ``POST /worker/multimodal/describe``
+wrapped :func:`extract_image_facts` for a native image ingest that was never
+built, and v11.8.0 deleted the seam rather than keep a route nothing called.
+The observation functions stay — they are Brain Core's account of what a
+picture or a recording contains, unit-tested directly, and the seam is a
+handful of lines to restore on the day a native image ingest needs one.
 
 Split into cohesive submodules in v11.3.0 (no behaviour change): ``common``
 (taxonomy + shared helpers), ``ports`` (injected capabilities + the ffmpeg

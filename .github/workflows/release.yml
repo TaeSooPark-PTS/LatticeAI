@@ -7,12 +7,19 @@ name: Release
 #
 # Local publish commands below must use exact version filenames. Never publish
 # with a broad dist/* glob.
+#
+# Lint, typecheck, docs:check-links, frontend tests, and unit pytest already
+# ran on this commit in ci.yml. This workflow does not repeat them.
 
 on:
   push:
     tags:
       - 'v*'
       - '[0-9]*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 # GitHub is migrating JS actions to Node.js 24 (Node 20 removed 2026-09-16).
 env:
@@ -22,6 +29,7 @@ jobs:
   build:
     name: Build and validate artifacts
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
@@ -54,19 +62,11 @@ jobs:
           npm ci
           (cd vscode-extension && npm ci)
 
-      - name: Frontend and release readiness gates
+      - name: Release readiness gates
         run: |
-          npm run lint
-          npm run typecheck
           npm run docs:check-current
-          npm run docs:check-links
           npm run build:assets
           python scripts/product_readiness.py
-
-      - name: Run unit tests
-        run: |
-          npm run test:frontend
-          python -m pytest tests/unit/ -v
 
       - name: Build Python sdist + wheel
         run: python -m build

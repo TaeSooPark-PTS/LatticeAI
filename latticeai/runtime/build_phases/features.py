@@ -3,15 +3,17 @@
 The tail of the build order — everything that mounts a router on the finished
 application. WP-P1 replaced two phases (``platform_features`` and
 ``interaction``, ~34 product routers between them) with this one, because the
-worker mounts six things:
+worker mounts four things:
 
 * ``/health`` — the posture the supervisor gates on;
-* the MLX model lifecycle (``/models*``, ``/engines/*``);
-* the embedder report (``/api/embeddings/{status,providers}``);
-* the document parser (``POST /tools/read_document``, ``GET /tools/pdf_pages``);
-* the two capability probes (``/api/ingestion/multimodal``,
-  ``/api/capture/voice/status``);
+* the MLX model lifecycle (``/models*``, ``/engines/prepare-model*``);
+* the embedder report (``GET /api/embeddings/status``);
 * the Rust loop's seam (``POST /agent/llm``, ``POST /agent/tool``).
+
+It mounted three more until v11.8.0 — the ``/tools/*`` document parser, the
+multi-modal capability probe and the voice capability probe. Every one of them
+had no caller in the tree, so the routers, their modules and the construction
+that fed them are gone rather than kept "in case".
 
 The ``/worker/*`` seams are not here: they are mounted by
 :func:`~latticeai.runtime.build_phases.worker_profile.phase_worker_routes`,
@@ -33,22 +35,15 @@ def phase_features(ctx: RuntimeContext) -> None:
 
     from latticeai.api.agent_worker_seam import create_agent_worker_seam_router
     from latticeai.api.health import create_health_router
-    from latticeai.api.local_files import create_local_files_router
     from latticeai.api.models import create_models_router
     from latticeai.api.search import create_search_router
-    from latticeai.api.tools import create_tools_router
-    from latticeai.api.voice_capture import create_voice_capture_router
     from latticeai.core.model_compat import list_cached_profiles
     from latticeai.runtime.access_runtime import is_externally_reachable
     from latticeai.runtime.platform_services_runtime import build_model_service
     from latticeai.services.model_runtime import (
         ENGINE_MODEL_CATALOG,
         MODEL_ENGINE_ALIASES,
-        download_hf_model,
-        ensure_ollama_server,
         filter_lower_family_versions,
-        local_binary,
-        normalize_local_model_request,
         sse_event,
     )
     from latticeai.services.search_service import SearchService
@@ -81,13 +76,9 @@ def phase_features(ctx: RuntimeContext) -> None:
             model_router=ctx.model_router,
             require_user=ctx.require_user,
             require_admin=ctx.require_admin,
-            normalize_local_model_request=normalize_local_model_request,
-            download_hf_model=download_hf_model,
             prepare_and_load_model=service.prepare_and_load_model,
             prepare_and_load_model_stream=service.prepare_and_load_model_stream,
             sse_event=sse_event,
-            ensure_ollama_server=ensure_ollama_server,
-            local_binary=local_binary,
             engine_status=service.engine_status,
             filter_lower_family_versions=filter_lower_family_versions,
             list_compat_profiles=list_cached_profiles,
@@ -117,20 +108,6 @@ def phase_features(ctx: RuntimeContext) -> None:
             service=SearchService(embedder=ctx.EMBEDDER),
             require_user=ctx.require_user,
             embedding_info=_embedding_info,
-        )
-    )
-
-    app.include_router(
-        create_tools_router(require_user=ctx.require_user)
-    )
-    app.include_router(
-        create_local_files_router(
-            require_user=ctx.require_user, ingestion_pipeline=ctx.INGESTION_PIPELINE
-        )
-    )
-    app.include_router(
-        create_voice_capture_router(
-            service=ctx.VOICE_CAPTURE, require_user=ctx.require_user
         )
     )
 

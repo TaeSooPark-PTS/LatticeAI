@@ -85,11 +85,46 @@ impl TranscriptBudget {
     }
 }
 
+/// The smallest budget worth asking for — one action's worth of tokens.
+pub const MIN_PHASE_TOKENS: u32 = 128;
+
+/// The largest `max_tokens` the worker's completion seam accepts.
+///
+/// The worker answers `422 agent_seam.max_tokens_out_of_range` above this, and
+/// the loop has no way to explain that refusal: by the time it arrives, the
+/// phase is already running and all the user sees is a step that failed with a
+/// status code. `LATTICEAI_AGENT_EXECUTE_TOKENS=20000` used to break every
+/// execute phase that way. Clamping here turns a misconfiguration into the
+/// largest completion the seam will actually serve, and says so on stderr once,
+/// at startup, where an operator can act on it.
+pub const MAX_PHASE_TOKENS: u32 = 8192;
+
+/// What a configured phase budget actually becomes, and the one warning worth
+/// printing on the way.
+///
+/// Pure apart from the `eprintln!`, so the clamp can be tested without touching
+/// the process environment — `PhaseBudgets::from_env`'s own test asserts that an
+/// unset environment is the default record, and a sibling test that set
+/// variables would race it.
+fn clamp_phase_tokens(key: &str, asked: i64) -> u32 {
+    if asked > MAX_PHASE_TOKENS as i64 {
+        eprintln!(
+            "lattice-agent: {key}={asked} is above the worker's max_tokens \
+             ceiling ({MAX_PHASE_TOKENS}); using {MAX_PHASE_TOKENS}. Anything \
+             higher is refused by the completion seam with a 422 the loop \
+             cannot explain."
+        );
+    }
+    asked.clamp(MIN_PHASE_TOKENS as i64, MAX_PHASE_TOKENS as i64) as u32
+}
+
 impl PhaseBudgets {
-    /// The `from_env` constructor. A misconfigured value floors at one action.
+    /// The `from_env` constructor. A misconfigured value floors at one action
+    /// ([`MIN_PHASE_TOKENS`]) and is capped at what the worker seam accepts
+    /// ([`MAX_PHASE_TOKENS`]).
     pub fn from_env() -> Self {
         let default = Self::default();
-        let cap = |key: &str, fallback: u32| env_int(key, fallback as i64).max(128) as u32;
+        let cap = |key: &str, fallback: u32| clamp_phase_tokens(key, env_int(key, fallback as i64));
         Self {
             plan_tokens: cap("LATTICEAI_AGENT_PLAN_TOKENS", default.plan_tokens),
             execute_tokens: cap("LATTICEAI_AGENT_EXECUTE_TOKENS", default.execute_tokens),
@@ -605,6 +640,34 @@ manifest path was wrong";
         // `from_env` with nothing set is the default record.
         assert_eq!(PhaseBudgets::from_env(), PhaseBudgets::default());
         assert_eq!(TranscriptBudget::from_env(), TranscriptBudget::default());
+    }
+
+    #[test]
+    fn a_phase_budget_is_held_between_one_action_and_what_the_seam_will_serve() {
+        let key = "LATTICEAI_AGENT_EXECUTE_TOKENS";
+        // Every default is already inside the band and passes through unchanged.
+        let default = PhaseBudgets::default();
+        for tokens in [
+            default.plan_tokens,
+            default.execute_tokens,
+            default.verify_tokens,
+            default.memory_tokens,
+        ] {
+            assert_eq!(clamp_phase_tokens(key, tokens as i64), tokens);
+        }
+        // The floor: one action's worth, never zero or negative.
+        assert_eq!(clamp_phase_tokens(key, 0), MIN_PHASE_TOKENS);
+        assert_eq!(clamp_phase_tokens(key, -5), MIN_PHASE_TOKENS);
+        assert_eq!(clamp_phase_tokens(key, 127), MIN_PHASE_TOKENS);
+        assert_eq!(clamp_phase_tokens(key, 128), 128);
+        // The ceiling. Without it, `=20000` reached the worker and every
+        // execute phase came back 422 `agent_seam.max_tokens_out_of_range`.
+        assert_eq!(clamp_phase_tokens(key, 8192), MAX_PHASE_TOKENS);
+        assert_eq!(clamp_phase_tokens(key, 8193), MAX_PHASE_TOKENS);
+        assert_eq!(clamp_phase_tokens(key, 20_000), MAX_PHASE_TOKENS);
+        assert_eq!(clamp_phase_tokens(key, i64::MAX), MAX_PHASE_TOKENS);
+        // A floor above the ceiling would make `clamp` panic rather than clamp.
+        const { assert!(MIN_PHASE_TOKENS < MAX_PHASE_TOKENS) };
     }
 
     #[test]

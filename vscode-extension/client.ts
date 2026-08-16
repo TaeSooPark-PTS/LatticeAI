@@ -62,9 +62,12 @@ export class LatticeAIClient {
     return this._post("/models/load", { model_id: modelId, adapter_path: adapterPath });
   }
 
-  async switchModel(modelId: string): Promise<any> {
-    return this._post(`/models/switch/${encodeURIComponent(modelId)}`, {});
-  }
+  // `switchModel` lived here and posted to `/models/switch/{model_id}`. Nothing
+  // in this extension ever called it, and v11.8.0 deleted the route for exactly
+  // that reason across every surface — so the method would now be a 404 waiting
+  // for its first caller. `loadModel` switches as part of loading, and that is
+  // what the `ltcai.loadModel` command has always gone through
+  // (`commands.ts` → `syncStatus.loadModelWithProgress` → `client.loadModel`).
 
   async unloadModel(modelId: string): Promise<any> {
     return this._delete(`/models/unload/${encodeURIComponent(modelId)}`);

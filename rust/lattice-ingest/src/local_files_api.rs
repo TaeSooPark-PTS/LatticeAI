@@ -1,55 +1,14 @@
 //! `latticeai/api/local_files.py` + `services/local_knowledge.py` (WP-R6).
 //!
-//! Sixteen of local_files' seventeen routes (multimodal stays KEEP_WORKER)
-//! plus the eight local-knowledge routes that file mounts. Graph writes
+//! Sixteen of local_files' seventeen routes plus the eight local-knowledge
+//! routes that file mounts. The seventeenth was `GET /api/ingestion/multimodal`,
+//! a capability probe that stayed KEEP_WORKER until v11.8.0 deleted it for
+//! having no caller — so `latticeai/api/local_files.py` is gone entirely and
+//! this module is the whole surviving family. Graph writes
 //! (folder ingest, local index, watch-flag, resume) go over the worker
 //! seam; filesystem list/read/write/serve and the SQLite *reads* of
 //! `ingestion_jobs` / `knowledge_sources` / `local_file_index` are native.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -144,7 +103,6 @@ struct Approval {
     expires_at: f64,
     approved: bool,
     content_hash: Option<String>,
-    token_hint: String,
 }
 
 impl Default for LocalApprovals {
@@ -173,7 +131,6 @@ impl LocalApprovals {
     pub fn probe(&self, path: &str, action: &str, user_email: &str, content: &str) -> Value {
         let normalized = Self::normalize(path);
         let token = token_urlsafe(24);
-        let hint = token.chars().take(8).collect::<String>();
         let record = Approval {
             path: normalized,
             action: action.to_string(),
@@ -181,7 +138,6 @@ impl LocalApprovals {
             expires_at: now_secs() + APPROVAL_TTL_SECS as f64,
             approved: false,
             content_hash: (action == "write").then(|| sha256_hex(content.as_bytes())),
-            token_hint: hint,
         };
         if let Ok(mut map) = self.inner.lock() {
             map.insert(sha256_hex(token.as_bytes()), record);
@@ -585,9 +541,6 @@ mod tests {
         // worker_keep.json; the fragment is not moved.
         assert_eq!(MOUNTED.len(), 25);
         assert!(MOUNTED.iter().any(|(_, path)| *path == "/upload/document"));
-        assert!(!MOUNTED
-            .iter()
-            .any(|(_, path)| *path == "/api/ingestion/multimodal"));
     }
 
     #[test]

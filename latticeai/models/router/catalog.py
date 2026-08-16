@@ -64,6 +64,6 @@ def parse_model_ref(model_id: str) -> tuple[str, str]:
             return provider, model
         if provider in {"local_mlx", "mlx"}:
             return "local_mlx", model
-    if model_id.startswith("local_mlx:"):
-        return "local_mlx", model_id.split(":", 1)[1]  # pragma: no cover — dead: a "local_mlx:" ref always has a ":" and returned above
+    # No trailing ``local_mlx:`` case: such a ref contains a colon, so it was
+    # already answered by the branch above.
     return "local_mlx", model_id

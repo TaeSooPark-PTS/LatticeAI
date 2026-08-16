@@ -11,8 +11,9 @@
 //! The spec rides inside the golden, so there is nothing to keep in sync by hand
 //! — adding a case to the generator makes this suite check it on the next run.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
+// The shared harness is written for every suite that includes it, so a
+// helper this one does not call still reads as dead in this binary.
+#[allow(dead_code)]
 mod common;
 
 use common::{allowed_set, diff, golden, manifest, open_store, pin_environment};

@@ -28,70 +28,16 @@
 //! function, [`filter_scoped`], because the fallback path is the one that
 //! actually runs for `list_documents`, `search` and `neighbors`.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::sync::Arc;
 
-use axum::body::Bytes;
-use axum::extract::{Path as AxumPath, RawQuery, State};
-use axum::http::HeaderMap;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
-use lattice_auth::OrderedMap;
-use lattice_core::worker::{WorkerSeamClient, WorkerSeamError};
 use lattice_core::CoreError;
 
-use crate::memory_api::graph_native;
 use rusqlite::Connection;
-use serde_json::{json, Value};
 
-use crate::search_api::{
-    engine_error, graph_disabled, http_error, language, ok, optional, Kind, Model, Query,
-    RetrievalApiState,
-};
+use crate::search_api::{engine_error, RetrievalApiState};
 #[cfg(test)]
 use crate::service::Scope;
 
@@ -228,6 +174,7 @@ pub use crate::search_api::detail as json_detail;
 mod tests {
     use super::*;
     use lattice_core::pytext::parse_iso;
+    use serde_json::{json, Value};
 
     fn store() -> (tempfile::TempDir, Connection) {
         let dir = tempfile::tempdir().expect("tempdir");

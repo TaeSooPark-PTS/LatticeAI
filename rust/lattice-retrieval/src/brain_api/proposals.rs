@@ -1,49 +1,5 @@
 //! Synthesis and contradiction proposals. Review items are Workspace OS state.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::collections::BTreeSet;
 
 use lattice_auth::OrderedMap;
@@ -52,7 +8,7 @@ use serde_json::{json, Value};
 use crate::memory_api::shared::BrainState;
 use crate::memory_api::wsos;
 
-use super::desk::{approve_item, create_review, open_keys, pending_synthesis, SYNTHESIS_SOURCE};
+use super::desk::{approve_item, create_review, open_keys, pending_synthesis};
 use super::proactive;
 use super::pyutil;
 use super::quality::content_signature;
@@ -263,13 +219,13 @@ fn propose_one_contradiction(
 
 fn memory_brief(node_id: &str, node: Option<&Value>, pair: &Value, side: &str) -> Value {
     let mut content = pair
-        .get(&format!("{side}_content"))
+        .get(format!("{side}_content"))
         .cloned()
         .unwrap_or(Value::String(String::new()));
-    if pyutil::text_of(pair.get(&format!("{side}_id"))) != node_id {
+    if pyutil::text_of(pair.get(format!("{side}_id"))) != node_id {
         let other = if side == "left" { "right" } else { "left" };
         content = pair
-            .get(&format!("{other}_content"))
+            .get(format!("{other}_content"))
             .cloned()
             .unwrap_or(content);
     }

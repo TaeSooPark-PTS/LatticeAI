@@ -7,16 +7,10 @@ on:
   schedule:
     - cron: "27 4 * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "tests/e2e/**"
-      - "scripts/run_sidecar_e2e.mjs"
-      - "playwright.e2e.config.js"
-      - ".github/workflows/e2e-sidecar.yml"
-      - "latticeai/**"
-      - "frontend/**"
-      - "static/app/**"
+
+concurrency:
+  group: e2e-sidecar-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -25,6 +19,7 @@ jobs:
   sidecar-e2e:
     name: Playwright first-value (live sidecar)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 

@@ -42,71 +42,16 @@
 //!   importing an ML runtime was the Python original's one wart; this port does
 //!   not inherit it.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use axum::body::Body;
-use axum::extract::{RawQuery, State};
-use axum::http::{header, HeaderMap, HeaderValue, Response, StatusCode};
+use axum::http::{header, HeaderValue, Response, StatusCode};
 use axum::middleware::{from_fn, Next};
 use axum::routing::{get, MethodRouter};
 use axum::Router;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
-use serde_json::{json, Map, Value};
-use sha2::{Digest, Sha256};
 use tower_http::services::ServeDir;
-
-use lattice_core::worker::{WorkerSeamClient, WorkerSeamError};
-
-use crate::ui_redirects::app_redirect;
 
 /// The Content-Security-Policy every HTML page this family serves carries.
 ///
@@ -274,8 +219,7 @@ mod sysinfo;
 use pages::{account, app_shell, favicon, manifest, root, service_worker};
 
 pub use http::{asset_content_type, json_detail, method_not_allowed};
-pub(crate) use http::{file_response, invite_denied};
-pub(crate) use invite::{constant_time_eq, first_query_value, issue_invite_cookie, token_urlsafe};
+pub(crate) use invite::first_query_value;
 pub use invite::{cookie_value, invite_authorized, sign_invite_cookie, verify_invite_cookie};
 pub use sysinfo::{
     gpu_from_worker_payload, host_capacity_readiness, parse_cpu_percent, parse_ram_percent,
@@ -365,6 +309,10 @@ async fn starlette_shaped_assets(request: axum::extract::Request, next: Next) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::HeaderMap;
+    use serde_json::json;
+
+    use invite::token_urlsafe;
 
     fn gated(secret: &str) -> StaticUiConfig {
         StaticUiConfig {

@@ -26,7 +26,6 @@ from latticeai.api.worker_compute import (
     EXTRACT_KINDS,
     EXTRACT_LIMITS,
     PASSAGE_MAX_CHARS,
-    RENDER_SUFFIXES,
     WORKER_COMPUTE_MESSAGES,
     build_docx_bytes,
     build_extract_reply,
@@ -50,7 +49,6 @@ COMPUTE_PATHS = [
     ("/worker/render/pptx", {}),
     ("/worker/render/pdf", {}),
     ("/worker/asr", {"audio_b64": ""}),
-    ("/worker/multimodal/describe", {"content_b64": ""}),
     ("/worker/extract", {"text": "x"}),
 ]
 
@@ -73,7 +71,6 @@ def _client(
     *,
     embedder: Any = "default",
     transcriber: Any = None,
-    multimodal_ports: Any = None,
     require_user: Any = None,
     recorder: Optional[Recorder] = None,
 ) -> TestClient:
@@ -86,7 +83,6 @@ def _client(
         create_worker_compute_router(
             embedder=embedder,
             transcriber=transcriber,
-            multimodal_ports=multimodal_ports,
             require_user=require_user or (lambda request: USER),
             enforce_rate_limit=recorder.enforce,
         )
@@ -100,14 +96,6 @@ def _client(
 def _seam_open(monkeypatch):
     """The gate is open for every test that does not deliberately close it."""
     monkeypatch.setenv(SEAM_ENV_VAR, "1")
-
-
-def _png(size=(24, 16), colour=(200, 40, 40)) -> bytes:
-    from PIL import Image
-
-    buffer = io.BytesIO()
-    Image.new("RGB", size, colour).save(buffer, format="PNG")
-    return buffer.getvalue()
 
 
 @pytest.mark.parametrize("path,body", COMPUTE_PATHS)
@@ -268,9 +256,13 @@ def test_a_rendered_docx_parses_back_through_the_same_worker():
         json={"title": "보고서", "body": "한 문단.\n\n두 문단.", "filename": "r.docx"},
     ).json()
 
+    # The render reply is bytes and cost only — the name belongs to the caller
+    # that asked for it, and to the Rust writer that resolved the target.
+    assert "filename" not in rendered
+
     body = client.post(
         "/worker/parse",
-        json={"filename": rendered["filename"], "content_b64": rendered["content_b64"]},
+        json={"filename": "r.docx", "content_b64": rendered["content_b64"]},
     ).json()
 
     assert body["ext"] == ".docx"
@@ -348,8 +340,8 @@ def test_the_docx_bytes_open_as_a_document_with_the_blocks_that_were_sent():
     document = Document(io.BytesIO(base64.b64decode(body["content_b64"])))
     texts = [p.text for p in document.paragraphs]
     assert texts == ["Title", "one", "two"]
-    assert body["filename"] == "my report.docx"
     assert body["bytes"] == len(base64.b64decode(body["content_b64"]))
+    assert "filename" not in body
 
 
 def test_a_docx_without_a_title_has_no_heading():
@@ -375,7 +367,7 @@ def test_the_xlsx_bytes_open_as_a_workbook_with_the_named_sheet():
     assert sheet.title == "결과"
     assert [[c.value for c in row] for row in sheet.iter_rows()] == [["a", 1], ["b", 2]]
     assert body["rows"] == 2
-    assert body["filename"] == "s.xlsx"
+    assert "filename" not in body
 
 
 def test_the_pptx_bytes_open_as_a_deck_whose_first_slide_is_the_title():
@@ -401,7 +393,7 @@ def test_the_pptx_bytes_open_as_a_deck_whose_first_slide_is_the_title():
     assert deck.slides[1].shapes.title.text == "One"
     assert deck.slides[2].shapes.title.text == "Slide"
     assert body["slides"] == 3
-    assert body["filename"] == "deck.pptx"
+    assert "filename" not in body
 
 
 def test_a_deck_with_no_title_still_gets_the_default_one():
@@ -427,7 +419,7 @@ def test_the_pdf_bytes_open_as_a_pdf_with_the_escaped_text():
     assert "Report" in text
     assert "a & b <c>" in text
     assert "second" in text
-    assert body["filename"] == "r.pdf"
+    assert "filename" not in body
 
 
 def test_a_pdf_without_a_title_is_still_a_pdf():
@@ -498,13 +490,18 @@ def test_a_builder_that_breaks_is_a_500_naming_the_kind_and_the_reason(monkeypat
     assert "pdf" in response.json()["detail"]
 
 
-def test_the_render_suffixes_are_the_ones_the_creators_enforced():
-    from latticeai.tools.documents import _DOCUMENT_TOOL_TARGETS
+def test_the_render_reply_carries_no_target_of_its_own():
+    """The one place a document's *name* is decided is ``lattice-agent``.
 
-    assert RENDER_SUFFIXES == {
-        name.removeprefix("create_"): suffix
-        for name, (_dir, suffix) in _DOCUMENT_TOOL_TARGETS.items()
-    }
+    ``documents.document_output_target`` (Rust) sanitises and resolves it
+    before the render call; this seam answers with bytes and cost only, so
+    there is no second name for the two sides to disagree about.
+    """
+    client = _client()
+
+    body = client.post("/worker/render/docx", json={"filename": "../../etc/passwd"}).json()
+
+    assert set(body) == {"content_b64", "bytes"}
 
 
 
@@ -612,108 +609,6 @@ def test_the_temp_suffix_prefers_the_filename_then_the_mime_then_the_default(
     filename, mime, expected
 ):
     assert worker_compute._suffix_for(filename, mime, ".m4a") == expected
-
-
-
-
-def test_a_picture_comes_back_as_the_facts_the_ingest_path_would_have_written():
-    from lattice_brain.multimodal import MultimodalPorts
-
-    ports = MultimodalPorts(
-        captioner=lambda path: "a red rectangle",
-        vision_embedder=lambda path: [0.1, 0.2, 0.3],
-        vision_model_id="mlx:clip:512",
-        vision_space="image",
-    )
-    client = _client(multimodal_ports=ports)
-
-    body = client.post(
-        "/worker/multimodal/describe",
-        json={"content_b64": _b64(_png()), "filename": "shot.png", "ocr": False},
-    ).json()
-
-    assert body["modality"] == "image"
-    assert body["readable"] is True
-    assert (body["width"], body["height"]) == (24, 16)
-    assert body["format"] == "PNG"
-    assert body["mode"] == "RGB"
-    assert body["caption"] == "a red rectangle"
-    assert body["caption_status"] == "ok"
-    assert body["embedding"] == [0.1, 0.2, 0.3]
-    assert body["embedding_status"] == "ok"
-    assert body["index_text"] == "a red rectangle"
-    assert body["thumbnail"].startswith("data:image/png;base64,")
-    assert body["metadata"]["modality"] == "image"
-    assert body["metadata"]["caption"] == "a red rectangle"
-    assert body["ports"]["vision_model_id"] == "mlx:clip:512"
-    assert body["quality"]["score"] > 0
-    assert "vision_caption" in body["quality"]["reasons"]
-    assert body["quality"]["level"]
-
-
-def test_the_descriptor_matches_what_brain_core_computes_for_the_same_file(tmp_path):
-    """The seam adds transport, not judgement: same facts, same quality."""
-    from lattice_brain.multimodal import (
-        MultimodalPorts,
-        extract_image_facts,
-        image_quality_score,
-    )
-
-    raw = _png(size=(8, 8), colour=(1, 2, 3))
-    local = tmp_path / "same.png"
-    local.write_bytes(raw)
-    ports = MultimodalPorts(captioner=lambda path: "caption")
-    client = _client(multimodal_ports=ports)
-
-    body = client.post(
-        "/worker/multimodal/describe",
-        json={"content_b64": _b64(raw), "mime": "image/png", "ocr": False},
-    ).json()
-
-    facts = extract_image_facts(str(local), ports=ports, ocr=False)
-    assert body["metadata"] == facts.as_metadata()
-    assert body["index_text"] == facts.index_text()
-    assert body["quality"]["score"] == image_quality_score(facts)["score"]
-
-
-def test_an_unreadable_image_is_recorded_as_unreadable_not_lost():
-    client = _client()
-
-    body = client.post(
-        "/worker/multimodal/describe",
-        json={"content_b64": _b64(b"this is not a picture"), "filename": "x.png"},
-    ).json()
-
-    assert body["readable"] is False
-    assert body["error"]
-    assert body["quality"]["score"] == 0.0
-    assert body["quality"]["reasons"] == ["image_unreadable"]
-    assert body["index_text"] == ""
-
-
-def test_a_worker_with_no_vision_ports_still_describes_what_pillow_can_see():
-    client = _client(multimodal_ports=None)
-
-    body = client.post(
-        "/worker/multimodal/describe",
-        json={"content_b64": _b64(_png()), "ocr": False, "thumbnail": False},
-    ).json()
-
-    assert body["readable"] is True
-    assert body["caption"] is None
-    assert body["caption_status"] == "unavailable"
-    assert body["embedding"] is None
-    assert body["thumbnail"] is None
-    assert body["ports"]["caption"] is False
-    assert body["ocr_status"] == "skipped"
-
-
-def test_image_content_that_is_not_base64_is_a_422():
-    client = _client()
-
-    assert (
-        client.post("/worker/multimodal/describe", json={"content_b64": "@@"}).status_code == 422
-    )
 
 
 
@@ -840,9 +735,11 @@ def test_the_seams_answer_json_and_never_a_file_path():
     xlsx = client.post("/worker/render/xlsx", json={"rows": []}).json()
 
     for body in (docx, xlsx):
-        assert set(body) >= {"filename", "content_b64", "bytes"}
+        assert set(body) >= {"content_b64", "bytes"}
         assert "path" not in body
-        assert "/" not in body["filename"]
+        # Not even a name: naming a target is the writer's job, and this seam
+        # is not the writer.
+        assert "filename" not in body
 
 
 

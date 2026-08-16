@@ -261,3 +261,17 @@ def test_sample_file_reports_size_for_real_files(tmp_path: Path) -> None:
     assert sample["relative_path"] == "sub/note.md"
     assert sample["size_bytes"] == 5
     assert sample["modified_at"]
+
+
+# ── content hashes ───────────────────────────────────────────────────────────
+
+
+def test_the_two_sha256_helpers_agree_on_the_same_utf8_content() -> None:
+    """``_sha256_bytes`` and ``_sha256_text`` are one identity in two shapes.
+
+    Both are part of the ``_kg_common`` star-import contract, and a chunk's
+    ``text_hash`` is compared across the Python and Rust halves — so the byte
+    form and the text form must not drift into two different digests.
+    """
+    assert fsutil._sha256_bytes("계약서".encode("utf-8")) == fsutil._sha256_text("계약서")
+    assert len(fsutil._sha256_bytes(b"")) == 64

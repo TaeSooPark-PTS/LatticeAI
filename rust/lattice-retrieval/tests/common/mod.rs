@@ -6,11 +6,8 @@
 //! the whole response, so a drifting float, a missing honesty field, a reordered
 //! tie and a renamed key all fail the same way.
 //!
-//! Regenerate with `.venv/bin/python scripts/generate_rust_parity_fixtures.py`.
-
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code)]
+//! The store and the goldens are **frozen** and committed; there is nothing to
+//! regenerate them with. `rust/fixtures/golden/FROZEN.md` says what wrote them.
 
 pub mod brain;
 

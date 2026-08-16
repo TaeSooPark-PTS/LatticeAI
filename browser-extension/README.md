@@ -57,6 +57,7 @@ seconds, then restores the Send button so the capture can be retried.
 | `POST /api/browser/read-url` | `web_url` | The runtime fetches a public URL locally and extracts text. |
 | `POST /api/browser/ingest-current-tab` | `browser_tab` | Accepts the extension payload above; size-limited and sanitized. |
 
-Both feed `IngestionPipeline.ingest`, fire `pre_tool`/`post_tool` hooks, and
-record provenance (`get_provenance(node_id)`). Covered by
-`tests/unit/test_browser_ingestion.py`.
+Both feed the one native ingest door (`lattice-ingest` writing through
+`lattice_core::graph_write`), fire `pre_tool`/`post_tool` hooks, and record
+provenance (`get_provenance(node_id)`). Covered by
+`rust/lattice-ingest/tests/browser_api_replay.rs`.

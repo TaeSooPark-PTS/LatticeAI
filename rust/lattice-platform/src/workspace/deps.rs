@@ -22,50 +22,6 @@
 //! inventing a plausible-looking payload — a fabricated hardware probe is worse
 //! than a missing one.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -141,8 +97,11 @@ pub enum GraphSeam {
     /// Native write engine (W3b).
     Native(GraphWriter),
     /// A caller-supplied answer, for tests.
-    Stub(Arc<dyn Fn(&str, &Value) -> Result<Value, String> + Send + Sync>),
+    Stub(GraphMutator),
 }
+
+/// `mutate(op, payload)` — a stubbed graph write's answer, or its refusal text.
+pub type GraphMutator = Arc<dyn Fn(&str, &Value) -> Result<Value, String> + Send + Sync>;
 
 impl std::fmt::Debug for GraphSeam {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -310,6 +269,14 @@ fn native_dispatch(graph: &GraphWriter, op: &str, args: &Value) -> Result<Value,
 pub type JsonProvider = Arc<dyn Fn() -> Value + Send + Sync>;
 /// A closure that answers a list of JSON records.
 pub type RecordsProvider = Arc<dyn Fn() -> Vec<Value> + Send + Sync>;
+/// `append_audit_event(event_type, fields)` — records, answers nothing.
+pub type AuditAppender = Arc<dyn Fn(&str, &Value) + Send + Sync>;
+/// `_fetch_skills_marketplace()` — the catalog, or why it could not be read.
+pub type SkillsCatalog = Arc<dyn Fn() -> Result<Vec<Value>, String> + Send + Sync>;
+/// `install_skill(plugin, skill)` — the installed record, or the refusal text.
+pub type SkillInstaller = Arc<dyn Fn(&str, &str) -> Result<Value, String> + Send + Sync>;
+/// `get_recommendations(environment)` — `(recommendations, catalog)`.
+pub type ModelRecommender = Arc<dyn Fn(&Value) -> (Value, Value) + Send + Sync>;
 
 /// Everything this family reads from elsewhere, with its defaults.
 #[derive(Clone)]
@@ -325,19 +292,19 @@ pub struct WorkspaceProviders {
     /// `get_audit_log()` — the events the timeline and audit views merge in.
     pub audit_events: RecordsProvider,
     /// `append_audit_event(event_type, fields)`.
-    pub append_audit_event: Arc<dyn Fn(&str, &Value) + Send + Sync>,
+    pub append_audit_event: AuditAppender,
     /// Where installed skills live (`SKILLS_DIR`; package-relative in Python).
     pub skills_dir: Option<PathBuf>,
     /// `_fetch_skills_marketplace()`.
-    pub skills_marketplace: Arc<dyn Fn() -> Result<Vec<Value>, String> + Send + Sync>,
+    pub skills_marketplace: SkillsCatalog,
     /// `install_skill(plugin, skill)`.
-    pub install_skill: Option<Arc<dyn Fn(&str, &str) -> Result<Value, String> + Send + Sync>>,
+    pub install_skill: Option<SkillInstaller>,
     /// `scan_environment()` — the setup wizard's host probe.
     pub scan_environment: Option<JsonProvider>,
     /// `local_sysinfo(request)` — CPU/RAM/GPU telemetry.
     pub local_sysinfo: Option<JsonProvider>,
     /// `get_recommendations(environment)` + the tri-state catalog.
-    pub model_recommendations: Option<Arc<dyn Fn(&Value) -> (Value, Value) + Send + Sync>>,
+    pub model_recommendations: Option<ModelRecommender>,
     /// `LOCAL_KG_WATCHER.status()`.
     pub watcher_status: Option<JsonProvider>,
     /// `LOCAL_MODEL` — the onboarding recommendation default.

@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v11.7.0 Living Brain walkthrough](output/release/v11.7.0/gifs/v11.7.0-living-brain-walkthrough.gif)
+![v11.8.0 Living Brain walkthrough](output/release/v11.8.0/gifs/v11.8.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,10 +24,10 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.7.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.7.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.7.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.7.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.7.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.7.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.7.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.7.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.8.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.8.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.8.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.8.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.8.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.8.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.8.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.8.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -58,67 +58,73 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v11.7.0/screenshots/01-login.png) | ![Model install](output/release/v11.7.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.7.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v11.8.0/screenshots/01-login.png) | ![Model install](output/release/v11.8.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.8.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v11.7.0/SCREENSHOT_INDEX.md](output/release/v11.7.0/SCREENSHOT_INDEX.md)
+[output/release/v11.8.0/SCREENSHOT_INDEX.md](output/release/v11.8.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **11.7.0 — Clean Sweep**:
+The current release is **11.8.0 — Travel Light**:
 
-11.6.0 left a disclosed backlog and a visual language that still used
-glass. This release closes that backlog, fixes regressions One Door did
-not know it had shipped, and restyles every captured surface on an
-elevation ladder — ink night, paper day, no glass. The door is unchanged:
-`lattice-host` still serves **420 operations across 41 route families**,
-and the Python package is still a **28-route AI worker** (LLM, embed,
-extract, parse, four renderers, ASR, multimodal, catalog, `sysinfo`,
-`/health`). The allowlist still includes `/worker/parse` and
-`/worker/render/*`; nothing product-shaped moved back into Python.
+11.7.0 emptied the backlog. This release removes what was left carrying
+its own weight and nothing else — routes with no caller, gates that stop
+nothing, goldens that prove the same thing twice, and blanket lint
+suppressions that hid what the compiler was already saying. The door is
+unchanged: `lattice-host` still serves **420 operations across 41 route
+families**. What changed is the Python side of that door — the AI worker
+is now **19 routes, not 28**.
 
-- **The three oracle bugs 11.6.0 ported as-is are fixed.** Command-search
-  knowledge now reads `matches` and returns nodes. Review snooze accepts
-  offset-aware datetimes (unparseable `until` → 422). Double-reject is
-  409, byte-identical to its dismiss sibling. Fixture bodies that pinned
-  the old faults were updated and marked as divergences from the oracle.
-- **The §5.3 holes are closed.** Binary uploads go through `/worker/parse`.
-  Per-chunk supplied vectors land at the four ingest doors. User hooks
-  fire on native tools (`HooksStore` → `HookSink`) and write the same run
-  log the HTTP route writes. `sanitize_write_content` runs on the loop
-  path and on `POST /tools/write_file`. Every mutating review route records
-  `review_item_created` / `review_item_updated`. `workspace_os.json` has
-  one writer (`WorkspaceOsStore` + registry + ports).
-- **Regressions One Door did not know it had.** Self-Model writes were
-  100% dead (five routes posted into the retired `/worker/graph/mutate`;
-  `resolve_contradiction` claimed "applied" while writing nothing) —
-  restored natively, nine recorded bodies byte-identical. The security
-  xlsx export 502'd because it posted to a product route; it now uses
-  `/worker/render/xlsx`. Chat `ingest_generated` was a schema 400 even
-  against a live 11.5.2 worker. Vault-watch had fixtures and no poller —
-  it is a real native ingest loop now. A decoy-proven static gate keeps
-  this class from shipping again.
-- **Time bombs defused.** Chronicle `@today`, briefing freshness, and the
-  insights/garden/proactive/health/quality cutoffs now take a frozen
-  clock. Falsifier tests fail on the next run if a fuse is re-armed.
-- **The UI is one language.** Token-native elevation and gradients replace
-  backdrop-filter. Cytoscape reads theme tokens (comma-form `hsl()`).
-  Layout and a11y contracts stay; the first-paint bundle is still ~103 KiB
-  gzip.
+- **Nine caller-less worker routes are gone end to end.**
+  `GET /api/embeddings/providers`, `POST /tools/read_document`,
+  `GET /tools/pdf_pages`, `POST /worker/multimodal/describe`,
+  `GET /api/ingestion/multimodal`, `POST /models/switch/{model_id}`,
+  `DELETE /models/unload-all`, `POST /engines/pull-model` and
+  `GET /api/capture/voice/status` were deleted along with their
+  implementations, their allowlist entries and their gateway tables. The
+  committed allowlist reads 19, `pypdfium2` left with `/tools/pdf_pages`,
+  and new negative tests assert the gateway answers `404` rather than
+  forwarding.
+- **Rust lint suppression removed at the source.** The blanket `#![allow]`
+  headers on roughly 191 files across `lattice-platform`,
+  `lattice-retrieval`, `lattice-ingest` and `lattice-jobs` are gone, and
+  the ~650 clippy/rustc diagnostics they were hiding were fixed rather
+  than re-silenced. Zero workspace-level allowances were added; the eight
+  survivors are local `#[allow(clippy::too_many_arguments)]` with stated
+  reasons. Test binaries were consolidated 98 → 56 without deleting a
+  single test function.
+- **Goldens shrank without losing coverage.** Two 702-row agent decision
+  grids became named unit tests that say which rule broke; the other two
+  files were reduced to 171 representative rows, one per equivalence
+  class, with a drift guard that fails when the kernel grows a class the
+  sample does not cover. Retrieval, graph-write, agent-loop and HTTP
+  goldens are untouched, and every fixture family now carries a
+  `FROZEN.md`.
+- **A real bug surfaced while deleting dead code.** The worker read
+  `sessions.json` once at boot even though `lattice-auth` is its only
+  writer, so a login *after* worker start was invisible to it — silently
+  under `trusted_local_owner`, and as a 401 under
+  `LATTICEAI_REQUIRE_AUTH=true`. A missed lookup now re-reads, guarded by
+  an mtime/size check and a one-second throttle so a guessing burst cannot
+  become a disk-read burst.
+- **The Brain home is redesigned.** The composer is the hero, the Living
+  Brain is three times larger (60px → 179px at 1440) and accretes gold and
+  jade growth rings as memory grows, with a readiness-tied caption. Past
+  conversations, status, the memory map and feature switches sit on a
+  continuity bar along the floor instead of under the fold.
 
-What this release still carries openly — `open_keys` pending-only, no
-extraction refiner, `delete_node` leaving `PART_OF`, review events silent
-without an owner, text-only KG-api ingest, two store cycles per review
-mutation, raw-English snooze 422 — is listed in
-[RELEASE_NOTES_v11.7.0.md](RELEASE_NOTES_v11.7.0.md).
+What this release does not close — the enforced coverage floor moving from
+100 to line-90, the multimodal image/video half having no HTTP door, the
+ad-hoc-signed dmg, and the leftovers 11.7.0 already disclosed — is listed
+in [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).
 
-Expected artifacts for 11.7.0 release must use exact filenames:
+Expected artifacts for 11.8.0 release must use exact filenames:
 
-- `dist/ltcai-11.7.0-py3-none-any.whl`
-- `dist/ltcai-11.7.0.tar.gz`
-- `ltcai-11.7.0.tgz`
-- `dist/ltcai-11.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.7.0_aarch64.dmg`
+- `dist/ltcai-11.8.0-py3-none-any.whl`
+- `dist/ltcai-11.8.0.tar.gz`
+- `ltcai-11.8.0.tgz`
+- `dist/ltcai-11.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -143,7 +149,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - SQLite is the live local Brain store. The optional PostgreSQL/pgvector
-  migration tooling is not part of the 11.6.0 worker.
+  migration tooling is not part of the 11.8.0 worker.
 - Docker, model downloads, cloud model calls, Brain Network, and update checks
   require explicit user action.
 - **The Telegram bridge was removed in 11.6.0** — it lived in the platform code
@@ -157,11 +163,20 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
   required dependency as of 11.6.0 (it used to be an undeclared lazy import
   that raised a 500; `ltcai[pdf]` remains as an empty alias for older
   install instructions).
+- The multimodal image and video analysis functions have no HTTP door as of
+  11.8.0: their only route wrapped a native image ingest that was never
+  built. The observation code stays in Brain Core under unit test, and its
+  module header says so.
+- The Python coverage gate is a **line floor of 90** since 11.8.0 (the
+  100%-lines-and-branches gate was removed). The measured figure is still
+  100%, but the enforced floor is the smaller claim.
+- The macOS dmg is ad-hoc signed — effectively unsigned — so first launch
+  needs the usual Gatekeeper step.
 - Pointer-control tools still execute in the worker. Remaining honest gaps
   (`open_keys` pending-only, no Self-Model refiner, `PART_OF` left on
   delete, review events silent without an owner, KG-api ingest text-only,
   two store cycles per review mutation) are listed with their reasons in
-  [RELEASE_NOTES_v11.7.0.md](RELEASE_NOTES_v11.7.0.md).
+  [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).
 
 ## Release History
 
@@ -172,6 +187,7 @@ same boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.
 
 | Version | Theme |
 | --- | --- |
+| 11.8.0 | Travel Light |
 | 11.7.0 | Clean Sweep |
 | 11.6.0 | One Door |
 | 11.5.2 | Tight Ship |

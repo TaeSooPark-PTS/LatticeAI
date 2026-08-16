@@ -18,9 +18,9 @@ Threat model, so the rule is checkable rather than felt:
   :mod:`latticeai.core.csrf` already trusts it.  Honouring a forwarded host from
   the same caller widens nothing that was not already open.
 * **Anyone else is not trusted.**  Off-loopback the header is honoured only from
-  a peer the operator listed in ``LATTICEAI_TRUSTED_PROXIES`` — the same
-  allowlist ``latticeai.core.security.client_ip`` uses for the same reason, and
-  empty by default.
+  a peer the operator listed in ``LATTICEAI_TRUSTED_PROXIES`` — the allowlist
+  ``latticeai.core.security.configure_trusted_proxies`` holds, mirrored by
+  ``lattice-auth`` at the front door for the same reason, and empty by default.
 
 The functions are pure: the caller supplies the headers and the peer address, so
 the policy is testable without an ASGI app or a socket.

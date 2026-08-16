@@ -1,13 +1,5 @@
 //! Shared replay harness for the R7 governance families.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(
-    clippy::too_many_arguments,
-    clippy::unnecessary_sort_by,
-    clippy::field_reassign_with_default
-)]
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -370,7 +362,7 @@ impl Install {
     pub fn bind(&self, text: &str) -> String {
         let mut out = text.to_string();
         let mut pairs: Vec<_> = self.symbols.iter().collect();
-        pairs.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        pairs.sort_by_key(|pair| std::cmp::Reverse(pair.0.len()));
         for (symbol, value) in pairs {
             out = out.replace(symbol, value);
         }
@@ -643,7 +635,7 @@ fn substitute_symbols(value: &mut Value, symbols: &HashMap<String, String>) {
 
 fn substitute_symbol_text(text: &mut String, symbols: &HashMap<String, String>) {
     let mut pairs: Vec<_> = symbols.iter().collect();
-    pairs.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+    pairs.sort_by_key(|pair| std::cmp::Reverse(pair.0.len()));
     for (symbol, replacement) in pairs {
         *text = text.replace(symbol, replacement);
     }

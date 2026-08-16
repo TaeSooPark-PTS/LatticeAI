@@ -6,8 +6,6 @@
 //! both, and a second `HooksStore::open` over the same directory — the failure
 //! this pins against — would show an empty run log here.
 
-#![allow(clippy::all)]
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;

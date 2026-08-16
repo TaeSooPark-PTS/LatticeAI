@@ -56,68 +56,12 @@ def _install_router(monkeypatch, router, *, loop_running: bool) -> None:
     )
 
 
-# ── chunking ─────────────────────────────────────────────────────────────────
+# ── legacy windowing ─────────────────────────────────────────────────────────
 
 
 def test_chunks_of_blank_text_is_empty() -> None:
     assert kg._chunks("") == []
     assert kg._chunks("   \n  ") == []
-
-
-def test_chunk_strategy_falls_back_when_the_name_cannot_be_read() -> None:
-    class _Unprintable:
-        def __str__(self) -> str:
-            raise RuntimeError("name unavailable")
-
-    assert kg.chunk_strategy_for(_Unprintable()) == "plain"
-
-
-def test_merge_small_sections_folds_a_short_tail_backwards() -> None:
-    spans = [(0, 300, "Guide"), (300, 350, "Guide > Note")]
-
-    merged = kg._merge_small_sections(spans, kg._MARKDOWN_MIN_SECTION_CHARS)
-
-    # The undersized tail joins the previous section and keeps *its* heading.
-    assert merged == [(0, 350, "Guide")]
-
-
-def test_code_chunks_flush_the_pending_pack_before_a_monster_segment() -> None:
-    body = "    value = 1\n" * 40
-    pieces = kg.typed_chunks(
-        "a = 1\n\ndef big():\n" + body, strategy="code", size=50, overlap=10
-    )
-
-    assert pieces[0]["text"] == "a = 1\n\n"
-    assert pieces[0]["meta"]["start_char"] == 0
-    assert len(pieces) > 2
-    assert all(piece["meta"]["strategy"] == "code" for piece in pieces)
-    # Every piece is still an exact slice at its recorded offset.
-    cleaned = ("a = 1\n\ndef big():\n" + body).strip()
-    for piece in pieces:
-        start = piece["meta"]["start_char"]
-        assert cleaned[start : start + len(piece["text"])] == piece["text"]
-
-
-def test_typed_chunks_recovers_from_unusable_size_and_overlap() -> None:
-    by_size = kg.typed_chunks("hello world", size="not-a-number")
-    by_overlap = kg.typed_chunks("hello world", overlap=object())
-
-    assert [piece["text"] for piece in by_size] == ["hello world"]
-    assert [piece["text"] for piece in by_overlap] == ["hello world"]
-
-
-# ── page offsets ─────────────────────────────────────────────────────────────
-
-
-def test_pdf_page_offsets_rejects_malformed_page_entries() -> None:
-    assert kg.pdf_page_offsets({"pages": [{"chars": 10}, "not-a-dict"]}) == []
-    assert kg.pdf_page_offsets({"pages": [{"chars": 10}, {"chars": 5}]}) == [0, 12]
-
-
-def test_page_for_offset_returns_none_for_unusable_input() -> None:
-    assert kg.page_for_offset([0, 10], object()) is None
-    assert kg.page_for_offset([0, "twelve"], 5) is None
-    assert kg.page_for_offset([0, 10], 12) == 2
 
 
 # ── LLM-backed concept extraction ────────────────────────────────────────────

@@ -1,48 +1,3 @@
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-
 //! The proposal desk: the one writer of `review_items` in this crate.
 //!
 //! Port of `lattice_brain.synthesis.ProposalDesk` plus the two review-queue
@@ -124,6 +79,9 @@ pub fn pending_synthesis(state: &Value, workspace_id: Option<&str>) -> Vec<Value
 /// with a numeric suffix when that collides; the uniqueness scan and the
 /// append happen inside one `mutate_state` closure, so two proposals raised
 /// concurrently cannot be handed the same id or erase one another.
+// Eight parameters because `ProposalDesk.propose` takes eight; a params struct
+// here would only rename the same eight at every call site.
+#[allow(clippy::too_many_arguments)]
 pub fn create_review(
     state: &BrainState,
     title: &str,

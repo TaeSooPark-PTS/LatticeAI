@@ -2,26 +2,25 @@
 
 Every heavy dependency of this router is an injected service callable, so the
 router is built by its factory with fakes and driven through ``TestClient``.
-The two seams that would otherwise touch the machine are replaced explicitly:
-``subprocess`` (an ``ollama pull`` is minutes of network I/O) and the model
-compat / catalog helpers the handlers import lazily.
+The model compat / catalog helpers the handlers import lazily are replaced
+explicitly.
 
 What is asserted is the router's own job — which failures become which status
-code, that a download never starts without explicit consent, that identity is
-taken from the session rather than the body, and that a streaming prepare
-reports its failure as an SSE ``error`` event instead of a broken response.
+code, that identity is taken from the session rather than the body, and that a
+streaming prepare reports its failure as an SSE ``error`` event instead of a
+broken response.
+
+v11.8.0 deleted three routes this file used to drive (``POST
+/engines/pull-model``, ``POST /models/switch/{model_id:path}``, ``DELETE
+/models/unload-all``) because nothing called them; their cases went with them,
+and with the pull went the ``subprocess`` seam this module used to stub.
 """
 
 from __future__ import annotations
 
-import subprocess
-from types import SimpleNamespace
-
-import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
-from latticeai.api import models as models_mod
 from latticeai.api.models import _vision_capability, create_models_router
 from latticeai.services.model_errors import ModelRuntimeError
 
@@ -30,23 +29,12 @@ class _FakeModelRouter:
     def __init__(self):
         self.loaded_model_ids = ["mlx-community/loaded-4bit"]
         self.current_model_id = "mlx-community/loaded-4bit"
-        self.unloaded_all = False
 
     def detected_cloud_models(self):
         return [{"id": "openai:gpt-4o-mini"}]
 
-    def switch_model(self, model_id):
-        if model_id not in self.loaded_model_ids:
-            raise KeyError(model_id)
-        self.current_model_id = model_id
-
     def unload_model(self, model_id):
         self.loaded_model_ids = [item for item in self.loaded_model_ids if item != model_id]
-
-    def unload_all(self):
-        self.unloaded_all = True
-        self.loaded_model_ids = []
-        self.current_model_id = None
 
 
 def _build(**overrides):
@@ -65,13 +53,9 @@ def _build(**overrides):
         model_router=_FakeModelRouter(),
         require_user=lambda _request: "admin@example.com",
         require_admin=lambda _request: ("admin@example.com", {}),
-        normalize_local_model_request=lambda model, _engine=None: str(model or "").strip(),
-        download_hf_model=lambda model, provider: calls.append(("hf", {"model": model, "provider": provider})) or {"path": "/models/x"},
         prepare_and_load_model=prepare_and_load_model,
         prepare_and_load_model_stream=prepare_and_load_model_stream,
         sse_event=lambda event, data: f"event: {event}\ndata: {data}\n\n",
-        ensure_ollama_server=lambda: calls.append(("ollama_server", {})),
-        local_binary=lambda name: f"/usr/local/bin/{name}",
         engine_status=lambda: [{"id": "local_mlx", "name": "MLX", "installed": True, "models": []}],
         filter_lower_family_versions=lambda items: items,
         list_compat_profiles=lambda: [{"id": "mlx"}],
@@ -86,10 +70,6 @@ def _build(**overrides):
     app = FastAPI()
     app.include_router(create_models_router(**deps))
     return TestClient(app, raise_server_exceptions=False), calls
-
-
-def _fake_subprocess(run):
-    return SimpleNamespace(run=run, TimeoutExpired=subprocess.TimeoutExpired)
 
 
 # ── vision capability ───────────────────────────────────────────────────────
@@ -127,156 +107,6 @@ def test_vision_degrades_when_the_profile_or_engine_listing_fails(monkeypatch):
     assert payload["current_supports_vision"] is False
     assert payload["engine_available"] is False
     assert payload["enabled"] is False
-
-
-# ── engines ─────────────────────────────────────────────────────────────────
-
-
-def test_a_pull_never_starts_without_explicit_download_consent():
-    client, calls = _build()
-
-    response = client.post("/engines/pull-model", json={"model": "ollama:llama3"})
-
-    assert response.status_code == 403
-    assert calls == []
-
-
-@pytest.mark.parametrize(
-    ("model", "normalized"),
-    [("   ", ""), ("ollama:   ", "ollama:")],
-)
-def test_a_pull_refuses_an_empty_model_identifier(model, normalized):
-    client, _calls = _build(normalize_local_model_request=lambda value, _engine=None: normalized)
-
-    response = client.post("/engines/pull-model", json={"model": model, "allow_download": True})
-
-    assert response.status_code == 400
-
-
-def test_an_ollama_pull_runs_the_daemon_and_the_pull_off_the_event_loop(monkeypatch):
-    seen: dict = {}
-
-    def fake_run(argv, **kwargs):
-        seen["argv"] = argv
-        seen["timeout"] = kwargs["timeout"]
-        return subprocess.CompletedProcess(argv, 0, "pulled\n", "")
-
-    monkeypatch.setattr(models_mod, "subprocess", _fake_subprocess(fake_run))
-    client, calls = _build()
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "ollama:llama3", "allow_download": True},
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {"provider": "ollama", "model": "llama3", "returncode": 0}
-    assert seen["argv"] == ["/usr/local/bin/ollama", "pull", "llama3"]
-    assert seen["timeout"] == 900
-    assert ("ollama_server", {}) in calls
-
-
-def test_an_ollama_pull_reports_a_failed_exit_code_as_a_server_error(monkeypatch):
-    def fake_run(argv, **_kwargs):
-        return subprocess.CompletedProcess(argv, 1, "", "manifest not found")
-
-    monkeypatch.setattr(models_mod, "subprocess", _fake_subprocess(fake_run))
-    client, _calls = _build()
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "ollama:llama3", "allow_download": True},
-    )
-
-    assert response.status_code == 500
-    assert response.json()["detail"] == "manifest not found"
-
-
-def test_an_ollama_pull_that_times_out_is_a_408(monkeypatch):
-    def fake_run(argv, **_kwargs):
-        raise subprocess.TimeoutExpired(cmd=argv, timeout=900)
-
-    monkeypatch.setattr(models_mod, "subprocess", _fake_subprocess(fake_run))
-    client, _calls = _build()
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "ollama:llama3", "allow_download": True},
-    )
-
-    assert response.status_code == 408
-
-
-def test_an_unstartable_ollama_daemon_keeps_its_status_code():
-    def boom():
-        raise ModelRuntimeError(status_code=503, detail="Ollama is not installed")
-
-    client, _calls = _build(ensure_ollama_server=boom)
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "ollama:llama3", "allow_download": True},
-    )
-
-    assert response.status_code == 503
-
-
-def test_an_ollama_pull_without_the_binary_is_a_400():
-    client, _calls = _build(local_binary=lambda _name: None)
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "ollama:llama3", "allow_download": True},
-    )
-
-    assert response.status_code == 400
-
-
-def test_lm_studio_models_are_not_pulled_by_lattice():
-    client, calls = _build()
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "lmstudio:qwen", "allow_download": True},
-    )
-
-    assert response.status_code == 400
-    assert "LM Studio" in response.json()["detail"]
-    assert calls == []
-
-
-def test_a_local_model_pull_downloads_from_hugging_face():
-    client, calls = _build()
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "mlx:some/model", "allow_download": True},
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "provider": "mlx", "model": "some/model", "returncode": 0, "path": "/models/x",
-    }
-    # `mlx` is an alias; the download is performed for the real local_mlx engine.
-    assert calls == [("hf", {"model": "some/model", "provider": "local_mlx"})]
-
-
-def test_a_failing_hugging_face_download_keeps_its_status_code():
-    def boom(_model, _provider):
-        raise ModelRuntimeError(status_code=507, detail="not enough disk space")
-
-    client, _calls = _build(download_hf_model=boom)
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "local_mlx:some/model", "allow_download": True},
-    )
-
-    assert response.status_code == 507
-
-
-def test_a_reference_whose_prefix_is_not_an_engine_is_a_hugging_face_repo_id():
-    client, calls = _build()
-
-    response = client.post(
-        "/engines/pull-model", json={"model": "org/model:rev", "allow_download": True},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["provider"] == "local_mlx"
-    assert calls == [("hf", {"model": "org/model:rev", "provider": "local_mlx"})]
 
 
 # ── prepare-model ───────────────────────────────────────────────────────────
@@ -525,19 +355,12 @@ def test_load_model_turns_an_unexpected_failure_into_friendly_guidance(monkeypat
     assert response.json()["detail"]["status"] == "repair_model"
 
 
-def test_switch_unload_and_unload_all_report_the_router_state():
+def test_unload_reports_the_router_state():
     client, _calls = _build()
 
-    switched = client.post("/models/switch/mlx-community/loaded-4bit")
-    missing = client.post("/models/switch/mlx-community/never-loaded")
     unloaded = client.delete("/models/unload/mlx-community/loaded-4bit")
-    unloaded_all = client.delete("/models/unload-all")
 
-    assert switched.status_code == 200
-    assert switched.json() == {"status": "ok", "current": "mlx-community/loaded-4bit"}
-    assert missing.status_code == 404
     assert unloaded.json() == {"status": "ok", "unloaded": "mlx-community/loaded-4bit"}
-    assert unloaded_all.json() == {"status": "ok", "unloaded": []}
 
 
 def test_a_signed_in_non_admin_cannot_act_as_another_user():

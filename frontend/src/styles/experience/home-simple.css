@@ -37,7 +37,7 @@
   gap: var(--lt-gap-block);
   width: min(100%, 56rem);
   margin-inline: auto;
-  padding: 1.25rem 0 2rem;
+  padding: var(--lt-space-5) var(--lt-space-4) var(--lt-space-6);
   grid-template-columns: none;
   grid-template-rows: none;
 }
@@ -69,20 +69,22 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  /* Borderless: the card reads as a surface floating on soft shadow, not a
-     ruled box. The 1px stays transparent so the focus ring below can colour
-     it without a layout shift. */
+  /* The station is the desk, not the page: a quiet paper surface. The 1px
+     stays transparent so the focus ring can colour it without a layout shift.
+     Soft depth, no ruled border — the composer inside is the thing that reads
+     as a control. */
   border: 1px solid transparent;
-  border-radius: var(--radius-lg, 1.15rem);
-  background: var(--grad-surface);
+  border-radius: var(--lt-radius-2xl);
+  background: hsl(var(--surface));
   box-shadow: var(--elev-2);
-  transition: border-color 200ms ease, box-shadow 200ms ease;
   /* Deliberately *not* `overflow: hidden`. The capture popover anchors to the
      toolbar and opens below it, i.e. outside this box; clipping it made the
      panel invisible, and — worse — turned the station into a scroll container,
      so focusing the note field scrolled the greeting and half the composer out
      of the card. The banner and the toolbar round their own outer corners
-     instead, which is all the clip was ever for. */
+     instead, which is all the clip was ever for.
+     No `transition` on the station itself: a focus assertion once read the
+     interpolating border-color as the resting state. */
 }
 
 /* Typing anywhere in the station lifts the whole surface, not just the box —
@@ -100,16 +102,16 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 1.1rem;
+  gap: var(--lt-space-4);
   width: 100%;
   /* Bottom padding must hold the organism's aura box: at 0.55rem the halo's
      bottom edge poked 0.65px past the banner, which the glow-geometry visual
      test rightly reads as a glow escaping its row. */
-  padding: 1.05rem 1.35rem 0.7rem;
+  padding: var(--lt-space-5) var(--lt-space-5) var(--lt-space-3);
   text-align: left;
   background: transparent;
   border-bottom: 0;
-  border-radius: calc(var(--radius-lg, 1.15rem) - 1px) calc(var(--radius-lg, 1.15rem) - 1px) 0 0;
+  border-radius: calc(var(--lt-radius-2xl) - 1px) calc(var(--lt-radius-2xl) - 1px) 0 0;
   /* No `overflow: clip` any more: the stats badge opens its summary popover
      out of this row, and a clip here swallowed it whole. The clip was only
      ever halo containment, and the halo has been sized to the banner organism
@@ -154,13 +156,7 @@
   width: 3.4rem;
   height: 3.4rem;
   cursor: pointer;
-  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
   filter: drop-shadow(0 3px 10px hsl(var(--brain-core) / 0.28));
-}
-
-.brain-hero-organism .brain-organism:hover,
-.brain-hero-organism .brain-organism:focus-visible {
-  transform: scale(1.1);
 }
 
 /* No `.brain-hero-organism .brain-aura { box-shadow: … }` here, though that is
@@ -183,10 +179,10 @@
    pill's action — a headline wearing it diluted both. */
 .brain-home-station > .brain-hero h1 {
   margin: 0;
-  font-size: 1.28rem;
+  font-size: var(--lt-type-hero);
   font-weight: 750;
-  line-height: 1.28;
-  letter-spacing: -0.02em;
+  line-height: var(--lt-leading-snug);
+  letter-spacing: var(--lt-tracking-tight);
   color: hsl(var(--foreground));
 }
 
@@ -194,11 +190,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.55rem;
-  margin: 0.3rem 0 0;
-  font-size: 0.86rem;
+  gap: var(--lt-space-3);
+  margin: var(--lt-space-2) 0 0;
+  font-size: var(--lt-type-lead);
   color: hsl(var(--muted-foreground));
-  line-height: 1.38;
+  line-height: var(--lt-leading-snug);
 }
 
 /* Status indicators (the model pill) keep to the hero's right edge, clear of
@@ -220,29 +216,56 @@
   box-shadow: none;
 }
 
-.brain-home-station > .brain-composer-wrapper {
-  width: auto;
-  margin: 0.7rem 1.1rem 0.7rem;
-  /* Transparent at rest so the focus ring can arrive without a layout shift —
-     the resting box is drawn by depth (inset + drop shadow), not by a rule. */
-  border: 1px solid transparent;
-  border-radius: var(--radius-md, 0.85rem);
-  background: hsl(var(--surface-sunken));
-  box-shadow: var(--elev-inset);
-  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+.brain-writing-desk {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.brain-home-station > .brain-composer-wrapper:focus-within {
+.brain-home-station .brain-composer-wrapper {
+  position: relative;
+  width: auto;
+  margin: var(--lt-space-3) var(--lt-space-5) var(--lt-space-3);
+  /* The writing desk: the one surface the first glance should land on.
+     Raised paper, a quiet jade wash, soft depth — not a sunken trench. */
+  border: 1px solid transparent;
+  border-radius: var(--lt-radius-xl);
+  background: hsl(var(--surface-raised));
+  background-image: var(--grad-jade-wash);
+  box-shadow: var(--elev-3);
+}
+
+.brain-home-station .brain-composer-wrapper:focus-within {
   border-color: hsl(var(--primary) / 0.7);
-  background: hsl(var(--surface));
-  box-shadow: var(--elev-focus);
+  background: hsl(var(--surface-raised));
+  background-image: var(--grad-jade-wash);
+  box-shadow: var(--elev-focus), var(--elev-3);
 }
 
 .brain-home-station .brain-composer textarea {
-  min-height: 3.4rem;
-  font-size: 1.02rem;
-  line-height: 1.58;
-  padding: 0.8rem 1rem;
+  min-height: 4.75rem;
+  font-size: var(--lt-type-lead);
+  line-height: var(--lt-leading-loose);
+  padding: var(--lt-space-4) var(--lt-space-5) var(--lt-space-3);
+  color: hsl(var(--foreground));
+}
+
+.brain-home-station .brain-composer textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.brain-home-station .brain-attach-toggle {
+  min-height: 2.6rem;
+  padding: 0.4rem 0.85rem 0.4rem 0.7rem;
+  font-size: var(--lt-type-small);
+}
+
+.brain-home-station .brain-composer-submit {
+  min-width: 5.6rem;
+  min-height: 2.6rem;
+  padding: 0.45rem 0.95rem;
+  font-size: var(--lt-type-body);
+  border-radius: var(--lt-radius-lg);
 }
 
 /* ── 3. the station's floor: toolbar ───────────────────────────────────── */
@@ -255,11 +278,11 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.55rem 1rem;
-  padding: 0.15rem 1.1rem 0.75rem;
+  gap: var(--lt-space-3) var(--lt-space-4);
+  padding: 0.1rem var(--lt-space-5) var(--lt-space-4);
   background: transparent;
   border-top: 0;
-  border-radius: 0 0 calc(var(--radius-lg, 1.15rem) - 1px) calc(var(--radius-lg, 1.15rem) - 1px);
+  border-radius: 0 0 calc(var(--lt-radius-2xl) - 1px) calc(var(--lt-radius-2xl) - 1px);
 }
 
 .brain-station-toolbar > .brain-quick-controls {
@@ -288,8 +311,7 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  padding: 0.65rem 0;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  padding: var(--lt-space-2) var(--lt-space-2) 0;
 }
 
 /* Lifts when something inside it is focused, not when the pointer passes over
@@ -324,11 +346,11 @@
 .brain-home-prompt-strip-label {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  color: hsl(var(--foreground) / 0.85);
-  font-size: 0.82rem;
+  gap: var(--lt-space-2);
+  color: hsl(var(--foreground));
+  font-size: var(--lt-type-body);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--lt-tracking-tight);
 }
 
 /* Named a grid and built as a column: two cards holding a four-character
@@ -339,7 +361,7 @@
 .brain-prompt-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-  gap: 0.75rem;
+  gap: var(--lt-space-3);
   width: 100%;
 }
 
@@ -347,20 +369,23 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.3rem;
+  gap: var(--lt-space-2);
   min-width: 0;
   max-width: 100%;
-  padding: 0.8rem 0.95rem;
+  min-height: 4.35rem;
+  padding: var(--lt-space-4) var(--lt-space-4);
   border: 1px solid transparent;
-  border-radius: var(--radius-md, 0.85rem);
+  border-radius: var(--lt-radius-xl);
   background: hsl(var(--surface));
   color: hsl(var(--foreground));
-  font-size: 0.82rem;
+  font-size: var(--lt-type-body);
   text-align: left;
   white-space: normal;
   cursor: pointer;
   box-shadow: var(--elev-1);
-  transition: background 160ms ease, border-color 160ms ease, transform 140ms ease, box-shadow 160ms ease;
+  /* Colour/shadow only. The lift on hover is affordance.css's — it owns that
+     gesture and the prefers-reduced-motion cancellation. Do not restate
+     `transform` here. */
 }
 
 /* Colour only. The lift on hover is affordance.css's — it owns that gesture for
@@ -383,10 +408,10 @@
 .brain-prompt-grid button > strong {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: var(--lt-space-2);
   font-weight: 700;
-  font-size: 0.86rem;
-  line-height: 1.35;
+  font-size: var(--lt-type-lead);
+  line-height: var(--lt-leading-snug);
   color: hsl(var(--foreground));
 }
 
@@ -410,8 +435,8 @@
   overflow: hidden;
   max-width: 100%;
   color: hsl(var(--muted-foreground));
-  font-size: 0.73rem;
-  line-height: 1.35;
+  font-size: var(--lt-type-small);
+  line-height: var(--lt-leading-snug);
 }
 
 .brain-prompt-pills-row {
@@ -433,13 +458,13 @@
   display: inline-flex;
   align-items: center;
   min-height: 0;
-  padding: 0.38rem 0.75rem;
+  padding: 0.38rem 0.85rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
-  background: hsl(var(--background));
+  border-radius: var(--lt-radius-pill);
+  background: hsl(var(--surface));
   color: hsl(var(--foreground));
-  font-size: 0.78rem;
-  font-weight: 500;
+  font-size: var(--lt-type-small);
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   /* No `transition` here on purpose. styles.css already gives the pill one, and
@@ -542,6 +567,14 @@
   gap: 0.3rem;
 }
 
+/* Opening + must not grow a second row on a roomy home: the stage is
+   centred, so a 30px wrap recenters the column and the greeting jumps. */
+@media (min-width: 900px) {
+  .brain-home-station .brain-composer-attachments {
+    flex-wrap: nowrap;
+  }
+}
+
 /* English labels are longer than Korean ones: "Document · Image · File ·
    Folder · Note · Web" plus the keyboard hint overflowed one line and pushed
    Send onto its own row. Send always keeps the right edge; the hint yields
@@ -559,7 +592,7 @@
 .brain-composer-actions > .brain-composer-hint {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 11rem;
+  max-width: 9.5rem;
   margin-left: auto;
   line-height: 1.3;
   text-align: right;
@@ -627,6 +660,25 @@
   opacity: 1;
 }
 
+/* Desktop: the continuity bar sits on the stage floor instead of stretching
+   the column. An in-flow bar ate the space the capture popover needs below
+   the composer, and focusing the note field then scrolled the greeting. */
+@media (min-width: 761px) {
+  .brain-centered-home {
+    padding-bottom: 4.5rem;
+  }
+
+  .brain-centered-home > .brain-home-quiet {
+    position: absolute;
+    left: 50%;
+    bottom: var(--lt-space-4);
+    width: max-content;
+    max-width: calc(100% - 2rem);
+    padding-top: 0;
+    transform: translateX(-50%);
+  }
+}
+
 .brain-home-quiet > .brain-quick-controls {
   margin: 0;
   padding: 0;
@@ -675,10 +727,11 @@
     flex: 0 0 auto;
     width: auto;
     max-width: 100%;
+    min-height: 0;
     flex-direction: row;
     align-items: center;
     padding: 0.32rem 0.66rem;
-    border-radius: 999px;
+    border-radius: var(--lt-radius-pill);
     white-space: nowrap;
   }
 
@@ -693,8 +746,8 @@
    old value predated the row and made a short screen taller, not shorter. */
 @media (max-height: 800px) {
   .brain-home-station > .brain-hero {
-    padding-top: 0.55rem;
-    padding-bottom: 0.4rem;
+    padding-top: var(--lt-space-3);
+    padding-bottom: var(--lt-space-2);
   }
 
   .brain-hero-organism .brain-organism {
@@ -703,23 +756,28 @@
   }
 
   .brain-home-station > .brain-hero h1 {
-    font-size: 1.12rem;
+    font-size: var(--lt-type-title);
+  }
+
+  .brain-home-station .brain-composer textarea {
+    min-height: 3.6rem;
+    padding: var(--lt-space-3) var(--lt-space-4);
   }
 }
 
 @media (max-width: 640px) {
   .brain-centered-home {
-    gap: 0.9rem;
-    padding: 1.15rem 0 1.4rem;
+    gap: var(--lt-space-3);
+    padding: var(--lt-space-4) var(--lt-space-3) var(--lt-space-5);
   }
 
   /* The banner stacks on a phone: 3.2rem of organism plus a two-line title does
      not fit one row at 640px, and the row left the title one word wide. */
   .brain-home-station > .brain-hero {
     flex-direction: column;
-    gap: 0.4rem;
+    gap: var(--lt-space-2);
     text-align: center;
-    padding: 0.85rem 0.9rem 0.7rem;
+    padding: var(--lt-space-4) var(--lt-space-4) var(--lt-space-3);
   }
 
   .brain-hero-header-text {
@@ -733,12 +791,20 @@
   }
 
   .brain-home-station > .brain-hero h1 {
-    font-size: 1.18rem;
+    font-size: var(--lt-type-title);
+  }
+
+  .brain-home-station .brain-composer-wrapper {
+    margin-inline: var(--lt-space-3);
+  }
+
+  .brain-home-station .brain-composer textarea {
+    min-height: 4.2rem;
   }
 
   /* Thumb-friendly quiet row on small screens */
   .brain-centered-home > .brain-home-quiet {
-    gap: 0.55rem 0.7rem;
-    padding-top: 0.7rem;
+    gap: var(--lt-space-3);
+    padding-top: var(--lt-space-3);
   }
 }

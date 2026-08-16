@@ -17,50 +17,6 @@
 //! `coverage`, and when nothing could be measured says why rather than leaving
 //! a bare null (the 9.9.7 rule that a "—" always states its reason).
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
 use lattice_auth::OrderedMap;
 use serde_json::Value;
 
@@ -108,7 +64,7 @@ pub fn build_health_report(
     ];
     let scores: Vec<i64> = names
         .iter()
-        .filter_map(|name| dimensions.get(*name).and_then(|dim| dim.get("score")))
+        .filter_map(|name| dimensions.get(name).and_then(|dim| dim.get("score")))
         .filter_map(Value::as_i64)
         .collect();
     let overall = if scores.is_empty() {
@@ -131,7 +87,7 @@ pub fn build_health_report(
         .copied()
         .filter(|name| {
             dimensions
-                .get(*name)
+                .get(name)
                 .and_then(|dim| dim.get("score"))
                 .map(Value::is_null)
                 .unwrap_or(false)
@@ -153,7 +109,7 @@ pub fn build_health_report(
             .iter()
             .map(|name| {
                 let stated = dimensions
-                    .get(*name)
+                    .get(name)
                     .and_then(|dim| dim.get("reason"))
                     .filter(|value| pyutil::truthy(value))
                     .map(pyutil::py_str)
@@ -200,7 +156,7 @@ fn unavailable(reason: &str) -> Value {
 
 /// How much of the sampled knowledge saw a recent update.
 fn freshness_dimension(sample: &Sample, now_utc: f64) -> Value {
-    if !(sample.available && !sample.nodes.is_empty()) {
+    if !sample.available || sample.nodes.is_empty() {
         return unavailable(sampling::no_graph_reason(sample.available));
     }
     let cutoff = now_utc - (STALE_DAYS * 86_400) as f64;
@@ -226,7 +182,7 @@ fn freshness_dimension(sample: &Sample, now_utc: f64) -> Value {
 
 /// Orphan nodes are knowledge the Brain cannot reason across.
 fn connectivity_dimension(sample: &Sample) -> Value {
-    if !(sample.available && !sample.nodes.is_empty()) {
+    if !sample.available || sample.nodes.is_empty() {
         return unavailable(sampling::no_graph_reason(sample.available));
     }
     let mut connected: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
@@ -299,8 +255,8 @@ fn embedding_dimension(index_status: Option<&OrderedMap>) -> Value {
 
 /// Duplicate-edge rate plus contradiction pressure, from the quality layer.
 fn consistency_dimension(sample: &Sample) -> Value {
-    if !(sample.available && !sample.edges.is_empty()) {
-        let reason = if !(sample.available && !sample.nodes.is_empty()) {
+    if !sample.available || sample.edges.is_empty() {
+        let reason = if !sample.available || sample.nodes.is_empty() {
             sampling::no_graph_reason(sample.available)
         } else {
             "no relationships recorded yet"

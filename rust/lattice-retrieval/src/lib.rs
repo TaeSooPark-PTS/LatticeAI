@@ -10,8 +10,9 @@
 //! the claim.
 //!
 //! The proof lives in `tests/parity.rs`: the same committed database, the same
-//! queries, and the same golden files that
-//! `tests/unit/test_rust_parity_contract.py` re-asserts on the Python side.
+//! queries, and the same golden files the Python engines produced. Those
+//! goldens are **frozen** — `rust/fixtures/golden/FROZEN.md` records what wrote
+//! them and why there is nothing left to regenerate them with.
 
 //! v11.5.0 (Phase 2b/3b of `docs/v11.5.0_RUST_COMPLETE_PLAN.md`) widens the
 //! crate past search: the knowledge graph's relationship and traversal reads

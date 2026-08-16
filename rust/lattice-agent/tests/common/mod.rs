@@ -18,11 +18,17 @@ pub fn fixtures() -> PathBuf {
         .collect()
 }
 
+/// Where a golden lives, whether or not it is committed.
+pub fn golden_path(name: &str) -> PathBuf {
+    fixtures().join("golden").join(name)
+}
+
 pub fn read_golden(name: &str) -> Value {
-    let path = fixtures().join("golden").join(name);
+    let path = golden_path(name);
     let raw = std::fs::read_to_string(&path).unwrap_or_else(|err| {
         panic!(
-            "missing golden {} ({err}) — run scripts/generate_agent_parity_fixtures.py",
+            "missing golden {} ({err}) — these files are frozen and committed; \
+             see rust/fixtures/agent/FROZEN.md",
             path.display()
         )
     });

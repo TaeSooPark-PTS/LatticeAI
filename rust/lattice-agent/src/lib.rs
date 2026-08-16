@@ -26,10 +26,10 @@
 //!   written is a port the Review Center's own store implements.
 //!
 //! Every decision is pinned by committed goldens under `rust/fixtures/agent/`,
-//! produced from the **real** Python functions by
-//! `scripts/generate_agent_parity_fixtures.py` and re-asserted from the Python
-//! side by `tests/unit/test_agent_kernel_parity_contract.py`. The policy tables
-//! themselves are **data**: the registry lives in Python, and this crate takes
+//! produced from the **real** Python functions and now **frozen** —
+//! `rust/fixtures/agent/FROZEN.md` records what each file is, what was removed
+//! when the generator went away, and where the removed coverage moved to. The
+//! policy tables themselves are **data**: this crate takes
 //! [`policy::ToolPolicy`] values as input rather than hard-coding a second copy
 //! that could drift.
 

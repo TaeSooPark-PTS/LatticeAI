@@ -2,7 +2,7 @@
 
 Covers model_engines ensure/install/pull, model_runtime download/engines/loading,
 lifespan, CSRF middleware, users KG migration, filesystem/knowledge leftovers,
-tools/search routers, quiet/sessions/config/agent_permission.
+tools/search routers, quiet/sessions/config.
 """
 
 from __future__ import annotations

@@ -3,9 +3,10 @@
 
 Until v11.6.0 this *was* the contract: it built the 464-route product app and
 wrote ``frontend/openapi.json``. WP-P1 deleted that app. The committed contract
-is unchanged (421 paths / 463 operations — clients still call all of them) but
-its source is now ``scripts/compose_openapi.py``, which reassembles the
-per-crate fragments in ``rust/fixtures/openapi/``.
+kept describing every route clients call (421 paths / 463 operations through
+v11.7.0; 413 / 455 since v11.8.0 removed eight routes nothing called) but its
+source is now ``scripts/compose_openapi.py``, which reassembles the per-crate
+fragments in ``rust/fixtures/openapi/``.
 
 What this script exports is the worker half, to a **scratch** path, so the
 composer can check it: every operation the worker serves must already be in
@@ -90,7 +91,7 @@ def isolated_runtime_environment(root: Path) -> Iterator[Mapping[str, str]]:
 
 def main() -> int:
     # No default of ``frontend/openapi.json``: that file is the composer's
-    # output now, and silently overwriting it with the 28-route worker spec is
+    # output now, and silently overwriting it with the 19-route worker spec is
     # exactly the mistake this argument exists to prevent.
     if len(sys.argv) < 2:
         print(

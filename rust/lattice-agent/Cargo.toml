@@ -5,6 +5,12 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+# `ROLE_CAPABILITIES` and its lookups live in `lattice_auth::policy` — the crate
+# named for the question — and `tools::authorize` reads them from there rather
+# than carrying a second transcription of the same table. The edge is safe:
+# `lattice-auth` depends on `lattice-core` and on nothing else in the workspace,
+# so nothing here can close a cycle.
+lattice-auth = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 axum = { workspace = true }

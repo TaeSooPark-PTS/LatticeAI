@@ -119,7 +119,8 @@ INTERNAL_WORKER_PATHS = frozenset(
         "/worker/render/pptx",
         "/worker/render/pdf",
         "/worker/asr",
-        "/worker/multimodal/describe",
+        # ``/worker/multimodal/describe`` was here until v11.8.0 deleted the
+        # seam: it described an image for a native ingest nothing ever built.
         "/worker/extract",
     }
 )

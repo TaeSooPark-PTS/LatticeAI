@@ -3,14 +3,6 @@
 //! Copied from `lattice-auth/tests/auth_security.rs`: real loopback socket +
 //! `ConnectInfo`, fixture tokens applied symmetrically.
 
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(clippy::all)]
-#![allow(dead_code, unused_imports, unused_variables)]
-#![allow(
-    clippy::too_many_arguments,
-    clippy::unnecessary_sort_by,
-    clippy::field_reassign_with_default
-)]
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -262,6 +254,9 @@ pub struct Answer {
     pub body: Vec<u8>,
 }
 
+// Eight parameters because a recorded fixture case has eight fields worth
+// replaying; a params struct here would be the same eight under a new name.
+#[allow(clippy::too_many_arguments)]
 pub async fn issue(
     origin: &str,
     method: &str,

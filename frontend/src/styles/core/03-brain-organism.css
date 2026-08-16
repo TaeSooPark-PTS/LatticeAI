@@ -72,7 +72,7 @@
 .brain-orbit {
   position: absolute;
   inset: 13%;
-  border: 1px solid hsl(var(--connection) / 0.18);
+  border: 1px solid hsl(var(--primary) / 0.2);
   border-radius: 50%;
   transform: translateZ(-18px) rotate(-14deg);
   animation: brain-orbit-turn 15s linear infinite;
@@ -146,7 +146,7 @@
   transform: translateZ(34px) scale(var(--core-scale, 1));
   background:
     radial-gradient(55% 50% at 34% 28%, hsl(var(--brain-halo) / 0.5), transparent 68%),
-    radial-gradient(58% 54% at 68% 44%, hsl(var(--connection) / 0.18), transparent 74%),
+    radial-gradient(58% 54% at 68% 44%, hsl(var(--primary) / 0.16), transparent 74%),
     radial-gradient(90% 90% at 50% 46%, hsl(var(--brain-core) / 0.08), transparent 80%);
   box-shadow:
     /* 상단 좌측 하이라이트 / 하단 우측 음영 — 구의 라이팅 */
@@ -203,7 +203,7 @@
 
 .brain-lobe-right {
   fill: url(#lattice-lobe-right-shade);
-  stroke: hsl(var(--connection) / 0.7);
+  stroke: hsl(var(--primary) / 0.55);
   animation-delay: -1.4s;
 }
 

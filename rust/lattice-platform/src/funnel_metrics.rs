@@ -3,51 +3,7 @@
 //! Port of `latticeai/api/funnel_metrics.py` + `latticeai/services/funnel_metrics.py`.
 //! Counters live in `<data_dir>/funnel_metrics.json` (I1 `state_files::FUNNEL_METRICS`).
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use axum::extract::State;
@@ -84,8 +40,6 @@ const MIN_SAMPLES: u64 = 10;
 
 #[derive(Clone)]
 pub struct FunnelService {
-    #[allow(dead_code)]
-    path: PathBuf,
     lock: Arc<Mutex<Map<String, Value>>>,
 }
 
@@ -94,7 +48,6 @@ impl FunnelService {
         let path = data_dir.as_ref().join(state_files::FUNNEL_METRICS);
         let state = load_state(&path);
         Self {
-            path,
             lock: Arc::new(Mutex::new(state)),
         }
     }
@@ -150,7 +103,7 @@ impl FunnelService {
         for name in COUNTER_NAMES {
             counter_map.insert(
                 (*name).into(),
-                counters.get(*name).cloned().unwrap_or(json!(0)),
+                counters.get(name).cloned().unwrap_or(json!(0)),
             );
         }
         let mut rate_map = Map::new();

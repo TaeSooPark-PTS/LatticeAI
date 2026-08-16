@@ -45,7 +45,6 @@ pub mod ui_redirects;
 pub mod voice;
 pub mod workflow_designer;
 pub mod workspace;
-pub mod workspace_scope;
 
 /// Placeholder retained until the first family module lands.
 pub fn crate_ready() -> bool {

@@ -11,13 +11,15 @@
     "that stays in the Python AI worker and is the gateway's proxy allowlist.",
     "'greedy_path_params' records the FastAPI '{name:path}' converters the schema",
     "cannot show: those segments match slashes, so an axum port needs a wildcard",
-    "('/*name' in axum 0.7) rather than a plain ':name' capture."
+    "('/*name' in axum 0.7) rather than a plain ':name' capture.",
+    "v11.8.0 deleted eight caller-less worker routes end-to-end; their entries",
+    "left this map, the committed spec and every fragment together."
   ],
   "source": {
     "spec": "frontend/openapi.json",
-    "spec_version": "11.5.2",
-    "paths": 421,
-    "operations": 463,
+    "spec_version": "11.8.0",
+    "paths": 413,
+    "operations": 455,
     "classification": "scout_routes.md (v11.6.0 route inventory) + docs/v11.6.0_ONE_DOOR_PLAN.md",
     "module_attribution": "FastAPI route.endpoint.__module__ of the app built by scripts/export_openapi.py"
   },
@@ -97,8 +99,8 @@
     "worker_keep": {
       "wp": "\u2014",
       "target": "Python AI worker (proxy allowlist)",
-      "summary": "The 25 KEEP_WORKER routes from scout_routes.md, the graph single-writer seam, and POST /engines/pull-model: the surface whose handler stays inside the Python worker's interpreter.",
-      "operations": 27
+      "summary": "The surface whose handler stays inside the Python worker's interpreter: scout_routes.md's KEEP_WORKER set and the graph single-writer seam, less the eight caller-less routes v11.8.0 deleted end-to-end (embeddings providers, the two document-tool reads, the multimodal and voice-status probes, model switch/unload-all and engine pull-model).",
+      "operations": 19
     }
   },
   "greedy_path_params": {
@@ -114,8 +116,7 @@
     "GET /knowledge-graph/neighbors/{node_id}": "node_id",
     "GET /workspace/relationships/{node_id}": "node_id",
     "PATCH /admin/users/{email}": "email",
-    "PATCH /agents/api/registry/{agent_id}": "agent_id",
-    "POST /models/switch/{model_id}": "model_id"
+    "PATCH /agents/api/registry/{agent_id}": "agent_id"
   },
   "module_family": {
     "latticeai.api.admin": "admin",
@@ -167,10 +168,6 @@
     "latticeai.services.local_knowledge": "knowledge_search"
   },
   "overrides": {
-    "DELETE /models/unload-all": {
-      "family": "worker_keep",
-      "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
-    },
     "DELETE /models/unload/{model_id}": {
       "family": "worker_keep",
       "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
@@ -183,19 +180,7 @@
       "family": "ui_redirects",
       "reason": "scout_routes.md classifies this route STATIC: an SPA page shell the gateway answers (WP-I4)."
     },
-    "GET /api/capture/voice/status": {
-      "family": "worker_keep",
-      "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
-    },
-    "GET /api/embeddings/providers": {
-      "family": "worker_keep",
-      "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
-    },
     "GET /api/embeddings/status": {
-      "family": "worker_keep",
-      "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
-    },
-    "GET /api/ingestion/multimodal": {
       "family": "worker_keep",
       "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
     },
@@ -218,10 +203,6 @@
     "GET /onboarding": {
       "family": "ui_redirects",
       "reason": "scout_routes.md classifies this route STATIC: an SPA page shell the gateway answers (WP-I4)."
-    },
-    "GET /tools/pdf_pages": {
-      "family": "worker_keep",
-      "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
     },
     "GET /workflows": {
       "family": "ui_redirects",
@@ -263,19 +244,11 @@
       "family": "worker_keep",
       "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
     },
-    "POST /engines/pull-model": {
-      "family": "worker_keep",
-      "reason": "The pull itself is huggingface_hub / ollama running inside the worker's interpreter; the gateway proxies it rather than shipping a native 501 (v11.6.0 gateway integration \u00a74a)."
-    },
     "POST /knowledge-graph/ingest": {
       "family": "worker_keep",
       "reason": "v11.6.0 plan, '\ucd5c\uc885 Python \uc6cc\ucee4 \ud45c\uba74': the graph single-writer seam stays with the worker even though scout_routes.md scores it PORT_ORCH."
     },
     "POST /models/load": {
-      "family": "worker_keep",
-      "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
-    },
-    "POST /models/switch/{model_id}": {
       "family": "worker_keep",
       "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
     },
@@ -292,10 +265,6 @@
       "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
     },
     "POST /tools/create_xlsx": {
-      "family": "worker_keep",
-      "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
-    },
-    "POST /tools/read_document": {
       "family": "worker_keep",
       "reason": "scout_routes.md classifies this route KEEP_WORKER (AI-worker box)."
     },
@@ -344,10 +313,6 @@
     "DELETE /mcp/custom/{mcp_id}": {
       "module": "latticeai.api.mcp",
       "family": "mcp_market"
-    },
-    "DELETE /models/unload-all": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
     },
     "DELETE /models/unload/{model_id}": {
       "module": "latticeai.api.models",
@@ -605,10 +570,6 @@
       "module": "latticeai.api.brain_intelligence",
       "family": "memory_brain"
     },
-    "GET /api/capture/voice/status": {
-      "module": "latticeai.api.voice_capture",
-      "family": "worker_keep"
-    },
     "GET /api/chronicle/as-of": {
       "module": "latticeai.api.chronicle",
       "family": "memory_brain"
@@ -628,10 +589,6 @@
     "GET /api/command/search": {
       "module": "latticeai.api.command_center",
       "family": "memory_brain"
-    },
-    "GET /api/embeddings/providers": {
-      "module": "latticeai.api.search",
-      "family": "worker_keep"
     },
     "GET /api/embeddings/status": {
       "module": "latticeai.api.search",
@@ -684,10 +641,6 @@
     "GET /api/ingestion/jobs/{job_id}": {
       "module": "latticeai.api.local_files",
       "family": "knowledge_search"
-    },
-    "GET /api/ingestion/multimodal": {
-      "module": "latticeai.api.local_files",
-      "family": "worker_keep"
     },
     "GET /api/ingestion/watch": {
       "module": "latticeai.api.local_files",
@@ -1128,10 +1081,6 @@
     "GET /tools/obsidian_tree": {
       "module": "latticeai.api.tools",
       "family": "mcp_market"
-    },
-    "GET /tools/pdf_pages": {
-      "module": "latticeai.api.tools",
-      "family": "worker_keep"
     },
     "GET /tools/permissions": {
       "module": "latticeai.api.tools",
@@ -1709,10 +1658,6 @@
       "module": "latticeai.api.models",
       "family": "worker_keep"
     },
-    "POST /engines/pull-model": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
-    },
     "POST /engines/verify-cloud": {
       "module": "latticeai.api.models",
       "family": "models_misc"
@@ -1818,10 +1763,6 @@
       "family": "mcp_market"
     },
     "POST /models/load": {
-      "module": "latticeai.api.models",
-      "family": "worker_keep"
-    },
-    "POST /models/switch/{model_id}": {
       "module": "latticeai.api.models",
       "family": "worker_keep"
     },
@@ -1984,10 +1925,6 @@
     "POST /tools/preview_url": {
       "module": "latticeai.api.tools",
       "family": "mcp_market"
-    },
-    "POST /tools/read_document": {
-      "module": "latticeai.api.tools",
-      "family": "worker_keep"
     },
     "POST /tools/read_file": {
       "module": "latticeai.api.tools",

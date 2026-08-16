@@ -2763,24 +2763,6 @@
         "title": "PruneRequest",
         "type": "object"
       },
-      "PullModelRequest": {
-        "properties": {
-          "allow_download": {
-            "default": false,
-            "title": "Allow Download",
-            "type": "boolean"
-          },
-          "model": {
-            "title": "Model",
-            "type": "string"
-          }
-        },
-        "required": [
-          "model"
-        ],
-        "title": "PullModelRequest",
-        "type": "object"
-      },
       "ReadUrlRequest": {
         "properties": {
           "url": {
@@ -5205,7 +5187,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "11.7.0"
+    "version": "11.8.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -7890,22 +7872,6 @@
         "summary": "Voice Capture"
       }
     },
-    "/api/capture/voice/status": {
-      "get": {
-        "operationId": "voice_status_api_capture_voice_status_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Voice Status"
-      }
-    },
     "/api/chronicle/as-of": {
       "get": {
         "operationId": "chronicle_as_of_api_chronicle_as_of_get",
@@ -8062,26 +8028,6 @@
           }
         },
         "summary": "Command Search"
-      }
-    },
-    "/api/embeddings/providers": {
-      "get": {
-        "operationId": "embeddings_providers_api_embeddings_providers_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Embeddings Providers Api Embeddings Providers Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Embeddings Providers"
       }
     },
     "/api/embeddings/status": {
@@ -9208,23 +9154,6 @@
           }
         },
         "summary": "Ingestion Job Resume"
-      }
-    },
-    "/api/ingestion/multimodal": {
-      "get": {
-        "description": "What this install will do with a picture, a recording, or a video.\n\nFEATURE_STATUS has described this answer \u2014 including which of the three\nreasons a video would be refused for \u2014 since 11.2.0, but the pipeline\nmethod that produces it had no route, so no surface could ever show it\nand \"why was my video not indexed?\" had no answer short of reading the\nserver's environment.",
-        "operationId": "ingestion_multimodal_status_api_ingestion_multimodal_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Ingestion Multimodal Status"
       }
     },
     "/api/ingestion/obsidian": {
@@ -12903,42 +12832,6 @@
         "summary": "Engines Prepare Model Stream"
       }
     },
-    "/engines/pull-model": {
-      "post": {
-        "operationId": "pull_ollama_model_engines_pull_model_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PullModelRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Pull Ollama Model"
-      }
-    },
     "/engines/verify-cloud": {
       "post": {
         "operationId": "engines_verify_cloud_engines_verify_cloud_post",
@@ -14984,59 +14877,6 @@
           }
         },
         "summary": "Model Recommendations"
-      }
-    },
-    "/models/switch/{model_id}": {
-      "post": {
-        "operationId": "switch_model_models_switch__model_id__post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "model_id",
-            "required": true,
-            "schema": {
-              "title": "Model Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Switch Model"
-      }
-    },
-    "/models/unload-all": {
-      "delete": {
-        "operationId": "unload_all_models_models_unload_all_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Unload All Models"
       }
     },
     "/models/unload/{model_id}": {
@@ -17134,60 +16974,6 @@
         "summary": "Tools Obsidian Tree"
       }
     },
-    "/tools/pdf_pages": {
-      "get": {
-        "description": "Render PDF pages as base64 PNG images using pypdfium2 (Apache-2.0).",
-        "operationId": "tools_pdf_pages_tools_pdf_pages_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "path",
-            "required": true,
-            "schema": {
-              "title": "Path",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "approval_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Approval Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Tools Pdf Pages"
-      }
-    },
     "/tools/permissions": {
       "get": {
         "description": "Compact tool permission view (tool / risk / requires_approval / network).\n\nA simpler authorization-layer summary derived from TOOL_GOVERNANCE.\nUse /mcp/tools for the full 7-dimensional governance object.",
@@ -17239,42 +17025,6 @@
           }
         },
         "summary": "Tools Preview Url"
-      }
-    },
-    "/tools/read_document": {
-      "post": {
-        "operationId": "tools_read_document_tools_read_document_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ToolPathRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Tools Read Document"
       }
     },
     "/tools/read_file": {

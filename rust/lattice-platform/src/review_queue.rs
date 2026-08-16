@@ -24,69 +24,15 @@
 //! ([`GovernanceState::with_store`]), which is what makes the guarantee hold
 //! process-wide rather than per-family.
 
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unused_assignments,
-    unused_mut,
-    private_interfaces,
-    clippy::result_large_err,
-    clippy::needless_lifetimes,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::collapsible_if,
-    clippy::needless_as_bytes,
-    clippy::redundant_closure,
-    clippy::needless_return,
-    clippy::manual_clamp,
-    clippy::ptr_arg,
-    clippy::unnecessary_sort_by,
-    clippy::result_unit_err,
-    clippy::useless_vec,
-    clippy::uninlined_format_args,
-    clippy::manual_contains,
-    clippy::needless_borrows_for_generic_args,
-    clippy::implicit_clone,
-    clippy::unnecessary_map_or,
-    clippy::match_like_matches_macro,
-    clippy::manual_range_contains,
-    clippy::derivable_impls,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_guards,
-    clippy::map_identity,
-    clippy::iter_overeager_cloned,
-    clippy::explicit_auto_deref,
-    clippy::bool_comparison,
-    clippy::nonminimal_bool,
-    clippy::if_same_then_else,
-    clippy::question_mark,
-    clippy::single_char_pattern,
-    clippy::manual_pattern_char_comparison,
-    clippy::manual_is_ascii_check,
-    clippy::repeat_once,
-    clippy::unused_self,
-    clippy::module_inception
-)]
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
+use std::sync::Arc;
 
-use axum::body::Body;
-use axum::extract::{Path as AxumPath, Query, State};
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
-use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
-use lattice_auth::response::json_response;
-use lattice_auth::{AuthState, Identity, OrderedMap};
-use lattice_core::db::tables::state_files;
-use lattice_core::messages::{self, LANGUAGE_HEADER};
-use lattice_core::worker::{WorkerSeamClient, WorkerSeamError};
+use lattice_auth::AuthState;
+use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 
-use crate::change_proposals::{self, ProposalConflict};
 use crate::workspace::store::{StoreError, WorkspaceOsStore};
 
 mod handlers;
@@ -100,16 +46,14 @@ use handlers::{
     review_counts, run_now_item, snooze_item, unsnooze_item,
 };
 
-pub(crate) use handlers::approve_one;
 pub(crate) use http::{
-    gate_read, gate_write, http_detail, into_value, json_hash, json_ok, json_status, language,
-    localized, map_str, map_worker_error, not_found_localized, now_iso, parse_object,
-    parse_object_optional, require_admin, require_field, require_user, sha256_text, string_field,
-    string_field_or,
+    gate_read, gate_write, http_detail, into_value, json_ok, json_status, language, map_str,
+    map_worker_error, now_iso, parse_object, parse_object_optional, require_admin, require_field,
+    require_user, sha256_text, string_field, string_field_or,
 };
 pub(crate) use store::{
     create_review_item, list_review_items, load_review_item, review_item_raw_view,
-    review_item_view, transition_dismiss, update_review_item, ReviewError,
+    transition_dismiss, update_review_item, ReviewError,
 };
 pub(crate) use workflows::{
     create_workflow, daily_memory_digest_definition, get_workflow, list_agent_runs,
