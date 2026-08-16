@@ -89,4 +89,6 @@ def test_chat_requires_message(client):
 
 def test_agent_requires_task(client):
     r = client.post("/agent", json={})
-    assert r.status_code in (401, 403, 422)
+    # 400: the host-bound loop refuses an empty body with an honest
+    # message-required error since 11.9.0 (was a proxied 422 before).
+    assert r.status_code in (400, 401, 403, 422)
