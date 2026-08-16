@@ -297,14 +297,140 @@ pub(crate) async fn mcp_install(
         return missing_fields(&parsed, &["mcp_id"]);
     }
     let mcp_id = parsed.get("mcp_id").and_then(Value::as_str).unwrap_or("");
-    let registry = state.combined();
-    if !registry
-        .iter()
-        .any(|i| i.get("id").and_then(Value::as_str) == Some(mcp_id))
-    {
-        return detail(StatusCode::NOT_FOUND, "MCP를 찾을 수 없습니다.");
+    if let Some(enabled) = enable_local_skill_or_plugin(&state, mcp_id) {
+        return enabled;
     }
-    detail(StatusCode::NOT_FOUND, "MCP를 찾을 수 없습니다.")
+    let registry = state.combined();
+    let Some(item) = registry
+        .iter()
+        .find(|i| i.get("id").and_then(Value::as_str) == Some(mcp_id))
+    else {
+        return detail(StatusCode::NOT_FOUND, "MCP를 찾을 수 없습니다.");
+    };
+    let mode = item
+        .get("install_mode")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if matches!(mode, "builtin" | "bundled") {
+        let mut body = OrderedMap::new();
+        body.insert("status", json!("already_available"));
+        body.insert("mcp_id", json!(mcp_id));
+        body.insert("install_mode", json!(mode));
+        body.insert(
+            "message",
+            json!("This capability is bundled with Lattice and needs no install."),
+        );
+        return json_status(StatusCode::OK, &body);
+    }
+    manual_install_required(item, mcp_id, mode)
+}
+
+fn enable_local_skill_or_plugin(state: &McpState, mcp_id: &str) -> Option<Response> {
+    let on_disk = crate::workspace::skills::scan_installed_skills(&state.skills_dir)
+        .into_iter()
+        .any(|skill| skill.name == mcp_id);
+    let in_market = state
+        .skills_market
+        .lock()
+        .ok()
+        .map(|market| {
+            market.iter().any(|item| {
+                item.get("skill").and_then(Value::as_str) == Some(mcp_id)
+                    || item.get("name").and_then(Value::as_str) == Some(mcp_id)
+            })
+        })
+        .unwrap_or(false);
+    let in_plugins = state
+        .plugin_directory
+        .lock()
+        .ok()
+        .map(|plugins| {
+            plugins
+                .iter()
+                .any(|item| item.get("name").and_then(Value::as_str) == Some(mcp_id))
+        })
+        .unwrap_or(false);
+    if !on_disk && !in_market && !in_plugins {
+        return None;
+    }
+    let store = crate::workspace::WorkspaceOsStore::shared(&state.data_dir);
+    let version = if on_disk { "local" } else { "marketplace" };
+    let kind = if in_plugins && !on_disk && !in_market {
+        "plugin"
+    } else {
+        "skill"
+    };
+    let metadata = json!({"source": kind, "mcp_id": mcp_id});
+    let installed =
+        crate::workspace::skills::mark_installed(store.as_ref(), mcp_id, version, &metadata);
+    let enabled = crate::workspace::skills::set_enabled(store.as_ref(), mcp_id, true);
+    match (installed, enabled) {
+        (Ok(entry), Ok(_)) | (Ok(entry), Err(_)) => {
+            let mut body = OrderedMap::new();
+            body.insert("status", json!("ok"));
+            body.insert("kind", json!(kind));
+            body.insert("mcp_id", json!(mcp_id));
+            body.insert("skill", entry);
+            Some(json_status(StatusCode::OK, &body))
+        }
+        (Err(_), Ok(entry)) => {
+            let mut body = OrderedMap::new();
+            body.insert("status", json!("ok"));
+            body.insert("kind", json!(kind));
+            body.insert("mcp_id", json!(mcp_id));
+            body.insert("skill", entry);
+            Some(json_status(StatusCode::OK, &body))
+        }
+        (Err(error), Err(_)) => Some(detail(
+            StatusCode::BAD_REQUEST,
+            &format!("could not enable {kind} '{mcp_id}': {error:?}"),
+        )),
+    }
+}
+
+fn manual_install_required(item: &Value, mcp_id: &str, mode: &str) -> Response {
+    let package = item
+        .get("package")
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            item.get("pip_packages")
+                .and_then(Value::as_array)
+                .and_then(|a| a.iter().filter_map(Value::as_str).next())
+        })
+        .unwrap_or("");
+    let external = item
+        .get("external_url")
+        .and_then(Value::as_str)
+        .or_else(|| item.get("connector_url").and_then(Value::as_str))
+        .unwrap_or("");
+    let mut instructions = vec![
+        "Lattice cannot download or run remote MCP servers automatically.".to_string(),
+        format!("Install mode is '{mode}'."),
+    ];
+    if !package.is_empty() {
+        let cmd = if mode == "pip" {
+            format!("pip install {package}")
+        } else {
+            format!("Add this package to your MCP client config: {package}")
+        };
+        instructions.push(cmd);
+    }
+    if !external.is_empty() {
+        instructions.push(format!("Complete any connector auth at {external}."));
+    }
+    instructions.push("Restart the MCP client after configuration.".into());
+    let mut body = OrderedMap::new();
+    body.insert("status", json!("manual_required"));
+    body.insert("mcp_id", json!(mcp_id));
+    body.insert("install_mode", json!(mode));
+    body.insert("package", json!(package));
+    body.insert(
+        "message",
+        json!("Remote MCP servers cannot be installed by Lattice. Configure them in the client."),
+    );
+    body.insert("instructions", json!(instructions));
+    json_status(StatusCode::OK, &body)
 }
 
 pub(crate) async fn mcp_installed(State(state): State<McpState>, headers: HeaderMap) -> Response {

@@ -13,10 +13,14 @@ import {
   extractIngestionEvidence,
   parseAgentStepEvent,
   parseAgentTranscript,
+  cloudAnswerFromDone,
   parseContextQuality,
   parseConversationMessages,
   parseExtractionQuality,
   parseGrounding,
+  parseHybridContext,
+  parseHybridDone,
+  parseKgExpansion,
   parseIngestionJobs,
   parseIngestionWatchStatus,
   parseKnowledgeGraph,
@@ -256,6 +260,62 @@ describe("brainData parsers", () => {
     ]);
     expect(status.watches[1].lastResult).toBeNull();
     expect(status.watches[1].lastErrors).toEqual([]);
+  });
+});
+
+describe("hybrid cloud frame parsers", () => {
+  it("keeps hybrid_context node ids and keywords, and rejects other types", () => {
+    expect(parseHybridContext({
+      type: "hybrid_context", node_ids: ["n1", "", 3], keywords: ["release", ""],
+    })).toEqual({ nodeIds: ["n1"], keywords: ["release"] });
+    expect(parseHybridContext({ node_ids: ["n2"] })).toEqual({ nodeIds: ["n2"], keywords: [] });
+    expect(parseHybridContext({ type: "hybrid_done", node_ids: ["n1"] })).toBeNull();
+    expect(parseHybridContext(null)).toBeNull();
+    expect(parseHybridContext({ type: "hybrid_context" })).toEqual({ nodeIds: [], keywords: [] });
+    expect(parseHybridContext({ keywords: ["only"] })).toBeNull();
+    expect(parseHybridContext({ nodeIds: ["n3"] })).toEqual({ nodeIds: ["n3"], keywords: [] });
+  });
+
+  it("reads hybrid_done answer, identity, and a staged expansion summary", () => {
+    const done = parseHybridDone({
+      type: "hybrid_done",
+      answer: "클라우드 답",
+      provider: "Antigravity",
+      model: "gemini-3.7-flash",
+      sent_node_ids: ["n1", "n2"],
+      kg_expansion: {
+        status: "queued_for_review",
+        review_item_id: "rev-1",
+        plan: { provenance: { candidate_count: 3 }, new_nodes: [{}, {}] },
+      },
+    });
+    expect(done).toMatchObject({
+      answer: "클라우드 답",
+      provider: "Antigravity",
+      model: "gemini-3.7-flash",
+      sentNodeIds: ["n1", "n2"],
+      expansion: { status: "queued_for_review", candidateCount: 3, stagedForReview: true },
+    });
+    expect(cloudAnswerFromDone(done!, 0)).toMatchObject({
+      sentNodeCount: 2,
+      model: "gemini-3.7-flash",
+    });
+  });
+
+  it("falls back to plan node count and sent-node count from the in-flight context", () => {
+    expect(parseKgExpansion({ status: "staged", plan: { new_nodes: [{}, {}, {}] } }))
+      .toEqual({ status: "staged", candidateCount: 3, stagedForReview: true });
+    expect(parseKgExpansion({ review_item_id: "x" }))
+      .toMatchObject({ status: "staged", stagedForReview: true, candidateCount: 0 });
+    expect(parseKgExpansion(null)).toBeNull();
+    expect(parseHybridDone({ type: "hybrid_context" })).toBeNull();
+    expect(parseHybridDone(null)).toBeNull();
+    expect(parseHybridDone({ answer: "only" })?.answer).toBe("only");
+    expect(parseHybridDone({ kgExpansion: { status: "staged" } })?.expansion?.status).toBe("staged");
+    expect(parseHybridDone({ model: "x" })).toBeNull();
+    expect(cloudAnswerFromDone({
+      answer: "", provider: "", model: "", sentNodeIds: [], expansion: null,
+    }, 4).sentNodeCount).toBe(4);
   });
 });
 

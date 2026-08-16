@@ -63,6 +63,25 @@ function mockGet(mode = "local_only", ok = true, policy: Record<string, unknown>
   } as never);
 }
 
+function mockCloudStatus(
+  over: Record<string, unknown> = {},
+  result: { ok?: boolean; status?: number } = {},
+) {
+  return vi.spyOn(latticeApi, "cloudStatus").mockResolvedValue({
+    ok: result.ok ?? true,
+    status: result.status ?? 200,
+    source: result.ok === false ? "unavailable" : "live",
+    data: {
+      configured: false,
+      mode: "none",
+      provider: "",
+      model: "",
+      detail: null,
+      ...over,
+    },
+  } as never);
+}
+
 function mockSet(ok = true, error?: string) {
   return vi.spyOn(latticeApi, "setNetworkBoundary").mockResolvedValue({
     ok, status: ok ? 200 : 400, source: "live",
@@ -97,6 +116,7 @@ describe("NetworkBoundaryPanel", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useAppStore.setState({ language: "ko" });
+    mockCloudStatus({}, { ok: false, status: 404 });
   });
 
   it("renders the catalog the server serves, not a hardcoded mode list", async () => {
@@ -342,6 +362,7 @@ describe("NetworkBoundaryPanel — holding a memory back", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useAppStore.setState({ language: "ko" });
+    mockCloudStatus({}, { ok: false, status: 404 });
   });
 
   it("marks a previewed memory as never-leaving", async () => {
@@ -411,5 +432,106 @@ describe("NetworkBoundaryPanel — holding a memory back", () => {
     // Still offering to hold it: the UI must not claim a change the server refused.
     await waitFor(() =>
       expect(screen.getByTestId("network-boundary-hold-0").textContent).toBe("내보내지 않기"));
+  });
+});
+
+describe("NetworkBoundaryPanel — cloud provider status", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAppStore.setState({ language: "ko" });
+  });
+
+  it("hides the status row while the dial is local-only", async () => {
+    mockGet("local_only");
+    mockCloudStatus({ configured: true, mode: "api_key", provider: "openai", model: "gpt-4o" });
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-boundary-panel")).toBeTruthy());
+    expect(screen.queryByTestId("network-cloud-status")).toBeNull();
+  });
+
+  it("treats a 404 as not configured and does not invent a provider", async () => {
+    mockGet("cloud_allowed");
+    mockCloudStatus({}, { ok: false, status: 404 });
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-none")).toBeTruthy());
+    expect(screen.getByTestId("network-cloud-status-none").textContent)
+      .toContain("API 키 또는 로컬 CLI(OAuth)가 필요해요");
+    expect(screen.queryByTestId("network-cloud-status-ready")).toBeNull();
+  });
+
+  it("treats a network error the same as not configured", async () => {
+    mockGet("cloud_allowed");
+    mockCloudStatus({}, { ok: false, status: 0 });
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-none")).toBeTruthy());
+  });
+
+  it("names an API-key provider and model", async () => {
+    mockGet("cloud_allowed");
+    mockCloudStatus({ configured: true, mode: "api_key", provider: "openai", model: "gpt-4o" });
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-ready")).toBeTruthy());
+    expect(screen.getByTestId("network-cloud-status-ready").textContent)
+      .toContain("API 키로 연결됨");
+    expect(screen.getByTestId("network-cloud-status-ready").textContent)
+      .toContain("openai · gpt-4o");
+  });
+
+  it("names a local CLI and model the way a person would read them", async () => {
+    mockGet("cloud_allowed");
+    mockCloudStatus({
+      configured: true, mode: "cli_oauth", provider: "Antigravity", model: "gemini-3.7-flash",
+    });
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-ready")).toBeTruthy());
+    expect(screen.getByTestId("network-cloud-status-ready").textContent)
+      .toContain("로컬 CLI로 연결됨");
+    expect(screen.getByTestId("network-cloud-status-ready").textContent)
+      .toContain("Antigravity → gemini-3.7-flash");
+  });
+
+  it("falls back to model-only or provider-only identity when one side is missing", async () => {
+    mockGet("cloud_allowed");
+    mockCloudStatus({ configured: true, mode: "api_key", provider: "", model: "gpt-4o" });
+    const { unmount } = renderPanel();
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-ready").textContent)
+      .toContain("gpt-4o"));
+    unmount();
+
+    mockGet("cloud_allowed");
+    mockCloudStatus({ configured: true, mode: "cli_oauth", provider: "agy", model: "" });
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-ready").textContent)
+      .toContain("agy"));
+  });
+
+  it("shows the connected label alone when no provider or model was reported", async () => {
+    mockGet("cloud_allowed");
+    mockCloudStatus({ configured: true, mode: "api_key" });
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-ready").textContent)
+      .toBe("API 키로 연결됨"));
+  });
+
+  it("shows a loading line until the status read settles", async () => {
+    mockGet("cloud_allowed");
+    let release!: (value: never) => void;
+    vi.spyOn(latticeApi, "cloudStatus").mockReturnValue(new Promise((resolve) => {
+      release = resolve;
+    }) as never);
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-loading")).toBeTruthy());
+    release({
+      ok: false, status: 404, source: "unavailable",
+      data: { configured: false, mode: "none", provider: "", model: "", detail: null },
+    } as never);
+    await waitFor(() => expect(screen.getByTestId("network-cloud-status-none")).toBeTruthy());
   });
 });

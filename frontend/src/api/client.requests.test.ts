@@ -245,6 +245,7 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   { name: "setNodeSensitivity", invoke: () => api.setNodeSensitivity("n1", false), method: "POST", path: "/api/network-boundary/node-sensitivity", body: { node_id: "n1", local_only: false } },
   { name: "setHybridPolicy", invoke: () => api.setHybridPolicy({ auto_commit: true }), method: "POST", path: "/api/network-boundary/policy", body: { auto_commit: true } },
   { name: "previewCloudContext", invoke: () => api.previewCloudContext("질문"), method: "POST", path: "/api/network-boundary/preview", body: { message: "질문", top_k: 6 } },
+  { name: "cloudStatus", invoke: () => api.cloudStatus(), method: "GET", path: "/api/cloud/status" },
   { name: "proposals", invoke: () => api.proposals(), method: "GET", path: "/api/proposals" },
   { name: "proposalCounts", invoke: () => api.proposalCounts(), method: "GET", path: "/api/proposals/counts" },
   { name: "proposalDetail", invoke: () => api.proposalDetail("p/1"), method: "GET", path: "/api/proposals/p%2F1" },

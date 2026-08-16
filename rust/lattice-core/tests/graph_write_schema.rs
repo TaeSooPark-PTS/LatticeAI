@@ -21,6 +21,14 @@ use lattice_core::embeddings::LocalEmbeddingModel;
 use lattice_core::graph_write::{GraphWriter, SystemClock};
 use serde_json::Value;
 
+/// Platform objects bootstrap creates so readers do not 500 on a fresh Brain.
+/// They are not in Python's `KnowledgeGraphStore.__init__` schema fixture.
+fn is_platform_conversation_object(name: &str) -> bool {
+    name == "conversation_messages"
+        || name.starts_with("idx_conv_messages_")
+        || name.starts_with("sqlite_autoindex_conversation_messages_")
+}
+
 fn fixture(name: &str) -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -88,6 +96,9 @@ fn a_fresh_rust_install_creates_the_schema_python_emits() {
     }
     for object in actual_objects {
         let name = object["name"].as_str().expect("a name");
+        if is_platform_conversation_object(name) {
+            continue;
+        }
         assert!(
             expected_objects
                 .iter()
@@ -99,6 +110,38 @@ fn a_fresh_rust_install_creates_the_schema_python_emits() {
         actual["user_version"], expected["user_version"],
         "the db format stamp diverged"
     );
+}
+
+#[test]
+fn a_fresh_rust_install_creates_the_conversation_table_the_chat_writer_uses() {
+    let work = tempfile::tempdir().expect("temp dir");
+    let (store, _writer) = open_writer(&work.path().join("knowledge_graph.sqlite"));
+    store
+        .with_read_conn(|conn| {
+            let sql: String = conn.query_row(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='conversation_messages'",
+                [],
+                |row| row.get(0),
+            )?;
+            assert!(
+                sql.contains("message_hash TEXT NOT NULL UNIQUE"),
+                "the writer unique key must be present: {sql}"
+            );
+            assert!(sql.contains("workspace_id TEXT"), "{sql}");
+            assert!(sql.contains("organization_id TEXT"), "{sql}");
+            let indexes: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM sqlite_master \
+                 WHERE type='index' AND tbl_name='conversation_messages' \
+                   AND name LIKE 'idx_conv_messages_%'",
+                [],
+                |row| row.get(0),
+            )?;
+            assert_eq!(indexes, 4, "conv/time/user/workspace indexes");
+            // Idempotent against a store that already has the table.
+            conn.execute_batch("SELECT 1 FROM conversation_messages")?;
+            Ok(())
+        })
+        .expect("conversation_messages must exist after bootstrap");
 }
 
 #[test]

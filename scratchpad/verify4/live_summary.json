@@ -1,0 +1,72 @@
+{
+  "http": 200,
+  "elapsed_s": 14.858,
+  "final_state": "FAILED",
+  "status": "failed",
+  "response": "실행 실패로 롤백했습니다. 복구 파일: ['notes/summary.md (snapshot)']",
+  "workspace": "/private/tmp/lattice-acc-119-verify4-eHwnlO/agent",
+  "llm_calls": 5,
+  "parse_errors": 1,
+  "parse_recovered": 1,
+  "repairs": {
+    "slice": 1,
+    "tag_strip": 4
+  },
+  "kind_counts": {
+    "correction": 1,
+    "decision": 4,
+    "llm_call": 5,
+    "parse_error": 1,
+    "repair": 4,
+    "tool": 1
+  },
+  "tool_outcomes": {
+    "ok": 1
+  },
+  "created_files": [
+    {
+      "path": "notes/summary.md",
+      "filename": "summary.md",
+      "bytes": 0,
+      "action": "write_file"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "file",
+      "path": "notes/summary.md",
+      "filename": "summary.md",
+      "bytes": 0,
+      "previewable": true,
+      "valid": true,
+      "repaired": false
+    }
+  ],
+  "state_history": [
+    "PLANNING",
+    "EXECUTING",
+    "VERIFYING",
+    "ROLLBACK",
+    "FAILED"
+  ],
+  "verifying_steps": [
+    {
+      "state": "VERIFYING",
+      "verdict": "FAIL",
+      "reason": "The execution resulted in a loop detection error, indicating the task was not completed.",
+      "corrections": [
+        "Ensure the file writing operation completes successfully and does not result in a loop or error state."
+      ],
+      "confidence": 1.0,
+      "next_state": "ROLLBACK",
+      "verifier_available": true,
+      "verdict_valid": true,
+      "evidence": true
+    }
+  ],
+  "critic_verdict_path": "parsed_json",
+  "critic_verdict": "FAIL",
+  "critic_reason": "The execution resulted in a loop detection error, indicating the task was not completed.",
+  "critic_next_state": "ROLLBACK",
+  "file_written": false
+}

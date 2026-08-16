@@ -1,0 +1,188 @@
+{
+  "c": [
+    {
+      "attempt": 1,
+      "http": 200,
+      "elapsed_s": 28.369,
+      "file_written": true,
+      "file_bytes": 43,
+      "file_head": "Summary of the first paragraph of README.md",
+      "status": "failed",
+      "final_state": "NEEDS_REVIEW",
+      "response": "검증을 완료하지 못했습니다 — 검증 모델의 응답을 해석할 수 없었습니다. 실행 결과를 직접 확인해 주시고, 필요하면 다시 시도해 주세요.",
+      "llm_calls": 8,
+      "parse_errors": 4,
+      "parse_recovered": 3,
+      "repairs": {
+        "slice": 2,
+        "tag_strip": 4
+      },
+      "kind_counts": {
+        "correction": 2,
+        "decision": 3,
+        "llm_call": 8,
+        "parse_error": 4,
+        "repair": 4,
+        "tool": 2
+      },
+      "tool_outcomes": {
+        "ok": 2
+      },
+      "created_files": [
+        {
+          "path": "notes/summary.md",
+          "filename": "summary.md",
+          "bytes": 43,
+          "action": "write_file"
+        }
+      ],
+      "artifacts": [
+        {
+          "kind": "file",
+          "path": "notes/summary.md",
+          "filename": "summary.md",
+          "bytes": 43,
+          "previewable": true,
+          "valid": true,
+          "repaired": false
+        }
+      ],
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "NEEDS_REVIEW"
+      ]
+    },
+    {
+      "attempt": 2,
+      "http": 200,
+      "elapsed_s": 28.243,
+      "file_written": true,
+      "file_bytes": 43,
+      "file_head": "Summary of the first paragraph of README.md",
+      "status": "failed",
+      "final_state": "NEEDS_REVIEW",
+      "response": "검증을 완료하지 못했습니다 — 검증 모델의 응답을 해석할 수 없었습니다. 실행 결과를 직접 확인해 주시고, 필요하면 다시 시도해 주세요.",
+      "llm_calls": 8,
+      "parse_errors": 4,
+      "parse_recovered": 3,
+      "repairs": {
+        "slice": 2,
+        "tag_strip": 4
+      },
+      "kind_counts": {
+        "correction": 2,
+        "decision": 3,
+        "llm_call": 8,
+        "parse_error": 4,
+        "repair": 4,
+        "tool": 2
+      },
+      "tool_outcomes": {
+        "ok": 2
+      },
+      "created_files": [
+        {
+          "path": "notes/summary.md",
+          "filename": "summary.md",
+          "bytes": 43,
+          "action": "write_file"
+        }
+      ],
+      "artifacts": [
+        {
+          "kind": "file",
+          "path": "notes/summary.md",
+          "filename": "summary.md",
+          "bytes": 43,
+          "previewable": true,
+          "valid": true,
+          "repaired": false
+        }
+      ],
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "NEEDS_REVIEW"
+      ]
+    },
+    {
+      "attempt": 3,
+      "http": 200,
+      "elapsed_s": 28.137,
+      "file_written": true,
+      "file_bytes": 43,
+      "file_head": "Summary of the first paragraph of README.md",
+      "status": "failed",
+      "final_state": "NEEDS_REVIEW",
+      "response": "검증을 완료하지 못했습니다 — 검증 모델의 응답을 해석할 수 없었습니다. 실행 결과를 직접 확인해 주시고, 필요하면 다시 시도해 주세요.",
+      "llm_calls": 8,
+      "parse_errors": 4,
+      "parse_recovered": 3,
+      "repairs": {
+        "slice": 2,
+        "tag_strip": 4
+      },
+      "kind_counts": {
+        "correction": 2,
+        "decision": 3,
+        "llm_call": 8,
+        "parse_error": 4,
+        "repair": 4,
+        "tool": 2
+      },
+      "tool_outcomes": {
+        "ok": 2
+      },
+      "created_files": [
+        {
+          "path": "notes/summary.md",
+          "filename": "summary.md",
+          "bytes": 43,
+          "action": "write_file"
+        }
+      ],
+      "artifacts": [
+        {
+          "kind": "file",
+          "path": "notes/summary.md",
+          "filename": "summary.md",
+          "bytes": 43,
+          "previewable": true,
+          "valid": true,
+          "repaired": false
+        }
+      ],
+      "state_history": [
+        "PLANNING",
+        "EXECUTING",
+        "VERIFYING",
+        "NEEDS_REVIEW"
+      ]
+    }
+  ],
+  "b1": {
+    "http": 200,
+    "elapsed_s": 16.413,
+    "exists": true,
+    "bytes": 3141,
+    "first_bytes": "<!doctype html>\n<html lang=\"ko\">\n<head>\n    <meta charset=\"utf-8\">\n    <meta nam",
+    "starts_doctype": true,
+    "final_state": "DONE",
+    "status": "ok",
+    "action_route": "chat_file_generation",
+    "generation": {
+      "repaired": false,
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "sanitized",
+          "reason": "HTML document is wrapped in prose or fences",
+          "path": "index.html"
+        }
+      ]
+    }
+  }
+}

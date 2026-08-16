@@ -388,6 +388,12 @@ impl WorkflowStore {
             .ok_or(())
     }
 
+    /// A notification step lands on the workspace timeline.
+    pub(crate) fn record_notification(&self, workspace_id: &str, payload: Value) -> Value {
+        self.os
+            .record_timeline_event("workflow", "notification", payload, Some(workspace_id))
+    }
+
     pub(crate) fn list_workflow_runs(
         &self,
         workflow_id: Option<&str>,

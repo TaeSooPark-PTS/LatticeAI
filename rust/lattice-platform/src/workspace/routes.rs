@@ -7,6 +7,7 @@ use axum::extract::FromRef;
 use axum::routing::{delete, get, patch, post};
 use axum::Router;
 use lattice_auth::AuthState;
+use lattice_core::worker::WorkerSeamClient;
 
 use super::computer::VsCodePresence;
 use super::deps::WorkspaceDeps;
@@ -88,6 +89,9 @@ pub struct WorkspaceState {
     pub vscode: VsCodePresence,
     /// Data directory (audit log, chat history).
     pub data_dir: PathBuf,
+    /// Worker seam — used by onboarding to fill the same probe + catalog
+    /// `/models/recommendations` and `/setup/scan` already serve.
+    pub worker: Option<WorkerSeamClient>,
 }
 
 impl WorkspaceState {
@@ -104,12 +108,19 @@ impl WorkspaceState {
             deps: WorkspaceDeps::default(),
             vscode: VsCodePresence::new(),
             data_dir,
+            worker: None,
         }
     }
 
     /// Replace the default providers / seam.
     pub fn with_deps(mut self, deps: WorkspaceDeps) -> Self {
         self.deps = deps;
+        self
+    }
+
+    /// Point onboarding at the worker the host already supervises.
+    pub fn with_worker(mut self, worker: WorkerSeamClient) -> Self {
+        self.worker = Some(worker);
         self
     }
 

@@ -25,6 +25,7 @@ import gc
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
 
+from latticeai.core.quiet import quiet
 from latticeai.models.model_providers import (
     OPENAI_COMPATIBLE_PROVIDERS,
     PROVIDER_MODEL_CATALOG,
@@ -120,12 +121,47 @@ def ensure_mlx_runtime() -> None:
 def _mlx_sampler(temperature: float):
     """Build an MLX sampler callable for the given temperature.
 
-    Lattice v2.2 keeps local execution on MLX-VLM only. Returning ``None`` lets
-    MLX-VLM use its bundled default sampler without pulling another generation
-    package into the runtime contract.
+    Until v11.9.0 this discarded its argument and returned ``None``, which let
+    MLX pick its own default sampler. The cost was invisible and large: the
+    agent loop asks for 0.1 when it wants a tool call and 0.0 on the strict
+    verification re-ask, and **locally neither did anything**. A cloud model got
+    the deterministic re-ask it was designed around; the 2B model on this
+    machine got the same creative sampler it had on the first attempt, and the
+    "one strict retry" was one more roll of the same dice.
+
+    ``mlx_lm.sample_utils.make_sampler`` is the sampler both backends accept —
+    ``mlx_vlm`` takes the callable straight through — and it is already an
+    installed dependency of the text path. If it cannot be imported (an
+    MLX-VLM-only install, a version that moved it) the answer is the old one:
+    ``None``, the backend's default. A missing sampler must never be a failed
+    generation.
     """
-    _ = temperature
-    return
+    try:
+        from mlx_lm.sample_utils import make_sampler
+    except Exception:  # noqa: BLE001 — an absent sampler is not a failure
+        quiet("MLX sampler unavailable; using the backend default")
+        return None
+    try:
+        return make_sampler(temp=float(temperature))
+    except Exception:  # noqa: BLE001 — a signature change must not stop a run
+        quiet("MLX sampler construction failed; using the backend default")
+        return None
+
+
+def apply_stop_strings(text: str, stop: Optional[List[str]]) -> str:
+    """Cut ``text`` at the earliest stop string, if any is present.
+
+    Shared by the buffered and streaming local paths so "where does this reply
+    end" has one answer. Empty stop strings are ignored: a caller that sends
+    ``""`` means "no stop", not "stop before the first character".
+    """
+    if not stop:
+        return text
+    cut = min(
+        (text.index(marker) for marker in stop if marker and marker in text),
+        default=-1,
+    )
+    return text if cut < 0 else text[:cut]
 
 
 class _LoadingMixin(_Core):

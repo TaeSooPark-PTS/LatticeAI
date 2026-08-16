@@ -58,7 +58,26 @@ def _install_fake_mlx(monkeypatch, *, vlm=None, lm=None):
     for name, value in (lm or {}).items():
         setattr(fake_lm, name, value)
     monkeypatch.setitem(sys.modules, "mlx_lm", fake_lm)
+    # v11.9.0 builds the sampler from `mlx_lm.sample_utils`. It has to be faked
+    # explicitly: `from mlx_lm.sample_utils import …` resolves through
+    # `sys.modules` by dotted name, so a real installation on the dev box would
+    # satisfy it straight past the fake parent above — and the test would then
+    # be measuring the machine rather than the router.
+    sample_utils = types.ModuleType("mlx_lm.sample_utils")
+    sample_utils.make_sampler = lambda **kwargs: _FakeSampler(**kwargs)
+    fake_lm.sample_utils = sample_utils
+    monkeypatch.setitem(sys.modules, "mlx_lm.sample_utils", sample_utils)
     return devices
+
+
+class _FakeSampler:
+    """What ``make_sampler`` returned, with the arguments it was given."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def __repr__(self):  # pragma: no cover — only for assertion messages
+        return f"_FakeSampler({self.kwargs})"
 
 
 def _png_base64(size=(4, 3)) -> str:
@@ -144,8 +163,12 @@ def test_generate_runs_the_mlx_lm_text_path_and_rebrands_the_answer(monkeypatch)
     # TypeError against the real package.
     assert "image" not in seen
     assert "draft_kind" not in seen
-    # The router defers to the backend's bundled sampler.
-    assert seen["sampler"] is None
+    # v11.9.0: the caller's temperature reaches the sampler. Before it, this
+    # argument was `None` whatever anyone asked for, so the agent loop's 0.1 and
+    # its strict-retry 0.0 were both the backend's default on a local model.
+    assert seen["sampler"].kwargs == {"temp": 0.7}
+    # No stop strings were asked for, so the buffered backend is used.
+    assert "stop" not in seen
     assert "Context:\nLattice AI 문서" in tokenizer.messages[0]["content"]
     assert tokenizer.messages[1] == {"role": "user", "content": "질문"}
     # Generation always pins the GPU stream first.
@@ -206,6 +229,75 @@ def test_generate_on_the_vlm_path_without_an_image_passes_none(monkeypatch):
     assert asyncio.run(router.generate("질문")) == "Lattice AI"
     assert seen["image"] is None
     assert seen["prompt"] == "VLM PROMPT"
+
+
+# ── Stop strings on the local path (v11.9.0) ─────────────────────────────
+
+
+def test_a_stop_string_ends_local_generation_instead_of_trimming_it(monkeypatch):
+    """The tokens past the stop are never produced.
+
+    This is the difference between a stop string and slicing the answer
+    afterwards, and it is the whole reason the buffered call is swapped for the
+    streaming one: a 2B model that keeps explaining a tool call it has already
+    emitted is spending seconds of a single-threaded GPU on text nobody reads.
+    """
+    produced = []
+
+    def lm_stream(_model, _tokenizer, **kwargs):
+        for piece in ['{"verdict": "PASS"}', "\n```", "\nand here is why"]:
+            produced.append(piece)
+            yield types.SimpleNamespace(text=piece)
+
+    _install_fake_mlx(monkeypatch, lm={"stream_generate": lm_stream})
+    router = _router_with((object(), _TemplateTokenizer(), None, "mlx_lm"))
+
+    answer = asyncio.run(router.generate("판정", stop=["\n```"]))
+
+    assert answer == '{"verdict": "PASS"}'
+    assert produced == ['{"verdict": "PASS"}', "\n```"], "generation stopped early"
+
+
+def test_the_stop_path_carries_the_sampler_and_the_vlm_arguments(monkeypatch):
+    seen = {}
+
+    def vlm_stream(model, processor, **kwargs):
+        seen.update(model=model, processor=processor, **kwargs)
+        yield types.SimpleNamespace(text="답변 STOP tail")
+
+    _install_fake_mlx(monkeypatch, vlm={"stream_generate": vlm_stream})
+    router = _router_with((_vlm_model(), _TemplateTokenizer(), None, "mlx_vlm"), key="vision")
+
+    answer = asyncio.run(
+        router.generate_as("vision", "질문", None, 32, 0.0, None, ["STOP"])
+    )
+
+    assert answer == "답변 "
+    assert seen["sampler"].kwargs == {"temp": 0.0}
+    assert seen["max_tokens"] == 32
+    assert seen["draft_kind"] == "mtp"
+
+
+def test_an_empty_stop_list_takes_the_ordinary_buffered_path(monkeypatch):
+    """`stop=[]` and `stop=[""]` are "no stop", not "stop immediately"."""
+    calls = []
+
+    def lm_generate(*_args, **_kwargs):
+        calls.append("buffered")
+        return "완전한 답변"
+
+    def lm_stream(*_args, **_kwargs):  # pragma: no cover — must never run
+        calls.append("streamed")
+        yield types.SimpleNamespace(text="")
+
+    _install_fake_mlx(
+        monkeypatch, lm={"generate": lm_generate, "stream_generate": lm_stream}
+    )
+    router = _router_with((object(), _TemplateTokenizer(), None, "mlx_lm"))
+
+    for stop in (None, [], [""]):
+        assert asyncio.run(router.generate("질문", stop=stop)) == "완전한 답변"
+    assert calls == ["buffered", "buffered", "buffered"]
 
 
 # ── Chat streaming on the vision path ────────────────────────────────────

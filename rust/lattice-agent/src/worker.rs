@@ -72,6 +72,15 @@ pub struct Completion<'a> {
     pub context: &'a str,
     pub max_tokens: u32,
     pub temperature: f64,
+    /// Strings that end generation, sent only when non-empty (v11.9.0).
+    ///
+    /// Deliberately **off by default**. A stop string is a knife: `"\n\n"` ends
+    /// a rambling model's chatter and also truncates a `content` field the
+    /// moment it contains a blank line, which is every HTML document. The loop
+    /// uses it in exactly one place — the strict verify re-ask, where the reply
+    /// is one short verdict object and a model that keeps talking after it has
+    /// already cost the run its only retry.
+    pub stop: &'a [&'a str],
 }
 
 /// The worker seam, over loopback HTTP.
@@ -132,6 +141,9 @@ impl WorkerClient {
         });
         if let Some(model_id) = request.model_id {
             body["model_id"] = json!(model_id);
+        }
+        if !request.stop.is_empty() {
+            body["stop"] = json!(request.stop);
         }
         let (status, value) = self.post("/agent/llm", body).await.map_err(WorkerError)?;
         if status != 200 {
@@ -254,6 +266,7 @@ mod tests {
                 context: "c",
                 max_tokens: 16,
                 temperature: 0.1,
+                stop: &[],
             })
             .await
             .is_err());

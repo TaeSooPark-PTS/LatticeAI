@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v11.8.0)
+# Lattice AI — Operations Guide (v11.9.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -28,6 +28,10 @@ tar -czf ltcai-backup-$(date +%Y%m%d).tar.gz ~/.ltcai ~/ltcai-agent
 ```bash
 tar -xzf ltcai-backup-YYYYMMDD.tar.gz -C ~
 ```
+
+인앱 복원(`.latticebrain` / `VACUUM INTO` 스냅샷)은 원자적입니다. **오래
+떠 있는 프로세스에서 복원하면 커넥션이 재활용되기 전까지 복원 전
+바이트를 줄 수 있습니다.** 복원 뒤에는 호스트를 재시작하십시오.
 
 ### 2.3 히스토리만 초기화
 ```bash

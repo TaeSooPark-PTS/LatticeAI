@@ -4,7 +4,9 @@ import { Globe, ShieldAlert } from "lucide-react";
 
 import {
   latticeApi,
+  normalizeCloudStatus,
   type CloudContextPreview,
+  type CloudProviderStatus,
   type NetworkBoundaryOption,
   type NetworkBoundaryState,
 } from "@/api/client";
@@ -56,6 +58,7 @@ export function NetworkBoundaryPanel() {
   const [probe, setProbe] = React.useState("");
 
   const state = useQuery({ queryKey: ["networkBoundary"], queryFn: latticeApi.networkBoundary });
+  const cloud = useQuery({ queryKey: ["cloudStatus"], queryFn: latticeApi.cloudStatus });
   const apply = useMutation({
     mutationFn: (input: { mode: string; ack: boolean }) =>
       latticeApi.setNetworkBoundary(input.mode, input.ack),
@@ -136,7 +139,7 @@ export function NetworkBoundaryPanel() {
   }
 
   return (
-    <Card className="settings-dial" data-testid="network-boundary-panel">
+    <Card className="settings-dial" id="network-boundary-panel" data-testid="network-boundary-panel">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe className="h-4 w-4" aria-hidden="true" />
@@ -330,6 +333,11 @@ export function NetworkBoundaryPanel() {
             stays hidden in local_only rather than offering dead switches. */}
         {data.allows_cloud ? (
           <div className="space-y-2 rounded-md border border-border p-3" data-testid="network-boundary-policy">
+            <CloudProviderStatusRow
+              language={language}
+              loading={cloud.isLoading}
+              status={normalizeCloudStatus(cloud.data?.data, Boolean(cloud.data?.ok))}
+            />
             <p className="text-xs font-medium">{t(language, "system.network.policy.title")}</p>
             <label className="flex items-start gap-2 text-xs">
               <input
@@ -375,5 +383,62 @@ export function NetworkBoundaryPanel() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function cloudStatusIdentity(language: Language, status: CloudProviderStatus): string {
+  if (status.mode === "cli_oauth" && status.provider && status.model) {
+    return t(language, "system.network.cloudStatus.identity.cli", {
+      provider: status.provider,
+      model: status.model,
+    });
+  }
+  if (status.provider && status.model) {
+    return t(language, "system.network.cloudStatus.identity", {
+      provider: status.provider,
+      model: status.model,
+    });
+  }
+  if (status.model) {
+    return t(language, "system.network.cloudStatus.identity.model", { model: status.model });
+  }
+  return status.provider;
+}
+
+export function CloudProviderStatusRow({
+  language,
+  loading,
+  status,
+}: {
+  language: Language;
+  loading: boolean;
+  status: CloudProviderStatus;
+}) {
+  const modeKey = status.mode === "cli_oauth"
+    ? "system.network.cloudStatus.cli"
+    : status.mode === "api_key"
+      ? "system.network.cloudStatus.apiKey"
+      : "system.network.cloudStatus.none";
+  const identity = status.configured ? cloudStatusIdentity(language, status) : "";
+
+  return (
+    <div className="space-y-1" data-testid="network-cloud-status">
+      <p className="text-xs font-medium">{t(language, "system.network.cloudStatus.title")}</p>
+      {loading ? (
+        <p className="text-xs text-muted-foreground" data-testid="network-cloud-status-loading">
+          {t(language, "system.network.cloudStatus.loading")}
+        </p>
+      ) : status.configured ? (
+        <p className="text-xs" data-testid="network-cloud-status-ready">
+          {t(language, modeKey)}
+          {identity ? ` · ${identity}` : ""}
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground" data-testid="network-cloud-status-none">
+          {t(language, "system.network.cloudStatus.none")}
+          <span className="mt-0.5 block">{t(language, "system.network.cloudStatus.none.hint")}</span>
+        </p>
+      )}
+    </div>
   );
 }

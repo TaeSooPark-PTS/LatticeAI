@@ -502,7 +502,7 @@ mod tests {
     }
 
     #[test]
-    fn a_store_without_the_history_table_fails_loudly() {
+    fn a_store_without_the_history_table_answers_empty() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("bare.sqlite");
         rusqlite::Connection::open(&path)
@@ -510,9 +510,8 @@ mod tests {
             .execute_batch("CREATE TABLE t(x)")
             .expect("schema");
         let (status, body) = call(&path, Method::GET, "/rust/history", "");
-        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(body["error"], "retrieval_failed");
-        assert_eq!(body["endpoint"], "/rust/history");
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, serde_json::json!([]));
     }
 
     #[test]

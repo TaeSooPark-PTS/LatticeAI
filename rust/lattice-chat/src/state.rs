@@ -23,7 +23,7 @@ use lattice_auth::{AuthState, WorkspaceResolver};
 use lattice_core::graph_write::GraphWriter;
 use serde_json::Value;
 
-use crate::cloud::{EgressAudit, ReviewSink};
+use crate::cloud::{CloudProvider, CloudStatus, EgressAudit, ReviewSink};
 use crate::documents::DocumentSessions;
 use crate::worker::ChatWorker;
 
@@ -198,6 +198,8 @@ pub struct ChatState {
     pub traces: Option<Arc<dyn TraceSink>>,
     /// Per-conversation document-generation follow-up sessions.
     pub document_sessions: Arc<DocumentSessions>,
+    /// Injected cloud backend. Unbound, the turn resolves from disk / env / CLI.
+    pub cloud_provider: Option<Arc<CloudProvider>>,
 }
 
 impl std::fmt::Debug for ChatState {
@@ -216,6 +218,7 @@ impl std::fmt::Debug for ChatState {
             .field("notify", &self.notify.is_some())
             .field("funnel", &self.funnel.is_some())
             .field("traces", &self.traces.is_some())
+            .field("cloud_provider", &self.cloud_provider.is_some())
             .field("document_sessions", &self.document_sessions.len())
             .finish()
     }
@@ -237,6 +240,7 @@ impl ChatState {
             funnel: None,
             traces: None,
             document_sessions: Arc::new(DocumentSessions::new()),
+            cloud_provider: None,
         }
     }
 
@@ -300,6 +304,38 @@ impl ChatState {
     pub fn with_traces(mut self, traces: Arc<dyn TraceSink>) -> Self {
         self.traces = Some(traces);
         self
+    }
+
+    /// Bind a resolved cloud provider (tests, and a host that already decided).
+    pub fn with_cloud_provider(mut self, provider: CloudProvider) -> Self {
+        self.cloud_provider = Some(Arc::new(provider));
+        self
+    }
+
+    /// The injected provider, or a fresh resolve from disk / env / CLI.
+    pub fn resolved_cloud_provider(&self) -> Option<CloudProvider> {
+        if let Some(bound) = self.cloud_provider.as_ref() {
+            return Some((**bound).clone());
+        }
+        let data_dir = self.config.data_dir.as_path();
+        if data_dir.as_os_str().is_empty() {
+            return CloudProvider::resolve_with(data_dir, &crate::cloud::ResolveInput::from_env());
+        }
+        CloudProvider::resolve(data_dir)
+    }
+
+    /// Whether a cloud turn could actually be sent right now.
+    pub fn cloud_configured(&self) -> bool {
+        self.resolved_cloud_provider()
+            .is_some_and(|provider| provider.configured())
+    }
+
+    /// `GET /api/cloud/status` body.
+    pub async fn cloud_status(&self) -> CloudStatus {
+        match self.resolved_cloud_provider() {
+            Some(provider) => provider.status().await,
+            None => CloudStatus::none(),
+        }
     }
 
     /// `notify_chat_message` — mirror, but never echo Telegram back to Telegram.

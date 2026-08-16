@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`

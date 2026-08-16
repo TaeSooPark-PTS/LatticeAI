@@ -54,6 +54,7 @@ class FakeRouter:
         context: Optional[str] = None,
         max_tokens: int = 4096,
         temperature: float = 0.2,
+        stop: Optional[list] = None,
     ) -> str:
         self.calls.append({
             "model_id": model_id,
@@ -61,6 +62,7 @@ class FakeRouter:
             "context": context,
             "max_tokens": max_tokens,
             "temperature": temperature,
+            "stop": stop,
         })
         return self.text
 
@@ -215,7 +217,33 @@ def test_llm_generates_once_and_returns_only_the_text(seam_off):
         "context": "prior steps",
         "max_tokens": 256,
         "temperature": 0.7,
+        "stop": None,
     }]
+
+
+def test_llm_forwards_stop_strings_and_an_omitted_list_is_no_stop(seam_off):
+    """v11.9.0: the kernel may end a completion at a string it names.
+
+    Two things are asserted together on purpose. The list reaches the router
+    verbatim — a stop string the caller cannot rely on is worse than none — and
+    an omitted or empty list arrives as ``None`` rather than ``[]``, because
+    ``[]`` down in the router would read as "a stop list was requested".
+    """
+    router = FakeRouter()
+    client = _client(model_router=router)
+    assert client.post(
+        "/agent/llm", json={"message": "verdict", "stop": ["\n```", "\nUser:"]}
+    ).status_code == 200
+    assert router.calls[0]["stop"] == ["\n```", "\nUser:"]
+
+    assert client.post("/agent/llm", json={"message": "go", "stop": []}).status_code == 200
+    assert router.calls[1]["stop"] is None
+
+    # Bounded: a caller cannot make the sampler check a thousand needles.
+    over = client.post(
+        "/agent/llm", json={"message": "go", "stop": ["x"] * 99}
+    )
+    assert over.status_code == 422
 
 
 def test_llm_defaults_match_generate_as_own_defaults():

@@ -1,0 +1,2 @@
+{"permission_required":true,"path":"/tmp/n7-ingest-NvX50T","action":"read","action_label":"파일 읽기","approval_token":"3Zeh0zv1iv4gZbo5e2FdzDPo0H8OMIVU","expires_in":300,"message":"AI가 '/tmp/n7-ingest-NvX50T' 에 대한 파일 읽기 권한을 요청합니다.","check_status_url":"/permissions/status/3Zeh0zv1iv4gZbo5e2FdzDPo0H8OMIVU"}
+HTTP 200

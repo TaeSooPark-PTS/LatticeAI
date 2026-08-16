@@ -4,6 +4,81 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [11.9.0] - 2026-08-17 — Working Order
+
+### Added
+- 이중 클라우드 자격증명: `<data_dir>/cloud_provider.json` →
+  `LATTICEAI_CLOUD_API_KEY` → CLI 자동감지(`agy` / `grok`). `api_key`는
+  OpenAI 호환 어댑터(모의 서버만 검증, 실과금 없음). `cli_oauth`는 로컬
+  OAuth CLI(`agy` → gemini-3.7-flash, `grok` → grok-4.6). 중립 temp cwd,
+  120초 타임아웃.
+- `GET /api/cloud/status` — `{configured, mode, provider, model, detail}`.
+- 하이브리드 에스컬레이션 `always` / `auto`(기본) / `manual`
+  (`hybrid_policy.json`). `auto`는 로컬 모델 없음 / 로컬 컨텍스트가 얇음
+  / 명시적 `/cloud `·`클라우드:` 접두사일 때만. 요청
+  `network_mode:"local_only"`가 항상 이김.
+- 호스트가 Review Center + egress 감사 싱크를 바인딩. 클라우드 턴이
+  `kg_cloud_expansion` 제안을 올리고 형태만 있는 egress 레코드를 남김
+  (provider / model / reason, 내용 없음).
+- `POST /mcp` streamable-HTTP JSON-RPC 실서버(`initialize` /
+  `tools/list` / `tools/call`). 큐레이트된 안전 도구 + 스키마가 파싱된
+  스킬 7개. `/mcp/call`이 실제로 디스패치. `/mcp/install`은 정직
+  (스킬/플러그인 활성화, 원격은 수동).
+- SPA 클라우드 투명성: ☁️ 클라우드 답변 칩, 컴포저 경계 힌트, 「이번
+  대화는 로컬만」 토글, System 패널 provider 상태 행.
+- 채팅 파일 생성 복원(v9.2.0 헤드라인, 11.6.0 포트에서 삭제됨). 확장자별
+  앵커 프롬프트, judge + 1회 교정, 정직한 sanitize 배지, 프로젝트는
+  최대 3파일 순차, 워커 렌더 시임의 실제 docx/pdf.
+- `/worker/sysinfo`에 `capabilities`(pointer_tools)와 `python_version`
+  (가산, 라우트 수는 19 유지).
+- 통합 로컬 승인 토큰(`LocalApprovals`) — `/permissions/approve`에서
+  상환.
+
+### Changed
+- 문서에만 있던 13개 Current 스텁이 실동작: `/models/recommendations`,
+  `/setup/scan`+`auto`, `/setup/install`, computer-use 상태,
+  `/agent/eval`, `/agents/api/run`, 자동화 패턴/제안, 워크플로 run·
+  resume, 리뷰 `run_now`, `build`/`deploy_project`, 백업 blob.
+- 클라우드 모델은 provider 설정에서 오고, 로컬 MLX id를 쓰지 않음.
+  로컬 모델이 없어도 클라우드 턴이 가능.
+- 하이브리드 토큰 프레임은 도착하는 대로 스트림. `stream: false`는
+  JSON.
+- 채팅 쓰기의 스코프가 비면 `workspace_id = personal`. null workspace
+  읽기는 personal 가시성.
+- 2B(gemma-4-e2b-it-4bit) compact 프로파일: 태그 스트립·balanced·
+  truncated_close·labeled·fence_rescue 파서, v10.8.0 salvage 삼종
+  복원, COMPACT 컨텍스트 <2k, EXECUTE 온도 고정(compact 0.1 /
+  standard 0.2). MLX가 temperature + stop string을 존중.
+- 백업 = `VACUUM INTO` 스냅샷 + blob + 정직한 매니페스트 + 원자적 복원.
+  export가 edges/chunks를 실음.
+- `POST /agent`가 네이티브 루프에 닿고 제품 정책 표를 실음.
+
+### Fixed
+- 라이브 감사 N1–N9: 에이전트 루프 호스트 바인딩, 빈 Brain 메모리
+  API 500(`conversation_messages` 부트스트랩), chat/memory/chronicle/
+  command가 지식을 봄, brain health의 빈 100점, 백업/복원 정직성,
+  export의 없는 컬럼 조회, 폴더 ingest 승인, 보이스 메모 텍스트 저장.
+- 워크플로 resume 승인 게이트. `write_file`이 비어 있는 content를
+  교정 에러로 거절. critic 판정 복구(verdict-shape + 보수적 토큰,
+  fail-closed 유지).
+- 이전에 고장 나 있던 22항목을 신선한 Brain·실모델로 재검증.
+
+### Known issues
+- 2B 에이전트 루프의 *내용 품질*은 정직하게 게이트된다. gemma-4-e2b는
+  요청한 파일을 기계적으로 쓰지만(마감 테이프 5/5) 요약이 critic에서
+  떨어져 FAILED/NEEDS_REVIEW로 끝날 수 있다. 퍼널은 에이전트 런에 더
+  큰 모델을 권한다.
+- `api_key` 클라우드 경로는 모의 서버만 검증했다. 계약 테스트는 있고
+  실호출은 없다(과금 예산 없음).
+- 오래 떠 있는 프로세스에서 복원하면 커넥션이 재활용되기 전까지
+  복원 전 바이트를 줄 수 있다 — 재시작이 필요하다.
+- brew/pip 셋업 항목은 설계상 수동이다.
+- `/mcp`는 설계상 OpenAPI 제품 계약 밖이다.
+- DMG는 ad-hoc 서명(미서명)이다.
+- 11.8.0이 열어 둔 항목(커버리지 바닥 라인 90, 멀티모달 이미지/비디오
+  HTTP 문 없음, 11.7.0 leftover)은 그대로다. 전문은
+  [RELEASE_NOTES_v11.9.0.md](../RELEASE_NOTES_v11.9.0.md).
+
 ## [11.8.0] - 2026-08-16 — Travel Light
 
 ### Added

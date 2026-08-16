@@ -17,6 +17,9 @@ use lattice_core::messages::{self, LANGUAGE_HEADER};
 use lattice_retrieval::history::{history as read_history, HistoryScope};
 use serde_json::json;
 
+use crate::boundary::{
+    escalation_reason, request_network_mode, resolve_hybrid_policy, NetworkMode,
+};
 use crate::contracts::parse_chat_request;
 use crate::helpers::{
     build_recent_chat_context, is_clear_command, is_current_url_request, is_file_action_request,
@@ -27,7 +30,10 @@ use crate::intents::{self, current_url, direct_file_action, no_model_response, H
 use crate::state::ChatState;
 
 mod answers;
-mod model;
+// `pub(crate)` for `collect_completion`: the file-generation branch asks the
+// same seam for a whole reply instead of a stream, and a second collector would
+// be a second set of frame-reader edge cases.
+pub(crate) mod model;
 
 use model::run_model_turn;
 
@@ -113,11 +119,40 @@ pub async fn chat(
         }
     }
     let Some(model_id) = selected else {
-        return no_model_response(&state, &headers);
+        let mode = request_network_mode(
+            req.network_mode.as_deref(),
+            &state.config.data_dir,
+            effective_email.as_deref(),
+            workspace.as_deref(),
+        );
+        let policy = resolve_hybrid_policy(
+            &state.config.data_dir,
+            effective_email.as_deref(),
+            workspace.as_deref(),
+        );
+        let may_cloud = mode == NetworkMode::CloudAllowed
+            && state.cloud_configured()
+            && escalation_reason(policy.escalation, true, 0, &req.message).is_some();
+        if !may_cloud {
+            return no_model_response(&state, &headers);
+        }
+        return run_model_turn(
+            state,
+            req,
+            headers,
+            String::new(),
+            effective_email,
+            workspace,
+            hist_email,
+            hist_nick,
+        )
+        .await;
     };
     if file_intent {
-        // The agent-loop fallback is lattice-agent's. Unreachable without a
-        // model, and the with-model path has no fixtures.
+        // `direct_file_action` answered `None`, which means the request reads as
+        // a file action but names no file this surface can infer — "파일 하나
+        // 만들어줘" with no type, no name and no recognised project. Generating
+        // *something* would be inventing the request; this says so instead.
         return error_body(400, "chat.file_generation_failed", &headers, &[]);
     }
 

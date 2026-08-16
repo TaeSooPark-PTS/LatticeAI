@@ -33,6 +33,11 @@ pub const CSRF_TRUSTED_ORIGINS_ENV: &str = "LATTICEAI_CSRF_TRUSTED_ORIGINS";
 /// worker's own origin).
 pub const CORS_ALLOWED_ORIGINS_ENV: &str = "LATTICEAI_CORS_ALLOWED_ORIGINS";
 
+/// Environment variable naming the agent workspace root. An explicit value
+/// (process env or supervisor `extra_env`) wins over the desktop-runtime
+/// default this module otherwise pins.
+pub const AGENT_ROOT_ENV: &str = "LATTICEAI_AGENT_ROOT";
+
 /// Opens the worker's AI-worker seam (`/agent/llm`, `/agent/tool`,
 /// `/agent/change-proposal`) for the native loop orchestrator.
 ///
@@ -205,7 +210,7 @@ pub fn worker_env(
     env.push(("PATH".into(), worker_path(probe)));
     if let Some(dir) = runtime_dir {
         env.push((
-            "LATTICEAI_AGENT_ROOT".into(),
+            AGENT_ROOT_ENV.into(),
             dir.join("agent_workspace").to_string_lossy().into_owned(),
         ));
     }

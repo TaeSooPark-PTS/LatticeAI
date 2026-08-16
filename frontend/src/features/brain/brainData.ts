@@ -1,6 +1,6 @@
 import { asArray, humanizeModelId, isRecord as isRecordValue } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
-import type { AgentStepEvent, ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, IngestionWatch, IngestionWatchStatus, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageBrainIngest, MessageContextQuality, MessageFile, MessageGrounding, MessageLoopSummary, MessageRunExplanation, PendingApprovalSummary, RelationshipThread, VectorFreshness } from "./types";
+import type { AgentStepEvent, ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, IngestionWatch, IngestionWatchStatus, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageBrainIngest, MessageCloudAnswer, MessageContextQuality, MessageFile, MessageGrounding, MessageHybridContext, MessageKgExpansion, MessageLoopSummary, MessageRunExplanation, PendingApprovalSummary, RelationshipThread, VectorFreshness } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildConversationSummaries(historyData: unknown): ConversationSummary[] {
@@ -211,6 +211,79 @@ export function parseGrounding(value: unknown): MessageGrounding | null {
   if (!["supported", "unsupported", "no_context"].includes(status)) return null;
   const reason = typeof grounding.reason === "string" && grounding.reason.trim() ? grounding.reason.trim() : null;
   return { status, reason };
+}
+
+// Hybrid `{"type":"hybrid_context", node_ids, keywords, ...}` — keep the ids
+// on the message; the chip only counts them.
+export function parseHybridContext(value: unknown): MessageHybridContext | null {
+  if (!isRecord(value)) return null;
+  const type = textValue(value, ["type"]);
+  if (type && type !== "hybrid_context") return null;
+  const hasNodes = Array.isArray(value.node_ids) || Array.isArray(value.nodeIds);
+  if (type !== "hybrid_context" && !hasNodes) return null;
+  return {
+    nodeIds: stringArrayValue(value, ["node_ids", "nodeIds"]),
+    keywords: stringArrayValue(value, ["keywords"]),
+  };
+}
+
+export type ParsedHybridDone = {
+  answer: string;
+  provider: string;
+  model: string;
+  sentNodeIds: string[];
+  expansion: MessageKgExpansion | null;
+};
+
+// Hybrid `{"type":"hybrid_done", answer, kg_expansion, ...}`.
+export function parseHybridDone(value: unknown): ParsedHybridDone | null {
+  if (!isRecord(value)) return null;
+  const type = textValue(value, ["type"]);
+  if (type && type !== "hybrid_done") return null;
+  if (
+    type !== "hybrid_done"
+    && !("answer" in value)
+    && !("kg_expansion" in value)
+    && !("kgExpansion" in value)
+  ) return null;
+  return {
+    answer: typeof value.answer === "string" ? value.answer : "",
+    provider: textValue(value, ["provider"]),
+    model: textValue(value, ["model"]),
+    sentNodeIds: stringArrayValue(value, ["sent_node_ids", "sentNodeIds"]),
+    expansion: parseKgExpansion(value.kg_expansion ?? value.kgExpansion),
+  };
+}
+
+export function parseKgExpansion(value: unknown): MessageKgExpansion | null {
+  if (!isRecord(value)) return null;
+  const status = textValue(value, ["status"]);
+  const plan = isRecord(value.plan) ? value.plan : {};
+  const provenance = isRecord(plan.provenance) ? plan.provenance : {};
+  const fromField = numberValue(value, ["candidate_count", "candidateCount"]);
+  const fromProvenance = numberValue(provenance, ["candidate_count", "candidateCount"]);
+  const fromPlan = Array.isArray(plan.new_nodes) ? plan.new_nodes.length : 0;
+  const candidateCount = Math.max(0, Math.round(fromField || fromProvenance || fromPlan));
+  const stagedForReview = status === "staged"
+    || status === "queued_for_review"
+    || Boolean(value.review_item_id);
+  return {
+    status: status || "staged",
+    candidateCount,
+    stagedForReview,
+  };
+}
+
+export function cloudAnswerFromDone(
+  done: ParsedHybridDone,
+  fallbackNodeCount = 0,
+): MessageCloudAnswer {
+  return {
+    provider: done.provider,
+    model: done.model,
+    sentNodeCount: done.sentNodeIds.length || fallbackNodeCount,
+    expansion: done.expansion,
+  };
 }
 
 // "Brain remembered" chip data from a brain_ingest entry. Only ok/pending/

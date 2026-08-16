@@ -1,0 +1,248 @@
+{
+  "status": 200,
+  "elapsed_s": 72.46412491798401,
+  "body": {
+    "status": "failed",
+    "response": "unambiguous FAIL token after unparseable critic JSON",
+    "workspace": "/private/tmp/lattice-acc-119-verify6-DB096W/agent",
+    "steps": [
+      {
+        "state": "PLANNING",
+        "goal": "Summarize the first paragraph of README.md and save the summary to notes/summary.md",
+        "steps": [
+          {
+            "action": "read_file",
+            "args": {
+              "path": "README.md"
+            },
+            "description": "Read the content of README.md to extract the first paragraph."
+          },
+          {
+            "action": "write_file",
+            "args": {
+              "path": "notes/summary.md",
+              "content": "Summary of the first paragraph of README.md."
+            },
+            "description": "Save the summarized content to notes/summary.md."
+          }
+        ],
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "estimated_steps": 2
+      },
+      {
+        "state": "WAITING_APPROVAL",
+        "requires_approval": false,
+        "non_auto_approve_steps": [],
+        "decision": "auto_approved"
+      },
+      {
+        "state": "EXECUTING",
+        "action": "read_file",
+        "thoughts": "",
+        "args": {},
+        "risk": "low",
+        "governance": {
+          "risk": "read",
+          "destructive": false,
+          "shell": false,
+          "network": false,
+          "auto_approve": true,
+          "sandbox": "workspace",
+          "rollback": "none"
+        },
+        "error": "'path'"
+      },
+      {
+        "state": "EXECUTING",
+        "action": "read_file",
+        "thoughts": "",
+        "args": {
+          "path": "README.md"
+        },
+        "risk": "low",
+        "governance": {
+          "risk": "read",
+          "destructive": false,
+          "shell": false,
+          "network": false,
+          "auto_approve": true,
+          "sandbox": "workspace",
+          "rollback": "none"
+        },
+        "result": {
+          "path": "README.md",
+          "content": "# Lattice AI\n\n**Your model is the voice you use today. Your Brain is the asset you keep.**\n\n**모델은 갈아타도, 내 지식은 내 컴퓨터에 남는 로컬 우선 AI 브레인.**\n\n[![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)\n[![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)\n[![VS Code Marketplace Version](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)\n[![Open VSX Version](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)\n[![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)\n[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)\n\n![v11.8.0 Living Brain walkthrough](output/release/v11.8.0/gifs/v11.8.0-living-brain-walkthrough.gif)\n\nChat, files, folders, notes, and web pages all flow into one durable knowledge\ngraph on your computer. Any model — local MLX or cloud — can speak with that\nmemory. Nothing leaves your machine without explicit consent.\n\n대화·파일·폴더·웹페이지가 전부 내 컴퓨터 안의 지식 그래프로 쌓이고, 어떤\n모델이든 그 기억을 이어받아 대화합니다.\n\n## What You Can Do\n\n| | |\n| --- | --- |\n| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.8.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.8.0/screenshots/04-brain-chat-home.png) |\n| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.8.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.8.0/screenshots/06-capture.png) |\n| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.8.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.8.0/screenshots/02-recommended-models.png) |\n| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.8.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.8.0/screenshots/08-system.png) |\n\n## Why Lattice AI\n\n- **Own your memory** — knowledge lives in a local SQLite Brain you can back up,\n  export, inspect, and restore (`.latticebrain` encrypted archive).\n- **Model-independent** — switch between local MLX models and cloud models\n  without rebuilding context from zero.\n- **Honest by design** — the Brain tells you when retrieval context is limited,\n  when captured pages extracted poorly, and when the vector index is catching up.\n- **Safe automation** — automations are consent-first drafts; edits to existing\n  content always pass through a reviewable proposal with a diff.\n\n매번 AI에게 프로젝트 맥락을 다시 설명하고 있다면, 지식이 여러 서비스에 흩어져\n있다면, 그 기억을 특정 회사가 아니라 내가 소유하고 싶다면 — Lattice AI가 그\n브레인입니다.\n\n## Quick Start\n\n```bash\npip install ltcai        # or: npm install -g ltcai\nLTCAI                    # then open http://127.0.0.1:4825/app\n```\n\nApple Silicon local models: `pip install \"ltcai[local]\"`. Desktop app (Tauri)\nships as a dmg on each [GitHub Release](https://github.com/TaeSooPark-PTS/LatticeAI/releases).\n\nFirst-run flow — wake the Brain, pick the owner, load a recommended model:\n\n| | | |\n| --- | --- | --- |\n| ![Login](output/release/v11.8.0/screenshots/01-login.png) | ![Model install](output/release/v11.8.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.8.0/screenshots/07-model-library.png) |\n\nScreenshot index and capture notes:\n[output/release/v11.8.0/SCREENSHOT_INDEX.md](output/release/v11.8.0/SCREENSHOT_INDEX.md)\n\n## Current Release\n\nThe current release is **11.8.0 — Travel Light**:\n\n11.7.0 emptied the backlog. This release removes what was left carrying\nits own weight and nothing else — routes with no caller, gates that stop\nnothing, goldens that prove the same thing twice, and blanket lint\nsuppressions that hid what the compiler was already saying. The door is\nunchanged: `lattice-host` still serves **420 operations across 41 route\nfamilies**. What changed is the Python side of that door — the AI worker\nis now **19 routes, not 28**.\n\n- **Nine caller-less worker routes are gone end to end.**\n  `GET /api/embeddings/providers`, `POST /tools/read_document`,\n  `GET /tools/pdf_pages`, `POST /worker/multimodal/describe`,\n  `GET /api/ingestion/multimodal`, `POST /models/switch/{model_id}`,\n  `DELETE /models/unload-all`, `POST /engines/pull-model` and\n  `GET /api/capture/voice/status` were deleted along with their\n  implementations, their allowlist entries and their gateway tables. The\n  committed allowlist reads 19, `pypdfium2` left with `/tools/pdf_pages`,\n  and new negative tests assert the gateway answers `404` rather than\n  forwarding.\n- **Rust lint suppression removed at the source.** The blanket `#![allow]`\n  headers on roughly 191 files across `lattice-platform`,\n  `lattice-retrieval`, `lattice-ingest` and `lattice-jobs` are gone, and\n  the ~650 clippy/rustc diagnostics they were hiding were fixed rather\n  than re-silenced. Zero workspace-level allowances were added; the eight\n  survivors are local `#[allow(clippy::too_many_arguments)]` with stated\n  reasons. Test binaries were consolidated 98 → 56 without deleting a\n  single test function.\n- **Goldens shrank without losing coverage.** Two 702-row agent decision\n  grids became named unit tests that say which rule broke; the other two\n  files were reduced to 171 representative rows, one per equivalence\n  class, with a drift guard that fails when the kernel grows a class the\n  sample does not cover. Retrieval, graph-write, agent-loop and HTTP\n  goldens are untouched, and every fixture family now carries a\n  `FROZEN.md`.\n- **A real bug surfaced while deleting dead code.** The worker read\n  `sessions.json` once at boot even though `lattice-auth` is its only\n  writer, so a login *after* worker start was invisible to it — silently\n  under `trusted_local_owner`, and as a 401 under\n  `LATTICEAI_REQUIRE_AUTH=true`. A missed lookup now re-reads, guarded by\n  an mtime/size check and a one-second throttle so a guessing burst cannot\n  become a disk-read burst.\n- **The Brain home is redesigned.** The composer is the hero, the Living\n  Brain is three times larger (60px → 179px at 1440) and accretes gold and\n  jade growth rings as memory grows, with a readiness-tied caption. Past\n  conversations, status, the memory map and feature switches sit on a\n  continuity bar along the floor instead of under the fold.\n\nWhat this release does not close — the enforced coverage floor moving from\n100 to line-90, the multimodal image/video half having no HTTP door, the\nad-hoc-signed dmg, and the leftovers 11.7.0 already disclosed — is listed\nin [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).\n\nExpected artifacts for 11.8.0 release must use exact filenames:\n\n- `dist/ltcai-11.8.0-py3-none-any.whl`\n- `dist/ltcai-11.8.0.tar.gz`\n- `ltcai-11.8.0.tgz`\n- `dist/ltcai-11.8.0.vsix`\n- `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg`\n\nDo not use wildcard artifact uploads. Package registry publishing remains owner-run.\n\nRelease notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)\n\n## Architecture At A Glance\n\nOne Rust server on localhost is the source of truth: `lattice-host` answers\nevery product route, owns every write to the Brain, and supervises a Python\n**AI worker** it reaches over loopback for the things a model does — inference,\nembedding, extraction, parsing, rendering, speech-to-text. The React/Vite\nfrontend and the Tauri desktop shell sit on top of that one door. Local-first\nby default — cloud model calls, downloads, Brain Network, and update checks are\nopt-in.\n\nSee [ARCHITECTURE.md](ARCHITECTURE.md) for details and\n[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the developer workflow\n(`npm install && npm run dev`, validation via `npm run lint`,\n`npm run test:unit`, `npm run test:visual`).\n\n## Known Limitations\n\n- External package registries are owner-published and can lag behind GitHub.\n- SQLite is the live local Brain store. The optional PostgreSQL/pgvector\n  migration tooling is not part of the 11.8.0 worker.\n- Docker, model downloads, cloud model calls, Brain Network, and update checks\n  require explicit user action.\n- **The Telegram bridge was removed in 11.6.0** — it lived in the platform code\n  that became the AI worker. **SSO/OIDC login and callback flows were removed\n  with it**; the configuration surface remains and password login is native.\n- Conversation does not fabricate answers when no model is loaded. Agent and\n  workflow simulation without a loaded LLM is deterministic and LLM-free (it\n  does not call a model) — labeled as such, never presented as autonomous\n  model success.\n- `POST /worker/render/pdf` ships working out of the box: `reportlab` is a\n  required dependency as of 11.6.0 (it used to be an undeclared lazy import\n  that raised a 500; `ltcai[pdf]` remains as an empty alias for older\n  install instructions).\n- The multimodal image and video analysis functions have no HTTP door as of\n  11.8.0: their only route wrapped a native image ingest that was never\n  built. The observation code stays in Brain Core under unit test, and its\n  module header says so.\n- The Python coverage gate is a **line floor of 90** since 11.8.0 (the\n  100%-lines-and-branches gate was removed). The measured figure is still\n  100%, but the enforced floor is the smaller claim.\n- The macOS dmg is ad-hoc signed — effectively unsigned — so first launch\n  needs the usual Gatekeeper step.\n- Pointer-control tools still execute in the worker. Remaining honest gaps\n  (`open_keys` pending-only, no Self-Model refiner, `PART_OF` left on\n  delete, review events silent without an owner, KG-api ingest text-only,\n  two store cycles per review mutation) are listed with their reasons in\n  [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).\n\n## Release History\n\nPublic history starts at 11.0.0. 11.6.0 rebuilt the product server in Rust and\nreduced the Python package to an AI worker, so a 10.x or 9.x install is a\ndifferent program; `SECURITY.md` supports only 11.x, and this table states the\nsame boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.\n\n| Version | Theme |\n| --- | --- |\n| 11.8.0 | Travel Light |\n| 11.7.0 | Clean Sweep |\n| 11.6.0 | One Door |\n| 11.5.2 | Tight Ship |\n| 11.5.1 | Rust Full Loop |\n| 11.5.0 | Rust Complete |\n| 11.4.0 | Rust Foundation |\n| 11.3.0 | Time Remembers |\n| 11.2.0 | All Systems On |\n| 11.1.0 | Product Intelligence |\n| 11.0.1 | Both Branches |\n| 11.0.0 | Full Measure |\n\nPer-release details: [RELEASE_NOTES.md](RELEASE_NOTES.md)\n",
+          "total_lines": 203,
+          "start_line": 1,
+          "end_line": 203,
+          "numbered": "   1\t# Lattice AI\n   2\t\n   3\t**Your model is the voice you use today. Your Brain is the asset you keep.**\n   4\t\n   5\t**모델은 갈아타도, 내 지식은 내 컴퓨터에 남는 로컬 우선 AI 브레인.**\n   6\t\n   7\t[![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)\n   8\t[![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)\n   9\t[![VS Code Marketplace Version](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)\n  10\t[![Open VSX Version](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)\n  11\t[![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)\n  12\t[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)\n  13\t\n  14\t![v11.8.0 Living Brain walkthrough](output/release/v11.8.0/gifs/v11.8.0-living-brain-walkthrough.gif)\n  15\t\n  16\tChat, files, folders, notes, and web pages all flow into one durable knowledge\n  17\tgraph on your computer. Any model — local MLX or cloud — can speak with that\n  18\tmemory. Nothing leaves your machine without explicit consent.\n  19\t\n  20\t대화·파일·폴더·웹페이지가 전부 내 컴퓨터 안의 지식 그래프로 쌓이고, 어떤\n  21\t모델이든 그 기억을 이어받아 대화합니다.\n  22\t\n  23\t## What You Can Do\n  24\t\n  25\t| | |\n  26\t| --- | --- |\n  27\t| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.8.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.8.0/screenshots/04-brain-chat-home.png) |\n  28\t| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.8.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.8.0/screenshots/06-capture.png) |\n  29\t| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.8.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.8.0/screenshots/02-recommended-models.png) |\n  30\t| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.8.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.8.0/screenshots/08-system.png) |\n  31\t\n  32\t## Why Lattice AI\n  33\t\n  34\t- **Own your memory** — knowledge lives in a local SQLite Brain you can back up,\n  35\t  export, inspect, and restore (`.latticebrain` encrypted archive).\n  36\t- **Model-independent** — switch between local MLX models and cloud models\n  37\t  without rebuilding context from zero.\n  38\t- **Honest by design** — the Brain tells you when retrieval context is limited,\n  39\t  when captured pages extracted poorly, and when the vector index is catching up.\n  40\t- **Safe automation** — automations are consent-first drafts; edits to existing\n  41\t  content always pass through a reviewable proposal with a diff.\n  42\t\n  43\t매번 AI에게 프로젝트 맥락을 다시 설명하고 있다면, 지식이 여러 서비스에 흩어져\n  44\t있다면, 그 기억을 특정 회사가 아니라 내가 소유하고 싶다면 — Lattice AI가 그\n  45\t브레인입니다.\n  46\t\n  47\t## Quick Start\n  48\t\n  49\t```bash\n  50\tpip install ltcai        # or: npm install -g ltcai\n  51\tLTCAI                    # then open http://127.0.0.1:4825/app\n  52\t```\n  53\t\n  54\tApple Silicon local models: `pip install \"ltcai[local]\"`. Desktop app (Tauri)\n  55\tships as a dmg on each [GitHub Release](https://github.com/TaeSooPark-PTS/LatticeAI/releases).\n  56\t\n  57\tFirst-run flow — wake the Brain, pick the owner, load a recommended model:\n  58\t\n  59\t| | | |\n  60\t| --- | --- | --- |\n  61\t| ![Login](output/release/v11.8.0/screenshots/01-login.png) | ![Model install](output/release/v11.8.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.8.0/screenshots/07-model-library.png) |\n  62\t\n  63\tScreenshot index and capture notes:\n  64\t[output/release/v11.8.0/SCREENSHOT_INDEX.md](output/release/v11.8.0/SCREENSHOT_INDEX.md)\n  65\t\n  66\t## Current Release\n  67\t\n  68\tThe current release is **11.8.0 — Travel Light**:\n  69\t\n  70\t11.7.0 emptied the backlog. This release removes what was left carrying\n  71\tits own weight and nothing else — routes with no caller, gates that stop\n  72\tnothing, goldens that prove the same thing twice, and blanket lint\n  73\tsuppressions that hid what the compiler was already saying. The door is\n  74\tunchanged: `lattice-host` still serves **420 operations across 41 route\n  75\tfamilies**. What changed is the Python side of that door — the AI worker\n  76\tis now **19 routes, not 28**.\n  77\t\n  78\t- **Nine caller-less worker routes are gone end to end.**\n  79\t  `GET /api/embeddings/providers`, `POST /tools/read_document`,\n  80\t  `GET /tools/pdf_pages`, `POST /worker/multimodal/describe`,\n  81\t  `GET /api/ingestion/multimodal`, `POST /models/switch/{model_id}`,\n  82\t  `DELETE /models/unload-all`, `POST /engines/pull-model` and\n  83\t  `GET /api/capture/voice/status` were deleted along with their\n  84\t  implementations, their allowlist entries and their gateway tables. The\n  85\t  committed allowlist reads 19, `pypdfium2` left with `/tools/pdf_pages`,\n  86\t  and new negative tests assert the gateway answers `404` rather than\n  87\t  forwarding.\n  88\t- **Rust lint suppression removed at the source.** The blanket `#![allow]`\n  89\t  headers on roughly 191 files across `lattice-platform`,\n  90\t  `lattice-retrieval`, `lattice-ingest` and `lattice-jobs` are gone, and\n  91\t  the ~650 clippy/rustc diagnostics they were hiding were fixed rather\n  92\t  than re-silenced. Zero workspace-level allowances were added; the eight\n  93\t  survivors are local `#[allow(clippy::too_many_arguments)]` with stated\n  94\t  reasons. Test binaries were consolidated 98 → 56 without deleting a\n  95\t  single test function.\n  96\t- **Goldens shrank without losing coverage.** Two 702-row agent decision\n  97\t  grids became named unit tests that say which rule broke; the other two\n  98\t  files were reduced to 171 representative rows, one per equivalence\n  99\t  class, with a drift guard that fails when the kernel grows a class the\n 100\t  sample does not cover. Retrieval, graph-write, agent-loop and HTTP\n 101\t  goldens are untouched, and every fixture family now carries a\n 102\t  `FROZEN.md`.\n 103\t- **A real bug surfaced while deleting dead code.** The worker read\n 104\t  `sessions.json` once at boot even though `lattice-auth` is its only\n 105\t  writer, so a login *after* worker start was invisible to it — silently\n 106\t  under `trusted_local_owner`, and as a 401 under\n 107\t  `LATTICEAI_REQUIRE_AUTH=true`. A missed lookup now re-reads, guarded by\n 108\t  an mtime/size check and a one-second throttle so a guessing burst cannot\n 109\t  become a disk-read burst.\n 110\t- **The Brain home is redesigned.** The composer is the hero, the Living\n 111\t  Brain is three times larger (60px → 179px at 1440) and accretes gold and\n 112\t  jade growth rings as memory grows, with a readiness-tied caption. Past\n 113\t  conversations, status, the memory map and feature switches sit on a\n 114\t  continuity bar along the floor instead of under the fold.\n 115\t\n 116\tWhat this release does not close — the enforced coverage floor moving from\n 117\t100 to line-90, the multimodal image/video half having no HTTP door, the\n 118\tad-hoc-signed dmg, and the leftovers 11.7.0 already disclosed — is listed\n 119\tin [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).\n 120\t\n 121\tExpected artifacts for 11.8.0 release must use exact filenames:\n 122\t\n 123\t- `dist/ltcai-11.8.0-py3-none-any.whl`\n 124\t- `dist/ltcai-11.8.0.tar.gz`\n 125\t- `ltcai-11.8.0.tgz`\n 126\t- `dist/ltcai-11.8.0.vsix`\n 127\t- `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg`\n 128\t\n 129\tDo not use wildcard artifact uploads. Package registry publishing remains owner-run.\n 130\t\n 131\tRelease notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)\n 132\t\n 133\t## Architecture At A Glance\n 134\t\n 135\tOne Rust server on localhost is the source of truth: `lattice-host` answers\n 136\tevery product route, owns every write to the Brain, and supervises a Python\n 137\t**AI worker** it reaches over loopback for the things a model does — inference,\n 138\tembedding, extraction, parsing, rendering, speech-to-text. The React/Vite\n 139\tfrontend and the Tauri desktop shell sit on top of that one door. Local-first\n 140\tby default — cloud model calls, downloads, Brain Network, and update checks are\n 141\topt-in.\n 142\t\n 143\tSee [ARCHITECTURE.md](ARCHITECTURE.md) for details and\n 144\t[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the developer workflow\n 145\t(`npm install && npm run dev`, validation via `npm run lint`,\n 146\t`npm run test:unit`, `npm run test:visual`).\n 147\t\n 148\t## Known Limitations\n 149\t\n 150\t- External package registries are owner-published and can lag behind GitHub.\n 151\t- SQLite is the live local Brain store. The optional PostgreSQL/pgvector\n 152\t  migration tooling is not part of the 11.8.0 worker.\n 153\t- Docker, model downloads, cloud model calls, Brain Network, and update checks\n 154\t  require explicit user action.\n 155\t- **The Telegram bridge was removed in 11.6.0** — it lived in the platform code\n 156\t  that became the AI worker. **SSO/OIDC login and callback flows were removed\n 157\t  with it**; the configuration surface remains and password login is native.\n 158\t- Conversation does not fabricate answers when no model is loaded. Agent and\n 159\t  workflow simulation without a loaded LLM is deterministic and LLM-free (it\n 160\t  does not call a model) — labeled as such, never presented as autonomous\n 161\t  model success.\n 162\t- `POST /worker/render/pdf` ships working out of the box: `reportlab` is a\n 163\t  required dependency as of 11.6.0 (it used to be an undeclared lazy import\n 164\t  that raised a 500; `ltcai[pdf]` remains as an empty alias for older\n 165\t  install instructions).\n 166\t- The multimodal image and video analysis functions have no HTTP door as of\n 167\t  11.8.0: their only route wrapped a native image ingest that was never\n 168\t  built. The observation code stays in Brain Core under unit test, and its\n 169\t  module header says so.\n 170\t- The Python coverage gate is a **line floor of 90** since 11.8.0 (the\n 171\t  100%-lines-and-branches gate was removed). The measured figure is still\n 172\t  100%, but the enforced floor is the smaller claim.\n 173\t- The macOS dmg is ad-hoc signed — effectively unsigned — so first launch\n 174\t  needs the usual Gatekeeper step.\n 175\t- Pointer-control tools still execute in the worker. Remaining honest gaps\n 176\t  (`open_keys` pending-only, no Self-Model refiner, `PART_OF` left on\n 177\t  delete, review events silent without an owner, KG-api ingest text-only,\n 178\t  two store cycles per review mutation) are listed with their reasons in\n 179\t  [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).\n 180\t\n 181\t## Release History\n 182\t\n 183\tPublic history starts at 11.0.0. 11.6.0 rebuilt the product server in Rust and\n 184\treduced the Python package to an AI worker, so a 10.x or 9.x install is a\n 185\tdifferent program; `SECURITY.md` supports only 11.x, and this table states the\n 186\tsame boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.\n 187\t\n 188\t| Version | Theme |\n 189\t| --- | --- |\n 190\t| 11.8.0 | Travel Light |\n 191\t| 11.7.0 | Clean Sweep |\n 192\t| 11.6.0 | One Door |\n 193\t| 11.5.2 | Tight Ship |\n 194\t| 11.5.1 | Rust Full Loop |\n 195\t| 11.5.0 | Rust Complete |\n 196\t| 11.4.0 | Rust Foundation |\n 197\t| 11.3.0 | Time Remembers |\n 198\t| 11.2.0 | All Systems On |\n 199\t| 11.1.0 | Product Intelligence |\n 200\t| 11.0.1 | Both Branches |\n 201\t| 11.0.0 | Full Measure |\n 202\t\n 203\tPer-release details: [RELEASE_NOTES.md](RELEASE_NOTES.md)"
+        }
+      },
+      {
+        "state": "EXECUTING",
+        "action": "write_file",
+        "thoughts": "",
+        "args": {},
+        "risk": "medium",
+        "governance": {
+          "risk": "write",
+          "destructive": false,
+          "shell": false,
+          "network": false,
+          "auto_approve": false,
+          "sandbox": "workspace",
+          "rollback": "git"
+        },
+        "error": "'path'"
+      },
+      {
+        "state": "EXECUTING",
+        "action": "parse_error",
+        "raw": "<|channel>thought\nThe user wants me to execute the next step of the plan.\nThe plan is to:\n1. Read the content of `README.md`. (This has been executed and the content is available in the transcript).\n2. Save the summary of the first paragraph to `notes/summary.md`.\n\nThe execution transcript shows the result of reading `README.md`. Now I need to perform the second step: writing the summary.\n\nThe fir",
+        "error": "Agent did not return valid JSON: Expecting value: line 1 column 1 (char 0)"
+      },
+      {
+        "state": "EXECUTING",
+        "action": "write_file",
+        "thoughts": "recovered from a fenced code block",
+        "args": {
+          "path": "notes/summary.md",
+          "content": "# Lattice AI\n\n**Your model is the voice you use today. Your Brain is the asset you keep.**\n\n**모델은 갈아타도, 내 지식은 내 컴퓨터에 남는 로컬 우선 AI 브레인.**\n\n[![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)\n[![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)\n[![VS Code Marketplace Version](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)\n[![Open VSX Version](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)\n[![CI Status](https://github.com/TaeSooPark-PTS/Latti…[+10446 chars]"
+        },
+        "risk": "medium",
+        "governance": {
+          "risk": "write",
+          "destructive": false,
+          "shell": false,
+          "network": false,
+          "auto_approve": false,
+          "sandbox": "workspace",
+          "rollback": "git"
+        },
+        "result": {
+          "path": "notes/summary.md",
+          "bytes": 767
+        }
+      },
+      {
+        "state": "EXECUTING",
+        "action": "write_file",
+        "thoughts": "",
+        "args": {
+          "path": "notes/summary.md"
+        },
+        "risk": "medium",
+        "governance": {
+          "risk": "write",
+          "destructive": false,
+          "shell": false,
+          "network": false,
+          "auto_approve": false,
+          "sandbox": "workspace",
+          "rollback": "git"
+        },
+        "result": {
+          "proposed": true,
+          "proposal_id": "review-2ac35070f8fafcf3",
+          "note": "기존 내용을 바꾸는 작업이라 변경 제안으로 저장했습니다. 검토함에서 승인하면 적용됩니다."
+        }
+      },
+      {
+        "state": "EXECUTING",
+        "action": "parse_error",
+        "raw": "<|channel>thought\nThe user is asking me to execute the next step based on the provided execution transcript.\nThe previous step was to write the content to `notes/summary.md`.\nThe execution transcript shows a proposed write operation, which requires approval.\nThe previous plan was:\n1. Read `README.md`. (Done)\n2. Write the summary to `notes/summary.md`. (Attempted, resulted in a proposal).\n\nSince th",
+        "error": "Agent did not return valid JSON: Expecting property name enclosed in double quotes: line 1 column 155 (char 154)"
+      },
+      {
+        "state": "EXECUTING",
+        "action": "parse_error",
+        "raw": "<|channel>thought\nThe user is asking me to execute the next step.\nThe previous execution transcript showed an error related to parsing, and the overall goal was to summarize the first paragraph of `README.md` and save it to `notes/summary.md`.\n\nThe plan was:\n1. Read `README.md`. (Done)\n2. Write the summary to `notes/summary.md`. (Attempted, resulted in a proposal).\n\nSince the previous step resulte",
+        "error": "Agent did not return valid JSON: Expecting value: line 1 column 1 (char 0)"
+      },
+      {
+        "state": "VERIFYING",
+        "verdict": "FAIL",
+        "reason": "unambiguous FAIL token after unparseable critic JSON",
+        "corrections": [],
+        "confidence": 0.9,
+        "next_state": "FAILED",
+        "verifier_available": true,
+        "verdict_valid": true,
+        "evidence": true,
+        "verdict_source": "token"
+      }
+    ],
+    "state_history": [
+      "PLANNING",
+      "EXECUTING",
+      "VERIFYING",
+      "FAILED"
+    ],
+    "final_state": "FAILED",
+    "created_files": [
+      {
+        "path": "notes/summary.md",
+        "filename": "summary.md",
+        "bytes": 767,
+        "action": "write_file"
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "file",
+        "path": "notes/summary.md",
+        "filename": "summary.md",
+        "bytes": 767,
+        "previewable": true,
+        "valid": true,
+        "repaired": false
+      }
+    ],
+    "loop": {
+      "events": 33,
+      "truncated_events": 0,
+      "kind_counts": {
+        "correction": 2,
+        "decision": 3,
+        "llm_call": 11,
+        "parse_error": 5,
+        "repair": 7,
+        "tool": 5
+      },
+      "llm_calls": 11,
+      "parse_errors": 5,
+      "parse_recovered": 3,
+      "corrections": 2,
+      "retries": 0,
+      "tool_outcomes": {
+        "error": 2,
+        "ok": 2,
+        "proposed": 1
+      },
+      "repairs": {
+        "fence_rescue": 1,
+        "labeled": 4,
+        "slice": 1,
+        "tag_strip": 5,
+        "token_verdict": 1
+      }
+    },
+    "audit": [
+      {
+        "event": "agent_approval",
+        "user_email": null,
+        "requires_approval": false,
+        "non_auto_steps": [],
+        "decision": "auto_approved"
+      },
+      {
+        "event": "agent_change_proposed",
+        "user_email": null,
+        "action": "write_file",
+        "proposal_id": "review-2ac35070f8fafcf3",
+        "change_class": "mutation"
+      }
+    ]
+  }
+}

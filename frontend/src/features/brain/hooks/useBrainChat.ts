@@ -9,8 +9,11 @@ import {
   agentPayloadFiles,
   parseAgentStepEvent,
   parseAgentTranscript,
+  cloudAnswerFromDone,
   parseContextQuality,
   parseGrounding,
+  parseHybridContext,
+  parseHybridDone,
   parseLoopSummary,
   parseRunExplanation,
 } from "../brainData";
@@ -49,6 +52,7 @@ export function useBrainChat({
   const setMessages = useConversationSession((state) => state.setMessages);
   const conversationId = useConversationSession((state) => state.conversationId);
   const setConversationId = useConversationSession((state) => state.setConversationId);
+  const preferLocalOnly = useConversationSession((state) => state.preferLocalOnly);
   const [draft, setDraft] = React.useState("");
   const [imageData, setImageData] = React.useState<string | null>(null);
   const [streaming, setStreaming] = React.useState(false);
@@ -133,13 +137,44 @@ export function useBrainChat({
     abortRef.current = controller;
     try {
       const result = await latticeApi.streamChat(
-        { message: text, conversation_id: activeConversationId, image_data: imageData || undefined },
+        {
+          message: text,
+          conversation_id: activeConversationId,
+          image_data: imageData || undefined,
+          ...(preferLocalOnly ? { network_mode: "local_only" } : {}),
+        },
         {
           signal: controller.signal,
           onChunk: (_delta, fullText) => {
             setMessages((items) => {
               const next = [...items];
               next[next.length - 1] = { ...next[next.length - 1], role: "assistant", content: fullText };
+              return next;
+            });
+          },
+          onHybridContext: (frame) => {
+            const hybridContext = parseHybridContext(frame);
+            if (!hybridContext) return;
+            setMessages((items) => {
+              const next = [...items];
+              const last = next[next.length - 1];
+              if (last?.role !== "assistant") return items;
+              next[next.length - 1] = { ...last, hybridContext };
+              return next;
+            });
+          },
+          onHybridDone: (frame) => {
+            const done = parseHybridDone(frame);
+            if (!done) return;
+            setMessages((items) => {
+              const next = [...items];
+              const last = next[next.length - 1];
+              if (last?.role !== "assistant") return items;
+              next[next.length - 1] = {
+                ...last,
+                content: done.answer || last.content,
+                cloudAnswer: cloudAnswerFromDone(done, last.hybridContext?.nodeIds.length || 0),
+              };
               return next;
             });
           },
@@ -231,15 +266,28 @@ export function useBrainChat({
         // trailer; it badges the answer without ever modifying it.
         const grounding = parseGrounding("grounding" in result ? result.grounding : null)
           || parseGrounding(result.trace);
-        if (contextQuality || grounding) {
+        const hybridContext = parseHybridContext("hybridContext" in result ? result.hybridContext : null);
+        const hybridDone = parseHybridDone("hybridDone" in result ? result.hybridDone : null);
+        if (contextQuality || grounding || hybridContext || hybridDone) {
           setMessages((items) => {
             const next = [...items];
             for (let index = next.length - 1; index >= 0; index -= 1) {
               if (next[index].role === "assistant") {
+                const current = next[index];
                 next[index] = {
-                  ...next[index],
+                  ...current,
                   ...(contextQuality ? { contextQuality } : {}),
                   ...(grounding ? { grounding } : {}),
+                  ...(hybridContext && !current.hybridContext ? { hybridContext } : {}),
+                  ...(hybridDone && !current.cloudAnswer
+                    ? {
+                      content: hybridDone.answer || current.content,
+                      cloudAnswer: cloudAnswerFromDone(
+                        hybridDone,
+                        current.hybridContext?.nodeIds.length || hybridContext?.nodeIds.length || 0,
+                      ),
+                    }
+                    : {}),
                 };
                 break;
               }

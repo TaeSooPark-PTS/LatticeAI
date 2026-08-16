@@ -37,6 +37,14 @@ sha2 = { workspace = true }
 # does for `stream_sse`.
 bytes = "1"
 futures-core = { workspace = true }
+# CLI-OAuth turns spawn the local CLI in a fresh temp dir so the binary
+# cannot read this repo (or any other workspace) as implicit context.
+tempfile = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+# Test-only: the scripted worker answers `POST /worker/render/{kind}` with
+# `content_b64`, which is what the real seam answers (`base64.b64encode` in
+# `worker_compute._render`). Encoding it by hand in two test files would be two
+# copies of an encoder whose bugs would look like product bugs.
+base64 = { workspace = true }

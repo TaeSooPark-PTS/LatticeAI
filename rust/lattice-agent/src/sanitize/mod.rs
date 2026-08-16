@@ -42,14 +42,17 @@
 //! One pipeline, one file per stage of it, because the stages are the Python
 //! modules this is a port of: [`validate`] is `validation.py`, [`extract`] is
 //! `extraction.py`, [`repair`] is `repair.py`, [`python`] is the `ast.parse`
-//! call `validation.py` makes, and [`text`] is the regex table and the
-//! case-insensitive search all four share. Everything callers use is
-//! re-exported here, so `crate::sanitize::sanitize_write_content` and the rest
-//! are where they always were.
+//! call `validation.py` makes, [`salvage`] is `orchestration.py`'s
+//! `_salvage_score` (v11.9.0 — the driver's last unported piece, and the one
+//! that decides *which* rejected candidate repair works from), and [`text`] is
+//! the regex table and the case-insensitive search they share. Everything
+//! callers use is re-exported here, so `crate::sanitize::sanitize_write_content`
+//! and the rest are where they always were.
 
 pub mod extract;
 pub mod python;
 pub mod repair;
+pub mod salvage;
 pub mod text;
 pub mod validate;
 
@@ -58,6 +61,7 @@ use serde_json::{json, Value};
 pub use extract::extract_file_content;
 pub use python::{python_parses, SyntaxFault};
 pub use repair::repair_file_content;
+pub use salvage::salvage_score;
 pub use text::ext_of;
 pub use validate::{looks_like_refusal, validate_file_content};
 
@@ -104,11 +108,27 @@ pub fn sanitize_write_content(
     if content.trim().is_empty() {
         return (content.to_string(), SanitizeMeta::untouched("empty"));
     }
-    let (ok, reason) = validate_file_content(content, target_path);
+    // Channel frames must come off before validate: a thought preamble with
+    // balanced `<>` still fails `node --check` on the leading `<|`.
+    let (content, framed) = match crate::channel::strip_channel_frames(content) {
+        Some(stripped) => (stripped, true),
+        None => (content.to_string(), false),
+    };
+    let (ok, reason) = validate_file_content(&content, target_path);
     if ok {
-        return (content.to_string(), SanitizeMeta::untouched("ok"));
+        if framed {
+            return (
+                content,
+                SanitizeMeta {
+                    sanitized: true,
+                    repaired: false,
+                    reason,
+                },
+            );
+        }
+        return (content, SanitizeMeta::untouched("ok"));
     }
-    let extracted = extract_file_content(content, target_path);
+    let extracted = extract_file_content(&content, target_path);
     if !extracted.is_empty() {
         let (extracted_ok, _) = validate_file_content(&extracted, target_path);
         if extracted_ok {
@@ -129,7 +149,7 @@ pub fn sanitize_write_content(
         user_request.to_string()
     };
     let source = if extracted.is_empty() {
-        content
+        content.as_str()
     } else {
         &extracted
     };

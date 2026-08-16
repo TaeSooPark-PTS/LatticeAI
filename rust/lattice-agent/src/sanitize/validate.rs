@@ -179,7 +179,7 @@ fn strip_code_literals(text: &str) -> String {
 }
 
 /// `_check_balanced_delimiters(content)`.
-fn check_balanced_delimiters(content: &str) -> (bool, String) {
+pub(super) fn check_balanced_delimiters(content: &str) -> (bool, String) {
     let stripped = strip_code_literals(content);
     for (opener, closer, label) in [
         ('{', '}', "braces"),
@@ -197,7 +197,7 @@ fn check_balanced_delimiters(content: &str) -> (bool, String) {
 }
 
 /// `_check_component_blocks(content)`.
-fn check_component_blocks(content: &str) -> (bool, String) {
+pub(super) fn check_component_blocks(content: &str) -> (bool, String) {
     let lower = content.to_lowercase();
     for tag in ["template", "script", "style"] {
         let opened = block_tag(tag)

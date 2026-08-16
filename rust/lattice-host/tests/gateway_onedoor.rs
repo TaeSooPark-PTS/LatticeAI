@@ -340,6 +340,44 @@ async fn every_mounted_family_answers_and_nothing_leaks_to_the_worker() {
 }
 
 #[tokio::test]
+async fn streamable_mcp_is_answered_natively() {
+    let worker = FakeWorker::start().await;
+    let (gateway, _scratch) = one_door(&worker, "mcp_streamable").await;
+    let response = client()
+        .post(gateway.url("/mcp"))
+        .header("content-type", "application/json")
+        .body(
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {"name": "test", "version": "0"}
+                }
+            })
+            .to_string(),
+        )
+        .send()
+        .await
+        .expect("request");
+    let status = response.status();
+    assert!(
+        !is_unmounted(response).await,
+        "POST /mcp must be mounted on the product router, not the gateway 404"
+    );
+    assert_ne!(status, reqwest::StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(
+        worker.requests().len(),
+        0,
+        "POST /mcp must not reach the worker"
+    );
+    gateway.stop().await;
+    worker.shutdown();
+}
+
+#[tokio::test]
 async fn the_front_door_serves_the_shell_and_refuses_what_nobody_owns() {
     let worker = FakeWorker::start().await;
     let (gateway, _scratch) = one_door(&worker, "shell").await;

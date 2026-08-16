@@ -269,6 +269,21 @@ mod tests {
         assert_eq!(out["matches"].as_array().unwrap().len(), 1);
         let out = search(&conn, "ranking", 30, Some(&w1), true).unwrap();
         assert_eq!(out["matches"].as_array().unwrap().len(), 2);
+        // Node `b` has workspace_id NULL: personal sees it, a named tenant does not.
+        let personal: BTreeSet<String> = [lattice_core::DEFAULT_WORKSPACE_ID.into()]
+            .into_iter()
+            .collect();
+        let out = search(&conn, "ranking", 30, Some(&personal), false).unwrap();
+        let ids: Vec<&str> = out["matches"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["b"]);
+        let team: BTreeSet<String> = ["acme".into()].into_iter().collect();
+        let out = search(&conn, "ranking", 30, Some(&team), false).unwrap();
+        assert!(out["matches"].as_array().unwrap().is_empty());
         // limit 0 means "the default 30", and the clamp caps at 100.
         assert!(
             !search(&conn, "ranking", 0, None, false).unwrap()["matches"]

@@ -50,6 +50,95 @@ describe("streamChat SSE parsing", () => {
     expect(result.text).toBe("안녕");
   });
 
+  it("attaches hybrid_context and hybrid_done frames without rendering them as chunks", async () => {
+    const onHybridContext = vi.fn();
+    const onHybridDone = vi.fn();
+    const onChunk = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse([
+      'data: {"type":"hybrid_context","node_ids":["n1","n2"],"keywords":["release"]}\n\n',
+      'data: {"type":"token","chunk":"클라우드 ","text":"클라우드 "}\n\n',
+      'data: {"type":"hybrid_done","chunk":"","answer":"클라우드 답변","provider":"antigravity","model":"gemini-3.7-flash","sent_node_ids":["n1","n2"],"kg_expansion":{"status":"staged","plan":{"provenance":{"candidate_count":2}}}}\n\n',
+      "data: [DONE]\n\n",
+    ])));
+
+    const result = await latticeApi.streamChat(
+      { message: "hi" },
+      { onHybridContext, onHybridDone, onChunk },
+    );
+
+    expect(onHybridContext).toHaveBeenCalledWith(expect.objectContaining({
+      type: "hybrid_context",
+      node_ids: ["n1", "n2"],
+    }));
+    expect(onHybridDone).toHaveBeenCalledWith(expect.objectContaining({
+      type: "hybrid_done",
+      answer: "클라우드 답변",
+      model: "gemini-3.7-flash",
+    }));
+    expect(onChunk).toHaveBeenCalledWith("클라우드 ", "클라우드 ");
+    expect(result.text).toBe("클라우드 답변");
+    expect(result.hybridContext).toMatchObject({ type: "hybrid_context" });
+    expect(result.hybridDone).toMatchObject({ type: "hybrid_done", provider: "antigravity" });
+  });
+
+  it("accepts named hybrid events and ignores an unknown type without dropping later chunks", async () => {
+    const onHybridContext = vi.fn();
+    const onHybridDone = vi.fn();
+    const onChunk = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse([
+      'event: hybrid_context\ndata: {"node_ids":["n9"]}\n\n',
+      'data: {"type":"future_lane","note":"ignore me"}\n\n',
+      'data: {"chunk":"로컬 답"}\n\n',
+      'event: hybrid_done\ndata: {"answer":"끝","model":"x"}\n\n',
+      "data: [DONE]\n\n",
+    ])));
+
+    const result = await latticeApi.streamChat(
+      { message: "hi" },
+      { onHybridContext, onHybridDone, onChunk },
+    );
+
+    expect(onHybridContext).toHaveBeenCalledWith({ node_ids: ["n9"] });
+    expect(onHybridDone).toHaveBeenCalledWith({ answer: "끝", model: "x" });
+    expect(onChunk).toHaveBeenCalledWith("로컬 답", "로컬 답");
+    expect(result.text).toBe("끝");
+  });
+
+  it("ignores a named hybrid frame whose payload is not an object", async () => {
+    const onHybridContext = vi.fn();
+    const onHybridDone = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse([
+      "event: hybrid_context\ndata: [1]\n\n",
+      "event: hybrid_done\ndata: [2]\n\n",
+      'data: {"chunk":"ok"}\n\n',
+      "data: [DONE]\n\n",
+    ])));
+
+    const result = await latticeApi.streamChat(
+      { message: "hi" },
+      { onHybridContext, onHybridDone },
+    );
+
+    expect(onHybridContext).not.toHaveBeenCalled();
+    expect(onHybridDone).not.toHaveBeenCalled();
+    expect(result.text).toBe("ok");
+  });
+
+  it("keeps streamed tokens when hybrid_done carries no answer", async () => {
+    const onHybridDone = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse([
+      'data: {"chunk":"토큰"}\n\n',
+      'data: {"type":"hybrid_done","chunk":"","answer":"","model":"m"}\n\n',
+      "data: [DONE]\n\n",
+    ])));
+
+    const result = await latticeApi.streamChat({ message: "hi" }, { onHybridDone });
+
+    expect(onHybridDone).toHaveBeenCalled();
+    expect(result.text).toBe("토큰");
+    expect(result.hybridDone).toMatchObject({ model: "m" });
+  });
+
   it("ignores unknown named events and malformed agent_step frames without breaking the stream", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse([
       'event: future_event\ndata: {"x":1}\n\n',

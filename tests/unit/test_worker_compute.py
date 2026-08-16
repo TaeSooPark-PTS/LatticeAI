@@ -33,6 +33,8 @@ from latticeai.api.worker_compute import (
     build_pptx_bytes,
     build_xlsx_bytes,
     create_worker_compute_router,
+    pointer_tools_available,
+    sysinfo_payload_extras,
 )
 from latticeai.core.embedding_providers import resolve_embedder
 from latticeai.core.messages import LANGUAGE_HEADER, MESSAGES
@@ -890,3 +892,20 @@ def test_extract_maps_a_thin_triple_the_way_the_write_path_does(monkeypatch):
 def test_extract_kinds_are_the_two_ingest_doors():
     assert EXTRACT_KINDS == ("message", "document")
     assert EXTRACT_LIMITS == {"message": 12, "document": 15}
+
+
+def test_sysinfo_extras_report_pointer_tools_and_python_version():
+    extras = sysinfo_payload_extras()
+    assert extras["capabilities"]["pointer_tools"] is pointer_tools_available()
+    assert extras["python_version"].count(".") == 2
+    parts = extras["python_version"].split(".")
+    assert all(part.isdigit() for part in parts)
+
+
+def test_pointer_tools_follows_whether_pyautogui_is_findable(monkeypatch):
+    import importlib.util
+
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: object() if name == "pyautogui" else None)
+    assert pointer_tools_available() is True
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    assert pointer_tools_available() is False

@@ -1,0 +1,57 @@
+{
+  "diagnosis": {
+    "sample": "<|channel>thought\\n...\\nAction: `read_file`\\nArgs: `path: \"README.md\"`\\nDescription: Read the content of README.md to",
+    "source": "scratchpad/verify5/c1_agent.json execute slip 3 (same on c2/c3)",
+    "why": "Executor never opened a brace. tag_strip unwrapped <|channel>thought to prose; JSON/truncated_close/literal rungs had nothing to close. Two sibling thought shapes on the same tapes: `read_file` for `README.md`, and `the first step (`read_file`)` plus the first file-like backtick."
+  },
+  "parse_rung": {
+    "name": "labeled",
+    "where": "extract_action_details only (after extract_json_object fails)",
+    "patterns": [
+      "Action: `tool` / Args: `key: \"value\"`",
+      "`tool` for `path`",
+      "first step (`tool`) + first file-like backtick"
+    ],
+    "guard": "path-taking tools without args.path are declined (verify6 dispatched those as KeyError 'path')",
+    "fixtures": [
+      "verify5_thought_backtick_for",
+      "verify5_thought_first_step_paren",
+      "verify5_labeled_action_args"
+    ]
+  },
+  "temperature": {
+    "before": "EXECUTE forwarded req.temperature (RunBody serde default 0.1) for every profile",
+    "after": {
+      "COMPACT": 0.1,
+      "STANDARD": 0.2
+    },
+    "reason": "Low temperature is what makes a 2B emit stable JSON.",
+    "unchanged": {
+      "PLAN": 0.1,
+      "VERIFY": 0.1,
+      "VERIFY retry": 0.0
+    }
+  },
+  "prompt_drift": {
+    "verdict": "regressed then restored",
+    "what": "Critic-lane ONE_OBJECT_RULE was prepended, so the compact default led with the rule and buried the worked example.",
+    "restore": "Worked example first, short rules after. prompts.rs test that WRITE_EXAMPLE parses with zero repairs is unchanged; added a test that the example precedes the rule."
+  },
+  "gates": {
+    "fmt": "ok",
+    "clippy": "ok (-D warnings)",
+    "test": "ok (lattice-agent unit + integration; new labeled tests + fixture rows passed)"
+  },
+  "live": {
+    "session": "/tmp/lattice-acc-119-verify6-DB096W",
+    "port": 4901,
+    "home": "/Users/parktaesoo",
+    "python": "/Users/parktaesoo/Downloads/Lattice AI/.venv/bin/python",
+    "model": "mlx-community/gemma-4-e2b-it-4bit",
+    "fresh_brain": "/tmp/lattice-acc-119-verify6-DB096W/data",
+    "files_written": "5/5 notes/summary.md 767 bytes",
+    "zero_byte_files": 0,
+    "strict_target_done_or_needs_review_with_file": "2/5",
+    "note": "Executor no longer dies before a tool call. labeled + fence_rescue wrote the file every run. 3/5 then FAILED via last-rung token_verdict FAIL after an unparseable critic (not an execute miss)."
+  }
+}

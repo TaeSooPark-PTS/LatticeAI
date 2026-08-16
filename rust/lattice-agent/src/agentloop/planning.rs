@@ -26,7 +26,7 @@ impl Runtime {
         let model_id = req.planning_model.as_deref();
         let context = format!(
             "{}\n\n[LANGUAGE HINT: {}]\nWorkspace root: {}{}\n\nUser request: {}",
-            self.deps.prompts.planner,
+            self.deps.prompts.planner_prompt(),
             req.language_hint,
             self.deps.workspace.root().display(),
             self.project_block(ctx),
@@ -41,6 +41,7 @@ impl Runtime {
                 context: &context,
                 max_tokens: self.deps.phase_budgets.plan_tokens,
                 temperature: 0.1,
+                stop: &[],
             })
             .await?;
         ctx.trace.llm_call("plan", model_id);

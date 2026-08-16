@@ -171,8 +171,20 @@ pub fn agent_loop_config(
 /// routes that would answer every path question wrongly is worse than not
 /// mounting them.
 pub fn agent_router(root: &Path, config: LoopConfig) -> Option<Router> {
+    agent_router_parts(root, config, true)
+}
+
+/// [`agent_router`], optionally omitting the loop half.
+///
+/// The product's `agents::router` already merges `loop_router` at
+/// `/rust/agent/{run,resume,approvals}`. Mounting it again here panics.
+pub fn agent_router_parts(root: &Path, config: LoopConfig, include_loop: bool) -> Option<Router> {
     match Workspace::new(root) {
-        Ok(workspace) => Some(lattice_agent::router(workspace, config)),
+        Ok(workspace) => Some(if include_loop {
+            lattice_agent::router(workspace, config)
+        } else {
+            lattice_agent::router::kernel_router(workspace)
+        }),
         Err(err) => {
             eprintln!(
                 "lattice-host: /rust/agent is unavailable — cannot use {} as the agent workspace: {err}",
@@ -195,9 +207,20 @@ pub fn native_router(
     agent: LoopConfig,
     jobs: Option<Arc<Scheduler>>,
 ) -> Router {
+    native_router_parts(db, agent_root, agent, jobs, true)
+}
+
+/// [`native_router`], with the loop omitted when the product already mounts it.
+pub fn native_router_parts(
+    db: PathBuf,
+    agent_root: &Path,
+    agent: LoopConfig,
+    jobs: Option<Arc<Scheduler>>,
+    include_loop: bool,
+) -> Router {
     let mut router =
         lattice_retrieval::router(db).merge(lattice_ingest::router(IngestApiConfig::default()));
-    if let Some(mounted) = agent_router(agent_root, agent) {
+    if let Some(mounted) = agent_router_parts(agent_root, agent, include_loop) {
         router = router.merge(mounted);
     }
     if let Some(scheduler) = jobs {

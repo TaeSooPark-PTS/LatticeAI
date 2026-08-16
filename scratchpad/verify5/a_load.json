@@ -1,0 +1,59 @@
+{
+  "status": 200,
+  "elapsed_s": 2.792478999996092,
+  "body": {
+    "status": "ok",
+    "message": "Success: mlx-community/gemma-4-e2b-it-4bit (mlx_lm)",
+    "model": "mlx-community/gemma-4-e2b-it-4bit",
+    "current": "mlx-community/gemma-4-e2b-it-4bit",
+    "engine": "local_mlx",
+    "installed_now": false,
+    "download": null,
+    "resolution": {
+      "input_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "engine": "local_mlx",
+      "provider": "local_mlx",
+      "resolved_model": "mlx-community/gemma-4-e2b-it-4bit",
+      "download_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "load_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "expected_current": "mlx-community/gemma-4-e2b-it-4bit",
+      "display_name": "mlx-community/gemma-4-e2b-it-4bit",
+      "metadata": {
+        "engine_hint": "local_mlx"
+      }
+    },
+    "downloaded": false,
+    "loaded": true,
+    "ready_to_chat": true,
+    "compatibility_status": "ok",
+    "smoke_test": {
+      "ok": true,
+      "status": "ok",
+      "reason": "ok",
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The user asked in Korean: \"한국어로 한 문장만 답해. 2+2는?\" (Answer in Korean in one sentence. 2+2 is?)\n2.  **Determine the Core Task:** Calculate $2+2$.\n3.  **Determine the Output Format Constraint:** The response must be in Korean and be a single sentence.\n4.  **Formulate the Answer:** $2+2=4$.\n5.  **Review Identity Constraints:** I am Lattice AI, a VLM running on Apple Silicon",
+      "profile": {
+        "model_id": "mlx-community/gemma-4-e2b-it-4bit",
+        "engine": "local_mlx",
+        "family": "gemma",
+        "template": "tokenizer_default_or_gemma",
+        "supports_vision": true,
+        "stop": [
+          "<end_of_turn>",
+          "</s>"
+        ],
+        "temperature": 0.2,
+        "top_p": 0.95,
+        "max_tokens": 4096,
+        "disable_draft": false,
+        "postprocess": [
+          "strip_role_tokens"
+        ],
+        "loaded": true,
+        "chat_compatible": true,
+        "quality_status": "ok",
+        "last_test_error": null,
+        "validated_at": 1786906424.3843231
+      }
+    }
+  }
+}

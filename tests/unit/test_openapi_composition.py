@@ -90,8 +90,8 @@ def test_every_committed_operation_has_exactly_one_family(spec, mapping):
         f"unmapped={sorted(set(keys) - set(mapping['operations']))[:10]} "
         f"orphans={sorted(set(mapping['operations']) - set(keys))[:10]}"
     )
-    assert len(keys) == mapping["source"]["operations"] == 455
-    assert len(spec["paths"]) == mapping["source"]["paths"] == 413
+    assert len(keys) == mapping["source"]["operations"] == 456
+    assert len(spec["paths"]) == mapping["source"]["paths"] == 414
 
 
 def test_family_names_are_the_plan_work_packages(mapping):
@@ -185,7 +185,7 @@ def test_committed_fragments_compose_into_the_committed_spec():
 def test_compose_cli_is_green_and_reports_what_it_proved(capsys):
     assert composer.main([]) == 0
     out = capsys.readouterr().out
-    assert "413 paths / 455 operations" in out
+    assert "414 paths / 456 operations" in out
     assert "byte-identical" in out
 
 
@@ -206,7 +206,7 @@ def test_generation_is_deterministic(spec, mapping, rendered, tmp_path):
 
 def test_generator_cli_writes_the_committed_tree(tmp_path, capsys):
     assert generator.main(["--out", str(tmp_path)]) == 0
-    assert "413 paths / 455 operations" in capsys.readouterr().out
+    assert "414 paths / 456 operations" in capsys.readouterr().out
     for path in generator.FRAGMENT_DIR.glob("*.json"):
         assert (tmp_path / path.name).read_text(encoding="utf-8") == path.read_text(encoding="utf-8")
 
@@ -270,7 +270,7 @@ def test_greedy_path_params_reach_the_family_that_must_port_them(mapping):
 def test_index_totals_and_hashes_describe_the_files_on_disk():
     index = generator.load_json(generator.FRAGMENT_DIR / generator.INDEX_NAME)
     assert index["serialization"] == generator.SERIALIZATION
-    assert index["totals"] == {"families": 13, "operations": 455, "paths": 413, "schemas": 171}
+    assert index["totals"] == {"families": 13, "operations": 456, "paths": 414, "schemas": 171}
     for entry in index["fragments"]:
         text = (generator.FRAGMENT_DIR / entry["file"]).read_text(encoding="utf-8")
         assert generator.sha256_text(text) == entry["sha256"]

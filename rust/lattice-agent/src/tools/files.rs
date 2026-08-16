@@ -39,6 +39,14 @@ const MAX_TODOS: usize = 50;
 pub fn write_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Value, ToolError> {
     let path = args::required_str(args, "path")?;
     let content = args::optional_str(args, "content", "")?;
+    // Missing/empty content must not land as a 0-byte success. Aliases
+    // (`content_source`/`text`/`body`) are skipped: live tape used
+    // `content_source` as a path, not the file text.
+    if content.is_empty() {
+        return Err(ToolError::tool(
+            "write_file needs args.content (the full file text). Nothing was written.",
+        ));
+    }
     let target = workspace.resolve(&path)?;
     let (content, _sanitize) = crate::sanitize::sanitize_write_content(&path, &content, "");
     if content.len() as u64 > MAX_FILE_BYTES {
@@ -238,11 +246,42 @@ mod tests {
     }
 
     #[test]
-    fn a_write_with_no_content_is_an_empty_file_not_a_refusal() {
+    fn a_write_with_missing_content_is_a_corrective_error_and_writes_nothing() {
         let (_dir, workspace) = workspace();
-        let result = write_file(&workspace, &args(json!({"path": "empty.py"}))).expect("write");
-        assert_eq!(result["bytes"], 0);
-        assert!(workspace.root().join("empty.py").is_file());
+        let error = write_file(
+            &workspace,
+            &args(json!({"path": "notes/summary.md", "content_source": "README.md"})),
+        )
+        .expect_err("missing content");
+        assert_eq!(
+            error.message,
+            "write_file needs args.content (the full file text). Nothing was written."
+        );
+        assert!(
+            !workspace.root().join("notes/summary.md").exists(),
+            "nothing was written"
+        );
+        assert!(
+            !workspace.root().join("notes").exists(),
+            "parents were not created either"
+        );
+    }
+
+    #[test]
+    fn a_write_with_empty_content_is_a_corrective_error_and_writes_nothing() {
+        let (_dir, workspace) = workspace();
+        std::fs::write(workspace.root().join("keep.md"), "keep").expect("seed");
+        let error = write_file(&workspace, &args(json!({"path": "keep.md", "content": ""})))
+            .expect_err("empty content");
+        assert_eq!(
+            error.message,
+            "write_file needs args.content (the full file text). Nothing was written."
+        );
+        assert_eq!(
+            std::fs::read_to_string(workspace.root().join("keep.md")).expect("read"),
+            "keep",
+            "existing file was not overwritten"
+        );
     }
 
     #[test]

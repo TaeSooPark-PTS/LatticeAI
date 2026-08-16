@@ -24,7 +24,9 @@ export type FakeChatFrame =
   | { kind: "chunk"; text: string }
   | { kind: "trace"; trace: unknown }
   | { kind: "agent"; agent: Record<string, unknown> }
-  | { kind: "agentStep"; step: Record<string, unknown> };
+  | { kind: "agentStep"; step: Record<string, unknown> }
+  | { kind: "hybridContext"; frame: Record<string, unknown> }
+  | { kind: "hybridDone"; frame: Record<string, unknown> };
 
 export type FakeChatHandlers = {
   signal?: AbortSignal;
@@ -32,6 +34,8 @@ export type FakeChatHandlers = {
   onTrace?: (trace: unknown) => void;
   onAgent?: (agent: Record<string, unknown>) => void;
   onAgentStep?: (step: Record<string, unknown>) => void;
+  onHybridContext?: (frame: Record<string, unknown>) => void;
+  onHybridDone?: (frame: Record<string, unknown>) => void;
 };
 
 export type FakeChatResult = {
@@ -41,6 +45,8 @@ export type FakeChatResult = {
   agent: Record<string, unknown> | null;
   contextQuality?: unknown;
   grounding?: unknown;
+  hybridContext?: unknown;
+  hybridDone?: unknown;
   malformedFrames: number;
   error?: string;
 };
@@ -99,6 +105,13 @@ export function fakeChatStream({
       } else if (frame.kind === "agent") {
         agent = frame.agent;
         handlers.onAgent?.(frame.agent);
+      } else if (frame.kind === "hybridContext") {
+        handlers.onHybridContext?.(frame.frame);
+      } else if (frame.kind === "hybridDone") {
+        if (typeof frame.frame.answer === "string" && frame.frame.answer) {
+          text = frame.frame.answer;
+        }
+        handlers.onHybridDone?.(frame.frame);
       } else {
         handlers.onAgentStep?.(frame.step);
       }

@@ -33,6 +33,7 @@ lattice-agent = { workspace = true }
 lattice-auth = { workspace = true }
 lattice-platform = { workspace = true }
 lattice-chat = { workspace = true }
+tower = { version = "0.5", default-features = false }
 # Only for kill(2)/SIGTERM on unix; every other platform falls back to the
 # std `Child::kill` path.
 libc = { workspace = true }

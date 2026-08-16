@@ -184,6 +184,122 @@ pub struct HybridPolicy {
     pub allow_multimodal: bool,
     /// Confidence floor for heuristic extraction.
     pub min_extraction_confidence: f64,
+    /// When a `cloud_allowed` turn actually leaves the machine.
+    pub escalation: Escalation,
+}
+
+/// How aggressively a `cloud_allowed` turn is sent to the cloud.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Escalation {
+    /// Every turn — the pre-11.9 behaviour.
+    Always,
+    /// Only when the local lane cannot answer honestly.
+    Auto,
+    /// Only when the user prefixes `/cloud ` or `클라우드:`.
+    Manual,
+}
+
+impl Escalation {
+    /// The wire / file value.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Always => "always",
+            Self::Auto => "auto",
+            Self::Manual => "manual",
+        }
+    }
+
+    /// Parse a file / request token; unknown input is the default (`auto`).
+    pub fn parse(value: &str) -> Self {
+        match value.trim().to_lowercase().as_str() {
+            "always" | "all" | "every" => Self::Always,
+            "manual" | "explicit" => Self::Manual,
+            _ => Self::Auto,
+        }
+    }
+}
+
+/// Why this turn was sent to the cloud. Carried on `hybrid_context` and egress.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EscalationReason {
+    /// Policy is `always`.
+    Always,
+    /// No local MLX model is loaded.
+    NoLocalModel,
+    /// `assemble_context` / context-quality matched fewer than the threshold.
+    WeakLocalContext,
+    /// The user prefixed `/cloud ` or `클라우드:`.
+    ExplicitRequest,
+}
+
+impl EscalationReason {
+    /// The `reason` token the SPA / egress record carry.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Always => "always",
+            Self::NoLocalModel => "no_local_model",
+            Self::WeakLocalContext => "weak_local_context",
+            Self::ExplicitRequest => "explicit_request",
+        }
+    }
+}
+
+/// Matched-node floor below which `auto` treats local context as too thin.
+pub const WEAK_CONTEXT_NODE_THRESHOLD: i64 = 2;
+
+/// Whether the user asked for the cloud lane by prefix.
+pub fn is_explicit_cloud_request(message: &str) -> bool {
+    let trimmed = message.trim_start();
+    trimmed == "/cloud"
+        || trimmed.starts_with("/cloud ")
+        || trimmed.starts_with("/cloud\t")
+        || trimmed.starts_with("/cloud\n")
+        || trimmed.starts_with("클라우드:")
+}
+
+/// Strip a leading `/cloud ` / `클라우드:` so the provider sees the question.
+pub fn strip_cloud_prefix(message: &str) -> &str {
+    let trimmed = message.trim_start();
+    for prefix in ["/cloud ", "/cloud\t", "/cloud\n", "클라우드:"] {
+        if let Some(rest) = trimmed.strip_prefix(prefix) {
+            return rest.trim_start();
+        }
+    }
+    if trimmed == "/cloud" {
+        return "";
+    }
+    message
+}
+
+/// Decide whether this turn escalates, and why.
+pub fn escalation_reason(
+    escalation: Escalation,
+    no_local_model: bool,
+    matched_nodes: i64,
+    message: &str,
+) -> Option<EscalationReason> {
+    let explicit = is_explicit_cloud_request(message);
+    match escalation {
+        Escalation::Always => Some(if explicit {
+            EscalationReason::ExplicitRequest
+        } else if no_local_model {
+            EscalationReason::NoLocalModel
+        } else {
+            EscalationReason::Always
+        }),
+        Escalation::Auto => {
+            if explicit {
+                Some(EscalationReason::ExplicitRequest)
+            } else if no_local_model {
+                Some(EscalationReason::NoLocalModel)
+            } else if matched_nodes < WEAK_CONTEXT_NODE_THRESHOLD {
+                Some(EscalationReason::WeakLocalContext)
+            } else {
+                None
+            }
+        }
+        Escalation::Manual => explicit.then_some(EscalationReason::ExplicitRequest),
+    }
 }
 
 impl Default for HybridPolicy {
@@ -200,6 +316,7 @@ impl Default for HybridPolicy {
             auto_commit: false,
             allow_multimodal: false,
             min_extraction_confidence: 0.55,
+            escalation: Escalation::Auto,
         }
     }
 }
@@ -258,6 +375,16 @@ pub fn resolve_hybrid_policy(
             Some(Value::String(text)) => text.trim().parse::<f64>().unwrap_or(0.55),
             _ => 0.55,
         },
+        escalation: policy
+            .get("escalation")
+            .and_then(Value::as_str)
+            .map(Escalation::parse)
+            .or_else(|| {
+                data.get("escalation")
+                    .and_then(Value::as_str)
+                    .map(Escalation::parse)
+            })
+            .unwrap_or(Escalation::Auto),
     }
 }
 
@@ -424,5 +551,85 @@ mod tests {
             Err(_) => NetworkMode::LocalOnly,
         };
         assert_eq!(env_default_mode(), expected);
+    }
+
+    #[test]
+    fn escalation_defaults_to_auto_and_parses_every_token() {
+        assert_eq!(Escalation::parse(""), Escalation::Auto);
+        assert_eq!(Escalation::parse("AUTO"), Escalation::Auto);
+        assert_eq!(Escalation::parse("always"), Escalation::Always);
+        assert_eq!(Escalation::parse("manual"), Escalation::Manual);
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(
+            resolve_hybrid_policy(dir.path(), None, None).escalation,
+            Escalation::Auto
+        );
+        let dir = dir_with(
+            HYBRID_POLICY_FILE,
+            json!({"default": {"escalation": "manual"}}),
+        );
+        assert_eq!(
+            resolve_hybrid_policy(dir.path(), None, None).escalation,
+            Escalation::Manual
+        );
+        let dir = dir_with(HYBRID_POLICY_FILE, json!({"escalation": "always"}));
+        assert_eq!(
+            resolve_hybrid_policy(dir.path(), None, None).escalation,
+            Escalation::Always
+        );
+    }
+
+    #[test]
+    fn auto_escalates_only_when_the_local_lane_is_thin() {
+        assert_eq!(
+            escalation_reason(Escalation::Auto, true, 10, "hello"),
+            Some(EscalationReason::NoLocalModel)
+        );
+        assert_eq!(
+            escalation_reason(Escalation::Auto, false, 0, "hello"),
+            Some(EscalationReason::WeakLocalContext)
+        );
+        assert_eq!(
+            escalation_reason(Escalation::Auto, false, 1, "hello"),
+            Some(EscalationReason::WeakLocalContext)
+        );
+        assert_eq!(escalation_reason(Escalation::Auto, false, 2, "hello"), None);
+        assert_eq!(
+            escalation_reason(Escalation::Auto, false, 8, "/cloud 오늘의 상식"),
+            Some(EscalationReason::ExplicitRequest)
+        );
+        assert_eq!(
+            escalation_reason(Escalation::Auto, false, 8, "클라우드: 한 줄"),
+            Some(EscalationReason::ExplicitRequest)
+        );
+    }
+
+    #[test]
+    fn manual_is_prefix_only_and_always_fires_every_turn() {
+        assert_eq!(
+            escalation_reason(Escalation::Manual, true, 0, "hello"),
+            None
+        );
+        assert_eq!(
+            escalation_reason(Escalation::Manual, false, 8, "/cloud x"),
+            Some(EscalationReason::ExplicitRequest)
+        );
+        assert_eq!(
+            escalation_reason(Escalation::Always, false, 8, "hello"),
+            Some(EscalationReason::Always)
+        );
+        assert_eq!(
+            escalation_reason(Escalation::Always, true, 8, "hello"),
+            Some(EscalationReason::NoLocalModel)
+        );
+    }
+
+    #[test]
+    fn the_cloud_prefix_is_stripped_from_the_question() {
+        assert_eq!(strip_cloud_prefix("/cloud 오늘의 상식"), "오늘의 상식");
+        assert_eq!(strip_cloud_prefix("클라우드: 한 줄"), "한 줄");
+        assert_eq!(strip_cloud_prefix("그냥 질문"), "그냥 질문");
+        assert!(is_explicit_cloud_request("/cloud"));
+        assert!(!is_explicit_cloud_request("/cloudy"));
     }
 }

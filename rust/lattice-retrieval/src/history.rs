@@ -91,7 +91,13 @@ impl HistoryScope {
             let allowed: Vec<&String> = allowed.iter().filter(|item| !item.is_empty()).collect();
             if !allowed.is_empty() {
                 let placeholders = vec!["?"; allowed.len()].join(",");
-                clauses.push(if self.include_legacy_global {
+                // NULL/blank is default/personal visibility. A named tenant
+                // stays strict unless the caller opted into the legacy pool.
+                let sees_null = self.include_legacy_global
+                    || allowed
+                        .iter()
+                        .any(|id| *id == lattice_core::DEFAULT_WORKSPACE_ID);
+                clauses.push(if sees_null {
                     format!(
                         "(workspace_id IN ({placeholders}) OR workspace_id IS NULL \
                          OR workspace_id = '')"
@@ -169,7 +175,16 @@ pub fn history(
         params.push(Value::from(limit.max(1)));
     }
 
-    let mut statement = conn.prepare(&sql)?;
+    let mut statement = match conn.prepare(&sql) {
+        Ok(statement) => statement,
+        Err(err) => {
+            let error = CoreError::from(err);
+            if error.is_missing_table("conversation_messages") {
+                return Ok(Vec::new());
+            }
+            return Err(error);
+        }
+    };
     let bound: Vec<Box<dyn rusqlite::ToSql>> = params
         .iter()
         .map(|value| -> Box<dyn rusqlite::ToSql> {
@@ -181,7 +196,16 @@ pub fn history(
         })
         .collect();
     let refs: Vec<&dyn rusqlite::ToSql> = bound.iter().map(|value| value.as_ref()).collect();
-    let rows = statement.query_map(refs.as_slice(), row_to_item)?;
+    let rows = match statement.query_map(refs.as_slice(), row_to_item) {
+        Ok(rows) => rows,
+        Err(err) => {
+            let error = CoreError::from(err);
+            if error.is_missing_table("conversation_messages") {
+                return Ok(Vec::new());
+            }
+            return Err(error);
+        }
+    };
     Ok(rows.filter_map(Result::ok).collect())
 }
 
@@ -617,6 +641,31 @@ mod tests {
             }),
             0
         );
+        // NULL/blank workspace_id is personal visibility.
+        assert_eq!(
+            scoped(HistoryScope {
+                allowed_workspaces: Some(vec![lattice_core::DEFAULT_WORKSPACE_ID.into()]),
+                ..Default::default()
+            }),
+            2,
+            "personal matches the NULL-workspace row and the blank one"
+        );
+        assert_eq!(
+            scoped(HistoryScope {
+                allowed_workspaces: Some(vec!["team".into()]),
+                ..Default::default()
+            }),
+            0,
+            "a named workspace does not leak unstamped rows"
+        );
+    }
+
+    #[test]
+    fn a_missing_conversation_table_is_an_empty_history() {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = Connection::open(dir.path().join("empty.sqlite")).unwrap();
+        let rows = history(&conn, None, None, &HistoryScope::owner()).unwrap();
+        assert!(rows.is_empty());
     }
 
     #[test]

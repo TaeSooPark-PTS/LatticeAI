@@ -55,7 +55,16 @@ const DUMP_ORDER: [(&str, &str); 14] = [
 ];
 
 /// Objects `sqlite_master` may hold that the dump deliberately skips.
-const SKIPPED: [&str; 3] = ["kgv2_nodes", "kgv2_edges", FTS_TABLE];
+///
+/// `conversation_messages` is platform state bootstrap now creates so
+/// readers do not 500 on a fresh Brain. It is not a graph-write table and
+/// is not in the write-engine goldens.
+const SKIPPED: [&str; 4] = [
+    "kgv2_nodes",
+    "kgv2_edges",
+    FTS_TABLE,
+    "conversation_messages",
+];
 const SKIPPED_PREFIXES: [&str; 2] = ["node_fts_", "sqlite_"];
 
 /// How a `BLOB` column is rendered.

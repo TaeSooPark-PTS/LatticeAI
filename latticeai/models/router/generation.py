@@ -10,7 +10,7 @@ mistaken for the model's answer.
 import asyncio
 import base64
 import io
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, List, Optional
 
 from PIL import Image
 
@@ -20,7 +20,46 @@ from ._contract import RouterCore as _Core
 from .branding import SYSTEM_PROMPT, _compose_system, normalize_branding
 from .catalog import CloudModel
 from .errors import ModelStreamError, _stream_failure
-from .loading import _mlx_sampler, executor
+from .loading import _mlx_sampler, apply_stop_strings, executor
+
+
+def _stream_until_stop(
+    model,
+    tokenizer,
+    prompt: str,
+    image,
+    max_tokens: int,
+    sampler,
+    draft_model,
+    use_vlm: bool,
+    stops: List[str],
+) -> str:
+    """Generate on the worker thread, ending at the first stop string.
+
+    The buffered backends have no stop-string argument, so honouring one means
+    driving the *streaming* backend and breaking out of it. That is the whole
+    difference between a stop string and trimming the answer afterwards: the
+    tokens past the stop are never produced, which is time a 2B model would
+    otherwise spend explaining a tool call it has already emitted.
+
+    Runs inside :data:`executor`, like every other MLX call, so the GPU stream
+    stays on one thread.
+    """
+    if use_vlm:
+        from mlx_vlm import stream_generate as vlm_stream
+
+        chunks = vlm_stream(model, tokenizer, prompt=prompt, image=image, max_tokens=max_tokens, sampler=sampler, draft_model=draft_model, draft_kind="mtp")
+    else:
+        from mlx_lm import stream_generate as lm_stream
+
+        chunks = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=sampler, draft_model=draft_model)
+    text = ""
+    for chunk in chunks:
+        piece = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
+        text += piece
+        if any(marker in text for marker in stops):
+            break
+    return apply_stop_strings(text, stops)
 
 
 class _GenerationMixin(_Core):
@@ -65,12 +104,22 @@ class _GenerationMixin(_Core):
         max_tokens: int = 4096,
         temperature: float = 0.2,
         image_data: Optional[str] = None,
+        stop: Optional[List[str]] = None,
     ) -> str:
-        """Generate with a request-scoped model without changing the default."""
+        """Generate with a request-scoped model without changing the default.
+
+        ``stop`` ends the reply at the first of the given strings. Local
+        generation switches to the streaming backend to do it, so the tokens
+        after the stop are never produced rather than merely trimmed; the cloud
+        path forwards the list to the provider, which stops server-side. Absent
+        or empty means what it always meant — generate to ``max_tokens``.
+        """
         _selected, cached = self._model_snapshot(model_id)
         if cached is None:
             return "No model."
-        return await self._generate_cached(cached, message, context, max_tokens, temperature, image_data)
+        return await self._generate_cached(
+            cached, message, context, max_tokens, temperature, image_data, stop
+        )
 
     async def generate(
         self,
@@ -79,8 +128,11 @@ class _GenerationMixin(_Core):
         max_tokens: int = 4096,
         temperature: float = 0.2,
         image_data: Optional[str] = None,
+        stop: Optional[List[str]] = None,
     ) -> str:
-        return await self.generate_as(None, message, context, max_tokens, temperature, image_data)
+        return await self.generate_as(
+            None, message, context, max_tokens, temperature, image_data, stop
+        )
 
     async def _generate_cached(
         self,
@@ -90,9 +142,12 @@ class _GenerationMixin(_Core):
         max_tokens: int,
         temperature: float,
         image_data: Optional[str],
+        stop: Optional[List[str]] = None,
     ) -> str:
         if isinstance(cached, CloudModel):
-            return await self._cloud_generate(cached, message, context, max_tokens, temperature)
+            return await self._cloud_generate(
+                cached, message, context, max_tokens, temperature, stop
+            )
 
         model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(cached)
         use_vlm = loader_kind == "mlx_vlm"
@@ -101,27 +156,38 @@ class _GenerationMixin(_Core):
             if use_vlm
             else self._build_prompt(message, context, tokenizer)
         )
-        
+        stops = [marker for marker in (stop or []) if marker]
+
         loop = asyncio.get_event_loop()
-        
+
         def _gen():
             import mlx.core as mx  # type: ignore[no-redef]
 
             mx.set_default_device(mx.gpu)  # type: ignore[arg-type]
+            # Decoded here, not above: base64 + PIL is CPU work, and this
+            # function is the part that runs off the event loop.
+            image = self._prep_image(image_data) if image_data else None
+            sampler = _mlx_sampler(temperature)
+            if stops:
+                return _stream_until_stop(
+                    model, tokenizer, prompt, image, max_tokens, sampler, draft_model,
+                    use_vlm, stops,
+                )
             if use_vlm:
                 from mlx_vlm import generate as vlm_gen
-                return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+                return vlm_gen(model, tokenizer, prompt=prompt, image=image, max_tokens=max_tokens, sampler=sampler, draft_model=draft_model, draft_kind="mtp")
             from mlx_lm import generate as lm_gen
-            return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
+            return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=sampler, draft_model=draft_model)
         result = await loop.run_in_executor(executor, _gen)
         # mlx-vlm might return a GenerationResult object; extract the text
-        if hasattr(result, "text"):
-            return normalize_branding(result.text)
-        return normalize_branding(str(result))
+        text = result.text if hasattr(result, "text") else str(result)
+        return normalize_branding(apply_stop_strings(text, stops))
 
-    async def _cloud_generate(self, cloud: CloudModel, message: str, context: Optional[str], max_tokens: int, temperature: float) -> str:
+    async def _cloud_generate(self, cloud: CloudModel, message: str, context: Optional[str], max_tokens: int, temperature: float, stop: Optional[List[str]] = None) -> str:
         context = normalize_branding(context)
         system = _compose_system(SYSTEM_PROMPT, context)
+        stops = [marker for marker in (stop or []) if marker]
+        extra = {"stop": stops} if stops else {}
         try:
             response = await cloud.client.chat.completions.create(
                 model=cloud.model,
@@ -131,6 +197,7 @@ class _GenerationMixin(_Core):
                 ],
                 max_tokens=max_tokens,
                 temperature=temperature,
+                **extra,
             )
         except Exception as e:
             raise RuntimeError(self._local_server_error_hint(cloud, e)) from e

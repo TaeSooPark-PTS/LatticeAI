@@ -96,6 +96,9 @@ pub struct OneDoorState {
     /// The loop orchestrator's configuration, already bound to
     /// [`Self::governance`] and [`Self::hooks`].
     pub loop_config: LoopConfig,
+    /// One approval table for folder ingest / `/local/*`, redeemed by
+    /// `/permissions/approve`. Two tables was the N7 404.
+    pub local_approvals: Arc<lattice_ingest::local_files_api::LocalApprovals>,
 }
 
 impl OneDoorState {
@@ -154,11 +157,12 @@ impl OneDoorState {
             ))
         })?;
 
-        let workspace_state =
-            WorkspaceState::new(Arc::clone(&auth), &data_dir).with_deps(WorkspaceDeps {
+        let workspace_state = WorkspaceState::new(Arc::clone(&auth), &data_dir)
+            .with_deps(WorkspaceDeps {
                 seam: lattice_platform::workspace::GraphSeam::Native(graph.clone()),
                 ..WorkspaceDeps::default()
-            });
+            })
+            .with_worker(seam.clone());
         let resolver = Arc::new(workspace_state.resolver());
 
         // One store, two families. `GovernanceState::open` would build a second
@@ -219,6 +223,7 @@ impl OneDoorState {
             governance,
             hooks,
             loop_config,
+            local_approvals: lattice_ingest::local_files_api::LocalApprovals::new(),
         })
     }
 

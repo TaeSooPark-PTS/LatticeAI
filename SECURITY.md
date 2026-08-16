@@ -3,23 +3,26 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 11.8.0. Security
+The public Git tree keeps release history from 11.0.0 through 11.9.0. Security
 support follows that same product era: **only 11.x receives fixes.**
 
 11.6.0 rebuilt the product server in Rust and reduced the Python package to a
-pure-compute AI worker; 11.7.0 closed the holes that door disclosed, and 11.8.0
-narrowed the worker further — from 28 routes to **19**. A fix for the 11.8 line
-is a fix to a different program than the one 10.x and 9.x shipped, so
-backporting it would be a claim this project cannot honour. Those release notes
-stay in the tree as history; the support line does not.
+pure-compute AI worker; 11.7.0 closed the holes that door disclosed, 11.8.0
+narrowed the worker further — from 28 routes to **19** — and 11.9.0 kept that
+19-route worker while wiring the hybrid cloud lane and the local MCP server
+that sit on the host. A fix for the 11.9 line is a fix to a different program
+than the one 10.x and 9.x shipped, so backporting it would be a claim this
+project cannot honour. Those release notes stay in the tree as history; the
+support line does not.
 
 | Version | Support |
 | --- | --- |
-| 11.8.x (latest) | Supported |
+| 11.9.x (latest) | Supported |
+| 11.8.x | Supported |
 | 11.7.x | Supported |
 | 11.6.x | Supported |
 | 11.5.x | Supported |
@@ -57,7 +60,9 @@ is an AI worker reached only over loopback. **11.8.0 narrowed that worker from
 end to end — route, implementation, allowlist entry and gateway table — and
 negative tests now assert that the gateway no longer forwards them. A route
 that nothing calls is still an attack surface, so the smallest honest worker is
-the one that answers only what the product actually asks for.
+the one that answers only what the product actually asks for. 11.9.0 did not
+grow that surface; `/worker/sysinfo` gained additive `capabilities` and
+`python_version` fields on the same route.
 
 ### Default Secure Settings
 
@@ -147,7 +152,10 @@ the one that answers only what the product actually asks for.
   require their declared policy, capability, consent, and scope checks.
 - Permission requests are written atomically with private permissions. External
   notifications contain only a token hint and an optional configured review UI
-  link, never the full approval token.
+  link, never the full approval token. **11.9.0 unifies those local approval
+  tokens** (`LocalApprovals`): a folder ingest that the trusted owner approved
+  is redeemable at `/permissions/approve` rather than carrying a second,
+  endpoint-private token.
 
 ### What 11.8.0 Deleted, And Why It Is Not A Weakening
 
@@ -180,6 +188,27 @@ External communication requires explicit configuration and user/admin action:
 - Docker/Postgres scale setup;
 - update checks;
 - marketplace or remote registry refresh.
+
+**Cloud turns are audited and proposed, not silently written (11.9.0).** Every
+cloud turn writes a `cloud_egress` record *before* the provider is called,
+naming provider, model, and the escalation reason — shape, never content.
+Knowledge extracted from a cloud answer is staged as a Review Center
+`kg_cloud_expansion` proposal; the graph changes only when a person approves
+it (or when `auto_commit` is explicitly enabled, default off).
+
+**Two credential modes, one of them live-verified without billing.**
+`api_key` is an OpenAI-compatible adapter. This release contract-tested it
+against a mock server and never live-called it — there was no billing budget
+for that path. `cli_oauth` uses a locally OAuth-authenticated CLI
+(Antigravity `agy` → gemini-3.7-flash, `grok` → grok-4.6), spawned in a
+neutral temp cwd with a 120s timeout; that path was live-verified with zero
+API billing. Resolution is `cloud_provider.json` → env key → `agy` → `grok`
+→ none. A per-request `network_mode: "local_only"` always wins over the
+escalation policy (`auto` default / `manual` / `always`).
+
+The MCP surface at `POST /mcp` is a real streamable-HTTP JSON-RPC server on
+the host. Governance refusals are JSON-RPC errors. `/mcp` is outside the
+OpenAPI product contract by design; it is not a second, ungoverned door.
 
 Web-page capture additionally resolves and pins public IPs, rejects private and
 reserved address classes, rechecks every redirect, ignores proxy environment

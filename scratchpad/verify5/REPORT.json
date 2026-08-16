@@ -1,0 +1,57 @@
+{
+  "fix": {
+    "file": "rust/lattice-agent/src/tools/files.rs",
+    "fn": "write_file",
+    "lines": "39-49",
+    "empty_check": "45-49",
+    "message": "write_file needs args.content (the full file text). Nothing was written.",
+    "behavior": "missing or empty-string args.content returns ToolError before resolve/create_dir_all/write; the step is an error, not {path, bytes: 0}"
+  },
+  "alias_decision": {
+    "shipped": false,
+    "aliases_considered": ["content_source", "text", "body"],
+    "reason": "not trivially safe: verify4 live tape used content_source as a path (README.md), not the file text. Accepting it would write the filename and look like success."
+  },
+  "tests": [
+    "tools::files::tests::a_write_with_missing_content_is_a_corrective_error_and_writes_nothing",
+    "tools::files::tests::a_write_with_empty_content_is_a_corrective_error_and_writes_nothing"
+  ],
+  "gates": {
+    "fmt": "ok",
+    "clippy": "ok (-D warnings)",
+    "test": "ok (lattice-agent unit + integration; new tests passed)"
+  },
+  "live": {
+    "session": "/tmp/lattice-acc-119-verify5-CnkTzK",
+    "port": 4900,
+    "home": "/Users/parktaesoo",
+    "python": "/Users/parktaesoo/Downloads/Lattice AI/.venv/bin/python",
+    "model": "mlx-community/gemma-4-e2b-it-4bit",
+    "fresh_brain": "/tmp/lattice-acc-119-verify5-CnkTzK/data",
+    "success_no_zero_byte_writes": true,
+    "note": "Executor never dispatched write_file: three parse_error steps then critic UNAVAILABLE → NEEDS_REVIEW. Planner named content (not content_source). No notes/summary.md on disk after any run.",
+    "attempts": [
+      {
+        "attempt": 1,
+        "final_state": "NEEDS_REVIEW",
+        "llm_calls": 6,
+        "file_bytes": null,
+        "file_exists": false
+      },
+      {
+        "attempt": 2,
+        "final_state": "NEEDS_REVIEW",
+        "llm_calls": 6,
+        "file_bytes": null,
+        "file_exists": false
+      },
+      {
+        "attempt": 3,
+        "final_state": "NEEDS_REVIEW",
+        "llm_calls": 6,
+        "file_bytes": null,
+        "file_exists": false
+      }
+    ]
+  }
+}

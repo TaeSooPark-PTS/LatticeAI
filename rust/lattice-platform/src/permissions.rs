@@ -38,6 +38,64 @@ const ACTION_LABELS: &[(&str, &str)] = &[
 
 const TTL_SECONDS: f64 = 5.0 * 60.0;
 
+/// A minted local-files token the `/permissions/*` routes can redeem.
+///
+/// Folder ingest (and `/local/{list,read,write}`) keep their table in
+/// `lattice-ingest::LocalApprovals`. The product UI approves those tokens
+/// here, so this process holds one extra table rather than two that cannot
+/// see each other.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalTokenSnapshot {
+    /// Canonical path the probe bound.
+    pub path: String,
+    /// `list` / `read` / `write`.
+    pub action: String,
+    /// Owner identity (empty for the trusted local owner).
+    pub user_email: String,
+    /// First eight characters of the raw token — the Act inbox key.
+    pub token_hint: String,
+}
+
+/// Status of a local-files token, including expiry.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LocalTokenStatus {
+    /// Snapshot fields the status/deny responses echo.
+    pub snapshot: LocalTokenSnapshot,
+    /// Whether the token has already been approved.
+    pub approved: bool,
+    /// Unix seconds; the router compares this with now.
+    pub expires_at: f64,
+}
+
+/// One pending row for `/permissions/pending`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LocalTokenPending {
+    /// Act-inbox key (the 8-char hint).
+    pub hint: String,
+    /// Canonical path.
+    pub path: String,
+    /// `list` / `read` / `write`.
+    pub action: String,
+    /// Owner identity.
+    pub user_email: String,
+    /// Already approved or still waiting.
+    pub approved: bool,
+    /// Remaining TTL, seconds.
+    pub expires_in: i64,
+}
+
+/// The local-files approval table, as the permissions router sees it.
+pub trait LocalTokenTable: Send + Sync {
+    /// Mark the token approved. `None` if it is missing or expired.
+    fn approve_record(&self, token: &str) -> Option<LocalTokenSnapshot>;
+    /// Drop the token. `None` if it was never minted (or already gone).
+    fn deny_record(&self, token: &str) -> Option<LocalTokenSnapshot>;
+    /// Look up without mutating. Expired records are still returned.
+    fn status_of(&self, token: &str) -> Option<LocalTokenStatus>;
+    /// Non-expired records, for the Act inbox.
+    fn pending_records(&self) -> Vec<LocalTokenPending>;
+}
+
 /// Shared permission state used by local-file and knowledge routers.
 #[derive(Clone)]
 pub struct PermissionGateway {
@@ -209,6 +267,16 @@ impl PermissionGateway {
     }
 }
 
+fn refuse_other_owner(record_email: &str, user_email: &str) -> Result<(), Response> {
+    if record_email != user_email {
+        return Err(detail_error(
+            StatusCode::FORBIDDEN,
+            "다른 사용자의 승인 상태는 조회할 수 없습니다.",
+        ));
+    }
+    Ok(())
+}
+
 fn action_label(action: &str) -> &str {
     ACTION_LABELS
         .iter()
@@ -261,6 +329,8 @@ pub struct PermissionsState {
     pub auth: Arc<AuthState>,
     /// Shared gateway (also handed to local-file families).
     pub gateway: PermissionGateway,
+    /// Folder-ingest / `/local/*` tokens minted in `LocalApprovals`.
+    pub local_tokens: Option<Arc<dyn LocalTokenTable>>,
 }
 
 impl PermissionsState {
@@ -269,7 +339,14 @@ impl PermissionsState {
         Self {
             auth,
             gateway: PermissionGateway::open(data_dir),
+            local_tokens: None,
         }
+    }
+
+    /// Redeem `LocalApprovals` tokens through this router.
+    pub fn with_local_tokens(mut self, table: Arc<dyn LocalTokenTable>) -> Self {
+        self.local_tokens = Some(table);
+        self
     }
 }
 
@@ -332,6 +409,24 @@ async fn pending(State(state): State<PermissionsState>, headers: HeaderMap) -> R
             }),
         );
     }
+    if let Some(table) = &state.local_tokens {
+        for item in table.pending_records() {
+            if result.contains_key(&item.hint) {
+                continue;
+            }
+            result.insert(
+                item.hint,
+                json!({
+                    "path": item.path,
+                    "action": item.action,
+                    "action_label": action_label(&item.action),
+                    "user_email": item.user_email,
+                    "approved": item.approved,
+                    "expires_in": item.expires_in,
+                }),
+            );
+        }
+    }
     let count = result.len();
     ok(&json!({"pending": Value::Object(result), "count": count}))
 }
@@ -354,6 +449,18 @@ async fn approve(
         .lock()
         .unwrap_or_else(|error| error.into_inner());
     let Some(record) = approvals.get_mut(&key) else {
+        drop(approvals);
+        if let Some(table) = &state.local_tokens {
+            if let Some(snap) = table.approve_record(&token) {
+                return ok(&json!({
+                    "ok": true,
+                    "token_hint": snap.token_hint,
+                    "path": snap.path,
+                    "action": snap.action,
+                    "user_email": snap.user_email,
+                }));
+            }
+        }
         return detail_error(StatusCode::NOT_FOUND, "토큰이 없거나 만료되었습니다.");
     };
     if record
@@ -402,6 +509,17 @@ async fn deny(
         .remove(&key);
     state.gateway.queue_remove(&key);
     let Some(record) = record else {
+        if let Some(table) = &state.local_tokens {
+            if let Some(snap) = table.deny_record(&token) {
+                return ok(&json!({
+                    "ok": true,
+                    "denied": true,
+                    "token_hint": snap.token_hint,
+                    "path": snap.path,
+                    "action": snap.action,
+                }));
+            }
+        }
         return detail_error(StatusCode::NOT_FOUND, "토큰이 없거나 이미 처리되었습니다.");
     };
     ok(&json!({
@@ -433,6 +551,33 @@ async fn status(
         .lock()
         .unwrap_or_else(|error| error.into_inner());
     let Some(record) = approvals.get(&key) else {
+        drop(approvals);
+        if let Some(table) = &state.local_tokens {
+            if let Some(status) = table.status_of(&token) {
+                if let Err(refusal) =
+                    refuse_other_owner(&status.snapshot.user_email, &identity.email)
+                {
+                    return refusal;
+                }
+                if status.expires_at < now {
+                    return ok(&json!({
+                        "status": "expired",
+                        "token_hint": status.snapshot.token_hint,
+                    }));
+                }
+                if status.approved {
+                    return ok(&json!({
+                        "status": "approved",
+                        "token_hint": status.snapshot.token_hint,
+                    }));
+                }
+                return ok(&json!({
+                    "status": "pending",
+                    "token_hint": status.snapshot.token_hint,
+                    "expires_in": (status.expires_at - now).round() as i64,
+                }));
+            }
+        }
         return ok(&json!({
             "status": "denied_or_expired",
             "token_hint": PermissionGateway::token_hint(&token),
@@ -463,4 +608,84 @@ async fn status(
         "token_hint": PermissionGateway::token_hint(&token),
         "expires_in": (expires_at - now).round() as i64,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    struct FakeLocal {
+        tokens: Mutex<HashMap<String, LocalTokenStatus>>,
+    }
+
+    impl FakeLocal {
+        fn with(token: &str, email: &str) -> Arc<Self> {
+            let hint = token.chars().take(8).collect::<String>();
+            let status = LocalTokenStatus {
+                snapshot: LocalTokenSnapshot {
+                    path: "/tmp/notes".into(),
+                    action: "read".into(),
+                    user_email: email.into(),
+                    token_hint: hint.clone(),
+                },
+                approved: false,
+                expires_at: now_secs() + 300.0,
+            };
+            let mut tokens = HashMap::new();
+            tokens.insert(token.to_string(), status.clone());
+            tokens.insert(hint, status);
+            Arc::new(Self {
+                tokens: Mutex::new(tokens),
+            })
+        }
+    }
+
+    impl LocalTokenTable for FakeLocal {
+        fn approve_record(&self, token: &str) -> Option<LocalTokenSnapshot> {
+            let mut tokens = self.tokens.lock().expect("lock");
+            let status = tokens.get_mut(token)?;
+            status.approved = true;
+            Some(status.snapshot.clone())
+        }
+
+        fn deny_record(&self, token: &str) -> Option<LocalTokenSnapshot> {
+            self.tokens
+                .lock()
+                .expect("lock")
+                .remove(token)
+                .map(|status| status.snapshot)
+        }
+
+        fn status_of(&self, token: &str) -> Option<LocalTokenStatus> {
+            self.tokens.lock().expect("lock").get(token).cloned()
+        }
+
+        fn pending_records(&self) -> Vec<LocalTokenPending> {
+            self.tokens
+                .lock()
+                .expect("lock")
+                .values()
+                .filter(|status| status.expires_at >= now_secs())
+                .map(|status| LocalTokenPending {
+                    hint: status.snapshot.token_hint.clone(),
+                    path: status.snapshot.path.clone(),
+                    action: status.snapshot.action.clone(),
+                    user_email: status.snapshot.user_email.clone(),
+                    approved: status.approved,
+                    expires_in: (status.expires_at - now_secs()).round() as i64,
+                })
+                .collect()
+        }
+    }
+
+    #[test]
+    fn extra_table_redeems_a_token_the_gateway_never_saw() {
+        let table = FakeLocal::with("folder-token-aaaaaaaa", "");
+        assert!(table.approve_record("folder-token-aaaaaaaa").is_some());
+        assert!(table.status_of("folder-token-aaaaaaaa").unwrap().approved);
+        assert_eq!(table.pending_records()[0].path, "/tmp/notes");
+        assert!(table.deny_record("folder-token-aaaaaaaa").is_some());
+        assert!(table.status_of("folder-token-aaaaaaaa").is_none());
+    }
 }

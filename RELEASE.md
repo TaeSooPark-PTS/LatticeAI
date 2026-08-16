@@ -13,6 +13,60 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v11.9.0 — Working Order (2026-08-17)
+
+문서에만 있던 13개 Current 스텁을 실동작으로 올리고, 라이브 감사에서 깨진
+N1–N9와 이전에 고장난 22항목을 다시 통과시킨 릴리스. 문은 그대로
+(네이티브 420 / 41, 워커 **19 라우트** — `/worker/sysinfo`에
+`capabilities`/`python_version`만 가산). 클라우드는 선택이고 기본은
+로컬이며, OAuth CLI로 과금 없이 검증했다.
+
+- **13개 스텁이 실제로 답한다**: `/models/recommendations`(네이티브
+  RAM/AS 프로브 + 워커 카탈로그 + RAM-tier `top_pick`),
+  `/setup/scan`+`auto`(실프로브), `/setup/install`(실설치 또는 수동
+  안내 — brew/pip는 설계상 수동), computer-use 상태(워커 capabilities
+  프로브), `/agent/eval`(결정적 스킬 평가, `requires_model` 정직),
+  `/agents/api/run`(라이브 단일 에이전트 + 정직한 health), 자동화
+  패턴/제안(conversation_messages 위 결정적 한국어 친화 질문 마이닝),
+  워크플로 run(스텝 실행기 + 종료 상태)과 resume(승인 게이트 수정),
+  리뷰 `run_now`(같은 실행기에 연결), `build`/`deploy_project`(거버넌스된
+  스크립트를 실제로 실행), 백업 blob.
+- **라이브 감사 N1–N9**: 에이전트 루프가 호스트에 묶이고 run 본문이
+  실제 정책 표를 실음. 메모리 API가 빈 Brain에서 500을 내지 않음
+  (`conversation_messages` 부트스트랩 + 방어적 리더). chat/memory/
+  chronicle/command가 지식을 봄(null workspace = personal). brain
+  health가 빈 100점을 주지 않음. 백업은 `VACUUM INTO` 스냅샷 + blob +
+  정직한 매니페스트 + 원자적 복원. export가 edges/chunks를 실음. 폴더
+  ingest가 신뢰된 소유자와 통합 승인 토큰(`LocalApprovals` →
+  `/permissions/approve`)을 받음. 보이스 메모 텍스트가 저장됨.
+- **하이브리드 클라우드가 배선됨**: 프로덕션에 ReviewSink + EgressAudit
+  바인딩. 클라우드 답은 Review Center에 `kg_cloud_expansion` 제안으로
+  올라가고, egress 감사는 형태/provider/model/reason만 기록(내용 없음).
+  이중 자격증명 — `api_key`(OpenAI 호환, **모의 서버만** 검증, 실과금
+  없음)와 `cli_oauth`(로컬 OAuth CLI: `agy` → gemini-3.7-flash, `grok`
+  → grok-4.6). 해석 순서: `cloud_provider.json` → env → agy → grok →
+  none. 에스컬레이션 `auto`(기본)/`manual`/`always`. 요청의
+  `network_mode:"local_only"`가 항상 이김. 라이브 OAuth E2E는 API 과금
+  0원.
+- **MCP가 실서버**: `POST /mcp` streamable-HTTP JSON-RPC
+  (`initialize` / `tools/list` / `tools/call`). 큐레이트된 안전 도구 +
+  스키마가 파싱된 스킬 7개. 거버넌스 거절은 JSON-RPC 에러.
+  `/mcp/call`이 실제로 디스패치. `/mcp`는 OpenAPI 계약 밖(설계).
+- **2B(gemma-4-e2b)와 채팅 파일 생성**: compact 프로파일·파서 사다리·
+  v10.8.0 salvage 복원. 「index.html 만들어줘」가 모델이 쓴 실제 파일을
+  만듦(11.6.0 포트에서 빠졌던 v9.2.0 헤드라인). 에이전트 루프의
+  *품질*은 정직하게 게이트 — 파일은 만들어도 요약이 critic에서 떨어질
+  수 있음.
+- **정직한 고지**: 2B 에이전트 품질, `api_key`는 모의만, 복원 후
+  재시작, brew/pip 수동, `/mcp`는 OpenAPI 밖, DMG는 ad-hoc 서명.
+
+빌드 산출물은 `dist/ltcai-11.9.0-py3-none-any.whl`,
+`dist/ltcai-11.9.0.tar.gz`, `ltcai-11.9.0.tgz`, `dist/ltcai-11.9.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_11.9.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md)
+
 ## v11.8.0 — Travel Light (2026-08-16)
 
 11.7.0이 백로그를 비운 다음에 남아 있던 것 — 호출자 없는 라우트, 하중을

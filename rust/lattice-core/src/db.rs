@@ -120,6 +120,24 @@ impl From<rusqlite::Error> for CoreError {
     }
 }
 
+impl CoreError {
+    /// Whether this is SQLite saying `no such table: {table}`.
+    ///
+    /// Readers use it to answer empty rather than 500 on a store that has
+    /// never been written by the table's owner (a fresh Brain has no
+    /// `conversation_messages` until the first chat turn, unless bootstrap
+    /// created it).
+    pub fn is_missing_table(&self, table: &str) -> bool {
+        match self {
+            CoreError::Sqlite(err) => {
+                let text = err.to_string();
+                text.contains("no such table") && text.contains(table)
+            }
+            _ => false,
+        }
+    }
+}
+
 /// Open the graph database read-only, in WAL, with a bounded busy timeout.
 ///
 /// `SQLITE_OPEN_READ_ONLY` is the load-bearing part: a read lane must not be

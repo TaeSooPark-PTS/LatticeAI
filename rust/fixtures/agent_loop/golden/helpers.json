@@ -973,6 +973,86 @@
       "size_b": null
     }
   ],
+  "agent_profiles_extended": [
+    {
+      "model_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 2.0,
+      "why": "the 8GB-tier recommended default; e2b is an effective size"
+    },
+    {
+      "model_id": "mlx-community/gemma-4-e4b-it-4bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": true,
+        "escalate_after": 1,
+        "name": "compact",
+        "parse_failure_budget": 4,
+        "transcript_window": 4
+      },
+      "size_b": 4.0,
+      "why": "the 16GB-tier sibling, at the compact boundary"
+    },
+    {
+      "model_id": "gemma-4-26b-a4b-it-4bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 26.0,
+      "why": "a4b is active parameters per token, not the model's size"
+    },
+    {
+      "model_id": "Qwen3.6-35B-A3B-4bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 35.0,
+      "why": "A3B likewise; the plain 35B token decides"
+    },
+    {
+      "model_id": "gemma-4-26b-e2b-it-4bit",
+      "override": "",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 26.0,
+      "why": "a plain size outranks an effective one in the same id"
+    },
+    {
+      "model_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "override": "standard",
+      "profile": {
+        "direct_path_fallback": false,
+        "escalate_after": 2,
+        "name": "standard",
+        "parse_failure_budget": 3,
+        "transcript_window": 8
+      },
+      "size_b": 2.0,
+      "why": "the operator override still outranks the heuristic"
+    }
+  ],
   "budgets": {
     "phase": {
       "execute_tokens": 4096,
@@ -1457,6 +1537,284 @@
       "ok": true,
       "raw": "{\"action\": \"final\", \"thoughts\": \"가나다라마바사\"}",
       "repairs": []
+    }
+  ],
+  "extract_action_details_extended": [
+    {
+      "action": {
+        "action": "final",
+        "message": "done"
+      },
+      "key": "tag_wrapper_closed",
+      "ok": true,
+      "raw": "<tool_call>{\"action\": \"final\", \"message\": \"done\"}</tool_call>",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "Qwen/Hermes-style tool-call tags around the object"
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "a.md"
+        }
+      },
+      "key": "tag_wrapper_bracket",
+      "ok": true,
+      "raw": "[TOOL_CALL]{\"action\": \"read_file\", \"args\": {\"path\": \"a.md\"}}[/TOOL_CALL]",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "the bracketed spelling of the same wrapper"
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "tag_wrapper_unclosed",
+      "ok": true,
+      "raw": "<tool_call>\n{\"action\": \"final\"}",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "an opening tag with no closer is still a wrapper"
+    },
+    {
+      "action": {
+        "action": "a"
+      },
+      "key": "double_object",
+      "ok": true,
+      "raw": "{\"action\": \"a\"} {\"action\": \"b\"}",
+      "repairs": [
+        "balanced"
+      ],
+      "why": "PYTHON REFUSED. First complete object wins; first-{-to-last-} spliced them"
+    },
+    {
+      "action": {
+        "action": "write_file"
+      },
+      "key": "slice_suffix",
+      "ok": true,
+      "raw": "{\"action\": \"write_file\"} — that is the call.",
+      "repairs": [
+        "balanced"
+      ],
+      "why": "PYTHON REFUSED. Prose after an object that starts the reply"
+    },
+    {
+      "action": {
+        "action": "a"
+      },
+      "key": "balanced_after_slice",
+      "ok": true,
+      "raw": "Here: {\"action\": \"a\"} and also {\"action\": \"b\"} ok",
+      "repairs": [
+        "slice",
+        "balanced"
+      ],
+      "why": "slice trims the prose, the balanced scan trims the second object"
+    },
+    {
+      "action": {
+        "action": "write_file",
+        "args": {
+          "content": "body { color: red; }",
+          "path": "a.css"
+        }
+      },
+      "key": "balanced_brace_in_string",
+      "ok": true,
+      "raw": "{\"action\": \"write_file\", \"args\": {\"path\": \"a.css\", \"content\": \"body { color: red; }\"}} trailing",
+      "repairs": [
+        "balanced"
+      ],
+      "why": "a brace inside a string literal must not close the object"
+    },
+    {
+      "action": {
+        "action": "final"
+      },
+      "key": "broken_unclosed",
+      "ok": true,
+      "raw": "{\"action\": \"final\"",
+      "repairs": [
+        "truncated_close"
+      ],
+      "why": "PYTHON REFUSED. max_tokens cut the object short"
+    },
+    {
+      "action": {
+        "action": "write_file",
+        "args": {
+          "content": "<!doctype",
+          "path": "i.html"
+        }
+      },
+      "key": "truncated_mid_string",
+      "ok": true,
+      "raw": "{\"action\": \"write_file\", \"args\": {\"path\": \"i.html\", \"content\": \"<!doctype",
+      "repairs": [
+        "truncated_close"
+      ],
+      "why": "the partial content survives instead of the step being thrown away"
+    },
+    {
+      "action": {
+        "action": "write_file",
+        "args": {
+          "path": "a.md"
+        }
+      },
+      "key": "truncated_dangling_key",
+      "ok": true,
+      "raw": "{\"action\": \"write_file\", \"args\": {\"path\": \"a.md\"}, \"thoughts\"",
+      "repairs": [
+        "truncated_close"
+      ],
+      "why": "a key with no value falls back to the last complete pair"
+    },
+    {
+      "action": {
+        "action": "write_file",
+        "args": {
+          "content": "# hi",
+          "path": "a.md"
+        }
+      },
+      "key": "truncated_inside_unclosed_fence",
+      "ok": true,
+      "raw": "<think>which tool?</think>\n<tool_call>\n```json\n{\"action\": \"write_file\", \"args\": {\"path\": \"a.md\", \"content\": \"# hi",
+      "repairs": [
+        "think_strip",
+        "tag_strip",
+        "truncated_close"
+      ],
+      "why": "everything at once, which is what a 2B model at its ceiling sends"
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "truncation_declines_on_missing_value",
+      "ok": false,
+      "raw": "{\"action\": }",
+      "why": "nothing was open, so this is wrong rather than short"
+    },
+    {
+      "error": "Agent did not return valid JSON: <decoder-detail>",
+      "key": "truncation_declines_on_unquoted_key",
+      "ok": false,
+      "raw": "{action: 1}",
+      "why": "same: closing nothing cannot make this an action"
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "README.md"
+        }
+      },
+      "key": "channel_message_frame",
+      "ok": true,
+      "raw": "<|channel|>thought\nI should read the file first.\n<|message|>{\"action\": \"read_file\", \"args\": {\"path\": \"README.md\"}}<|end|>",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "gpt-oss/gemma-4 <|channel|>...<|message|> frame; keep the final channel payload"
+    },
+    {
+      "action": {
+        "action": "final",
+        "message": "done"
+      },
+      "key": "channel_gemma_angle",
+      "ok": true,
+      "raw": "<|channel>thought\nreasoning\n<|channel>commentary\n{\"action\": \"final\", \"message\": \"done\"}",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "gemma-4 style <|channel>name without the closing pipe; last channel wins"
+    },
+    {
+      "action": {
+        "action": "write_file",
+        "args": {
+          "content": "hi",
+          "path": "a.md"
+        }
+      },
+      "key": "channel_start_end_frame",
+      "ok": true,
+      "raw": "<|start|>assistant<|channel|>final<|message|>{\"action\": \"write_file\", \"args\": {\"path\": \"a.md\", \"content\": \"hi\"}}<|end|>",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "<|start|>...<|end|> wrapper around a channel/message payload"
+    },
+    {
+      "action": {
+        "action": "verdict",
+        "verdict": "PASS",
+        "next_state": "DONE",
+        "reason": "written",
+        "corrections": []
+      },
+      "key": "critic_verdict_channel",
+      "ok": true,
+      "raw": "<|channel>thought\nlooks complete\n<|message|>{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"written\", \"corrections\": []}<|end|>",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "gemma-4 critic wraps a well-formed verdict in a channel frame; execute parser already recovers this"
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "README.md"
+        }
+      },
+      "key": "verify5_thought_backtick_for",
+      "ok": true,
+      "raw": "<|channel>thought\nThe user wants me to execute the next step of the plan.\nThe plan is:\n1. Read the content of `README.md`.\n2. Save the summary of the first paragraph to `notes/summary.md`.\n\nThe previous step was planning, and the execution transcript shows that the plan was auto-approved.\nThe next step in the execution transcript is the first step: `read_file` for `README.md`.\n\nI need to perform t",
+      "repairs": [
+        "tag_strip",
+        "labeled"
+      ],
+      "why": "verify5 tape c1/c2/c3 execute slip 1. Thought channel, no brace; names `read_file` for `README.md` and is cut off."
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "README.md"
+        }
+      },
+      "key": "verify5_thought_first_step_paren",
+      "ok": true,
+      "raw": "<|channel>thought\nThe user is asking me to execute the next step of the previously defined plan.\nThe plan was:\n1. Read the content of `README.md`.\n2. Save the summarized content to `notes/summary.md`.\n\nThe execution transcript showed an attempt to execute the first step (`read_file`) which resulted in a parsing error. I need to re-execute the first step, which is to read the file, assuming the env",
+      "repairs": [
+        "tag_strip",
+        "labeled"
+      ],
+      "why": "verify5 tape execute slip 2. `the first step (`read_file`)`; first file-like backtick is README.md."
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "README.md"
+        }
+      },
+      "key": "verify5_labeled_action_args",
+      "ok": true,
+      "raw": "<|channel>thought\nThe user is asking me to execute the next step of the plan.\nThe plan is:\n1. Read the content of `README.md`.\n2. Save the summarized content to `notes/summary.md`.\n\nThe execution transcript showed an error on the first step. I need to re-execute the first step: `read_file` for `README.md`.\n\nAction: `read_file`\nArgs: `path: \"README.md\"`\nDescription: Read the content of README.md to",
+      "repairs": [
+        "tag_strip",
+        "labeled"
+      ],
+      "why": "verify5 tape execute slip 3. Labeled Action:/Args: inside the thought; never a JSON object."
     }
   ],
   "filter_learnings": [
@@ -2954,6 +3312,66 @@
         "b": 1.5,
         "c": []
       }
+    }
+  ],
+  "extract_verdict_details": [
+    {
+      "action": {
+        "action": "verdict",
+        "verdict": "PASS",
+        "next_state": "DONE",
+        "reason": "written"
+      },
+      "key": "verdict_no_action",
+      "ok": true,
+      "raw": "{\"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"written\"}",
+      "repairs": [],
+      "why": "2B critic often names verdict and forgets action; VERIFY injects action=verdict. EXECUTE still refuses this raw."
+    },
+    {
+      "action": {
+        "action": "verdict",
+        "verdict": "FAIL",
+        "next_state": "FAILED",
+        "reason": "missing"
+      },
+      "key": "verdict_channel_no_action",
+      "ok": true,
+      "raw": "<|channel>thought\nnot good\n<|channel>commentary\n{\"verdict\": \"FAIL\", \"next_state\": \"FAILED\", \"reason\": \"missing\"}",
+      "repairs": [
+        "tag_strip"
+      ],
+      "why": "channel-framed verdict object without an action key"
+    },
+    {
+      "action": {
+        "action": "verdict",
+        "verdict": "PASS",
+        "next_state": "DONE"
+      },
+      "key": "verdict_truncated",
+      "ok": true,
+      "raw": "{\"verdict\": \"PASS\", \"next_state\": \"DONE\"",
+      "repairs": [
+        "truncated_close"
+      ],
+      "why": "token limit cut the verdict object short; same truncated_close rung as execute"
+    },
+    {
+      "action": {
+        "action": "verdict",
+        "verdict": "PASS",
+        "next_state": "DONE",
+        "reason": "ok"
+      },
+      "key": "verdict_channel_then_truncated",
+      "ok": true,
+      "raw": "<|channel>thought\nok\n<|message|>{\"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"ok\"",
+      "repairs": [
+        "tag_strip",
+        "truncated_close"
+      ],
+      "why": "thought channel plus a cut verdict object, the live 2B combination"
     }
   ]
 }

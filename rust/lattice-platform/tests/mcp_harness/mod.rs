@@ -52,6 +52,7 @@ pub struct Install {
     pub data_dir: PathBuf,
     pub agent_root: PathBuf,
     pub brain_dir: PathBuf,
+    pub skills_dir: PathBuf,
     pub handle: tokio::task::JoinHandle<()>,
     pub tokens: HashMap<String, String>,
     _tmp: tempfile::TempDir,
@@ -63,9 +64,11 @@ impl Install {
         let data_dir = tmp.path().join("data");
         let agent_root = tmp.path().join("agent");
         let brain_dir = tmp.path().join("brain");
+        let skills_dir = tmp.path().join("skills");
         std::fs::create_dir_all(&data_dir).unwrap();
         std::fs::create_dir_all(&agent_root).unwrap();
         std::fs::create_dir_all(&brain_dir).unwrap();
+        std::fs::create_dir_all(&skills_dir).unwrap();
         write_users(&data_dir);
 
         let mut env = HashMap::new();
@@ -91,12 +94,14 @@ impl Install {
         let member_token = auth.sessions().create(MEMBER_EMAIL, Some(MEMBER_EMAIL));
 
         let workspace = Workspace::new(&agent_root).expect("workspace");
-        let mcp = McpState::new(Arc::clone(&auth), &data_dir);
+        let tools = ToolsState::new(Arc::clone(&auth), workspace, &brain_dir);
+        let mcp = McpState::new(Arc::clone(&auth), &data_dir)
+            .with_tools(tools.clone())
+            .with_skills_dir(&skills_dir);
         let market = MarketplaceState::new(Arc::clone(&auth), &data_dir);
         let plugins = PluginsState::new(Arc::clone(&auth), &data_dir);
         let registry = AgentRegistryState::new(Arc::clone(&auth), &data_dir);
         let agents = AgentsState::new(Arc::clone(&auth), &data_dir);
-        let tools = ToolsState::new(Arc::clone(&auth), workspace, &brain_dir);
 
         let app = lattice_auth::router_with_csrf(Arc::clone(&auth))
             .merge(mcp::router(mcp))
@@ -115,6 +120,7 @@ impl Install {
             data_dir,
             agent_root,
             brain_dir,
+            skills_dir,
             handle,
             tokens,
             _tmp: tmp,

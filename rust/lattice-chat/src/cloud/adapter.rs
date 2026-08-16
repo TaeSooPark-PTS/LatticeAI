@@ -35,6 +35,7 @@ pub fn cloud_egress_event(
     workspace_id: Option<&str>,
     outcome: &str,
     detail: Option<&str>,
+    reason: Option<&str>,
 ) -> Value {
     let mut event = Map::new();
     event.insert("event".into(), json!("cloud_egress"));
@@ -49,6 +50,9 @@ pub fn cloud_egress_event(
     event.insert("workspace_id".into(), json!(workspace_id));
     if let Some(detail) = detail.filter(|detail| !detail.is_empty()) {
         event.insert("detail".into(), json!(detail));
+    }
+    if let Some(reason) = reason.filter(|reason| !reason.is_empty()) {
+        event.insert("reason".into(), json!(reason));
     }
     Value::Object(event)
 }
@@ -87,20 +91,40 @@ impl OpenAiCompatibleAdapter {
         let read = |name: &str| std::env::var(name).unwrap_or_default().trim().to_string();
         let base_url = read(CLOUD_BASE_URL_ENV);
         let model = read(CLOUD_MODEL_ENV);
-        Self {
-            api_key: read(CLOUD_API_KEY_ENV),
-            base_url: if base_url.is_empty() {
+        Self::from_parts(
+            read(CLOUD_API_KEY_ENV),
+            if base_url.is_empty() {
                 DEFAULT_CLOUD_BASE_URL.to_string()
             } else {
                 base_url
             },
-            default_model: if model.is_empty() {
+            if model.is_empty() {
                 DEFAULT_CLOUD_MODEL.to_string()
             } else {
                 model
             },
-            client,
+        )
+        .with_client(client)
+    }
+
+    /// Build from already-resolved parts (the provider file / env snapshot).
+    pub fn from_parts(
+        api_key: impl Into<String>,
+        base_url: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
+        Self {
+            api_key: api_key.into(),
+            base_url: base_url.into(),
+            default_model: model.into(),
+            client: reqwest::Client::new(),
         }
+    }
+
+    /// Replace the HTTP client (the gateway's pooled one, in production).
+    pub fn with_client(mut self, client: reqwest::Client) -> Self {
+        self.client = client;
+        self
     }
 
     /// Point the adapter at a specific endpoint (the tests' seam).
@@ -112,6 +136,12 @@ impl OpenAiCompatibleAdapter {
     /// Supply the key explicitly rather than through the environment.
     pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
         self.api_key = api_key.into();
+        self
+    }
+
+    /// Name the default model explicitly rather than through the environment.
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.default_model = model.into();
         self
     }
 

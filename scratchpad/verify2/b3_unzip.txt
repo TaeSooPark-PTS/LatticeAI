@@ -1,0 +1,22 @@
+Archive:  /tmp/lattice-acc-119-WAB0DA/agent/minutes.docx
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+     1738  08-17-2026 02:29   [Content_Types].xml
+      734  08-17-2026 02:29   _rels/.rels
+      721  08-17-2026 02:29   docProps/core.xml
+     1132  08-17-2026 02:29   docProps/app.xml
+     4773  08-17-2026 02:29   word/document.xml
+     1227  08-17-2026 02:29   word/_rels/document.xml.rels
+   349458  08-17-2026 02:29   word/styles.xml
+   438131  08-17-2026 02:29   word/stylesWithEffects.xml
+     2535  08-17-2026 02:29   word/settings.xml
+      438  08-17-2026 02:29   word/webSettings.xml
+     2811  08-17-2026 02:29   word/fontTable.xml
+    10939  08-17-2026 02:29   word/theme/theme1.xml
+      262  08-17-2026 02:29   customXml/item1.xml
+      295  08-17-2026 02:29   customXml/_rels/item1.xml.rels
+      354  08-17-2026 02:29   customXml/itemProps1.xml
+     5513  08-17-2026 02:29   word/numbering.xml
+     8324  08-17-2026 02:29   docProps/thumbnail.jpeg
+---------                     -------
+   829385                     17 files

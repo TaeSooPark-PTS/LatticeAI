@@ -19,4 +19,7 @@ pub use db::{open_read_only, CoreError};
 pub use embeddings::LocalEmbeddingModel;
 pub use paths::{data_dir, graph_db_path, resolve_data_dir, DB_FILE_NAME};
 pub use pytext::{clean_text, parse_iso, recency_score, round6, safe_loads, truncate_chars};
-pub use read::{column_json, filter_scoped_nodes, sql_json, workspaces_of, NodeRow, VectorRow};
+pub use read::{
+    column_json, filter_scoped_nodes, scoped_workspace_visible, sql_json, workspace_is_default,
+    workspace_membership_sql, workspaces_of, NodeRow, VectorRow, DEFAULT_WORKSPACE_ID,
+};

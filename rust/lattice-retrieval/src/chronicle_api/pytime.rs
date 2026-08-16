@@ -145,10 +145,14 @@ pub fn strip(text: &str) -> String {
 /// non-ASCII digit therefore passes the regex and fails the constructor —
 /// `ValueError` either way, which is why this checks ASCII digits directly.
 ///
-/// There is one failure, not several, so this answers `Option` rather than a
-/// `Result` whose error carries nothing.
+/// `today` (any case) is today's local date — the token the product surface
+/// and the live acceptance matrix use. There is one failure, not several, so
+/// this answers `Option` rather than a `Result` whose error carries nothing.
 pub fn parse_day(value: &str) -> Option<String> {
     let text = strip(value);
+    if text.eq_ignore_ascii_case("today") {
+        return Some(today_iso());
+    }
     let chars: Vec<char> = text.chars().collect();
     if chars.len() != 10 || chars[4] != '-' || chars[7] != '-' {
         return None;
@@ -156,6 +160,17 @@ pub fn parse_day(value: &str) -> Option<String> {
     let (year, month, day) = date_fields(&chars, true)?;
     check_date(year, month, day)?;
     Some(format!("{year:04}-{month:02}-{day:02}"))
+}
+
+/// Today's wall-clock date in the system zone, as `YYYY-MM-DD`.
+fn today_iso() -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() as i64)
+        .unwrap_or(0);
+    system_local(now)
+        .unwrap_or_else(|| Naive::from_epoch_utc(now, 0))
+        .date_iso()
 }
 
 /// `chronicle.parse_timestamp` — the store's own stamp format, or `None` for
@@ -494,6 +509,12 @@ mod tests {
     fn the_router_gates_normalize_or_refuse() {
         assert_eq!(parse_day("2026-08-11").expect("real date"), "2026-08-11");
         assert_eq!(parse_day(" 2026-08-11 ").expect("stripped"), "2026-08-11");
+        let today = parse_day("today").expect("today token");
+        assert_eq!(today, today_iso());
+        assert_eq!(parse_day("TODAY").expect("case"), today);
+        assert_eq!(parse_day(" Today ").expect("padded"), today);
+        assert_eq!(today.len(), 10);
+        assert_eq!(parse_day(&today).as_deref(), Some(today.as_str()));
         for bad in [
             "not-a-date",
             "2026-13-45",

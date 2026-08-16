@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind
@@ -10,8 +10,10 @@ read the docs first.
 ## Five-Minute Flow
 
 1. Wake the Brain and confirm the local owner profile.
-2. Let Lattice inspect local model/runtime readiness.
-3. Pick the recommended Brain voice or skip model loading.
+2. Let Lattice inspect local model/runtime readiness (`/setup/scan` is a
+   real probe; brew/pip items stay manual).
+3. Pick the recommended Brain voice (`/models/recommendations` probes RAM
+   and the worker catalog) or skip model loading.
 4. Add one source: upload a file, choose and scan a folder, save a note, or
    capture a browser/source event.
 5. Ask one grounded question and inspect the answer proof.

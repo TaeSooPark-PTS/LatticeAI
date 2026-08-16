@@ -17,8 +17,8 @@ use super::definition::{
 use super::recipes::{build_recipe_workflow, find_installed_recipe, recipe_as_dict, RECIPES};
 use super::time::now_iso;
 use super::{
-    ok, require_user, scope_from_request, WorkflowDesignerState, ACTIVE_STATUSES,
-    DEFAULT_WORKSPACE_ID,
+    is_awaiting_approval, ok, require_user, resume_paused, scope_from_request, start_run,
+    store_data_dir, WorkflowDesignerState, ACTIVE_STATUSES, DEFAULT_WORKSPACE_ID,
 };
 
 // ── body parsing ─────────────────────────────────────────────────────────────
@@ -276,51 +276,28 @@ pub(crate) async fn run_definition(
                 &format!("Workflow not found: {workflow_id}"),
             )
         })?;
-    let name = workflow
-        .get("name")
-        .and_then(Value::as_str)
-        .unwrap_or("workflow")
-        .to_string();
     let user_email = if user.email.is_empty() {
         None
     } else {
         Some(user.email.as_str())
     };
     let inputs = object.get("inputs").cloned().unwrap_or_else(|| json!({}));
-    let run = state.store.record_workflow_run(
-        &workflow_id,
-        &name,
-        "queued",
-        vec![json!({"event": "workflow_started", "status": "queued", "timestamp": now_iso()})],
-        json!({}),
-        user_email,
+    // The accept payload is the queued snapshot. The executor then walks every
+    // step so list/replay/stop see a terminal (or paused) row.
+    let response_run = start_run(
+        &state.store,
+        &workflow,
         &scope,
+        user_email,
+        inputs,
         None,
+        Some(&store_data_dir(&state.store)),
     );
-    let run_id = run
+    let run_id = response_run
         .get("id")
         .and_then(Value::as_str)
         .unwrap_or("")
         .to_string();
-    // Accept payload is the queued row after the async stamp (status still
-    // queued). The store then flips to running so list/stop see an active row
-    // and cancel takes the handle-less path the fixtures recorded.
-    let response_run = state
-        .store
-        .update_workflow_run(
-            &run_id,
-            &scope,
-            &[("execution_mode", json!("async")), ("inputs", inputs)],
-        )
-        .unwrap_or(run);
-    let _ = state.store.update_workflow_run(
-        &run_id,
-        &scope,
-        &[
-            ("status", json!("running")),
-            ("started_at", json!(now_iso())),
-        ],
-    );
     let mut body = OrderedMap::new();
     body.insert(
         "run",
@@ -405,26 +382,57 @@ pub(crate) async fn resume_run(
     AxumPath(run_id): AxumPath<String>,
     body: Bytes,
 ) -> Result<Response, Response> {
-    let _ = body;
+    let object = if body.is_empty() {
+        Map::new()
+    } else {
+        parse_object(&body).unwrap_or_default()
+    };
     require_user(&state, &headers)?;
     let scope = scope_from_request(&headers, None);
     let Ok(run) = state.store.get_workflow_run(&run_id, &scope) else {
         return Err(plain_500());
     };
-    let pause = run.get("pause").cloned().unwrap_or(json!({}));
-    let awaiting = run.get("status").and_then(Value::as_str) == Some("awaiting_approval")
-        && pause.get("node").is_some()
-        && !pause.get("node").map(Value::is_null).unwrap_or(true);
-    if !awaiting {
+    if !is_awaiting_approval(&run) {
         return Err(detail_error(
             StatusCode::CONFLICT,
             "run is not awaiting approval",
         ));
     }
-    Err(detail_error(
-        StatusCode::CONFLICT,
-        "run is not awaiting approval",
-    ))
+    let workflow_id = run
+        .get("workflow_id")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let workflow = state
+        .store
+        .get_workflow(&workflow_id, &scope)
+        .map_err(|_| {
+            detail_error(
+                StatusCode::NOT_FOUND,
+                &format!("Workflow not found: {workflow_id}"),
+            )
+        })?;
+    let approved = object
+        .get("approved")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    match resume_paused(
+        &state.store,
+        &workflow,
+        &run,
+        &scope,
+        approved,
+        None,
+        Some(&store_data_dir(&state.store)),
+    ) {
+        Ok(updated) => {
+            let mut body = OrderedMap::new();
+            body.insert("run", updated);
+            body.insert("resumed", json!(true));
+            Ok(ok(&body))
+        }
+        Err(detail) => Err(detail_error(StatusCode::CONFLICT, &detail)),
+    }
 }
 
 fn plain_500() -> Response {

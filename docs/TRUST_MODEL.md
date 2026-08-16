@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.
@@ -24,10 +24,14 @@ Local data can include:
 
 External communication requires configuration plus a user/admin action:
 
-- cloud model calls after keys are configured and a cloud model is selected;
+- cloud model calls after credentials resolve (`cloud_provider.json` / env
+  key / locally OAuth-authenticated `agy` or `grok`) and the escalation
+  policy — or an explicit `/cloud` prefix — uses them. Every such turn
+  writes a shape-only egress audit (provider / model / reason, never
+  content) and stages extracted knowledge as a Review Center proposal;
 - model downloads from registries after install consent;
-- Telegram bridge after the integration is enabled, the chat is allowlisted,
-  and a dedicated server session bearer is configured;
+- Telegram bridge — removed in 11.6.0 with the platform code that became
+  the AI worker; nothing replaces it;
 - Brain Network peer actions after pairing;
 - Docker/Postgres setup after opt-in scale configuration;
 - update checks only when enabled;
@@ -51,7 +55,7 @@ Lattice AI should fail closed or show an unavailable state for:
 - no graph/context evidence available;
 - unavailable external integration;
 - unknown or unreadable Knowledge Graph workspace scope;
-- missing Telegram chat allowlist or dedicated server session token;
+- Telegram inbound (the bridge was removed in 11.6.0; nothing replaces it);
 - wrong archive passphrase;
 - archive tampering, unsupported archive versions, or path traversal.
 
@@ -67,7 +71,10 @@ does not mean secrets should appear in clear text.
 - Local files are only as protected as the user's machine, OS account, backups,
   and disk encryption.
 - Cloud model prompts follow the selected provider's policy once the user
-  explicitly chooses that provider.
+  explicitly chooses that provider (or the `auto`/`always` escalation
+  policy does, behind `cloud_allowed`). The `api_key` path is
+  mock-verified only in this release; live OAuth used `cli_oauth` at
+  zero billing. Extracted cloud knowledge is proposal-first.
 - A local admin can inspect local files and process memory outside Lattice AI.
 - Marketplace and model registries are third-party services when explicitly
   contacted.

@@ -1,0 +1,1 @@
+{"permission_required":true,"path":"/tmp/n7b-zywLsq","action":"read","action_label":"파일 읽기","approval_token":"Tt2DoXxetDhfrg686ibFWx_fEHqf51QQ","expires_in":300,"message":"AI가 '/tmp/n7b-zywLsq' 에 대한 파일 읽기 권한을 요청합니다.","check_status_url":"/permissions/status/Tt2DoXxetDhfrg686ibFWx_fEHqf51QQ"}

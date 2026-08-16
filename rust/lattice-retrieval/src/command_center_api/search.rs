@@ -357,6 +357,63 @@ mod tests {
     }
 
     #[test]
+    fn personal_command_search_matches_null_workspace_nodes() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let conn = Connection::open(dir.path().join("g.sqlite")).expect("open");
+        conn.execute_batch(
+            "CREATE TABLE nodes(id TEXT PRIMARY KEY, type TEXT, title TEXT, summary TEXT,
+                                metadata_json TEXT, updated_at TEXT);
+             CREATE TABLE nodes_v2(id TEXT PRIMARY KEY, workspace_id TEXT);
+             INSERT INTO nodes VALUES
+               ('note','Document','Phoenix launch notes','the phoenix plan','{}','2026-08-11'),
+               ('team','Document','Acme ranking','secret','{}','2026-08-11');
+             INSERT INTO nodes_v2 VALUES ('note', NULL), ('team', 'acme');
+             CREATE TABLE conversation_messages(
+               id INTEGER PRIMARY KEY, conversation_id TEXT, role TEXT, content TEXT,
+               user_email TEXT, timestamp TEXT, workspace_id TEXT, metadata_json TEXT,
+               user_nickname TEXT, source TEXT, organization_id TEXT);
+             INSERT INTO conversation_messages(conversation_id, role, content, user_email,
+               timestamp, workspace_id, metadata_json) VALUES
+               ('c1','user','phoenix recap','a@x','2026-08-11T10:00:00',NULL,'{}');",
+        )
+        .expect("schema");
+        let doc = state();
+        let personal = SearchRequest {
+            workspace_id: Some("personal"),
+            user_email: "a@x",
+            ..request("phoenix", &doc, 8)
+        };
+        let (groups, total) = groups(&conn, &personal);
+        assert!(
+            total > 0,
+            "a populated personal workspace must not report 0"
+        );
+        let knowledge_hits = groups
+            .iter()
+            .find(|group| group["kind"] == "knowledge")
+            .and_then(|group| group["items"].as_array())
+            .cloned()
+            .unwrap_or_default();
+        assert_eq!(knowledge_hits.len(), 1);
+        assert_eq!(knowledge_hits[0]["id"], "note");
+        let named = SearchRequest {
+            workspace_id: Some("acme"),
+            user_email: "a@x",
+            ..request("phoenix", &doc, 8)
+        };
+        assert!(
+            knowledge(&conn, &named).is_empty(),
+            "acme must not see the unstamped node"
+        );
+        assert_eq!(
+            conversations(&conn, &personal).len(),
+            1,
+            "personal sees the unstamped chat turn"
+        );
+        assert!(conversations(&conn, &named).is_empty());
+    }
+
+    #[test]
     fn a_graph_less_install_and_an_unreadable_graph_both_cost_only_the_group() {
         let (_dir, conn) = graph();
         let doc = state();

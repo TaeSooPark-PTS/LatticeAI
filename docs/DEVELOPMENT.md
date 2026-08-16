@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; supported
@@ -32,14 +32,19 @@ Engineering work should preserve these boundaries:
 
 ```bash
 npm install
-npm run dev
+npm start
 ```
 
-The local app is served through the FastAPI sidecar at:
+`npm start` (or `bin/ltcai.js` / the `LTCAI` binary) is the product: it
+boots `lattice-host` and serves the SPA at:
 
 ```text
 http://127.0.0.1:4825/app
 ```
+
+`npm run dev` is **not** the product. It starts the 19-route Python AI
+worker with `--reload` (`latticeai.cli.entrypoint`). Use it when iterating
+on worker compute seams, not to serve the app.
 
 Apple Silicon local model extras:
 
@@ -170,13 +175,13 @@ For user-facing, API, runtime, release, or packaging changes, check:
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 11.8.0 release work, exact artifacts are:
+For 11.9.0 release work, exact artifacts are:
 
-- `dist/ltcai-11.8.0-py3-none-any.whl`
-- `dist/ltcai-11.8.0.tar.gz`
-- `ltcai-11.8.0.tgz`
-- `dist/ltcai-11.8.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg`
+- `dist/ltcai-11.9.0-py3-none-any.whl`
+- `dist/ltcai-11.9.0.tar.gz`
+- `ltcai-11.9.0.tgz`
+- `dist/ltcai-11.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.9.0_aarch64.dmg`
 
 The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
 checks the names and presence, not a Developer ID signature.

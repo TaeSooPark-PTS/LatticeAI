@@ -26,6 +26,9 @@ use rusqlite::{Connection, Row, ToSql};
 use serde_json::Value;
 
 /// `_SOURCES_SQL`.
+///
+/// `:workspace = 'personal'` also matches NULL/blank `workspace_id` — the
+/// default visibility. A named workspace stays a strict equality.
 pub const SOURCES_SQL: &str = "
     SELECT id,
            node_id,
@@ -33,7 +36,8 @@ pub const SOURCES_SQL: &str = "
            source_type,
            COALESCE(captured_at, created_at) AS at
     FROM ingestion_provenance
-    WHERE (:workspace IS NULL OR workspace_id = :workspace)
+    WHERE (:workspace IS NULL OR workspace_id = :workspace
+           OR (:workspace = 'personal' AND (workspace_id IS NULL OR workspace_id = '')))
     ORDER BY at ASC, id ASC
 ";
 
@@ -44,7 +48,8 @@ pub const ENTITIES_SQL: &str = "
            COALESCE(NULLIF(legacy_type, ''), type) AS type,
            created_at AS at
     FROM nodes_v2
-    WHERE (:workspace IS NULL OR workspace_id = :workspace)
+    WHERE (:workspace IS NULL OR workspace_id = :workspace
+           OR (:workspace = 'personal' AND (workspace_id IS NULL OR workspace_id = '')))
       AND type NOT IN ('DOCUMENT', 'CHUNK', 'FILE', 'MESSAGE', 'CONVERSATION')
     ORDER BY at ASC, id ASC
 ";
@@ -57,10 +62,12 @@ pub const CONNECTIONS_SQL: &str = "
     LEFT JOIN edge_occurrences o ON o.edge_id = e.id
     WHERE e.source IN (
             SELECT id FROM nodes_v2
-            WHERE (:workspace IS NULL OR workspace_id = :workspace))
+            WHERE (:workspace IS NULL OR workspace_id = :workspace
+                   OR (:workspace = 'personal' AND (workspace_id IS NULL OR workspace_id = ''))))
       AND e.target IN (
             SELECT id FROM nodes_v2
-            WHERE (:workspace IS NULL OR workspace_id = :workspace))
+            WHERE (:workspace IS NULL OR workspace_id = :workspace
+                   OR (:workspace = 'personal' AND (workspace_id IS NULL OR workspace_id = ''))))
     GROUP BY e.id, e.created_at
     ORDER BY at ASC, e.id ASC
 ";
@@ -72,7 +79,8 @@ pub const MESSAGES_SQL: &str = "
            content,
            timestamp AS at
     FROM conversation_messages
-    WHERE (:workspace IS NULL OR workspace_id = :workspace)
+    WHERE (:workspace IS NULL OR workspace_id = :workspace
+           OR (:workspace = 'personal' AND (workspace_id IS NULL OR workspace_id = '')))
       AND (:user IS NULL OR user_email = :user
            OR user_email IS NULL OR user_email = '')
     ORDER BY id ASC
@@ -85,7 +93,8 @@ pub const CHANGED_NODES_SQL: &str = "
            superseded_by,
            COALESCE(valid_to, updated_at) AS at
     FROM nodes_v2
-    WHERE (:workspace IS NULL OR workspace_id = :workspace)
+    WHERE (:workspace IS NULL OR workspace_id = :workspace
+           OR (:workspace = 'personal' AND (workspace_id IS NULL OR workspace_id = '')))
       AND (valid_to IS NOT NULL OR superseded_by IS NOT NULL)
     ORDER BY at ASC, id ASC
 ";
@@ -101,8 +110,10 @@ pub const CHANGED_EDGES_SQL: &str = "
     FROM edges_v2 e
     JOIN nodes_v2 s ON s.id = e.source
     JOIN nodes_v2 t ON t.id = e.target
-    WHERE (:workspace IS NULL OR s.workspace_id = :workspace)
-      AND (:workspace IS NULL OR t.workspace_id = :workspace)
+    WHERE (:workspace IS NULL OR s.workspace_id = :workspace
+           OR (:workspace = 'personal' AND (s.workspace_id IS NULL OR s.workspace_id = '')))
+      AND (:workspace IS NULL OR t.workspace_id = :workspace
+           OR (:workspace = 'personal' AND (t.workspace_id IS NULL OR t.workspace_id = '')))
       AND e.valid_to IS NOT NULL
     ORDER BY at ASC, e.id ASC
 ";
@@ -343,6 +354,12 @@ fn scope_sql(workspace: Option<&str>) -> Option<(String, Vec<String>)> {
     if workspace.is_empty() {
         return Some(("0".to_string(), Vec::new()));
     }
+    if workspace == lattice_core::DEFAULT_WORKSPACE_ID {
+        return Some((
+            "(workspace_id IN (?) OR workspace_id IS NULL OR workspace_id = '')".to_string(),
+            vec![workspace.to_string()],
+        ));
+    }
     Some((
         "workspace_id IN (?)".to_string(),
         vec![workspace.to_string()],
@@ -550,6 +567,46 @@ mod tests {
         // empty scope — which is the "may read nothing" predicate.
         assert!(entities(&conn, true, Some("other")).is_empty());
         assert_eq!(entities(&conn, true, None).len(), 1);
+    }
+
+    #[test]
+    fn a_null_workspace_node_is_visible_to_personal_not_to_a_named_tenant() {
+        let conn = Connection::open_in_memory().expect("memory db");
+        conn.execute_batch(
+            "CREATE TABLE nodes_v2(id TEXT, label TEXT, type TEXT, legacy_type TEXT, \
+             workspace_id TEXT, created_at TEXT, updated_at TEXT, valid_from TEXT, \
+             valid_to TEXT, superseded_by TEXT, summary TEXT, attrs TEXT, \
+             importance_score REAL, last_used TEXT);
+             INSERT INTO nodes_v2(id, label, type, workspace_id, created_at) VALUES
+               ('unstamped', 'Phoenix notes', 'Concept', NULL, '2026-08-11T09:00:00'),
+               ('team-only', 'Secret', 'Concept', 'acme', '2026-08-11T09:00:00');
+             CREATE TABLE conversation_messages(
+               id INTEGER PRIMARY KEY, conversation_id TEXT, role TEXT, content TEXT,
+               user_email TEXT, timestamp TEXT, workspace_id TEXT);
+             INSERT INTO conversation_messages(conversation_id, role, content, user_email,
+               timestamp, workspace_id) VALUES
+               ('c1', 'user', 'hello from chat', 'a@x', '2026-08-11T10:00:00', NULL);",
+        )
+        .expect("schema");
+        let personal = entities(&conn, true, Some("personal"));
+        assert_eq!(personal.len(), 1, "personal sees the unstamped node");
+        assert_eq!(personal[0].id, Value::String("unstamped".into()));
+        let acme = entities(&conn, true, Some("acme"));
+        assert_eq!(acme.len(), 1);
+        assert_eq!(
+            acme[0].id,
+            Value::String("team-only".into()),
+            "acme does not see the unstamped node"
+        );
+        assert_eq!(
+            messages(&conn, "a@x", Some("personal")).len(),
+            1,
+            "personal sees the unstamped chat turn"
+        );
+        assert!(
+            messages(&conn, "a@x", Some("acme")).is_empty(),
+            "acme does not see the unstamped chat turn"
+        );
     }
 
     #[test]

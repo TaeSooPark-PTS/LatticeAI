@@ -37,6 +37,9 @@
 use std::sync::Arc;
 
 use axum::Router;
+use lattice_platform::permissions::{
+    LocalTokenPending, LocalTokenSnapshot, LocalTokenStatus, LocalTokenTable,
+};
 use lattice_platform::static_ui::{StaticUiConfig, SysinfoState, WorkerGpuSource};
 use lattice_platform::workflow_designer::LocalGraphSink;
 use lattice_platform::{
@@ -49,6 +52,61 @@ use lattice_platform::{
 
 use super::onedoor::OneDoorState;
 use super::scopes::WorkspaceScopes;
+
+/// `LocalApprovals` as the permissions router sees it.
+struct LocalApprovalsAdapter(Arc<lattice_ingest::local_files_api::LocalApprovals>);
+
+impl LocalTokenTable for LocalApprovalsAdapter {
+    fn approve_record(&self, token: &str) -> Option<LocalTokenSnapshot> {
+        self.0.approve_record(token).map(|view| LocalTokenSnapshot {
+            path: view.path,
+            action: view.action,
+            user_email: view.user_email,
+            token_hint: view.token_hint,
+        })
+    }
+
+    fn deny_record(&self, token: &str) -> Option<LocalTokenSnapshot> {
+        self.0.deny_record(token).map(|view| LocalTokenSnapshot {
+            path: view.path,
+            action: view.action,
+            user_email: view.user_email,
+            token_hint: view.token_hint,
+        })
+    }
+
+    fn status_of(&self, token: &str) -> Option<LocalTokenStatus> {
+        self.0.status_of(token).map(|view| LocalTokenStatus {
+            snapshot: LocalTokenSnapshot {
+                path: view.path,
+                action: view.action,
+                user_email: view.user_email,
+                token_hint: view.token_hint,
+            },
+            approved: view.approved,
+            expires_at: view.expires_at,
+        })
+    }
+
+    fn pending_records(&self) -> Vec<LocalTokenPending> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_secs_f64())
+            .unwrap_or(0.0);
+        self.0
+            .pending_records()
+            .into_iter()
+            .map(|view| LocalTokenPending {
+                hint: view.token_hint,
+                path: view.path,
+                action: view.action,
+                user_email: view.user_email,
+                approved: view.approved,
+                expires_in: (view.expires_at - now).round() as i64,
+            })
+            .collect()
+    }
+}
 
 /// Page redirects this crate must **not** mount, because a family router does.
 ///
@@ -199,6 +257,7 @@ pub fn platform_router(state: &OneDoorState) -> Router {
     let mut setup_state = setup::SetupState::new(auth(), &data_dir);
     setup_state.graph = Some(state.graph.clone());
     setup_state.pipeline_available = true;
+    setup_state.worker = Some(state.seam.clone());
 
     let mut network_state = network::NetworkState::new(auth(), state.config.clone());
     network_state.graph = Some(state.graph.clone());
@@ -221,10 +280,11 @@ pub fn platform_router(state: &OneDoorState) -> Router {
         .merge(invitations::router(
             invitations::InvitationsState::from_workspace(&state.workspace_state),
         ))
-        .merge(permissions::router(permissions::PermissionsState::new(
-            auth(),
-            &data_dir,
-        )))
+        .merge(permissions::router(
+            permissions::PermissionsState::new(auth(), &data_dir).with_local_tokens(Arc::new(
+                LocalApprovalsAdapter(Arc::clone(&state.local_approvals)),
+            )),
+        ))
         .merge(admin::router(admin_state))
         .merge(security_dashboard::router(security))
         .merge(features::router(features::FeaturesState::new(
@@ -246,7 +306,15 @@ pub fn platform_router(state: &OneDoorState) -> Router {
             governance,
             state.hooks.clone(),
         )))
-        .merge(mcp::router(mcp::McpState::new(auth(), &data_dir)))
+        .merge({
+            // POST /mcp (streamable HTTP JSON-RPC) lives on this router but is
+            // not in mcp::MOUNTED — it is outside the OpenAPI product contract.
+            let tools_state =
+                tools::ToolsState::new(auth(), state.workspace.clone(), &state.brain_dir)
+                    .with_worker(state.seam.clone());
+            mcp::router(mcp::McpState::new(auth(), &data_dir).with_tools(tools_state.clone()))
+                .merge(tools::router(tools_state))
+        })
         .merge(marketplace::router(marketplace::MarketplaceState::new(
             auth(),
             &data_dir,
@@ -258,10 +326,10 @@ pub fn platform_router(state: &OneDoorState) -> Router {
         .merge(agent_registry::router(
             agent_registry::AgentRegistryState::new(auth(), &data_dir),
         ))
-        .merge(agents::router(agents::AgentsState::new(auth(), &data_dir)))
-        .merge(tools::router(
-            tools::ToolsState::new(auth(), state.workspace.clone(), &state.brain_dir)
-                .with_worker(state.seam.clone()),
+        .merge(agents::router(
+            agents::AgentsState::new(auth(), &data_dir)
+                .with_worker(state.seam.clone())
+                .with_agent_loop(state.workspace.clone(), state.loop_config.clone()),
         ))
         .merge(portability::router(portability_state))
         .merge(network::router(network_state))
@@ -281,7 +349,8 @@ pub fn platform_router(state: &OneDoorState) -> Router {
             state.agent_root.clone(),
         )))
         .merge(models_catalog::router(
-            models_catalog::ModelsCatalogState::new(auth(), &data_dir),
+            models_catalog::ModelsCatalogState::new(auth(), &data_dir)
+                .with_worker(state.seam.clone()),
         ))
         .merge(permission_mode::router(
             permission_mode::PermissionModeState::new(auth(), &data_dir),
@@ -326,7 +395,7 @@ pub fn knowledge_router(state: &OneDoorState) -> Router {
         )
         .with_graph(state.graph.clone())
         .with_seam(state.seam.clone())
-        .with_permissions(lattice_ingest::local_files_api::LocalApprovals::new()),
+        .with_permissions(Arc::clone(&state.local_approvals)),
     );
 
     let index = Arc::new(
@@ -335,6 +404,11 @@ pub fn knowledge_router(state: &OneDoorState) -> Router {
             .with_seam(state.seam.clone()),
     );
 
+    let review = Arc::new(super::sinks::PlatformReview::new(Arc::new(
+        state.governance.clone(),
+    )));
+    let egress = Arc::new(super::sinks::PlatformEgress::new(&state.data_dir));
+    let audit = Arc::new(super::sinks::PlatformAudit::new(&state.data_dir));
     let chat = lattice_chat::ChatState::new(
         auth(),
         lattice_chat::ChatConfig::from_data_dir(&state.data_dir, &state.agent_root),
@@ -344,7 +418,10 @@ pub fn knowledge_router(state: &OneDoorState) -> Router {
         state.seam.origin(),
     ))
     .with_graph(state.graph.clone())
-    .with_workspace(Arc::clone(&state.resolver) as Arc<dyn lattice_auth::WorkspaceResolver>);
+    .with_workspace(Arc::clone(&state.resolver) as Arc<dyn lattice_auth::WorkspaceResolver>)
+    .with_review(review)
+    .with_egress(egress)
+    .with_audit(audit);
 
     Router::new()
         .merge(lattice_retrieval::memory_api::router(brain.clone()))

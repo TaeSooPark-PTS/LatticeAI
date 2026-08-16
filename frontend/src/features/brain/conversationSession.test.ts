@@ -29,4 +29,13 @@ describe("conversation session", () => {
     expect(useConversationSession.getState().conversationId).toBeNull();
     expect(useConversationSession.getState().messages).toEqual([]);
   });
+
+  it("resets the local-only override with the conversation", () => {
+    useConversationSession.getState().setPreferLocalOnly(true);
+    expect(useConversationSession.getState().preferLocalOnly).toBe(true);
+
+    useConversationSession.getState().resetConversation();
+
+    expect(useConversationSession.getState().preferLocalOnly).toBe(false);
+  });
 });

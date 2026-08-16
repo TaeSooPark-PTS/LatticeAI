@@ -53,7 +53,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -78,6 +78,9 @@ MAX_MAX_TOKENS = 8192
 MIN_TEMPERATURE = 0.0
 MAX_TEMPERATURE = 2.0
 
+#: How many stop strings one completion may name. The kernel sends two.
+MAX_STOP_STRINGS = 8
+
 #: Rate-limit bucket. Deliberately *not* the ``"agent"`` bucket ``/agent`` uses:
 #: that one is sized per *run* (10 burst, one refill per 10s) because one HTTP
 #: call there is a whole agent run. Here one call is a single loop step, and a
@@ -101,6 +104,13 @@ class AgentLLMRequest(BaseModel):
     context: Optional[str] = None
     max_tokens: int = 4096
     temperature: float = 0.2
+    #: Strings that end the reply (v11.9.0). Optional, and absent means what it
+    #: always meant: generate to ``max_tokens``. The kernel sends it on exactly
+    #: one call — the strict verification re-ask, whose reply is one short
+    #: closed object — because a stop string that is safe there ("\n```") would
+    #: truncate any reply carrying file content. Bounded so a caller cannot make
+    #: the sampler check a thousand needles per token.
+    stop: Optional[List[str]] = Field(default=None, max_length=MAX_STOP_STRINGS)
 
 
 class AgentToolRequest(BaseModel):
@@ -247,6 +257,7 @@ def create_agent_worker_seam_router(
             context=req.context,
             max_tokens=req.max_tokens,
             temperature=req.temperature,
+            stop=req.stop or None,
         )
         return {"text": str(text)}
 

@@ -1,0 +1,59 @@
+{
+  "status": 200,
+  "elapsed_s": 3.207362174987793,
+  "body": {
+    "status": "ok",
+    "message": "Success: mlx-community/gemma-4-e2b-it-4bit (mlx_lm)",
+    "model": "mlx-community/gemma-4-e2b-it-4bit",
+    "current": "mlx-community/gemma-4-e2b-it-4bit",
+    "engine": "local_mlx",
+    "installed_now": false,
+    "download": null,
+    "resolution": {
+      "input_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "engine": "local_mlx",
+      "provider": "local_mlx",
+      "resolved_model": "mlx-community/gemma-4-e2b-it-4bit",
+      "download_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "load_id": "mlx-community/gemma-4-e2b-it-4bit",
+      "expected_current": "mlx-community/gemma-4-e2b-it-4bit",
+      "display_name": "mlx-community/gemma-4-e2b-it-4bit",
+      "metadata": {
+        "engine_hint": ""
+      }
+    },
+    "downloaded": false,
+    "loaded": true,
+    "ready_to_chat": true,
+    "compatibility_status": "ok",
+    "smoke_test": {
+      "ok": true,
+      "status": "ok",
+      "reason": "ok",
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The user asked in Korean: \"한국어로 한 문장만 답해. 2+2는?\" (Answer in one sentence in Korean. What is 2+2?)\n2.  **Determine Identity/Role:** I am Lattice AI, a local AI assistant running on Apple Silicon, a Vision-Language Model (VLM).\n3.  **Analyze the Core Question:** The mathematical question is \"2+2\".\n4.  **Formulate the Answer (in Korean, concise):** The answer is 4.\n5",
+      "profile": {
+        "model_id": "mlx-community/gemma-4-e2b-it-4bit",
+        "engine": "local_mlx",
+        "family": "gemma",
+        "template": "tokenizer_default_or_gemma",
+        "supports_vision": true,
+        "stop": [
+          "<end_of_turn>",
+          "</s>"
+        ],
+        "temperature": 0.2,
+        "top_p": 0.95,
+        "max_tokens": 4096,
+        "disable_draft": false,
+        "postprocess": [
+          "strip_role_tokens"
+        ],
+        "loaded": true,
+        "chat_compatible": true,
+        "quality_status": "ok",
+        "last_test_error": null,
+        "validated_at": 1786905861.461246
+      }
+    }
+  }
+}

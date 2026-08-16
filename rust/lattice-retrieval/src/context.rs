@@ -17,6 +17,8 @@
 //! left. Cutting on bytes instead of characters would also split a Korean
 //! syllable down the middle; `truncate_chars` is what keeps that honest.
 
+use std::collections::BTreeSet;
+
 use lattice_core::pytext::truncate_chars;
 use lattice_core::{CoreError, LocalEmbeddingModel};
 use rusqlite::Connection;
@@ -26,6 +28,18 @@ use crate::history::{recent_chat, RecentChatOptions};
 use crate::service::Scope;
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions};
 use crate::shape::truthy;
+
+/// Scope the knowledge seam the way chat/memory/command do: a named workspace
+/// is a membership filter, and `"personal"` also matches NULL/blank rows.
+fn knowledge_scope(workspace_id: Option<&str>) -> Scope {
+    match workspace_id.filter(|id| !id.is_empty()) {
+        Some(id) => Scope {
+            allowed_workspaces: Some(BTreeSet::from([id.to_string()])),
+            include_legacy_global: false,
+        },
+        None => Scope::default(),
+    }
+}
 
 /// `context.approx_tokens` — the documented chars/4 approximation.
 pub fn approx_tokens(text: &str) -> usize {
@@ -296,7 +310,7 @@ pub fn assemble_context(
             &request.query,
             &ServiceHybridOptions {
                 limit: request.knowledge_limit,
-                scope: Scope::default(),
+                scope: knowledge_scope(request.workspace_id.as_deref()),
                 now_secs: request.now_secs,
                 ..ServiceHybridOptions::default()
             },
@@ -518,5 +532,92 @@ mod tests {
         assert_eq!(out["trace"]["budget_approx_tokens"], 2000);
         assert!(format!("{request:?}").contains("knowledge_limit"));
         assert!(format!("{:?}", RecentRequest::default()).contains("limit"));
+    }
+
+    fn knowledge_graph() -> (tempfile::TempDir, Connection) {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = Connection::open(dir.path().join("g.sqlite")).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE nodes(id TEXT PRIMARY KEY, type TEXT, title TEXT, summary TEXT,
+                                metadata_json TEXT, updated_at TEXT);
+             CREATE TABLE edges(id TEXT PRIMARY KEY, from_node TEXT, to_node TEXT, type TEXT,
+                                weight REAL, metadata_json TEXT, created_at TEXT);
+             CREATE TABLE nodes_v2(id TEXT PRIMARY KEY, workspace_id TEXT);
+             CREATE TABLE chunks(id TEXT PRIMARY KEY, source_node TEXT, text TEXT, metadata_json TEXT);
+             CREATE TABLE vector_embeddings(item_id TEXT PRIMARY KEY, item_type TEXT,
+                                            source_node TEXT, embedding BLOB, embedding_dim INTEGER,
+                                            embedding_model TEXT, metadata_json TEXT,
+                                            indexed_at TEXT);
+             INSERT INTO nodes VALUES
+               ('note','Document','Phoenix launch notes','the phoenix plan','{}','2026-08-11T09:00:00'),
+               ('team','Document','Acme only','secret','{}','2026-08-11T09:00:00');
+             INSERT INTO nodes_v2 VALUES ('note', NULL), ('team', 'acme');",
+        )
+        .unwrap();
+        (dir, conn)
+    }
+
+    fn match_ids(out: &Value) -> Vec<String> {
+        out["trace"]["sections"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|section| section["source"] == "knowledge")
+            .and_then(|section| section["provenance"].as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|row| row.get("id").and_then(Value::as_str).map(str::to_string))
+            .collect()
+    }
+
+    #[test]
+    fn knowledge_assembly_treats_null_workspace_as_personal() {
+        let (_dir, conn) = knowledge_graph();
+        let model = LocalEmbeddingModel::new(384);
+        let personal = assemble_context(
+            &conn,
+            &model,
+            &ContextRequest {
+                query: "phoenix".into(),
+                budget: 2000,
+                knowledge_limit: 5,
+                knowledge: true,
+                workspace_id: Some("personal".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(match_ids(&personal), vec!["note".to_string()]);
+        let named = assemble_context(
+            &conn,
+            &model,
+            &ContextRequest {
+                query: "phoenix".into(),
+                budget: 2000,
+                knowledge_limit: 5,
+                knowledge: true,
+                workspace_id: Some("acme".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(
+            match_ids(&named).is_empty(),
+            "a named workspace must not see the unstamped node"
+        );
+        let stamped = assemble_context(
+            &conn,
+            &model,
+            &ContextRequest {
+                query: "secret".into(),
+                budget: 2000,
+                knowledge_limit: 5,
+                knowledge: true,
+                workspace_id: Some("acme".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(match_ids(&stamped), vec!["team".to_string()]);
     }
 }

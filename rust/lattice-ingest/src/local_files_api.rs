@@ -4,10 +4,11 @@
 //! routes that file mounts. The seventeenth was `GET /api/ingestion/multimodal`,
 //! a capability probe that stayed KEEP_WORKER until v11.8.0 deleted it for
 //! having no caller — so `latticeai/api/local_files.py` is gone entirely and
-//! this module is the whole surviving family. Graph writes
-//! (folder ingest, local index, watch-flag, resume) go over the worker
-//! seam; filesystem list/read/write/serve and the SQLite *reads* of
-//! `ingestion_jobs` / `knowledge_sources` / `local_file_index` are native.
+//! this module is the whole surviving family. Folder ingest and the watch
+//! door write through `GraphWriter` in this process; local index / resume
+//! still go over the worker seam when a compute worker is bound. Filesystem
+//! list/read/write/serve and the SQLite *reads* of `ingestion_jobs` /
+//! `knowledge_sources` / `local_file_index` are native.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -103,6 +104,37 @@ struct Approval {
     expires_at: f64,
     approved: bool,
     content_hash: Option<String>,
+    token_hint: String,
+}
+
+/// What `/permissions/*` needs to redeem, deny, or list a local-files token.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ApprovalView {
+    /// Canonical path the token was minted for.
+    pub path: String,
+    /// `list` / `read` / `write`.
+    pub action: String,
+    /// Owner identity the probe bound (empty string for the trusted local owner).
+    pub user_email: String,
+    /// Whether `/permissions/approve` (or a test) has marked it.
+    pub approved: bool,
+    /// Unix seconds; compare with now to decide expired vs pending.
+    pub expires_at: f64,
+    /// First eight characters of the raw token — the Act inbox key.
+    pub token_hint: String,
+}
+
+impl Approval {
+    fn view(&self) -> ApprovalView {
+        ApprovalView {
+            path: self.path.clone(),
+            action: self.action.clone(),
+            user_email: self.user_email.clone(),
+            approved: self.approved,
+            expires_at: self.expires_at,
+            token_hint: self.token_hint.clone(),
+        }
+    }
 }
 
 impl Default for LocalApprovals {
@@ -131,6 +163,7 @@ impl LocalApprovals {
     pub fn probe(&self, path: &str, action: &str, user_email: &str, content: &str) -> Value {
         let normalized = Self::normalize(path);
         let token = token_urlsafe(24);
+        let token_hint = token.chars().take(8).collect::<String>();
         let record = Approval {
             path: normalized,
             action: action.to_string(),
@@ -138,6 +171,7 @@ impl LocalApprovals {
             expires_at: now_secs() + APPROVAL_TTL_SECS as f64,
             approved: false,
             content_hash: (action == "write").then(|| sha256_hex(content.as_bytes())),
+            token_hint,
         };
         if let Ok(mut map) = self.inner.lock() {
             map.insert(sha256_hex(token.as_bytes()), record);
@@ -163,19 +197,53 @@ impl LocalApprovals {
 
     /// Mark a minted token approved — the seeding step `/permissions/approve`
     /// performs. Tests and the replay harness call this; the product UI still
-    /// goes through R8's route.
+    /// goes through R8's route. Accepts the full token or its 8-char hint.
     pub fn approve(&self, token: &str) -> bool {
-        let key = sha256_hex(token.as_bytes());
+        self.approve_record(token).is_some()
+    }
+
+    /// Approve and return the record so `/permissions/approve` can echo it.
+    pub fn approve_record(&self, token: &str) -> Option<ApprovalView> {
+        let now = now_secs();
         let Ok(mut map) = self.inner.lock() else {
-            return false;
+            return None;
         };
-        match map.get_mut(&key) {
-            Some(record) => {
-                record.approved = true;
-                true
-            }
-            None => false,
-        }
+        map.retain(|_, record| record.expires_at >= now);
+        let key = resolve_token(&map, token)?;
+        let record = map.get_mut(&key)?;
+        record.approved = true;
+        Some(record.view())
+    }
+
+    /// Drop a minted token (the `/permissions/deny` path).
+    pub fn deny_record(&self, token: &str) -> Option<ApprovalView> {
+        let Ok(mut map) = self.inner.lock() else {
+            return None;
+        };
+        let key = resolve_token(&map, token)?;
+        map.remove(&key).map(|record| record.view())
+    }
+
+    /// Look up a token without changing it. Expired records stay visible so
+    /// `/permissions/status` can say `expired` instead of `denied_or_expired`.
+    pub fn status_of(&self, token: &str) -> Option<ApprovalView> {
+        let Ok(map) = self.inner.lock() else {
+            return None;
+        };
+        let key = resolve_token(&map, token)?;
+        map.get(&key).map(Approval::view)
+    }
+
+    /// Non-expired records, for `/permissions/pending`.
+    pub fn pending_records(&self) -> Vec<ApprovalView> {
+        let now = now_secs();
+        let Ok(map) = self.inner.lock() else {
+            return Vec::new();
+        };
+        map.values()
+            .filter(|record| record.expires_at >= now)
+            .map(Approval::view)
+            .collect()
     }
 
     /// `require_local_approval`.
@@ -426,6 +494,23 @@ pub(crate) fn ensure_write_allowed(normalized: &str) -> Result<(), Response> {
     Ok(())
 }
 
+/// Full token (sha256 key) or the unique 8-char hint the Act inbox holds.
+fn resolve_token(map: &HashMap<String, Approval>, token: &str) -> Option<String> {
+    let direct = sha256_hex(token.as_bytes());
+    if map.contains_key(&direct) {
+        return Some(direct);
+    }
+    if token.chars().count() != 8 {
+        return None;
+    }
+    let matches: Vec<String> = map
+        .iter()
+        .filter(|(_, record)| record.token_hint == token)
+        .map(|(key, _)| key.clone())
+        .collect();
+    (matches.len() == 1).then(|| matches.into_iter().next().expect("len == 1"))
+}
+
 pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     let digest = Sha256::digest(bytes);
     let mut out = String::with_capacity(digest.len() * 2);
@@ -563,6 +648,26 @@ mod tests {
         table
             .require(Some(&token), &path, "list", "a@b.c", "")
             .unwrap();
+    }
+
+    #[test]
+    fn the_eight_char_hint_redeems_the_same_token() {
+        let table = LocalApprovals::new();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().to_string_lossy().into_owned();
+        let probe = table.probe(&path, "read", "", "");
+        let token = probe["approval_token"].as_str().unwrap().to_string();
+        let hint: String = token.chars().take(8).collect();
+        let view = table.approve_record(&hint).expect("hint redeems");
+        assert_eq!(view.action, "read");
+        assert_eq!(view.user_email, "");
+        assert!(view.approved);
+        table
+            .require(Some(&token), &path, "read", "", "")
+            .expect("full token still works after a hint approve");
+        assert_eq!(table.pending_records().len(), 1);
+        assert!(table.deny_record(&token).is_some());
+        assert!(table.status_of(&token).is_none());
     }
 
     #[test]

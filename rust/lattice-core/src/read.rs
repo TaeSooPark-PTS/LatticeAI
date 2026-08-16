@@ -174,11 +174,79 @@ pub fn workspaces_of(
     Ok(scopes)
 }
 
+/// The product's default workspace. A node whose `workspace_id` is NULL or
+/// blank is this visibility — ingest historically left the column unset,
+/// and chat/memory/command ride `"personal"` on a fresh install.
+pub const DEFAULT_WORKSPACE_ID: &str = "personal";
+
+/// Whether a stored workspace value is the default (NULL, blank, or `"personal"`).
+pub fn workspace_is_default(workspace_id: Option<&str>) -> bool {
+    match workspace_id.map(str::trim) {
+        None | Some("") => true,
+        Some(id) => id == DEFAULT_WORKSPACE_ID,
+    }
+}
+
+/// Whether a row in `workspace` is visible to `allowed`.
+///
+/// NULL/blank is default/personal visibility: a query for [`DEFAULT_WORKSPACE_ID`]
+/// matches it. A named non-default workspace stays strict — nulls do not leak
+/// into real multi-tenant scopes. `include_legacy_global` still opts a caller
+/// into null rows even when `"personal"` is not in the set (the unscoped
+/// machine-wide legacy path).
+pub fn scoped_workspace_visible(
+    node_workspace: Option<&str>,
+    allowed: &BTreeSet<&str>,
+    include_legacy_global: bool,
+) -> bool {
+    match node_workspace.filter(|id| !id.is_empty()) {
+        None => include_legacy_global || allowed.contains(DEFAULT_WORKSPACE_ID),
+        Some(id) => allowed.contains(id),
+    }
+}
+
+/// SQL membership filter for `workspace_id`.
+///
+/// `None` allowed is "no scoping". An empty set with no legacy opt-in is
+/// "nothing". When the allowed set contains [`DEFAULT_WORKSPACE_ID`], NULL
+/// and blank `workspace_id` match as well (`COALESCE`-style).
+pub fn workspace_membership_sql(
+    allowed: Option<&BTreeSet<String>>,
+    include_legacy_global: bool,
+) -> Option<(String, Vec<String>)> {
+    let allowed = allowed?;
+    let names: Vec<String> = allowed
+        .iter()
+        .filter(|value| !value.is_empty())
+        .cloned()
+        .collect();
+    let sees_personal_null = names.iter().any(|name| name == DEFAULT_WORKSPACE_ID);
+    let mut clauses: Vec<String> = Vec::new();
+    let mut params: Vec<String> = Vec::new();
+    if !names.is_empty() {
+        let placeholders = vec!["?"; names.len()].join(",");
+        clauses.push(format!("workspace_id IN ({placeholders})"));
+        params.extend(names);
+    }
+    if sees_personal_null {
+        clauses.push("(workspace_id IS NULL OR workspace_id = '')".into());
+    } else if include_legacy_global {
+        clauses.push("workspace_id IS NULL".into());
+    }
+    if clauses.is_empty() {
+        return Some(("0".into(), Vec::new()));
+    }
+    Some((clauses.join(" OR "), params))
+}
+
 /// `KnowledgeGraphReadsMixin.filter_scoped_nodes`, generic over the item shape.
 ///
 /// `allowed == None` means **no scoping** — the local trusted-owner path — and
 /// is deliberately not fail-closed. An empty set is the opposite statement: a
 /// caller who may read nothing, so nothing matches.
+///
+/// NULL/blank `workspace_id` is default/personal visibility: see
+/// [`scoped_workspace_visible`].
 pub fn filter_scoped_nodes<T, F>(
     conn: &Connection,
     items: Vec<T>,
@@ -207,12 +275,16 @@ where
         match scopes.get(&node_id) {
             None => continue,
             Some(None) => {
-                if include_legacy_global {
+                if scoped_workspace_visible(None, &allowed, include_legacy_global) {
                     visible.push(item);
                 }
             }
             Some(Some(workspace_id)) => {
-                if allowed.contains(workspace_id.as_str()) {
+                if scoped_workspace_visible(
+                    Some(workspace_id.as_str()),
+                    &allowed,
+                    include_legacy_global,
+                ) {
                     visible.push(item);
                 }
             }
@@ -291,8 +363,29 @@ mod tests {
             vec!["a".to_string(), "c".to_string()]
         );
 
+        // NULL workspace_id is default/personal visibility, not a named tenant.
+        let personal: BTreeSet<String> = [DEFAULT_WORKSPACE_ID.to_string()].into_iter().collect();
+        assert_eq!(
+            filter_scoped_nodes(&conn, items(), Some(&personal), false, id_of).unwrap(),
+            vec!["c".to_string()],
+            "a personal request matches a null-workspace node"
+        );
+        let team: BTreeSet<String> = ["team".to_string()].into_iter().collect();
+        assert!(
+            filter_scoped_nodes(&conn, items(), Some(&team), false, id_of)
+                .unwrap()
+                .is_empty(),
+            "a named workspace does not leak null-workspace nodes"
+        );
+
         // Blank workspace ids in the allowed set are dropped, and a blank node id
         // is never visible.
+        let (predicate, params) = workspace_membership_sql(Some(&personal), false).unwrap();
+        assert!(predicate.contains("workspace_id IS NULL"), "{predicate}");
+        assert_eq!(params, vec![DEFAULT_WORKSPACE_ID.to_string()]);
+        let (named, _) = workspace_membership_sql(Some(&team), false).unwrap();
+        assert_eq!(named, "workspace_id IN (?)");
+
         let blank: BTreeSet<String> = [String::new()].into_iter().collect();
         assert!(
             filter_scoped_nodes(&conn, items(), Some(&blank), false, id_of)

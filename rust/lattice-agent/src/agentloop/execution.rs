@@ -12,6 +12,15 @@
 //! small to hold the tool-call protocol. It never fabricates evidence: no
 //! planned paths, a staged proposal, or a tool error all leave the run to end
 //! as it would have.
+//!
+//! v11.9.0 added two things to the parse step, both for the ~2B models the
+//! compact profile exists for and both in [`super::fallback`]: a reply that
+//! fenced the file instead of the tool call is turned into the write the plan
+//! asked for, and a byte-identical rejected reply buys one extra attempt with
+//! a prompt that names the repetition. Neither is reachable by a model that
+//! answers correctly, and neither changes what a `standard` run does.
+
+use std::collections::BTreeSet;
 
 use serde_json::{json, Map, Value};
 
@@ -43,6 +52,16 @@ impl Runtime {
             .count() as u32;
         let budget = req.max_steps.saturating_sub(executed).max(1);
         let mut parse_failures = 0u32;
+        // The parse budget, and the **one** extra attempt a byte-identical
+        // rejected reply may buy (ported from the deleted
+        // `file_generation.orchestration`): the ordinary retry is known to be
+        // dead on arrival there — the correction did not change the reply — so
+        // the round trip is better spent on a prompt that names the repetition
+        // than on a third identical one. A model that never repeats itself is
+        // never charged for it.
+        let mut parse_budget = profile.parse_failure_budget;
+        let mut repeat_escalations = 1u32;
+        let mut seen_replies: BTreeSet<String> = BTreeSet::new();
 
         for _ in 0..budget {
             let context = self.executor_context(ctx, req, profile);
@@ -54,29 +73,56 @@ impl Runtime {
                     message: "Execute the next step.",
                     context: &context,
                     max_tokens: self.deps.phase_budgets.execute_tokens,
-                    temperature: req.temperature,
+                    temperature: crate::profile::execute_temperature(profile),
+                    stop: &[],
                 })
                 .await?;
             ctx.trace.llm_call("execute", model_id.as_deref());
 
-            let action = match extract_action_details(&raw) {
+            let parsed = match extract_action_details(&raw) {
                 Ok((action, repairs)) => {
                     ctx.trace.repair("execute", &repairs);
-                    action
+                    Some(action)
                 }
-                Err(error) => {
-                    parse_failures += 1;
-                    if self.note_parse_failure(ctx, &raw, &error.0, parse_failures, profile) {
-                        if profile.direct_path_fallback
-                            && self.direct_file_path(ctx, req, model_id.as_deref()).await?
-                        {
-                            ctx.state = AgentState::Verifying;
-                            return Ok(());
-                        }
-                        break;
+                // The reply is not an action object — but it may still contain
+                // the *file* the plan is waiting for, fenced as code. That is
+                // the most common ~2B slip on a file task, and refusing the
+                // step throws away work the model actually did.
+                Err(error) => match self.fence_rescue(ctx, &raw) {
+                    Some(rescued) => {
+                        ctx.trace.repair("execute", &["fence_rescue".to_string()]);
+                        Some(rescued)
                     }
-                    continue;
-                }
+                    None => {
+                        parse_failures += 1;
+                        let fingerprint = raw.trim().to_string();
+                        let repeated = !fingerprint.is_empty() && !seen_replies.insert(fingerprint);
+                        if repeated && repeat_escalations > 0 && parse_failures >= parse_budget {
+                            repeat_escalations -= 1;
+                            parse_budget += 1;
+                        }
+                        let slip = super::fallback::ParseSlip {
+                            failures: parse_failures,
+                            budget: parse_budget,
+                            repeated,
+                        };
+                        if self.note_parse_failure(ctx, &raw, &error.0, slip, profile) {
+                            if profile.direct_path_fallback
+                                && self
+                                    .direct_file_path(ctx, req, model_id.as_deref(), profile)
+                                    .await?
+                            {
+                                ctx.state = AgentState::Verifying;
+                                return Ok(());
+                            }
+                            break;
+                        }
+                        None
+                    }
+                },
+            };
+            let Some(action) = parsed else {
+                continue;
             };
 
             let name = py_str_or_empty(action.get("action"));
@@ -194,10 +240,21 @@ impl Runtime {
 
     /// Assemble one executor turn's prompt.
     ///
-    /// `executor_prompt_for`'s profile-aware composition stays in the worker,
-    /// which owns the prompt library; what the loop contributes — the plan, the
-    /// files this run has already written, the latest corrections, the bounded
-    /// transcript — is assembled here, in the original's order.
+    /// The header is the run's executor prompt — the caller's when it supplied
+    /// one, the profile-shaped built-in ([`crate::prompts`]) when it did not.
+    /// What the loop contributes around it — the plan, the files this run has
+    /// already written, the latest corrections, the bounded transcript — is
+    /// assembled here, in the original's order.
+    ///
+    /// **The compact profile trims two of those, and shortens a third.** The
+    /// transcript window alone never bounded this: by step five a 2B model was
+    /// being handed the plan, every path written so far, the whole recent
+    /// conversation and four steps of 700-character tool output, and the action
+    /// contract at the top was competing with 6–10k tokens of framing. Under
+    /// `lean_context` the written-files hint and the conversation go (the plan
+    /// and the transcript already carry those facts) and each step's result is
+    /// sliced to [`AgentProfile::result_chars`]. Nothing is trimmed for a model
+    /// that can hold the contract — `standard` composes exactly what it did.
     fn executor_context(
         &self,
         ctx: &AgentRunContext,
@@ -226,16 +283,25 @@ impl Runtime {
                     .join("\n")
             )
         };
-        let recent = req
-            .recent_conversation
-            .as_deref()
-            .filter(|text| !text.is_empty())
-            .unwrap_or("(none)");
         let budget = self.deps.transcript_budget;
         let window = budget.window.min(profile.transcript_window);
-        let bounded = compact_transcript(&ctx.transcript, window, budget.result_chars);
+        let bounded = compact_transcript(
+            &ctx.transcript,
+            window,
+            budget.result_chars.min(profile.result_chars),
+        );
+        let conversation_block = if profile.lean_context {
+            String::new()
+        } else {
+            let recent = req
+                .recent_conversation
+                .as_deref()
+                .filter(|text| !text.is_empty())
+                .unwrap_or("(none)");
+            format!("\n\nRecent conversation:\n{recent}")
+        };
         let written = files_written(&ctx.transcript, &self.deps.file_create_actions);
-        let written_hint = if written.is_empty() {
+        let written_hint = if written.is_empty() || profile.lean_context {
             String::new()
         } else {
             format!(
@@ -248,15 +314,17 @@ impl Runtime {
             )
         };
         format!(
-            "{}\n\n[LANGUAGE HINT: {}]\nWorkspace root: {}{}\n\nPLAN:\n{}{}\n\n\
-Recent conversation:\n{}\n\nUser request: {}{}\n\nExecution transcript:\n{}",
-            self.deps.prompts.executor,
+            "{}\n\n[LANGUAGE HINT: {}]\nWorkspace root: {}{}\n\nPLAN:\n{}{}{}\
+\n\nUser request: {}{}\n\nExecution transcript:\n{}",
+            self.deps
+                .prompts
+                .executor_prompt(profile, &self.deps.tool_names, &req.skills),
             req.language_hint,
             self.deps.workspace.root().display(),
             self.project_block(ctx),
             serde_json::to_string(&Value::Object(ctx.plan.clone())).unwrap_or_default(),
             written_hint,
-            recent,
+            conversation_block,
             req.message,
             corrections_hint,
             serde_json::to_string_pretty(&Value::Array(bounded)).unwrap_or_default(),
@@ -737,6 +805,171 @@ mod tests {
         // The snapshot captured the pre-run bytes, so rollback has something.
         assert_eq!(ctx.rollback_log[0]["content"], "old");
         assert_eq!(ctx.rollback_log[0]["existed"], true);
+    }
+
+    // ── the executor prompt and what surrounds it (v11.9.0) ─────────────────
+    /// A run five steps in: a plan, five results, a written file, a
+    /// conversation. This is the shape the compact profile was drowning in.
+    fn five_steps_in(harness: &crate::agentloop::harness::Harness) -> AgentRunContext {
+        let mut ctx = harness.context();
+        ctx.plan = json!({"goal": "build the page", "steps": [
+            {"action": "write_file", "args": {"path": "index.html"}, "description": "the page"},
+            {"action": "write_file", "args": {"path": "style.css"}, "description": "the styles"}
+        ]})
+        .as_object()
+        .expect("plan")
+        .clone();
+        for index in 0..5 {
+            ctx.transcript.push(json!({
+                "state": "EXECUTING", "action": "read_file",
+                "args": {"path": format!("src/module_{index}.js")},
+                "result": {"path": format!("src/module_{index}.js"),
+                           "content": "x".repeat(4_000)},
+            }));
+        }
+        ctx.transcript.push(json!({
+            "state": "EXECUTING", "action": "write_file", "args": {"path": "index.html"},
+            "result": {"path": "index.html", "bytes": 40},
+        }));
+        ctx
+    }
+
+    #[tokio::test]
+    async fn execute_uses_the_profile_temperature_not_the_request_default() {
+        // Before: EXECUTE forwarded req.temperature (serde default 0.1) for
+        // every profile. After: compact 0.1 / standard 0.2, even if the
+        // request carries something else. PLAN/VERIFY temps are unchanged.
+        for (profile, expected) in [
+            (crate::profile::COMPACT, 0.1),
+            (crate::profile::STANDARD, 0.2),
+        ] {
+            let mut harness = harness(&[r#"{"action": "final", "message": "done"}"#]).await;
+            harness.runtime.deps.agent_profile = Some(profile);
+            harness.request.temperature = 0.9;
+            let mut ctx = harness.context();
+            harness
+                .runtime
+                .execute(&mut ctx, &harness.request)
+                .await
+                .expect("execute");
+            let asks = harness.worker.calls.lock().expect("lock").clone();
+            let execute = asks
+                .iter()
+                .find(|call| call["seam"] == json!("llm"))
+                .expect("one execute call");
+            assert_eq!(
+                execute["body"]["temperature"],
+                json!(expected),
+                "{}",
+                profile.name
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_run_with_no_prompt_library_still_gets_the_action_contract() {
+        // The v11.9.0 bug in one assertion: this used to open with a blank line
+        // and the model was never told what a reply looked like.
+        let harness = harness(&[]).await;
+        let ctx = harness.context();
+        let context =
+            harness
+                .runtime
+                .executor_context(&ctx, &harness.request, crate::profile::STANDARD);
+        assert!(context.starts_with("You are the executor"), "{context}");
+        assert!(context.contains("EXACTLY ONE JSON object"));
+        assert!(context.contains("- write_file{path, content}"), "{context}");
+        assert!(context.contains("<!doctype html>"));
+    }
+
+    #[tokio::test]
+    async fn a_caller_supplied_prompt_wins_outright() {
+        let mut harness = harness(&[]).await;
+        harness.runtime.deps.prompts.executor = "HOST PROMPT".into();
+        let ctx = harness.context();
+        let context =
+            harness
+                .runtime
+                .executor_context(&ctx, &harness.request, crate::profile::COMPACT);
+        assert!(context.starts_with("HOST PROMPT"));
+        assert!(!context.contains("EXACTLY ONE JSON object"));
+    }
+
+    #[tokio::test]
+    async fn declared_skills_reach_the_executor_prompt() {
+        let mut harness = harness(&[]).await;
+        harness.request.skills = vec![crate::prompts::SkillBrief {
+            name: "release-manager".into(),
+            brief: "prepare a release".into(),
+            when: "the user asks to ship".into(),
+        }];
+        let ctx = harness.context();
+        let context =
+            harness
+                .runtime
+                .executor_context(&ctx, &harness.request, crate::profile::STANDARD);
+        assert!(context.contains("Available skills:\n- release-manager: prepare a release"));
+    }
+
+    #[tokio::test]
+    async fn the_compact_context_drops_the_framing_the_transcript_already_carries() {
+        let mut harness = harness(&[]).await;
+        harness.request.recent_conversation = Some("USER: hi\nASSISTANT: hello".into());
+        let ctx = five_steps_in(&harness);
+
+        let standard =
+            harness
+                .runtime
+                .executor_context(&ctx, &harness.request, crate::profile::STANDARD);
+        assert!(standard.contains("Recent conversation:"));
+        assert!(standard.contains("Files written by this run so far"));
+
+        let compact =
+            harness
+                .runtime
+                .executor_context(&ctx, &harness.request, crate::profile::COMPACT);
+        assert!(!compact.contains("Recent conversation:"));
+        assert!(!compact.contains("Files written by this run so far"));
+        assert!(!compact.contains("USER: hi"));
+        // The plan and the transcript still carry every fact that was dropped.
+        assert!(compact.contains("index.html"), "the plan is still there");
+        assert!(compact.contains("Execution transcript:"));
+    }
+
+    #[tokio::test]
+    async fn the_compact_context_stays_small_enough_for_a_2b_model_at_step_five() {
+        let mut harness = harness(&[]).await;
+        harness.request.recent_conversation = Some("USER: ".to_string() + &"chat ".repeat(400));
+        let ctx = five_steps_in(&harness);
+        let standard =
+            harness
+                .runtime
+                .executor_context(&ctx, &harness.request, crate::profile::STANDARD);
+        let compact =
+            harness
+                .runtime
+                .executor_context(&ctx, &harness.request, crate::profile::COMPACT);
+        // ~4 characters per token for this mix of English prose and JSON, so
+        // 8,000 characters is the ~2k-token target. The standard profile is
+        // over it on the same run — which is the measurement this dial exists
+        // because of, and why it is asserted from both sides.
+        assert!(
+            compact.len() < 8_000,
+            "compact context is {} chars",
+            compact.len()
+        );
+        assert!(
+            standard.len() > 8_000,
+            "standard context is {} chars — the fixture stopped being the \
+problem this compares against",
+            standard.len()
+        );
+        assert!(
+            compact.len() * 2 < standard.len(),
+            "compact {} vs standard {}",
+            compact.len(),
+            standard.len()
+        );
     }
 
     #[tokio::test]

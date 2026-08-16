@@ -57,15 +57,29 @@ impl Install {
         Self::start_at(capture_utc_secs()).await
     }
 
+    /// A brand-new data dir: GraphWriter bootstrap only, no seeded Brain.
+    ///
+    /// Used to pin the fresh-Brain memory reads that used to 500 on a missing
+    /// `conversation_messages` table.
+    pub async fn start_fresh() -> Self {
+        Self::boot(capture_utc_secs(), false).await
+    }
+
     /// The same install with the UTC clock moved, for testing what the passage
     /// of time does to a fixture. Nothing but a test should need this.
     pub async fn start_at(now_utc: f64) -> Self {
+        Self::boot(now_utc, true).await
+    }
+
+    async fn boot(now_utc: f64, seed_brain: bool) -> Self {
         let data = tempfile::tempdir().expect("data");
         let home = tempfile::tempdir().expect("home");
         let data_dir = data.path().to_path_buf();
         let home_dir = home.path().to_path_buf();
         seed_users(&data_dir);
-        seed_schema(&data_dir);
+        if seed_brain {
+            seed_schema(&data_dir);
+        }
 
         let mut env = HashMap::new();
         env.insert("LATTICEAI_REQUIRE_AUTH".into(), "1".into());

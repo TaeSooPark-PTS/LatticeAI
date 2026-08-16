@@ -1,7 +1,7 @@
 {
   "envelope": {
     "file": "_envelope.json",
-    "sha256": "cfa3835c325fd76ef1a9afc344c555d29ec89c3d7456f7b8355931d315eb7a5d",
+    "sha256": "9d3001e734d2d0a02ce4be17f1d9bdc1aabec8f4d9b568119c33f366ff23d466",
     "unattributed_schemas": 0
   },
   "fragments": [
@@ -11,7 +11,7 @@
       "operations": 41,
       "paths": 37,
       "schemas": 9,
-      "sha256": "e92804d695273b23b760008df4e703816b5e7dbaf964c9789c5e17e818b1d48d"
+      "sha256": "f63dbb3f604232c9bd5dc1ff8f73a4f28001c3f33677617d1766c1860b39ab60"
     },
     {
       "family": "auth",
@@ -19,15 +19,15 @@
       "operations": 9,
       "paths": 8,
       "schemas": 6,
-      "sha256": "897bbce757f05c91937eba56c364aa1f7df1231cdd33a2708bd4b9d76298a46c"
+      "sha256": "ca6bde331c09bff7d544220dc5b0b5ac95dfff780abc3ca038a25ee67f0e79fb"
     },
     {
       "family": "chat",
       "file": "chat.json",
-      "operations": 11,
-      "paths": 9,
+      "operations": 12,
+      "paths": 10,
       "schemas": 6,
-      "sha256": "49dc5cecd4dbe0eb753d8ec1c289b3240ba3f93c83f5bc243635090d15da5625"
+      "sha256": "83f3eaab201ad00e7841f3787ac2dba1514d1f7cdcb2d6f1626f97bcbe098a51"
     },
     {
       "family": "knowledge_search",
@@ -35,7 +35,7 @@
       "operations": 55,
       "paths": 46,
       "schemas": 22,
-      "sha256": "452c6de2ebffedaa7951e59fe0b2d340d96db23827c9a65b817087070e56f977"
+      "sha256": "cc87dbca4cd788c66d0b557286cc20544dfbc53c5af8dc8954affdc0b8873e5d"
     },
     {
       "family": "mcp_market",
@@ -43,7 +43,7 @@
       "operations": 86,
       "paths": 81,
       "schemas": 33,
-      "sha256": "8b60499c37cf93d9120308084389cf675dac6a7ebd8a2263d4dd0c1c62f0b7b2"
+      "sha256": "ddbc2e4388f8593e170fb581dc9dc815fd8f57a64cda25296f6c9d3bea91164a"
     },
     {
       "family": "memory_brain",
@@ -51,7 +51,7 @@
       "operations": 37,
       "paths": 36,
       "schemas": 13,
-      "sha256": "7b42432abe3d4f1e696487fdd6fa4c0016e047ea94faa4353d730adabb39b7ef"
+      "sha256": "bfeb85b70e6827c3ae3180dc617e8729d5f145354a16f45c0c97cbda439831f4"
     },
     {
       "family": "models_misc",
@@ -59,7 +59,7 @@
       "operations": 27,
       "paths": 24,
       "schemas": 13,
-      "sha256": "53ccd192e2a4df3974280ad32264cce5eb65974cb21780d2a520c3d6490202c0"
+      "sha256": "58fa0edcfd9ec0ebc7430d1e0e35694f795c6ab16c6199df736e0ae11a696671"
     },
     {
       "family": "portability_network",
@@ -67,7 +67,7 @@
       "operations": 60,
       "paths": 54,
       "schemas": 34,
-      "sha256": "caa02dcacc94118973e3886e5eba098874a2c386be756c208170af4e7d2a6af9"
+      "sha256": "f832729e2a59286cae55728981c9a36a91103655b7c0f465c43b8cadaa103c14"
     },
     {
       "family": "review_proposals",
@@ -75,7 +75,7 @@
       "operations": 33,
       "paths": 31,
       "schemas": 18,
-      "sha256": "61b31125c77e03c63ae6850406ff708ae901c19670f00c23a8161b67c8ea3353"
+      "sha256": "25c8fe27ac11f9fcabd0521091ea89bd502b7f2be9833c65bf95751bc8a51856"
     },
     {
       "family": "static_ui",
@@ -83,7 +83,7 @@
       "operations": 9,
       "paths": 9,
       "schemas": 2,
-      "sha256": "a49e18c91c137cb028d5e9d0d650dafdb484cab3dda91822b517bd8df04b633f"
+      "sha256": "b43c4ce59a042a0320b7e4176ddd59824f0a52349c3999db055e7d75759fd3e8"
     },
     {
       "family": "ui_redirects",
@@ -91,7 +91,7 @@
       "operations": 7,
       "paths": 7,
       "schemas": 0,
-      "sha256": "b596a7423bab61441c4f6c97699fc74821fd34417271178d2bab9904095aa18b"
+      "sha256": "1e2e592a8264e130461787203992b4678ea5a7b9e3227c6b95c287db344a1bfb"
     },
     {
       "family": "worker_keep",
@@ -99,7 +99,7 @@
       "operations": 19,
       "paths": 19,
       "schemas": 16,
-      "sha256": "dbf991e722c29bfda3ec676eff525e1e369a85b8ea310e34bd8619543e9c1034"
+      "sha256": "3b1fbfdd5910c6f0cd583e9bb28c92c7741fac294ea68005d625f24812eb9e17"
     },
     {
       "family": "workspace",
@@ -107,7 +107,7 @@
       "operations": 61,
       "paths": 53,
       "schemas": 21,
-      "sha256": "9fd8a1e0e55eb99d6ee488caa19db1be67c3a6cdb197474edda3838837043a9b"
+      "sha256": "8fb030268be2b07fff2ecebec60ecd4217686cf95351ed730f68c2a870a1d529"
     }
   ],
   "generated_by": "scripts/gen_openapi_fragments.py",
@@ -126,11 +126,11 @@
     "trailing_newline": true
   },
   "source": "frontend/openapi.json",
-  "spec_version": "11.8.0",
+  "spec_version": "11.9.0",
   "totals": {
     "families": 13,
-    "operations": 455,
-    "paths": 413,
+    "operations": 456,
+    "paths": 414,
     "schemas": 171
   }
 }

@@ -325,6 +325,31 @@ def test_cloud_generate_sends_the_grounded_system_prompt_and_rebrands_the_answer
     assert "stream" not in seen
 
 
+def test_cloud_generate_forwards_stop_strings_and_omits_the_key_otherwise():
+    """v11.9.0: the provider stops server-side, so nothing has to be trimmed.
+
+    The key is *absent* when no stop is asked for rather than sent as ``[]``:
+    some OpenAI-compatible servers reject an empty stop array, and a completion
+    that 400s because of a field nobody wanted is a failed run.
+    """
+    seen = {}
+
+    async def create(**kwargs):
+        seen.update(kwargs)
+        return _response("판정")
+
+    router = router_mod.LLMRouter()
+    asyncio.run(router._cloud_generate(_cloud(create), "질문", None, 64, 0.0, ["\n```"]))
+    assert seen["stop"] == ["\n```"]
+
+    seen.clear()
+    asyncio.run(router._cloud_generate(_cloud(create), "질문", None, 64, 0.0))
+    assert "stop" not in seen
+    seen.clear()
+    asyncio.run(router._cloud_generate(_cloud(create), "질문", None, 64, 0.0, [""]))
+    assert "stop" not in seen, "an empty marker is not a stop request"
+
+
 def test_cloud_generate_without_context_keeps_the_bare_system_prompt():
     seen = {}
 

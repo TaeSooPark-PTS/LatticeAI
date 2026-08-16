@@ -105,6 +105,35 @@ fn cu_unavailable() -> Value {
     })
 }
 
+async fn pointer_status(state: &ComputerUseState) -> Value {
+    let Some(seam) = &state.seam else {
+        return json!({
+            "available": false,
+            "reason": "worker is not configured",
+        });
+    };
+    match seam.get_json("/worker/sysinfo").await {
+        Ok(payload) => match payload
+            .pointer("/capabilities/pointer_tools")
+            .and_then(Value::as_bool)
+        {
+            Some(true) => json!({"available": true}),
+            Some(false) => json!({
+                "available": false,
+                "reason": "pyautogui not installed",
+            }),
+            None => json!({
+                "available": false,
+                "reason": "worker did not report pointer-tool capability",
+            }),
+        },
+        Err(err) => json!({
+            "available": false,
+            "reason": format!("worker sysinfo unreachable: {err}"),
+        }),
+    }
+}
+
 async fn chrome_status(State(state): State<ComputerUseState>, headers: HeaderMap) -> Response {
     if let Err(refusal) = state.auth.require_user(&headers) {
         return refusal;
@@ -119,14 +148,14 @@ async fn computer_use_status(
     if let Err(refusal) = state.auth.require_user(&headers) {
         return refusal;
     }
-    json_ok(wrapped(&state, cu_unavailable()))
+    json_ok(wrapped(&state, pointer_status(&state).await))
 }
 
 async fn cu_status(State(state): State<ComputerUseState>, headers: HeaderMap) -> Response {
     if let Err(refusal) = state.auth.require_user(&headers) {
         return refusal;
     }
-    json_ok(cu_unavailable())
+    json_ok(pointer_status(&state).await)
 }
 
 async fn cu_screenshot(State(state): State<ComputerUseState>, headers: HeaderMap) -> Response {

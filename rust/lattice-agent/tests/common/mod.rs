@@ -185,10 +185,29 @@ pub struct ReplayWorker {
     completions: Mutex<Vec<String>>,
     tool_calls: Mutex<Vec<Value>>,
     observed: Mutex<Vec<Value>>,
+    /// The `context` of every completion asked for, in order.
+    ///
+    /// The trajectories never needed this — they compare what the loop *did*.
+    /// v11.9.0's compact case also has to check what the model was *told*,
+    /// because "the model did not follow the format" and "the model was never
+    /// shown the format" look identical from the outside.
+    prompts: Mutex<Vec<String>>,
     root: Mutex<PathBuf>,
 }
 
 impl ReplayWorker {
+    /// Every completion context this worker was sent, in order.
+    pub fn observed_prompts(&self) -> Vec<String> {
+        self.prompts.lock().expect("lock").clone()
+    }
+
+    fn record_prompt(&self, body: &Value) {
+        self.prompts
+            .lock()
+            .expect("lock")
+            .push(body["context"].as_str().unwrap_or_default().to_string());
+    }
+
     fn next_completion(&self) -> String {
         let mut queue = self.completions.lock().expect("lock");
         if queue.is_empty() {
@@ -280,9 +299,12 @@ pub async fn start_replay_worker(root: &Path) -> ReplayServer {
             "/agent/llm",
             axum::routing::post({
                 let state = Arc::clone(&worker);
-                move |_body: axum::Json<Value>| {
+                move |axum::Json(body): axum::Json<Value>| {
                     let state = Arc::clone(&state);
-                    async move { axum::Json(json!({"text": state.next_completion()})) }
+                    async move {
+                        state.record_prompt(&body);
+                        axum::Json(json!({"text": state.next_completion()}))
+                    }
                 }
             }),
         )

@@ -1,7 +1,10 @@
 # Lattice AI — browser extension (Manifest V3)
 
+Current release: **11.9.0 — Working Order**.
+
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
-Knowledge Graph. It does three things:
+Knowledge Graph. Cloud stays on the host (optional, default local); this
+extension still posts only to `127.0.0.1`. It does three things:
 
 1. **Capture** — send the current page into the graph;
 2. **Recall** (v9.9.7) — ask your Brain a question and see the *server's own*

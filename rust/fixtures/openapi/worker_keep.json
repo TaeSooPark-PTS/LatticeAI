@@ -1276,7 +1276,7 @@
   },
   "schema_count": 16,
   "source": "frontend/openapi.json",
-  "spec_version": "11.8.0",
+  "spec_version": "11.9.0",
   "summary": "The surface whose handler stays inside the Python worker's interpreter: scout_routes.md's KEEP_WORKER set and the graph single-writer seam, less the eight caller-less routes v11.8.0 deleted end-to-end (embeddings providers, the two document-tool reads, the multimodal and voice-status probes, model switch/unload-all and engine pull-model).",
   "target": "Python AI worker (proxy allowlist)",
   "wp": "\u2014"

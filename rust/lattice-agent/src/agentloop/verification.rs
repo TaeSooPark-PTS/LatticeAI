@@ -10,7 +10,7 @@
 use serde_json::{json, Map, Value};
 
 use super::{RunRequest, Runtime};
-use crate::action::extract_action_details;
+use crate::action::extract_verdict_details;
 use crate::pystr::py_str;
 use crate::state::{AgentRunContext, AgentState};
 use crate::transcript::{
@@ -19,11 +19,29 @@ use crate::transcript::{
 };
 use crate::worker::{Completion, WorkerError};
 
-/// The one strict re-ask, verbatim.
-const STRICT_HINT: &str = "Your previous verdict was not parseable JSON. Reply with EXACTLY one \
-JSON object like {\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \
-\"reason\": \"...\", \"corrections\": []} and nothing else. verdict must be PASS or FAIL; \
-next_state must be one of DONE, EXECUTING, ROLLBACK, FAILED.";
+/// The one strict re-ask, verbatim. Same contract the executor prompt holds
+/// this model to: one object, a worked example, no channel tags.
+const STRICT_HINT: &str = "Your previous verdict was not parseable JSON. \
+Reply with EXACTLY ONE JSON object and nothing else — no prose before it, \
+no prose after it, no markdown fences, never two objects. \
+Never emit <|channel|>, <|message|>, <|start|>, or <|end|> tokens; \
+start at the opening brace.\n\
+Example:\n\
+{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \
+\"reason\": \"the requested file was written\", \"corrections\": []}\n\
+verdict must be PASS or FAIL; next_state must be one of DONE, EXECUTING, \
+ROLLBACK, FAILED.";
+
+/// The only place in the loop that sends stop strings (v11.9.0).
+///
+/// The strict re-ask is the last *JSON* chance: after it, only the token
+/// last-rung can still recover, and anything ambiguous is `NEEDS_REVIEW`.
+/// It is also the one call whose reply is a short, closed object — so a
+/// model that keeps talking after `}` is spending the retry on nothing.
+/// Everywhere else stop strings are off, because a `content` field routinely
+/// contains every sequence one would want to stop on. `\n\n` is deliberately
+/// **not** here for the same reason a verdict `reason` may wrap.
+const VERDICT_STOP: [&str; 2] = ["\n```", "\nUser:"];
 
 impl Runtime {
     /// Deterministic evidence check: at least one executing step actually
@@ -71,7 +89,7 @@ impl Runtime {
         let context = format!(
             "{}\n\n[LANGUAGE HINT: {}]\n\nOriginal request: {}\nPlan goal: {}{checklist_hint}{}\
 \n\nFull transcript:\n{}",
-            self.deps.prompts.critic,
+            self.deps.prompts.critic_prompt(),
             req.language_hint,
             req.message,
             py_str(&goal),
@@ -88,11 +106,12 @@ impl Runtime {
                 context: &context,
                 max_tokens: self.deps.phase_budgets.verify_tokens,
                 temperature: 0.1,
+                stop: &[],
             })
             .await?;
         ctx.trace.llm_call("verify", model_id.as_deref());
 
-        let mut verdict: Option<Map<String, Value>> = match extract_action_details(&raw) {
+        let mut verdict: Option<Map<String, Value>> = match extract_verdict_details(&raw) {
             Ok((parsed, repairs)) => {
                 ctx.trace.repair("verify", &repairs);
                 Some(parsed)
@@ -111,17 +130,35 @@ impl Runtime {
                         context: &strict_context,
                         max_tokens: self.deps.phase_budgets.verify_tokens,
                         temperature: 0.0,
+                        stop: &VERDICT_STOP,
                     })
                     .await?;
                 ctx.trace.llm_call("verify", model_id.as_deref());
-                match extract_action_details(&retry) {
+                match extract_verdict_details(&retry) {
                     Ok((parsed, repairs)) => {
                         ctx.trace.repair("verify", &repairs);
                         Some(parsed)
                     }
                     Err(retry_error) => {
                         ctx.trace.parse_error("verify", &retry_error.0, false);
-                        None
+                        // Last rung: an unambiguous PASS/FAIL token in the
+                        // retry's plain text, only when evidence and coverage
+                        // already stand on their own. Anything looser stays
+                        // unparsed so the fail-closed path below fires.
+                        last_rung_token_verdict(
+                            &retry,
+                            Self::has_execution_evidence(ctx),
+                            coverage["complete"] == json!(true),
+                        )
+                        .map(|token| {
+                            ctx.trace.repair("verify", &["token_verdict".to_string()]);
+                            ctx.trace.decision(
+                                "verify",
+                                "token_verdict",
+                                &[("verdict", json!(token.label))],
+                            );
+                            token.into_verdict()
+                        })
                     }
                 }
             }
@@ -175,7 +212,7 @@ impl Runtime {
         };
         let verdict_label = verdict.get("verdict").cloned().unwrap_or_else(|| json!(""));
 
-        ctx.transcript.push(json!({
+        let mut step = json!({
             "state": AgentState::Verifying.as_str(),
             "verdict": verdict_label,
             "reason": verdict.get("reason").cloned().unwrap_or_else(|| json!("")),
@@ -185,7 +222,11 @@ impl Runtime {
             "verifier_available": true,
             "verdict_valid": true,
             "evidence": has_evidence,
-        }));
+        });
+        if verdict.get("verdict_source") == Some(&json!("token")) {
+            step["verdict_source"] = json!("token");
+        }
+        ctx.transcript.push(step);
         ctx.trace.decision(
             "verify",
             &py_str(&verdict_label),
@@ -271,6 +312,39 @@ impl Runtime {
 실행 결과를 직접 확인해 주세요."
                 .into();
             ctx.state = AgentState::NeedsReview;
+        } else if next_state.is_empty() {
+            // Compact 2B critics often omit next_state. Implied DONE only when
+            // every requested file is verifiably written *and* the critic did
+            // not name a negative verdict. Anything looser stays NEEDS_REVIEW.
+            if implied_done_from_empty_next_state(
+                has_evidence,
+                coverage["complete"] == json!(true),
+                &verdict_label,
+            ) {
+                ctx.trace
+                    .decision("verify", "done_implied_by_evidence", &[]);
+                if ctx.final_message.is_empty() {
+                    ctx.final_message = match verdict.get("reason") {
+                        Some(reason) if !py_str(reason).is_empty() => py_str(reason),
+                        _ => "작업이 완료되었습니다.".into(),
+                    };
+                }
+                ctx.state = AgentState::Done;
+            } else {
+                ctx.trace.decision(
+                    "verify",
+                    "needs_review_empty_next_state",
+                    &[
+                        ("evidence", json!(has_evidence)),
+                        ("coverage_complete", coverage["complete"].clone()),
+                        ("verdict", verdict_label.clone()),
+                    ],
+                );
+                ctx.final_message = "검증자가 다음 상태를 비운 채 답했고 완료로 볼 근거가 \
+부족해 검토가 필요합니다. 실행 결과를 직접 확인해 주세요."
+                    .into();
+                ctx.state = AgentState::NeedsReview;
+            }
         } else {
             ctx.final_message = match verdict.get("reason") {
                 Some(reason) => py_str(reason),
@@ -279,6 +353,104 @@ impl Runtime {
             ctx.state = AgentState::Failed;
         }
         Ok(())
+    }
+}
+
+/// Last-rung condition, verbatim:
+///
+/// if the reply's plain text contains an unambiguous verdict token
+/// (PASS/통과 with no FAIL/실패/불합격 tokens anywhere, or vice versa)
+/// AND execution evidence exists AND requirement_coverage is complete
+/// → map to that verdict; anything ambiguous stays NEEDS_REVIEW
+/// exactly as today.
+fn last_rung_token_verdict(
+    raw: &str,
+    has_evidence: bool,
+    coverage_complete: bool,
+) -> Option<TokenVerdict> {
+    if !has_evidence || !coverage_complete {
+        return None;
+    }
+    let plain = match crate::channel::strip_channel_frames(raw) {
+        Some(stripped) => stripped,
+        None => raw.to_string(),
+    };
+    let pass = contains_ascii_word(&plain, "pass") || plain.contains("통과");
+    let fail =
+        contains_ascii_word(&plain, "fail") || plain.contains("실패") || plain.contains("불합격");
+    match (pass, fail) {
+        (true, false) => Some(TokenVerdict {
+            label: "PASS",
+            next_state: "DONE",
+        }),
+        (false, true) => Some(TokenVerdict {
+            label: "FAIL",
+            next_state: "FAILED",
+        }),
+        _ => None,
+    }
+}
+
+struct TokenVerdict {
+    label: &'static str,
+    next_state: &'static str,
+}
+
+impl TokenVerdict {
+    fn into_verdict(self) -> Map<String, Value> {
+        let mut map = Map::new();
+        map.insert("action".into(), json!("verdict"));
+        map.insert("verdict".into(), json!(self.label));
+        map.insert("next_state".into(), json!(self.next_state));
+        map.insert(
+            "reason".into(),
+            json!(format!(
+                "unambiguous {} token after unparseable critic JSON",
+                self.label
+            )),
+        );
+        map.insert("corrections".into(), json!([]));
+        map.insert("verdict_source".into(), json!("token"));
+        map
+    }
+}
+
+fn contains_ascii_word(text: &str, word: &str) -> bool {
+    let text_l = text.to_ascii_lowercase();
+    let word_l = word.to_ascii_lowercase();
+    let hay = text_l.as_bytes();
+    let needle = word_l.as_bytes();
+    let mut start = 0;
+    while start + needle.len() <= hay.len() {
+        if &hay[start..start + needle.len()] == needle {
+            let before_ok = start == 0 || !hay[start - 1].is_ascii_alphanumeric();
+            let after = start + needle.len();
+            let after_ok = after == hay.len() || !hay[after].is_ascii_alphanumeric();
+            if before_ok && after_ok {
+                return true;
+            }
+        }
+        start += 1;
+    }
+    false
+}
+
+/// Empty `next_state` becomes DONE only when every requested file was written,
+/// the transcript has a real tool result, and the critic did not name a
+/// negative verdict. A malformed critic with no evidence stays NEEDS_REVIEW.
+fn implied_done_from_empty_next_state(
+    has_evidence: bool,
+    coverage_complete: bool,
+    verdict_label: &Value,
+) -> bool {
+    has_evidence && coverage_complete && is_blank_or_pass(verdict_label)
+}
+
+fn is_blank_or_pass(verdict_label: &Value) -> bool {
+    match verdict_label {
+        Value::Null => true,
+        Value::String(label) => label.is_empty() || label.eq_ignore_ascii_case("PASS"),
+        _ => false,
     }
 }
 
@@ -438,6 +610,11 @@ mod tests {
                 json!({"action": "v", "verdict": "FAIL", "next_state": "SOMETHING"}),
                 AgentState::Failed,
             ),
+            // A 2B critic that names no next_state after a real write is DONE.
+            (
+                json!({"action": "verdict", "confidence": 0.9}),
+                AgentState::Done,
+            ),
         ];
         for (body, expected) in cases {
             let mut harness = harness(&[&verdict(body.clone())]).await;
@@ -528,6 +705,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn empty_next_state_without_evidence_is_needs_review() {
+        let mut harness =
+            harness(&[&verdict(json!({"action": "verdict", "confidence": 0.9}))]).await;
+        let mut ctx = harness.context();
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::NeedsReview);
+        assert!(ctx.final_message.contains("검토가 필요합니다"));
+    }
+
+    #[tokio::test]
+    async fn empty_next_state_with_a_fail_verdict_is_needs_review() {
+        let mut harness = harness(&[&verdict(json!({
+            "action": "verdict", "verdict": "FAIL", "confidence": 0.9
+        }))])
+        .await;
+        let mut ctx = harness.context();
+        ctx.transcript.push(executed("a.md"));
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::NeedsReview);
+    }
+
+    #[tokio::test]
+    async fn empty_next_state_with_missing_files_is_needs_review() {
+        let mut harness =
+            harness(&[&verdict(json!({"action": "verdict", "confidence": 0.9}))]).await;
+        harness.request.message = "todo 앱 html css js 만들어줘".into();
+        let mut ctx = harness.context();
+        ctx.transcript.push(executed("index.html"));
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::NeedsReview);
+    }
+
+    #[tokio::test]
     async fn a_final_message_already_set_by_execute_is_not_overwritten() {
         let mut harness = harness(&[&verdict(json!({"action": "v", "verdict": "PASS",
              "next_state": "DONE", "reason": "critic prose"}))])
@@ -541,5 +763,127 @@ mod tests {
             .await
             .expect("verify");
         assert_eq!(ctx.final_message, "the executor already said this");
+    }
+
+    #[tokio::test]
+    async fn a_verdict_object_without_action_still_parses_on_the_first_ask() {
+        let mut harness = harness(&[&verdict(json!({
+            "verdict": "PASS", "next_state": "DONE", "reason": "no action key"
+        }))])
+        .await;
+        let mut ctx = harness.context();
+        ctx.transcript.push(executed("a.md"));
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::Done);
+        assert_eq!(harness.runtime_llm_calls(&ctx), 1);
+    }
+
+    #[tokio::test]
+    async fn last_rung_clear_pass_is_done() {
+        let mut harness = harness(&[
+            "I cannot shape this as JSON.",
+            "<|channel>thought\nThe file is on disk and the request is met. PASS.",
+        ])
+        .await;
+        let mut ctx = harness.context();
+        ctx.transcript.push(executed("a.md"));
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::Done);
+        assert_eq!(ctx.trace.summary()["parse_errors"], 2);
+        assert_eq!(ctx.trace.summary()["repairs"]["token_verdict"], 1);
+        let step = ctx.transcript.last().expect("verdict step");
+        assert_eq!(step["verdict"], "PASS");
+        assert_eq!(step["verdict_source"], "token");
+        assert_eq!(step["verifier_available"], true);
+    }
+
+    #[tokio::test]
+    async fn last_rung_clear_fail_is_failed() {
+        let mut harness = harness(&[
+            "still not JSON",
+            "The write did not match the request. FAIL.",
+        ])
+        .await;
+        let mut ctx = harness.context();
+        ctx.transcript.push(executed("a.md"));
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::Failed);
+        assert_eq!(ctx.transcript.last().expect("step")["verdict"], "FAIL");
+        assert_eq!(ctx.trace.summary()["repairs"]["token_verdict"], 1);
+    }
+
+    #[tokio::test]
+    async fn last_rung_both_tokens_stays_needs_review() {
+        let mut harness = harness(&[
+            "prose",
+            "I want to PASS this but also FAIL it — cannot decide.",
+        ])
+        .await;
+        let mut ctx = harness.context();
+        ctx.transcript.push(executed("a.md"));
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::NeedsReview);
+        assert_eq!(
+            ctx.transcript.last().expect("step")["verdict"],
+            "UNAVAILABLE"
+        );
+        assert!(ctx.trace.summary()["repairs"]
+            .get("token_verdict")
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn last_rung_pass_token_without_evidence_stays_needs_review() {
+        let mut harness = harness(&["prose", "Looks fine. PASS."]).await;
+        let mut ctx = harness.context();
+        ctx.transcript
+            .push(json!({"state": "EXECUTING", "action": "final"}));
+        harness
+            .runtime
+            .verify(&mut ctx, &harness.request)
+            .await
+            .expect("verify");
+        assert_eq!(ctx.state, AgentState::NeedsReview);
+        assert_eq!(
+            ctx.transcript.last().expect("step")["verdict"],
+            "UNAVAILABLE"
+        );
+        assert!(ctx.trace.summary()["repairs"]
+            .get("token_verdict")
+            .is_none());
+    }
+
+    #[test]
+    fn last_rung_condition_is_the_documented_conjunction() {
+        // The four gates: token polarity, no opposing token, evidence, coverage.
+        assert!(last_rung_token_verdict("PASS", true, true).is_some());
+        assert!(last_rung_token_verdict("통과했습니다", true, true).is_some());
+        assert!(last_rung_token_verdict("FAIL", true, true).is_some());
+        assert!(last_rung_token_verdict("실패", true, true).is_some());
+        assert!(last_rung_token_verdict("불합격", true, true).is_some());
+        assert!(last_rung_token_verdict("PASS and FAIL", true, true).is_none());
+        assert!(last_rung_token_verdict("PASS", false, true).is_none());
+        assert!(last_rung_token_verdict("PASS", true, false).is_none());
+        assert!(last_rung_token_verdict("just prose", true, true).is_none());
+        assert!(
+            last_rung_token_verdict("PASSED", true, true).is_none(),
+            "PASSED is not the PASS token"
+        );
     }
 }

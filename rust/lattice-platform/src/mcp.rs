@@ -20,10 +20,13 @@ include!(concat!(
 ));
 
 mod catalog;
+mod dispatch;
 mod handlers;
 mod http;
+mod protocol;
 mod store;
 
+pub(crate) use dispatch::{dispatch, is_native_tool};
 pub(crate) use http::{
     detail, dump_indent2, json_status, json_text, localized, missing_fields, now_iso_seconds,
     parse_json_object, requested_scope, require_admin, require_user, sha256_hex, value_to_ordered,
@@ -38,6 +41,7 @@ use handlers::{
     mcp_claude_code_servers, mcp_connector, mcp_custom_add, mcp_custom_delete, mcp_custom_list,
     mcp_install, mcp_installed, mcp_recommend, mcp_registry_refresh, mcp_tools,
 };
+use protocol::mcp_jsonrpc;
 // ── MCP family ─────────────────────────────────────────────────────────────
 
 pub const MOUNTED: &[(&str, &str)] = &[
@@ -59,6 +63,10 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/plugins/directory/refresh"),
     ("POST", "/mcp/call"),
 ];
+
+/// Streamable-HTTP MCP JSON-RPC. Mounted on the product router, kept out of
+/// [`MOUNTED`] so the OpenAPI product contract is unchanged.
+pub const STREAMABLE: &[(&str, &str)] = &[("POST", "/mcp")];
 
 pub const CANNED_REMOTE_MCPS: &str = r#"[{"id":"fixture-mcp","name":"Fixture MCP","description":"Canned MCP used by the HTTP fixture generator.","install_mode":"npm","category":"test","package":"fixture-mcp","source":"fixture","capabilities":["search"]},{"id":"fixture-connector","name":"Fixture Connector","description":"Canned connector so /mcp/connectors/{id} has a hit.","install_mode":"connector","category":"connector","source":"fixture","connector_url":"https://example.test/connector"}]"#;
 
@@ -131,25 +139,31 @@ pub struct McpState {
     pub remote_mcps: Arc<Mutex<Vec<Value>>>,
     pub skills_market: Arc<Mutex<Vec<Value>>>,
     pub plugin_directory: Arc<Mutex<Vec<Value>>>,
+    pub tools: Option<crate::tools::ToolsState>,
 }
 
 impl McpState {
     pub fn new(auth: Arc<AuthState>, data_dir: impl AsRef<Path>) -> Self {
         let data_dir = data_dir.as_ref().to_path_buf();
-        let skills_dir = std::env::var("LATTICEAI_SKILLS_DIR")
-            .ok()
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../latticeai/core/skills")
-            });
         Self {
             auth,
+            skills_dir: resolve_skills_dir(&data_dir),
             data_dir,
-            skills_dir,
             remote_mcps: Arc::new(Mutex::new(parse_arr(CANNED_REMOTE_MCPS))),
             skills_market: Arc::new(Mutex::new(parse_arr(CANNED_SKILLS))),
             plugin_directory: Arc::new(Mutex::new(parse_arr(CANNED_PLUGINS))),
+            tools: None,
         }
+    }
+
+    pub fn with_tools(mut self, tools: crate::tools::ToolsState) -> Self {
+        self.tools = Some(tools);
+        self
+    }
+
+    pub fn with_skills_dir(mut self, dir: impl AsRef<Path>) -> Self {
+        self.skills_dir = dir.as_ref().to_path_buf();
+        self
     }
 
     fn custom_path(&self) -> PathBuf {
@@ -188,6 +202,24 @@ impl McpState {
     }
 }
 
+fn resolve_skills_dir(data_dir: &Path) -> PathBuf {
+    if let Ok(configured) = std::env::var("LATTICEAI_SKILLS_DIR") {
+        let trimmed = configured.trim();
+        if !trimmed.is_empty() {
+            return PathBuf::from(trimmed);
+        }
+    }
+    let under_data = data_dir.join("skills");
+    if under_data.is_dir() {
+        return under_data;
+    }
+    let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../skills");
+    if repo.is_dir() {
+        return repo;
+    }
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../latticeai/core/skills")
+}
+
 fn parse_arr(text: &str) -> Vec<Value> {
     serde_json::from_str::<Value>(text)
         .ok()
@@ -197,6 +229,7 @@ fn parse_arr(text: &str) -> Vec<Value> {
 
 pub fn router(state: McpState) -> Router {
     Router::new()
+        .route("/mcp", post(mcp_jsonrpc))
         .route("/mcp/tools", get(mcp_tools))
         .route("/mcp/recommend", post(mcp_recommend))
         .route("/mcp/install", post(mcp_install))

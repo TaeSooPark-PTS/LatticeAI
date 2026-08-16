@@ -150,10 +150,12 @@ impl GraphWriter {
             .get("owner")
             .filter(|value| super::pyaux::truthy(value))
             .map(super::pyaux::py_str);
-        let workspace_id = meta
-            .get("workspace_id")
-            .filter(|value| super::pyaux::truthy(value))
-            .map(super::pyaux::py_str);
+        let workspace_id = self.resolve_workspace(
+            meta.get("workspace_id")
+                .filter(|value| super::pyaux::truthy(value))
+                .map(super::pyaux::py_str)
+                .as_deref(),
+        );
         self.upsert_node(
             txn,
             &NodeSpec {

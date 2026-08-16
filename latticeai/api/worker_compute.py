@@ -66,8 +66,10 @@ import asyncio
 import base64
 import binascii
 import contextlib
+import importlib.util
 import io
 import logging
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
@@ -153,6 +155,29 @@ WORKER_COMPUTE_MESSAGES: Dict[str, Dict[str, str]] = {
         "en": "'{kind}' is not an extraction kind. Use one of {allowed}.",
     },
 }
+
+
+def pointer_tools_available() -> bool:
+    """Whether this interpreter can import ``pyautogui``.
+
+    Cheap and side-effect free: ``find_spec`` does not load the module, so a
+    headless worker without a display is not punished for answering the
+    question. The platform computer-use status route reads this through
+    ``GET /worker/sysinfo`` rather than guessing from its own process.
+    """
+    return importlib.util.find_spec("pyautogui") is not None
+
+
+def sysinfo_payload_extras() -> Dict[str, Any]:
+    """Additive fields for ``GET /worker/sysinfo``.
+
+    Existing GPU keys stay owned by ``worker_seams.probe_gpu_memory``. This
+    dict is merged in; it must never reuse those names.
+    """
+    return {
+        "capabilities": {"pointer_tools": pointer_tools_available()},
+        "python_version": "{}.{}.{}".format(*sys.version_info[:3]),
+    }
 
 
 def register_worker_compute_messages() -> None:
@@ -757,5 +782,7 @@ __all__ = [
     "build_pptx_bytes",
     "build_xlsx_bytes",
     "create_worker_compute_router",
+    "pointer_tools_available",
     "register_worker_compute_messages",
+    "sysinfo_payload_extras",
 ]

@@ -4,6 +4,7 @@
 //! exposes the worker's whole API surface, and the product's promise is that
 //! the brain never leaves the machine.
 
+pub mod agent_bind;
 pub mod allowlist;
 pub mod identity;
 pub mod mounts;
@@ -15,6 +16,7 @@ pub mod proxy;
 pub mod routes;
 pub mod scopes;
 pub mod search;
+pub mod sinks;
 
 use std::fmt;
 use std::future::Future;
@@ -411,7 +413,13 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
             get(search::vector).post(search::vector),
         )
         .with_state(Arc::clone(&state))
-        .merge(mounts::native_router(db, &agent_root, agent, jobs));
+        .merge(mounts::native_router_parts(
+            db,
+            &agent_root,
+            agent,
+            jobs,
+            state.product().is_none(),
+        ));
     if let Some(product) = state.product() {
         // `RunBody.user_role` is the server's to state, not the caller's
         // (§4c). Applied *inside* the posture gate below, so an unauthorised
@@ -436,12 +444,21 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
         // (WP-I2 §1), including the proxy: a browser write that reaches the
         // worker through this hop was let through *here*, and the worker's own
         // guard is defence in depth rather than the decision.
-        app = app.merge(product::product_router(product)).layer(
-            axum::middleware::from_fn_with_state(
+        let bind = agent_bind::AgentBindState::new(
+            Arc::clone(&product.auth),
+            product.workspace.clone(),
+            product.loop_config.clone(),
+        );
+        app = app
+            .merge(product::product_router(product))
+            .layer(axum::middleware::from_fn_with_state(
+                bind,
+                agent_bind::bind_agent_run,
+            ))
+            .layer(axum::middleware::from_fn_with_state(
                 Arc::clone(&product.auth),
                 lattice_auth::csrf_guard,
-            ),
-        );
+            ));
     }
     app
 }

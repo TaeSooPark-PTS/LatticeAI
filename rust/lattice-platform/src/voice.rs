@@ -58,13 +58,23 @@ async fn capture_voice(
             return refusal;
         }
     }
-    let Some(seam) = state.seam.clone() else {
-        let body = serde_json::to_string(&json!({"detail": "asr seam is not configured"}))
-            .unwrap_or_default();
-        return json_response(StatusCode::SERVICE_UNAVAILABLE, &body, None);
-    };
-    // Multipart audio → base64 for `/worker/asr`. Tests typically send JSON.
-    let audio_b64 = if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&body) {
+    let parsed = serde_json::from_slice::<serde_json::Value>(&body).ok();
+    let provided_title = parsed
+        .as_ref()
+        .and_then(|value| value.get("title"))
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let provided_text = parsed
+        .as_ref()
+        .and_then(|value| value.get("text"))
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    // Multipart audio → base64 for `/worker/asr`. JSON tests send `audio_b64`.
+    let audio_b64 = if let Some(value) = parsed.as_ref() {
         value
             .get("audio_b64")
             .and_then(serde_json::Value::as_str)
@@ -74,44 +84,95 @@ async fn capture_voice(
         use base64::Engine;
         base64::engine::general_purpose::STANDARD.encode(&body)
     };
-    let asr = match seam
-        .post_json(
-            "/worker/asr",
-            &json!({"audio_b64": audio_b64, "filename": "memo.m4a"}),
-        )
-        .await
-    {
-        Ok(value) => value,
-        Err(err) => {
-            let body =
-                serde_json::to_string(&json!({"detail": err.to_string()})).unwrap_or_default();
-            return json_response(StatusCode::BAD_GATEWAY, &body, None);
+
+    let mut transcription = "unavailable".to_string();
+    let mut asr_text = String::new();
+    let mut provider = json!("");
+    let mut asr_detail = json!("");
+
+    if let Some(seam) = state.seam.clone() {
+        match seam
+            .post_json(
+                "/worker/asr",
+                &json!({"audio_b64": audio_b64, "filename": "memo.m4a"}),
+            )
+            .await
+        {
+            Ok(asr) => {
+                asr_text = asr
+                    .get("text")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                provider = asr.get("provider").cloned().unwrap_or(json!(""));
+                asr_detail = asr.get("detail").cloned().unwrap_or(json!(""));
+                let status = asr
+                    .get("status")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("");
+                transcription = if status == "unavailable" || asr_text.is_empty() {
+                    "unavailable".into()
+                } else {
+                    "ok".into()
+                };
+            }
+            Err(err) => {
+                if provided_text.is_empty() {
+                    let body = serde_json::to_string(&json!({"detail": err.to_string()}))
+                        .unwrap_or_default();
+                    return json_response(StatusCode::BAD_GATEWAY, &body, None);
+                }
+                asr_detail = json!(err.to_string());
+            }
         }
-    };
-    let text = asr
-        .get("text")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("");
-    if let Some(graph) = state.graph.clone() {
-        let title = "Voice capture".to_string();
-        let text = text.to_string();
-        let _ = tokio::task::spawn_blocking(move || {
-            let request = lattice_core::graph_write::types::IngestContentRequest {
-                source_type: "voice".into(),
-                title,
-                text,
-                node_type: Some("Audio".into()),
-                ..Default::default()
-            };
-            graph.ingest_content(&request)
-        })
-        .await;
+    } else if provided_text.is_empty() {
+        let body = serde_json::to_string(&json!({"detail": "asr seam is not configured"}))
+            .unwrap_or_default();
+        return json_response(StatusCode::SERVICE_UNAVAILABLE, &body, None);
     }
+
+    // User-provided text is the memo. ASR text is only a fallback, and an
+    // unavailable transcriber must not wipe a memo the caller already wrote.
+    let memo = if provided_text.is_empty() {
+        asr_text
+    } else {
+        provided_text
+    };
+    let title = if provided_title.is_empty() {
+        "Voice capture".to_string()
+    } else {
+        provided_title
+    };
+
+    let mut node_id = serde_json::Value::Null;
+    if !memo.is_empty() {
+        if let Some(graph) = state.graph.clone() {
+            let text = memo.clone();
+            let written = tokio::task::spawn_blocking(move || {
+                let request = lattice_core::graph_write::types::IngestContentRequest {
+                    source_type: "voice".into(),
+                    title,
+                    text,
+                    node_type: Some("Audio".into()),
+                    ..Default::default()
+                };
+                graph.ingest_content(&request)
+            })
+            .await;
+            if let Ok(Ok(outcome)) = written {
+                node_id = json!(outcome.node_id);
+            }
+        }
+    }
+
     let payload = json!({
-        "status": asr.get("status").cloned().unwrap_or(json!("ok")),
-        "text": text,
-        "provider": asr.get("provider").cloned().unwrap_or(json!("")),
-        "detail": asr.get("detail").cloned().unwrap_or(json!("")),
+        "status": "ok",
+        "transcription": transcription,
+        "text": memo,
+        "provider": provider,
+        "detail": asr_detail,
+        "node_id": node_id,
     });
     let body = serde_json::to_string(&payload).unwrap_or_else(|_| "{}".into());
     json_response(StatusCode::OK, &body, None)

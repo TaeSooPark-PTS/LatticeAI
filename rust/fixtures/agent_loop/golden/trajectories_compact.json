@@ -1,0 +1,33 @@
+{
+  "cases": [
+    {
+      "execute_repairs": [
+        [
+          "fence"
+        ],
+        [
+          "tag_strip",
+          "truncated_close"
+        ]
+      ],
+      "executing_model": "mlx-community/gemma-4-e2b-it-4bit",
+      "file": {
+        "content": "<!doctype html>\n<html lang=\"ko\">\n<head><meta charset=\"utf-8\"><title>소개</title></head>\n<body><h1>안녕하세요</h1></body>\n</html>\n",
+        "path": "index.html"
+      },
+      "final_state": "DONE",
+      "key": "compact_parse_recovery",
+      "message": "index.html 소개 페이지 만들어줘",
+      "mode": "trusted",
+      "scripted_llm": [
+        "{\"action\": \"plan\", \"goal\": \"index.html 소개 페이지 만들기\", \"steps\": [{\"action\": \"write_file\", \"args\": {\"path\": \"index.html\"}, \"description\": \"페이지를 쓴다\"}], \"estimated_steps\": 1, \"requires_approval\": false, \"rollback_strategy\": \"none\"}",
+        "네, index.html을 만들겠습니다.\n\n```json\n{\"thoughts\": \"페이지를 쓴다\", \"action\": \"write_file\", \"args\": {\"path\": \"index.html\", \"content\": \"<!doctype html>\\n<html lang=\\\"ko\\\">\\n<head><meta charset=\\\"utf-8\\\"><title>소개</title></head>\\n<body><h1>안녕하세요</h1></body>\\n</html>\\n\"}}\n```\n\n확인해 주세요!",
+        "<tool_call>\n{\"action\": \"final\", \"message\": \"index.html 파일을 만들었습니다",
+        "{\"action\": \"verdict\", \"verdict\": \"PASS\", \"next_state\": \"DONE\", \"reason\": \"index.html이 작성되었습니다\", \"corrections\": []}"
+      ],
+      "unused_script": 0,
+      "why": "A ~2B local model driving the whole loop: the model id selects the compact profile, both executor replies are recovered by parse rungs Python did not have, and the direct-path fallback never fires."
+    }
+  ],
+  "schema": "agent-loop-native/v1"
+}

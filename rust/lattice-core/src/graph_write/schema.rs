@@ -383,11 +383,48 @@ const ADDABLE_EDGES_V2: [(&str, &str); 3] = [
     ("valid_to", "TEXT"),
 ];
 
+/// `ConversationStore._init_db` / `lattice_chat::turn::CONVERSATION_DDL`.
+///
+/// Not part of Python's `KnowledgeGraphStore.__init__`. The chat writer used
+/// to create this table lazily on the first turn, so a brand-new data dir
+/// 500'd every memory/chronicle reader with `no such table:
+/// conversation_messages`. Bootstrap creates it with the writer's column
+/// list and indexes exactly, `IF NOT EXISTS` throughout.
+const CONVERSATION_SCHEMA_SQL: &str = "
+    CREATE TABLE IF NOT EXISTS conversation_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_hash TEXT NOT NULL UNIQUE,
+      conversation_id TEXT,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      user_email TEXT,
+      user_nickname TEXT,
+      source TEXT,
+      timestamp TEXT NOT NULL,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      workspace_id TEXT,
+      organization_id TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_conv_messages_conv
+      ON conversation_messages(conversation_id);
+    CREATE INDEX IF NOT EXISTS idx_conv_messages_time
+      ON conversation_messages(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_conv_messages_user
+      ON conversation_messages(user_email);
+    CREATE INDEX IF NOT EXISTS idx_conv_messages_workspace
+      ON conversation_messages(workspace_id);
+";
+
 /// Bring `conn` up to the current schema, exactly as Python's constructor does.
 ///
 /// Idempotent, and a no-op against a database Python already initialised: the
 /// projection version and the `db_format_version` stamp are already current, so
 /// nothing is dropped and nothing is rebuilt.
+///
+/// After the graph DDL, [`ensure_conversation_schema`] creates the platform
+/// conversation table the readers need on a fresh Brain. That table is not
+/// in Python's graph constructor; it is created here so a reader never 500s
+/// waiting for the first chat write.
 pub fn bootstrap(txn: &Transaction<'_>, now: &str) -> Result<(), CoreError> {
     guard_db_format(txn)?;
     txn.execute_batch(LEGACY_SCHEMA_SQL)?;
@@ -397,6 +434,13 @@ pub fn bootstrap(txn: &Transaction<'_>, now: &str) -> Result<(), CoreError> {
     )?;
     init_v2_schema(txn, now)?;
     init_fts(txn)?;
+    ensure_conversation_schema(txn)?;
+    Ok(())
+}
+
+/// Idempotent `conversation_messages` + indexes, matching the chat writer.
+pub fn ensure_conversation_schema(txn: &Transaction<'_>) -> Result<(), CoreError> {
+    txn.execute_batch(CONVERSATION_SCHEMA_SQL)?;
     Ok(())
 }
 

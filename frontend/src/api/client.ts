@@ -15,7 +15,11 @@ import {
   tauriInvoke,
   workspaceHeaders,
 } from "./base";
+import { cloudStatus } from "./cloud";
 import { readEventStream } from "./eventStream";
+
+export type { CloudProviderMode, CloudProviderStatus } from "./cloud";
+export { normalizeCloudStatus, CLOUD_STATUS_UNCONFIGURED } from "./cloud";
 
 export type { ApiResult } from "./base";
 // The chronicle reads live in their own module (they are one cohesive
@@ -337,6 +341,9 @@ export type ChatEventHandlers = {
   // Live `event: agent_step` frames emitted before the final payload frames.
   // Raw records — callers parse defensively and ignore unknown fields.
   onAgentStep?: (step: Record<string, unknown>) => void;
+  // Hybrid cloud lane: which memories were sent, then the final cloud answer.
+  onHybridContext?: (frame: Record<string, unknown>) => void;
+  onHybridDone?: (frame: Record<string, unknown>) => void;
   signal?: AbortSignal;
 };
 
@@ -418,6 +425,8 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
   // trailer as the trace; keep the raw values so the UI parses defensively.
   let contextQuality: unknown = null;
   let grounding: unknown = null;
+  let hybridContext: unknown = null;
+  let hybridDone: unknown = null;
   // Frames the reader could not decode. Counted rather than thrown: half an
   // answer already on screen is worth more than a strict parser.
   let malformedFrames = 0;
@@ -425,7 +434,7 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
     // The terminator is a sentinel, not JSON, so it is matched before the
     // malformed check — otherwise every healthy stream would count one.
     if (frame.event === "message" && frame.raw === "[DONE]") {
-      return { source: "live", text, trace, agent, contextQuality, grounding, malformedFrames };
+      return { source: "live", text, trace, agent, contextQuality, grounding, hybridContext, hybridDone, malformedFrames };
     }
     if (frame.malformed) {
       malformedFrames += 1;
@@ -438,8 +447,22 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
       if (frame.data) handlers.onAgentStep?.(frame.data);
       continue;
     }
-    if (frame.event !== "message") continue;
     const data = frame.data;
+    const frameType = frame.event !== "message"
+      ? frame.event
+      : typeof data?.type === "string" ? data.type : "";
+    if (frameType === "hybrid_context" && data) {
+      hybridContext = data;
+      handlers.onHybridContext?.(data);
+      continue;
+    }
+    if (frameType === "hybrid_done" && data) {
+      hybridDone = data;
+      if (typeof data.answer === "string" && data.answer) text = data.answer;
+      handlers.onHybridDone?.(data);
+      continue;
+    }
+    if (frame.event !== "message") continue;
     if (!data) continue;
     const delta = (data.chunk || data.text || "") as string;
     if (delta) {
@@ -461,7 +484,7 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
       handlers.onAgent?.(agent);
     }
   }
-  return { source: "live", text, trace, agent, contextQuality, grounding, malformedFrames };
+  return { source: "live", text, trace, agent, contextQuality, grounding, hybridContext, hybridDone, malformedFrames };
 }
 
 async function saveChatFile(path: string, content: string): Promise<ApiResult<{ path?: string; bytes?: number }>> {
@@ -778,6 +801,8 @@ export const latticeApi = {
       titles: [], types: [], token_estimate: 0, quality: "", compact_preview: "",
       token_budget: {}, would_block: null,
     }),
+  // Dual credential path (API key / local CLI OAuth). 404 → not configured.
+  cloudStatus,
   proposals: () => get("/api/proposals", { items: [], count: 0, contract: {} }),
   proposalCounts: () => get("/api/proposals/counts", { pending: 0 }),
   proposalDetail: (itemId: string) => get(`/api/proposals/${encodeURIComponent(itemId)}`, { payload: {}, provenance: {} }),

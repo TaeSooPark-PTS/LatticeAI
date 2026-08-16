@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**
@@ -25,8 +25,9 @@ material. That breaks down for real work:
 ## The Lattice Answer
 
 Lattice AI keeps conversations, documents, memories, decisions, relationships,
-and source provenance in a private local Brain. Models can be local, cloud,
-current, or future. The Brain remains.
+and source provenance in a private local Brain. Models can be local, or an
+optional cloud worker you hire (OAuth CLI or an API key). Default is local.
+The Brain remains.
 
 The graph matters as visible proof, but a graph editor is not the product
 identity. The product identity is a local-first Digital Brain: the user talks or
@@ -48,7 +49,8 @@ secondary.
 - Ask what the team decided and see the source.
 - Add documents and build a searchable private memory.
 - Prepare from old notes, project decisions, and files.
-- Preserve context when moving between models.
+- Preserve context when moving between models. Cloud is optional; default
+  is local.
 - Export or restore the Brain as an encrypted `.latticebrain` archive.
 - Use Korean or English without changing the underlying Brain.
 - Avoid fake answers when no model or evidence is available.

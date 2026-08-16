@@ -20,6 +20,24 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "11.9.0": {
+    "_why": [
+      "Working Order is a backend-truth release. The product work is live",
+      "routes, hybrid cloud wiring, MCP, the 2B parse chain, and chat file",
+      "generation — none of that is a screen redesign.",
+      "",
+      "The SPA did gain CloudAnswerChip, CloudBoundaryHint, and a System-panel",
+      "cloud-status row. All three are conditional and stay off the capture",
+      "fixture: the mock server's network-boundary default is local_only",
+      "(allows_cloud: false), CloudBoundaryHint and the status row only render",
+      "inside that allows_cloud block, and CloudAnswerChip only mounts on a",
+      "cloud-answered message that 04-brain-chat-home does not have. Claiming",
+      "04 or 08 would fail the pixel gate when the pixels do not move.",
+      "",
+      "Empty claim set on purpose. Unclaimed screens are still measured and",
+      "printed; they are not gated. Do not guess-claim after the first capture."
+    ]
+  },
   "11.8.0": {
     "_why": [
       "Travel Light changes two things on screen, and only two.",

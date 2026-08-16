@@ -14,11 +14,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use axum::extract::Json;
+use axum::extract::{Json, Path as AxumPath};
 use axum::http::StatusCode;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
+use base64::Engine;
 use lattice_auth::{AuthConfig, AuthState, Clock, OrderedMap, WorkspaceResolver};
 use lattice_chat::intents::scoped_file_id;
 use lattice_chat::{router, ChatConfig, ChatState, ChatWorker};
@@ -160,6 +161,15 @@ impl SeamLog {
     }
 }
 
+/// The stand-in for python-docx: a document whose bytes are derived from the
+/// text the seam was asked to typeset, and are *not* that text.
+fn rendered_document(request: &Value) -> String {
+    format!(
+        "DOCX::{}",
+        request.get("body").and_then(Value::as_str).unwrap_or("")
+    )
+}
+
 async fn spawn_fake_worker(
     loaded: Vec<String>,
     current: Option<String>,
@@ -269,6 +279,31 @@ async fn spawn_fake_worker(
             }),
         )
         .route(
+            // W2 §3's document builders. The capture predates chat ever calling
+            // them — v11.7.0 wrote prose under a `.docx` name instead — so this
+            // route is what makes the deviation in `replay` observable rather
+            // than a 404 that would look like a product failure. The bytes are
+            // UTF-8 on purpose: the Brain files a file node under the hash of
+            // what is on disk, and a test that cannot compute that hash cannot
+            // prove the document rather than the prose was ingested.
+            "/worker/render/:kind",
+            post({
+                let seams = seams.clone();
+                move |AxumPath(kind): AxumPath<String>, Json(body): Json<Value>| {
+                    let seams = seams.clone();
+                    async move {
+                        seams.hit(&format!("/worker/render/{kind}"));
+                        let document = rendered_document(&body);
+                        axum::Json(json!({
+                            "content_b64": base64::engine::general_purpose::STANDARD
+                                .encode(document.as_bytes()),
+                            "bytes": document.len(),
+                        }))
+                    }
+                }
+            }),
+        )
+        .route(
             "/worker/llm/stream",
             post({
                 let stream_frames = stream_frames.clone();
@@ -311,6 +346,7 @@ struct Install {
     auth: Arc<AuthState>,
     seams: SeamLog,
     graph_db: PathBuf,
+    agent_root: PathBuf,
     _data: tempfile::TempDir,
     _agent: tempfile::TempDir,
     _handle: tokio::task::JoinHandle<()>,
@@ -381,11 +417,66 @@ impl Install {
             auth,
             seams,
             graph_db,
+            agent_root: agent.path().to_path_buf(),
             _data: data,
             _agent: agent,
             _handle: handle,
             _worker: worker_origin,
         }
+    }
+
+    /// The one recorded case this replay deliberately does **not** match.
+    ///
+    /// `file_intent_docx_artifact` captured Python writing 29 bytes of prose
+    /// into a file named `fixture-report.docx` and answering "만들었습니다".
+    /// Word opens that file and says it is corrupt — the capture is the record
+    /// of a real behaviour, and the behaviour was a lie. v11.9.0 renders a
+    /// `.docx` through `POST /worker/render/docx`, the same seam the agent's
+    /// `create_docx` uses, and writes the bytes the builder produced.
+    ///
+    /// The fixture file is frozen (`_`: "do not hand-edit — regenerate", and the
+    /// Python that generated it is deleted), so the divergence is stated here,
+    /// where it is checked, instead of being edited into the record of what
+    /// Python did. Everything the two agree on is still asserted below; what
+    /// changed is asserted as a change.
+    fn assert_docx_deviation(&self, got: &Value) {
+        let document = rendered_document(&json!({"body": "리트리벌 가중치 정리"}));
+        assert_eq!(got["status"], "ok");
+        assert_eq!(got["response"], "fixture-report.docx 파일을 만들었습니다.");
+        assert_eq!(got["created_files"][0]["path"], "fixture-report.docx");
+        assert_eq!(
+            got["created_files"][0]["action"], "create_docx",
+            "the step is a document render now, not a text write"
+        );
+        assert_eq!(
+            got["created_files"][0]["bytes"],
+            document.len(),
+            "the capture recorded 29 — the length of the prose, which is what \
+             used to be written under this name"
+        );
+        assert_eq!(got["artifacts"][0]["previewable"], false);
+        assert_eq!(got["artifacts"][0]["valid"], true);
+        assert_eq!(got["artifacts"][0]["repaired"], false);
+        assert_eq!(
+            std::fs::read_to_string(self.agent_root.join("fixture-report.docx")).expect("document"),
+            document,
+            "the builder's bytes are on disk, not the prose"
+        );
+        assert_eq!(
+            self.seams.count("/worker/render/docx"),
+            1,
+            "exactly one render, through the compute seam that owns python-docx"
+        );
+        // The Brain files the node under the hash of what is on disk, so the
+        // id moved with the bytes; the text is still what makes it searchable.
+        assert_eq!(
+            got["brain_ingest"]["node_id"],
+            json!(scoped_file_id(&document, Some("personal"))),
+        );
+        assert_ne!(
+            got["brain_ingest"]["node_id"], "file:9f033e8b2619a947d73cfadd",
+            "that id is the hash of the prose the capture wrote"
+        );
     }
 
     async fn replay(&self, case: &Value) {
@@ -477,6 +568,10 @@ impl Install {
                 return;
             }
             let got: Value = serde_json::from_str(&body).unwrap_or(Value::String(body.clone()));
+            if name == "file_intent_docx_artifact" {
+                self.assert_docx_deviation(&got);
+                return;
+            }
             if name == "rate_limited_429" {
                 let detail = got.get("detail").and_then(Value::as_str).unwrap_or("");
                 assert!(
@@ -522,10 +617,13 @@ async fn replay_chat_and_history_fixtures() {
         .filter_map(Result::ok)
         .collect();
     let ids: Vec<&str> = documents.iter().map(|(id, _)| id.as_str()).collect();
+    let document = rendered_document(&json!({"body": "리트리벌 가중치 정리"}));
     assert!(
         ids.contains(&"file:fce1110ff985bba9cad1f594")
-            && ids.contains(&"file:9f033e8b2619a947d73cfadd"),
-        "both fixture-generated files are Document nodes in the Brain: {documents:?}"
+            && ids.contains(&scoped_file_id(&document, Some("personal")).as_str()),
+        "both fixture-generated files are Document nodes in the Brain — the \
+         second one under the hash of the *document* now, because that is what \
+         is on disk (see `assert_docx_deviation`): {documents:?}"
     );
     let titles: Vec<&str> = documents.iter().map(|(_, title)| title.as_str()).collect();
     assert!(titles.contains(&"fixture-note.md"), "{documents:?}");

@@ -1,0 +1,67 @@
+{
+  "status": 200,
+  "body": {
+    "status": "ok",
+    "response": "index.html 파일을 만들었습니다.",
+    "workspace": "/tmp/lattice-acc-119-WgUxC6/agent",
+    "steps": [
+      {
+        "state": "EXECUTING",
+        "action": "write_file",
+        "args": {
+          "path": "index.html"
+        },
+        "result": {
+          "path": "index.html",
+          "bytes": 3141
+        }
+      }
+    ],
+    "state_history": [
+      "EXECUTING",
+      "DONE"
+    ],
+    "final_state": "DONE",
+    "created_files": [
+      {
+        "path": "index.html",
+        "filename": "index.html",
+        "bytes": 3141,
+        "action": "write_file"
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "file",
+        "path": "index.html",
+        "filename": "index.html",
+        "bytes": 3141,
+        "previewable": true,
+        "valid": true,
+        "repaired": false
+      }
+    ],
+    "generation": {
+      "repaired": false,
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "sanitized",
+          "reason": "HTML document is wrapped in prose or fences",
+          "path": "index.html"
+        }
+      ]
+    },
+    "routed_to_agent": true,
+    "action_route": "chat_file_generation",
+    "brain_ingest": {
+      "status": "ok",
+      "node_id": "file:7f794abfa8215a9202accd4a",
+      "chunk_count": 0,
+      "duplicate": false
+    }
+  },
+  "extra": {
+    "elapsed_s": 16.41272807121277
+  }
+}

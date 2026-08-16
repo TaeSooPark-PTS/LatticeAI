@@ -11,34 +11,19 @@ use serde_json::{json, Value};
 use crate::mcp::{missing_fields, parse_json_object, require_user};
 
 use super::gov::{GREP_BINARY_DIRS, GREP_BINARY_EXTS, TEXT_EXTENSIONS};
-use super::{enforce, relative, resolve, tool_err, tool_ok, ToolsState};
+use super::{enforce, relative, resolve, tool_err, tool_ok, ToolExecError, ToolsState};
 
-pub(crate) async fn list_dir(
-    State(state): State<ToolsState>,
-    headers: HeaderMap,
-    body: axum::body::Bytes,
-) -> Response {
-    if let Err(r) = require_user(&state.auth, &headers) {
-        return r;
-    }
-    let parsed = if body.is_empty() {
-        json!({})
-    } else {
-        match parse_json_object(&body) {
-            Ok(v) => v,
-            Err(r) => return r,
-        }
-    };
-    let path = parsed.get("path").and_then(Value::as_str).unwrap_or(".");
-    let target = match resolve(&state.workspace, path) {
-        Ok(p) => p,
-        Err(r) => return r,
-    };
+pub(crate) fn run_list_dir(state: &ToolsState, args: &Value) -> Result<Value, ToolExecError> {
+    let path = args.get("path").and_then(Value::as_str).unwrap_or(".");
+    let target = state
+        .workspace
+        .resolve(path)
+        .map_err(|e| ToolExecError::Message(e.message))?;
     if !target.exists() {
-        return tool_err("Directory does not exist.");
+        return Err(ToolExecError::Message("Directory does not exist.".into()));
     }
     if !target.is_dir() {
-        return tool_err("Path is not a directory.");
+        return Err(ToolExecError::Message("Path is not a directory.".into()));
     }
     let mut children: Vec<PathBuf> = std::fs::read_dir(&target)
         .map(|rd| rd.filter_map(|e| e.ok()).map(|e| e.path()).collect())
@@ -75,13 +60,10 @@ pub(crate) async fn list_dir(
     } else {
         relative(&state.workspace, &target)
     };
-    tool_ok(
-        &state.workspace,
-        json!({"root": state.workspace.root().to_string_lossy(), "path": rel, "items": items}),
-    )
+    Ok(json!({"root": state.workspace.root().to_string_lossy(), "path": rel, "items": items}))
 }
 
-pub(crate) async fn workspace_tree(
+pub(crate) async fn list_dir(
     State(state): State<ToolsState>,
     headers: HeaderMap,
     body: axum::body::Bytes,
@@ -97,15 +79,22 @@ pub(crate) async fn workspace_tree(
             Err(r) => return r,
         }
     };
-    let path = parsed.get("path").and_then(Value::as_str).unwrap_or(".");
-    let max_depth = parsed.get("max_depth").and_then(Value::as_u64).unwrap_or(3) as i32;
+    match run_list_dir(&state, &parsed) {
+        Ok(result) => tool_ok(&state.workspace, result),
+        Err(error) => error.into_response(&parsed),
+    }
+}
+
+pub(crate) fn run_workspace_tree(state: &ToolsState, args: &Value) -> Result<Value, ToolExecError> {
+    let path = args.get("path").and_then(Value::as_str).unwrap_or(".");
+    let max_depth = args.get("max_depth").and_then(Value::as_u64).unwrap_or(3) as i32;
     let max_depth = max_depth.clamp(1, 8);
-    let target = match resolve(&state.workspace, path) {
-        Ok(p) => p,
-        Err(r) => return r,
-    };
+    let target = state
+        .workspace
+        .resolve(path)
+        .map_err(|e| ToolExecError::Message(e.message))?;
     if !target.exists() || !target.is_dir() {
-        return tool_err("Path is not a directory.");
+        return Err(ToolExecError::Message("Path is not a directory.".into()));
     }
     let mut entries = Vec::new();
     fn walk(current: &Path, depth: i32, max_depth: i32, ws: &Workspace, out: &mut Vec<Value>) {
@@ -149,13 +138,10 @@ pub(crate) async fn workspace_tree(
     } else {
         relative(&state.workspace, &target)
     };
-    tool_ok(
-        &state.workspace,
-        json!({"root": state.workspace.root().to_string_lossy(), "path": rel, "entries": entries}),
-    )
+    Ok(json!({"root": state.workspace.root().to_string_lossy(), "path": rel, "entries": entries}))
 }
 
-pub(crate) async fn read_file(
+pub(crate) async fn workspace_tree(
     State(state): State<ToolsState>,
     headers: HeaderMap,
     body: axum::body::Bytes,
@@ -163,38 +149,49 @@ pub(crate) async fn read_file(
     if let Err(r) = require_user(&state.auth, &headers) {
         return r;
     }
-    let parsed = match parse_json_object(&body) {
-        Ok(v) => v,
-        Err(r) => return r,
+    let parsed = if body.is_empty() {
+        json!({})
+    } else {
+        match parse_json_object(&body) {
+            Ok(v) => v,
+            Err(r) => return r,
+        }
     };
-    let Some(path) = parsed.get("path").and_then(Value::as_str) else {
-        if !parsed
+    match run_workspace_tree(&state, &parsed) {
+        Ok(result) => tool_ok(&state.workspace, result),
+        Err(error) => error.into_response(&parsed),
+    }
+}
+
+pub(crate) fn run_read_file(state: &ToolsState, args: &Value) -> Result<Value, ToolExecError> {
+    let Some(path) = args.get("path").and_then(Value::as_str) else {
+        if !args
             .as_object()
             .map(|o| o.contains_key("path"))
             .unwrap_or(false)
         {
-            return missing_fields(&parsed, &["path"]);
+            return Err(ToolExecError::Missing("path"));
         }
-        return tool_err("File does not exist.");
+        return Err(ToolExecError::Message("File does not exist.".into()));
     };
-    let target = match resolve(&state.workspace, path) {
-        Ok(p) => p,
-        Err(r) => return r,
-    };
+    let target = state
+        .workspace
+        .resolve(path)
+        .map_err(|e| ToolExecError::Message(e.message))?;
     if !target.exists() {
-        return tool_err("File does not exist.");
+        return Err(ToolExecError::Message("File does not exist.".into()));
     }
     if !target.is_file() {
-        return tool_err("Path is not a file.");
+        return Err(ToolExecError::Message("Path is not a file.".into()));
     }
     let size = target.metadata().map(|m| m.len()).unwrap_or(0);
     if size > MAX_FILE_BYTES {
-        return tool_err(&format!("File is too large to read ({size} bytes)."));
+        return Err(ToolExecError::Message(format!(
+            "File is too large to read ({size} bytes)."
+        )));
     }
-    let text = match std::fs::read_to_string(&target) {
-        Ok(t) => t,
-        Err(_) => return tool_err("File does not exist."),
-    };
+    let text = std::fs::read_to_string(&target)
+        .map_err(|_| ToolExecError::Message("File does not exist.".into()))?;
     // splitlines() drops the trailing empty from a final newline
     let all_lines: Vec<&str> = if text.ends_with('\n') {
         text[..text.len() - 1].split('\n').collect()
@@ -202,12 +199,12 @@ pub(crate) async fn read_file(
         text.split('\n').collect()
     };
     let total_lines = all_lines.len();
-    let offset = parsed
+    let offset = args
         .get("offset")
         .and_then(Value::as_i64)
         .unwrap_or(0)
         .max(0) as usize;
-    let limit = parsed
+    let limit = args
         .get("limit")
         .and_then(Value::as_i64)
         .unwrap_or(0)
@@ -233,18 +230,32 @@ pub(crate) async fn read_file(
         .map(|(i, line)| format!("{:>width$}\t{line}", offset + i + 1, width = width))
         .collect::<Vec<_>>()
         .join("\n");
-    let _ = all_lines;
-    tool_ok(
-        &state.workspace,
-        json!({
-            "path": relative(&state.workspace, &target),
-            "content": sliced_text,
-            "total_lines": total_lines,
-            "start_line": offset + 1,
-            "end_line": end,
-            "numbered": numbered,
-        }),
-    )
+    Ok(json!({
+        "path": relative(&state.workspace, &target),
+        "content": sliced_text,
+        "total_lines": total_lines,
+        "start_line": offset + 1,
+        "end_line": end,
+        "numbered": numbered,
+    }))
+}
+
+pub(crate) async fn read_file(
+    State(state): State<ToolsState>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Response {
+    if let Err(r) = require_user(&state.auth, &headers) {
+        return r;
+    }
+    let parsed = match parse_json_object(&body) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    match run_read_file(&state, &parsed) {
+        Ok(result) => tool_ok(&state.workspace, result),
+        Err(error) => error.into_response(&parsed),
+    }
 }
 
 pub(crate) async fn write_file(
@@ -490,44 +501,33 @@ pub(crate) async fn search_files(
     )
 }
 
-pub(crate) async fn grep(
-    State(state): State<ToolsState>,
-    headers: HeaderMap,
-    body: axum::body::Bytes,
-) -> Response {
-    if let Err(r) = require_user(&state.auth, &headers) {
-        return r;
-    }
-    let parsed = match parse_json_object(&body) {
-        Ok(v) => v,
-        Err(r) => return r,
-    };
-    if !parsed
+pub(crate) fn run_grep(state: &ToolsState, args: &Value) -> Result<Value, ToolExecError> {
+    if !args
         .as_object()
         .map(|o| o.contains_key("pattern"))
         .unwrap_or(false)
     {
-        return missing_fields(&parsed, &["pattern"]);
+        return Err(ToolExecError::Missing("pattern"));
     }
-    let pattern = parsed.get("pattern").and_then(Value::as_str).unwrap_or("");
+    let pattern = args.get("pattern").and_then(Value::as_str).unwrap_or("");
     if pattern.is_empty() {
-        return tool_err("Pattern is required.");
+        return Err(ToolExecError::Message("Pattern is required.".into()));
     }
     if let Err(msg) = compile_py_regex(pattern) {
-        return tool_err(&format!("Invalid regex: {msg}"));
+        return Err(ToolExecError::Message(format!("Invalid regex: {msg}")));
     }
-    let path = parsed.get("path").and_then(Value::as_str).unwrap_or(".");
-    let max_results = parsed
+    let path = args.get("path").and_then(Value::as_str).unwrap_or(".");
+    let max_results = args
         .get("max_results")
         .and_then(Value::as_u64)
         .unwrap_or(50)
         .clamp(1, 500) as usize;
-    let target = match resolve(&state.workspace, path) {
-        Ok(p) => p,
-        Err(r) => return r,
-    };
+    let target = state
+        .workspace
+        .resolve(path)
+        .map_err(|e| ToolExecError::Message(e.message))?;
     if !target.exists() || !target.is_dir() {
-        return tool_err("Path is not a directory.");
+        return Err(ToolExecError::Message("Path is not a directory.".into()));
     }
     let mut matches = Vec::new();
     let mut files_scanned = 0u64;
@@ -616,16 +616,31 @@ pub(crate) async fn grep(
         &mut files_scanned,
         &mut files_with_matches,
     );
-    tool_ok(
-        &state.workspace,
-        json!({
-            "pattern": pattern,
-            "matches": matches,
-            "files_scanned": files_scanned,
-            "files_with_matches": files_with_matches,
-            "truncated": matches.len() >= max_results,
-        }),
-    )
+    Ok(json!({
+        "pattern": pattern,
+        "matches": matches,
+        "files_scanned": files_scanned,
+        "files_with_matches": files_with_matches,
+        "truncated": matches.len() >= max_results,
+    }))
+}
+
+pub(crate) async fn grep(
+    State(state): State<ToolsState>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Response {
+    if let Err(r) = require_user(&state.auth, &headers) {
+        return r;
+    }
+    let parsed = match parse_json_object(&body) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    match run_grep(&state, &parsed) {
+        Ok(result) => tool_ok(&state.workspace, result),
+        Err(error) => error.into_response(&parsed),
+    }
 }
 
 fn compile_py_regex(pattern: &str) -> Result<(), String> {

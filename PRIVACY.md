@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -34,7 +34,14 @@ requires explicit configuration and user/admin action.
 External paths include:
 
 - **Cloud models**: prompts/context are sent to the selected provider only when
-  a cloud model is configured and used.
+  a cloud path is configured and the escalation policy (or an explicit
+  `/cloud` prefix) uses it. Default is local. Every cloud turn writes a
+  shape-only egress audit (provider / model / reason, never content).
+  Knowledge extracted from a cloud answer is staged as a Review Center
+  `kg_cloud_expansion` proposal — it is not written to the graph until a
+  person approves it (`auto_commit` default off). Two credential modes:
+  `api_key` (OpenAI-compatible, mock-verified only in this release) and
+  `cli_oauth` (locally OAuth-authenticated `agy` / `grok`).
 - **Model downloads**: model identifiers and download requests go to model
   registries such as Hugging Face or Ollama registries after user consent.
 - **Telegram**: removed in 11.6.0. The bridge lived in the platform code that

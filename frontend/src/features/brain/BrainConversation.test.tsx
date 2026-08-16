@@ -364,6 +364,30 @@ describe("BrainConversation with messages", () => {
     const { container } = renderConversation({ messages: conversationMessages(), modelReady: false });
     expect(container.querySelector(".brain-model-missing")).toBeTruthy();
   });
+
+  it("badges only a cloud-answered reply, never a local one", () => {
+    renderConversation({
+      messages: [
+        userMessage("로컬 질문"),
+        assistantMessage({ content: "이 컴퓨터에서 답합니다." }),
+        userMessage("클라우드 질문"),
+        assistantMessage({
+          content: "클라우드에서 답합니다.",
+          cloudAnswer: {
+            provider: "Antigravity",
+            model: "gemini-3.7-flash",
+            sentNodeCount: 2,
+            expansion: { status: "staged", candidateCount: 1, stagedForReview: true },
+          },
+        }),
+      ],
+    });
+
+    const chips = screen.getAllByTestId("cloud-answer-chip");
+    expect(chips).toHaveLength(1);
+    expect(chips[0].textContent).toContain(t("ko", "brain.cloud.chip.model", { model: "gemini-3.7-flash" }));
+    expect(screen.queryByText("이 컴퓨터에서 답합니다.")).toBeTruthy();
+  });
 });
 
 describe("BrainConversation utility drawer", () => {

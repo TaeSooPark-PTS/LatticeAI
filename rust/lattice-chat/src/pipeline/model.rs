@@ -190,19 +190,40 @@ pub(crate) async fn run_model_turn(
         effective_email.as_deref(),
         workspace_id.as_deref(),
     );
-    if mode == NetworkMode::CloudAllowed && state.config.enable_graph() {
-        if let Some(response) = hybrid_response(
-            &state,
-            &req,
-            mode,
-            &model_id,
+    if mode == NetworkMode::CloudAllowed {
+        let policy = crate::boundary::resolve_hybrid_policy(
+            &state.config.data_dir,
             effective_email.as_deref(),
             workspace_id.as_deref(),
-            &meta,
-        )
-        .await
-        {
-            return response;
+        );
+        let matched_nodes = context_quality
+            .get("nodes")
+            .and_then(Value::as_i64)
+            .unwrap_or(0);
+        if let Some(reason) = crate::boundary::escalation_reason(
+            policy.escalation,
+            model_id.is_empty(),
+            matched_nodes,
+            &req.message,
+        ) {
+            if let Some(provider) = state.resolved_cloud_provider() {
+                if provider.configured() {
+                    if let Some(response) = hybrid_response(
+                        &state,
+                        &req,
+                        mode,
+                        provider,
+                        reason,
+                        effective_email.as_deref(),
+                        workspace_id.as_deref(),
+                        &meta,
+                    )
+                    .await
+                    {
+                        return response;
+                    }
+                }
+            }
         }
     }
 

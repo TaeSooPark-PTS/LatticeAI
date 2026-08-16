@@ -51,6 +51,9 @@ pub fn list_skill_registry(
             entry["name"] = json!(skill.name);
             entry["description"] = json!(skill.description);
             entry["version"] = json!(skill.version);
+            if let Some(schema) = &skill.input_schema {
+                entry["input_schema"] = schema.clone();
+            }
             entry["installed"] = json!(true);
             entry["install_status"] = keep_or(entry.get("install_status"), "ready");
             entry["validation_status"] = json!("ready");
@@ -90,17 +93,48 @@ fn keep_or(existing: Option<&Value>, fallback: &str) -> Value {
 }
 
 /// One installed skill directory, as the scan reads it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Installed {
-    name: String,
-    description: String,
-    version: String,
-    path: String,
+#[derive(Debug, Clone, PartialEq)]
+pub struct InstalledSkill {
+    pub name: String,
+    pub description: String,
+    pub version: String,
+    pub path: String,
+    /// JSON-Schema object for the skill's `input`, when `schema.json` parsed.
+    pub input_schema: Option<Value>,
+    pub body: String,
 }
 
 /// `for skill_dir in sorted(skills_dir.iterdir())` — a directory with a
 /// `SKILL.md` is a skill; anything else is ignored without comment.
-fn scan_directory(skills_dir: &Path) -> Vec<Installed> {
+pub fn scan_installed_skills(skills_dir: &Path) -> Vec<InstalledSkill> {
+    scan_directory(skills_dir)
+}
+
+/// Turn a skill's `schema.json` `input` field into a JSON Schema object.
+///
+/// Skills in this repo use a compact `{required, optional, properties}` shape.
+/// Missing or already-standard objects fall back to an empty object schema.
+pub fn json_schema_from_skill_input(input: Option<&Value>) -> Value {
+    let Some(input) = input else {
+        return json!({"type": "object", "properties": {}});
+    };
+    if input.get("type").and_then(Value::as_str) == Some("object") {
+        return input.clone();
+    }
+    if let Some(properties) = input.get("properties") {
+        let required = input.get("required").cloned().unwrap_or(json!([]));
+        return json!({
+            "type": "object",
+            "properties": properties,
+            "required": required,
+        });
+    }
+    json!({"type": "object", "properties": {}})
+}
+
+/// `for skill_dir in sorted(skills_dir.iterdir())` — a directory with a
+/// `SKILL.md` is a skill; anything else is ignored without comment.
+fn scan_directory(skills_dir: &Path) -> Vec<InstalledSkill> {
     let Ok(entries) = std::fs::read_dir(skills_dir) else {
         return Vec::new();
     };
@@ -116,18 +150,17 @@ fn scan_directory(skills_dir: &Path) -> Vec<Installed> {
             if !manifest.is_file() {
                 return None;
             }
-            let description = std::fs::read_to_string(&manifest)
+            let body = std::fs::read_to_string(&manifest).unwrap_or_default();
+            let md_description = body.lines().find_map(|line| {
+                line.strip_prefix("description:")
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty())
+            });
+            let schema = std::fs::read_to_string(path.join("schema.json"))
                 .ok()
-                .and_then(|text| {
-                    text.lines()
-                        .find(|line| line.starts_with("description:"))
-                        .and_then(|line| line.split_once(':'))
-                        .map(|(_, value)| value.trim().to_string())
-                })
-                .unwrap_or_default();
-            let version = std::fs::read_to_string(path.join("schema.json"))
-                .ok()
-                .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+                .and_then(|text| serde_json::from_str::<Value>(&text).ok());
+            let version = schema
+                .as_ref()
                 .and_then(|schema| {
                     schema.get("version").filter(|value| !value.is_null()).map(
                         |value| match value {
@@ -138,11 +171,25 @@ fn scan_directory(skills_dir: &Path) -> Vec<Installed> {
                 })
                 .filter(|version| !version.is_empty())
                 .unwrap_or_else(|| "local".into());
-            Some(Installed {
+            let schema_description = schema.as_ref().and_then(|schema| {
+                schema
+                    .get("description")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string)
+            });
+            let input_schema = schema
+                .as_ref()
+                .map(|schema| json_schema_from_skill_input(schema.get("input")));
+            let description = md_description.or(schema_description).unwrap_or_default();
+            Some(InstalledSkill {
                 name: path.file_name()?.to_string_lossy().into_owned(),
                 description,
                 version,
                 path: path.to_string_lossy().into_owned(),
+                input_schema,
+                body,
             })
         })
         .collect()
@@ -416,6 +463,46 @@ mod tests {
         let listing =
             list_skill_registry(&store, None, &[json!({"description": "x"}), json!(3)]).unwrap();
         assert_eq!(listing["total_available"], json!(0));
+    }
+
+    #[test]
+    fn a_schema_json_is_parsed_and_a_missing_one_is_tolerated() {
+        let skills = tempfile::tempdir().unwrap();
+        write_skill(skills.path(), "with-schema", "from md", Some("1.0.0"));
+        std::fs::write(
+            skills.path().join("with-schema").join("schema.json"),
+            r#"{"version":"1.0.0","description":"from schema","input":{"required":["target"],"properties":{"target":{"type":"string"}}}}"#,
+        )
+        .unwrap();
+        write_skill(skills.path(), "no-schema", "only md", None);
+        std::fs::create_dir_all(skills.path().join("bad-schema")).unwrap();
+        std::fs::write(
+            skills.path().join("bad-schema").join("SKILL.md"),
+            "description: broken\n",
+        )
+        .unwrap();
+        std::fs::write(
+            skills.path().join("bad-schema").join("schema.json"),
+            "not json",
+        )
+        .unwrap();
+
+        let scanned = scan_installed_skills(skills.path());
+        let with = scanned.iter().find(|s| s.name == "with-schema").unwrap();
+        assert_eq!(with.description, "from md");
+        assert_eq!(
+            with.input_schema.as_ref().unwrap()["properties"]["target"]["type"],
+            json!("string")
+        );
+        assert_eq!(
+            with.input_schema.as_ref().unwrap()["required"],
+            json!(["target"])
+        );
+        let none = scanned.iter().find(|s| s.name == "no-schema").unwrap();
+        assert!(none.input_schema.is_none());
+        let bad = scanned.iter().find(|s| s.name == "bad-schema").unwrap();
+        assert!(bad.input_schema.is_none());
+        assert_eq!(bad.description, "broken");
     }
 
     #[test]

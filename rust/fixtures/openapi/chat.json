@@ -451,12 +451,13 @@
     "DELETE /history/conversations/{conversation_id}": "conversation_id",
     "GET /history/conversations/{conversation_id}": "conversation_id"
   },
-  "operation_count": 11,
+  "operation_count": 12,
   "operation_order": [
     "POST /agent",
     "GET /agent/approvals",
     "POST /agent/eval",
     "POST /agent/resume",
+    "GET /api/cloud/status",
     "POST /chat",
     "DELETE /history",
     "GET /history",
@@ -465,12 +466,13 @@
     "GET /history/conversations/{conversation_id}",
     "GET /history/search"
   ],
-  "path_count": 9,
+  "path_count": 10,
   "path_order": [
     "/agent",
     "/agent/approvals",
     "/agent/eval",
     "/agent/resume",
+    "/api/cloud/status",
     "/chat",
     "/history",
     "/history/conversations",
@@ -600,6 +602,77 @@
           }
         },
         "summary": "Agent Resume"
+      }
+    },
+    "/api/cloud/status": {
+      "get": {
+        "operationId": "cloud_status_api_cloud_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "configured": {
+                      "title": "Configured",
+                      "type": "boolean"
+                    },
+                    "detail": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Detail"
+                    },
+                    "mode": {
+                      "enum": [
+                        "api_key",
+                        "cli_oauth",
+                        "none"
+                      ],
+                      "title": "Mode",
+                      "type": "string"
+                    },
+                    "model": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Model"
+                    },
+                    "provider": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Provider"
+                    }
+                  },
+                  "required": [
+                    "configured",
+                    "mode"
+                  ],
+                  "title": "CloudStatus",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cloud Status"
       }
     },
     "/chat": {
@@ -823,7 +896,7 @@
   },
   "schema_count": 6,
   "source": "frontend/openapi.json",
-  "spec_version": "11.8.0",
+  "spec_version": "11.9.0",
   "summary": "Chat orchestration, chat history and the agent-loop HTTP surface.",
   "target": "lattice-chat",
   "wp": "R4"

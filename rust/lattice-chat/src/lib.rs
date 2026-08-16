@@ -53,6 +53,7 @@ pub mod boundary;
 pub mod cloud;
 pub mod contracts;
 pub mod documents;
+pub mod filegen;
 pub mod graph;
 pub mod helpers;
 pub mod history;
@@ -67,9 +68,10 @@ pub mod stream;
 pub mod turn;
 pub mod worker;
 
+pub use cloud::{CloudProvider, CloudStatus, EgressAudit, OpenAiCompatibleAdapter, ReviewSink};
 pub use contracts::ChatRequest;
 pub use routes::{router, MOUNTED};
-pub use state::{ChatConfig, ChatState};
+pub use state::{AuditSink, ChatConfig, ChatState};
 pub use turn::{write_chat_turn, RecordedTurn};
 pub use worker::{ChatWorker, EmbedReply, ModelSnapshot};
 

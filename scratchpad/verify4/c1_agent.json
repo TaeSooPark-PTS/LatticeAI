@@ -1,0 +1,175 @@
+{
+  "status": 200,
+  "elapsed_s": 14.858481884002686,
+  "body": {
+    "status": "failed",
+    "response": "실행 실패로 롤백했습니다. 복구 파일: ['notes/summary.md (snapshot)']",
+    "workspace": "/private/tmp/lattice-acc-119-verify4-eHwnlO/agent",
+    "steps": [
+      {
+        "state": "PLANNING",
+        "goal": "Summarize the first paragraph of README.md and save the summary to notes/summary.md",
+        "steps": [
+          {
+            "action": "write_file",
+            "args": {
+              "path": "notes/summary.md",
+              "content_source": "README.md",
+              "summary_instruction": "요약된 내용"
+            },
+            "description": "Read README.md, summarize the first paragraph, and write the summary to notes/summary.md"
+          }
+        ],
+        "requires_approval": false,
+        "rollback_strategy": "none",
+        "estimated_steps": 1
+      },
+      {
+        "state": "WAITING_APPROVAL",
+        "requires_approval": false,
+        "non_auto_approve_steps": [],
+        "decision": "auto_approved"
+      },
+      {
+        "state": "EXECUTING",
+        "action": "parse_error",
+        "raw": "<|channel>thought\nThe user wants me to execute the next step of the plan.\nThe plan is to summarize the first paragraph of `README.md` and save the summary to `notes/summary.md`.\nThe first step is to call `write_file` with the instruction \"요약된 내용\" to summarize the content of `README.md` and save it to `notes/summary.md`.\n\nI need to perform the action defined in the plan.<channel|>{\"thoughts\": \"Read",
+        "error": "Agent did not return valid JSON: Expecting value: line 1 column 1 (char 0)"
+      },
+      {
+        "state": "EXECUTING",
+        "action": "write_file",
+        "thoughts": "The previous step failed due to an invalid JSON return. I need to re-execute the step: writing the summary of the first paragraph of README.md to notes/summary.md.",
+        "args": {
+          "path": "notes/summary.md",
+          "content_source": "README.md",
+          "summary_instruction": "요약된 내용"
+        },
+        "risk": "medium",
+        "governance": {
+          "risk": "write",
+          "destructive": false,
+          "shell": false,
+          "network": false,
+          "auto_approve": false,
+          "sandbox": "workspace",
+          "rollback": "git"
+        },
+        "result": {
+          "path": "notes/summary.md",
+          "bytes": 0
+        }
+      },
+      {
+        "state": "EXECUTING",
+        "action": "write_file",
+        "error": "LOOP_DETECTED: identical action+args repeated — halted."
+      },
+      {
+        "state": "VERIFYING",
+        "verdict": "FAIL",
+        "reason": "The execution resulted in a loop detection error, indicating the task was not completed.",
+        "corrections": [
+          "Ensure the file writing operation completes successfully and does not result in a loop or error state."
+        ],
+        "confidence": 1.0,
+        "next_state": "ROLLBACK",
+        "verifier_available": true,
+        "verdict_valid": true,
+        "evidence": true
+      },
+      {
+        "state": "ROLLBACK",
+        "rolled_back": [
+          {
+            "path": "notes/summary.md",
+            "ok": true,
+            "action": "deleted",
+            "mode": "snapshot"
+          }
+        ]
+      }
+    ],
+    "state_history": [
+      "PLANNING",
+      "EXECUTING",
+      "VERIFYING",
+      "ROLLBACK",
+      "FAILED"
+    ],
+    "final_state": "FAILED",
+    "created_files": [
+      {
+        "path": "notes/summary.md",
+        "filename": "summary.md",
+        "bytes": 0,
+        "action": "write_file"
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "file",
+        "path": "notes/summary.md",
+        "filename": "summary.md",
+        "bytes": 0,
+        "previewable": true,
+        "valid": true,
+        "repaired": false
+      }
+    ],
+    "loop": {
+      "events": 16,
+      "truncated_events": 0,
+      "kind_counts": {
+        "correction": 1,
+        "decision": 4,
+        "llm_call": 5,
+        "parse_error": 1,
+        "repair": 4,
+        "tool": 1
+      },
+      "llm_calls": 5,
+      "parse_errors": 1,
+      "parse_recovered": 1,
+      "corrections": 1,
+      "retries": 0,
+      "tool_outcomes": {
+        "ok": 1
+      },
+      "repairs": {
+        "slice": 1,
+        "tag_strip": 4
+      }
+    },
+    "audit": [
+      {
+        "event": "agent_approval",
+        "user_email": null,
+        "requires_approval": false,
+        "non_auto_steps": [],
+        "decision": "auto_approved"
+      },
+      {
+        "event": "agent_change_auto_applied",
+        "user_email": null,
+        "workspace_id": null,
+        "action": "write_file",
+        "path": "notes/summary.md",
+        "permission_mode": "trusted",
+        "note": "permission mode auto-applies mutation with audit"
+      },
+      {
+        "event": "agent_rollback",
+        "user_email": null,
+        "rolled_back": [
+          {
+            "path": "notes/summary.md",
+            "ok": true,
+            "action": "deleted",
+            "mode": "snapshot"
+          }
+        ]
+      }
+    ]
+  }
+}

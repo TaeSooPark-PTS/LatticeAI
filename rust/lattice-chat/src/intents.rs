@@ -1,10 +1,16 @@
 //! Fast-path intents that answer before a model is consulted.
 //!
 //! Port of `latticeai/api/chat_intents.py`. Network status, `/clear`,
-//! current-URL and the direct file-write branch all live here so `POST /chat`
-//! can return before it ever asks the worker for tokens. The agent-loop
-//! fallback (`route_file_to_agent`) stays with `lattice-agent`; this crate
-//! only does the deterministic write the fixtures actually capture.
+//! current-URL and the file-action branch all live here so `POST /chat` can
+//! return before it ever asks the worker for tokens. The agent-loop fallback
+//! (`route_file_to_agent`) stays with `lattice-agent`.
+//!
+//! The file branch is now two jobs in two places: this module decides **which
+//! file** a request means (the target regex, the inferred name, the never-
+//! overwrite id) and owns the write door and the Brain ingest around it;
+//! [`crate::filegen`] decides **what goes in it** — the user's inline bytes, a
+//! model's document, or a real Word/PDF render. The one file action that needs
+//! no model at all, an inline `내용: …`, still answers without one.
 
 use std::path::{Path, PathBuf};
 
@@ -13,7 +19,6 @@ use axum::response::Response;
 use fancy_regex::Regex;
 use lattice_agent::inference::{infer_file_target, infer_project_manifest};
 use lattice_agent::sandbox::Workspace;
-use lattice_agent::state::AgentState;
 use lattice_auth::OrderedMap;
 use lattice_core::graph_write::types::{ExtractReply, IngestionRecord, SuppliedVector};
 use lattice_core::messages::{self, LANGUAGE_HEADER};
@@ -21,14 +26,17 @@ use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 
 use crate::contracts::ChatRequest;
-use crate::helpers::{file_action_target, format_network_status, inline_file_action_content};
-use crate::history::{clear_all, clear_conversation, error_body, history_scope, json_body};
+use crate::helpers::{file_action_target, format_network_status};
+use crate::history::{clear_all, clear_conversation, history_scope, json_body};
 use crate::sse::{single_text_stream, stream_response};
 use crate::state::ChatState;
 
 /// `PREVIEWABLE_EXTENSIONS` — duplicated because lattice-agent keeps the table
 /// private on the run-body module. `.docx` is deliberately absent.
-const PREVIEWABLE: &[&str] = &[
+///
+/// It is also the set [`crate::filegen::prompts`] must have an anchor for: what
+/// this surface can show, it can be asked to write.
+pub(crate) const PREVIEWABLE: &[&str] = &[
     ".css",
     ".csv",
     ".htm",
@@ -87,7 +95,7 @@ pub fn single_answer_response(stream: bool, answer: &str, model: &str) -> Respon
     )
 }
 
-fn language_of(headers: &HeaderMap) -> &'static str {
+pub(crate) fn language_of(headers: &HeaderMap) -> &'static str {
     messages::resolve_language(
         headers
             .get(LANGUAGE_HEADER)
@@ -285,7 +293,7 @@ pub fn next_available_path(root: &Path, target: &str) -> Result<String, String> 
     Err(target.to_string())
 }
 
-fn previewable(path: &str) -> bool {
+pub(crate) fn previewable(path: &str) -> bool {
     Path::new(path)
         .extension()
         .and_then(|ext| ext.to_str())
@@ -296,13 +304,26 @@ fn previewable(path: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn write_file(root: &Path, rel: &str, content: &str) -> Result<(String, usize), String> {
+/// Put bytes on disk inside the agent workspace, and report where they landed.
+///
+/// **Every caller must have judged the content already.** This was the one write
+/// door v11.7.0 left open — it took a `&str` straight from the request and wrote
+/// it — and the door is closed structurally rather than by a check here: the
+/// only caller is [`crate::filegen`], which runs the same
+/// [`lattice_agent::sanitize`] pipeline `/tools/write_file` and the agent loop
+/// run before it ever gets this far. Bytes rather than text because a `.docx`
+/// that reaches here is a real document built by the render seam, not prose.
+pub(crate) fn write_bytes(
+    root: &Path,
+    rel: &str,
+    content: &[u8],
+) -> Result<(String, usize), String> {
     let workspace = Workspace::new(root).map_err(|error| error.to_string())?;
     let path = workspace.resolve(rel).map_err(|error| error.message)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
-    std::fs::write(&path, content.as_bytes()).map_err(|error| error.to_string())?;
+    std::fs::write(&path, content).map_err(|error| error.to_string())?;
     Ok((workspace.relative(&path), content.len()))
 }
 
@@ -319,8 +340,16 @@ pub fn scoped_file_id(content: &str, workspace_id: Option<&str>) -> String {
 
 /// `ChatIntentController.direct_file_action`.
 ///
-/// `None` means "not a direct write" — the pipeline falls through to
-/// no-model / the agent loop.
+/// `None` means "not a direct write" — the request named no file this branch
+/// can infer, so the pipeline falls through.
+///
+/// Everything that decides *what bytes* a file gets is [`crate::filegen`]'s;
+/// this function decides *which file*, which is what the Python controller did
+/// before the branch grew a generator. The two refusals it used to answer with
+/// — "multi-file generation has no fixtures" and "model-driven generation is
+/// the un-fixtured path" — are gone: both are implemented in v11.9.0, and what
+/// is left here is the honest `no_model_loaded` when the request needs a model
+/// and none is loaded.
 pub async fn direct_file_action(
     state: &ChatState,
     req: &ChatRequest,
@@ -329,124 +358,41 @@ pub async fn direct_file_action(
     effective_email: Option<&str>,
     workspace_id: Option<&str>,
 ) -> Option<Response> {
-    let lang = language_of(headers);
     let explicit = file_action_target(&req.message);
-    if explicit.is_none() && infer_project_manifest(&req.message).is_some() {
-        if model_id.is_none() {
-            return Some(no_model_response(state, headers));
+    if explicit.is_none() {
+        // A recognised project ("html + css + js", a React app, a Python
+        // package) names its own files; the manifest is the plan.
+        if let Some(manifest) = infer_project_manifest(&req.message) {
+            let Some(model_id) = model_id else {
+                return Some(no_model_response(state, headers));
+            };
+            return Some(
+                crate::filegen::project_action(
+                    state,
+                    req,
+                    headers,
+                    model_id,
+                    effective_email,
+                    workspace_id,
+                    manifest,
+                )
+                .await,
+            );
         }
-        // Multi-file generation needs a model-driven pipeline the with-model
-        // path has no fixtures for. Refuse rather than invent a second one.
-        return Some(error_body(400, "chat.file_generation_failed", headers, &[]));
     }
     let target_path = explicit.or_else(|| infer_file_target(&req.message))?;
-    let deduped = match next_available_path(&state.config.agent_root, &target_path) {
-        Ok(path) => path,
-        Err(name) => {
-            return Some(error_body(
-                409,
-                "chat.file_name_collision",
-                headers,
-                &[("name", &name)],
-            ));
-        }
-    };
-    let renamed = deduped != target_path;
-    let mut content = inline_file_action_content(&req.message);
-    if content.is_none() && model_id.is_none() {
-        return Some(no_model_response(state, headers));
-    }
-    if content.is_none() {
-        // Model-driven generation is the un-fixtured path; do not invent a
-        // second extract/validate/repair pipeline here.
-        return Some(error_body(400, "chat.file_generation_failed", headers, &[]));
-    }
-    let content = content.take().unwrap_or_default();
-    let (final_path, bytes) = match write_file(&state.config.agent_root, &deduped, &content) {
-        Ok(written) => written,
-        Err(detail) => {
-            return Some(json_body(
-                StatusCode::BAD_REQUEST,
-                &json!({"detail": detail}),
-            ));
-        }
-    };
-    let mut answer = format!("{final_path} 파일을 만들었습니다.");
-    if renamed {
-        answer.push_str(" (같은 이름의 파일이 있어 새 이름으로 저장했습니다.)");
-    }
-    let filename = Path::new(&final_path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(&final_path)
-        .to_string();
-    let created = json!([{
-        "path": final_path,
-        "filename": filename,
-        "bytes": bytes,
-        "action": "write_file",
-    }]);
-    let artifacts = json!([{
-        "kind": "file",
-        "path": final_path,
-        "filename": filename,
-        "bytes": bytes,
-        "previewable": previewable(&final_path),
-        "valid": true,
-        "repaired": false,
-    }]);
-    let mut payload = OrderedMap::new();
-    payload.insert("status", json!("ok"));
-    payload.insert("response", json!(answer));
-    payload.insert(
-        "workspace",
-        json!(state.config.agent_root.to_string_lossy().into_owned()),
-    );
-    payload.insert(
-        "steps",
-        json!([{
-            "state": AgentState::Executing.as_str(),
-            "action": "write_file",
-            "args": {"path": deduped},
-            "result": {"path": final_path, "bytes": bytes},
-        }]),
-    );
-    payload.insert(
-        "state_history",
-        json!([AgentState::Executing.as_str(), AgentState::Done.as_str()]),
-    );
-    payload.insert("final_state", json!(AgentState::Done.as_str()));
-    payload.insert("created_files", created);
-    payload.insert("artifacts", artifacts);
-    payload.insert("routed_to_agent", json!(true));
-    payload.insert("action_route", json!("direct_write_file"));
-    if let Some(ingest) = ingest_generated(
-        state,
-        &final_path,
-        &content,
-        effective_email,
-        workspace_id,
-        req.conversation_id.as_deref(),
+    Some(
+        crate::filegen::file_action(
+            state,
+            req,
+            headers,
+            model_id,
+            effective_email,
+            workspace_id,
+            &target_path,
+        )
+        .await,
     )
-    .await
-    {
-        payload.insert("brain_ingest", ingest);
-    }
-    state.funnel_increment("real_file_delivered");
-    state.notify("user", &req.message, req.source.as_deref());
-    state.notify("assistant", &answer, req.source.as_deref());
-    let _ = lang;
-    let rendered = serde_json::to_value(payload).unwrap_or(Value::Null);
-    if req.stream {
-        return Some(stream_response(
-            crate::sse::agent_payload_stream(&answer, &rendered, model_id.unwrap_or("tool")),
-            &[
-                ("X-Model", model_id.unwrap_or("tool")),
-                ("X-Routed-To", "agent"),
-            ],
-        ));
-    }
-    Some(json_body(StatusCode::OK, &rendered))
 }
 
 /// `POST /worker/extract` — W5's LLM-first concept / triple / semantic seam.
@@ -480,7 +426,7 @@ const EXTRACT_PATH: &str = "/worker/extract";
 ///
 /// The four reported keys are unchanged, so every client that reads
 /// `brain_ingest` reads the same shape — it is finally telling the truth.
-async fn ingest_generated(
+pub(crate) async fn ingest_generated(
     state: &ChatState,
     rel_path: &str,
     content: &str,

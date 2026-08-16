@@ -8,11 +8,13 @@ use axum::response::Response;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
+use super::dispatch::{dispatch, DispatchError};
 use super::http::{
     detail, json_text, localized, missing_fields, parse_json_object, require_admin, require_user,
     value_to_ordered,
 };
 use super::McpState;
+use crate::tools::tool_ok;
 
 #[derive(Debug, serde::Deserialize, Default)]
 pub(crate) struct SkillsQuery {
@@ -390,8 +392,33 @@ pub(crate) async fn mcp_call(
             return localized(403, "common.user_mismatch", &headers);
         }
     }
-    detail(
-        StatusCode::BAD_REQUEST,
-        &format!("Unknown action: {action}"),
-    )
+    match dispatch(
+        state.tools.as_ref(),
+        &state.skills_dir,
+        &identity,
+        &headers,
+        action,
+        &args,
+    ) {
+        Ok(result) => {
+            if let Some(tools) = state.tools.as_ref() {
+                tool_ok(&tools.workspace, result)
+            } else {
+                let mut body = lattice_auth::OrderedMap::new();
+                body.insert("status", json!("ok"));
+                body.insert("workspace", json!("."));
+                body.insert("result", result);
+                crate::mcp::json_status(StatusCode::OK, &body)
+            }
+        }
+        Err(DispatchError::Unknown(name)) => {
+            detail(StatusCode::BAD_REQUEST, &format!("Unknown action: {name}"))
+        }
+        Err(DispatchError::Governance(message)) => detail(StatusCode::FORBIDDEN, &message),
+        Err(DispatchError::Missing(field)) => missing_fields(&parsed, &[field]),
+        Err(DispatchError::Message(message)) => detail(StatusCode::BAD_REQUEST, &message),
+        Err(DispatchError::Unavailable(message)) => {
+            detail(StatusCode::SERVICE_UNAVAILABLE, message)
+        }
+    }
 }

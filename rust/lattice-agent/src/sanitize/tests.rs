@@ -112,6 +112,45 @@ fn everything_the_sanitizer_produces_survives_a_second_pass() {
 }
 
 #[test]
+fn a_channel_framed_js_reply_extracts_to_runnable_javascript() {
+    // What gemma-4-e2b actually emits for clock.js: a thought channel, then
+    // the document. Extraction must drop the frame so validation accepts it.
+    let raw = "<|channel>thought\nThe user wants a clock. I'll write an interval.\n\n\
+<|message|>\n\
+function tick() {\n  const now = new Date();\n  console.log(now.toISOString());\n}\n\
+setInterval(tick, 1000);\n\
+<|end|>";
+    let extracted = extract_file_content(raw, "clock.js");
+    assert!(
+        !extracted.contains("<|"),
+        "channel tokens must not survive: {extracted}"
+    );
+    assert!(extracted.contains("function tick()"), "{extracted}");
+    assert_eq!(
+        validate_file_content(&extracted, "clock.js"),
+        (true, "ok".into()),
+        "{extracted}"
+    );
+    let (clean, meta) = sanitize_write_content("clock.js", raw, "clock.js 만들어줘");
+    assert!(meta.sanitized, "{meta:?}");
+    assert!(!meta.repaired, "extraction should be enough: {meta:?}");
+    assert_eq!(
+        validate_file_content(&clean, "clock.js"),
+        (true, "ok".into())
+    );
+
+    // The live 2B often emits only the thought channel, no <|message|>.
+    let thought_only =
+        "<|channel>thought\nfunction tick() {\n  return Date.now();\n}\nsetInterval(tick, 1000);\n";
+    let extracted = extract_file_content(thought_only, "clock.js");
+    assert_eq!(
+        validate_file_content(&extracted, "clock.js"),
+        (true, "ok".into()),
+        "{extracted}"
+    );
+}
+
+#[test]
 fn clean_content_is_returned_byte_for_byte() {
     for (target, content) in [
         ("note.md", "hello"),

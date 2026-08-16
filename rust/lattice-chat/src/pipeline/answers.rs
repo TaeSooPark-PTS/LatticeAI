@@ -7,10 +7,11 @@ use lattice_auth::OrderedMap;
 use lattice_core::embeddings::LocalEmbeddingModel;
 use serde_json::{json, Value};
 
-use crate::boundary::{resolve_hybrid_policy, NetworkMode};
+use crate::boundary::{resolve_hybrid_policy, strip_cloud_prefix, EscalationReason, NetworkMode};
 use crate::cloud::{
     budget_for, build_minimal_context, cloud_egress_event, ingest_expansion,
-    plan_kg_expansion_rich, record_budget, scope_key, CloudTurnResult, OpenAiCompatibleAdapter,
+    plan_kg_expansion_rich, record_budget, scope_key, CloudProvider, CloudTurnResult,
+    MinimalContext,
 };
 use crate::contracts::ChatRequest;
 use crate::documents::DocumentPreparation;
@@ -220,22 +221,116 @@ pub(crate) async fn document_response(
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn hybrid_response(
     state: &ChatState,
     req: &ChatRequest,
     mode: NetworkMode,
-    model_id: &str,
+    provider: CloudProvider,
+    reason: EscalationReason,
     effective_email: Option<&str>,
     workspace_id: Option<&str>,
     meta: &HistoryMeta<'_>,
 ) -> Option<Response> {
-    let conn = state.read_conn()?;
     let policy = resolve_hybrid_policy(&state.config.data_dir, effective_email, workspace_id);
+    let _ = policy;
+    let question = strip_cloud_prefix(&req.message).to_string();
+    let allowed = workspace_id
+        .filter(|id| !id.is_empty())
+        .map(|id| [id.to_string()].into_iter().collect::<BTreeSet<_>>());
+    let minimal = if let Some(conn) = state.read_conn() {
+        build_minimal_context(
+            &conn,
+            &LocalEmbeddingModel::default(),
+            &question,
+            mode,
+            6,
+            allowed.as_ref(),
+            now_secs(),
+        )
+    } else {
+        MinimalContext {
+            query: question.clone(),
+            keywords: crate::cloud::extract_keywords(&question, 12),
+            quality: json!({
+                "mode": "none", "nodes": 0, "limited": true,
+                "reason": "no store or empty query",
+            }),
+            ..Default::default()
+        }
+    };
+    let key = scope_key(effective_email, workspace_id);
+    let budget = budget_for(&key);
+    let composed = crate::cloud::compose_prompt(
+        crate::cloud::HYBRID_SYSTEM_PROMPT,
+        &question,
+        &minimal.compact_text,
+    );
+    let token_estimate = crate::cloud::rough_token_estimate(&composed).max(minimal.token_estimate);
+    if let Some(refusal) = budget.check_turn(token_estimate) {
+        if let Some(egress) = state.egress.as_ref() {
+            egress.record(&cloud_egress_event(
+                &minimal.node_ids,
+                token_estimate,
+                mode,
+                "(refused)",
+                Some(provider.model()),
+                effective_email,
+                workspace_id,
+                "refused_token_guard",
+                Some(&refusal),
+                Some(reason.as_str()),
+            ));
+        }
+        if !req.stream {
+            return Some(json_body(
+                StatusCode::BAD_REQUEST,
+                &json!({"detail": format!("cloud token guard: {refusal}")}),
+            ));
+        }
+        let (sink, stream) = frame_channel();
+        let mut payload = OrderedMap::new();
+        payload.insert("type", json!("error"));
+        payload.insert("detail", json!(format!("cloud token guard: {refusal}")));
+        let _ = sink
+            .send(data_frame(
+                &serde_json::to_value(payload).unwrap_or(Value::Null),
+            ))
+            .await;
+        let _ = sink.send(DONE).await;
+        return Some(stream_response(
+            Body::from_stream(stream),
+            &[
+                ("X-Model", provider.model()),
+                ("X-Network-Mode", mode.as_str()),
+                ("X-Hybrid", "1"),
+            ],
+        ));
+    }
+
+    if !req.stream {
+        return Some(
+            hybrid_json(
+                state,
+                req,
+                mode,
+                provider,
+                reason,
+                minimal,
+                &key,
+                &question,
+                effective_email,
+                workspace_id,
+                meta,
+            )
+            .await,
+        );
+    }
+
     let (sink, stream) = frame_channel();
+    let header_model = provider.model().to_string();
     let state = state.clone();
     let req = req.clone();
-    let model_id = model_id.to_string();
-    let header_model = model_id.clone();
     let email = effective_email.map(str::to_string);
     let workspace = workspace_id.map(str::to_string);
     let hist_email = meta.email.map(str::to_string);
@@ -243,100 +338,80 @@ pub(crate) async fn hybrid_response(
     let source = meta.source.map(str::to_string);
     let conversation = req.conversation_id.clone();
     tokio::spawn(async move {
-        let allowed = workspace
-            .as_deref()
-            .filter(|id| !id.is_empty())
-            .map(|id| [id.to_string()].into_iter().collect::<BTreeSet<_>>());
-        let minimal = build_minimal_context(
-            &conn,
-            &LocalEmbeddingModel::default(),
-            &req.message,
-            mode,
-            6,
-            allowed.as_ref(),
-            now_secs(),
-        );
-        let key = scope_key(email.as_deref(), workspace.as_deref());
-        let budget = budget_for(&key);
-        if let Some(refusal) = budget.check_turn(minimal.token_estimate) {
-            if let Some(egress) = state.egress.as_ref() {
-                egress.record(&cloud_egress_event(
-                    &minimal.node_ids,
-                    minimal.token_estimate,
-                    mode,
-                    "(refused)",
-                    Some(&model_id),
-                    email.as_deref(),
-                    workspace.as_deref(),
-                    "refused_token_guard",
-                    Some(&refusal),
-                ));
-            }
-            let mut payload = OrderedMap::new();
-            payload.insert("type", json!("error"));
-            payload.insert("detail", json!(format!("cloud token guard: {refusal}")));
-            let _ = sink
-                .send(data_frame(
-                    &serde_json::to_value(payload).unwrap_or(Value::Null),
-                ))
-                .await;
-            let _ = sink.send(DONE).await;
-            return;
-        }
-        let mut context_frame = OrderedMap::new();
-        context_frame.insert("type", json!("hybrid_context"));
-        context_frame.insert("node_ids", json!(minimal.node_ids));
-        context_frame.insert("keywords", json!(minimal.keywords));
-        context_frame.insert("token_estimate", json!(minimal.token_estimate));
-        context_frame.insert("quality", minimal.quality.clone());
-        context_frame.insert("titles", json!(minimal.titles()));
-        context_frame.insert("token_budget", budget.snapshot());
-        let _ = sink
+        let context_frame = hybrid_context_frame(&minimal, &budget, reason);
+        if !sink
             .send(data_frame(
                 &serde_json::to_value(context_frame).unwrap_or(Value::Null),
             ))
-            .await;
-
-        let adapter = OpenAiCompatibleAdapter::from_env(reqwest::Client::new());
-        if let Some(egress) = state.egress.as_ref() {
-            egress.record(&cloud_egress_event(
-                &minimal.node_ids,
-                minimal.token_estimate,
-                mode,
-                OpenAiCompatibleAdapter::PROVIDER_NAME,
-                Some(&model_id),
-                email.as_deref(),
-                workspace.as_deref(),
-                "sent",
-                None,
-            ));
+            .await
+        {
+            return;
         }
+        let cloud_model = provider.model().to_string();
+        let cloud_name = provider.name().to_string();
+        record_sent_egress(
+            &state,
+            &minimal,
+            mode,
+            &cloud_name,
+            &cloud_model,
+            email.as_deref(),
+            workspace.as_deref(),
+            reason,
+        );
         let mut answer = String::new();
-        let mut on_piece = |piece: &str| {
-            answer.push_str(piece);
-            true
+        let (piece_tx, mut piece_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let mut on_piece = move |piece: &str| piece_tx.send(piece.to_string()).is_ok();
+        let call = provider.stream(
+            crate::cloud::HYBRID_SYSTEM_PROMPT,
+            &question,
+            &minimal.compact_text,
+            &mut on_piece,
+        );
+        tokio::pin!(call);
+        let result = loop {
+            tokio::select! {
+                piece = piece_rx.recv() => {
+                    let Some(piece) = piece else { continue };
+                    if piece.is_empty() {
+                        continue;
+                    }
+                    answer.push_str(&piece);
+                    let mut token = OrderedMap::new();
+                    token.insert("type", json!("token"));
+                    token.insert("text", json!(piece.clone()));
+                    token.insert("chunk", json!(piece));
+                    token.insert("model", json!(cloud_model.clone()));
+                    if !sink
+                        .send(data_frame(
+                            &serde_json::to_value(token).unwrap_or(Value::Null),
+                        ))
+                        .await
+                    {
+                        return;
+                    }
+                }
+                done = &mut call => {
+                    while let Ok(piece) = piece_rx.try_recv() {
+                        if piece.is_empty() {
+                            continue;
+                        }
+                        answer.push_str(&piece);
+                        let mut token = OrderedMap::new();
+                        token.insert("type", json!("token"));
+                        token.insert("text", json!(piece.clone()));
+                        token.insert("chunk", json!(piece));
+                        token.insert("model", json!(cloud_model.clone()));
+                        let _ = sink
+                            .send(data_frame(
+                                &serde_json::to_value(token).unwrap_or(Value::Null),
+                            ))
+                            .await;
+                    }
+                    break done;
+                }
+            }
         };
-        let result = adapter
-            .stream(
-                crate::cloud::HYBRID_SYSTEM_PROMPT,
-                &req.message,
-                &minimal.compact_text,
-                Some(&model_id),
-                &mut on_piece,
-            )
-            .await;
-        if !answer.is_empty() {
-            let mut token = OrderedMap::new();
-            token.insert("type", json!("token"));
-            token.insert("text", json!(answer.clone()));
-            token.insert("chunk", json!(answer.clone()));
-            token.insert("model", json!(model_id));
-            let _ = sink
-                .send(data_frame(
-                    &serde_json::to_value(token).unwrap_or(Value::Null),
-                ))
-                .await;
-        }
         if let Err(error) = result {
             let mut payload = OrderedMap::new();
             payload.insert("type", json!("error"));
@@ -350,42 +425,33 @@ pub(crate) async fn hybrid_response(
             let _ = sink.send(DONE).await;
             return;
         }
-        let turn = CloudTurnResult {
-            user_message: req.message.clone(),
-            answer_text: answer.clone(),
-            sent_node_ids: minimal.node_ids.clone(),
-            provider: OpenAiCompatibleAdapter::PROVIDER_NAME.to_string(),
-            model: model_id.clone(),
-        };
-        let plan = plan_kg_expansion_rich(&turn);
-        let ingest = ingest_expansion(
-            &plan,
-            state.review.as_deref(),
+        let ingest = finish_hybrid_turn(
+            &state,
+            &req,
+            &minimal,
+            &answer,
+            &cloud_name,
+            &cloud_model,
+            &key,
             email.as_deref(),
             workspace.as_deref(),
-        );
-        let used = minimal.token_estimate + (answer.chars().count() as i64 / 4).max(1);
-        let snapshot = record_budget(&key, used).snapshot();
-        let meta = HistoryMeta {
-            email: hist_email.as_deref(),
-            nickname: hist_nick.as_deref(),
-            source: source.as_deref(),
-            conversation_id: conversation.as_deref(),
-            workspace_id: workspace.as_deref(),
-        };
-        persist_entry(&state, "assistant", &answer, &meta).await;
-        state.notify("assistant", &answer, source.as_deref());
-        let _ = policy;
+            hist_email.as_deref(),
+            hist_nick.as_deref(),
+            source.as_deref(),
+            conversation.as_deref(),
+        )
+        .await;
         let mut done = OrderedMap::new();
         done.insert("type", json!("hybrid_done"));
         done.insert("chunk", json!(""));
         done.insert("answer", json!(answer));
-        done.insert("sent_node_ids", json!(turn.sent_node_ids));
-        done.insert("provider", json!(turn.provider));
-        done.insert("model", json!(turn.model));
+        done.insert("sent_node_ids", json!(minimal.node_ids));
+        done.insert("provider", json!(cloud_name));
+        done.insert("model", json!(cloud_model));
         done.insert("kg_expansion", ingest);
         done.insert("token_estimate", json!(minimal.token_estimate));
-        done.insert("token_budget", snapshot);
+        done.insert("token_budget", budget_for(&key).snapshot());
+        done.insert("reason", json!(reason.as_str()));
         let _ = sink
             .send(data_frame(
                 &serde_json::to_value(done).unwrap_or(Value::Null),
@@ -401,6 +467,163 @@ pub(crate) async fn hybrid_response(
             ("X-Hybrid", "1"),
         ],
     ))
+}
+
+fn hybrid_context_frame(
+    minimal: &MinimalContext,
+    budget: &crate::cloud::TokenBudget,
+    reason: EscalationReason,
+) -> OrderedMap {
+    let mut context_frame = OrderedMap::new();
+    context_frame.insert("type", json!("hybrid_context"));
+    context_frame.insert("node_ids", json!(minimal.node_ids));
+    context_frame.insert("keywords", json!(minimal.keywords));
+    context_frame.insert("token_estimate", json!(minimal.token_estimate));
+    context_frame.insert("quality", minimal.quality.clone());
+    context_frame.insert("titles", json!(minimal.titles()));
+    context_frame.insert("token_budget", budget.snapshot());
+    context_frame.insert("reason", json!(reason.as_str()));
+    context_frame
+}
+
+#[allow(clippy::too_many_arguments)]
+fn record_sent_egress(
+    state: &ChatState,
+    minimal: &MinimalContext,
+    mode: NetworkMode,
+    provider: &str,
+    model: &str,
+    email: Option<&str>,
+    workspace: Option<&str>,
+    reason: EscalationReason,
+) {
+    if let Some(egress) = state.egress.as_ref() {
+        egress.record(&cloud_egress_event(
+            &minimal.node_ids,
+            minimal.token_estimate,
+            mode,
+            provider,
+            Some(model),
+            email,
+            workspace,
+            "sent",
+            None,
+            Some(reason.as_str()),
+        ));
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn finish_hybrid_turn(
+    state: &ChatState,
+    req: &ChatRequest,
+    minimal: &MinimalContext,
+    answer: &str,
+    provider: &str,
+    model: &str,
+    key: &str,
+    email: Option<&str>,
+    workspace: Option<&str>,
+    hist_email: Option<&str>,
+    hist_nick: Option<&str>,
+    source: Option<&str>,
+    conversation: Option<&str>,
+) -> Value {
+    let turn = CloudTurnResult {
+        user_message: req.message.clone(),
+        answer_text: answer.to_string(),
+        sent_node_ids: minimal.node_ids.clone(),
+        provider: provider.to_string(),
+        model: model.to_string(),
+    };
+    let plan = plan_kg_expansion_rich(&turn);
+    let ingest = ingest_expansion(&plan, state.review.as_deref(), email, workspace);
+    let used = minimal.token_estimate + (answer.chars().count() as i64 / 4).max(1);
+    let _ = record_budget(key, used);
+    let meta = HistoryMeta {
+        email: hist_email,
+        nickname: hist_nick,
+        source,
+        conversation_id: conversation,
+        workspace_id: workspace,
+    };
+    persist_entry(state, "assistant", answer, &meta).await;
+    state.notify("assistant", answer, source);
+    ingest
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn hybrid_json(
+    state: &ChatState,
+    req: &ChatRequest,
+    mode: NetworkMode,
+    provider: CloudProvider,
+    reason: EscalationReason,
+    minimal: MinimalContext,
+    key: &str,
+    question: &str,
+    email: Option<&str>,
+    workspace: Option<&str>,
+    meta: &HistoryMeta<'_>,
+) -> Response {
+    record_sent_egress(
+        state,
+        &minimal,
+        mode,
+        provider.name(),
+        provider.model(),
+        email,
+        workspace,
+        reason,
+    );
+    let mut answer = String::new();
+    let result = provider
+        .stream(
+            crate::cloud::HYBRID_SYSTEM_PROMPT,
+            question,
+            &minimal.compact_text,
+            &mut |piece| {
+                answer.push_str(piece);
+                true
+            },
+        )
+        .await;
+    if let Err(error) = result {
+        return json_body(
+            StatusCode::BAD_GATEWAY,
+            &json!({"detail": error, "error": error}),
+        );
+    }
+    let ingest = finish_hybrid_turn(
+        state,
+        req,
+        &minimal,
+        &answer,
+        provider.name(),
+        provider.model(),
+        key,
+        email,
+        workspace,
+        meta.email,
+        meta.nickname,
+        meta.source,
+        meta.conversation_id,
+    )
+    .await;
+    let mut body = OrderedMap::new();
+    body.insert("response", json!(answer.clone()));
+    body.insert("answer", json!(answer));
+    body.insert("provider", json!(provider.name()));
+    body.insert("model", json!(provider.model()));
+    body.insert("reason", json!(reason.as_str()));
+    body.insert("sent_node_ids", json!(minimal.node_ids));
+    body.insert("kg_expansion", ingest);
+    body.insert("token_estimate", json!(minimal.token_estimate));
+    body.insert("token_budget", budget_for(key).snapshot());
+    json_body(
+        StatusCode::OK,
+        &serde_json::to_value(body).unwrap_or(Value::Null),
+    )
 }
 
 pub(crate) async fn persist_answer(

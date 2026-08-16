@@ -33,27 +33,12 @@ pub fn filter_scoped(
 }
 
 /// `_workspace_scope_sql`. `None` = no scoping; empty set matches nothing.
+/// `"personal"` also matches NULL/blank `workspace_id`.
 pub fn scope_sql(scope: &Scope) -> Option<(String, Vec<String>)> {
-    let allowed = scope.allowed_workspaces.as_ref()?;
-    let names: Vec<String> = allowed
-        .iter()
-        .filter(|value| !value.is_empty())
-        .cloned()
-        .collect();
-    let mut clauses: Vec<String> = Vec::new();
-    let mut params: Vec<String> = Vec::new();
-    if !names.is_empty() {
-        let placeholders = vec!["?"; names.len()].join(",");
-        clauses.push(format!("workspace_id IN ({placeholders})"));
-        params.extend(names);
-    }
-    if scope.include_legacy_global {
-        clauses.push("workspace_id IS NULL".into());
-    }
-    if clauses.is_empty() {
-        return Some(("0".into(), Vec::new()));
-    }
-    Some((clauses.join(" OR "), params))
+    lattice_core::workspace_membership_sql(
+        scope.allowed_workspaces.as_ref(),
+        scope.include_legacy_global,
+    )
 }
 
 fn count_by(

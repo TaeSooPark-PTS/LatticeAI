@@ -78,6 +78,10 @@ pub struct GraphWriter {
     blob_dir: PathBuf,
     embedder: LocalEmbeddingModel,
     clock: Arc<dyn Clock>,
+    /// Production `open()` stamps `"personal"` when a write has no workspace.
+    /// The parity battery uses [`Self::with_parts`] (this stays `None`) so
+    /// frozen goldens keep their legacy-null rows.
+    default_workspace: Option<String>,
 }
 
 impl GraphWriter {
@@ -88,12 +92,14 @@ impl GraphWriter {
     /// already built — nothing is migrated, because there is nothing to
     /// migrate.
     pub fn open(store: Arc<Store>, blob_dir: impl Into<PathBuf>) -> Result<Self, CoreError> {
-        Self::with_parts(
+        let mut writer = Self::with_parts(
             store,
             blob_dir,
             LocalEmbeddingModel::from_env(),
             Arc::new(SystemClock),
-        )
+        )?;
+        writer.default_workspace = Some(crate::read::DEFAULT_WORKSPACE_ID.to_string());
+        Ok(writer)
     }
 
     /// Open a writer with an explicit embedder and clock.
@@ -118,6 +124,7 @@ impl GraphWriter {
             blob_dir,
             embedder,
             clock,
+            default_workspace: None,
         };
         writer.bootstrap()?;
         Ok(writer)
@@ -148,5 +155,16 @@ impl GraphWriter {
     /// The clock every stamp in the store comes from.
     pub fn clock(&self) -> &Arc<dyn Clock> {
         &self.clock
+    }
+
+    /// Fill in `"personal"` on the production writer when the request omitted a
+    /// workspace. The parity constructor leaves this `None`, so goldens stay
+    /// legacy-null.
+    pub(crate) fn resolve_workspace(&self, requested: Option<&str>) -> Option<String> {
+        requested
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .or_else(|| self.default_workspace.clone())
     }
 }

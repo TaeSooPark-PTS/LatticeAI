@@ -5187,7 +5187,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "11.8.0"
+    "version": "11.9.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -7961,6 +7961,77 @@
           }
         },
         "summary": "Chronicle Overview"
+      }
+    },
+    "/api/cloud/status": {
+      "get": {
+        "operationId": "cloud_status_api_cloud_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "configured": {
+                      "title": "Configured",
+                      "type": "boolean"
+                    },
+                    "detail": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Detail"
+                    },
+                    "mode": {
+                      "enum": [
+                        "api_key",
+                        "cli_oauth",
+                        "none"
+                      ],
+                      "title": "Mode",
+                      "type": "string"
+                    },
+                    "model": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Model"
+                    },
+                    "provider": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Provider"
+                    }
+                  },
+                  "required": [
+                    "configured",
+                    "mode"
+                  ],
+                  "title": "CloudStatus",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cloud Status"
       }
     },
     "/api/command/briefing": {

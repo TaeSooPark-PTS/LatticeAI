@@ -273,6 +273,7 @@ impl GraphWriter {
         let title_s = truncate_chars(&spec.title, 240);
         let summary_s = truncate_chars(&spec.summary, 1000);
         let meta_json = json_of(&spec.metadata);
+        let workspace_id = self.resolve_workspace(spec.workspace_id.as_deref());
         project_node_v2(
             txn,
             &NodeProjection {
@@ -284,7 +285,7 @@ impl GraphWriter {
                 created_at: Some(&now),
                 updated_at: &now,
                 owner: spec.owner.as_deref(),
-                workspace_id: spec.workspace_id.as_deref(),
+                workspace_id: workspace_id.as_deref(),
                 visibility: spec.visibility.as_deref(),
             },
         )?;
@@ -622,7 +623,7 @@ mod supplied_vector_door {
     use crate::db::Store;
     use crate::embeddings::LocalEmbeddingModel;
     use crate::graph_write::types::SuppliedVector;
-    use crate::graph_write::GraphWriter;
+    use crate::graph_write::{GraphWriter, SystemClock};
     use std::sync::Arc;
 
     fn writer() -> (tempfile::TempDir, GraphWriter) {
@@ -691,5 +692,65 @@ mod supplied_vector_door {
             LocalEmbeddingModel::from_env().encode(&offered.values)
         );
         assert_ne!(model, native);
+    }
+
+    #[test]
+    fn production_open_stamps_personal_when_no_workspace_is_supplied() {
+        let dir = tempfile::tempdir().expect("tmp");
+        let store = Arc::new(Store::open(&dir.path().join("kg.sqlite")).expect("store"));
+        let writer = GraphWriter::open(store, dir.path().join("blobs")).expect("writer");
+        writer
+            .upsert_nodes(&[NodeSpec {
+                id: "n:unstamped".into(),
+                node_type: "Concept".into(),
+                title: "no workspace".into(),
+                ..NodeSpec::default()
+            }])
+            .expect("write");
+        let workspace: Option<String> = writer
+            .store()
+            .with_read_conn(|conn| {
+                conn.query_row(
+                    "SELECT workspace_id FROM nodes_v2 WHERE id='n:unstamped'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(crate::db::CoreError::Sqlite)
+            })
+            .expect("row");
+        assert_eq!(workspace.as_deref(), Some("personal"));
+    }
+
+    #[test]
+    fn the_parity_constructor_leaves_legacy_null() {
+        let dir = tempfile::tempdir().expect("tmp");
+        let store = Arc::new(Store::open(&dir.path().join("kg.sqlite")).expect("store"));
+        let writer = GraphWriter::with_parts(
+            store,
+            dir.path().join("blobs"),
+            LocalEmbeddingModel::from_env(),
+            Arc::new(SystemClock),
+        )
+        .expect("writer");
+        writer
+            .upsert_nodes(&[NodeSpec {
+                id: "n:legacy".into(),
+                node_type: "Concept".into(),
+                title: "legacy".into(),
+                ..NodeSpec::default()
+            }])
+            .expect("write");
+        let workspace: Option<String> = writer
+            .store()
+            .with_read_conn(|conn| {
+                conn.query_row(
+                    "SELECT workspace_id FROM nodes_v2 WHERE id='n:legacy'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(crate::db::CoreError::Sqlite)
+            })
+            .expect("row");
+        assert_eq!(workspace, None);
     }
 }

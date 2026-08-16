@@ -36,6 +36,7 @@
 pub mod action;
 pub mod agentloop;
 pub mod breaker;
+pub mod channel;
 pub mod command;
 pub mod documents;
 pub mod exec;
@@ -47,6 +48,7 @@ pub mod permission;
 pub mod plan;
 pub mod policy;
 pub mod profile;
+pub mod prompts;
 pub mod proposals;
 pub mod pydiff;
 pub mod pyjson;

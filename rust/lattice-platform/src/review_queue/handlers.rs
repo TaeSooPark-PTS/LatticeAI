@@ -239,7 +239,7 @@ pub(crate) async fn run_now_item(
     headers: HeaderMap,
     AxumPath(item_id): AxumPath<String>,
 ) -> Result<Response, Response> {
-    require_user(&state, &headers)?;
+    let user = require_user(&state, &headers)?;
     let scope = gate_write(&headers);
     let stored = match load_review_item(&state, &item_id, scope.as_deref()) {
         Ok(item) => item,
@@ -256,14 +256,53 @@ pub(crate) async fn run_now_item(
     let workflow_id = payload
         .get("workflow_id")
         .and_then(Value::as_str)
-        .or_else(|| provenance.get("workflow_id").and_then(Value::as_str));
-    if workflow_id.is_none() {
+        .or_else(|| provenance.get("workflow_id").and_then(Value::as_str))
+        .map(str::to_string);
+    let Some(workflow_id) = workflow_id else {
         return Err(http_detail(
             StatusCode::CONFLICT,
             "review item has no workflow to run",
         ));
-    }
-    Ok(json_ok(&review_item_view(&stored, None)))
+    };
+    let workflow = match crate::review_queue::get_workflow(&state, &workflow_id, scope.as_deref()) {
+        Ok(workflow) => workflow,
+        Err(_) => {
+            return Err(http_detail(
+                StatusCode::NOT_FOUND,
+                &format!("workflow not found: {workflow_id}"),
+            ));
+        }
+    };
+    let user_email = if user.email.is_empty() {
+        None
+    } else {
+        Some(user.email.as_str())
+    };
+    let workspace = lattice_agent::sandbox::Workspace::new(&state.agent_root).ok();
+    let tools = workspace.map(|ws| {
+        crate::tools::ToolsState::new(std::sync::Arc::clone(&state.auth), ws, &state.data_dir)
+    });
+    let ctx = tools
+        .as_ref()
+        .map(|tools| crate::workflow_designer::ToolContext {
+            tools,
+            identity: &user,
+            headers: &headers,
+        });
+    let run = crate::workflow_designer::execute_workflow_now(
+        &state.data_dir,
+        &workflow,
+        scope.as_deref().unwrap_or("personal"),
+        user_email,
+        json!({}),
+        ctx.as_ref(),
+    );
+    let run_ref = json!({
+        "id": run.get("id").cloned().unwrap_or(Value::Null),
+        "status": run.get("status").cloned().unwrap_or(Value::Null),
+        "workflow_id": workflow_id,
+    });
+    Ok(json_ok(&review_item_view(&stored, Some(("run", run_ref)))))
 }
 
 pub(crate) async fn bulk_approve(

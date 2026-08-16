@@ -16,7 +16,7 @@ use lattice_agent::sandbox::Workspace;
 use lattice_auth::{AuthState, Identity, OrderedMap};
 use serde_json::{json, Value};
 
-use crate::mcp::{detail, json_status};
+use crate::mcp::{detail, json_status, missing_fields};
 
 pub(crate) mod downloads;
 pub(crate) mod fs;
@@ -165,20 +165,34 @@ pub(crate) fn tool_err(message: &str) -> Response {
     detail(StatusCode::BAD_REQUEST, message)
 }
 
-fn policy_denied(tool: &str) -> Response {
-    detail(
-        StatusCode::FORBIDDEN,
-        &format!(
-            "'{tool}' 툴은 명시 승인이 필요합니다 (permission_mode=strict). 승인 UI가 없는 직접 실행 경로에서 차단되었습니다."
-        ),
+/// Failure from a tool's core (the HTTP handler turns this into a response).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ToolExecError {
+    Missing(&'static str),
+    Message(String),
+}
+
+impl ToolExecError {
+    pub(crate) fn into_response(self, input: &Value) -> Response {
+        match self {
+            Self::Missing(field) => missing_fields(input, &[field]),
+            Self::Message(message) => tool_err(&message),
+        }
+    }
+}
+
+pub(crate) fn policy_denied_message(tool: &str) -> String {
+    format!(
+        "'{tool}' 툴은 명시 승인이 필요합니다 (permission_mode=strict). 승인 UI가 없는 직접 실행 경로에서 차단되었습니다."
     )
 }
 
-pub(crate) fn enforce(
+/// Same rules [`enforce`] applies, as a string so MCP can surface them as JSON-RPC.
+pub(crate) fn check_governance(
     name: &str,
     identity: &Identity,
     trusted_admin: bool,
-) -> Result<(), Response> {
+) -> Result<(), String> {
     let g = gov_named(name).unwrap_or_else(default_gov);
     if matches!(name, "run_command" | "build_project" | "deploy_project")
         && !trusted_admin
@@ -186,10 +200,7 @@ pub(crate) fn enforce(
         && identity.role != "owner"
         && !identity.is_local_owner()
     {
-        return Err(detail(
-            StatusCode::FORBIDDEN,
-            &format!("'{name}' 툴은 관리자 전용입니다."),
-        ));
+        return Err(format!("'{name}' 툴은 관리자 전용입니다."));
     }
     if !trusted_admin
         && !g.auto_approve
@@ -197,9 +208,18 @@ pub(crate) fn enforce(
         && identity.role != "owner"
         && !identity.is_local_owner()
     {
-        return Err(policy_denied(name));
+        return Err(policy_denied_message(name));
     }
     Ok(())
+}
+
+pub(crate) fn enforce(
+    name: &str,
+    identity: &Identity,
+    trusted_admin: bool,
+) -> Result<(), Response> {
+    check_governance(name, identity, trusted_admin)
+        .map_err(|message| detail(StatusCode::FORBIDDEN, &message))
 }
 
 pub(crate) fn resolve(ws: &Workspace, path: &str) -> Result<PathBuf, Response> {

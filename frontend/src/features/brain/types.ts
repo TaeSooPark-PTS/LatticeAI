@@ -27,6 +27,32 @@ export type Message = {
   // Plain-language outcome for an agent run (v9.9.6): why it ended the way it
   // did and how hard the model had to work to get there.
   runExplanation?: MessageRunExplanation;
+  // Hybrid cloud lane: the memories sent with this turn. Kept on the message
+  // so the chip can count them; the ids themselves are not rendered.
+  hybridContext?: MessageHybridContext;
+  // Set only when this reply came from the cloud lane (`hybrid_done`).
+  cloudAnswer?: MessageCloudAnswer;
+};
+
+// Which local memories left the machine for one hybrid turn.
+export type MessageHybridContext = {
+  nodeIds: string[];
+  keywords: string[];
+};
+
+// Knowledge-expansion proposal summary from `hybrid_done.kg_expansion`.
+export type MessageKgExpansion = {
+  status: string;
+  candidateCount: number;
+  stagedForReview: boolean;
+};
+
+// A cloud-lane answer: provider/model plus the sent-memory / expansion summary.
+export type MessageCloudAnswer = {
+  provider: string;
+  model: string;
+  sentNodeCount: number;
+  expansion: MessageKgExpansion | null;
 };
 
 // One agent-loop step event. Streamed frames carry {phase, event, ...detail};

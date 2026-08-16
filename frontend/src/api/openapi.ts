@@ -1609,6 +1609,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cloud/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cloud Status */
+        get: operations["cloud_status_api_cloud_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/command/briefing": {
         parameters: {
             query?: never;
@@ -12562,6 +12579,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    cloud_status_api_cloud_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Configured */
+                        configured: boolean;
+                        /** Detail */
+                        detail?: string | null;
+                        /**
+                         * Mode
+                         * @enum {string}
+                         */
+                        mode: "api_key" | "cli_oauth" | "none";
+                        /** Model */
+                        model?: string | null;
+                        /** Provider */
+                        provider?: string | null;
+                    };
                 };
             };
         };

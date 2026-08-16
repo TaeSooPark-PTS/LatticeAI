@@ -24,6 +24,23 @@ pub struct AgentProfile {
     pub escalate_after: u32,
     /// Whether an exhausted JSON loop may fall back to writing planned files.
     pub direct_path_fallback: bool,
+    /// Per-step result slice in the executor transcript (v11.9.0).
+    ///
+    /// The transcript *window* alone was never the whole context: four steps
+    /// carrying 700 characters of tool output each is still 3k characters of
+    /// prompt before the plan, the written-files hint and the conversation are
+    /// added. A 2B model at step five was being handed 6–10k tokens and losing
+    /// the action contract inside them.
+    pub result_chars: usize,
+    /// Drop the written-files hint and the recent conversation from the
+    /// executor prompt (v11.9.0). Both are *nice to have* framing for a model
+    /// that can hold a contract, and both are pure context pressure for one
+    /// that cannot — the plan and the transcript already carry the facts.
+    pub lean_context: bool,
+    /// Bounded regenerations the direct-path fallback may spend on content that
+    /// would otherwise have to be repaired (v11.9.0, ported from the deleted
+    /// `file_generation.orchestration`). Zero means "write what you got".
+    pub regeneration_retries: u32,
 }
 
 pub const STANDARD: AgentProfile = AgentProfile {
@@ -32,6 +49,9 @@ pub const STANDARD: AgentProfile = AgentProfile {
     parse_failure_budget: 3,
     escalate_after: 2,
     direct_path_fallback: false,
+    result_chars: 700,
+    lean_context: false,
+    regeneration_retries: 0,
 };
 
 pub const COMPACT: AgentProfile = AgentProfile {
@@ -40,7 +60,27 @@ pub const COMPACT: AgentProfile = AgentProfile {
     parse_failure_budget: 4,
     escalate_after: 1,
     direct_path_fallback: true,
+    result_chars: 200,
+    lean_context: true,
+    regeneration_retries: 1,
 };
+
+/// Low temperature is what makes a 2B emit stable JSON.
+pub const COMPACT_EXECUTE_TEMPERATURE: f64 = 0.1;
+/// A capable model can use a little entropy; EXECUTE still stays well below chat default.
+pub const STANDARD_EXECUTE_TEMPERATURE: f64 = 0.2;
+
+/// The EXECUTE-phase sampler temperature for this profile.
+///
+/// PLAN and VERIFY keep their own hardcoded temps; only the executor call
+/// reads this. The request body's `temperature` is not the execute default.
+pub fn execute_temperature(profile: AgentProfile) -> f64 {
+    if profile.name == COMPACT.name {
+        COMPACT_EXECUTE_TEMPERATURE
+    } else {
+        STANDARD_EXECUTE_TEMPERATURE
+    }
+}
 
 /// At or below this parameter count, the compact profile applies.
 pub const COMPACT_MAX_PARAMS_B: f64 = 4.0;
@@ -61,19 +101,51 @@ fn quant_pattern() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"(?i)\d+\s*bit").expect("ported pattern must compile"))
 }
 
-/// Parameter count in billions parsed from a model id, or `None`.
+/// `e2b` / `e4b` — an **effective** parameter count (v11.9.0).
 ///
-/// The quantization suffix (`4bit`, `8bit`) is removed first: it is not a
-/// parameter count, and reading it as one would mislabel every quantized model.
-pub fn model_size_b(model_id: &str) -> Option<f64> {
-    let text = quant_pattern().replace_all(model_id, " ");
-    size_pattern()
-        .captures_iter(&text)
+/// Gemma 4's MatFormer releases name what the model costs to run, not what it
+/// weighs: `gemma-4-e2b-it-4bit` is the 8GB-tier default and behaves like a 2B
+/// model, but the plain-size pattern rejects `2b` because a letter precedes it.
+/// The result was the worst possible answer — the smallest recommended local
+/// model got the `standard` profile, so the one loop that has a direct-path
+/// fallback never ran for the one model that needs it.
+///
+/// Only `e` is honoured. Active-parameter markers use `a`/`A`
+/// (`gemma-4-26b-a4b-it-4bit`, `Qwen3.6-35B-A3B`) and naming *those* as sizes
+/// would classify a 26B MoE as compact, which is the opposite mistake and a
+/// worse one — a big model would be handed the tiny-model prompt and the
+/// direct-path fallback.
+fn effective_size_pattern() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(r"(?i)(?<![a-z0-9.])e(\d+(?:\.\d+)?)\s*b(?![a-z0-9])")
+            .expect("ported pattern must compile")
+    })
+}
+
+fn smallest_match(pattern: &Regex, text: &str) -> Option<f64> {
+    pattern
+        .captures_iter(text)
         .filter_map(|captures| captures.ok())
         .filter_map(|captures| captures.get(1)?.as_str().parse::<f64>().ok())
         .fold(None, |smallest: Option<f64>, size| {
             Some(smallest.map_or(size, |current| current.min(size)))
         })
+}
+
+/// Parameter count in billions parsed from a model id, or `None`.
+///
+/// The quantization suffix (`4bit`, `8bit`) is removed first: it is not a
+/// parameter count, and reading it as one would mislabel every quantized model.
+///
+/// A **plain** size token always decides. Only when the id names none is the
+/// `e`-prefixed effective size read, so an id that carries both — a
+/// hypothetical `…-26b-e2b-…` — is judged by the weight it actually loads
+/// rather than by the cheaper number beside it.
+pub fn model_size_b(model_id: &str) -> Option<f64> {
+    let text = quant_pattern().replace_all(model_id, " ");
+    smallest_match(size_pattern(), &text)
+        .or_else(|| smallest_match(effective_size_pattern(), &text))
 }
 
 /// Pick the loop profile for a model: explicit override → size → `standard`.
@@ -130,6 +202,64 @@ mod tests {
     }
 
     #[test]
+    fn an_e_prefixed_effective_size_is_a_size() {
+        // The 8GB-tier recommended default, and its 16GB sibling.
+        assert_eq!(model_size_b("mlx-community/gemma-4-e2b-it-4bit"), Some(2.0));
+        assert_eq!(model_size_b("mlx-community/gemma-4-e4b-it-4bit"), Some(4.0));
+        assert_eq!(model_size_b("gemma-4-e2b-it-8bit"), Some(2.0));
+        // Case and the `E2B` spelling are the same token.
+        assert_eq!(model_size_b("Gemma-4-E2B-it"), Some(2.0));
+    }
+
+    #[test]
+    fn an_active_parameter_marker_never_shrinks_a_mixture_of_experts() {
+        // `a4b` / `A3B` are *active* parameters per token, not the model's
+        // size. Reading them as sizes would hand a 26B/35B model the compact
+        // loop — the failure this whole dial exists to avoid, inverted.
+        assert_eq!(model_size_b("gemma-4-26b-a4b-it-4bit"), Some(26.0));
+        assert_eq!(model_size_b("Qwen3.6-35B-A3B-4bit"), Some(35.0));
+        assert_eq!(
+            model_size_b("some-moe-a3b"),
+            None,
+            "a marker alone is not a size"
+        );
+        assert_eq!(
+            profile_for_model(Some("gemma-4-26b-a4b-it-4bit")).name,
+            "standard"
+        );
+        assert_eq!(
+            profile_for_model(Some("Qwen3.6-35B-A3B-4bit")).name,
+            "standard"
+        );
+    }
+
+    #[test]
+    fn a_plain_size_outranks_an_effective_one_in_the_same_id() {
+        // Weight decides what has to be held in memory and what the model can
+        // hold in its head; the effective count only decides what a step costs.
+        assert_eq!(model_size_b("gemma-4-26b-e2b-it-4bit"), Some(26.0));
+        assert_eq!(
+            profile_for_model(Some("gemma-4-26b-e2b-it-4bit")).name,
+            "standard"
+        );
+    }
+
+    #[test]
+    fn the_gemma_four_effective_sizes_reach_the_compact_loop() {
+        for model_id in [
+            "mlx-community/gemma-4-e2b-it-4bit",
+            "mlx-community/gemma-4-e4b-it-4bit",
+        ] {
+            let profile = profile_for_model(Some(model_id));
+            assert_eq!(profile.name, "compact", "{model_id}");
+            assert!(
+                profile.direct_path_fallback,
+                "{model_id}: the fallback is the whole point"
+            );
+        }
+    }
+
+    #[test]
     fn small_models_get_the_compact_loop_and_unknown_ones_do_not() {
         assert_eq!(
             profile_for_model(Some("gemma-3-4b-it-4bit")).name,
@@ -164,5 +294,30 @@ mod tests {
             (4, 4, 1, true)
         );
         assert_eq!(COMPACT_MAX_PARAMS_B, 4.0);
+    }
+
+    #[test]
+    fn the_v11_9_context_dials_differ_only_where_they_were_meant_to() {
+        assert_eq!(
+            (
+                STANDARD.result_chars,
+                STANDARD.lean_context,
+                STANDARD.regeneration_retries,
+            ),
+            (700, false, 0),
+            "standard is the no-behaviour-change side"
+        );
+        assert_eq!(
+            (
+                COMPACT.result_chars,
+                COMPACT.lean_context,
+                COMPACT.regeneration_retries,
+            ),
+            (200, true, 1)
+        );
+        assert_eq!(execute_temperature(COMPACT), COMPACT_EXECUTE_TEMPERATURE);
+        assert_eq!(execute_temperature(STANDARD), STANDARD_EXECUTE_TEMPERATURE);
+        assert_eq!(COMPACT_EXECUTE_TEMPERATURE, 0.1);
+        assert_eq!(STANDARD_EXECUTE_TEMPERATURE, 0.2);
     }
 }

@@ -9,12 +9,10 @@ use lattice_agent::sandbox::MAX_FILE_BYTES;
 use lattice_auth::{Identity, OrderedMap};
 use serde_json::{json, Value};
 
-use crate::mcp::{
-    json_status, missing_fields, parse_json_object, requested_scope, require_user, sha256_hex,
-};
+use crate::mcp::{json_status, parse_json_object, requested_scope, require_user, sha256_hex};
 
 use super::gov::KNOWLEDGE_FOLDERS;
-use super::{tool_err, tool_ok, ToolsState};
+use super::{tool_err, tool_ok, ToolExecError, ToolsState};
 
 fn knowledge_root(brain: &Path, workspace_id: &str, email: &str) -> Result<PathBuf, Response> {
     let workspace = workspace_id.trim();
@@ -139,6 +137,36 @@ fn save_note(
     Ok(result)
 }
 
+pub(crate) fn run_knowledge_search(
+    state: &ToolsState,
+    identity: &Identity,
+    headers: &HeaderMap,
+    args: &Value,
+) -> Result<Value, ToolExecError> {
+    if !args
+        .as_object()
+        .map(|o| o.contains_key("query"))
+        .unwrap_or(false)
+    {
+        return Err(ToolExecError::Missing("query"));
+    }
+    let query = args.get("query").and_then(Value::as_str).unwrap_or("");
+    if query.is_empty() {
+        return Err(ToolExecError::Message("Query is required.".into()));
+    }
+    let (ws, email) = scope_of(state, headers, identity)
+        .map_err(|_| ToolExecError::Message("Knowledge search failed.".into()))?;
+    search_notes(
+        state,
+        &ws,
+        &email,
+        query,
+        args.get("max_results").and_then(Value::as_u64).unwrap_or(5) as usize,
+        false,
+    )
+    .map_err(|_| ToolExecError::Message("Knowledge search failed.".into()))
+}
+
 pub(crate) async fn knowledge_search(
     State(state): State<ToolsState>,
     headers: HeaderMap,
@@ -152,34 +180,9 @@ pub(crate) async fn knowledge_search(
         Ok(v) => v,
         Err(r) => return r,
     };
-    if !parsed
-        .as_object()
-        .map(|o| o.contains_key("query"))
-        .unwrap_or(false)
-    {
-        return missing_fields(&parsed, &["query"]);
-    }
-    let query = parsed.get("query").and_then(Value::as_str).unwrap_or("");
-    if query.is_empty() {
-        return tool_err("Query is required.");
-    }
-    let (ws, email) = match scope_of(&state, &headers, &identity) {
-        Ok(s) => s,
-        Err(r) => return r,
-    };
-    match search_notes(
-        &state,
-        &ws,
-        &email,
-        query,
-        parsed
-            .get("max_results")
-            .and_then(Value::as_u64)
-            .unwrap_or(5) as usize,
-        false,
-    ) {
+    match run_knowledge_search(&state, &identity, &headers, &parsed) {
         Ok(v) => tool_ok(&state.workspace, v),
-        Err(r) => r,
+        Err(error) => error.into_response(&parsed),
     }
 }
 
@@ -241,6 +244,17 @@ fn search_notes(
     Ok(result)
 }
 
+pub(crate) fn run_knowledge_tree(
+    state: &ToolsState,
+    identity: &Identity,
+    headers: &HeaderMap,
+) -> Result<Value, ToolExecError> {
+    let (ws, email) = scope_of(state, headers, identity)
+        .map_err(|_| ToolExecError::Message("Knowledge tree failed.".into()))?;
+    tree_notes(state, &ws, &email)
+        .map_err(|_| ToolExecError::Message("Knowledge tree failed.".into()))
+}
+
 pub(crate) async fn knowledge_tree(
     State(state): State<ToolsState>,
     headers: HeaderMap,
@@ -249,13 +263,9 @@ pub(crate) async fn knowledge_tree(
         Ok(id) => id,
         Err(r) => return r,
     };
-    let (ws, email) = match scope_of(&state, &headers, &identity) {
-        Ok(s) => s,
-        Err(r) => return r,
-    };
-    match tree_notes(&state, &ws, &email) {
+    match run_knowledge_tree(&state, &identity, &headers) {
         Ok(v) => tool_ok(&state.workspace, v),
-        Err(r) => r,
+        Err(error) => error.into_response(&json!({})),
     }
 }
 

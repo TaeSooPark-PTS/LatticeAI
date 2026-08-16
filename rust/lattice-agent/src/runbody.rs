@@ -122,12 +122,29 @@ pub struct RunBody {
     pub user_role: Option<String>,
     #[serde(default = "governor_default")]
     pub governor_enabled: bool,
+    /// The three role prompts.
+    ///
+    /// **Optional since v11.9.0, and absent means the built-in.** They used to
+    /// default to empty strings that nothing filled, so a request that did not
+    /// carry a prompt library got a model that had never been told the JSON
+    /// action contract. A supplied prompt still wins outright — see
+    /// [`crate::prompts`] for what an omitted one resolves to.
     #[serde(default)]
     pub planner_prompt: Option<String>,
     #[serde(default)]
     pub executor_prompt: Option<String>,
     #[serde(default)]
     pub critic_prompt: Option<String>,
+    /// Skills the host has installed, as briefs (v11.9.0).
+    ///
+    /// **A contract, not a capability.** Each entry is rendered into the
+    /// executor prompt as one line under `Available skills`, and that is all
+    /// this crate does with it: the loop never resolves a name, loads a skill
+    /// body, or executes one. The registry that owns skills is the platform's,
+    /// and it is the caller's job to send only what the run may actually use —
+    /// a name here is a suggestion to the model, never an authorization.
+    #[serde(default)]
+    pub skills: Option<Vec<crate::prompts::SkillBrief>>,
 }
 
 fn governor_default() -> bool {
@@ -168,6 +185,7 @@ impl RunBody {
             recent_conversation: self.recent_conversation.clone(),
             project_context: self.project_context.clone().unwrap_or_default(),
             self_model_summary: self.self_model_summary.clone().unwrap_or_default(),
+            skills: self.skills.clone().unwrap_or_default(),
         }
     }
 
@@ -470,6 +488,70 @@ mod tests {
         let request = body.to_request();
         assert_eq!(request.max_steps, 25);
         assert_eq!(request.max_retry, 3);
+    }
+
+    #[test]
+    fn an_omitted_prompt_library_resolves_to_the_built_in_prompts() {
+        // The v11.9.0 fix at the wire: a body that carries no prompts is the
+        // ordinary case, and it used to mean the model was told nothing.
+        let body: RunBody = serde_json::from_str(r#"{"message": "hi"}"#).expect("body");
+        assert_eq!(body.planner_prompt, None);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let workspace = Workspace::new(dir.path().join("ws")).expect("workspace");
+        let deps = body.to_deps(WorkerClient::new("http://127.0.0.1:1"), workspace.clone());
+        assert!(
+            deps.prompts.executor.is_empty(),
+            "nothing is baked in early"
+        );
+        let resolved = deps
+            .prompts
+            .executor_prompt(crate::profile::COMPACT, &deps.tool_names, &[]);
+        assert!(resolved.contains("EXACTLY ONE JSON object"));
+        assert!(
+            resolved.contains("- write_file{path, content}"),
+            "an empty policy table still names the native actions"
+        );
+        assert!(deps
+            .prompts
+            .planner_prompt()
+            .contains("\"action\": \"plan\""));
+        assert!(deps.prompts.critic_prompt().contains("\"next_state\""));
+
+        // And a caller with its own library still wins.
+        let body = RunBody {
+            executor_prompt: Some("HOST".into()),
+            ..RunBody::default()
+        };
+        let deps = body.to_deps(WorkerClient::new("http://127.0.0.1:1"), workspace);
+        assert_eq!(
+            deps.prompts
+                .executor_prompt(crate::profile::COMPACT, &[], &[]),
+            "HOST"
+        );
+    }
+
+    #[test]
+    fn declared_skills_survive_the_wire_and_reach_the_request() {
+        let body: RunBody = serde_json::from_str(
+            r#"{"message": "hi", "skills": [
+                {"name": "release-manager", "brief": "ship it", "when": "on request"},
+                {"name": "bare"}
+            ]}"#,
+        )
+        .expect("body");
+        let request = body.to_request();
+        assert_eq!(request.skills.len(), 2);
+        assert_eq!(request.skills[0].name, "release-manager");
+        assert_eq!(request.skills[0].when, "on request");
+        assert_eq!(request.skills[1].brief, "", "the two hints are optional");
+        // A resumed run reads its stored body back, so the briefs must survive
+        // the round trip the run store makes.
+        let stored = serde_json::to_value(&body).expect("serialize");
+        let restored: RunBody = serde_json::from_value(stored).expect("deserialize");
+        assert_eq!(restored.to_request().skills, request.skills);
+        // Absent is an empty list, never a null the prompt would render.
+        let bare: RunBody = serde_json::from_str(r#"{"message": "hi"}"#).expect("body");
+        assert!(bare.to_request().skills.is_empty());
     }
 
     #[test]

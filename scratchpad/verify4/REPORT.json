@@ -1,0 +1,24 @@
+{
+  "diagnosis": {
+    "verify3_critic_raw_in_transcript": false,
+    "why": "VERIFY never stored the critic completion on UNAVAILABLE; only EXECUTE parse_error steps keep raw. The model's live framing is visible on those execute slips.",
+    "quoted_raw": "<|channel>thought\nThe user is asking me to execute the next step of the previously defined plan.\nThe plan was:\n1. Read the content of `README.md`.\n2. Save the summarized content to `notes/summary.md`.\n\nThe execution transcript showed an error in the previous step, but the goal remains to execute the first step: `read_file` for `README.md`.\n\nI will execute the `read_file` action.<channel|>{\"thought",
+    "failure_mode": "channel/thought framing plus truncation. VERIFY already ran extract_action_details (full repair chain). Remaining holes: (1) a JSON object with verdict but no action field was refused; (2) thought-only prose with a PASS/FAIL token had no last rung."
+  },
+  "last_rung_condition_verbatim": "if the reply's plain text contains an unambiguous verdict token (PASS/통과 with no FAIL/실패/불합격 tokens anywhere, or vice versa) AND execution evidence exists AND requirement_coverage is complete → map to that verdict; anything ambiguous stays NEEDS_REVIEW exactly as today.",
+  "tests": [
+    "last_rung_clear_pass_is_done",
+    "last_rung_clear_fail_is_failed",
+    "last_rung_both_tokens_stays_needs_review",
+    "last_rung_pass_token_without_evidence_stays_needs_review"
+  ],
+  "live": {
+    "session": "/tmp/lattice-acc-119-verify4-eHwnlO",
+    "final_state": "FAILED",
+    "llm_calls": 5,
+    "critic_verdict_path": "parsed_json",
+    "critic_verdict": "FAIL",
+    "critic_next_state": "ROLLBACK",
+    "note": "Critic JSON parsed on the first ask (the original bug). Executor wrote notes/summary.md with 0 bytes then repeated the same call (LOOP_DETECTED); critic FAIL+ROLLBACK is fail-closed, not unparseable."
+  }
+}

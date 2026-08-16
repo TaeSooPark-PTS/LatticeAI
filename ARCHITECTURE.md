@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.8.0 — Travel Light**.
+Current release: **11.9.0 — Working Order**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -67,7 +67,7 @@ flowchart TB
     direction LR
     llm["Inference<br/>/agent/llm · /worker/llm/stream"]
     compute["Compute seams — 19 routes since 11.8.0<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx}"]
-    catalog["Model + engine catalog<br/>/models · /engines/* · /worker/sysinfo · /health"]
+    catalog["Model + engine catalog<br/>/models · /engines/* · /worker/sysinfo<br/>(+ capabilities · python_version) · /health"]
     llm ~~~ compute ~~~ catalog
   end
 
@@ -79,7 +79,7 @@ flowchart TB
     kg ~~~ store ~~~ archive
   end
 
-  cloud["Cloud LLM lane<br/>OpenAI-compatible stream, native in lattice-chat<br/><b>opt-in, off by default</b>"]
+  cloud["Cloud LLM lane — opt-in, off by default<br/>api_key (mock-verified) · cli_oauth (agy / grok)<br/>ReviewSink + shape-only EgressAudit"]
 
   user --> surfaces
   surfaces --> host
@@ -97,7 +97,7 @@ flowchart TB
   breakers -. "no mode ever widens these" .-> agentc
 
   chatc -- "minimal extracted slice only<br/>never the graph" --> cloud
-  cloud -- "streamed answer +<br/>proposed memory" --> chatc
+  cloud -- "streamed answer + Review Center<br/>kg_cloud_expansion proposal" --> chatc
   net -. "local_only blocks this edge entirely" .-> cloud
   breakers -. "sensitive · private · do_not_share<br/>filtered in BOTH modes" .-> cloud
 
@@ -105,7 +105,8 @@ flowchart TB
 ```
 
 One Door is still the top of this diagram. 11.7.0 filled in what that door
-was missing; 11.8.0 took away what it was carrying for nobody:
+was missing; 11.8.0 took away what it was carrying for nobody; 11.9.0 made
+the remaining Current stubs and the dashed cloud lane actually run:
 
 - **The worker is not a server of the product, and it is smaller.** 11.8.0
   cut it from **28 routes to 19** by deleting nine that no caller anywhere
@@ -126,10 +127,17 @@ was missing; 11.8.0 took away what it was carrying for nobody:
   ingest are joined; a watched binary goes through `/worker/parse` and the
   same enrich chain as upload. Chat `ingest_generated` is the same native
   door, not a POST to a schema it never matched.
-- **The cloud lane is native and still dashed.** Two independent gates
-  stand in front of it: the boundary dial must be `cloud_allowed`, and the
-  sensitivity filter runs regardless. The Knowledge Graph itself never
-  crosses that edge.
+- **The cloud lane is native, still dashed, and now wired.** Two
+  independent gates still stand in front of it: the boundary dial must be
+  `cloud_allowed`, and the sensitivity filter runs regardless. The
+  Knowledge Graph itself never crosses that edge. 11.9.0 bound ReviewSink
+  and EgressAudit in production, added dual credentials (`api_key` mock-
+  verified only; `cli_oauth` via locally OAuth-authenticated `agy` /
+  `grok`, live-checked with zero billing), and an escalation policy
+  (`auto` default / `manual` / `always`) that a per-request
+  `network_mode:"local_only"` always beats. Extracted cloud knowledge
+  stages as a Review Center `kg_cloud_expansion` proposal; the egress
+  record is shape — provider, model, reason — never content.
 
 The Telegram bridge is gone from this diagram because it is gone from the
 product: it lived in the platform code that became the worker (see
@@ -163,7 +171,8 @@ Key boundaries:
 - `rust/lattice-platform` owns the product route families that are not
   retrieval, ingest, chat or jobs: workspace and invitations, admin and the
   security dashboard, features and funnel metrics, setup, review_queue and
-  change_proposals, automation and hooks (registry + `HookSink`), mcp,
+  change_proposals, automation and hooks (registry + `HookSink`), mcp
+  (streamable-HTTP JSON-RPC at `POST /mcp`),
   marketplace and plugins, agent_registry and agents, tools (including
   sanitize on `POST /tools/write_file`), permissions and permission_mode,
   portability, network and network_boundary, realtime, project_sessions,
@@ -187,7 +196,9 @@ Key boundaries:
   11.8.0 it serves **19** routes: `/agent/{llm,tool}`,
   `/worker/{llm/stream,sysinfo,embed,extract,parse,asr,
   render/{docx,pdf,pptx,xlsx}}`, the model and engine catalog,
-  `GET /api/embeddings/status`, and `/health`. `create_app` no longer exists.
+  `GET /api/embeddings/status`, and `/health`. 11.9.0 left that count
+  alone and made `/worker/sysinfo` answer additive `capabilities`
+  (`pointer_tools`) and `python_version`. `create_app` no longer exists.
 - `lattice_brain` is now the compute half of the Brain: the local embedding
   model, the multimodal fact extractors, and the text/extraction helpers. The
   graph store, conversations, storage engines, portability and the workflow
@@ -444,7 +455,7 @@ compiles and tests all of it with no desktop system libraries installed.
 | `lattice-ingest` | Watch, parse, chunk, hash: four typed chunking strategies, chunk-id and content-hash conventions, PDF page-offset arithmetic, the folder filter chain, the vault-watch **poller** (11.7.0 — detection joined to native note ingest through `enrich`, binaries via `/worker/parse`) — and, since 11.6.0, the writes themselves through `graph_write`. | `browser`, `local_files` — **27 ops** |
 | `lattice-jobs` | The scheduler for the embed queue. Since 11.6.0 it holds a `GraphWriter` and drains **natively**; before that every tick was an HTTP call to a path the worker no longer served. | `index` — **4 ops** |
 | `lattice-agent` | The safety kernel (permission modes, auto-approve, circuit breakers, the `run_command` validator, the sandbox), the loop orchestrator, the native mutating tool handlers, `pydiff`, and `proposals::ProposalStore`. | `/rust/agent/{preflight,exec,contract,run,resume,approvals}` |
-| `lattice-chat` | The chat turn end to end: redact → audit → store → ingest, history, and the opt-in cloud lane behind the network-boundary dial. | `chat` + `history` — **7 ops** |
+| `lattice-chat` | The chat turn end to end: redact → audit → store → ingest, history, and the opt-in cloud lane behind the network-boundary dial — dual credentials (`api_key` / `cli_oauth`), ReviewSink + shape-only EgressAudit, escalation `auto`/`manual`/`always`. | `chat` + `history` — **7 ops** |
 | `lattice-platform` | Everything else the product serves: workspace, admin, review_queue, change_proposals, automation, hooks, mcp, marketplace, plugins, tools, permissions, portability, network, setup, agents, realtime, voice, workflow_designer, models_catalog, static UI, page redirects. | 28 families — **317 ops** |
 | `lattice-host` | The composition root, the gateway, the worker supervisor and the static UI resolution. Usable as a library (the desktop shell consumes it) and as a `lattice-host` binary. | the door itself |
 
@@ -665,6 +676,49 @@ listed as such rather than as cleanups: the Python coverage gate went from
 `fail_under = 100` on lines and branches to line-only 90, and the local lint
 chain went from thirteen gates to ten. The measured coverage figure did not
 move; the promise did.
+
+## Working Order — what 11.9.0 closed
+
+11.8.0 took weight off the door. 11.9.0 made the remaining Current stubs and
+the half-wired lanes actually run. The door is unchanged — 420 operations /
+41 families, a 19-route worker — and the work is on the product surfaces
+that document already called Current.
+
+- **Thirteen documented-Current stubs now answer.** `/models/recommendations`
+  is a native RAM/AS probe plus the worker catalog and a RAM-tier
+  `top_pick`. `/setup/scan` and `/setup/auto` are real probes;
+  `/setup/install` is real-or-manual (brew/pip stay manual by design).
+  Computer-use status reads `/worker/sysinfo` `capabilities`.
+  `/agent/eval` is a deterministic skill eval that says `requires_model`
+  when it must. `/agents/api/run` is a live single-agent pass with honest
+  health. Automation suggestions mine `conversation_messages`
+  deterministically. Workflow run is a per-step executor with terminal
+  states; resume honours the approval gate; Review Center `run_now` uses
+  the same executor. `build` / `deploy_project` run the governed scripts.
+  Backup carries blobs.
+- **Live-audit N1–N9.** The agent loop is bound at the host and the run
+  body carries the real policy table. Memory APIs no longer 500 on a
+  fresh Brain. Chat, memory, chronicle and command see knowledge (null
+  workspace = personal). Brain health does not award a vacuous 100.
+  Backup is `VACUUM INTO` + blobs + an honest manifest + atomic restore.
+  Export carries edges and chunks. Folder ingest accepts the trusted
+  owner and unified `LocalApprovals` tokens. Voice-memo text is stored.
+- **Hybrid cloud is wired**, not sketched. ReviewSink and EgressAudit
+  are bound in production. Dual credentials: `api_key` (OpenAI-compatible,
+  mock-server verified only) and `cli_oauth` (`agy` → gemini-3.7-flash,
+  `grok` → grok-4.6), resolved `cloud_provider.json` → env → agy → grok
+  → none. Escalation is `auto` / `manual` / `always`;
+  `network_mode:"local_only"` always wins. Live OAuth E2E ran at zero
+  API billing.
+- **MCP is a real JSON-RPC server** at `POST /mcp`. `/mcp/call`
+  dispatches. `/mcp` stays outside the OpenAPI contract.
+- **The 8GB-tier default (gemma-4-e2b) actually runs**, and chat file
+  generation — the v9.2.0 headline deleted in the 11.6.0 port — is
+  restored. Agent-loop *quality* on that 2B is gated honestly: it writes
+  the requested file and can still fail the critic on the summary.
+
+What this release does not close is listed in Known Limitations and in
+[RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
 
 ## Brain Core
 
@@ -982,8 +1036,16 @@ The 8.0 architecture contract remains active in 10.3.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
-- ToolRegistry owns dispatch, permissions, manifest, diagnostics, and MCP
-  install state, with direct HTTP/MCP policy gates enforced before execution.
+- ToolRegistry owns dispatch, permissions, manifest, and diagnostics. A
+  streamable-HTTP JSON-RPC MCP server at `POST /mcp` (`initialize` /
+  `tools/list` / `tools/call`) exposes a curated safe subset of native
+  tools plus the seven installed skills with parsed schemas, through the
+  same policy gates as the REST tool routes. Governance refusals are
+  JSON-RPC errors, not successful tool results. `/mcp/call` really
+  dispatches; `/mcp/install` is honest (enables skills/plugins, says
+  remotes need a manual step). `/mcp` is outside the OpenAPI product
+  contract by design. The catalog in `docs/mcp-tools.md` describes this
+  surface.
 - Config values are centralized through runtime config objects.
 - Server decomposition uses typed stages and an explicit legacy export allowlist.
 - Model routing/loading uses injected state; request snapshots prevent
@@ -1032,8 +1094,8 @@ estimates with figures.
 flowchart LR
   subgraph py["Python — the AI worker only"]
     direction TB
-    pyt["pytest<br/>1,153 unit tests"]
-    pycov["coverage<br/>measured 100% · <b>floor: lines 90</b><br/>branch gate removed in 11.8.0"]
+    pyt["pytest<br/>1,168 tests"]
+    pycov["coverage<br/>measured 99.97% · <b>floor: lines 90</b><br/>branch gate removed in 11.8.0"]
     pymypy["mypy<br/>strict, whole package"]
     pyruff["ruff<br/>16 rule groups"]
     pyt --> pycov
@@ -1041,7 +1103,7 @@ flowchart LR
 
   subgraph rs["Rust — the product server"]
     direction TB
-    rst["cargo test<br/>1,733 tests · 75 binaries<br/>(56 integration test files, from 98)"]
+    rst["cargo test<br/>1,917 tests"]
     rsclippy["clippy --all-targets<br/><b>-D warnings</b>, no blanket allows"]
     rsgold["goldens<br/>7 frozen families"]
     rst --> rsgold
@@ -1049,7 +1111,7 @@ flowchart LR
 
   subgraph fe["Frontend"]
     direction TB
-    fet["vitest<br/>1,761 tests · 100 files"]
+    fet["vitest<br/>1,800 tests · 103 files"]
     fecov["coverage<br/><b>100%</b> · thresholds gated"]
     fets["tsc --noEmit<br/>strict"]
     fet --> fecov
@@ -1081,11 +1143,9 @@ Both coverage figures are enforced floors, but they are not the same floor.
 Frontend coverage has pinned 100% on all four vitest metrics since 10.10.0 and
 still does. **Python coverage moved in 11.8.0 from `fail_under = 100` on lines
 *and* branches to `fail_under = 90` on lines, with branch measurement off.**
-The measured figure is still 100% — that is what this release's run reports —
-but the gate holds 90, and the honest way to state that is that the enforced
-claim got smaller while the measurement did not. The reasoned `pragma: no cover`
-lines and the generic `TYPE_CHECKING` / `NotImplementedError` /
-`@abstractmethod` exclusions are unchanged.
+11.9.0's measured figure is **99.97%** — the gate still holds 90. The reasoned
+`pragma: no cover` lines and the generic `TYPE_CHECKING` /
+`NotImplementedError` / `@abstractmethod` exclusions are unchanged.
 
 Two figures moved earlier for reasons worth recording:
 
@@ -1381,20 +1441,39 @@ Four properties hold regardless of the mode:
 3. **The graph never travels.** What leaves is a `MinimalContext` — the node
    slice the extractor chose for one turn — not the store, not a subgraph
    export, not an archive.
-4. **Cloud-derived memory is proposed, not written.** `cloud_extraction.py`
-   output is enqueued as a Review Center change proposal with provenance;
-   it reaches the graph only when `auto_commit` is explicitly enabled
-   (default `false`) *and* a store write API is bound. Multimodal requires a
-   second, separate `allow_multimodal` flag (also default `false`).
+4. **Cloud-derived memory is proposed, not written.** Extracted knowledge is
+   enqueued as a Review Center `kg_cloud_expansion` change proposal with
+   provenance; it reaches the graph only when `auto_commit` is explicitly
+   enabled (default `false`) *and* a store write API is bound. Multimodal
+   requires a second, separate `allow_multimodal` flag (also default `false`).
 
-   Both halves are arguments to the turn, not globals it reaches for:
-   `POST /chat` resolves the live Review Center through `AppContext.review_queue`
-   (a provider, because the queue is wired two build phases after the context)
-   and the scoped `auto_commit` through `chat_hybrid.resolve_hybrid_auto_commit`,
-   then hands both to `stream_hybrid_cloud_turn`. Through 11.1.x neither was
-   passed, so every cloud answer's extracted knowledge was discarded after the
-   `hybrid_done` frame while the unit tests — which built the ingestor
+   **11.9.0 bound both sinks in production.** The host attaches the live
+   Review Center and a shape-only EgressAudit: every cloud turn stages a
+   proposal and writes a `cloud_egress` record (provider / model / reason,
+   never content) before the provider is called. Both halves are arguments
+   to the turn, not globals it reaches for: `POST /chat` resolves the live
+   Review Center through `AppContext.review_queue` (a provider, because the
+   queue is wired two build phases after the context) and the scoped
+   `auto_commit` through `chat_hybrid.resolve_hybrid_auto_commit`, then
+   hands both to `stream_hybrid_cloud_turn`. Through 11.1.x neither was
+   passed, so every cloud answer's extracted knowledge was discarded after
+   the `hybrid_done` frame while the unit tests — which built the ingestor
    directly — stayed green.
+
+**Dual credentials and escalation (11.9.0).** Credentials resolve
+`<data_dir>/cloud_provider.json` → `LATTICEAI_CLOUD_API_KEY` → a locally
+OAuth-authenticated CLI (`agy` → gemini-3.7-flash, else `grok` →
+grok-4.6) → none. `api_key` mode streams an OpenAI-compatible adapter;
+this release verified that adapter against a mock server only and never
+live-billed it. `cli_oauth` mode spawns the CLI in a fresh temp dir with
+a 120s timeout; that path was live-verified at zero API billing. The
+cloud model comes from the provider config, never the local MLX id, and
+a cloud turn may run with no local model loaded. Escalation is
+`hybrid_policy.json` `escalation`: `always` / `auto` (default) /
+`manual`. `auto` sends only when no local model is loaded, local context
+is thin, or the user prefixes `/cloud ` / `클라우드:`. A per-request
+`network_mode: "local_only"` always wins. `GET /api/cloud/status` reports
+`{configured, mode, provider, model, detail}`.
 
 Token budgets (`cloud_token_guard.py`) cap per-turn and per-session spend, so
 an opted-in session has a ceiling rather than an open tap.
@@ -1421,13 +1500,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.8.0 exact artifact names:
+11.9.0 exact artifact names:
 
-- `dist/ltcai-11.8.0-py3-none-any.whl`
-- `dist/ltcai-11.8.0.tar.gz`
-- `ltcai-11.8.0.tgz`
-- `dist/ltcai-11.8.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg`
+- `dist/ltcai-11.9.0-py3-none-any.whl`
+- `dist/ltcai-11.9.0.tar.gz`
+- `ltcai-11.9.0.tgz`
+- `dist/ltcai-11.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_11.9.0_aarch64.dmg`
 
 The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
 far. First launch needs the usual Gatekeeper step.
@@ -1451,16 +1530,23 @@ Do not document or use wildcard artifact upload commands.
   request.
 - Cloud models, Docker, Brain Network, update checks and marketplace refreshes
   are not default local behavior. The optional PostgreSQL scale/migration
-  tooling is not part of the 11.8.0 worker.
+  tooling is not part of the 11.9.0 worker. Cloud is opt-in: `api_key` is
+  mock-verified only; `cli_oauth` was live-checked at zero billing.
 - The **image and video multimodal functions have no HTTP door** since 11.8.0.
   They stay in Brain Core under unit test with the reason in the module header.
-- The **Python coverage gate is a line floor of 90** since 11.8.0; the measured
-  figure is 100%, but the enforced claim is the smaller one.
+- The **Python coverage gate is a line floor of 90** since 11.8.0; 11.9.0
+  measures 99.97%, but the enforced claim is the floor.
+- **2B agent-loop quality is gated honestly.** gemma-4-e2b writes the
+  requested file and can still fail the critic on the summary.
+- Restore in a long-lived process may serve pre-restore bytes until
+  connections recycle — restart after restore.
+- `/mcp` is a real JSON-RPC server and is outside the OpenAPI contract by
+  design. brew/pip setup items stay manual.
 - Honest leftovers carried forward — `open_keys` pending-only, no extraction
   refiner, `delete_node` leaving `PART_OF`, review events silent without an
   installed owner, KG-api ingest text-only, two store cycles per review
   mutation — are listed in
-  [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md) §8.
+  [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
 - Package registry publication is owner-run and can lag behind the GitHub
   release.
 - Local data protection depends on the user's machine, OS account, backups, and

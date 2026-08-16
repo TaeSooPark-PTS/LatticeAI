@@ -507,6 +507,16 @@ mod tests {
             include_legacy_global: true,
         };
         assert_eq!(scope_sql(&legacy).unwrap().0, "workspace_id IS NULL");
+        let personal = scoped(&[lattice_core::DEFAULT_WORKSPACE_ID]);
+        let (predicate, params) = scope_sql(&personal).unwrap();
+        assert!(
+            predicate.contains("workspace_id IS NULL"),
+            "personal matches unstamped rows: {predicate}"
+        );
+        assert_eq!(params, vec![lattice_core::DEFAULT_WORKSPACE_ID.to_string()]);
+        let named = scoped(&["acme"]);
+        let (predicate, _) = scope_sql(&named).unwrap();
+        assert_eq!(predicate, "workspace_id IN (?)");
     }
 
     #[test]

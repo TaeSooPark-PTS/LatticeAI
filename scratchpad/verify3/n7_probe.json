@@ -1,0 +1,1 @@
+{"permission_required":true,"path":"/tmp/n7-ingest-ggJhrT","action":"read","action_label":"파일 읽기","approval_token":"YE--QcSoIyfFw6BaQ9qYOhPVfcuT2nyr","expires_in":300,"message":"AI가 '/tmp/n7-ingest-ggJhrT' 에 대한 파일 읽기 권한을 요청합니다.","check_status_url":"/permissions/status/YE--QcSoIyfFw6BaQ9qYOhPVfcuT2nyr"}

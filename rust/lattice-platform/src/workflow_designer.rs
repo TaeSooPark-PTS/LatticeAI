@@ -22,11 +22,16 @@ use serde_json::json;
 
 mod contract;
 mod definition;
+mod executor;
 mod handlers;
 mod recipes;
 mod store;
 mod time;
 
+pub(crate) use executor::{
+    execute_workflow_now, is_awaiting_approval, resume_paused, start_run, store_data_dir,
+    ToolContext,
+};
 use handlers::{
     automation_recipes, create_definition, export_definition, get_definition, import_definition,
     install_recipe, list_all_runs, list_definition_runs, list_definitions, resume_run,
@@ -66,7 +71,7 @@ const NODE_TYPES: &[&str] = &[
 ];
 const WORKFLOW_ENGINE_VERSION: &str = "2.2.0";
 const DEFAULT_WORKSPACE_ID: &str = "personal";
-const ACTIVE_STATUSES: &[&str] = &["queued", "running", "cancelling"];
+const ACTIVE_STATUSES: &[&str] = &["queued", "running", "cancelling", "awaiting_approval"];
 const TERMINAL_STATUSES: &[&str] = &[
     "ok",
     "failed",

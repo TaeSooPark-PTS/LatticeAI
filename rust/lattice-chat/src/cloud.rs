@@ -40,6 +40,7 @@ mod adapter;
 mod budget;
 mod context;
 mod expansion;
+mod provider;
 
 pub use adapter::{cloud_egress_event, CloudTurnResult, EgressAudit, OpenAiCompatibleAdapter};
 pub use budget::{budget_for, record_budget, reset_budget, scope_key, TokenBudget};
@@ -47,6 +48,10 @@ pub use context::{build_minimal_context, extract_keywords, rough_token_estimate,
 pub use expansion::{
     extract_candidates, ingest_expansion, plan_kg_expansion, plan_kg_expansion_rich, ExpansionPlan,
     ReviewSink,
+};
+pub use provider::{
+    compose_prompt, CloudMode, CloudProvider, CloudStatus, ResolveInput, AGY_DEFAULT_MODEL,
+    CLI_TIMEOUT, CLOUD_PROVIDER_FILE, GROK_DEFAULT_MODEL,
 };
 
 #[cfg(test)]
@@ -131,6 +136,7 @@ mod tests {
             None,
             "sent",
             None,
+            None,
         );
         assert_eq!(event["event"], "cloud_egress");
         assert_eq!(event["node_count"], 1);
@@ -150,6 +156,7 @@ mod tests {
             None,
             "refused_token_guard",
             Some("over budget"),
+            None,
         );
         assert_eq!(refused["detail"], "over budget");
     }

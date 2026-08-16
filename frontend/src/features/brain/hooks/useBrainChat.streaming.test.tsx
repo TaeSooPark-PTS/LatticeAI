@@ -56,6 +56,192 @@ describe("useBrainChat streaming", () => {
     expect(stream.calls[0].message).toBe("어디서 도나요?");
   });
 
+  it("attaches hybrid context as it arrives and marks the reply as a cloud answer", async () => {
+    const stream = fakeChatStream({
+      frames: [
+        { kind: "hybridContext", frame: { type: "hybrid_context", node_ids: ["n1", "n2"], keywords: ["릴리스"] } },
+        { kind: "chunk", text: "부분" },
+        {
+          kind: "hybridDone",
+          frame: {
+            type: "hybrid_done",
+            answer: "클라우드에서 답합니다.",
+            provider: "Antigravity",
+            model: "gemini-3.7-flash",
+            sent_node_ids: ["n1", "n2"],
+            kg_expansion: { status: "staged", plan: { provenance: { candidate_count: 2 } } },
+          },
+        },
+      ],
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.sendText("릴리스 어떻게 하지");
+    });
+
+    const reply = result.current.messages.at(-1);
+    expect(reply?.content).toBe("클라우드에서 답합니다.");
+    expect(reply?.hybridContext?.nodeIds).toEqual(["n1", "n2"]);
+    expect(reply?.cloudAnswer).toMatchObject({
+      provider: "Antigravity",
+      model: "gemini-3.7-flash",
+      sentNodeCount: 2,
+      expansion: { candidateCount: 2, stagedForReview: true },
+    });
+  });
+
+  it("ignores unparseable hybrid frames and a hybrid update that no longer has an assistant reply", async () => {
+    const stream = fakeChatStream({
+      frames: [
+        { kind: "hybridContext", frame: { type: "hybrid_done" } },
+        { kind: "hybridDone", frame: { type: "hybrid_context" } },
+        { kind: "hybridContext", frame: { type: "hybrid_context", node_ids: ["late"] } },
+        { kind: "hybridDone", frame: { type: "hybrid_done", answer: "늦음", model: "x" } },
+      ],
+      pauseAfter: 2,
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    let send: Promise<void>;
+    await act(async () => {
+      send = result.current.sendText("하이브리드");
+      await stream.started;
+    });
+    act(() => {
+      useConversationSession.getState().setMessages([{ role: "user", content: "하이브리드" }]);
+    });
+    await act(async () => {
+      stream.resume();
+      await send;
+    });
+
+    expect(result.current.messages.at(-1)?.role).toBe("user");
+    expect(result.current.messages.at(-1)?.cloudAnswer).toBeUndefined();
+  });
+
+  it("applies hybrid trailers when the live handlers never saw the frames", async () => {
+    const stream = fakeChatStream({
+      frames: [{ kind: "chunk", text: "미리" }],
+      result: {
+        hybridContext: { type: "hybrid_context", node_ids: ["n9"] },
+        hybridDone: { type: "hybrid_done", answer: "최종", model: "m", sent_node_ids: [] },
+      },
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.sendText("트레일러");
+    });
+
+    const reply = result.current.messages.at(-1);
+    expect(reply?.content).toBe("최종");
+    expect(reply?.hybridContext?.nodeIds).toEqual(["n9"]);
+    expect(reply?.cloudAnswer?.sentNodeCount).toBe(1);
+    expect(reply?.cloudAnswer?.model).toBe("m");
+  });
+
+  it("does not overwrite a live cloud answer with an empty trailer", async () => {
+    const stream = fakeChatStream({
+      frames: [{
+        kind: "hybridDone",
+        frame: { type: "hybrid_done", answer: "살아 있는 답", model: "live" },
+      }],
+      result: { hybridDone: { type: "hybrid_done", answer: "덮지 마", model: "trailer" } },
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.sendText("이미 표시됨");
+    });
+
+    expect(result.current.messages.at(-1)?.content).toBe("살아 있는 답");
+    expect(result.current.messages.at(-1)?.cloudAnswer?.model).toBe("live");
+  });
+
+  it("keeps streamed text when hybrid_done has no answer, counting in-flight nodes", async () => {
+    const stream = fakeChatStream({
+      frames: [
+        { kind: "hybridContext", frame: { type: "hybrid_context", node_ids: ["a", "b"] } },
+        { kind: "chunk", text: "토큰" },
+        { kind: "hybridDone", frame: { type: "hybrid_done", answer: "", model: "m" } },
+      ],
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.sendText("빈 답");
+    });
+
+    const reply = result.current.messages.at(-1);
+    expect(reply?.content).toBe("토큰");
+    expect(reply?.cloudAnswer?.sentNodeCount).toBe(2);
+    expect(reply?.cloudAnswer?.model).toBe("m");
+  });
+
+  it("uses in-flight node ids when a trailer hybrid_done has none", async () => {
+    const stream = fakeChatStream({
+      frames: [
+        { kind: "hybridContext", frame: { type: "hybrid_context", node_ids: ["a", "b"] } },
+        { kind: "chunk", text: "미리" },
+      ],
+      result: {
+        hybridDone: { type: "hybrid_done", answer: "최종", model: "m", sent_node_ids: [] },
+      },
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.sendText("컨텍스트만");
+    });
+
+    expect(result.current.messages.at(-1)?.content).toBe("최종");
+    expect(result.current.messages.at(-1)?.cloudAnswer?.sentNodeCount).toBe(2);
+  });
+
+  it("counts trailer context nodes when the live reply has none yet", async () => {
+    const stream = fakeChatStream({
+      frames: [{ kind: "chunk", text: "미리" }],
+      result: {
+        hybridDone: { type: "hybrid_done", answer: "", model: "m", sent_node_ids: [] },
+      },
+    });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.sendText("노드 없음");
+    });
+
+    expect(result.current.messages.at(-1)?.content).toBe("미리");
+    expect(result.current.messages.at(-1)?.cloudAnswer?.sentNodeCount).toBe(0);
+  });
+
+  it("sends network_mode only when this conversation is pinned to local", async () => {
+    const stream = fakeChatStream({ frames: [{ kind: "chunk", text: "로컬" }] });
+    vi.spyOn(latticeApi, "streamChat").mockImplementation(stream.streamChat as never);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.sendText("기본");
+    });
+    expect(stream.calls[0].network_mode).toBeUndefined();
+
+    act(() => {
+      useConversationSession.getState().setPreferLocalOnly(true);
+    });
+    await act(async () => {
+      await result.current.sendText("로컬만");
+    });
+    expect(stream.calls[1].network_mode).toBe("local_only");
+  });
+
   it("leaves the organism at rest once the answer is done, even after a recall pulse", async () => {
     // Regression: `onTrace` parked a 900ms timer that pushed the Brain back to
     // "thinking". When the answer finished inside that window the timer still

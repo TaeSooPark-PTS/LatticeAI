@@ -1,9 +1,10 @@
 //! Automation intelligence (`latticeai/api/automation_intelligence.py`).
 //!
 //! Suggestion / install surface over the workspace-OS workflow store (and,
-//! when present, `triggers_state.json`). Question mining needs chat history
-//! the sandbox does not seed, so the happy-path fixtures pin the empty
-//! suggestion list plus the installed Daily Memory Digest recipe.
+//! when present, `triggers_state.json`). Question mining reads
+//! `conversation_messages` (empty in the seeded sandbox, so happy-path
+//! fixtures still pin `questions_scanned: 0`). Live runs go through the
+//! workflow executor.
 
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -13,12 +14,15 @@ use axum::Router;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
+mod mining;
+
 use crate::review_queue::{
     create_workflow, daily_memory_digest_definition, gate_read, gate_write, get_workflow,
     http_detail, json_ok, list_agent_runs, list_workflow_runs, list_workflows, now_iso,
     parse_object, require_field, require_user, string_field, update_workflow_metadata,
     GovernanceState, ReviewError,
 };
+use crate::workflow_designer::{self, ToolContext};
 
 /// Mounted (method, axum-path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
@@ -49,8 +53,9 @@ async fn automation_patterns(
     headers: HeaderMap,
 ) -> Result<Response, Response> {
     require_user(&state, &headers)?;
-    let _ = gate_read(&headers);
-    Ok(json_ok(&empty_patterns()))
+    let scope = gate_read(&headers);
+    let mined = mining::mine(&state.data_dir, scope.as_deref());
+    Ok(json_ok(&mined.patterns_body()))
 }
 
 async fn automation_suggestions(
@@ -58,8 +63,9 @@ async fn automation_suggestions(
     headers: HeaderMap,
 ) -> Result<Response, Response> {
     require_user(&state, &headers)?;
-    let _ = gate_read(&headers);
-    Ok(json_ok(&empty_suggestions()))
+    let scope = gate_read(&headers);
+    let mined = mining::mine(&state.data_dir, scope.as_deref());
+    Ok(json_ok(&mined.suggestions_body()))
 }
 
 async fn automation_overview(
@@ -68,14 +74,15 @@ async fn automation_overview(
 ) -> Result<Response, Response> {
     require_user(&state, &headers)?;
     let scope = gate_read(&headers);
-    let suggestions = empty_suggestions();
+    let mined = mining::mine(&state.data_dir, scope.as_deref());
+    let suggestions = mined.suggestions_body();
     let installed = installed_automations(&state, scope.as_deref());
     let mut body = OrderedMap::new();
     body.insert(
         "suggestions",
         suggestions.get("suggestions").cloned().unwrap_or(json!([])),
     );
-    body.insert("questions_scanned", json!(0));
+    body.insert("questions_scanned", json!(mined.questions_scanned));
     body.insert("installed", Value::Array(installed));
     body.insert(
         "quality",
@@ -99,9 +106,8 @@ async fn automation_install(
     let parsed = parse_object(&body)?;
     require_field(&parsed, "suggestion_id")?;
     let suggestion_id = string_field(&parsed, "suggestion_id");
-    // The sandbox has no matching chat history, so find_suggestion is always None
-    // unless a test seeds one. Real installs of unknown ids 404.
-    if find_suggestion(&suggestion_id).is_none() {
+    let mined = mining::mine(&state.data_dir, scope.as_deref());
+    if mined.find_suggestion(&suggestion_id).is_none() {
         return Err(http_detail(
             StatusCode::NOT_FOUND,
             &format!("Automation suggestion not found: {suggestion_id}"),
@@ -111,7 +117,14 @@ async fn automation_install(
         .get("enabled")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    let definition = daily_memory_digest_definition(enabled);
+    let mut definition = daily_memory_digest_definition(enabled);
+    if let Some(metadata) = definition
+        .get_mut("metadata")
+        .and_then(Value::as_object_mut)
+    {
+        metadata.insert("created_from".into(), json!("automation_suggestion"));
+        metadata.insert("suggestion_id".into(), json!(suggestion_id.clone()));
+    }
     for workflow in list_workflows(&state, scope.as_deref()) {
         let metadata = workflow
             .get("metadata")
@@ -154,7 +167,7 @@ async fn automation_run_now(
     headers: HeaderMap,
     body: axum::body::Bytes,
 ) -> Result<Response, Response> {
-    require_user(&state, &headers)?;
+    let user = require_user(&state, &headers)?;
     let scope = gate_write(&headers);
     let parsed = parse_object(&body)?;
     require_field(&parsed, "workflow_id")?;
@@ -209,10 +222,66 @@ async fn automation_run_now(
         body.insert("last_execution", last_execution);
         return Ok(json_ok(&body));
     }
-    Err(http_detail(
-        StatusCode::SERVICE_UNAVAILABLE,
-        "Automation execution runtime is not available.",
-    ))
+    let run = run_workflow_now(&state, &headers, &user, &workflow, scope.as_deref());
+    let status = run
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or("failed")
+        .to_string();
+    let run_id = run.get("id").and_then(Value::as_str).map(str::to_string);
+    let summary = run
+        .get("outputs")
+        .and_then(|outputs| outputs.get("steps"))
+        .and_then(Value::as_array)
+        .map(|steps| format!("{} step(s) executed", steps.len()))
+        .unwrap_or_else(|| "workflow run finished".to_string());
+    let last_execution = build_last_execution("live", &status, &summary, run_id.as_deref());
+    let _ = update_workflow_metadata(
+        &state,
+        &workflow_id,
+        json!({"last_execution": last_execution}),
+        scope.as_deref(),
+    );
+    let mut body = OrderedMap::new();
+    body.insert("workflow_id", json!(workflow_id));
+    body.insert("dry_run", json!(false));
+    body.insert("status", json!(status));
+    body.insert("run_id", json!(run_id));
+    body.insert("run", run);
+    body.insert("last_execution", last_execution);
+    Ok(json_ok(&body))
+}
+
+fn run_workflow_now(
+    state: &GovernanceState,
+    headers: &HeaderMap,
+    user: &lattice_auth::Identity,
+    workflow: &Value,
+    scope: Option<&str>,
+) -> Value {
+    let resolved = scope.unwrap_or("personal");
+    let user_email = if user.email.is_empty() {
+        None
+    } else {
+        Some(user.email.as_str())
+    };
+    let workspace = lattice_agent::sandbox::Workspace::new(&state.agent_root).ok();
+    let tools = workspace.map(|ws| {
+        crate::tools::ToolsState::new(std::sync::Arc::clone(&state.auth), ws, &state.data_dir)
+    });
+    let ctx = tools.as_ref().map(|tools| ToolContext {
+        tools,
+        identity: user,
+        headers,
+    });
+    workflow_designer::execute_workflow_now(
+        &state.data_dir,
+        workflow,
+        resolved,
+        user_email,
+        json!({}),
+        ctx.as_ref(),
+    )
 }
 
 async fn activity_runs(
@@ -296,35 +365,6 @@ fn activity_run_row(mut run: Value, source: &str) -> Value {
     run
 }
 
-fn empty_patterns() -> OrderedMap {
-    let mut body = OrderedMap::new();
-    body.insert("questions_scanned", json!(0));
-    body.insert("patterns", json!([]));
-    body.insert("generated_at", json!(now_iso()));
-    body
-}
-
-fn empty_suggestions() -> OrderedMap {
-    let mut quality = OrderedMap::new();
-    quality.insert("min_confidence", json!(0.35));
-    quality.insert("low_confidence_threshold", json!(0.5));
-    quality.insert("suppressed_low_confidence", json!(0));
-    quality.insert("suppressed_duplicates", json!(0));
-    let mut consent = OrderedMap::new();
-    consent.insert("default_state", json!("draft_disabled"));
-    consent.insert("local_only", json!(true));
-    consent.insert("external_actions", json!(false));
-    consent.insert("requires_user_enable", json!(true));
-    consent.insert("review_before_run", json!(true));
-    let mut body = OrderedMap::new();
-    body.insert("suggestions", json!([]));
-    body.insert("questions_scanned", json!(0));
-    body.insert("quality", crate::review_queue::into_value(quality));
-    body.insert("consent", crate::review_queue::into_value(consent));
-    body.insert("generated_at", json!(now_iso()));
-    body
-}
-
 fn installed_automations(state: &GovernanceState, scope: Option<&str>) -> Vec<Value> {
     let mut installed = Vec::new();
     for workflow in list_workflows(state, scope) {
@@ -393,11 +433,6 @@ fn is_automation_workflow(workflow: &Value) -> bool {
         metadata.get("created_from").and_then(Value::as_str),
         Some("automation_suggestion") | Some("brain_automation_recipe")
     )
-}
-
-fn find_suggestion(_id: &str) -> Option<Value> {
-    // Empty suggestion list in the seeded sandbox (fixture gap).
-    None
 }
 
 fn dry_run_report(workflow: &Value) -> Value {

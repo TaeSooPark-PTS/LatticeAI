@@ -85,21 +85,36 @@ def probe_gpu_memory() -> Dict[str, Any]:
         total = _total_memory_bytes()
     except Exception as exc:  # noqa: BLE001 — an absent GPU is not a failure
         quiet("MLX unified-memory probe")
-        return {
+        payload = {
             "mlx_available": False,
             "gpu_mem_gb": 0.0,
             "gpu_mem_pct": 0.0,
             "total_bytes": 0,
             "detail": str(exc),
         }
+        payload.update(_sysinfo_extras())
+        return payload
     used = active + cached
-    return {
+    payload = {
         "mlx_available": True,
         "gpu_mem_gb": round(used / (1024 ** 3), 2),
         "gpu_mem_pct": round(used / total * 100, 1) if total else 0.0,
         "total_bytes": total,
         "detail": None,
     }
+    payload.update(_sysinfo_extras())
+    return payload
+
+
+def _sysinfo_extras() -> Dict[str, Any]:
+    """Additive capability / interpreter facts. Fail closed to empty extras."""
+    try:
+        from latticeai.api.worker_compute import sysinfo_payload_extras
+
+        extras = sysinfo_payload_extras()
+    except Exception:  # noqa: BLE001 — a missing extra must not hide the GPU reading
+        return {}
+    return extras if isinstance(extras, dict) else {}
 
 
 # ── request bodies ──────────────────────────────────────────────────────────

@@ -218,5 +218,62 @@ def test_ensure_mlx_runtime_fails_when_only_the_core_package_is_importable(monke
     assert loading_mod.lm_load is None
 
 
-def test_mlx_sampler_defers_to_the_bundled_backend_sampler():
+def test_mlx_sampler_builds_a_sampler_at_the_requested_temperature(monkeypatch):
+    """v11.9.0: the temperature is *used*, not discarded.
+
+    Until this release ``_mlx_sampler`` returned ``None`` whatever it was given,
+    so the agent loop's 0.1 (tool call) and 0.0 (strict verification re-ask)
+    were both "whatever the backend felt like" on a local model. The one call
+    that had to be deterministic was the least deterministic thing in the run.
+    """
+    seen: dict = {}
+
+    def _make_sampler(**kwargs):
+        seen.update(kwargs)
+        return "sampler-object"
+
+    module = types.ModuleType("mlx_lm.sample_utils")
+    module.make_sampler = _make_sampler
+    parent = types.ModuleType("mlx_lm")
+    parent.sample_utils = module
+    monkeypatch.setitem(sys.modules, "mlx_lm", parent)
+    monkeypatch.setitem(sys.modules, "mlx_lm.sample_utils", module)
+
+    assert loading_mod._mlx_sampler(0.7) == "sampler-object"
+    assert seen == {"temp": 0.7}
+    loading_mod._mlx_sampler(0)
+    assert seen == {"temp": 0.0}, "an int temperature is coerced, not passed on"
+
+
+def test_mlx_sampler_falls_back_to_the_backend_default_when_it_cannot_build_one(monkeypatch):
+    """A sampler that cannot be built must never be a failed generation."""
+    _absent(monkeypatch, "mlx_lm", "mlx_lm.sample_utils")
     assert loading_mod._mlx_sampler(0.7) is None
+
+    def _explode(**_kwargs):
+        raise TypeError("make_sampler() got an unexpected keyword argument 'temp'")
+
+    module = types.ModuleType("mlx_lm.sample_utils")
+    module.make_sampler = _explode
+    parent = types.ModuleType("mlx_lm")
+    parent.sample_utils = module
+    monkeypatch.setitem(sys.modules, "mlx_lm", parent)
+    monkeypatch.setitem(sys.modules, "mlx_lm.sample_utils", module)
+    assert loading_mod._mlx_sampler(0.7) is None
+
+
+@pytest.mark.parametrize(
+    ("text", "stop", "expected"),
+    [
+        ("verdict}\n```\nand more", ["\n```"], "verdict}"),
+        ("verdict}", ["\n```"], "verdict}"),
+        # The earliest marker wins, not the first one listed.
+        ("a\nUser: x\n```y", ["\n```", "\nUser:"], "a"),
+        ("untouched", None, "untouched"),
+        ("untouched", [], "untouched"),
+        # An empty marker means "no stop", not "stop at character zero".
+        ("untouched", [""], "untouched"),
+    ],
+)
+def test_apply_stop_strings_cuts_at_the_earliest_marker(text, stop, expected):
+    assert loading_mod.apply_stop_strings(text, stop) == expected

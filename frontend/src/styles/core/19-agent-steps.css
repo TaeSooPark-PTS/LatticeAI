@@ -55,6 +55,66 @@
   color: hsl(var(--muted-foreground));
 }
 
+/* Cloud-lane answer chip: quiet token-styled disclosure, never on local replies. */
+.brain-cloud-answer {
+  margin-top: 0.4rem;
+}
+
+.brain-cloud-answer-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.35);
+  color: hsl(var(--muted-foreground));
+  padding: 0.12rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-cloud-answer-chip::-webkit-details-marker {
+  display: none;
+}
+
+.brain-cloud-answer-detail {
+  margin: 0.3rem 0 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.brain-cloud-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.85rem;
+  margin: 0 0 0.45rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+.brain-cloud-hint-link {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.brain-cloud-hint-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
 /* ── Agent step timeline ────────────────────────────────────────────────────
    Compact per-step transparency for agent runs: live while streaming, a
    collapsed one-line summary once done. Muted by default; success/amber/red

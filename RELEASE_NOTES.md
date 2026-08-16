@@ -1,3 +1,16 @@
+# [v11.9.0 - Working Order] (2026-08-17)
+
+문서에만 있던 13개 Current 스텁을 실동작으로 올리고, 라이브 감사에서
+깨진 N1–N9와 이전에 고장난 22항목을 다시 통과시켰습니다. 하이브리드
+클라우드는 ReviewSink·EgressAudit이 프로덕션에 묶이고, `api_key`(모의
+검증만)와 `cli_oauth`(`agy`/`grok`, 과금 0원 E2E) 이중 자격증명과
+`auto`/`manual`/`always` 에스컬레이션을 갖습니다. `POST /mcp`가
+streamable-HTTP JSON-RPC 실서버이고, 2B(gemma-4-e2b)가 compact
+프로파일로 돌아가며, 채팅 파일 생성(v9.2.0 헤드라인)이 복원됐습니다.
+닫지 않은 여섯 가지는 노트에 그대로 적었습니다.
+
+See [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+
 # [v11.8.0 - Travel Light] (2026-08-16)
 
 11.7.0이 백로그를 비운 뒤 남아 있던 무게를 덜어냈습니다. 호출자가 없던 아홉
@@ -146,7 +159,7 @@ See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 11.8.0**.
+This repository keeps public release history from **11.0.0 through 11.9.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only 11.x and this index follows the same
 boundary. Sub-11 note files remain in the tree as history; they are no longer
@@ -154,10 +167,11 @@ listed here as supported releases.
 
 ## Current Release
 
-- [v11.8.0 - Travel Light](RELEASE_NOTES_v11.8.0.md)
+- [v11.9.0 - Working Order](RELEASE_NOTES_v11.9.0.md)
 
 ## Recent Release Notes
 
+- [v11.8.0 - Travel Light](RELEASE_NOTES_v11.8.0.md)
 - [v11.7.0 - Clean Sweep](RELEASE_NOTES_v11.7.0.md)
 - [v11.6.0 - One Door](RELEASE_NOTES_v11.6.0.md)
 - [v11.5.2 - Tight Ship](RELEASE_NOTES_v11.5.2.md)

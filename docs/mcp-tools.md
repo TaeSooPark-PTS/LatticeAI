@@ -4,7 +4,11 @@ Lattice AI는 MCP(Model Context Protocol) 서버로 동작하여 Claude Desktop,
 
 ## 연결 설정
 
-`claude_desktop_config.json` 또는 Cursor MCP 설정:
+The MCP surface is **streamable HTTP JSON-RPC** at `POST /mcp` on the
+loopback gateway (default `http://localhost:4825`). There is no separate
+stdio or SSE transport.
+
+`claude_desktop_config.json` or Cursor MCP settings:
 
 ```json
 {
@@ -16,112 +20,102 @@ Lattice AI는 MCP(Model Context Protocol) 서버로 동작하여 Claude Desktop,
 }
 ```
 
+Auth is the same session gate as every other product route:
+
+- Loopback install with authentication off → the anonymous local owner (this
+  is what a localhost client such as Claude Desktop uses).
+- Authentication on → send the `session_token` cookie or
+  `Authorization: Bearer <token>`.
+
+Supported JSON-RPC methods: `initialize`, `notifications/initialized`,
+`tools/list`, `tools/call`. Unknown methods return `-32601`. Notifications
+have no result body (`202`).
+
+Every native tool call goes through the existing tool governor. A governance
+refusal is a JSON-RPC error (`-32001`), not a successful tool result.
+
 ## 도구 목록
 
-### 파일 시스템
+MCP exposes a **curated, read-oriented** subset of Lattice native tools,
+plus each installed skill as a prompt asset. Writes, shell, desktop control,
+and remote-install tools are **not** on this surface — use the REST `/tools/*`
+routes (with their own approval gates) for those.
+
+### Native (governed)
 
 | 도구 | 설명 | 위험도 |
 |------|------|--------|
-| `read_file` | 파일 읽기 (라인 번호, offset/limit 지원) | 낮음 |
-| `edit_file` | 정밀 diff 편집 (`old_string` 유일성 검증) | 중간 |
-| `list_dir` | 디렉토리 목록 | 낮음 |
-| `grep` | 정규식 검색, glob 필터, context_lines | 낮음 |
+| `list_dir` | 워크스페이스 디렉터리 목록 (sandbox) | 낮음 |
+| `read_file` | 워크스페이스 UTF-8 파일 읽기 (offset/limit) | 낮음 |
+| `workspace_tree` | 재귀 트리 (깊이 제한) | 낮음 |
+| `grep` | 워크스페이스 정규식 검색 | 낮음 |
+| `knowledge_search` | 지식 정원 검색 (workspace scope, 승인 정책 적용) | 낮음 |
+| `knowledge_tree` | 지식 정원 파일 목록 (동일 정책) | 낮음 |
+| `git_status` | 워크스페이스 안 read-only `git status` | 낮음 |
 
-### 실행
+### Skills (prompt assets)
 
-| 도구 | 설명 | 위험도 |
-|------|------|--------|
-| `run_command` | shell 없이 고정 read-only 명령 allowlist 실행 | 높음 |
-| `run_terminal_command` | 터미널 명령 (별칭) | 높음 |
+Installed skills from the skills directory appear as `skill.<name>`
+(for example `skill.code_review`). `tools/list` serves the parsed
+`schema.json` input schema. `tools/call` returns the `SKILL.md` body plus
+the input echo — skills are not executables.
 
-### 작업 관리
+Typical names when the repo `skills/` tree is installed:
 
-| 도구 | 설명 | 위험도 |
-|------|------|--------|
-| `todo_write` | TODO 항목 생성/업데이트 | 낮음 |
-| `todo_read` | TODO 목록 조회 | 낮음 |
+- `skill.code_review`
+- `skill.data_analysis`
+- `skill.file_edit`
+- `skill.meeting_notes`
+- `skill.summarize_document`
+- `skill.web_search`
+- `skill.weekly_review`
 
-### 시스템
+## REST API
 
-| 도구 | 설명 | 위험도 |
-|------|------|--------|
-| `computer_screenshot` | 화면 캡처 (desktop-control capability 및 정책 승인 필요) | 높음 |
-| `computer_status` | 데스크톱 제어 상태 조회 (동일 capability/policy 적용) | 중간 |
-| `computer_open_app` | 앱 실행 | 중간 |
-| `computer_open_url` | URL 열기 | 낮음 |
-| `network_status` | IP, Wi-Fi 정보 (인증 및 ToolRegistry 정책 적용) | 중간 |
-
-### 문서
-
-| 도구 | 설명 | 위험도 |
-|------|------|--------|
-| `pdf_to_text` | PDF → 텍스트 변환 | 낮음 |
-| `pdf_pages` | PDF 페이지 수 조회 | 낮음 |
-| `read_docx` | Word 문서 읽기 | 낮음 |
-| `read_xlsx` | Excel 파일 읽기 | 낮음 |
-| `read_pptx` | PowerPoint 읽기 | 낮음 |
-
-### 지식 정원 (P-Reinforce)
-
-| 도구 | 설명 | 위험도 |
-|------|------|--------|
-| `garden_save` | 지식 정원에 저장 | 낮음 |
-| `garden_tree` | 지식 트리 조회 | 낮음 |
-| `garden_read` | 정원 파일 읽기 | 낮음 |
-
-## REST API 직접 호출
-
-MCP 대신 REST API로도 동일한 도구를 호출할 수 있습니다:
+The same governed subset is also reachable at `POST /mcp/call`
+(`{"action": "...", "args": {}}`) and the existing `/tools/*` routes.
 
 ```bash
-# read_file
-curl -b "session=<token>" \
-  "http://localhost:4825/tools/read_file?path=server.py"
+# MCP JSON-RPC initialize
+curl -s -X POST http://localhost:4825/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
 
-# edit_file
-curl -b "session=<token>" -X POST \
-  http://localhost:4825/tools/edit_file \
+# MCP tools/call
+curl -s -b "session_token=<token>" -X POST http://localhost:4825/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_dir","arguments":{"path":"."}}}'
+
+# REST sibling (same dispatch)
+curl -s -b "session_token=<token>" -X POST http://localhost:4825/mcp/call \
+  -H "Content-Type: application/json" \
+  -d '{"action":"list_dir","args":{"path":"."}}'
+
+# Full write/exec surface (not on MCP)
+curl -s -b "session_token=<token>" -X POST http://localhost:4825/tools/edit_file \
   -H "Content-Type: application/json" \
   -d '{"path": "server.py", "old_string": "old code", "new_string": "new code"}'
-
-# grep
-curl -b "session=<token>" \
-  "http://localhost:4825/tools/grep?pattern=def%20main&glob=*.py"
-
-# run_command
-curl -b "session=<token>" -X POST \
-  http://localhost:4825/tools/run_command \
-  -H "Content-Type: application/json" \
-  -d '{"command": "rg TODO ."}'
 ```
 
-`run_command`는 `pwd`, `ls`, `find`, `cat`, `head`, `tail`, `wc`, `rg`만 허용합니다.
-Python/Node/npm/npx/sed, shell operator, 실행 파일 경로, 절대 경로, `..` traversal,
-workspace 밖 symlink, `rg --pre`, `find -exec/-delete`는 거부됩니다. 빌드와 테스트는
-별도의 허용된 project-script 도구를 사용합니다.
+`run_command` remains a REST-only admin tool. It allows `pwd`, `ls`, `find`,
+`cat`, `head`, `tail`, `wc`, `rg` only. Python/Node/npm/npx/sed, shell
+operators, executable paths, absolute paths, `..` traversal, workspace-outside
+symlinks, `rg --pre`, and `find -exec/-delete` are refused.
 
 ## 도구 카탈로그 조회
 
 ```bash
-curl -b "session=<token>" http://localhost:4825/mcp/tools
+curl -b "session_token=<token>" http://localhost:4825/mcp/tools
 ```
 
-응답:
-```json
-{
-  "tools": [
-    {
-      "name": "edit_file",
-      "description": "정밀 diff 편집. old_string이 파일에 유일해야만 성공.",
-      "risk": "medium",
-      "parameters": { ... }
-    },
-    ...
-  ]
-}
-```
+`GET /mcp/tools` lists Lattice's native tool catalog (names, descriptions,
+governance). `tools/list` on `POST /mcp` is the MCP-shaped list with JSON
+Schemas for the curated subset plus skills.
 
-도구 카탈로그는 인증이 필요하며 서버의 절대 `AGENT_ROOT`를 반환하지 않습니다.
-MCP/plugin dispatch도 각 도구의 사용자·workspace·capability·승인 정책을 우회할
-수 없습니다. knowledge/Obsidian 계열 읽기는 명시적 사용자 동의와 scope를
-사용합니다.
+`POST /mcp/install` enables a skill or plugin Lattice can actually flip in
+the workspace registry. Remote npm/pip/connector entries return
+`{"status":"manual_required", ...}` instead of a blank 404.
+
+The catalogs require authentication and do not return the absolute
+`AGENT_ROOT`. MCP/plugin dispatch cannot bypass user, workspace, capability,
+or approval policy. Knowledge-garden reads use explicit user/workspace scope.

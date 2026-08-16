@@ -67,19 +67,19 @@ pub fn build_health_report(
         .filter_map(|name| dimensions.get(name).and_then(|dim| dim.get("score")))
         .filter_map(Value::as_i64)
         .collect();
-    let overall = if scores.is_empty() {
+    // Vacuous dimensions must not average out to a perfect score. A Brain
+    // that could only measure one of four (typically embedding coverage of
+    // an empty index, or freshness of nothing) used to grade "excellent /
+    // 100". Below this floor the verdict is insufficient data.
+    const MIN_MEASURED: usize = 2;
+    let overall = if scores.len() < MIN_MEASURED {
         None
     } else {
         Some(py_round(
             scores.iter().sum::<i64>() as f64 / scores.len() as f64,
         ))
     };
-    let grade = overall.map(|score| match score {
-        s if s >= 85 => "excellent",
-        s if s >= 70 => "good",
-        s if s >= 50 => "attention",
-        _ => "critical",
-    });
+    let grade = overall.map(grade_label);
 
     // `sorted(...)` over the dimension names whose score is null.
     let mut unmeasured: Vec<&str> = names
@@ -117,10 +117,19 @@ pub fn build_health_report(
                 format!("{name}: {stated}")
             })
             .collect();
-        format!(
-            "no health dimension could be measured yet — {}",
-            parts.join("; ")
-        )
+        if scores.is_empty() {
+            format!(
+                "no health dimension could be measured yet — {}",
+                parts.join("; ")
+            )
+        } else {
+            format!(
+                "insufficient data — {} of {} health dimensions could be measured ({})",
+                scores.len(),
+                names.len(),
+                parts.join("; ")
+            )
+        }
     });
 
     let actions = recommended_actions(&dimensions);
@@ -140,6 +149,15 @@ pub fn build_health_report(
         report.insert("reason", Value::String(reason));
     }
     report
+}
+
+fn grade_label(score: i64) -> &'static str {
+    match score {
+        s if s >= 85 => "excellent",
+        s if s >= 70 => "good",
+        s if s >= 50 => "attention",
+        _ => "critical",
+    }
 }
 
 fn json_of(map: &OrderedMap) -> Value {
@@ -659,24 +677,53 @@ mod tests {
             (50, "attention"),
             (49, "critical"),
         ] {
-            let mut scale = OrderedMap::new();
-            scale.insert("coverage_ratio", Value::from(score as f64 / 100.0));
-            scale.insert("source_items", Value::from(10));
-            let mut status = OrderedMap::new();
-            status.insert("status", Value::from("ready"));
-            status.insert("scale", json_of(&scale));
-            let report = build_health_report(
-                &Sample::default(),
-                Some(&status),
-                "@ts",
-                sampling::now_utc_secs(),
-            );
             assert_eq!(
-                report.get("grade"),
-                Some(&Value::from(grade)),
+                grade_label(score),
+                grade,
                 "score {score} should grade {grade}"
             );
         }
+    }
+
+    #[test]
+    fn an_empty_brain_does_not_grade_excellent_from_vacuous_dimensions() {
+        let empty = Sample {
+            available: true,
+            ..Sample::default()
+        };
+        // One measurable dimension at 100 used to average to "excellent".
+        let report = build_health_report(
+            &empty,
+            Some(&status(1.0, 10, 10, 0, "ready")),
+            "@ts",
+            sampling::now_utc_secs(),
+        );
+        assert_eq!(report.get("overall_score"), Some(&Value::Null));
+        assert_eq!(report.get("grade"), Some(&Value::Null));
+        let reason = report
+            .get("reason")
+            .and_then(Value::as_str)
+            .expect("insufficient-data reason");
+        assert!(reason.starts_with("insufficient data"), "{reason}");
+        assert_eq!(report.get("coverage").expect("coverage")["measured"], 1);
+    }
+
+    #[test]
+    fn a_small_seeded_brain_gets_a_sane_mid_grade() {
+        let sample = Sample {
+            nodes: vec![node("a", &now_stamp(1.0)), node("b", &now_stamp(2.0))],
+            edges: Vec::new(),
+            available: true,
+        };
+        let report = build_health_report(&sample, None, "@ts", sampling::now_utc_secs());
+        // Freshness 100, connectivity 0 (two orphans), consistency/embedding
+        // unavailable. Average 50 is attention — never 100 from emptiness.
+        assert_eq!(report.get("overall_score"), Some(&Value::from(50)));
+        assert_eq!(report.get("grade"), Some(&Value::from("attention")));
+        assert_ne!(report.get("grade"), Some(&Value::from("excellent")));
+        let dims = report.get("dimensions").expect("dimensions");
+        assert_eq!(dims["freshness"]["score"], 100);
+        assert_eq!(dims["connectivity"]["score"], 0);
     }
 
     #[test]

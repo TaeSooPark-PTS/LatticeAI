@@ -1,0 +1,1 @@
+N7DIR=/tmp/n7-ingest-NvX50T

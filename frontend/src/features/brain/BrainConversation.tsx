@@ -42,6 +42,8 @@ import { IngestionJobsPanel, PendingApprovalsNotice, StaleEmbedderNotice, Vector
 import { BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
 import { BrainHomeHero } from "./BrainHomeHero";
 import { BrainQuickControls } from "./BrainQuickControls";
+import { CloudAnswerChip } from "./CloudAnswerChip";
+import { CloudBoundaryHint } from "./CloudBoundaryHint";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
 import { navigateHash } from "./navigation";
 
@@ -242,6 +244,9 @@ export function BrainConversation({
                         {message.role === "assistant" && message.content.trim() && message.grounding ? (
                           <GroundingBadge language={language} grounding={message.grounding} />
                         ) : null}
+                        {message.role === "assistant" && message.cloudAnswer ? (
+                          <CloudAnswerChip language={language} cloudAnswer={message.cloudAnswer} />
+                        ) : null}
                       </div>
                       {message.role === "assistant" && message.approval ? (
                         <AgentApprovalCard
@@ -300,6 +305,7 @@ export function BrainConversation({
                 onAction={onProactiveAction}
               />
               {modelReady ? null : <ModelMissingNotice language={language} />}
+              <CloudBoundaryHint language={language} />
               <BrainComposer
                 language={language}
                 draft={draft}
@@ -337,6 +343,7 @@ export function BrainConversation({
                     park the dial on the floor with a dead band under the box. */}
                 <div className="brain-writing-desk">
                   <div className="brain-composer-wrapper">
+                    <CloudBoundaryHint language={language} />
                     <BrainComposer
                       language={language}
                       draft={draft}

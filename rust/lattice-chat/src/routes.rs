@@ -10,6 +10,7 @@ use axum::routing::{get, post};
 use axum::Router;
 
 use crate::history;
+use crate::history::json_body;
 use crate::pipeline;
 use crate::state::ChatState;
 
@@ -19,6 +20,7 @@ use crate::state::ChatState;
 /// The `/agent*` ops and `GET /chat` are intentionally absent — see the
 /// module docs.
 pub const MOUNTED: &[(&str, &str)] = &[
+    ("GET", "/api/cloud/status"),
     ("POST", "/chat"),
     ("DELETE", "/history"),
     ("GET", "/history"),
@@ -36,6 +38,7 @@ pub fn router(state: ChatState) -> Router {
 /// Same factory, taking a pre-shared `Arc` so a test can hold a clone.
 pub fn router_from_arc(state: Arc<ChatState>) -> Router {
     Router::new()
+        .route("/api/cloud/status", get(cloud_status))
         .route("/chat", post(pipeline::chat))
         .route(
             "/history",
@@ -48,4 +51,18 @@ pub fn router_from_arc(state: Arc<ChatState>) -> Router {
         )
         .route("/history/search", get(history::search))
         .with_state((*state).clone())
+}
+
+/// `GET /api/cloud/status` — `{configured, mode, provider, model, detail}`.
+async fn cloud_status(
+    axum::extract::State(state): axum::extract::State<ChatState>,
+    headers: axum::http::HeaderMap,
+) -> axum::response::Response {
+    if let Err(refusal) = state.auth.require_user(&headers) {
+        return refusal;
+    }
+    json_body(
+        axum::http::StatusCode::OK,
+        &state.cloud_status().await.to_value(),
+    )
 }

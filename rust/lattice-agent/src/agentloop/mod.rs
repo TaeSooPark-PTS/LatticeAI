@@ -51,13 +51,53 @@ pub const SNAPSHOT_MAX_BYTES: u64 = 512 * 1024;
 /// `git checkout --` gets ten seconds, as `ToolDispatchService.rollback_file`.
 pub const GIT_ROLLBACK_TIMEOUT_SECS: u64 = 10;
 
-/// The prompts the worker owns. Empty is legal — they steer the model, and the
-/// loop's own decisions do not read them.
+/// The prompts a host may supply. Empty means "use the built-in".
+///
+/// Until v11.9.0 empty meant *nothing*: `Prompts::default()` was three empty
+/// strings, no code path filled them, and every phase opened its context with a
+/// blank line. The loop's own decisions still do not read these — they steer
+/// the model — but a model that was never told the contract cannot hold it, and
+/// the compact profile was spending its whole correction budget on that.
+/// [`crate::prompts`] carries the defaults; a caller's string always wins.
 #[derive(Debug, Clone, Default)]
 pub struct Prompts {
     pub planner: String,
     pub executor: String,
     pub critic: String,
+}
+
+impl Prompts {
+    fn or_default(supplied: &str, fallback: &str) -> String {
+        if supplied.trim().is_empty() {
+            fallback.to_string()
+        } else {
+            supplied.to_string()
+        }
+    }
+
+    /// The planner prompt for this run.
+    pub fn planner_prompt(&self) -> String {
+        Self::or_default(&self.planner, crate::prompts::DEFAULT_PLANNER_PROMPT)
+    }
+
+    /// The critic prompt for this run.
+    pub fn critic_prompt(&self) -> String {
+        Self::or_default(&self.critic, crate::prompts::DEFAULT_CRITIC_PROMPT)
+    }
+
+    /// The executor prompt for this run: profile-shaped, naming this run's own
+    /// tools and whatever skills the request declared.
+    pub fn executor_prompt(
+        &self,
+        profile: AgentProfile,
+        tool_names: &[String],
+        skills: &[crate::prompts::SkillBrief],
+    ) -> String {
+        if !self.executor.trim().is_empty() {
+            return self.executor.clone();
+        }
+        crate::prompts::executor_prompt(profile, tool_names, skills)
+    }
 }
 
 /// One run's request, mirroring Python's `AgentRequest` plus the data the loop
@@ -83,6 +123,9 @@ pub struct RunRequest {
     pub recent_conversation: Option<String>,
     pub project_context: String,
     pub self_model_summary: String,
+    /// Skills the host has installed, as briefs (v11.9.0). Rendered into the
+    /// executor prompt and never resolved here — see [`crate::prompts`].
+    pub skills: Vec<crate::prompts::SkillBrief>,
 }
 
 impl Default for RunRequest {
@@ -105,6 +148,7 @@ impl Default for RunRequest {
             recent_conversation: None,
             project_context: String::new(),
             self_model_summary: String::new(),
+            skills: Vec::new(),
         }
     }
 }

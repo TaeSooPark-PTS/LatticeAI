@@ -16,7 +16,8 @@ use super::reqbody::{self, field, Kind};
 use super::routes::WorkspaceState;
 use super::store::StoreError;
 use super::{indexing, memories, snapshots, timeline};
-use crate::admin::{append_audit_event, load_audit_log, load_chat_history};
+use crate::admin::{append_audit_event, json_from_ordered, load_audit_log, load_chat_history};
+use crate::models_catalog::{fetch_worker_catalog, probe_host, recommend_from_catalog};
 
 const STEP: &[reqbody::Field] = &[
     field("step", Kind::RequiredStr),
@@ -179,7 +180,7 @@ fn hardware_payload(state: &WorkspaceState) -> Value {
         .scan_environment
         .as_ref()
         .map(|probe| probe())
-        .unwrap_or_else(default_environment);
+        .unwrap_or_else(|| host_environment(state, None));
     let sysinfo = state
         .deps
         .providers
@@ -192,6 +193,21 @@ fn hardware_payload(state: &WorkspaceState) -> Value {
         "sysinfo": sysinfo,
         "scanned_at": super::pyutil::now_iso(),
     })
+}
+
+fn host_environment(
+    state: &WorkspaceState,
+    catalog: Option<&crate::models_catalog::WorkerCatalog>,
+) -> Value {
+    let probe = probe_host(Some(&state.data_dir));
+    let fallback = crate::models_catalog::WorkerCatalog {
+        reachable: false,
+        reason: Some("onboarding hardware probe is host-only".into()),
+        models: json!({}),
+        sysinfo: json!({}),
+    };
+    let env = crate::setup::scan_environment(&probe, catalog.unwrap_or(&fallback));
+    json_from_ordered(&env)
 }
 
 fn default_environment() -> Value {
@@ -240,17 +256,7 @@ pub async fn onboarding_models(
         Ok(identity) => identity,
         Err(refusal) => return refusal,
     };
-    let environment = state
-        .deps
-        .providers
-        .scan_environment
-        .as_ref()
-        .map(|probe| probe())
-        .unwrap_or_else(default_environment);
-    let (recommendations, catalog) = match &state.deps.providers.model_recommendations {
-        Some(recommend) => recommend(&environment),
-        None => (default_recommendations(), default_catalog()),
-    };
+    let (environment, recommendations, catalog) = onboarding_models_payload(&state).await;
     let payload = json!({
         "environment": environment,
         "recommendations": recommendations,
@@ -282,6 +288,37 @@ fn default_catalog() -> Value {
         "engine": "local_mlx", "engine_available": false, "apple_silicon": false,
         "ram_gb": 0, "counts": {}, "top_pick": null, "families": {}, "models": [],
     })
+}
+
+async fn onboarding_models_payload(state: &WorkspaceState) -> (Value, Value, Value) {
+    let injected_scan = state.deps.providers.scan_environment.as_ref();
+    let injected_recs = state.deps.providers.model_recommendations.as_ref();
+    if injected_scan.is_some() || injected_recs.is_some() {
+        let environment = injected_scan
+            .map(|probe| probe())
+            .unwrap_or_else(default_environment);
+        let (recommendations, catalog) = match injected_recs {
+            Some(recommend) => recommend(&environment),
+            None => (default_recommendations(), default_catalog()),
+        };
+        return (environment, recommendations, catalog);
+    }
+
+    let probe = probe_host(Some(&state.data_dir));
+    let worker_catalog = fetch_worker_catalog(state.worker.as_ref()).await;
+    let environment = json_from_ordered(&crate::setup::scan_environment(&probe, &worker_catalog));
+    let (recs, _) = recommend_from_catalog(&probe, "local_mlx", &worker_catalog);
+    let catalog = json_from_ordered(&recs);
+    let mut recommendations = default_recommendations();
+    if let Some(object) = recommendations.as_object_mut() {
+        if let Some(models) = recs.get("models") {
+            object.insert("models".into(), models.clone());
+        }
+        if let Some(top) = recs.get("top_pick") {
+            object.insert("top_pick".into(), top.clone());
+        }
+    }
+    (environment, recommendations, catalog)
 }
 
 pub async fn traces(

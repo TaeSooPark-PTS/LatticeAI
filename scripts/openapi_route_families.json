@@ -18,8 +18,8 @@
   "source": {
     "spec": "frontend/openapi.json",
     "spec_version": "11.8.0",
-    "paths": 413,
-    "operations": 455,
+    "paths": 414,
+    "operations": 456,
     "classification": "scout_routes.md (v11.6.0 route inventory) + docs/v11.6.0_ONE_DOOR_PLAN.md",
     "module_attribution": "FastAPI route.endpoint.__module__ of the app built by scripts/export_openapi.py"
   },
@@ -58,7 +58,7 @@
       "wp": "R4",
       "target": "lattice-chat",
       "summary": "Chat orchestration, chat history and the agent-loop HTTP surface.",
-      "operations": 11
+      "operations": 12
     },
     "memory_brain": {
       "wp": "R5",
@@ -581,6 +581,10 @@
     "GET /api/chronicle/overview": {
       "module": "latticeai.api.chronicle",
       "family": "memory_brain"
+    },
+    "GET /api/cloud/status": {
+      "module": "latticeai.api.chat",
+      "family": "chat"
     },
     "GET /api/command/briefing": {
       "module": "latticeai.api.command_center",

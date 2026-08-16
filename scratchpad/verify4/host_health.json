@@ -1,0 +1,21 @@
+{
+    "host": "ok",
+    "status": "ok",
+    "version": "11.8.0",
+    "worker_healthy": true,
+    "worker_origin": "http://127.0.0.1:4899",
+    "worker": {
+        "running": true,
+        "healthy": true,
+        "pid": 11637,
+        "port": 4899,
+        "origin": "http://127.0.0.1:4899",
+        "command": "/Users/parktaesoo/Downloads/Lattice AI/.venv/bin/python -m uvicorn latticeai.worker_app:create_worker_app --factory --host 127.0.0.1 --port 4899",
+        "command_origin": "python_module",
+        "cwd": null,
+        "restarts": 0,
+        "last_error": null,
+        "supervised": true,
+        "uptime_seconds": 9
+    }
+}

@@ -206,6 +206,37 @@ pub(crate) fn backup_health_payload(dir: &Path) -> OrderedMap {
             .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("zip"))
             .count()),
     );
+    if let Some(latest) = latest {
+        if let Some(manifest) = super::graph::peek_backup_manifest(latest) {
+            map.insert(
+                "has_blobs",
+                json!(manifest
+                    .get("has_blobs")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)),
+            );
+            map.insert(
+                "snapshot",
+                json!(manifest
+                    .get("snapshot")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")),
+            );
+            map.insert(
+                "latest_nodes",
+                json!(manifest.get("nodes").and_then(Value::as_u64).unwrap_or(0)),
+            );
+            map.insert(
+                "latest_edges",
+                json!(manifest.get("edges").and_then(Value::as_u64).unwrap_or(0)),
+            );
+            map.insert(
+                "latest_chunks",
+                json!(manifest.get("chunks").and_then(Value::as_u64).unwrap_or(0)),
+            );
+            map.insert("latest_manifest", manifest);
+        }
+    }
     map
 }
 

@@ -96,10 +96,33 @@ impl SupervisorConfig {
 
     /// Fill `log_dir` (`~/.ltcai`) and `runtime_dir`
     /// (`~/.ltcai/desktop-runtime`) from the probe's `HOME`.
+    ///
+    /// An explicit `LATTICEAI_AGENT_ROOT` (process env, or already in
+    /// `extra_env`) is copied onto `extra_env` so the worker is pinned to the
+    /// same root the host judges — not silently overwritten by the desktop
+    /// runtime default.
     pub fn with_system_dirs(mut self, probe: &dyn HostProbe) -> Self {
         self.log_dir = worker_env::ltcai_home(probe);
         self.runtime_dir = worker_env::desktop_runtime_dir(probe);
+        self.inherit_agent_root(probe);
         self
+    }
+
+    fn inherit_agent_root(&mut self, probe: &dyn HostProbe) {
+        if self
+            .extra_env
+            .iter()
+            .any(|(key, _)| key == worker_env::AGENT_ROOT_ENV)
+        {
+            return;
+        }
+        if let Some(root) = probe.env_var(worker_env::AGENT_ROOT_ENV) {
+            let trimmed = root.trim();
+            if !trimmed.is_empty() {
+                self.extra_env
+                    .push((worker_env::AGENT_ROOT_ENV.into(), trimmed.to_string()));
+            }
+        }
     }
 
     /// Declare that this worker is fronted by a gateway on `port`.
@@ -108,11 +131,26 @@ impl SupervisorConfig {
         self
     }
 
-    /// The agent workspace the worker will be given, when a runtime dir is set.
+    /// The agent workspace the worker will be given.
     ///
-    /// The host's native kernel routes judge paths against the same directory,
-    /// so a preflight verdict is about the files the worker would really touch.
+    /// Order matches [`crate::gateway::mounts::resolve_agent_root`]: an
+    /// explicit `LATTICEAI_AGENT_ROOT` on `extra_env` (copied from the process
+    /// environment by [`Self::with_system_dirs`]) wins; otherwise
+    /// `runtime_dir/agent_workspace`. The host's native kernel routes judge
+    /// paths against the same directory, so a preflight verdict is about the
+    /// files the worker would really touch.
     pub fn agent_root(&self) -> Option<PathBuf> {
+        if let Some((_, value)) = self
+            .extra_env
+            .iter()
+            .rev()
+            .find(|(key, _)| key == worker_env::AGENT_ROOT_ENV)
+        {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return Some(PathBuf::from(trimmed));
+            }
+        }
         self.runtime_dir
             .as_ref()
             .map(|dir| dir.join("agent_workspace"))
@@ -360,6 +398,37 @@ mod tests {
         assert_eq!(
             config.runtime_dir,
             Some(dir.path().join(".ltcai").join("desktop-runtime"))
+        );
+        assert_eq!(
+            config.agent_root(),
+            Some(
+                dir.path()
+                    .join(".ltcai")
+                    .join("desktop-runtime")
+                    .join("agent_workspace")
+            ),
+            "without LATTICEAI_AGENT_ROOT the desktop runtime is the fallback"
+        );
+    }
+
+    #[test]
+    fn an_explicit_agent_root_wins_over_the_desktop_runtime() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let probe = StaticProbe::new()
+            .with_env("HOME", &dir.path().to_string_lossy())
+            .with_env("LATTICEAI_AGENT_ROOT", "/tmp/session/agent");
+        let config = SupervisorConfig::new(4825).with_system_dirs(&probe);
+        assert_eq!(
+            config.agent_root(),
+            Some(PathBuf::from("/tmp/session/agent"))
+        );
+        assert!(
+            config
+                .extra_env
+                .iter()
+                .any(|(key, value)| key == "LATTICEAI_AGENT_ROOT" && value == "/tmp/session/agent"),
+            "the worker must inherit the same root via extra_env: {:?}",
+            config.extra_env
         );
     }
 

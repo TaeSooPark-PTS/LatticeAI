@@ -10643,10 +10643,10 @@
         "workspace": "<AGENT_ROOT>",
         "result": {
           "available": false,
-          "reason": "pyautogui not installed"
+          "reason": "worker is not configured"
         }
       },
-      "note": "_CU_AVAILABLE forced False — no pyautogui.size()"
+      "note": "no worker seam in the capture harness — status is honest about that"
     },
     {
       "family": "computer_use.py",
@@ -10706,9 +10706,9 @@
       },
       "response_body": {
         "available": false,
-        "reason": "pyautogui not installed"
+        "reason": "worker is not configured"
       },
-      "note": "surface only; CU stubbed unavailable"
+      "note": "no worker seam in the capture harness — status is honest about that"
     },
     {
       "family": "computer_use.py",
@@ -12870,11 +12870,34 @@
             "workflow_id": "$workflow_id",
             "name": "Fixture workflow (updated)",
             "mode": "live",
-            "status": "running",
+            "status": "ok",
             "timeline": [
               {
                 "event": "workflow_started",
                 "status": "queued",
+                "timestamp": "@ts"
+              },
+              {
+                "event": "step_completed",
+                "node": "trigger",
+                "type": "trigger",
+                "status": "ok",
+                "detail": "trigger already fired for this run",
+                "result": null,
+                "timestamp": "@ts"
+              },
+              {
+                "event": "step_completed",
+                "node": "output",
+                "type": "output",
+                "status": "ok",
+                "detail": "output recorded",
+                "result": "output recorded",
+                "timestamp": "@ts"
+              },
+              {
+                "event": "workflow_finished",
+                "status": "ok",
                 "timestamp": "@ts"
               }
             ],
@@ -12898,6 +12921,29 @@
                   "event": "workflow_started",
                   "status": "queued",
                   "timestamp": "@ts"
+                },
+                {
+                  "event": "step_completed",
+                  "node": "trigger",
+                  "type": "trigger",
+                  "status": "ok",
+                  "detail": "trigger already fired for this run",
+                  "result": null,
+                  "timestamp": "@ts"
+                },
+                {
+                  "event": "step_completed",
+                  "node": "output",
+                  "type": "output",
+                  "status": "ok",
+                  "detail": "output recorded",
+                  "result": "output recorded",
+                  "timestamp": "@ts"
+                },
+                {
+                  "event": "workflow_finished",
+                  "status": "ok",
+                  "timestamp": "@ts"
                 }
               ],
               "artifacts": [
@@ -12909,12 +12955,12 @@
                 }
               ],
               "blocking_reasons": [],
-              "is_terminal": false,
+              "is_terminal": true,
               "family": "agent-run-contract/v1",
               "schema_version": "workflow-run-contract/v1",
               "kind": "workflow_run",
               "id": "$workflow_run_id",
-              "status": "running",
+              "status": "ok",
               "timestamp": "@ts"
             },
             "execution_mode": "async",
@@ -12989,11 +13035,34 @@
             "workflow_id": "$workflow_id",
             "name": "Fixture workflow (updated)",
             "mode": "live",
-            "status": "running",
+            "status": "ok",
             "timeline": [
               {
                 "event": "workflow_started",
                 "status": "queued",
+                "timestamp": "@ts"
+              },
+              {
+                "event": "step_completed",
+                "node": "trigger",
+                "type": "trigger",
+                "status": "ok",
+                "detail": "trigger already fired for this run",
+                "result": null,
+                "timestamp": "@ts"
+              },
+              {
+                "event": "step_completed",
+                "node": "output",
+                "type": "output",
+                "status": "ok",
+                "detail": "output recorded",
+                "result": "output recorded",
+                "timestamp": "@ts"
+              },
+              {
+                "event": "workflow_finished",
+                "status": "ok",
                 "timestamp": "@ts"
               }
             ],
@@ -13017,6 +13086,29 @@
                   "event": "workflow_started",
                   "status": "queued",
                   "timestamp": "@ts"
+                },
+                {
+                  "event": "step_completed",
+                  "node": "trigger",
+                  "type": "trigger",
+                  "status": "ok",
+                  "detail": "trigger already fired for this run",
+                  "result": null,
+                  "timestamp": "@ts"
+                },
+                {
+                  "event": "step_completed",
+                  "node": "output",
+                  "type": "output",
+                  "status": "ok",
+                  "detail": "output recorded",
+                  "result": "output recorded",
+                  "timestamp": "@ts"
+                },
+                {
+                  "event": "workflow_finished",
+                  "status": "ok",
+                  "timestamp": "@ts"
                 }
               ],
               "artifacts": [
@@ -13028,12 +13120,12 @@
                 }
               ],
               "blocking_reasons": [],
-              "is_terminal": false,
+              "is_terminal": true,
               "family": "agent-run-contract/v1",
               "schema_version": "workflow-run-contract/v1",
               "kind": "workflow_run",
               "id": "$workflow_run_id",
-              "status": "running",
+              "status": "ok",
               "timestamp": "@ts"
             },
             "execution_mode": "async",
@@ -13101,11 +13193,10 @@
         "content-type": "application/json"
       },
       "response_body": {
-        "stopped": true,
+        "stopped": false,
+        "reason": "run already finished",
         "run_id": "$workflow_run_id",
-        "status": "cancelled",
-        "cancellation": "cooperative",
-        "reason": "cancellation requested; synchronous work finishes its current step before the final cancelled status is stored"
+        "status": "ok"
       }
     },
     {
@@ -13698,7 +13789,7 @@
         "replay": {
           "kind": "workflow",
           "run_id": "$workflow_run_id",
-          "status": "cancelled",
+          "status": "ok",
           "workspace_id": "personal",
           "contract": {
             "run_id": "$workflow_run_id",
@@ -13718,9 +13809,26 @@
                 "timestamp": "@ts"
               },
               {
-                "event": "execution_cancelled",
-                "status": "cancelled",
-                "reason": "cancelled; no active worker owned this run",
+                "event": "step_completed",
+                "node": "trigger",
+                "type": "trigger",
+                "status": "ok",
+                "detail": "trigger already fired for this run",
+                "result": null,
+                "timestamp": "@ts"
+              },
+              {
+                "event": "step_completed",
+                "node": "output",
+                "type": "output",
+                "status": "ok",
+                "detail": "output recorded",
+                "result": "output recorded",
+                "timestamp": "@ts"
+              },
+              {
+                "event": "workflow_finished",
+                "status": "ok",
                 "timestamp": "@ts"
               }
             ],
@@ -13738,7 +13846,7 @@
             "schema_version": "workflow-run-contract/v1",
             "kind": "workflow_run",
             "id": "$workflow_run_id",
-            "status": "cancelled",
+            "status": "ok",
             "timestamp": "@ts"
           },
           "replayable": true,
@@ -13760,17 +13868,54 @@
             },
             {
               "index": 1,
-              "event": "execution_cancelled",
-              "actor": "workflow",
+              "event": "step_completed",
+              "actor": "trigger",
               "when": "@ts",
-              "why": "cancelled; no active worker owned this run",
+              "why": "",
               "input": null,
               "output": null,
-              "decision": "cancelled",
+              "decision": "ok",
               "raw": {
-                "event": "execution_cancelled",
-                "status": "cancelled",
-                "reason": "cancelled; no active worker owned this run",
+                "event": "step_completed",
+                "node": "trigger",
+                "type": "trigger",
+                "status": "ok",
+                "detail": "trigger already fired for this run",
+                "result": null,
+                "timestamp": "@ts"
+              }
+            },
+            {
+              "index": 2,
+              "event": "step_completed",
+              "actor": "output",
+              "when": "@ts",
+              "why": "",
+              "input": null,
+              "output": "output recorded",
+              "decision": "ok",
+              "raw": {
+                "event": "step_completed",
+                "node": "output",
+                "type": "output",
+                "status": "ok",
+                "detail": "output recorded",
+                "result": "output recorded",
+                "timestamp": "@ts"
+              }
+            },
+            {
+              "index": 3,
+              "event": "workflow_finished",
+              "actor": "workflow",
+              "when": "@ts",
+              "why": "",
+              "input": null,
+              "output": null,
+              "decision": "ok",
+              "raw": {
+                "event": "workflow_finished",
+                "status": "ok",
                 "timestamp": "@ts"
               }
             }

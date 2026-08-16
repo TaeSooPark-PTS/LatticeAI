@@ -38,7 +38,13 @@ pub fn extract_file_content(raw: &str, target_path: &str) -> String {
     if text.is_empty() {
         return String::new();
     }
-    let text = think_block().replace_all(text, "");
+    // Gemma-4 / gpt-oss wrap the document in `<|channel>thought` frames.
+    // Drop those before think/fence extraction so a framed JS reply validates.
+    let text = match crate::channel::strip_channel_frames(text) {
+        Some(stripped) if !stripped.is_empty() => stripped,
+        _ => text.to_string(),
+    };
+    let text = think_block().replace_all(&text, "");
     let text = think_open().replace_all(&text, "").trim().to_string();
 
     let ext = ext_of(target_path);
@@ -122,13 +128,20 @@ fn strip_chat_lines(text: &str) -> String {
 /// `_slice_html_document(content)`.
 pub(super) fn slice_html_document(content: &str) -> String {
     let mut out = content.to_string();
-    if let Some(start) = find_ci(&out, "<!doctype").or_else(|| find_ci(&out, "<html")) {
+    // Prefer the last complete document. A thought preamble often *mentions*
+    // `<!doctype html>` before the real payload starts.
+    if let Some(end) = rfind_ci(&out, "</html>") {
+        let close = end + "</html>".len();
+        let head = &out[..close];
+        if let Some(start) = rfind_ci(head, "<!doctype").or_else(|| rfind_ci(head, "<html")) {
+            out = out[start..close].to_string();
+        } else {
+            out.truncate(close);
+        }
+    } else if let Some(start) = find_ci(&out, "<!doctype").or_else(|| find_ci(&out, "<html")) {
         if start > 0 {
             out = out[start..].to_string();
         }
-    }
-    if let Some(end) = rfind_ci(&out, "</html>") {
-        out.truncate(end + "</html>".len());
     }
     out
 }

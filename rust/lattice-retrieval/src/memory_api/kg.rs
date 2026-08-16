@@ -63,18 +63,9 @@ pub const GRAPH_VISIBLE_TYPES: [&str; 24] = [
 ];
 
 /// `_workspace_scope_sql` — `None` is "no scoping", an empty set is "nothing".
+/// `"personal"` also matches NULL/blank `workspace_id`.
 fn scope_sql(allowed: Option<&BTreeSet<String>>) -> Option<(String, Vec<String>)> {
-    let allowed = allowed?;
-    let names: Vec<String> = allowed
-        .iter()
-        .filter(|value| !value.is_empty())
-        .cloned()
-        .collect();
-    if names.is_empty() {
-        return Some(("0".to_string(), Vec::new()));
-    }
-    let placeholders = vec!["?"; names.len()].join(",");
-    Some((format!("workspace_id IN ({placeholders})"), names))
+    lattice_core::workspace_membership_sql(allowed, false)
 }
 
 fn count_by(conn: &Connection, sql: &str, params: &[&str]) -> Result<OrderedMap, CoreError> {
