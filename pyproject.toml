@@ -90,9 +90,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The `ann`, `hnsw` and `postgres` extras went with v11.6.0's write flip: the
-# vector index and the store are Rust's, and there is no Python code left that
-# could import sqlite-vec, hnswlib or psycopg.
+# The `hnsw` and `postgres` extras went with v11.6.0's write flip. v12.0.0
+# brought `ann` back: the worker's HNSW sidecar (latticeai/core/vector_index)
+# imports hnswlib when it is installed and reports an honest fallback when it
+# is not — the exact-scan default needs nothing.
+ann = ["hnswlib>=0.8"]
 local = ["mlx-vlm>=0.6.3", "mlx-lm"]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
 # Deliberately empty. reportlab moved into `[project.dependencies]` above, so

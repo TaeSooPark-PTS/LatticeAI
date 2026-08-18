@@ -6,6 +6,8 @@ import sqlite3
 import struct
 from pathlib import Path
 
+import pytest
+
 from latticeai.core.vector_index import (
     VECTOR_QUERY_K_CAP,
     decode_f32le,
@@ -79,6 +81,10 @@ def test_missing_db_is_index_none(tmp_path):
     assert reply["size"] == 0
 
 
+@pytest.mark.skipif(
+    not hnswlib_available(),
+    reason="the width-mismatch detail is produced by the real index; without hnswlib the reply is the availability message",
+)
 def test_identity_mismatch_is_index_none(tmp_path):
     reset_sidecar_cache()
     db = tmp_path / "kg.sqlite"

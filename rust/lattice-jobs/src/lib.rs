@@ -90,6 +90,12 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 mod tests {
     #[test]
     fn the_version_is_the_workspace_version() {
-        assert!(super::VERSION.starts_with("11."), "got {}", super::VERSION);
+        let workspace_manifest = include_str!("../../Cargo.toml");
+        let version_line = format!("version = \"{}\"", super::VERSION);
+        assert!(
+            workspace_manifest.contains(&version_line),
+            "crate version {} is not the workspace version",
+            super::VERSION
+        );
     }
 }

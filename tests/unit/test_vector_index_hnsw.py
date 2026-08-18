@@ -126,6 +126,10 @@ def test_backend_flags_and_identity_helpers():
     assert stats["approx"] is True
 
 
+@pytest.mark.skipif(
+    not hnswlib_available(),
+    reason="append vs rebuild is the real library's distinction; without hnswlib every add is a rebuild",
+)
 def test_second_add_items_with_the_same_set_is_a_noop_append():
     index = HnswIndex(dim=8, model_id="hash")
     index.add_items(_items(5))
