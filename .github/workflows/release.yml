@@ -2,8 +2,9 @@ name: Release
 
 # Runs on semantic release tag pushes, with or without a leading v. Builds and
 # validates all release artifacts only.
-# Package-store publication is intentionally manual so pushing a tag can never
-# publish to PyPI / npm / VS Code Marketplace / Open VSX by accident.
+# Package-store publication never happens here: pushing a tag can never publish
+# to PyPI / npm / VS Code Marketplace / Open VSX by accident. Publication is
+# publish.yml (CD), which runs when a GitHub Release is published.
 #
 # Local publish commands below must use exact version filenames. Never publish
 # with a broad dist/* glob.

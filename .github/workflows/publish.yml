@@ -1,0 +1,91 @@
+name: CD
+
+# Publishes the released version to npm, PyPI, VS Code Marketplace and Open VSX.
+#
+# Triggers only when a GitHub Release is published (a deliberate act) or on
+# manual dispatch — never on a bare tag push, so pushing a tag still cannot
+# publish anything by accident. scripts/publish_release.mjs is idempotent:
+# registries already carrying the version are reported "already-published"
+# and skipped, so re-runs are always safe.
+#
+# Secrets: NPM_TOKEN (granular/automation, 2FA-exempt), PYPI_API_TOKEN,
+# VSCE_PAT (Marketplace Manage scope), OVSX_PAT. Rotating a token means
+# updating BOTH the local keychain slot and the repository secret.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish npm · PyPI · Marketplace · Open VSX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Refuse to publish an unreleased version
+        # The checked-out tree's package.json version must have a pushed tag.
+        # This is what keeps workflow_dispatch from publishing a mid-cycle
+        # version bump that was never released.
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ -z "$(git ls-remote --tags origin "refs/tags/v${VERSION}")" ]; then
+            echo "::error::v${VERSION} has no pushed tag — refusing to publish an unreleased version."
+            exit 1
+          fi
+          echo "Publishing v${VERSION} (tag exists)."
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Node 20
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "20"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade build twine
+          pip install "."
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build Python sdist + wheel
+        run: python -m build
+
+      - name: Pack npm tarball
+        run: npm pack
+
+      - name: Build VSIX
+        working-directory: vscode-extension
+        run: |
+          npm ci || npm install
+          npm run compile
+          test -f out/extension.js
+          npx --yes @vscode/vsce package --no-yarn \
+            -o "../dist/ltcai-$(node -p "require('../package.json').version").vsix"
+
+      - name: Publish (idempotent per registry)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: node scripts/publish_release.mjs
