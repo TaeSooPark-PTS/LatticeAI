@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
@@ -24,6 +24,8 @@ export type FolderHealth = {
   /** null when nothing is known yet — never rendered as 0%. */
   coverage: number | null;
   errors: Array<{ path: string; detail: string }>;
+  deleted: number;
+  rootPath: string;
 };
 
 function text(record: Record<string, unknown>, keys: string[]): string {
@@ -55,14 +57,18 @@ export function parseFolderHealth(data: unknown): {
       if (!id) return [];
       const files = isRecord(folder.files) ? folder.files : {};
       const rawCoverage = folder.coverage;
+      const deletedList = asArray<unknown>(folder.deleted);
+      const deletedFromFiles = count(files, "deleted");
       return [{
         id,
         label: text(folder, ["label", "root_path"]) || id,
+        rootPath: text(folder, ["root_path", "label"]) || "",
         status: text(folder, ["status"]),
         watchActive: folder.watch_active === true,
         total: count(files, "total"),
         indexed: count(files, "indexed"),
         failed: count(files, "failed"),
+        deleted: deletedFromFiles > 0 ? deletedFromFiles : deletedList.length,
         coverage: typeof rawCoverage === "number" && Number.isFinite(rawCoverage) ? rawCoverage : null,
         errors: asArray<unknown>(folder.recent_errors).flatMap((entry) => {
           const error = isRecord(entry) ? entry : {};
@@ -74,7 +80,30 @@ export function parseFolderHealth(data: unknown): {
   };
 }
 
+type PrunePreview = {
+  nodes: number;
+  edges: number;
+  chunks: number;
+  vectors: number;
+  files: number;
+};
+
+function previewCounts(data: unknown): PrunePreview {
+  const root = isRecord(data) ? data : {};
+  const would = isRecord(root.would_remove) ? root.would_remove : {};
+  const n = (key: string) => {
+    const value = Number(would[key]);
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+  };
+  const files = asArray<unknown>(root.files).length;
+  return { nodes: n("nodes"), edges: n("edges"), chunks: n("chunks"), vectors: n("vectors"), files };
+}
+
 export function FolderMemoryHealthCard({ language }: { language: Language }) {
+  const queryClient = useQueryClient();
+  const [previewFor, setPreviewFor] = React.useState<string | null>(null);
+  const [preview, setPreview] = React.useState<PrunePreview | null>(null);
+  const [pruneError, setPruneError] = React.useState("");
   const healthQ = useQuery({
     queryKey: ["folderMemoryHealth"],
     queryFn: () => latticeApi.localFolderHealth(),
@@ -84,6 +113,37 @@ export function FolderMemoryHealthCard({ language }: { language: Language }) {
     () => (healthQ.data?.ok ? parseFolderHealth(healthQ.data.data) : null),
     [healthQ.data],
   );
+  const dryRun = useMutation({
+    mutationFn: (path: string) => latticeApi.pruneFolderDeleted(path, false),
+    onSuccess: (result, path) => {
+      if (!result.ok) {
+        setPruneError(result.error || t(language, "capture.folderHealth.prune.error", { reason: String(result.status) }));
+        return;
+      }
+      setPreviewFor(path);
+      setPreview(previewCounts(result.data));
+      setPruneError("");
+    },
+    onError: (error: unknown) => {
+      setPruneError(t(language, "capture.folderHealth.prune.error", { reason: String(error) }));
+    },
+  });
+  const confirmPrune = useMutation({
+    mutationFn: (path: string) => latticeApi.pruneFolderDeleted(path, true),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setPruneError(result.error || t(language, "capture.folderHealth.prune.error", { reason: String(result.status) }));
+        return;
+      }
+      setPreviewFor(null);
+      setPreview(null);
+      setPruneError("");
+      void queryClient.invalidateQueries({ queryKey: ["folderMemoryHealth"] });
+    },
+    onError: (error: unknown) => {
+      setPruneError(t(language, "capture.folderHealth.prune.error", { reason: String(error) }));
+    },
+  });
   if (!parsed || !parsed.folders.length) return null;
 
   return (
@@ -133,12 +193,63 @@ export function FolderMemoryHealthCard({ language }: { language: Language }) {
                 </ul>
               </details>
             ) : null}
+            {folder.deleted > 0 && folder.rootPath ? (
+              <div className="folder-memory-prune" data-testid={`folder-prune-${folder.id}`}>
+                {previewFor === folder.rootPath && preview ? (
+                  <div className="folder-memory-prune-preview" data-testid={`folder-prune-preview-${folder.id}`}>
+                    <p>{t(language, "capture.folderHealth.prune.previewTitle")}</p>
+                    <ul>
+                      <li>{t(language, "capture.folderHealth.prune.files", { count: preview.files })}</li>
+                      <li>{t(language, "capture.folderHealth.prune.nodes", { count: preview.nodes })}</li>
+                      <li>{t(language, "capture.folderHealth.prune.edges", { count: preview.edges })}</li>
+                      <li>{t(language, "capture.folderHealth.prune.chunks", { count: preview.chunks })}</li>
+                      <li>{t(language, "capture.folderHealth.prune.vectors", { count: preview.vectors })}</li>
+                    </ul>
+                    <div className="folder-memory-prune-actions">
+                      <button
+                        type="button"
+                        data-testid={`folder-prune-confirm-${folder.id}`}
+                        disabled={confirmPrune.isPending}
+                        onClick={() => confirmPrune.mutate(folder.rootPath)}
+                      >
+                        {t(language, "capture.folderHealth.prune.confirm")}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid={`folder-prune-cancel-${folder.id}`}
+                        onClick={() => {
+                          setPreviewFor(null);
+                          setPreview(null);
+                        }}
+                      >
+                        {t(language, "capture.folderHealth.prune.cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="folder-memory-prune-open"
+                    data-testid={`folder-prune-open-${folder.id}`}
+                    disabled={dryRun.isPending}
+                    onClick={() => dryRun.mutate(folder.rootPath)}
+                  >
+                    {t(language, "capture.folderHealth.prune", { count: folder.deleted })}
+                  </button>
+                )}
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>
       {parsed.vectorPending > 0 ? (
         <small className="folder-memory-vector">
           {t(language, "capture.folderHealth.vectorGlobal", { count: parsed.vectorPending })}
+        </small>
+      ) : null}
+      {pruneError ? (
+        <small className="folder-memory-prune-error" data-testid="folder-prune-error">
+          {pruneError}
         </small>
       ) : null}
     </section>

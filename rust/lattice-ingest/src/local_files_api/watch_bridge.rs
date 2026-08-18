@@ -441,8 +441,14 @@ async fn scan_one_watch(
             let failure = json!({
                 "id": id,
                 "status": "failed",
+                "scanned": 0,
+                "skipped": 0,
+                "skipped_unchanged": 0,
                 "ingested": 0,
+                "reingested": 0,
                 "failed": 0,
+                "removed": 0,
+                "deleted": [],
                 "detail": error.to_string(),
             });
             record_report(runtime, &id, scanner.snapshot(), now, &failure, &[]);
@@ -450,11 +456,15 @@ async fn scan_one_watch(
         }
     };
 
+    let scanned = scanner.snapshot().len();
+    let stamp_skipped = scanned.saturating_sub(diff.pending.len());
     let mut ingested = 0usize;
+    let mut hash_skipped = 0usize;
     let mut errors: Vec<Value> = Vec::new();
     for relative in &diff.pending {
         match deliver(
             ingestor,
+            state.store.as_deref(),
             state.seam(),
             Path::new(root),
             relative,
@@ -464,13 +474,15 @@ async fn scan_one_watch(
         )
         .await
         {
-            Ok(()) => ingested += 1,
+            Ok(Delivered::Ingested) => ingested += 1,
+            Ok(Delivered::Skipped) => hash_skipped += 1,
             Err(detail) => errors.push(json!({"path": relative, "detail": detail})),
         }
     }
+    let skipped = stamp_skipped + hash_skipped;
     let status = if errors.is_empty() {
         "ok"
-    } else if ingested > 0 {
+    } else if ingested > 0 || skipped > 0 {
         "partial"
     } else {
         "failed"
@@ -478,9 +490,14 @@ async fn scan_one_watch(
     let report = json!({
         "id": id,
         "status": status,
+        "scanned": scanned,
+        "skipped": skipped,
+        "skipped_unchanged": skipped,
         "ingested": ingested,
+        "reingested": ingested,
         "failed": errors.len(),
         "removed": diff.removed.len(),
+        "deleted": diff.removed,
         "truncated": diff.truncated,
     });
     record_report(runtime, &id, scanner.snapshot(), now, &report, &errors);
@@ -516,23 +533,52 @@ fn record_report(
     );
 }
 
+/// What delivering one watched file did.
+enum Delivered {
+    /// Parse / extract / embed ran.
+    Ingested,
+    /// Fingerprint (stamp or content hash) said the file is unchanged.
+    Skipped,
+}
+
 /// One detected file → one note in the Brain, through the shared enrich chain.
 ///
 /// The binary half is F-ING's: a `.pdf` / `.docx` in a watched vault goes
 /// through `POST /worker/parse` exactly as the upload door sends it, so the
 /// note carries the document's text rather than its bytes. A file the seam
 /// cannot read is a named per-file failure, never a failed scan.
+///
+/// Unchanged bytes (mtime/size moved, sha256 did not) skip parse/extract/embed
+/// using the same provenance fingerprint folder ingest records.
+#[allow(clippy::too_many_arguments)]
 async fn deliver(
     ingestor: &NoteIngestor,
+    store: Option<&lattice_core::db::Store>,
     seam: Option<&WorkerSeamClient>,
     root: &Path,
     relative_path: &str,
     watch_id: &str,
     owner: Option<&str>,
     workspace_id: Option<&str>,
-) -> Result<(), String> {
+) -> Result<Delivered, String> {
     let absolute = root.join(relative_path);
+    let uri = absolute.display().to_string();
+    let metadata = std::fs::metadata(&absolute).map_err(|error| error.to_string())?;
+    let size = metadata.len();
+    let mtime = crate::pystr::round3(mtime_seconds(&metadata));
+    let stored = store.and_then(|store| crate::fingerprint::lookup(store, &uri));
+    if let Some(fp) = stored.as_ref() {
+        if fp.stamp_matches(size, mtime) {
+            return Ok(Delivered::Skipped);
+        }
+    }
     let bytes = std::fs::read(&absolute).map_err(|error| error.to_string())?;
+    let sha = crate::fingerprint::hash_bytes(&bytes);
+    if let Some(fp) = stored.as_ref() {
+        if fp.hash_matches(&sha) {
+            return Ok(Delivered::Skipped);
+        }
+    }
     let filename = Path::new(relative_path)
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
@@ -551,10 +597,22 @@ async fn deliver(
             "no readable text: the file is binary and the parse seam did not answer".into(),
         );
     }
-    let note = NoteSubmission::from_watched_file(root, relative_path, &text, Some(watch_id));
+    let mut note = NoteSubmission::from_watched_file(root, relative_path, &text, Some(watch_id));
+    crate::fingerprint::attach(&mut note.metadata, size, mtime, &sha);
     ingestor
         .ingest_note(&note, owner, workspace_id)
         .await
-        .map(|_| ())
+        .map(|_| Delivered::Ingested)
         .map_err(|error| error.to_string())
+}
+
+fn mtime_seconds(metadata: &std::fs::Metadata) -> f64 {
+    use std::time::UNIX_EPOCH;
+    let Ok(modified) = metadata.modified() else {
+        return 0.0;
+    };
+    match modified.duration_since(UNIX_EPOCH) {
+        Ok(since) => since.as_secs_f64(),
+        Err(error) => -error.duration().as_secs_f64(),
+    }
 }

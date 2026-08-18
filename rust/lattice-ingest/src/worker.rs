@@ -192,6 +192,10 @@ pub struct NoteReceipt {
     pub provenance_id: Option<String>,
     /// Whether the vector index was synced for this node.
     pub indexed: bool,
+    /// `Section` nodes written for this document's own outline (v12.0.0).
+    /// Zero is honest in both directions — a document with no headings, or an
+    /// overlay the writer refused — which is why it is reported at all.
+    pub sections: usize,
 }
 
 impl NoteReceipt {
@@ -209,6 +213,7 @@ impl NoteReceipt {
             "duplicate": self.duplicate,
             "provenance_id": self.provenance_id,
             "indexed": self.indexed,
+            "sections": self.sections,
         })
     }
 }
@@ -309,8 +314,37 @@ impl NoteIngestor {
         let metadata = note.metadata.clone();
         let owner = request.owner.clone();
         let workspace_id = request.workspace_id.clone();
+        // The chunker's own `heading_path` per piece, kept because `request`
+        // is about to move into the write task and the outline is derived from
+        // it *after* the writer has answered with the chunk ids.
+        let outline_chunks = request.chunks.clone();
         let written = tokio::task::spawn_blocking(move || {
             let outcome = graph.ingest_content(&request)?;
+            // The document's own outline as graph structure (v12.0.0). Written
+            // after the content so the sections can point at real chunk rows,
+            // and best-effort: an overlay that fails costs the note its
+            // outline, never its place in the Brain.
+            let overlay = crate::sections::build_overlay(
+                &outline_chunks,
+                &outcome.chunk_ids,
+                &outcome.node_id,
+                request.owner.as_deref(),
+                request.workspace_id.as_deref(),
+            );
+            // The count is reported on the receipt rather than discarded: a
+            // silent `let _ =` here is how an outline that never landed looks
+            // exactly like a document that has no headings.
+            let sections = if overlay.is_empty() {
+                0
+            } else {
+                match (
+                    graph.upsert_nodes(&overlay.nodes),
+                    graph.upsert_edges(&overlay.edges),
+                ) {
+                    (Ok(nodes), Ok(_)) => nodes.len(),
+                    _ => 0,
+                }
+            };
             let indexed = native_agrees
                 && !outcome.node_id.is_empty()
                 && graph.write_vectors(&outcome.node_id).status != "failed";
@@ -341,6 +375,7 @@ impl NoteIngestor {
                 duplicate: outcome.duplicate,
                 provenance_id: provenance,
                 indexed,
+                sections,
             })
         })
         .await;
@@ -422,6 +457,114 @@ mod tests {
         };
         assert_eq!(bare.content_request(None, None).source_uri, None);
         assert_eq!(bare.enrichment_text(), "c", "no title, no leading newline");
+    }
+
+    #[tokio::test]
+    async fn a_markdown_note_lands_with_its_outline_as_graph_structure() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let graph = writer(dir.path());
+        let ingestor = NoteIngestor::new(graph.clone());
+        // Each section is over `MARKDOWN_MIN_SECTION_CHARS` (200) on purpose:
+        // the chunker merges a section shorter than that forward into the next
+        // one, and a merged chunk carries only the *first* section's heading.
+        let body = format!(
+            "# 아키텍처\n\n{}\n\n## 저장소\n\n{}\n",
+            "머리말입니다. 이 문단은 절 하나가 자기 청크를 갖도록 충분히 깁니다. ".repeat(6),
+            "GraphWriter가 모든 쓰기를 담당하고 SQLite에 기록합니다. ".repeat(8),
+        );
+        let note = NoteSubmission::from_watched_file(dir.path(), "handbook.md", &body, None);
+
+        let receipt = ingestor
+            .ingest_note(&note, None, None)
+            .await
+            .expect("the note lands");
+        assert_eq!(receipt.sections, 2, "the receipt reports what landed");
+        assert_eq!(receipt.to_json()["sections"], json!(2));
+
+        let document = receipt.node_id.clone();
+        let rows: Vec<(String, String, String)> = graph
+            .store()
+            .with_read_conn(|conn| {
+                let mut statement = conn.prepare(
+                    "SELECT n.title, e.type, e.to_node FROM nodes n \
+                     JOIN edges e ON e.from_node = n.id \
+                     WHERE n.type='Section' ORDER BY n.title ASC, e.type ASC, e.to_node ASC",
+                )?;
+                let found = statement
+                    .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+                    .filter_map(Result::ok)
+                    .collect();
+                Ok(found)
+            })
+            .expect("read");
+
+        let titles: Vec<&str> = rows
+            .iter()
+            .map(|(title, _, _)| title.as_str())
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        assert_eq!(titles, ["아키텍처", "저장소"], "one node per heading");
+
+        // `edges.type` holds the *canonical* taxonomy value; the label the
+        // writer was handed rides in `metadata.legacy_label` when the two
+        // differ. `part_of` and `has_chunk` are canonical already.
+        //
+        // The top-level section belongs to the document…
+        assert!(
+            rows.iter().any(|(title, kind, to)| title == "아키텍처"
+                && kind == "PART_OF"
+                && *to == document),
+            "{rows:?}"
+        );
+        // …the subsection hangs off its parent section, not off the document…
+        let parent = crate::sections::section_id(&document, "아키텍처", None);
+        assert!(
+            rows.iter()
+                .any(|(title, kind, to)| title == "저장소" && kind == "PART_OF" && *to == parent),
+            "{rows:?}"
+        );
+        // …and each section points at the chunks it covers.
+        for section in ["아키텍처", "저장소"] {
+            assert!(
+                rows.iter().any(|(title, kind, to)| title == section
+                    && kind == "HAS_CHUNK"
+                    && to.starts_with("chunk:")),
+                "{section} has no chunk edge in {rows:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_note_with_no_headings_grows_no_sections() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let graph = writer(dir.path());
+        let ingestor = NoteIngestor::new(graph.clone());
+        let note = NoteSubmission::from_watched_file(
+            dir.path(),
+            "plain.txt",
+            "제목 없는 메모입니다.",
+            None,
+        );
+
+        ingestor
+            .ingest_note(&note, None, None)
+            .await
+            .expect("lands");
+
+        let sections: i64 = graph
+            .store()
+            .with_read_conn(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM nodes WHERE type='Section'",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .unwrap_or(0))
+            })
+            .expect("read");
+        assert_eq!(sections, 0, "a heading nobody wrote is not a section");
     }
 
     #[test]

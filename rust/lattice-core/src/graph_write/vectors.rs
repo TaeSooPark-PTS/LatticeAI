@@ -172,84 +172,24 @@ impl GraphWriter {
         node_id: &str,
         supplied: &[(String, super::types::SuppliedVector)],
     ) -> Result<Option<(usize, usize, usize)>, CoreError> {
+        // Collect + embed *outside* the write txn. Hashing a 50 KB passage
+        // inside BEGIN IMMEDIATE held the only SQLite writer for the whole
+        // embed; `write_vectors_with` already accepted precomputed vectors,
+        // so the default door now prepares them the same way. Goldens stay
+        // identical: FrozenClock pins duration_ms at 0 and the filed bytes
+        // are encode(embed(text)) either way.
+        let items = self
+            .store
+            .with_read_conn(|conn| self.collect_vector_items(conn, node_id))?;
+        let Some(items) = items else {
+            return Ok(None);
+        };
+        let prepared = self.embed_items_outside_txn(&items, supplied);
         self.store.with_write_txn(|txn| {
-            let row: Option<(String, String, String, Option<String>, String)> = txn
-                .query_row(
-                    "SELECT id, type, title, summary, metadata_json FROM nodes WHERE id=?",
-                    rusqlite::params![node_id],
-                    |row| {
-                        Ok((
-                            row.get(0)?,
-                            row.get(1)?,
-                            row.get(2)?,
-                            row.get(3)?,
-                            row.get(4)?,
-                        ))
-                    },
-                )
-                .ok();
-            let Some((id, node_type, title, summary, metadata_json)) = row else {
-                return Ok(None);
-            };
-            let mut items: Vec<VectorItem> = Vec::new();
-            if node_type != "Chunk" {
-                let metadata = safe_loads(Some(&metadata_json));
-                let text =
-                    vector_text_for_node(&title, summary.as_deref().unwrap_or(""), &metadata);
-                if !text.is_empty() {
-                    let mut item_metadata = Map::new();
-                    item_metadata.insert("node_type".into(), json!(node_type));
-                    for (key, value) in &metadata {
-                        item_metadata.insert(key.clone(), value.clone());
-                    }
-                    items.push(VectorItem {
-                        item_id: id.clone(),
-                        item_type: "node".into(),
-                        source_node: id.clone(),
-                        text,
-                        metadata: item_metadata,
-                    });
-                }
-            }
-            {
-                let mut statement = txn.prepare(
-                    "SELECT c.id, c.source_node AS parent_source_node, c.text, c.metadata_json \
-                     FROM chunks c JOIN nodes n ON n.id=c.id \
-                     WHERE c.source_node=? ORDER BY c.created_at ASC, c.id ASC",
-                )?;
-                let rows = statement.query_map(rusqlite::params![node_id], |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, String>(1)?,
-                        row.get::<_, Option<String>>(2)?,
-                        row.get::<_, String>(3)?,
-                    ))
-                })?;
-                for row in rows {
-                    let (chunk_id, parent, chunk_text, metadata_json) = row?;
-                    let text = clean_text(chunk_text.as_deref().unwrap_or(""));
-                    if text.is_empty() {
-                        continue;
-                    }
-                    let mut metadata = safe_loads(Some(&metadata_json));
-                    metadata.insert("parent_source_node".into(), json!(parent));
-                    items.push(VectorItem {
-                        item_id: chunk_id.clone(),
-                        item_type: "chunk".into(),
-                        source_node: chunk_id,
-                        text,
-                        metadata,
-                    });
-                }
-            }
             let mut indexed = 0usize;
             let mut skipped = 0usize;
-            for item in &items {
-                let offered = supplied
-                    .iter()
-                    .find(|(id, _)| id == &item.item_id)
-                    .map(|(_, vector)| vector);
-                if self.upsert_vector_item_with(txn, item, offered)? {
+            for (item, offered) in &prepared {
+                if self.upsert_vector_item_with(txn, item, offered.as_ref())? {
                     indexed += 1;
                 } else {
                     skipped += 1;
@@ -263,6 +203,112 @@ impl GraphWriter {
             }
             Ok(Some((items.len(), indexed, skipped)))
         })
+    }
+
+    fn collect_vector_items(
+        &self,
+        conn: &rusqlite::Connection,
+        node_id: &str,
+    ) -> Result<Option<Vec<VectorItem>>, CoreError> {
+        let row: Option<(String, String, String, Option<String>, String)> = conn
+            .query_row(
+                "SELECT id, type, title, summary, metadata_json FROM nodes WHERE id=?",
+                rusqlite::params![node_id],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .ok();
+        let Some((id, node_type, title, summary, metadata_json)) = row else {
+            return Ok(None);
+        };
+        let mut items: Vec<VectorItem> = Vec::new();
+        if node_type != "Chunk" {
+            let metadata = safe_loads(Some(&metadata_json));
+            let text = vector_text_for_node(&title, summary.as_deref().unwrap_or(""), &metadata);
+            if !text.is_empty() {
+                let mut item_metadata = Map::new();
+                item_metadata.insert("node_type".into(), json!(node_type));
+                for (key, value) in &metadata {
+                    item_metadata.insert(key.clone(), value.clone());
+                }
+                items.push(VectorItem {
+                    item_id: id.clone(),
+                    item_type: "node".into(),
+                    source_node: id.clone(),
+                    text,
+                    metadata: item_metadata,
+                });
+            }
+        }
+        {
+            let mut statement = conn.prepare(
+                "SELECT c.id, c.source_node AS parent_source_node, c.text, c.metadata_json \
+                 FROM chunks c JOIN nodes n ON n.id=c.id \
+                 WHERE c.source_node=? ORDER BY c.created_at ASC, c.id ASC",
+            )?;
+            let rows = statement.query_map(rusqlite::params![node_id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, String>(3)?,
+                ))
+            })?;
+            for row in rows {
+                let (chunk_id, parent, chunk_text, metadata_json) = row?;
+                let text = clean_text(chunk_text.as_deref().unwrap_or(""));
+                if text.is_empty() {
+                    continue;
+                }
+                let mut metadata = safe_loads(Some(&metadata_json));
+                metadata.insert("parent_source_node".into(), json!(parent));
+                items.push(VectorItem {
+                    item_id: chunk_id.clone(),
+                    item_type: "chunk".into(),
+                    source_node: chunk_id,
+                    text,
+                    metadata,
+                });
+            }
+        }
+        Ok(Some(items))
+    }
+
+    fn embed_items_outside_txn(
+        &self,
+        items: &[VectorItem],
+        supplied: &[(String, super::types::SuppliedVector)],
+    ) -> Vec<(VectorItem, Option<super::types::SuppliedVector>)> {
+        use super::types::SuppliedVector;
+        use crate::pytext::truncate_chars;
+        items
+            .iter()
+            .map(|item| {
+                if let Some((_, vector)) = supplied.iter().find(|(id, _)| id == &item.item_id) {
+                    return (item.clone(), Some(vector.clone()));
+                }
+                let text = clean_text(&item.text);
+                if text.chars().count() < 2 {
+                    return (item.clone(), None);
+                }
+                let values = self.embedder.embed(&truncate_chars(&text, 50_000));
+                (
+                    item.clone(),
+                    Some(SuppliedVector {
+                        values,
+                        model_id: self.embedder.model_id().to_string(),
+                        dim: self.embedder.dim(),
+                    }),
+                )
+            })
+            .collect()
     }
 
     /// `rebuild_vector_index` — rebuild the derived index without touching

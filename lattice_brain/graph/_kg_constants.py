@@ -28,6 +28,13 @@ LOCAL_CODE_EXTENSIONS = {
     ".tsx",
     ".jsx",
     ".html",
+    # v12.0.0: `.htm` sat beside `.html` in every other table (the chunker's
+    # prose list, the parser matrix) and was missing only here, so a folder of
+    # `.htm` pages was scanned past in silence. `.rs` was missing outright —
+    # this repository's own Rust half was invisible to its own folder ingest.
+    ".htm",
+    ".rs",
+    ".go",
     ".css",
     ".json",
     ".yaml",

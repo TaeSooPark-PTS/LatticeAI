@@ -12,11 +12,15 @@
 //!
 //! * a [`Scheduler`] that ticks every minute by default
 //!   (`LATTICEAI_JOBS_INTERVAL`, floored at five seconds),
-//! * each tick calling the worker's new `POST /api/index/drain`,
+//! * each tick planning an adaptive [`drain::DrainPlan`]: a larger `limit`
+//!   (still 1..=100) when `vector_jobs` is deep, and up to eight concurrent
+//!   `POST /api/index/drain` calls against a claimed-running queue,
+//! * a native tick that keeps draining while each wave comes back full, so a
+//!   backlog is not bitten at 25 nodes/minute,
 //! * optionally resuming one interrupted ingestion job per tick
 //!   (`LATTICEAI_JOBS_AUTORESUME=1`, off by default),
-//! * a failing tick doubling its delay up to ten minutes and snapping back on
-//!   the first success,
+//! * a failing tick (including a busy 429/503 worker) doubling its delay up
+//!   to ten minutes and snapping back on the first success,
 //! * and `GET /host/jobs` / `POST /host/jobs/tick` so the schedule is visible
 //!   and forceable instead of being a thing that happens in the dark.
 //!
@@ -56,6 +60,7 @@
 #![allow(clippy::result_large_err)]
 
 pub mod config;
+pub mod drain;
 pub mod index_api;
 pub mod queue;
 pub mod routes;
@@ -66,6 +71,10 @@ pub mod tick;
 pub use config::{
     parse_flag, parse_interval, SchedulerConfig, AUTORESUME_ENV, DEFAULT_DRAIN_LIMIT,
     DEFAULT_INTERVAL, INTERVAL_ENV, MAX_BACKOFF, MIN_INTERVAL,
+};
+pub use drain::{
+    adaptive_concurrency, adaptive_drain_limit, drain_plan, embed_batches, is_worker_busy_error,
+    is_worker_busy_status, DrainPlan, EMBED_BATCH, MAX_INFLIGHT,
 };
 pub use queue::{read_counts, QueueCounts, VECTOR_JOB_STATUSES};
 pub use routes::router;

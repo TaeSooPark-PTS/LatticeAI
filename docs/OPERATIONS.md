@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v11.9.0)
+# Lattice AI — Operations Guide (v12.0.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -29,9 +29,18 @@ tar -czf ltcai-backup-$(date +%Y%m%d).tar.gz ~/.ltcai ~/ltcai-agent
 tar -xzf ltcai-backup-YYYYMMDD.tar.gz -C ~
 ```
 
-인앱 복원(`.latticebrain` / `VACUUM INTO` 스냅샷)은 원자적입니다. **오래
-떠 있는 프로세스에서 복원하면 커넥션이 재활용되기 전까지 복원 전
-바이트를 줄 수 있습니다.** 복원 뒤에는 호스트를 재시작하십시오.
+인앱 복원(`.latticebrain` / `VACUUM INTO` 스냅샷)은 원자적이고, **v12.0.0
+부터 즉시 반영됩니다 — 복원 뒤 재시작이 필요 없습니다.** 스토어가
+세대(generation) 에폭을 들고 있어서, 복원이 에폭을 올리면 이전 세대에서
+열린 풀 커넥션은 다음 체크아웃에서 낡은 것으로 판정되어 닫히고, 그다음
+읽기는 복원된 바이트를 봅니다. 11.9.0까지의 완화책이던 "복원 후 재시작"
+절차는 더 이상 필요하지 않습니다.
+
+삭제된 파일 정리는 별개의 확인된 동작입니다: `POST
+/api/ingestion/folder/prune`가 `confirm` 없이는 dry-run(무엇이 지워질지와
+노드/엣지/청크/벡터 수)이고, `confirm`이 있을 때만 문서 서브트리를
+`delete_document_tree`로 제거합니다. 어느 경로도 디스크의 파일을 지우지
+않습니다.
 
 ### 2.3 히스토리만 초기화
 ```bash

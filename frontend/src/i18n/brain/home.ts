@@ -153,6 +153,11 @@ export const brainHomeCopy: NamespaceCopy = {
     "brain.features.source.env.detail": "{flag} 환경 설정이 이 값을 정하고 있습니다. 여기서 바꾸면 그 설정보다 우선합니다.",
     "brain.features.dormant": "위 항목을 켜야 작동",
     "brain.features.installRequired": "설치 필요",
+    "brain.features.preview.title": "켜면 이렇게 달라져요",
+    "brain.features.preview.ack": "위험을 이해했고 켜겠습니다.",
+    "brain.features.preview.confirm": "이 기능 켜기",
+    "brain.features.preview.cancel": "취소",
+    "brain.features.preview.limit": "서버가 알려 준 설명이에요. 켜기 전에 한 번 더 확인합니다.",
     "brain.home.wakingHint": "Brain이 막 깨어났어요. 아무 말이나 걸거나 문서 하나를 넣어주면 첫 기억이 생깁니다.",
   },
   en: {
@@ -305,6 +310,11 @@ export const brainHomeCopy: NamespaceCopy = {
     "brain.features.source.env.detail": "{flag} is deciding this value. Changing it here wins over that setting.",
     "brain.features.dormant": "Needs the switch above",
     "brain.features.installRequired": "Install required",
+    "brain.features.preview.title": "Turning this on means",
+    "brain.features.preview.ack": "I understand the risk and want to turn it on.",
+    "brain.features.preview.confirm": "Turn this on",
+    "brain.features.preview.cancel": "Cancel",
+    "brain.features.preview.limit": "This is the description the server sent. We check once more before turning it on.",
     "brain.home.wakingHint": "Your Brain just woke up. Say anything or drop in one document and its first memory will form.",
   },
 };

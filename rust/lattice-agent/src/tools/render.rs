@@ -20,10 +20,10 @@
 
 use serde_json::{json, Map, Value};
 
-use crate::sandbox::{ToolError, Workspace};
+use crate::surface::worker::WorkerClient;
 use crate::tools::args;
 use crate::tools::files::{file_size, io_error};
-use crate::worker::WorkerClient;
+use crate::tools::sandbox::{ToolError, Workspace};
 
 /// tool → (render kind, default filename).
 const CREATORS: [(&str, &str, &str); 4] = [
@@ -65,10 +65,10 @@ fn body_to_str(body: Option<&Value>) -> String {
     match body {
         Some(Value::Array(items)) => items
             .iter()
-            .map(crate::pystr::py_str)
+            .map(crate::parse::pystr::py_str)
             .collect::<Vec<_>>()
             .join("\n\n"),
-        Some(value) if crate::pystr::is_truthy(value) => crate::pystr::py_str(value),
+        Some(value) if crate::parse::pystr::is_truthy(value) => crate::parse::pystr::py_str(value),
         _ => String::new(),
     }
 }
@@ -134,7 +134,7 @@ pub async fn create_document(
 
     // The target is resolved before the call: a filename that escapes the
     // workspace must not cost a document render first.
-    let relative = crate::documents::document_output_target(tool, &filename)
+    let relative = crate::tools::documents::document_output_target(tool, &filename)
         .ok_or_else(|| ToolError::tool(format!("'{tool}' has no document output target.")))?;
     let target = workspace.resolve(&relative)?;
 
@@ -178,7 +178,7 @@ mod tests {
         for (tool, _, _) in CREATORS {
             assert!(is_creator(tool), "{tool}");
             assert!(
-                crate::documents::document_output_target(tool, "x").is_some(),
+                crate::tools::documents::document_output_target(tool, "x").is_some(),
                 "{tool}"
             );
         }

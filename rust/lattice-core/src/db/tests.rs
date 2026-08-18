@@ -140,6 +140,100 @@ fn the_store_reports_the_path_it_opened() {
     assert_eq!(store.path(), path);
     assert_eq!(store.readers().capacity(), DEFAULT_READER_POOL);
     assert_eq!(store.writers().capacity(), DEFAULT_WRITER_POOL);
+    assert_eq!(store.generation(), 0);
+}
+
+fn cell(store: &Store) -> String {
+    store
+        .with_read_conn(|conn| {
+            Ok(conn.query_row("SELECT x FROM t", [], |row| row.get::<_, String>(0))?)
+        })
+        .unwrap()
+}
+
+fn write_snapshot(path: &Path, value: &str) {
+    let snap = open_read_write(path).unwrap();
+    snap.execute_batch(&format!(
+        "CREATE TABLE t(x TEXT); INSERT INTO t VALUES ('{value}')"
+    ))
+    .unwrap();
+}
+
+fn replace_live(live: &Path, snapshot: &Path) {
+    let parent = live.parent().unwrap();
+    let name = live.file_name().unwrap().to_string_lossy();
+    let bak = parent.join(format!("{name}.restore-bak"));
+    let _ = std::fs::remove_file(&bak);
+    if live.exists() {
+        std::fs::rename(live, &bak).unwrap();
+    }
+    for suffix in ["-wal", "-shm"] {
+        let side = PathBuf::from(format!("{}{suffix}", live.display()));
+        if side.exists() {
+            let _ = std::fs::rename(
+                &side,
+                PathBuf::from(format!("{}.restore-bak", side.display())),
+            );
+        }
+    }
+    std::fs::rename(snapshot, live).unwrap();
+    let _ = std::fs::remove_file(&bak);
+    for suffix in ["-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{suffix}.restore-bak", live.display()));
+    }
+}
+
+/// The admitted 11.9.0 restore gap: pooled fds keep the pre-swap inode.
+#[test]
+fn pooled_handles_keep_pre_restore_bytes_until_the_generation_bumps() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("knowledge_graph.sqlite");
+    let store = Store::open_with_sizes(&path, 1, 1).unwrap();
+    store
+        .with_write_conn(|conn| {
+            conn.execute_batch("CREATE TABLE t(x TEXT); INSERT INTO t VALUES ('before')")?;
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(cell(&store), "before");
+
+    let snapshot = dir.path().join("snapshot.sqlite");
+    write_snapshot(&snapshot, "after");
+    replace_live(&path, &snapshot);
+
+    assert_eq!(
+        cell(&store),
+        "before",
+        "cached handles must still see the pre-restore inode until the epoch advances"
+    );
+}
+
+/// Production restore: close idle fds, swap (including WAL/SHM), bump.
+/// The same `Store` then sees the snapshot — no process restart.
+#[test]
+fn restore_swap_is_visible_on_the_same_store_without_a_restart() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("knowledge_graph.sqlite");
+    let store = Store::open_with_sizes(&path, 1, 1).unwrap();
+    store
+        .with_write_conn(|conn| {
+            conn.execute_batch("CREATE TABLE t(x TEXT); INSERT INTO t VALUES ('before')")?;
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(cell(&store), "before");
+
+    let snapshot = dir.path().join("snapshot.sqlite");
+    write_snapshot(&snapshot, "after");
+    store.discard_idle_handles();
+    replace_live(&path, &snapshot);
+    assert_eq!(store.bump_generation(), 1);
+    assert_eq!(store.generation(), 1);
+    assert_eq!(
+        cell(&store),
+        "after",
+        "the same Store must reopen onto the swapped file without a process restart"
+    );
 }
 
 #[test]

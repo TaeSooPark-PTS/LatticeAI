@@ -44,6 +44,75 @@ async fn a_tick_posts_the_configured_limit_to_the_drain_endpoint() {
 }
 
 #[tokio::test]
+async fn a_deep_queue_raises_the_drain_limit_toward_the_endpoint_cap() {
+    let worker = FakeWorker::start().await;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let ids: Vec<String> = (0..80).map(|index| format!("n{index:03}")).collect();
+    let rows: Vec<(&str, &str)> = ids.iter().map(|id| (id.as_str(), "pending")).collect();
+    let db = queue_fixture(dir.path(), &rows);
+    let scheduler = scheduler(config(&worker).with_drain_limit(25).with_db_path(&db));
+
+    let report = scheduler.tick().await;
+
+    let calls = worker.requests_to(DRAIN);
+    assert_eq!(calls.len(), 1, "80 pending / limit 80 is one request");
+    assert_eq!(calls[0].body_text(), r#"{"limit":80}"#);
+    assert!(report.ok);
+    worker.shutdown();
+}
+
+#[tokio::test]
+async fn a_very_deep_queue_fans_out_concurrent_drain_posts() {
+    let worker = FakeWorker::start().await;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let ids: Vec<String> = (0..200).map(|index| format!("n{index:03}")).collect();
+    let rows: Vec<(&str, &str)> = ids.iter().map(|id| (id.as_str(), "pending")).collect();
+    let db = queue_fixture(dir.path(), &rows);
+    let scheduler = scheduler(config(&worker).with_drain_limit(25).with_db_path(&db));
+
+    let report = scheduler.tick().await;
+
+    let calls = worker.requests_to(DRAIN);
+    assert_eq!(
+        calls.len(),
+        2,
+        "200 pending / cap 100 is two in-flight posts"
+    );
+    assert!(
+        calls
+            .iter()
+            .all(|call| call.body_text() == r#"{"limit":100}"#),
+        "every post should hit the endpoint cap"
+    );
+    assert!(report.ok);
+    assert_eq!(
+        report.drain.expect("drain").claimed,
+        4,
+        "two fake replies of claimed=2"
+    );
+    worker.shutdown();
+}
+
+#[tokio::test]
+async fn a_busy_worker_429_fails_the_tick_so_the_schedule_backs_off() {
+    let worker = FakeWorker::start_with(Behaviour {
+        drain_status: 429,
+        drain_body: r#"{"detail":"rate limited"}"#.into(),
+        ..Behaviour::default()
+    })
+    .await;
+    let scheduler = scheduler(config(&worker).with_interval(Duration::from_secs(60)));
+
+    let report = scheduler.tick().await;
+
+    assert!(!report.ok);
+    assert!(report.error.expect("reason").contains("429"));
+    assert_eq!(scheduler.next_delay(), Duration::from_secs(120));
+    assert!(lattice_jobs::is_worker_busy_status(429));
+    worker.shutdown();
+}
+
+#[tokio::test]
 async fn the_workers_counters_are_carried_through_verbatim() {
     let worker = FakeWorker::start().await;
 

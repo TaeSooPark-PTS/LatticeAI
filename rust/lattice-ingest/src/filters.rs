@@ -55,12 +55,19 @@ pub const TEXT_EXTENSIONS: [&str; 10] = [
     ".ini",
 ];
 /// `FOLDER_CODE_EXTENSIONS`.
-pub const CODE_EXTENSIONS: [&str; 20] = [
-    ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css", ".go", ".rs", ".java", ".c", ".h",
-    ".cpp", ".hpp", ".rb", ".php", ".swift", ".kt", ".sh", ".sql",
+pub const CODE_EXTENSIONS: [&str; 21] = [
+    ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".htm", ".css", ".go", ".rs", ".java", ".c",
+    ".h", ".cpp", ".hpp", ".rb", ".php", ".swift", ".kt", ".sh", ".sql",
 ];
-/// `FOLDER_DOCUMENT_EXTENSIONS` — routed as `pdf`, never read inline.
-pub const DOCUMENT_EXTENSIONS: [&str; 1] = [".pdf"];
+/// `FOLDER_DOCUMENT_EXTENSIONS` — extracted by the worker, never read inline.
+///
+/// v12.0.0 added the three Office formats. `/worker/parse` has read `.docx`,
+/// `.xlsx` and `.pptx` since long before this, and the upload door has always
+/// accepted them — but folder ingest walked straight past them, so the one
+/// path a user actually points at a directory of work could not see their
+/// documents. Reading them inline is not an option (they are ZIP containers),
+/// which is exactly what this list means: the worker extracts, we do not count.
+pub const DOCUMENT_EXTENSIONS: [&str; 4] = [".pdf", ".docx", ".xlsx", ".pptx"];
 /// `DEFAULT_MAX_FILE_BYTES`.
 pub const DEFAULT_MAX_FILE_BYTES: u64 = 4_000_000;
 /// `LATTICEIGNORE_FILENAME`.
@@ -233,15 +240,25 @@ mod tests {
     #[test]
     fn the_extension_allow_list_is_the_union_python_builds() {
         let extensions = default_folder_extensions();
-        assert_eq!(extensions.len(), 31);
-        for wanted in [".md", ".py", ".pdf", ".toml", ".sql", ".ini"] {
+        assert_eq!(extensions.len(), 35);
+        for wanted in [
+            ".md", ".py", ".pdf", ".toml", ".sql", ".ini", ".docx", ".htm",
+        ] {
             assert!(extensions.contains(wanted), "{wanted}");
         }
         for unwanted in [".png", ".mp4", ".exe", ".gz", ""] {
             assert!(!extensions.contains(unwanted), "{unwanted}");
         }
         assert!(is_document_extension(".pdf"));
+        assert!(
+            is_document_extension(".docx"),
+            "the worker extracts it, we do not"
+        );
         assert!(!is_document_extension(".md"));
+        assert!(
+            !is_document_extension(".htm"),
+            "markup is read inline, then parsed"
+        );
         assert!(default_skip_dirs().contains("node_modules"));
     }
 

@@ -49,6 +49,45 @@ def test_compose_system_appends_the_context_block_and_citation_rules():
     assert "[1], [2]" in composed
 
 
+# ── _system_for: which caller sent the context decides what it is ─────────
+
+
+def test_system_for_a_chat_caller_is_the_product_prompt_and_the_citation_rules():
+    from latticeai.models.router.generation import _system_for
+
+    system = _system_for("커넥트 AI 문서", cite_sources=True)
+
+    assert system.startswith(router_mod.SYSTEM_PROMPT)
+    # Legacy branding is rewritten wherever the context came from.
+    assert "Context:\nLattice AI 문서" in system
+    assert router_mod.CITATION_INSTRUCTION in system
+
+
+def test_system_for_a_worker_caller_is_the_callers_own_prompt_alone():
+    """The agent seam sends its whole prompt, and gets exactly that.
+
+    The chat persona used to be prepended to it, and six lines about being
+    Lattice AI, a Vision-Language Model on Apple Silicon sat in front of the
+    micro-turn that asks a model to write a file's contents. Two live models
+    wrote that subject into the user's files.
+    """
+    from latticeai.models.router.generation import _system_for
+
+    system = _system_for("You are the executor of an agent loop.", cite_sources=False)
+
+    assert system == "You are the executor of an agent loop."
+    assert router_mod.SYSTEM_PROMPT not in system
+    assert router_mod.CITATION_INSTRUCTION not in system
+
+
+def test_system_for_a_worker_caller_with_no_prompt_still_knows_what_it_is():
+    """The one case where the identity is the only thing there is to say."""
+    from latticeai.models.router.generation import _system_for
+
+    assert _system_for("", cite_sources=False) == router_mod.SYSTEM_PROMPT
+    assert _system_for(None, cite_sources=False) == router_mod.SYSTEM_PROMPT
+
+
 # ── source_metadata_for_model: the provenance card shown next to a model ──
 
 

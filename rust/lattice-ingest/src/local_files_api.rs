@@ -27,10 +27,12 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 pub(crate) mod enrich;
+mod folder;
 pub mod http;
-mod ingest;
+pub(crate) mod ingest;
 mod knowledge;
 mod local;
+pub(crate) mod prune;
 mod watch_bridge;
 
 // The watch bridge moved out of `ingest` in v11.7.0; the crate-level names
@@ -51,6 +53,7 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("GET", "/api/ingestion/jobs/:job_id"),
     ("POST", "/api/ingestion/jobs/:job_id/resume"),
     ("POST", "/api/ingestion/folder"),
+    ("POST", "/api/ingestion/folder/prune"),
     ("POST", "/api/ingestion/obsidian"),
     ("GET", "/api/ingestion/interop"),
     ("POST", "/api/ingestion/interop"),
@@ -427,6 +430,7 @@ pub fn router(state: Arc<LocalFilesState>) -> Router {
             post(ingest::job_resume),
         )
         .route("/api/ingestion/folder", post(ingest::folder))
+        .route("/api/ingestion/folder/prune", post(ingest::folder_prune))
         .route("/api/ingestion/obsidian", post(ingest::obsidian))
         .route(
             "/api/ingestion/interop",
@@ -624,7 +628,7 @@ mod tests {
     fn the_route_table_includes_native_upload() {
         // W3b: POST /upload/document is served natively. Spec stays in
         // worker_keep.json; the fragment is not moved.
-        assert_eq!(MOUNTED.len(), 25);
+        assert_eq!(MOUNTED.len(), 26);
         assert!(MOUNTED.iter().any(|(_, path)| *path == "/upload/document"));
     }
 

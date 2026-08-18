@@ -12,9 +12,9 @@
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
-use crate::pystr::{char_slice, is_truthy, py_str};
-use crate::sandbox::{ToolError, Workspace, MAX_FILE_BYTES};
+use crate::parse::pystr::{char_slice, is_truthy, py_str};
 use crate::tools::args;
+use crate::tools::sandbox::{ToolError, Workspace, MAX_FILE_BYTES};
 
 /// Where `todo_write` persists, relative to the workspace root.
 pub const TODO_REL_PATH: &str = ".lattice/todos.json";
@@ -27,7 +27,7 @@ const MAX_TODOS: usize = 50;
 
 /// `write_file(path, content)`.
 ///
-/// The content passes [`crate::sanitize::sanitize_write_content`] before it
+/// The content passes [`crate::content::sanitize::sanitize_write_content`] before it
 /// reaches a disk (v11.7.0). Python ran that pipeline in the *loop* only, so a
 /// direct dispatch — `/agent/tool`, a hook, the harness — wrote whatever the
 /// model produced; this is the door that closes. Content that already validates
@@ -48,7 +48,8 @@ pub fn write_file(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
         ));
     }
     let target = workspace.resolve(&path)?;
-    let (content, _sanitize) = crate::sanitize::sanitize_write_content(&path, &content, "");
+    let (content, _sanitize) =
+        crate::content::sanitize::sanitize_write_content(&path, &content, "");
     if content.len() as u64 > MAX_FILE_BYTES {
         return Err(ToolError::tool("Content is too large to write."));
     }
@@ -167,7 +168,7 @@ pub fn todo_write(workspace: &Workspace, args: &Map<String, Value>) -> Result<Va
         if !TODO_ALLOWED_STATUS.contains(&status.as_str()) {
             return Err(ToolError::tool(format!(
                 "Todo #{number} has invalid status '{status}'. Use one of {}.",
-                crate::pystr::py_list_repr(&TODO_ALLOWED_STATUS.map(String::from))
+                crate::parse::pystr::py_list_repr(&TODO_ALLOWED_STATUS.map(String::from))
             )));
         }
         if status == "in_progress" {

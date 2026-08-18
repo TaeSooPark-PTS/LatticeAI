@@ -34,6 +34,23 @@ have no result body (`202`).
 Every native tool call goes through the existing tool governor. A governance
 refusal is a JSON-RPC error (`-32001`), not a successful tool result.
 
+**Since v12.0.0 `POST /mcp` is inside the OpenAPI product contract.** It is
+declared in the gateway's mount table as a **single JSON-RPC envelope
+operation** — one path, one method, one request/response shape, with the
+method vocabulary above carried in the body rather than in the URL. Through
+v11.9.0 it sat outside the contract by design; being outside a contract is not
+the same as being safe to leave undescribed, so it is now generated into the
+spec like every other product route. Two consequences worth knowing:
+
+- The route is **natively mounted**, so it is answered in-process and never
+  proxied to the Python worker — the worker's committed allowlist does not
+  carry it, and the gateway forwards nothing that is not on that list.
+- The agent loop reaches the same governance. A run's unified tool catalog
+  exposes `mcp.<tool>` beside native tools and skills, and dispatching one
+  runs the very governance check this endpoint runs. A name the run already
+  governs takes the stricter native path instead, so the MCP prefix can never
+  be the quieter way to call the same tool.
+
 ## 도구 목록
 
 MCP exposes a **curated, read-oriented** subset of Lattice native tools,

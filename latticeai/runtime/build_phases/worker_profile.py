@@ -86,10 +86,11 @@ WORKER_SEAM_ROUTES: Tuple[Tuple[str, str], ...] = (
 #: The pure-compute seams of Wave 2.5 §W2 (``latticeai/api/worker_compute.py``).
 #: Kept apart from :data:`WORKER_SEAM_ROUTES` because they age in the opposite
 #: direction: the state seams above are retired once §W3 lands the native write
-#: engine, while these eight are what the worker is *for* once Rust owns every
-#: write. Mounted here and nowhere else. ``/worker/multimodal/describe`` was the
-#: ninth until v11.8.0 — it described an image for a native image ingest that
-#: was never built, and no caller ever appeared.
+#: engine, while these nine are what the worker is *for* once Rust owns every
+#: write. Mounted here and nowhere else. ``/worker/multimodal/describe`` was
+#: here until v11.8.0 — it described an image for a native image ingest that
+#: was never built. ``/worker/vector/query`` is the HNSW sidecar door
+#: (v12.0.0): approximate candidates, exact rescore in lattice-retrieval.
 WORKER_COMPUTE_ROUTES: Tuple[Tuple[str, str], ...] = (
     ("POST", "/worker/embed"),
     ("POST", "/worker/parse"),
@@ -99,6 +100,7 @@ WORKER_COMPUTE_ROUTES: Tuple[Tuple[str, str], ...] = (
     ("POST", "/worker/render/pdf"),
     ("POST", "/worker/asr"),
     ("POST", "/worker/extract"),
+    ("POST", "/worker/vector/query"),
 )
 
 
@@ -147,12 +149,19 @@ def phase_worker_routes(ctx: Any) -> None:
     # ``getattr`` because a worker built without a Brain still boots — each seam
     # reports the absence rather than failing construction.
     ports = getattr(ctx, "MULTIMODAL_PORTS", None)
+    data_dir = getattr(ctx, "DATA_DIR", None)
+    db_path = None
+    if data_dir is not None:
+        from pathlib import Path
+
+        db_path = Path(data_dir) / "knowledge_graph.sqlite"
     app.include_router(
         create_worker_compute_router(
             embedder=getattr(ctx, "EMBEDDER", None),
             transcriber=getattr(ports, "transcriber", None),
             require_user=ctx.require_user,
             enforce_rate_limit=ctx.enforce_rate_limit,
+            db_path=db_path,
         )
     )
     apply_worker_route_filter(app)

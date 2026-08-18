@@ -92,6 +92,7 @@ async fn harness(name: &str, completions: &[&str]) -> Harness {
                 lattice_agent::proposals::JsonProposalStore::new(dir.join("data")),
             )),
             hooks: None,
+            external: None,
         },
     );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -454,6 +455,7 @@ async fn an_unreachable_worker_ends_the_run_as_a_bad_gateway() {
                 lattice_agent::proposals::JsonProposalStore::new(dir.join("data")),
             )),
             hooks: None,
+            external: None,
         },
     );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")

@@ -149,6 +149,7 @@ impl BrainState {
 
     /// The worker seam every graph write is delegated over (plan §2).
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
+        crate::vector_hnsw::bind_worker_origin(seam.origin());
         self.seam = Some(seam);
         self
     }

@@ -20,9 +20,15 @@ pub(crate) const EMBED_PATH: &str = "/worker/embed";
 pub(crate) const PARSE_PATH: &str = "/worker/parse";
 
 /// Extensions the worker parser matrix actually reads as documents.
-const PARSEABLE_EXTS: &[&str] = &[".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"];
+const PARSEABLE_EXTS: &[&str] = &[
+    ".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv", ".html", ".htm",
+];
 /// Binary (non-UTF-8) document types — always go through `/worker/parse`.
 const BINARY_EXTS: &[&str] = &[".pdf", ".docx", ".xlsx", ".pptx", ".doc", ".odt", ".epub"];
+/// Markup that *is* valid UTF-8 but is not what the document says. Reading an
+/// `.html` file verbatim put `<div class=…>` and whole `<script>` bodies into
+/// the graph; `/worker/parse` turns it into the page's text (v12.0.0).
+const MARKUP_EXTS: &[&str] = &[".html", ".htm"];
 
 /// Filename + raw file bytes from an upload request.
 ///
@@ -44,7 +50,7 @@ pub(crate) fn unwrap_upload(headers: &HeaderMap, body: &[u8]) -> (String, Vec<u8
 /// True when the upload cannot be treated as UTF-8 text.
 pub(crate) fn needs_parse(filename: &str, bytes: &[u8]) -> bool {
     let ext = crate::pystr::py_suffix(filename).to_ascii_lowercase();
-    if BINARY_EXTS.contains(&ext.as_str()) {
+    if BINARY_EXTS.contains(&ext.as_str()) || MARKUP_EXTS.contains(&ext.as_str()) {
         return true;
     }
     if looks_like_pdf(bytes) || looks_like_zip(bytes) || looks_like_ole(bytes) {
@@ -220,6 +226,7 @@ pub(crate) fn mime_hint(filename: &str) -> Option<String> {
         ".md" | ".markdown" => Some("text/markdown".into()),
         ".txt" => Some("text/plain".into()),
         ".csv" => Some("text/csv".into()),
+        ".html" | ".htm" => Some("text/html".into()),
         _ => None,
     }
 }
@@ -489,6 +496,17 @@ mod tests {
         assert!(!needs_parse("note.md", b"# hello\n"));
         assert!(needs_parse("note.md", &[0x61, 0xff, 0x62]));
         assert!(needs_parse("slide.pptx", TINY_DOCX));
+    }
+
+    #[test]
+    fn valid_utf8_markup_still_goes_through_the_parser() {
+        // The bytes are perfectly readable; what they *say* is not the text.
+        let page = b"<html><body><h1>Title</h1><script>var x=1;</script></body></html>";
+        assert!(needs_parse("page.html", page));
+        assert!(needs_parse("page.HTM", page));
+        assert_eq!(mime_hint("page.html").as_deref(), Some("text/html"));
+        // A name already carrying a parseable extension is never renamed.
+        assert_eq!(refine_filename("page.html", page), "page.html");
     }
 
     #[test]

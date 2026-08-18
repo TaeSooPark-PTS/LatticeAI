@@ -32,6 +32,8 @@ use lattice_core::db::{RuntimeConfig, Store};
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
 use lattice_platform::hooks::{HooksStore, NativeHookSink};
+
+use super::agent_catalog::{self, PlatformCatalog};
 use lattice_platform::review_queue::GovernanceState;
 use lattice_platform::workspace::{WorkspaceDeps, WorkspaceService, WorkspaceState};
 
@@ -204,6 +206,15 @@ impl OneDoorState {
             hooks.clone(),
             // `dispatch_tool(source="agent")` — what the loop called itself.
             "agent",
+        )));
+        // v12.0.0: one catalog. Until now a run was *told* about installed
+        // skills (three lines in the executor prompt) and could not invoke one,
+        // and the MCP surface was something only the user's editor could reach.
+        // Both are menu rows now, resolved from the very directory `POST /mcp`
+        // scans so a skill means the same thing on both surfaces — see
+        // `super::agent_catalog` for what each kind does and how it is governed.
+        let loop_config = loop_config.with_catalog(Arc::new(PlatformCatalog::new(
+            agent_catalog::skills_dir_for(Arc::clone(&auth), &data_dir),
         )));
 
         Ok(Self {

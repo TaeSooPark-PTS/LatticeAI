@@ -10,6 +10,50 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 PRODUCTION_PROVIDER_PROFILES: Dict[str, Dict[str, Any]] = {
+    # ── one-click local profiles (v12.0.0) ────────────────────────────────
+    # These three carry `hf_repo_id` and `download_gb` because they are the
+    # ones a setup surface can *offer to fetch*: the id is what
+    # `huggingface_hub.snapshot_download` takes and what
+    # `autodetect.detect_local_mlx` looks for in the cache, so "offer",
+    # "download" and "detect" all name the same string. The rest of the table
+    # describes providers the user has to bring themselves (an Ollama server,
+    # an API key), which is why they have no repo id.
+    "local:multilingual-e5-small": {
+        "id": "local:multilingual-e5-small",
+        "provider": "mlx",
+        "model": "mlx-community/multilingual-e5-small-mlx",
+        "hf_repo_id": "mlx-community/multilingual-e5-small-mlx",
+        "download_gb": 0.24,
+        "dimensions": 384,
+        "grade": "production",
+        "family": "local",
+        "label": "Multilingual E5 Small (로컬)",
+        "detail": "한국어를 포함한 100여 개 언어. 240MB, 해시 임베더와 같은 384차원.",
+    },
+    "local:multilingual-e5-base": {
+        "id": "local:multilingual-e5-base",
+        "provider": "mlx",
+        "model": "mlx-community/multilingual-e5-base-mlx",
+        "hf_repo_id": "mlx-community/multilingual-e5-base-mlx",
+        "download_gb": 1.1,
+        "dimensions": 768,
+        "grade": "production",
+        "family": "local",
+        "label": "Multilingual E5 Base (로컬)",
+        "detail": "더 정확한 다국어 임베딩. 768차원이라 기존 색인은 다시 만들어야 합니다.",
+    },
+    "local:arctic-embed-l-v2": {
+        "id": "local:arctic-embed-l-v2",
+        "provider": "mlx",
+        "model": "mlx-community/snowflake-arctic-embed-l-v2.0-8bit",
+        "hf_repo_id": "mlx-community/snowflake-arctic-embed-l-v2.0-8bit",
+        "download_gb": 0.6,
+        "dimensions": 1024,
+        "grade": "production",
+        "family": "local",
+        "label": "Arctic Embed L v2 (로컬)",
+        "detail": "다국어 고품질 검색용 임베딩. 1024차원.",
+    },
     "local:bge-m3": {
         "id": "local:bge-m3",
         "provider": "mlx",

@@ -81,6 +81,13 @@ MAX_TEMPERATURE = 2.0
 #: How many stop strings one completion may name. The kernel sends two.
 MAX_STOP_STRINGS = 8
 
+#: Longest forced completion prefix one call may name (v12.0.0). The prefix is
+#: prepended to the prompt, so an unbounded one is an unbounded prompt. The
+#: kernel sends two, and both are short: the executor's opening brace
+#: (``{"thoughts": "``) and the guided menu's answer label — a few dozen
+#: characters between them, and nothing legitimate needs a paragraph.
+MAX_PREFIX_CHARS = 256
+
 #: Rate-limit bucket. Deliberately *not* the ``"agent"`` bucket ``/agent`` uses:
 #: that one is sized per *run* (10 burst, one refill per 10s) because one HTTP
 #: call there is a whole agent run. Here one call is a single loop step, and a
@@ -111,6 +118,19 @@ class AgentLLMRequest(BaseModel):
     #: truncate any reply carrying file content. Bounded so a caller cannot make
     #: the sampler check a thousand needles per token.
     stop: Optional[List[str]] = Field(default=None, max_length=MAX_STOP_STRINGS)
+    #: Characters the reply is **forced to begin with** (v12.0.0).
+    #:
+    #: The cheapest structural guarantee the seam can offer: instead of asking
+    #: a weak model to start at ``{`` and repairing the markdown fence it emits
+    #: instead, the worker prefills those characters and the model continues
+    #: from them. The response's ``text`` always starts with the prefix, so a
+    #: caller reads one shape whether the local prefill or a cloud provider's
+    #: assistant-prefill message produced it.
+    #:
+    #: Bounded because it is prepended to the prompt: an unbounded prefix would
+    #: be an unbounded prompt on the single MLX executor. The kernel sends
+    #: fourteen characters.
+    prefix: Optional[str] = Field(default=None, max_length=MAX_PREFIX_CHARS)
 
 
 class AgentToolRequest(BaseModel):
@@ -258,6 +278,17 @@ def create_agent_worker_seam_router(
             max_tokens=req.max_tokens,
             temperature=req.temperature,
             stop=req.stop or None,
+            prefix=req.prefix or None,
+            # **The seam's ``context`` is a prompt, not a corpus** (v12.0.0).
+            # ``_compose_system`` appends the citation mandate to any non-empty
+            # context, which is right for chat (where it really is retrieved
+            # passages) and wrong here: the Rust kernel sends its whole executor
+            # prompt as ``context``, so every agent turn was being told its own
+            # instructions were sources to "cite inline as [1], [2]". Small
+            # models obey that — a 0.5B wrote ``[1] …`` into a file and a 2B
+            # answered a tool call with the citation instruction. A caller that
+            # wants citations puts them in its own prompt.
+            cite_sources=False,
         )
         return {"text": str(text)}
 
@@ -316,6 +347,7 @@ def create_agent_worker_seam_router(
 
 __all__ = [
     "MAX_MAX_TOKENS",
+    "MAX_PREFIX_CHARS",
     "MAX_TEMPERATURE",
     "MIN_MAX_TOKENS",
     "MIN_TEMPERATURE",

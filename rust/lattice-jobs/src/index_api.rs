@@ -66,6 +66,13 @@ pub const MOUNTED: &[(&str, &str)] = &[
 pub const MIN_DRAIN_LIMIT: i64 = 1;
 /// `index_jobs.MAX_DRAIN_LIMIT`.
 pub const MAX_DRAIN_LIMIT: i64 = 100;
+/// Opt in to batching `POST /worker/embed` during drain.
+///
+/// Off by default: the host always has a seam, and the default provider is
+/// the same hash GraphWriter already runs in-process. Turning this on is
+/// the right call when a real embedding model is wired — one HTTP batch
+/// replaces N serial hashes, and the vectors land via `write_vectors_with`.
+pub const WORKER_EMBED_ENV: &str = "LATTICEAI_JOBS_WORKER_EMBED";
 
 /// `vector_index/selector.VECTOR_INDEX_ENV`.
 pub const VECTOR_INDEX_ENV: &str = "LATTICEAI_VECTOR_INDEX";
@@ -101,6 +108,7 @@ pub struct IndexApiState {
     gate_read: Option<Gate>,
     graph: Option<GraphWriter>,
     seam: Option<WorkerSeamClient>,
+    worker_embed: bool,
 }
 
 impl std::fmt::Debug for IndexApiState {
@@ -123,6 +131,7 @@ impl IndexApiState {
             gate_read: None,
             graph: None,
             seam: None,
+            worker_embed: false,
         }
     }
 
@@ -135,6 +144,14 @@ impl IndexApiState {
     /// Worker compute seam used for `/worker/embed` during drain.
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
         self.seam = Some(seam);
+        self
+    }
+
+    /// Turn on batched `/worker/embed` for this state (tests, or a host that
+    /// already knows a real embedder is wired). [`WORKER_EMBED_ENV`] does the
+    /// same for a production process.
+    pub fn with_worker_embed(mut self, on: bool) -> Self {
+        self.worker_embed = on;
         self
     }
 
@@ -285,11 +302,11 @@ async fn drain(
         return detail(503, "the knowledge-graph write engine is not configured");
     };
     let db = state.db_path();
-    let outcome =
-        match tokio::task::spawn_blocking(move || drain_queue(&graph, &db, limit as usize)).await {
-            Ok(outcome) => outcome,
-            Err(error) => return detail(500, &error.to_string()),
-        };
+    let seam = worker_embed_seam(&state);
+    let outcome = match engine::drain_once(graph, db, limit as usize, seam).await {
+        Ok(outcome) => outcome,
+        Err(error) => return detail(500, &error),
+    };
     let counts = crate::queue::read_counts(&state.db_path());
     let mut payload = OrderedMap::new();
     payload.insert("claimed", json!(outcome.claimed));
@@ -305,6 +322,15 @@ async fn drain(
     ok(&serde_json::to_value(payload).unwrap_or(Value::Null))
 }
 
+fn worker_embed_seam(state: &IndexApiState) -> Option<WorkerSeamClient> {
+    let env_on = crate::parse_flag(std::env::var(WORKER_EMBED_ENV).ok().as_deref(), false);
+    if state.worker_embed || env_on {
+        state.seam.clone()
+    } else {
+        None
+    }
+}
+
 fn index_api_http_error(headers: &HeaderMap, _limit: i64) -> Response {
     let lang = language(headers);
     let min = MIN_DRAIN_LIMIT.to_string();
@@ -317,46 +343,6 @@ fn index_api_http_error(headers: &HeaderMap, _limit: i64) -> Response {
             &[("min", min.as_str()), ("max", max.as_str())],
         ),
     )
-}
-
-/// One native drain tick: claim pending `vector_jobs`, `write_vectors` each.
-pub fn drain_queue(
-    graph: &GraphWriter,
-    db: &std::path::Path,
-    limit: usize,
-) -> crate::tick::DrainOutcome {
-    let mut outcome = crate::tick::DrainOutcome::default();
-    let Ok(conn) = rusqlite::Connection::open(db) else {
-        outcome.detail = Some("vector_jobs unavailable".into());
-        return outcome;
-    };
-    let ids: Vec<String> = conn
-        .prepare("SELECT node_id FROM vector_jobs WHERE status='pending' LIMIT ?1")
-        .ok()
-        .and_then(|mut stmt| {
-            stmt.query_map([limit as i64], |row| row.get(0))
-                .ok()
-                .map(|rows| rows.filter_map(Result::ok).collect())
-        })
-        .unwrap_or_default();
-    outcome.claimed = ids.len() as u64;
-    for node_id in ids {
-        let result = graph.write_vectors(&node_id);
-        if result.status == "indexed" || result.status == "noop" {
-            outcome.indexed += 1;
-            let _ = conn.execute(
-                "UPDATE vector_jobs SET status='done' WHERE node_id=?1",
-                [&node_id],
-            );
-        } else {
-            outcome.retried += 1;
-            let _ = conn.execute(
-                "UPDATE vector_jobs SET status='pending' WHERE node_id=?1",
-                [&node_id],
-            );
-        }
-    }
-    outcome
 }
 
 async fn rebuild(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) -> Response {
@@ -377,8 +363,10 @@ async fn rebuild(State(state): State<Arc<IndexApiState>>, headers: HeaderMap) ->
     }
 }
 
+mod engine;
 mod status;
 
+pub use engine::{claim_pending, drain_claimed, drain_queue, embed_items_for_nodes};
 pub use status::index_status;
 
 #[cfg(test)]

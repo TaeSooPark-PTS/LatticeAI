@@ -1,6 +1,6 @@
 # Lattice AI — browser extension (Manifest V3)
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
 Knowledge Graph. Cloud stays on the host (optional, default local); this

@@ -3,25 +3,29 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 11.9.0. Security
-support follows that same product era: **only 11.x receives fixes.**
+The public Git tree keeps release history from 11.0.0 through 12.0.0. Security
+support follows that same product era: **only the 11.x and 12.x line receives
+fixes.**
 
 11.6.0 rebuilt the product server in Rust and reduced the Python package to a
 pure-compute AI worker; 11.7.0 closed the holes that door disclosed, 11.8.0
-narrowed the worker further — from 28 routes to **19** — and 11.9.0 kept that
+narrowed the worker further — from 28 routes to **19** — 11.9.0 kept that
 19-route worker while wiring the hybrid cloud lane and the local MCP server
-that sit on the host. A fix for the 11.9 line is a fix to a different program
-than the one 10.x and 9.x shipped, so backporting it would be a claim this
-project cannot honour. Those release notes stay in the tree as history; the
-support line does not.
+that sit on the host, and 12.0.0 regrouped the two largest Rust crates without
+moving the boundary, adding exactly one worker route (`POST
+/worker/vector/query`, **20** in total). A fix for this line is a fix to a
+different program than the one 10.x and 9.x shipped, so backporting it would
+be a claim this project cannot honour. Those release notes stay in the tree as
+history; the support line does not.
 
 | Version | Support |
 | --- | --- |
-| 11.9.x (latest) | Supported |
+| 12.0.x (latest) | Supported |
+| 11.9.x | Supported |
 | 11.8.x | Supported |
 | 11.7.x | Supported |
 | 11.6.x | Supported |
@@ -62,7 +66,21 @@ negative tests now assert that the gateway no longer forwards them. A route
 that nothing calls is still an attack surface, so the smallest honest worker is
 the one that answers only what the product actually asks for. 11.9.0 did not
 grow that surface; `/worker/sysinfo` gained additive `capabilities` and
-`python_version` fields on the same route.
+`python_version` fields on the same route. **12.0.0 adds one route and states
+why**: `POST /worker/vector/query` returns candidate ids for the native exact
+rescore when `LATTICEAI_VECTOR_INDEX=hnsw` is opted into — it reads vectors and
+returns ids, it writes nothing, and the default `brute` backend never calls it.
+The allowlist is **20**, generated from the worker's own profile and pinned
+from both sides.
+
+The 12.0.0 crate regrouping does not move any trust boundary. `lattice-agent`
+is six groups and `lattice-platform` is seven domains, but the same kernel
+still answers "may this run", the same single writer still owns the graph, and
+the same gateway still refuses anything off the allowlist. The value of the
+regrouping to this document is that the security-relevant code now has a stated
+address: refusals live in `lattice-agent`'s `kernel/`, untrusted model text is
+handled only in `parse/`, and every byte a run is about to write passes
+`content/sanitize`.
 
 ### Default Secure Settings
 
@@ -74,6 +92,8 @@ grow that surface; `/worker/sysinfo` gained additive `capabilities` and
 | Session TTL | 24 hours sliding | Inactive sessions expire |
 | API key storage | OS keyring where available | No intentional plaintext secret storage |
 | Installer/process execution | Confirmation-token gated | Redacted command plans and local process audit events |
+| `/setup/install` package execution | Manual unless the request names the item | Runs brew/pip/uv only for an item on the **server-derived** allowlist; anything else is refused by name |
+| Folder prune (deleted-file cleanup) | Dry-run | `POST /api/ingestion/folder/prune` removes a document subtree only with explicit `confirm`; the disk is never touched |
 | Brain storage | SQLite | PostgreSQL is optional scale/migration tooling |
 | Docker Postgres setup | Disabled | Requires explicit consent |
 | Production CSP | Strict local app policy | External script/frame/object blocked by default |
@@ -114,6 +134,18 @@ grow that surface; `/worker/sysinfo` gained additive `capabilities` and
 - `.latticebrain` archives are encrypted and integrity-checked.
 - Wrong passphrases, tampering, unsupported archive versions, and archive path
   traversal fail closed.
+- **A restore takes effect immediately, in-process (12.0.0).** The store
+  carries a generation epoch; a restore bumps it, every pooled connection
+  opened under the previous generation is stale at its next checkout and is
+  closed, and the following read sees the restored bytes. Through 11.9.0 the
+  documented mitigation was "restart after restore", which meant a window in
+  which a reader could be served pre-restore content — that window is gone.
+- **Deleting knowledge is a separate, confirmed action.** Incremental ingest
+  counts vanished files and leaves their nodes alone. `POST
+  /api/ingestion/folder/prune` reports the plan without `confirm` and, with
+  it, removes the document subtree through `delete_document_tree` — which
+  clears edges in both directions rather than leaving them dangling. No prune
+  path deletes anything on disk.
 
 ### Agent And Tool Safety
 
@@ -128,6 +160,19 @@ grow that surface; `/worker/sysinfo` gained additive `capabilities` and
   being overwritten.
 - The agent-eval verifier fails closed: unverifiable or failing outcomes resolve
   to a review state rather than being reported as success.
+- **The `guided` profile removes the JSON, not a gate (12.0.0).** A run that
+  cannot hold a tool-call contract is walked through numbered choices and
+  one argument per turn, but the harness assembles the action and hands it to
+  the same `perform_action` tail every profile uses — same gate chain, same
+  loop guard, same pre-write snapshot, same `sanitize_write_content`.
+  Verification is a closed PASS/FAIL judged by the same evidence and coverage
+  gates, and an unverifiable outcome is still `NEEDS_REVIEW`.
+- **The loop refuses to execute its own prompt.** A `write_file` whose content
+  is the crate's own worked-example constant verbatim is recorded as
+  `COPIED_EXAMPLE` and written nowhere; echoed instruction lines are stripped
+  from guided answers. Weak models continue the nearest complete shape, and in
+  an agent turn that shape is our prompt — so this is a fail-closed refusal
+  against a constant the crate owns, which cannot reject a genuine answer.
 - ToolRegistry owns dispatch, permissions, diagnostics, direct HTTP/MCP policy
   gates, and MCP install state.
 - Shared agent/plugin registries and graph curation are administrator-managed;
@@ -172,8 +217,9 @@ The guards that *are* load-bearing were kept and are unchanged: the CSRF origin
 guard on the proxied worker writes, auth before any decode or compute, the
 signature check on uploads, the mode-invariant circuit breakers in the Rust
 kernel, `sanitize_write_content` on every native write path, and the committed
-worker allowlist — now 19 entries, with tests asserting the nine deleted routes
-are answered `404` rather than forwarded.
+worker allowlist — 19 entries then, 20 since 12.0.0 added the vector-query
+seam, with tests asserting the nine deleted routes are answered `404` rather
+than forwarded.
 
 ### External Communication
 
@@ -207,8 +253,13 @@ API billing. Resolution is `cloud_provider.json` → env key → `agy` → `grok
 escalation policy (`auto` default / `manual` / `always`).
 
 The MCP surface at `POST /mcp` is a real streamable-HTTP JSON-RPC server on
-the host. Governance refusals are JSON-RPC errors. `/mcp` is outside the
-OpenAPI product contract by design; it is not a second, ungoverned door.
+the host, and **since 12.0.0 it is inside the OpenAPI product contract** as a
+single JSON-RPC envelope operation rather than beside it. Governance refusals
+are JSON-RPC errors. It is not a second, ungoverned door, and the agent loop
+does not get a quieter one either: when a run's own catalog dispatches an
+`mcp.<tool>` name it did not govern, that call goes through the same
+governance check `POST /mcp` runs. A name the run *does* govern takes the
+kernel's stricter native path instead.
 
 Web-page capture additionally resolves and pins public IPs, rejects private and
 reserved address classes, rechecks every redirect, ignores proxy environment

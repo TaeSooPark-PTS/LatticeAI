@@ -244,6 +244,61 @@ async fn a_wal_backup_captures_uncheckpointed_rows_and_blobs() {
     );
 }
 
+fn node_titles(store: &Store) -> Vec<String> {
+    store
+        .with_read_conn(|conn| {
+            let mut stmt = conn.prepare("SELECT title FROM nodes ORDER BY title")?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+            Ok(rows.filter_map(Result::ok).collect())
+        })
+        .expect("titles")
+}
+
+/// The 11.9.0 ops-note: restore swapped the file but long-lived Store
+/// handles kept serving pre-restore bytes until the process restarted.
+/// The same GraphWriter / Store must see the snapshot on the next query.
+#[tokio::test]
+async fn restore_is_visible_through_the_same_store_without_a_restart() {
+    let install = Install::start().await;
+    seed_graph(&install.graph, "alpha");
+    let before = node_titles(install.graph.store());
+    assert!(
+        before.iter().any(|title| title.contains("alpha")),
+        "pre-backup seed missing: {before:?}"
+    );
+
+    let (status, body) = install.post("/api/knowledge-graph/backup", json!({})).await;
+    assert_eq!(status, 200, "{body}");
+    let zip_path = PathBuf::from(body["path"].as_str().expect("path"));
+
+    seed_graph(&install.graph, "gamma");
+    let mutated = node_titles(install.graph.store());
+    assert!(
+        mutated.iter().any(|title| title.contains("gamma")),
+        "live mutation missing: {mutated:?}"
+    );
+
+    let (restore_status, restored) = install
+        .post(
+            "/api/knowledge-graph/restore",
+            json!({"path": zip_path.to_string_lossy(), "confirm": true}),
+        )
+        .await;
+    assert_eq!(restore_status, 200, "{restored}");
+    assert_eq!(restored["restored"], json!(true));
+
+    let after = node_titles(install.graph.store());
+    assert!(
+        after.iter().any(|title| title.contains("alpha")),
+        "post-restore query through the same Store must see the snapshot: {after:?}"
+    );
+    assert!(
+        after.iter().all(|title| !title.contains("gamma")),
+        "post-restore query must not keep pre-restore rows: {after:?}"
+    );
+    assert_eq!(after, before);
+}
+
 #[tokio::test]
 async fn export_carries_nodes_edges_and_chunks() {
     let install = Install::start().await;

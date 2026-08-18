@@ -128,6 +128,18 @@ def read_document(path: str) -> Dict[str, Any]:
         except Exception as exc:
             raise ToolError(f"PPTX 읽기 실패: {exc}") from exc
 
+    elif ext in {".html", ".htm"}:
+        # A web page read verbatim is markup, not text: the graph filled up
+        # with `<div class=…>` and the contents of every `<script>`. The
+        # conversion keeps the page's headings as `#` lines so a fact
+        # extracted from it can still say which section it came from.
+        try:
+            from latticeai.tools.markup import html_to_text
+
+            text = html_to_text(target.read_text(encoding="utf-8", errors="replace"))
+        except Exception as exc:
+            raise ToolError(f"HTML 읽기 실패: {exc}") from exc
+
     elif ext in {".txt", ".md", ".csv"}:
         try:
             text = target.read_text(encoding="utf-8", errors="replace")

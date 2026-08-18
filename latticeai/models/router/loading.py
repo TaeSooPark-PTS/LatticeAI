@@ -148,6 +148,104 @@ def _mlx_sampler(temperature: float):
         return None
 
 
+def _declares_vision(model_id: str) -> bool:
+    """Whether this checkpoint's own config says it is multimodal.
+
+    Read from ``config.json`` rather than decided from the model's *name*: a
+    list of known vision families is a list that is wrong about every model
+    published after it was written, and "which models work" is exactly the
+    question this product must not answer with a hardcoded roster.
+
+    The three markers are the ones every MLX-VLM architecture carries — a
+    nested ``vision_config``, a ``vision_tower``, or an ``image_token_index``
+    for the placeholder the processor substitutes. A config that carries none
+    of them describes a text model.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    from .local_models import hf_model_dir
+
+    raw = str(model_id or "").strip()
+    candidates = []
+    explicit = _Path(raw).expanduser()
+    if raw and explicit.exists():
+        candidates.append(explicit / "config.json")
+    try:
+        candidates.append(hf_model_dir(raw) / "config.json")
+    except Exception as error:  # noqa: BLE001 — an unresolvable id is not a claim
+        quiet(f"vision probe skipped for {raw}: {error}")
+    for config_path in candidates:
+        try:
+            if not config_path.exists():
+                continue
+            data = _json.loads(config_path.read_text(encoding="utf-8"))
+        except Exception as error:  # noqa: BLE001 — an unreadable config is not a claim
+            quiet(f"vision probe skipped for {config_path}: {error}")
+            continue
+        if any(key in data for key in ("vision_config", "vision_tower", "image_token_index")):
+            return True
+    return False
+
+
+def _text_fallback_allowed(
+    model_id: str, target_model_id: str, model_type: Optional[str]
+) -> bool:
+    """Whether a failed multimodal load may be retried as a text load.
+
+    Every local model is routed to MLX-VLM first, because the recommended
+    defaults are multimodal. Until v12.0.0 the retry on the text path was
+    gated on the model *id* matching Gemma 4 — so a plain text model MLX-VLM
+    cannot open (a 0.5B Qwen, an AWQ checkpoint, any fine-tune with a text-only
+    architecture) failed to load at all, with MLX-LM sitting right there able
+    to open it. That is a roster deciding what runs, and the roster was one
+    family long. "Every small model works" cannot be true while loading is
+    gated on a name.
+
+    So the rule is now two rules, and the second is **additive**:
+
+    * the v11.9.0 Gemma 4 rule, unchanged — a Gemma 4 that is not the unified
+      (vision) architecture may always retry as text;
+    * and, new, **any model whose own ``config.json`` does not declare
+      vision.** Read from the checkpoint rather than decided from the name, so
+      a model published tomorrow is judged the same way as one published last
+      year.
+
+    A config that *does* declare vision is never silently downgraded: answering
+    an image request from a text-only load is worse than refusing it.
+    """
+    if lm_load is None:
+        return False
+    if (model_type or "").strip().lower() == "gemma4_unified":
+        return False
+    if _is_gemma4_model_id(model_id):
+        return True
+    return not _declares_vision(target_model_id)
+
+
+def apply_prefix(prefix: Optional[str], text: str) -> str:
+    """Guarantee ``text`` begins with ``prefix``, without doubling it.
+
+    The seam's contract for a forced prefix (v12.0.0) is one sentence: *the
+    reply starts with these characters*. How it got there differs by backend —
+    the local path really does prefill the prompt with them, so the model never
+    generated them and they have to be put back; a cloud provider handed an
+    assistant prefill message may echo them, may not, and may ignore the
+    message entirely. One normalisation covers all three, so the caller parses
+    one shape whichever answered.
+
+    Leading whitespace is dropped when the reply already carries the prefix:
+    a chat template that emits ``"\\n"`` before the continuation would otherwise
+    make ``startswith`` false for a reply that plainly does start with it.
+    """
+    if not prefix:
+        return text
+    stripped = text.lstrip()
+    if stripped.startswith(prefix):
+        return stripped
+    return f"{prefix}{text}"
+
+
 def apply_stop_strings(text: str, stop: Optional[List[str]]) -> str:
     """Cut ``text`` at the earliest stop string, if any is present.
 
@@ -206,7 +304,6 @@ class _LoadingMixin(_Core):
         
         def _load():
             mx.set_default_device(mx.gpu)
-            is_gemma4 = _is_gemma4_model_id(model_id)
             model_type = _local_model_type(target_model_id) or _local_model_type(model_id)
             loader_kind = "mlx_vlm"
 
@@ -216,11 +313,19 @@ class _LoadingMixin(_Core):
                 print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
                 model, tokenizer = vlm_load(target_model_id)
             except Exception as vlm_error:
-                if not (is_gemma4 and model_type != "gemma4_unified" and lm_load is not None):
+                if not _text_fallback_allowed(model_id, target_model_id, model_type):
                     raise
-                print(f"⚠️ Gemma 4 MLX-VLM load failed; retrying MLX-LM text path: {vlm_error}")
+                print(f"⚠️ MLX-VLM load failed; retrying the MLX-LM text path: {vlm_error}")
                 print(f"🔄 Loading Target (LM Mode): {target_model_id}...")
-                model, tokenizer = lm_load(target_model_id)
+                try:
+                    model, tokenizer = lm_load(target_model_id)
+                except Exception:
+                    # The text path is a *fallback*: when it fails too, the
+                    # useful diagnosis is the first failure, from the loader
+                    # this model was routed to. Raising the second one would
+                    # tell an operator their multimodal model is not a text
+                    # model, which they knew.
+                    raise vlm_error from None
                 loader_kind = "mlx_lm"
 
             draft_model = None

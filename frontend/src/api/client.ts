@@ -880,6 +880,11 @@ export const latticeApi = {
     "/knowledge-graph/local/health",
     { folders: [], count: 0 },
   ),
+  pruneFolderDeleted: (path: string, confirm: boolean) => post<Record<string, unknown>>(
+    "/api/ingestion/folder/prune",
+    { path, confirm },
+    { status: "", dry_run: !confirm, files: [], would_remove: {}, removed: {} },
+  ),
   localAgent: () => get("/api/local-agent/status", { agent: { online: false }, sources: [] }),
   connectFolder: (path: string) => post("/knowledge-graph/local/index", { path, approved: true, watch_enabled: true, consent: { approved: true, source: "desktop-spa" } }, {}),
   localWatchStop: (source_id: string) => post("/knowledge-graph/local/watch/stop", { source_id }, {}),

@@ -32,7 +32,9 @@ EDGE_VERB = {
     "의존함": r"의존|depend|require|필요|based on",
     "설명함": r"설명|explain|describe|정의|란|이란|means",
     "비교함": r"비교|versus|vs\.?|차이|다르|compare",
-    "사용함": r"사용|use|활용|이용|apply",
+    # `쓴다`/`쓰는`/`씁니다` are the everyday Korean for "uses"; without them a
+    # sentence that never says 사용 fell through to bare co-occurrence.
+    "사용함": r"사용|use|활용|이용|apply|쓴다|쓰는|씁니다|썼다",
     "연결함": r"연결|connect|통합|integrate|연동|link",
     "확장함": r"확장|extend|플러그인|plugin|addon",
     "생성함": r"생성|만들|create|generate|build|produced",
@@ -41,6 +43,13 @@ EDGE_VERB = {
     "발생함": r"발생|occur|throw|raise|triggered",
     "관련됨": r"관련|related|associated|연관",
 }
+
+#: Same table, compiled once. ``infer_edge_relation`` and the typed-relation
+#: patterns both walk this on every pair; compiling per call was the cheap
+#: half of the extraction regression.
+_EDGE_VERB_COMPILED = tuple(
+    (label, re.compile(pattern)) for label, pattern in EDGE_VERB.items()
+)
 
 
 # Concepts in a list-like sentence ("A, B, C, D를 사용한다") sit together by
@@ -70,8 +79,8 @@ def infer_edge_relation(sentence: str) -> Dict[str, Any]:
     label-only output erased.
     """
     s = str(sentence or "").lower()
-    for label, pattern in EDGE_VERB.items():
-        if re.search(pattern, s):
+    for label, pattern in _EDGE_VERB_COMPILED:
+        if pattern.search(s):
             # "관련됨" is itself a weak, generic label: matching it by keyword
             # ("관련", "related") is still verb evidence, but nothing stronger.
             return {

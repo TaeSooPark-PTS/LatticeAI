@@ -77,6 +77,17 @@ impl DrainOutcome {
     pub fn did_work(&self) -> bool {
         self.claimed > 0
     }
+
+    /// Fold another drain into this one (one tick, several requests).
+    pub fn absorb(&mut self, other: Self) {
+        self.claimed += other.claimed;
+        self.indexed += other.indexed;
+        self.retried += other.retried;
+        self.failed += other.failed;
+        if self.detail.is_none() {
+            self.detail = other.detail;
+        }
+    }
 }
 
 /// The few fields of an ingestion job the resume decision needs.
@@ -213,7 +224,16 @@ impl TickReport {
 
 /// `POST {worker}/api/index/drain` with the configured limit.
 pub async fn drain(client: &Client, config: &SchedulerConfig) -> Result<DrainOutcome, String> {
-    let body = format!("{{\"limit\":{}}}", config.drain_limit);
+    drain_with_limit(client, config, config.drain_limit).await
+}
+
+/// `POST {worker}/api/index/drain` with an explicit `limit`.
+pub async fn drain_with_limit(
+    client: &Client,
+    config: &SchedulerConfig,
+    limit: u32,
+) -> Result<DrainOutcome, String> {
+    let body = format!("{{\"limit\":{limit}}}");
     let value = post_json(client, config, &config.worker_url("/api/index/drain"), body).await?;
     Ok(DrainOutcome::from_json(&value))
 }
@@ -352,6 +372,34 @@ mod tests {
     fn missing_counters_read_as_zero_rather_than_failing_the_tick() {
         let outcome = DrainOutcome::from_json(&json!({}));
         assert_eq!(outcome, DrainOutcome::default());
+    }
+
+    #[test]
+    fn absorb_sums_counters_and_keeps_the_first_detail() {
+        let mut total = DrainOutcome {
+            claimed: 4,
+            indexed: 3,
+            retried: 1,
+            failed: 0,
+            detail: Some("first".into()),
+        };
+        total.absorb(DrainOutcome {
+            claimed: 2,
+            indexed: 2,
+            retried: 0,
+            failed: 0,
+            detail: Some("second".into()),
+        });
+        assert_eq!(
+            total,
+            DrainOutcome {
+                claimed: 6,
+                indexed: 5,
+                retried: 1,
+                failed: 0,
+                detail: Some("first".into()),
+            }
+        );
     }
 
     #[test]

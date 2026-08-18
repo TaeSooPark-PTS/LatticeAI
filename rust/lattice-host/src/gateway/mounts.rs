@@ -159,6 +159,10 @@ pub fn agent_loop_config(
         // The hooks registry is the product's, so `OneDoorState` binds it —
         // a host with no `/api/hooks` mounted has no registry to fire through.
         hooks: None,
+        // Same argument for the skills / MCP catalog (v12.0.0): what is
+        // installed on this machine is the product's to know, so
+        // `OneDoorState` binds it and a bare host offers a run its own tools.
+        external: None,
     }
     .with_proposals(proposals)
 }

@@ -1,3 +1,23 @@
+# [v12.0.0 - Open House] (2026-08-18)
+
+가장 큰 두 크레이트를 도메인으로 나눴습니다 — `lattice-agent` 43파일이
+`kernel`/`parse`/`content`/`tools`/`surface`/`prompts` 여섯 그룹으로,
+`lattice-platform` 31개 평면 모듈이 일곱 도메인으로(100건 `git mv`,
+동작 변화 0). 두 크레이트 모두 크레이트 로컬 `ARCHITECTURE.md`를 싣고,
+`docs/DEVELOPMENT.md`는 기여자 온보딩으로 재작성됐으며
+`docs/ROADMAP.md`가 새로 생겼습니다. 11.9.0이 적어 둔 갭 네 개를
+닫았습니다: 복원이 스토어 에폭으로 즉시 반영(재시작 불필요),
+`/setup/install`이 서버 도출 allowlist 항목에 한해 동의 기반 실행,
+`POST /mcp`가 OpenAPI 계약 안으로(네이티브 마운트), 포인터 도구가
+`ltcai[pointer]`로 선언. 그래프 RAG는 한국어 조사 인지·섹션 트리·
+타입드 엣지 생산과 함께, 무변경 재인덱스 33s → 0.26s·드레인 ~66 →
+~1,300 items/s·백로그 991건 15.3초를 얻었고 HNSW가 `hnsw+rescore`로
+실제 검색에 쓰입니다(기본은 여전히 brute). GUIDED 모드는 작은 모델에게
+JSON을 요구하지 않으며 Qwen 0.5B가 3.9초에 실파일로 DONE에 닿았습니다.
+닫지 않은 것은 노트에 그대로 적었습니다.
+
+See [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md).
+
 # [v11.9.0 - Working Order] (2026-08-17)
 
 문서에만 있던 13개 Current 스텁을 실동작으로 올리고, 라이브 감사에서
@@ -159,18 +179,19 @@ See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 11.9.0**.
+This repository keeps public release history from **11.0.0 through 12.0.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
-worker, so `SECURITY.md` supports only 11.x and this index follows the same
-boundary. Sub-11 note files remain in the tree as history; they are no longer
-listed here as supported releases.
+worker, so `SECURITY.md` supports only that era — 11.x and 12.x — and this index
+follows the same boundary. Sub-11 note files remain in the tree as history; they
+are no longer listed here as supported releases.
 
 ## Current Release
 
-- [v11.9.0 - Working Order](RELEASE_NOTES_v11.9.0.md)
+- [v12.0.0 - Open House](RELEASE_NOTES_v12.0.0.md)
 
 ## Recent Release Notes
 
+- [v11.9.0 - Working Order](RELEASE_NOTES_v11.9.0.md)
 - [v11.8.0 - Travel Light](RELEASE_NOTES_v11.8.0.md)
 - [v11.7.0 - Clean Sweep](RELEASE_NOTES_v11.7.0.md)
 - [v11.6.0 - One Door](RELEASE_NOTES_v11.6.0.md)

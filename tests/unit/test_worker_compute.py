@@ -23,6 +23,7 @@ from latticeai.api import worker_compute
 from latticeai.api.agent_worker_seam import SEAM_ENV_VAR, SEAM_RATE_BUCKET
 from latticeai.api.worker_compute import (
     EMBED_KINDS,
+    EMBED_MAX_BATCH,
     EXTRACT_KINDS,
     EXTRACT_LIMITS,
     PASSAGE_MAX_CHARS,
@@ -52,6 +53,10 @@ COMPUTE_PATHS = [
     ("/worker/render/pdf", {}),
     ("/worker/asr", {"audio_b64": ""}),
     ("/worker/extract", {"text": "x"}),
+    (
+        "/worker/vector/query",
+        {"embedding_model": "hash", "embedding_dim": 8, "vector": [0.0] * 8, "k": 4},
+    ),
 ]
 
 
@@ -182,6 +187,43 @@ def test_many_texts_come_back_in_the_order_they_were_sent():
 
     provider = resolve_embedder("").provider
     assert body["vectors"] == [provider.embed(t) for t in ("alpha", "beta", "gamma")]
+
+
+def test_an_embed_batch_over_the_cap_is_refused_without_calling_the_provider():
+    class CountingProvider:
+        dim = 384
+        model_id = "hash"
+        calls = 0
+
+        def embed_batch(self, texts):
+            self.calls += 1
+            return [[0.0] * 384 for _ in texts]
+
+    provider = CountingProvider()
+    resolved = type("Resolved", (), {"provider": provider, "active": "hash"})()
+    client = _client(embedder=resolved)
+
+    response = client.post(
+        "/worker/embed",
+        json={"texts": ["x"] * (EMBED_MAX_BATCH + 1)},
+        headers={LANGUAGE_HEADER: "en"},
+    )
+
+    assert response.status_code == 422
+    assert str(EMBED_MAX_BATCH) in response.json()["detail"]
+    assert str(EMBED_MAX_BATCH + 1) in response.json()["detail"]
+    assert provider.calls == 0
+
+
+def test_an_embed_batch_at_the_cap_still_embeds():
+    client = _client()
+
+    body = client.post(
+        "/worker/embed",
+        json={"texts": ["ok"] * EMBED_MAX_BATCH},
+    ).json()
+
+    assert len(body["vectors"]) == EMBED_MAX_BATCH
 
 
 def test_an_unknown_embedding_kind_is_refused_with_the_two_that_exist():
@@ -663,7 +705,33 @@ def test_a_port_with_no_module_is_named_by_its_qualname_alone():
 
 
 
-def test_the_router_mounts_exactly_the_eight_compute_paths():
+def test_vector_query_without_a_sidecar_is_index_none(tmp_path):
+    client = _client()
+    body = client.post(
+        "/worker/vector/query",
+        json={
+            "embedding_model": "hash",
+            "embedding_dim": 4,
+            "vector": [1.0, 0.0, 0.0, 0.0],
+            "k": 4,
+            "workspace": str(tmp_path / "missing.sqlite"),
+        },
+    ).json()
+    assert body["index"] == "none"
+    assert body["ids"] == []
+    assert body["size"] == 0
+
+
+def test_vector_query_rejects_an_empty_body():
+    client = _client()
+    response = client.post(
+        "/worker/vector/query",
+        json={"embedding_model": "", "embedding_dim": 0, "vector": [], "k": 4},
+    )
+    assert response.status_code == 422
+
+
+def test_the_router_mounts_exactly_the_compute_paths():
     from latticeai.runtime.build_phases.worker_profile import WORKER_COMPUTE_ROUTES
 
     # Read the router's own, always-flat route list rather than an

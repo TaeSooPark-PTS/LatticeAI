@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**
@@ -52,8 +52,14 @@ secondary.
 - Preserve context when moving between models. Cloud is optional; default
   is local.
 - Export or restore the Brain as an encrypted `.latticebrain` archive.
-- Use Korean or English without changing the underlying Brain.
+- Use Korean or English without changing the underlying Brain. Korean queries
+  are read as Korean, particles and all, rather than as strings that happen to
+  share a prefix.
 - Avoid fake answers when no model or evidence is available.
+- Run on the model your machine can actually hold. The loop measures what a
+  model can produce and adapts to it — a model too small to emit a tool call is
+  walked through numbered choices instead of being told it failed — with the
+  same permission gates and safeguards on every path.
 
 ## What Lattice AI Is Not
 

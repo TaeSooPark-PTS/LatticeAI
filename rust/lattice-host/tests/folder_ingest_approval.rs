@@ -54,6 +54,7 @@ async fn product_gateway(name: &str) -> (TestGateway, PathBuf, PathBuf) {
             scratch.join("proposals"),
         ))),
         hooks: None,
+        external: None,
     };
     let product = OneDoorState::open_with_config(
         config,

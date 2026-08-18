@@ -3,14 +3,14 @@
 The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0 and
 operationalized in v2.2.0. It sits
 *above* the single-agent state machine, which since 11.6.0 is the Rust loop
-orchestrator ([`lattice_agent::agentloop`](../rust/lattice-agent/src/agentloop/mod.rs))
+orchestrator ([`lattice_agent::agentloop`](../rust/lattice-agent/src/kernel/agentloop/mod.rs))
 and coordinates a pipeline of named **roles** that hand off work to one another,
 retry on a failing review, and emit a fully observable, replayable timeline.
 
-- **Source of truth:** `rust/lattice-platform/src/agents.rs` (the orchestration
-  routes) over `rust/lattice-agent/src/agentloop/` (the state machine)
+- **Source of truth:** `rust/lattice-platform/src/toolsurface/agents/mod.rs` (the orchestration
+  routes) over `rust/lattice-agent/src/kernel/agentloop/` (the state machine)
 - **HTTP surface:** the `agents` family, mounted by `lattice-platform`
-- **Persistence:** `rust/lattice-platform/src/review_queue.rs` — the same
+- **Persistence:** `rust/lattice-platform/src/governance/review_queue.rs` — the same
   `workspace_os.json` document the Review Center reads
 
 > **Moved in 11.6.0.** The Python modules this page used to name

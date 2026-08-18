@@ -129,6 +129,41 @@ function FeatureRow({
   onChange: (value: boolean | string) => void;
 }) {
   const on = feature.current === true;
+  const risky = Boolean(feature.caution);
+  const [pendingOn, setPendingOn] = React.useState(false);
+  const [acked, setAcked] = React.useState(false);
+  const switchRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (on) {
+      setPendingOn(false);
+      setAcked(false);
+    }
+  }, [on]);
+
+  function requestToggle() {
+    if (busy) return;
+    if (on) {
+      setPendingOn(false);
+      onChange(false);
+      return;
+    }
+    if (risky) {
+      setPendingOn(true);
+      setAcked(false);
+      return;
+    }
+    onChange(true);
+  }
+
+  function confirmEnable() {
+    if (busy || !acked) return;
+    onChange(true);
+    setPendingOn(false);
+    setAcked(false);
+    window.requestAnimationFrame(() => switchRef.current?.focus());
+  }
+
   return (
     <li
       className={`brain-feature-row${feature.parent ? " is-child" : ""}${on ? " is-on" : ""}`}
@@ -156,12 +191,51 @@ function FeatureRow({
             {feature.caution}
           </span>
         ) : null}
+        {pendingOn ? (
+          <div className="brain-feature-preview" data-testid={`feature-preview-${feature.id}`}>
+            <p className="brain-feature-preview-title">{t(language, "brain.features.preview.title")}</p>
+            <p className="brain-feature-preview-body">{feature.summary}</p>
+            <p className="brain-feature-preview-caution">{feature.caution}</p>
+            <p className="brain-feature-preview-limit">{t(language, "brain.features.preview.limit")}</p>
+            <label className="brain-feature-preview-ack">
+              <input
+                type="checkbox"
+                data-testid={`feature-preview-ack-${feature.id}`}
+                checked={acked}
+                onChange={(event) => setAcked(event.target.checked)}
+              />
+              {t(language, "brain.features.preview.ack")}
+            </label>
+            <div className="brain-feature-preview-actions">
+              <button
+                type="button"
+                className="brain-feature-preview-confirm"
+                data-testid={`feature-preview-confirm-${feature.id}`}
+                aria-disabled={!acked}
+                onClick={confirmEnable}
+              >
+                {t(language, "brain.features.preview.confirm")}
+              </button>
+              <button
+                type="button"
+                data-testid={`feature-preview-cancel-${feature.id}`}
+                onClick={() => {
+                  setPendingOn(false);
+                  setAcked(false);
+                }}
+              >
+                {t(language, "brain.features.preview.cancel")}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {feature.kind === "choice" ? (
         <ChoicePills feature={feature} language={language} busy={busy} onChange={onChange} />
       ) : (
         <button
+          ref={switchRef}
           type="button"
           role="switch"
           aria-checked={on}
@@ -172,9 +246,7 @@ function FeatureRow({
           // blurs it, and the drawer's Escape handler lives on the drawer
           // node — focus on <body> means Escape stops closing the panel. The
           // in-flight guard is the click handler's job instead.
-          onClick={() => {
-            if (!busy) onChange(!on);
-          }}
+          onClick={requestToggle}
         >
           <span className="brain-feature-switch-track" aria-hidden="true">
             <span className="brain-feature-switch-thumb" />

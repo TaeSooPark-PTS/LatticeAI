@@ -4,6 +4,98 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.0.0] - 2026-08-18 — Open House
+
+### Added
+- 크레이트 도메인 구조. `lattice-agent` 43파일이 여섯 그룹으로
+  (`kernel` / `parse` / `content` / `tools` / `surface` / `prompts`),
+  `lattice-platform` 31개 평면 모듈이 일곱 도메인으로
+  (`workspaceos` / `toolsurface` / `governance` / `adminops` /
+  `knowledge` / `modelops` / `shell`, 100건 `git mv`). 전부 이동이며
+  동작 변화는 0 — 골든과 계약 테스트가 재구조 전후로 같은 답을 낸다.
+- 크레이트 로컬 지도 2종: `rust/lattice-agent/ARCHITECTURE.md`,
+  `rust/lattice-platform/ARCHITECTURE.md`. 각 그룹 `mod.rs`가 무엇이
+  속하고 무엇이 절대 들어가면 안 되는지와 불변식을 적는다. 각
+  `src/lib.rs`는 호환 맵으로 끝나 기존 임포트 경로가 전부 해석된다.
+- `docs/ROADMAP.md` — 우선순위(P1/P2/P3)·난이도·제안 경로가 있는 갭
+  로드맵. 이번 릴리스에서 닫힌 항목은 닫힘으로 표시한다.
+- GUIDED 프로파일. 번호 메뉴로 액션을 고르고 인자를 한 개씩 받아
+  **하네스가 액션 구조체를 조립**한다 — JSON 요구 자체가 없다. 꼬리는
+  모든 모드와 같은 `perform_action`이므로 게이트 체인·루프 가드·쓰기 전
+  스냅샷·`sanitize_write_content`가 동일하다. 검증은 닫힌 PASS/FAIL +
+  이유 한 줄이며 같은 근거·커버리지 게이트로 심사한다.
+- 측정 기반 프로파일 프로브(`kernel/probe.rs`). 로드 시 고정 질문 두
+  개를 루프 자신의 파서로 채점해 standard/compact/guided를 고르고,
+  모델 id + 크레이트 버전으로 캐시한다. `LATTICEAI_AGENT_PROFILE`이
+  여전히 최우선, `LATTICEAI_AGENT_PROBE=0`으로 끌 수 있다.
+- 미드런 자기강등(`demote_to_guided`) — 측정된 다이얼, 아직 guided가
+  아님, 실행 근거 없음의 세 조건에서만, 아래로만.
+- 통합 도구 카탈로그(`tools/catalog.rs`) — native + `mcp.<tool>` +
+  `skill.<name>`이 하나의 번호 메뉴. 런이 거버넌스하는 이름은 네이티브
+  경로(더 엄격), 아닌 이름은 `POST /mcp`와 같은 거버넌스 검사를 지난다.
+- `POST /worker/vector/query` — HNSW 사이드카 후보 조회. 워커 allowlist
+  19 → **20**.
+- `POST /api/ingestion/folder/prune` — 삭제된 파일 정리. `confirm` 없으면
+  dry-run, 있으면 `delete_document_tree`(양방향 엣지). SPA에 「삭제된
+  파일 정리 (N)」 카드 버튼.
+- 섹션 트리 — `Document ←PART_OF— Section ←PART_OF— Section`,
+  `Section —HAS_CHUNK→ Chunk`. 제목이 없는 문서는 섹션을 만들지 않는다.
+- 파일별 ingest 핑거프린트(경로 + 크기 + mtime + 내용 sha256)를
+  `ingestion_provenance.metadata_json`에 저장. 두 번째 테이블 없음.
+- 스토어 세대(generation) 에폭 — 복원이 인프로세스로 즉시 반영된다.
+- `ltcai[pointer]` extra — 여섯 pyautogui 포인터 도구의 선언된 설치 경로.
+
+### Changed
+- `POST /mcp`가 OpenAPI 제품 계약 **안으로** 들어왔다(단일 JSON-RPC 봉투
+  오퍼레이션). 네이티브 마운트이므로 워커로 프록시되지 않는다. 문은 네이티브
+  **422 오퍼레이션 / 41 패밀리**(11.9.0의 420 + `/mcp` + folder prune).
+- `/setup/install`이 실제로 설치한다 — 요청이 이름을 댄 항목이 **서버가
+  도출한** allowlist에 있을 때만. 목록 밖 이름은 거절. 기본은 수동 유지.
+- 한국어 조사 스트리핑 2단계 + 근거 게이트 + 포함관계 중복 제거.
+- 추출이 `PART_OF`/`CONTRADICTS`를 실제로 생산하고, 엣지는 방향과 타입을
+  갖고 쓰이며, 근거는 분류되어 저장된다.
+- 임베딩 자동 감지 — 다운로드된 실모델이 있으면 채택, 해시는 폴백으로
+  표기. 벡터 정체성은 `(model, dim)`으로 필터.
+- 임베딩이 쓰기 트랜잭션 **앞으로** 이동(드레인 ~66 → ~1,300 items/s),
+  드레인 스케줄러 적응형(백로그 991건 40분 → 15.3초).
+- 무변경 재인덱스 33s → **0.26s**(낭비율 1.00 → 0.00), 첫 인덱싱 25.8s
+  → 7.2s. vault-watch가 바뀌지 않은 노트를 스킵.
+- `LATTICEAI_VECTOR_INDEX=hnsw`가 실제 검색 경로 — 사이드카가 `k*8`
+  후보(최대 200)를 주고 Rust가 브루트와 같은 코사인으로 정확 재스코어,
+  이름은 `hnsw+rescore`. HNSW 사이드카는 증분 append. **기본은 여전히
+  `brute`**, 실패는 사유를 실은 폴백.
+- `Completion::prefix`가 완성의 첫 글자를 강제(compact는
+  `{"thoughts": "`). 토큰 단위 JSON 문법은 검토 후 채택하지 않음.
+- 프론트: ErrorBoundary가 라우트와 헤비 패널 전면에, Act/Brain 서브라우트
+  lazy 분할, 권한 모드 diff 프리뷰와 위험 토글 ack. 번들 104.2 / 150 KiB.
+
+### Fixed
+- RAG 인용 지시가 에이전트 프롬프트로 새던 문제 — 도구를 불러야 할 턴에
+  모델이 출처 표기를 하고 있었다.
+- 모델 로딩의 이름 로스터 게이트 — Qwen AWQ 빌드가 로드 자체가 불가능
+  했다.
+- 베낄 수 있는 워크드 예제 — `write_file` content가 우리 예제 상수와
+  글자 그대로 같으면 `COPIED_EXAMPLE`로 기록하고 쓰지 않는다
+  (fail-closed). 에코된 지시문 줄은 guided 답변에서 제거.
+- `<|channel>` 한-파이프 제어 프레임이 본문으로 새던 문제.
+- 복원 뒤 오래된 커넥션이 복원 전 바이트를 주던 문제(에폭으로 해소).
+
+### Known issues
+- 작은 모델의 *내용 품질*은 여전히 fail-closed 게이트가 잡는다. 기계적
+  실행(요청한 파일 쓰기, DONE 도달)은 guided로 안정됐고 0.5B도 3.9초에
+  실파일로 완주하지만, 요약의 질은 critic에서 떨어져
+  FAILED/NEEDS_REVIEW로 끝날 수 있다. 매트릭스는 18개 중 11개 통과에서
+  개선 중이며 최종 수치는 릴리스 시점 `MATRIX_TABLE` 기준.
+- `api_key` 클라우드 경로는 모의 서버만 검증(과금 0 정책). 라이브
+  검증은 `cli_oauth`.
+- DMG는 ad-hoc 서명(=미서명).
+- 검색 기본은 brute. `hnsw`는 opt-in.
+- watch는 자동 삭제하지 않는다 — 정리는 명시적 prune으로만.
+- 크레이트 재구조는 이동이지 결합 해소가 아니다. 도메인 선을 넘는 네
+  결합은 `lattice-platform`의 해당 `mod.rs`에 이름과 함께 적혀 있다.
+- `GraphWriter::delete_node`는 여전히 `PART_OF`를 남긴다. prune은 그것을
+  쓰지 않고 `delete_document_tree`를 쓴다.
+
 ## [11.9.0] - 2026-08-17 — Working Order
 
 ### Added

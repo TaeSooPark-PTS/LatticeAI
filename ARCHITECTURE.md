@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -27,26 +27,27 @@ flowchart TB
 
   subgraph host["Lattice Host — the product server (Rust, 127.0.0.1)"]
     direction TB
-    door["One door: 420 native operations · 41 route families<br/>mounted at their original paths<br/>anything not native and not on the allowlist ⇒ 404"]
+    door["One door: 422 native operations · 41 route families<br/>mounted at their original paths<br/>anything not native and not on the allowlist ⇒ 404"]
     subgraph crates["Nine crates — every port pinned by goldens"]
       direction TB
-      plat["lattice-platform (317 ops)<br/>WorkspaceOsStore authority · HooksStore → HookSink<br/>review_queue · tools · sanitize on /tools/write_file · …"]
-      retr["lattice-retrieval (65 ops)<br/>search · knowledge_graph · brain · memory<br/>native Self-Model writes · chronicle clock seam"]
-      ingestc["lattice-ingest (27 ops)<br/>browser · local_files · vault-watch poller<br/>→ native note ingest"]
-      chatc["lattice-chat (7 ops)<br/>chat + history · native ingest_generated"]
-      jobsc["lattice-jobs (4 ops)<br/>index · scheduler"]
+      plat["lattice-platform (317 ops) — <b>7 domains (12.0.0)</b><br/>workspaceos · toolsurface · governance · adminops<br/>knowledge · modelops · shell"]
+      retr["lattice-retrieval (65 ops)<br/>search · knowledge_graph · brain · memory<br/>hybrid + hnsw+rescore · chronicle clock seam"]
+      ingestc["lattice-ingest (28 ops)<br/>browser · local_files · fingerprint · sections<br/>vault-watch poller · folder prune"]
+      chatc["lattice-chat (8 ops)<br/>chat + history · native ingest_generated"]
+      jobsc["lattice-jobs (4 ops)<br/>index · adaptive drain scheduler"]
       authc["lattice-auth<br/>password login · sessions · CSRF"]
-      agentc["lattice-agent<br/>loop · permission kernel · sandbox<br/>sanitize_write_content · ProposalStore"]
-      corec["lattice-core<br/>store · embeddings · <b>graph_write</b>"]
+      agentc["lattice-agent — <b>6 groups (12.0.0)</b><br/>kernel · parse · content · tools · surface · prompts"]
+      corec["lattice-core<br/>store (generation epoch) · embeddings · <b>graph_write</b>"]
       hostc["lattice-host<br/>gateway · supervisor · static UI"]
     end
-    subgraph closures["Native closures (11.7.0)"]
+    subgraph closures["Native closures (11.7.0 → 12.0.0)"]
       direction LR
       hooks["HooksStore → HookSink<br/>user hooks fire on native tools"]
       sanitize["sanitize on every write path<br/>loop + /tools/write_file"]
       selfm["native Self-Model writes<br/>9 recorded bodies match"]
       osstore["one WorkspaceOsStore<br/>registry + ports"]
-      watch["vault-watch poller<br/>→ GraphWriter"]
+      watch["vault-watch poller<br/>diff-skip → GraphWriter"]
+      epoch["store generation epoch<br/>restore is live — no restart"]
     end
     supervisor["Supervisor<br/>uvicorn factory spawn · /health gate ·<br/>backoff restart · graceful stop ·<br/>CSRF + CORS origin injection"]
     door --> crates
@@ -65,8 +66,8 @@ flowchart TB
 
   subgraph worker["Python AI Worker — compute only (latticeai.worker_app)"]
     direction LR
-    llm["Inference<br/>/agent/llm · /worker/llm/stream"]
-    compute["Compute seams — 19 routes since 11.8.0<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx}"]
+    llm["Inference<br/>/agent/llm · /worker/llm/stream<br/>Completion::prefix forces the opening bytes"]
+    compute["Compute seams — 20 routes since 12.0.0<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,<br/><b>vector/query</b> — HNSW candidates}"]
     catalog["Model + engine catalog<br/>/models · /engines/* · /worker/sysinfo<br/>(+ capabilities · python_version) · /health"]
     llm ~~~ compute ~~~ catalog
   end
@@ -83,7 +84,7 @@ flowchart TB
 
   user --> surfaces
   surfaces --> host
-  door -- "19 allow-listed routes only<br/>(streaming, SSE, X-Forwarded-*)" --> gates
+  door -- "20 allow-listed routes only<br/>(streaming, SSE, X-Forwarded-*)" --> gates
   gates --> worker
   compute -- "/worker/parse · /worker/render/*" --> ingestc
   corec -- "<b>single writer — RUST</b>" --> data
@@ -92,6 +93,7 @@ flowchart TB
   watch -- "native ingest" --> corec
   selfm -- "GraphWriter" --> corec
   hooks -. "run records" .-> osstore
+  epoch -. "a restore bumps it —<br/>handles from the old generation close" .-> corec
 
   mode -. "widens approval only" .-> agentc
   breakers -. "no mode ever widens these" .-> agentc
@@ -106,27 +108,60 @@ flowchart TB
 
 One Door is still the top of this diagram. 11.7.0 filled in what that door
 was missing; 11.8.0 took away what it was carrying for nobody; 11.9.0 made
-the remaining Current stubs and the dashed cloud lane actually run:
+the remaining Current stubs and the dashed cloud lane actually run; 12.0.0
+gave the two biggest crates a domain map and closed four named gaps:
 
-- **The worker is not a server of the product, and it is smaller.** 11.8.0
-  cut it from **28 routes to 19** by deleting nine that no caller anywhere
-  in the tree reached — route, implementation, allowlist entry and gateway
-  table together, with negative tests asserting the door now answers `404`
-  instead of forwarding. `/worker/parse` (binary upload / watched PDF) and
-  `/worker/render/*` (including the xlsx security export) stay on the
-  committed allowlist; nothing product-shaped and no KG write went back
-  into Python. A decoy-proven static gate fails the build if a source file
-  names a stranded worker path.
+- **The two largest crates are grouped by what a file is *for*.**
+  `lattice-agent` is six groups — `kernel` (the loop and every decision
+  that can refuse), `parse`, `content`, `tools`, `surface`, `prompts` —
+  under one rule: *the kernel decides, the surface carries*.
+  `lattice-platform` is seven domains — `workspaceos`, `toolsurface`,
+  `governance`, `adminops`, `knowledge`, `modelops`, `shell` — under
+  another: *this crate is the product's surface; it offers things, it does
+  not decide whether they are allowed and it does not own what is true.*
+  Both moves are `git mv` only, and both crates carry their own map
+  ([`rust/lattice-agent/ARCHITECTURE.md`](rust/lattice-agent/ARCHITECTURE.md),
+  [`rust/lattice-platform/ARCHITECTURE.md`](rust/lattice-platform/ARCHITECTURE.md)).
+  Each `src/lib.rs` ends with a compatibility map, so every pre-12.0.0
+  import path still resolves exactly as it was spelled.
+- **The worker is not a server of the product, and it is still small.**
+  11.8.0 cut it from **28 routes to 19** by deleting nine that no caller
+  anywhere in the tree reached — route, implementation, allowlist entry
+  and gateway table together, with negative tests asserting the door now
+  answers `404` instead of forwarding. 12.0.0 adds exactly one back:
+  **`POST /worker/vector/query`**, the HNSW sidecar that returns candidate
+  ids for the native exact rescore, bringing the allowlist to **20**.
+  `/worker/parse` (binary upload / watched PDF) and `/worker/render/*`
+  (including the xlsx security export) stay on the committed allowlist;
+  nothing product-shaped and no KG write went back into Python. A
+  decoy-proven static gate fails the build if a source file names a
+  stranded worker path.
+- **`POST /mcp` is a declared product operation.** It moved into the
+  mount table as a single JSON-RPC envelope operation, which puts it
+  inside the OpenAPI product contract instead of beside it. Because it is
+  natively mounted, it is answered in-process and never forwarded to the
+  worker. The door is **422 operations across 41 families** — 11.9.0's 420
+  plus `POST /mcp` and `POST /api/ingestion/folder/prune`.
 - **Hooks, sanitize, Self-Model, and `workspace_os.json` are native.**
   One `HooksStore` feeds `HookSink` on the loop. `sanitize_write_content`
   runs on the loop write and on `POST /tools/write_file`. Self-Model
   writes go through `GraphWriter`, not the retired `/worker/graph/mutate`.
   One `WorkspaceOsStore` (directory-keyed registry + ports) is the only
   document authority.
-- **Vault-watch is a poller, not a fixture.** Detection and native note
-  ingest are joined; a watched binary goes through `/worker/parse` and the
-  same enrich chain as upload. Chat `ingest_generated` is the same native
-  door, not a POST to a schema it never matched.
+- **Vault-watch is a poller, not a fixture — and since 12.0.0 it skips
+  what did not change.** Detection and native note ingest are joined; a
+  watched binary goes through `/worker/parse` and the same enrich chain as
+  upload. Chat `ingest_generated` is the same native door, not a POST to a
+  schema it never matched. A file whose fingerprint is unchanged is not
+  re-read, re-chunked or re-embedded, and a file that vanished is
+  **reported, never removed** — deleting a node is a product decision, so
+  it needs the explicit `POST /api/ingestion/folder/prune` door
+  (dry-run, then `confirm`).
+- **Restore is live.** `lattice_core::db::Store` carries a generation
+  epoch. A restore bumps it, every pooled connection opened under the old
+  generation is stale on its next checkout and is closed, and the next
+  read sees the restored bytes. Restarting the host after a restore is no
+  longer part of the procedure.
 - **The cloud lane is native, still dashed, and now wired.** Two
   independent gates still stand in front of it: the boundary dial must be
   `cloud_allowed`, and the sensitivity filter runs regardless. The
@@ -150,9 +185,12 @@ Key boundaries:
   chunk: `i18n/registry.ts` holds one shared table, `shell` registers eagerly
   (app frame, language switcher, generic `ui.*`), and `brain` / `workspace` /
   `onboarding` register themselves when the lazy chunk that needs them is
-  imported. That keeps the first-paint closure at 103 KiB gzip — measured by
+  imported. That keeps the first-paint closure at 104.2 KiB gzip — measured by
   `scripts/check_bundle_budget.mjs` against a 150 KiB budget — instead of
-  carrying ~3,000 lines of copy for routes the user has not opened.
+  carrying ~3,000 lines of copy for routes the user has not opened. 12.0.0
+  splits the Act and Brain sub-routes into their own lazy chunks and wraps
+  every route **and every heavy panel** in an `ErrorBoundary` with a 다시 시도
+  action, so one panel that throws costs its own card rather than the screen.
   `scripts/check_i18n_namespace_coverage.mjs` fails the build when a chunk
   reads a key whose namespace it never imports — otherwise `t()` silently
   returns the raw key and the UI renders an identifier instead of text.
@@ -169,36 +207,47 @@ Key boundaries:
   assertion before the router is built rather than as an axum panic inside a
   constructor.
 - `rust/lattice-platform` owns the product route families that are not
-  retrieval, ingest, chat or jobs: workspace and invitations, admin and the
-  security dashboard, features and funnel metrics, setup, review_queue and
-  change_proposals, automation and hooks (registry + `HookSink`), mcp
-  (streamable-HTTP JSON-RPC at `POST /mcp`),
-  marketplace and plugins, agent_registry and agents, tools (including
-  sanitize on `POST /tools/write_file`), permissions and permission_mode,
-  portability, network and network_boundary, realtime, project_sessions,
-  computer_use, voice, workflow_designer, models_catalog, static UI and the
-  page redirects. The xlsx security export posts to `/worker/render/xlsx`.
+  retrieval, ingest, chat or jobs, and since 12.0.0 they live in **seven
+  domains** rather than thirty-one flat modules:
+  `workspaceos/` (workspace, invitations, permissions, permission_mode,
+  features, project_sessions, realtime), `toolsurface/` (mcp — the
+  streamable-HTTP JSON-RPC server at `POST /mcp` — tools with sanitize on
+  `POST /tools/write_file`, plugins, marketplace, agents, agent_registry,
+  computer_use), `governance/` (review_queue, change_proposals, automation,
+  workflow_designer, hooks), `knowledge/` (portability, network,
+  network_boundary, voice), `modelops/` (models_catalog, setup),
+  `adminops/` (admin, security_dashboard, funnel_metrics) and `shell/`
+  (static UI and the page redirects). Four couplings cross a domain line and
+  each is named in the relevant `mod.rs`. The xlsx security export posts to
+  `/worker/render/xlsx`.
 - `rust/lattice-core` owns the store and — since 11.6.0 — `graph_write`, the
   knowledge-graph **write** engine: ingest doors, curation, provenance,
   taxonomy, the vector queue and the schema bootstrap. It is the single writer.
   11.7.0 added `delete_node` and `stamp_node_validity` as generic primitives
   (Self-Model uses them; they do not name it).
-- `rust/lattice-agent` owns the safety kernel and the loop: permission modes,
-  circuit breakers, the `run_command` validator, the sandbox, the native tool
-  handlers, `sanitize_write_content` (on the loop write and the tool),
-  `pydiff` (a port of CPython's `difflib` so the reviewer reads the
-  diff that will actually be applied), and `proposals::ProposalStore`, the port
-  through which a paused run stages into the Review Center's own document
-  (with an installed `DocumentWriter`, the same `WorkspaceOsStore` lock).
+- `rust/lattice-agent` owns the safety kernel and the loop, and since 12.0.0
+  says so in its layout: `kernel/` holds the loop, the permission modes, the
+  circuit breakers, the `run_command` validator, the profile dial and the
+  probe, plus `proposals::ProposalStore` (the port through which a paused run
+  stages into the Review Center's own document, with an installed
+  `DocumentWriter` over the same `WorkspaceOsStore` lock); `parse/` turns
+  untrusted model text into typed values; `content/` holds
+  `sanitize_write_content` and `pydiff` (a port of CPython's `difflib`, so
+  the reviewer reads the diff that will actually be applied); `tools/` holds
+  the sandbox, the native tool handlers and the one catalog; `surface/` is
+  HTTP in, HTTP out, plus the worker client; `prompts/` is the words used
+  when the caller supplies none. Arrows point down only — `kernel` never
+  imports `surface`, and `parse`/`content`/`tools` never import `kernel`.
 - `latticeai.worker_app` is the only application the Python package builds.
   `create_worker_app` is a seven-phase bootstrap (platform, config, identity,
   brain, domain, web, features) over a 47-field runtime context, and since
-  11.8.0 it serves **19** routes: `/agent/{llm,tool}`,
+  12.0.0 it serves **20** routes: `/agent/{llm,tool}`,
   `/worker/{llm/stream,sysinfo,embed,extract,parse,asr,
-  render/{docx,pdf,pptx,xlsx}}`, the model and engine catalog,
-  `GET /api/embeddings/status`, and `/health`. 11.9.0 left that count
-  alone and made `/worker/sysinfo` answer additive `capabilities`
-  (`pointer_tools`) and `python_version`. `create_app` no longer exists.
+  render/{docx,pdf,pptx,xlsx},vector/query}`, the model and engine catalog,
+  `GET /api/embeddings/status`, and `/health`. 11.9.0 made `/worker/sysinfo`
+  answer additive `capabilities` (`pointer_tools`) and `python_version`;
+  12.0.0 added `POST /worker/vector/query`, the ANN candidate fetch behind
+  the native exact rescore. `create_app` no longer exists.
 - `lattice_brain` is now the compute half of the Brain: the local embedding
   model, the multimodal fact extractors, and the text/extraction helpers. The
   graph store, conversations, storage engines, portability and the workflow
@@ -305,6 +354,86 @@ sequenceDiagram
   API-->>UI: Response, proof, and next actions
 ```
 
+## Knowledge Pipeline (12.0.0)
+
+What a file goes through on its way to being an answer. Three things on this
+path are new in 12.0.0 and each of them removes work rather than adding a
+stage: the fingerprint skip, the section tree, and the ANN candidate fetch in
+front of the exact rescore.
+
+```mermaid
+flowchart TB
+  file["File · folder · vault note · web page"]
+
+  subgraph ingest["lattice-ingest — capture"]
+    direction TB
+    fp{"fingerprint<br/>path + size + mtime<br/>(+ sha256 only if either moved)"}
+    skip["unchanged ⇒ <b>skip</b><br/>no read · no chunk · no embed"]
+    parse["parse<br/>text natively · binary via /worker/parse"]
+    chunk["typed chunking<br/>prose · plain · code — heading_path kept"]
+    sect["<b>section tree</b><br/>Document ←part_of— Section ←part_of— Section<br/>Section —has_chunk→ Chunk"]
+    fp -- "same" --> skip
+    fp -- "new or moved" --> parse --> chunk --> sect
+  end
+
+  subgraph extract["extraction"]
+    direction TB
+    ents["entities + relations"]
+    typed["directed typed edges<br/>PART_OF · CONTRADICTS produced, not just declared<br/>evidence classified (verb vs. co-occurrence)"]
+    ents --> typed
+  end
+
+  subgraph embedq["embedding"]
+    direction TB
+    detect["auto-detect: real model if one is downloaded<br/>else hash fallback — <b>labelled as fallback</b>"]
+    pre["embed <b>before</b> the write transaction<br/>drain ~66 → ~1,300 items/s"]
+    sched["adaptive drain scheduler<br/>lattice-jobs — backlog 991 in 15.3s"]
+    detect --> pre --> sched
+  end
+
+  writer["lattice-core::graph_write<br/><b>the single writer</b><br/>+ provenance (the fingerprint's home)"]
+  prune["POST /api/ingestion/folder/prune<br/>dry-run → confirm → delete_document_tree<br/>vanished files are reported, never auto-removed"]
+
+  subgraph search["lattice-retrieval — recall"]
+    direction TB
+    lex["lexical (FTS5 trigram)<br/>2-stage Korean josa stripping"]
+    vec{"vector"}
+    brute["brute — exact scan (<b>default</b>)"]
+    hnsw["hnsw+rescore — /worker/vector/query gives k*8 ids,<br/>Rust scores them with the same cosine<br/>failure ⇒ brute, with the reason"]
+    fuse["fuse · containment dedupe<br/>(vector identity filtered by model + dim)"]
+    gate["evidence gate<br/>a lexical hit alone is not grounding"]
+    vec --> brute
+    vec --> hnsw
+    lex --> fuse
+    brute --> fuse
+    hnsw --> fuse
+    fuse --> gate
+  end
+
+  answer["Answer with citations<br/>section-sourced where the document had headings"]
+
+  file --> fp
+  sect --> ents
+  typed --> writer
+  sect --> embedq
+  sched --> writer
+  writer --> search
+  writer -.-> prune
+  prune -.-> writer
+  gate --> answer
+
+  style skip stroke-dasharray: 5 5
+  style prune stroke-dasharray: 5 5
+```
+
+Two properties are worth stating in words. **The fingerprint has no table of
+its own** — it rides in `ingestion_provenance.metadata_json`, because the
+absolute path is already that row's `source_uri` and inventing a second
+registry of "files we have seen" is how two answers to one question start.
+And **nothing on the ingest path deletes**: a vanished file is counted and
+reported, and only the explicit prune door removes its subtree — through
+`delete_document_tree`, never `delete_node`, which leaves `PART_OF` dangling.
+
 ## Product Flow
 
 The current first-run and daily-use flow is:
@@ -404,15 +533,22 @@ Important expectations:
   exits without binding. The supervisor runs
   `python -m uvicorn latticeai.worker_app:create_worker_app --factory`.
 
-The 19 routes, by group:
+The 20 routes, by group:
 
 | Group | Routes |
 |---|---|
 | Agent seam (2) | `POST /agent/llm` · `POST /agent/tool` |
 | State seams (2) | `GET /worker/sysinfo` · `POST /worker/llm/stream` |
-| Compute seams (8) | `POST /worker/{embed,extract,parse,asr}` · `POST /worker/render/{docx,pdf,pptx,xlsx}` |
+| Compute seams (9) | `POST /worker/{embed,extract,parse,asr}` · `POST /worker/render/{docx,pdf,pptx,xlsx}` · `POST /worker/vector/query` |
 | Models + engines (5) | `GET /models` · `POST /models/load` · `DELETE /models/unload/{id}` · `POST /engines/{prepare-model,prepare-model/stream}` |
 | Status (2) | `GET /health` · `GET /api/embeddings/status` |
+
+`POST /worker/vector/query` is 12.0.0's one addition: with
+`LATTICEAI_VECTOR_INDEX=hnsw` the native search asks this route for `k * 8`
+candidate ids (capped at 200) and then scores those rows itself with the same
+cosine the brute path uses — approximate recall, exact ordering, reported as
+`hnsw+rescore`. Any failure falls back to the exact scan carrying its reason.
+The default is still `brute`, which never touches this route.
 
 **11.8.0 deleted nine routes** that no caller in the tree reached, and the
 groups above are what is left. The nine were `GET /api/embeddings/providers`,
@@ -680,9 +816,10 @@ move; the promise did.
 ## Working Order — what 11.9.0 closed
 
 11.8.0 took weight off the door. 11.9.0 made the remaining Current stubs and
-the half-wired lanes actually run. The door is unchanged — 420 operations /
-41 families, a 19-route worker — and the work is on the product surfaces
-that document already called Current.
+the half-wired lanes actually run. The door was unchanged in that release —
+420 operations / 41 families over a 19-route worker, the figures 12.0.0 grew
+to 422 and 20 — and the work was on the product surfaces that document
+already called Current.
 
 - **Thirteen documented-Current stubs now answer.** `/models/recommendations`
   is a native RAM/AS probe plus the worker catalog and a RAM-tier
@@ -717,8 +854,51 @@ that document already called Current.
   restored. Agent-loop *quality* on that 2B is gated honestly: it writes
   the requested file and can still fail the critic on the summary.
 
-What this release does not close is listed in Known Limitations and in
-[RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+What 11.9.0 did not close is listed in the section below, in Known
+Limitations, and in [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+
+## Open House — what 12.0.0 closed
+
+11.9.0 made the doors answer. 12.0.0 made the house readable and closed four
+gaps that release wrote down rather than fixed. The door grew by two
+operations (`POST /mcp`, `POST /api/ingestion/folder/prune`) and the worker
+by one (`POST /worker/vector/query`); nothing else about the topology moved.
+
+- **Two crates are grouped by purpose, with the map committed beside the
+  code.** `lattice-agent` is six groups over 43 moved files;
+  `lattice-platform` is seven domains over 100. Both are `git mv` only, both
+  keep a compatibility map at the end of `src/lib.rs`, and each group's
+  `mod.rs` states what belongs in it, what must never go in it, and its
+  invariants. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) is the contributor
+  path into that structure; [`docs/ROADMAP.md`](docs/ROADMAP.md) is the
+  prioritized list of what is still open.
+- **Four honest gaps closed.** Restore is live in-process through the store
+  generation epoch (no restart). `/setup/install` executes brew/pip/uv on
+  explicit per-item consent against a **server-derived allowlist** — a name
+  the plan did not produce is refused, and the default stays manual.
+  `POST /mcp` is a declared operation inside the OpenAPI contract and is
+  answered natively, never proxied. Pointer tools are declared as
+  `pip install "ltcai[pointer]"` instead of being an undocumented capability
+  a stock install silently lacks.
+- **Graph RAG got both halves.** Quality: two-stage Korean josa stripping
+  with an evidence gate, containment dedupe, directed typed edges
+  (`PART_OF` / `CONTRADICTS` now *produced*, evidence classified), a section
+  tree so a fact can name the heading it came from (549 of 555 triples carry
+  a section source in the measured run), and embedding auto-detection that
+  adopts a real downloaded model and labels the hash path as fallback.
+  Speed: unchanged reindex **33s → 0.26s** (waste ratio 1.00 → 0.00), first
+  index **25.8s → 7.2s**, drain **~66 → ~1,300 items/s** (embed moved ahead
+  of the write transaction), a 991-item backlog **40min → 15.3s**, HNSW
+  incremental append plus real search use, and vault-watch skipping
+  unchanged notes.
+- **The harness stopped requiring JSON of models that cannot produce it.**
+  `guided` is a third profile, chosen by a measured probe rather than a size
+  regex, with mid-run self-demotion downward only and one catalog covering
+  native + `mcp.*` + `skill.*`. A 0.5B model reached `DONE` in 3.9s with a
+  real file on disk.
+
+What 12.0.0 does not close is listed in Known Limitations and in
+[RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md).
 
 ## Brain Core
 
@@ -771,7 +951,7 @@ highest" (a `VectorIndex` implementation). Three ship:
 | --- | --- | --- | --- |
 | `brute` (default) | no | yes | nothing |
 | `quantized` | yes (int8 scores) | yes | nothing |
-| `hnsw` | yes | no | `pip install "ltcai[hnsw]"` |
+| `hnsw` | candidates only — **ordering is exact** | no | `pip install "ltcai[hnsw]"` in the worker |
 
 `LATTICEAI_VECTOR_INDEX` selects one. Two failure modes are made loud rather
 than silent: an unknown name and `hnsw` without the compiled extra both fall
@@ -781,14 +961,27 @@ backends set `approx: true`, which flows into `hybrid_search`'s `vector` block
 and into `context_quality` — but only when there is a caveat, so an exact
 complete scan leaves the four-key quality contract untouched.
 
+**12.0.0 made `hnsw` a search path rather than a benchmark.** The native
+search asks the worker sidecar (`POST /worker/vector/query`) for `k * 8`
+candidate ids, capped at 200, and then scores exactly those rows with the same
+cosine the brute path uses — so recall is approximate and *ordering is not*.
+The result names itself `hnsw+rescore`, and every failure mode (no sidecar, no
+extra installed, an empty answer) falls back to the exact scan carrying its
+reason instead of silently returning fewer hits. The sidecar also appends
+incrementally now, so a single write no longer invalidates the whole index.
+The default is still `brute`: exact, byte-compatible with every previous
+release, and the only backend that needs nothing installed anywhere.
+
 The exact scan feeds the index in fixed batches (`VECTOR_SCAN_BATCH`) so peak
 memory stays bounded; exhaustive backends score each batch independently, so
 the union is identical to one pass. The HNSW path is genuinely two-phase —
 ask the graph for ids, then read only those rows — which is where its speedup
 comes from, and it persists a `.hnsw` sidecar next to the brain database.
-That sidecar is a **derivative**: it is keyed by
-`model:dim:rows:newest-indexed_at`, so any write to `vector_embeddings`
-invalidates it, and deleting it costs only a rebuild. The built graph is also
+That sidecar is a **derivative** — deleting it costs only a rebuild. Through
+11.9.0 it was keyed by `model:dim:rows:newest-indexed_at`, so *any* write to
+`vector_embeddings` invalidated it and the next search paid a whole rebuild;
+12.0.0 appends new vectors into the existing index instead, so ordinary
+ingest no longer throws the index away. The built graph is also
 held on the store for the process's lifetime, because reading it back from
 disk costs about as much as the search it enables; the same fingerprint is
 what makes that cache safe.
@@ -1094,8 +1287,8 @@ estimates with figures.
 flowchart LR
   subgraph py["Python — the AI worker only"]
     direction TB
-    pyt["pytest<br/>1,168 tests"]
-    pycov["coverage<br/>measured 99.97% · <b>floor: lines 90</b><br/>branch gate removed in 11.8.0"]
+    pyt["pytest<br/>1287 passed, 3 skipped"]
+    pycov["coverage<br/><b>floor: lines 90</b><br/>branch gate removed in 11.8.0"]
     pymypy["mypy<br/>strict, whole package"]
     pyruff["ruff<br/>16 rule groups"]
     pyt --> pycov
@@ -1103,15 +1296,15 @@ flowchart LR
 
   subgraph rs["Rust — the product server"]
     direction TB
-    rst["cargo test<br/>1,917 tests"]
+    rst["cargo test<br/>90 suites / 2159 passed"]
     rsclippy["clippy --all-targets<br/><b>-D warnings</b>, no blanket allows"]
-    rsgold["goldens<br/>7 frozen families"]
+    rsgold["goldens<br/>7 frozen families<br/>same answers across the 12.0.0 regrouping"]
     rst --> rsgold
   end
 
   subgraph fe["Frontend"]
     direction TB
-    fet["vitest<br/>1,800 tests · 103 files"]
+    fet["vitest<br/>108 files / 1846 passed"]
     fecov["coverage<br/><b>100%</b> · thresholds gated"]
     fets["tsc --noEmit<br/>strict"]
     fet --> fecov
@@ -1119,9 +1312,10 @@ flowchart LR
 
   subgraph e2e["Whole-product"]
     direction TB
-    play["Playwright<br/>4 visual specs · 40 cases"]
-    readiness["product readiness<br/>COMPLETE 10 / 10"]
+    play["Playwright<br/>visual specs"]
+    readiness["product readiness<br/>COMPLETE"]
     smoke["release smoke<br/>5 artifacts"]
+    budget["bundle budget<br/><b>104.3 / 150 KiB</b>"]
   end
 
   gate{"CI gate"}
@@ -1135,17 +1329,26 @@ flowchart LR
   play --> gate
   readiness --> gate
   smoke --> gate
+  budget --> gate
 
   gate -- "blocks merge" --> main[("main")]
 ```
 
+Test counts move on every commit, so this diagram states the *gates* and
+leaves the counts to the release run that produces them; the figures for this
+release are in [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md) §게이트.
 Both coverage figures are enforced floors, but they are not the same floor.
 Frontend coverage has pinned 100% on all four vitest metrics since 10.10.0 and
 still does. **Python coverage moved in 11.8.0 from `fail_under = 100` on lines
-*and* branches to `fail_under = 90` on lines, with branch measurement off.**
-11.9.0's measured figure is **99.97%** — the gate still holds 90. The reasoned
+*and* branches to `fail_under = 90` on lines, with branch measurement off** —
+the enforced claim is the floor, not whatever the run measured. The reasoned
 `pragma: no cover` lines and the generic `TYPE_CHECKING` /
 `NotImplementedError` / `@abstractmethod` exclusions are unchanged.
+
+The 12.0.0 crate regrouping is held by the same wall: the frozen golden
+families and the contract tests answer identically before and after the moves,
+which is what makes "43 + 100 files moved, zero behaviour change" a checked
+statement rather than an intention.
 
 Two figures moved earlier for reasons worth recording:
 
@@ -1157,47 +1360,94 @@ Two figures moved earlier for reasons worth recording:
   vitest only reports files a test already imports, so a module with no test
   simply left the denominator.
 
-## Single-Agent Runtime Composition
+## Single-Agent Runtime Composition (12.0.0)
 
-The Discover→Plan→Implement→Verify loop is three modules, split by what each
-one is allowed to touch:
+The Discover→Plan→Implement→Verify loop is `lattice-agent`'s, and since 12.0.0
+the crate's layout states who may touch what. The kernel decides; the surface
+carries; the three groups underneath the kernel never import it back.
 
 ```
-core/agent_state.py     AgentState, AGENT_TERMINAL_STATES
-                        no imports from the other two — the shared vocabulary
-        ▲                                    ▲
-        │                                    │
-core/agent_helpers.py                core/agent/
-pure functions:                      the state machine:
- extract_action(_details)             AgentRunContext
- normalize_plan                       AgentDeps  (the ports)
- filter_learnings                     SingleAgentRuntime
- compact_transcript                          │
- files_written                               │ imports
- artifact_checklist                          ▼
- requirement_coverage                 core/agent_helpers.py
- format_* reporters
- TranscriptBudget, PhaseBudgets
-deterministic, no I/O
+surface/            HTTP in, HTTP out — and the client out to the worker
+   │                router · looproutes · runbody · worker
+   │  calls, never decides
+kernel/             the loop, and every decision that can refuse
+   │                agentloop/ (execution · guided · planning · verification ·
+   │                            fallback · gates · recovery · harness)
+   │                policy · mode · permission · breaker · governor · proposals
+   │                state · transcript · trace · plan · profile · probe · runs
+   ├── parse/       untrusted model text in, typed values out
+   │                action · channel · inference · pyjson · pyliteral · pystr
+   ├── content/     the bytes a run is about to write
+   │                sanitize/ · pydiff
+   └── tools/       what a tool does, and the ground it may do it on
+                    catalog · host · sandbox · command · exec · authorize · …
+
+prompts/            the words the model is given when the caller supplies none
 ```
 
-Two rules hold this shape:
+The dial is measured, not guessed, and one tail runs every mode:
 
-- **`agent_state.py` depends on neither sibling.** It exists because both need
-  the enum and neither can own it: if `AgentState` lived in `core/agent/`, the
-  helpers could not import it — `core/agent/` imports *them* — and would fall
-  back to comparing against the literal `"EXECUTING"`. A rename of an enum value
-  would then stop matching silently, with no failing test.
-- **`latticeai.core.agent` re-exports every moved name** and declares the set in
-  `__all__`. The import path callers have always used is the contract; the file
-  layout behind it is not. `chat_agent_http`, `chat_intents`, `computer_use`,
-  `run_store`, `tool_dispatch`, both bench scripts, and the agent test modules
-  import from `latticeai.core.agent` and are unaffected by the split.
+```mermaid
+flowchart TB
+  load(["model loads"])
+  probe["kernel/probe.rs — two fixed questions, once<br/>scored by <b>the loop's own parser</b><br/>cached per model id + crate version"]
+  pin{"LATTICEAI_AGENT_PROFILE pinned?"}
+  dial{"parse verdict"}
 
-Anything deterministic and I/O-free belongs in `agent_helpers.py`; anything that
-advances or inspects run state belongs in the `core/agent/` package (v11.3.0
-split it into `context` / `deps` / `planning` / `execution` / `verification` /
-`recovery` / `runtime`, all re-exported from `latticeai.core.agent`).
+  std["<b>standard</b><br/>clean JSON"]
+  cmp["<b>compact</b><br/>repaired — Completion::prefix forces the opening bytes<br/>(the JSON object's first key), so a preamble, a fence<br/>or a channel frame cannot be emitted at all"]
+  gui["<b>guided</b><br/>unparseable — <b>no JSON is asked for at all</b><br/>1) pick an action by number 2) one argument per turn<br/>the harness assembles the action struct"]
+
+  cat["<b>one catalog</b> — tools/catalog.rs<br/>native · mcp.&lt;tool&gt; · skill.&lt;name&gt;<br/>one numbered menu · one arg signature set<br/>a name the run governs takes the stricter native path"]
+  tail["Runtime::perform_action — <b>the same tail for every dial</b><br/>gate chain · loop guard · pre-write snapshot · sanitize_write_content"]
+  verify["verification — JSON verdict or a closed PASS/FAIL + one reason,<br/>judged by the same evidence and coverage gates<br/>unverifiable ⇒ NEEDS_REVIEW (fail-closed)"]
+  demote["<b>demote_to_guided</b> — downward only<br/>measured dial · not already guided · no execution evidence yet"]
+  hatch["fallback.rs — the plan's own non-write steps, then its files<br/>nothing invented: every name comes from this run's plan"]
+
+  load --> probe --> pin
+  pin -- "yes" --> tail
+  pin -- "no" --> dial
+  dial -- "clean" --> std
+  dial -- "repaired" --> cmp
+  dial -- "unparseable" --> gui
+  std --> cat
+  cmp --> cat
+  gui --> cat
+  cat --> tail --> verify
+  std -. "whole format budget spent,<br/>no execution evidence" .-> demote
+  cmp -. "same" .-> demote
+  demote --> gui
+  verify -. "same failure twice, or the model stopped steering" .-> hatch
+  hatch --> tail
+
+  style demote stroke-dasharray: 5 5
+  style hatch stroke-dasharray: 5 5
+```
+
+Three rules hold this shape:
+
+- **`guided` is not a shortcut past governance, only past the JSON.** The
+  micro-turns produce an action struct that the harness hands to
+  `Runtime::perform_action` — the same tail `standard` and `compact` run — so
+  the gate chain, the loop guard, the pre-write snapshot and
+  `sanitize_write_content` are identical. Verification gets the same
+  treatment: a closed `PASS`/`FAIL` plus one line of reason, judged by the
+  evidence and coverage gates a JSON verdict passes.
+- **Self-correction goes downward only.** A run measured `standard` or
+  `compact` that spends its whole format budget producing nothing demotes
+  itself to `guided` and finishes there. It never promotes, an injected dial
+  is never overridden, and a run with execution evidence is left alone.
+- **The loop refuses to act on its own words.** A `write_file` whose content
+  is the crate's own `WRITE_EXAMPLE_CONTENT` verbatim is recorded as
+  `COPIED_EXAMPLE` and written nowhere; a guided answer that opens with one of
+  our instruction lines has that line stripped; the critic's placeholder
+  reason is blanked rather than shown. Every comparison is against a constant
+  this crate owns, so none of them can reject a genuine answer.
+
+`src/lib.rs` ends with the compatibility map: every `lattice_agent::…` path
+that existed before the regrouping still resolves, spelled exactly as it was.
+New code inside the crate uses the real path (`crate::kernel::state`), because
+the aliases exist for the consumers, not for us.
 
 ### Agent-native workspace reorganization (11.1.0)
 
@@ -1500,13 +1750,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-11.9.0 exact artifact names:
+12.0.0 exact artifact names:
 
-- `dist/ltcai-11.9.0-py3-none-any.whl`
-- `dist/ltcai-11.9.0.tar.gz`
-- `ltcai-11.9.0.tgz`
-- `dist/ltcai-11.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.9.0_aarch64.dmg`
+- `dist/ltcai-12.0.0-py3-none-any.whl`
+- `dist/ltcai-12.0.0.tar.gz`
+- `ltcai-12.0.0.tgz`
+- `dist/ltcai-12.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.0.0_aarch64.dmg`
 
 The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
 far. First launch needs the usual Gatekeeper step.
@@ -1530,23 +1780,29 @@ Do not document or use wildcard artifact upload commands.
   request.
 - Cloud models, Docker, Brain Network, update checks and marketplace refreshes
   are not default local behavior. The optional PostgreSQL scale/migration
-  tooling is not part of the 11.9.0 worker. Cloud is opt-in: `api_key` is
+  tooling is not part of the 12.0.0 worker. Cloud is opt-in: `api_key` is
   mock-verified only; `cli_oauth` was live-checked at zero billing.
 - The **image and video multimodal functions have no HTTP door** since 11.8.0.
   They stay in Brain Core under unit test with the reason in the module header.
-- The **Python coverage gate is a line floor of 90** since 11.8.0; 11.9.0
-  measures 99.97%, but the enforced claim is the floor.
-- **2B agent-loop quality is gated honestly.** gemma-4-e2b writes the
-  requested file and can still fail the critic on the summary.
-- Restore in a long-lived process may serve pre-restore bytes until
-  connections recycle — restart after restore.
-- `/mcp` is a real JSON-RPC server and is outside the OpenAPI contract by
-  design. brew/pip setup items stay manual.
+- The **Python coverage gate is a line floor of 90** since 11.8.0. The
+  enforced claim is the floor, whatever a given run measures.
+- **Small-model *content* quality is gated honestly.** `guided` made the
+  mechanical half reliable — the requested file gets written and a 0.5B model
+  can reach `DONE` — but a weak summary still fails the critic and ends
+  `FAILED` / `NEEDS_REVIEW`. That is a visible failure, not a hidden one.
+- **Vector search still defaults to `brute`.** `hnsw+rescore` is opt-in
+  (`LATTICEAI_VECTOR_INDEX=hnsw`) and falls back to the exact scan with its
+  reason whenever the sidecar cannot answer.
+- **Watch never deletes.** A vanished file is reported; removing its subtree
+  needs the explicit `POST /api/ingestion/folder/prune` consent flow.
+- **The crate regrouping is a move, not a decoupling.** Seven domains and six
+  groups draw the lines; the four couplings that cross a domain line in
+  `lattice-platform` are named in the relevant `mod.rs` rather than resolved.
 - Honest leftovers carried forward — `open_keys` pending-only, no extraction
-  refiner, `delete_node` leaving `PART_OF`, review events silent without an
-  installed owner, KG-api ingest text-only, two store cycles per review
-  mutation — are listed in
-  [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+  refiner, review events silent without an installed owner, KG-api ingest
+  text-only, two store cycles per review mutation — are listed in
+  [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md), and the prioritized
+  view of what is still open is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 - Package registry publication is owner-run and can lag behind the GitHub
   release.
 - Local data protection depends on the user's machine, OS account, backups, and

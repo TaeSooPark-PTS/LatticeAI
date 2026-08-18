@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v11.9.0 Living Brain walkthrough](output/release/v11.9.0/gifs/v11.9.0-living-brain-walkthrough.gif)
+![v12.0.0 Living Brain walkthrough](output/release/v12.0.0/gifs/v12.0.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. The default is local. Cloud is optional — an
@@ -25,10 +25,10 @@ nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v11.9.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v11.9.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v11.9.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v11.9.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v11.9.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v11.9.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v11.9.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v11.9.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v12.0.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.0.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.0.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.0.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.0.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.0.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.0.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v12.0.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -40,6 +40,10 @@ nothing leaves your machine without explicit consent.
   when captured pages extracted poorly, and when the vector index is catching up.
 - **Safe automation** — automations are consent-first drafts; edits to existing
   content always pass through a reviewable proposal with a diff.
+- **Runs on the model your machine can hold** — the loop measures what a model
+  can actually produce and adapts: a model too small to emit a tool call is
+  walked through numbered choices instead, with the same permission gates,
+  snapshots and sanitizers as every other profile.
 
 매번 AI에게 프로젝트 맥락을 다시 설명하고 있다면, 지식이 여러 서비스에 흩어져
 있다면, 그 기억을 특정 회사가 아니라 내가 소유하고 싶다면 — Lattice AI가 그
@@ -59,49 +63,57 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v11.9.0/screenshots/01-login.png) | ![Model install](output/release/v11.9.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v11.9.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v12.0.0/screenshots/01-login.png) | ![Model install](output/release/v12.0.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.0.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v11.9.0/SCREENSHOT_INDEX.md](output/release/v11.9.0/SCREENSHOT_INDEX.md)
+[output/release/v12.0.0/SCREENSHOT_INDEX.md](output/release/v12.0.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **11.9.0 — Working Order**:
+The current release is **12.0.0 — Open House**:
 
-11.8.0 took weight off the door. This release puts the remaining Current
-stubs and the half-wired lanes in working order. The door is unchanged:
-`lattice-host` still serves **420 operations across 41 route families**,
-and the AI worker is still **19 routes** (`/worker/sysinfo` gained
-additive `capabilities` and `python_version`). Cloud is optional; the
-default is local; OAuth CLI (`agy` / `grok`) is supported.
+11.9.0 made the doors answer. This release opens the house: the two
+largest crates are grouped by what a file is *for*, the contributor
+documentation is a real path in, and four gaps the last release wrote
+down are closed. `lattice-host` serves **422 operations across 41 route
+families** (`POST /mcp` and the folder-prune route are the two new ones),
+and the AI worker is **20 routes** (`POST /worker/vector/query` is the
+one addition). Cloud is still optional and the default is still local.
 
-- **Thirteen documented-Current stubs now answer.** Model
-  recommendations probe RAM and the worker catalog. Setup scan/auto are
-  real probes; install is real-or-manual (brew/pip stay manual).
-  Computer-use status reads worker capabilities. `/agent/eval` is a
-  deterministic skill eval. `/agents/api/run` is a live single-agent
-  pass. Automation mines `conversation_messages`. Workflow run is a
-  per-step executor; `build`/`deploy_project` run governed scripts.
-- **Hybrid cloud is wired.** ReviewSink and a shape-only egress audit
-  are bound in production. Dual credentials: `api_key` (mock-verified
-  only) and `cli_oauth` (live OAuth E2E at zero billing). Escalation is
-  `auto` / `manual` / `always`; `local_only` on the request always wins.
-- **MCP is a real JSON-RPC server** at `POST /mcp`. Chat file generation
-  — the v9.2.0 headline deleted in the 11.6.0 port — is restored. The
-  8GB-tier default (gemma-4-e2b) actually runs.
+- **Complexity management first.** `lattice-agent` is six groups —
+  `kernel` (the loop and every decision that can refuse), `parse`,
+  `content`, `tools`, `surface`, `prompts` — and `lattice-platform` is
+  seven domains. Every move is a rename, so the goldens answer
+  identically; each crate carries its own `ARCHITECTURE.md`, and
+  `docs/DEVELOPMENT.md` and the new `docs/ROADMAP.md` are the way in.
+- **Small models become agents.** A measured probe (not a size regex)
+  picks the profile, and the `guided` profile stops asking for JSON at
+  all: pick an action by number, then one argument per turn, and the
+  harness assembles the call. A 0.5B model finished a real file in 3.9s.
+  The same gates, snapshots and sanitizers run on every profile.
+- **Remembering got faster and more careful.** Re-indexing an unchanged
+  folder went **33s → 0.26s**, a 991-item embedding backlog went 40
+  minutes → 15.3s, and a document's own section outline is now in the
+  graph, so an answer can name the heading it came from. Korean queries
+  strip their particles properly, and deleted files get a **「삭제된 파일
+  정리」** button instead of quietly lingering as memory.
+- **Four honest gaps closed.** Restore takes effect without a restart,
+  `/setup/install` really installs on per-item consent, `POST /mcp` is
+  inside the OpenAPI contract, and pointer tools are declared as
+  `pip install "ltcai[pointer]"`.
 
-What this release does not close — 2B agent-run quality, the mock-only
-`api_key` path, restore needing a restart, brew/pip staying manual,
-`/mcp` outside the OpenAPI contract, the ad-hoc-signed dmg — is listed
-in [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+What this release does not close — small-model *content* quality, the
+mock-only `api_key` path, `brute` still being the search default, watch
+never deleting on its own, the ad-hoc-signed dmg — is listed in
+[RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md).
 
-Expected artifacts for 11.9.0 release must use exact filenames:
+Expected artifacts for 12.0.0 release must use exact filenames:
 
-- `dist/ltcai-11.9.0-py3-none-any.whl`
-- `dist/ltcai-11.9.0.tar.gz`
-- `ltcai-11.9.0.tgz`
-- `dist/ltcai-11.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_11.9.0_aarch64.dmg`
+- `dist/ltcai-12.0.0-py3-none-any.whl`
+- `dist/ltcai-12.0.0.tar.gz`
+- `ltcai-12.0.0.tgz`
+- `dist/ltcai-12.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.0.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -120,14 +132,17 @@ and downloads, Brain Network, and update checks are opt-in.
 See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the developer workflow
 (`npm start` / `bin/ltcai.js` is the product; `npm run dev` is the
-19-route worker). Validation via `npm run lint`, `npm run test:unit`,
-`npm run test:visual`.
+20-route worker). Each of the two largest crates carries its own domain
+map — [rust/lattice-agent/ARCHITECTURE.md](rust/lattice-agent/ARCHITECTURE.md)
+and [rust/lattice-platform/ARCHITECTURE.md](rust/lattice-platform/ARCHITECTURE.md)
+— and open gaps are tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
+Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
 
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
 - SQLite is the live local Brain store. The optional PostgreSQL/pgvector
-  migration tooling is not part of the 11.9.0 worker.
+  migration tooling is not part of the 12.0.0 worker.
 - Docker, model downloads, cloud model calls, Brain Network, and update checks
   require explicit user action. Cloud is optional: `cli_oauth` (`agy` /
   `grok`) was live-checked at zero billing; the `api_key` path is
@@ -148,21 +163,26 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
   built. The observation code stays in Brain Core under unit test, and its
   module header says so.
 - The Python coverage gate is a **line floor of 90** since 11.8.0 (the
-  100%-lines-and-branches gate was removed). 11.9.0 measures 99.97%; the
-  enforced floor is the smaller claim.
-- **2B agent-run quality is gated honestly.** gemma-4-e2b writes the
-  requested file and can still fail the critic on the summary.
-- Restore in a long-lived process may serve pre-restore bytes until
-  connections recycle — restart after restore. brew/pip setup items stay
-  manual. `/mcp` is a real JSON-RPC server and is outside the OpenAPI
-  contract by design.
+  100%-lines-and-branches gate was removed). The enforced claim is the
+  floor, not whatever a given run measures.
+- **Small-model *content* quality is gated honestly.** With the `guided`
+  profile even a 0.5B model writes the requested file and reaches DONE;
+  a weak summary still fails the critic and the run ends
+  FAILED/NEEDS_REVIEW rather than claiming success.
+- Vector search still defaults to `brute` — exact and byte-compatible.
+  `hnsw+rescore` is real but opt-in, and falls back to the exact scan
+  with its reason when the sidecar cannot answer.
+- Watch never deletes on its own: a vanished file is reported, and
+  cleanup runs only through the confirmed folder-prune flow.
 - The macOS dmg is ad-hoc signed — effectively unsigned — so first launch
   needs the usual Gatekeeper step.
-- Pointer-control tools still execute in the worker. Remaining honest gaps
-  (`open_keys` pending-only, no Self-Model refiner, `PART_OF` left on
-  delete, review events silent without an owner, KG-api ingest text-only,
-  two store cycles per review mutation) are listed with their reasons in
-  [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+- Pointer-control tools execute in the worker and are installed with
+  `pip install "ltcai[pointer]"`. Remaining honest gaps (`open_keys`
+  pending-only, no Self-Model refiner, `delete_node` leaving `PART_OF`,
+  review events silent without an owner, KG-api ingest text-only, two
+  store cycles per review mutation) are listed with their reasons in
+  [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md) and prioritized in
+  [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Release History
 
@@ -173,6 +193,7 @@ same boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.
 
 | Version | Theme |
 | --- | --- |
+| 12.0.0 | Open House |
 | 11.9.0 | Working Order |
 | 11.8.0 | Travel Light |
 | 11.7.0 | Clean Sweep |

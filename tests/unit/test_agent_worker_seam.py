@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 
 from latticeai.api.agent_worker_seam import (
     MAX_MAX_TOKENS,
+    MAX_PREFIX_CHARS,
     MAX_TEMPERATURE,
     SEAM_ENV_VAR,
     SEAM_RATE_BUCKET,
@@ -55,6 +56,8 @@ class FakeRouter:
         max_tokens: int = 4096,
         temperature: float = 0.2,
         stop: Optional[list] = None,
+        prefix: Optional[str] = None,
+        cite_sources: bool = True,
     ) -> str:
         self.calls.append({
             "model_id": model_id,
@@ -63,6 +66,8 @@ class FakeRouter:
             "max_tokens": max_tokens,
             "temperature": temperature,
             "stop": stop,
+            "prefix": prefix,
+            "cite_sources": cite_sources,
         })
         return self.text
 
@@ -218,7 +223,43 @@ def test_llm_generates_once_and_returns_only_the_text(seam_off):
         "max_tokens": 256,
         "temperature": 0.7,
         "stop": None,
+        "prefix": None,
+        # The seam's ``context`` is the caller's whole prompt, never a corpus,
+        # so the citation mandate is never appended to it (v12.0.0). Small
+        # models obey it and answer tool calls with ``[1] …``.
+        "cite_sources": False,
     }]
+
+
+def test_llm_forwards_a_forced_prefix_and_an_omitted_one_is_none(seam_off):
+    """v12.0.0: the cheapest structural guarantee the seam offers.
+
+    A model whose reply is *forced* to begin ``{"thoughts": "`` cannot open
+    with a markdown fence, a ``<|channel|>`` frame or a paragraph of
+    enthusiasm — which is most of what the repair chain exists to undo.
+    """
+    router = FakeRouter()
+    client = _client(model_router=router)
+
+    body = {"message": "m", "prefix": '{"thoughts": "'}
+    assert client.post("/agent/llm", json=body).status_code == 200
+    assert router.calls[-1]["prefix"] == '{"thoughts": "'
+
+    assert client.post("/agent/llm", json={"message": "m"}).status_code == 200
+    assert router.calls[-1]["prefix"] is None
+    # An empty string is not a prefix, the same rule ``stop`` follows.
+    assert client.post("/agent/llm", json={"message": "m", "prefix": ""}).status_code == 200
+    assert router.calls[-1]["prefix"] is None
+
+
+def test_a_prefix_longer_than_the_ceiling_is_a_422(seam_off):
+    """It is prepended to the prompt, so an unbounded prefix is an unbounded
+    prompt on the single MLX executor."""
+    client = _client()
+    body = {"message": "m", "prefix": "x" * (MAX_PREFIX_CHARS + 1)}
+    assert client.post("/agent/llm", json=body).status_code == 422
+    ok = {"message": "m", "prefix": "x" * MAX_PREFIX_CHARS}
+    assert client.post("/agent/llm", json=ok).status_code == 200
 
 
 def test_llm_forwards_stop_strings_and_an_omitted_list_is_no_stop(seam_off):

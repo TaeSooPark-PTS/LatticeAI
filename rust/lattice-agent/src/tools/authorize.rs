@@ -12,8 +12,8 @@
 //! default, `"user"`, so an unwired host is as restrictive as an unconfigured
 //! `ToolDispatchService`, never more permissive.
 
-use crate::policy::ToolPolicy;
-use crate::sandbox::ToolError;
+use crate::kernel::policy::ToolPolicy;
+use crate::tools::sandbox::ToolError;
 
 /// `user` is the fallback role and shares `member`'s capabilities.
 const DEFAULT_ROLE: &str = "user";

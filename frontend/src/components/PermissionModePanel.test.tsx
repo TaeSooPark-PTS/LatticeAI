@@ -129,6 +129,26 @@ describe("PermissionModePanel", () => {
     const row = screen.getByTestId("permission-mode-option-supervised");
     expect(row.textContent).toContain("감독");
     expect(row.textContent).toContain("이 클라이언트가 모르는 모드.");
+
+    await userEvent.click(row);
+    expect(screen.getByTestId("permission-mode-preview-limit").textContent).toContain(
+      "카탈로그 설명만",
+    );
+  });
+
+  it("shows a catalog comparison before apply, and a limit note for an unknown mode", async () => {
+    mockGet("strict");
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("permission-mode-panel")).toBeTruthy());
+    expect(screen.queryByTestId("permission-mode-preview")).toBeNull();
+
+    await userEvent.click(screen.getByTestId("permission-mode-option-trusted"));
+    const preview = screen.getByTestId("permission-mode-preview");
+    expect(preview.textContent).toContain("바꾸면 달라지는 점");
+    expect(preview.textContent).toContain("먼저 물어보기");
+    expect(preview.textContent).toContain("웬만하면 알아서");
+    expect(screen.getByTestId("permission-mode-preview-row-workspace_writes_auto").textContent).toContain("알아서");
+    expect(screen.queryByTestId("permission-mode-preview-limit")).toBeNull();
   });
 
   it("keeps apply disabled until a different mode is chosen", async () => {

@@ -18,7 +18,7 @@
 //! a bare null (the 9.9.7 rule that a "—" always states its reason).
 
 use lattice_auth::OrderedMap;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::memory_api::kg;
 use crate::memory_api::shared::BrainState;
@@ -389,23 +389,68 @@ pub async fn vector_freshness(state: &BrainState) -> OrderedMap {
     }
     let db_path = state.store().path().to_string_lossy().into_owned();
     let measured = state
-        .read(move |conn| {
-            Ok(kg::index_status(conn, &db_path).ok().map(|status| {
-                let summary = kg::vector_freshness_summary(conn, &status);
-                let breakdown = kg::vector_freshness_breakdown(conn, &status, &summary);
-                (summary, breakdown)
-            }))
+        .read({
+            let db_path = db_path.clone();
+            move |conn| {
+                Ok(kg::index_status(conn, &db_path).ok().map(|status| {
+                    let summary = kg::vector_freshness_summary(conn, &status);
+                    let breakdown = kg::vector_freshness_breakdown(conn, &status, &summary);
+                    let sidecar = sidecar_status(conn, &db_path);
+                    (summary, breakdown, sidecar)
+                }))
+            }
         })
         .await
         .unwrap_or(None);
-    let Some((summary, breakdown)) = measured else {
+    let Some((summary, breakdown, sidecar)) = measured else {
         // Python renders the exception text here; the exception is the store's,
         // so the sentence names the failure without claiming Python's wording.
         return freshness_unavailable("vector freshness read failed: knowledge store unavailable");
     };
     let mut payload = contract_of(&summary);
     payload.insert("breakdown", json_of(&breakdown));
+    payload.insert("sidecar", sidecar);
     payload
+}
+
+fn sidecar_status(conn: &rusqlite::Connection, db_path: &str) -> Value {
+    let model = lattice_core::LocalEmbeddingModel::from_env();
+    let meta_path = std::path::Path::new(db_path).with_extension("hnsw.meta.json");
+    let size = std::fs::read_to_string(meta_path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+        .and_then(|meta| {
+            meta.get("labels")
+                .and_then(Value::as_array)
+                .map(|labels| labels.len() as i64)
+        });
+    let store_size: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=?",
+            rusqlite::params![model.model_id(), model.dim() as i64],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+    match size {
+        None => json!({
+            "index": "none",
+            "size": 0,
+            "store_size": store_size,
+            "stale": store_size > 0,
+            "detail": "no HNSW sidecar next to the brain database",
+        }),
+        Some(size) => json!({
+            "index": "hnsw",
+            "size": size,
+            "store_size": store_size,
+            "stale": size != store_size,
+            "detail": if size != store_size {
+                format!("sidecar size {size} != store count {store_size}")
+            } else {
+                "sidecar matches the vector store".into()
+            },
+        }),
+    }
 }
 
 /// `_unavailable(detail)` — the honest zero, never a fake reading.

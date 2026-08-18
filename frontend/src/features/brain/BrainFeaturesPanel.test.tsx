@@ -208,6 +208,8 @@ describe("BrainFeaturesPanel writes", () => {
     await screen.findByTestId("feature-switch-brain_network");
 
     fireEvent.click(sw("brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-ack-brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-confirm-brain_network"));
 
     expect(await screen.findByText("그런 기능은 없습니다")).toBeTruthy();
     await waitFor(() => expect(sw("brain_network")).toHaveAttribute("aria-checked", "false"));
@@ -221,6 +223,8 @@ describe("BrainFeaturesPanel writes", () => {
     await screen.findByTestId("feature-switch-brain_network");
 
     fireEvent.click(sw("brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-ack-brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-confirm-brain_network"));
 
     expect(await screen.findByText(t("ko", "brain.features.failed"))).toBeTruthy();
     await waitFor(() => expect(sw("brain_network")).toHaveAttribute("aria-checked", "false"));
@@ -231,6 +235,8 @@ describe("BrainFeaturesPanel writes", () => {
     await screen.findByTestId("feature-switch-brain_network");
 
     fireEvent.click(sw("brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-ack-brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-confirm-brain_network"));
 
     expect(await screen.findByText(t("ko", "brain.features.failed"))).toBeTruthy();
     expect(sw("brain_network")).toHaveAttribute("aria-checked", "false");
@@ -270,6 +276,10 @@ describe("BrainFeaturesPanel writes", () => {
     renderPanel({ setFeature });
     await screen.findByTestId("feature-switch-allow_multimodal");
 
+    // Open the risk preview first so we can try to confirm it while busy.
+    fireEvent.click(sw("brain_network"));
+    expect(screen.getByTestId("feature-preview-brain_network")).toBeTruthy();
+
     fireEvent.click(sw("allow_multimodal"));
     await waitFor(() => expect(panel()).toHaveAttribute("aria-busy", "true"));
     expect(setFeature).toHaveBeenCalledTimes(1);
@@ -278,8 +288,10 @@ describe("BrainFeaturesPanel writes", () => {
     // `act` flush is what makes the *negative* assertion real: react-query
     // reaches `mutationFn` a few microtasks after the click, so draining them
     // is the difference between "was ignored" and "had not started yet".
-    fireEvent.click(sw("brain_network"));
+    fireEvent.click(sw("vault_watch"));
     fireEvent.click(screen.getByTestId("feature-choice-vector_backend-quantized"));
+    fireEvent.click(screen.getByTestId("feature-preview-ack-brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-confirm-brain_network"));
     await act(async () => {});
     expect(setFeature).toHaveBeenCalledTimes(1);
     // Not even optimistically: `onMutate` runs before the request, so a switch
@@ -297,10 +309,62 @@ describe("BrainFeaturesPanel writes", () => {
 
     settle(ok(toggle({ current: true })));
 
-    // Disarmed: the next move is accepted.
+    // Disarmed: the next move is accepted. Risk-carrying switches still open
+    // the preview first — confirming it is what sends the write.
     await waitFor(() => expect(panel()).toHaveAttribute("aria-busy", "false"));
     fireEvent.click(sw("brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-ack-brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-confirm-brain_network"));
     await waitFor(() => expect(setFeature).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows a catalog preview and requires an ack before enabling a risk-carrying switch", async () => {
+    const setFeature = vi.fn(() => Promise.resolve(ok(toggle({ id: "brain_network", current: true }))));
+    renderPanel({ setFeature });
+    await screen.findByTestId("feature-switch-brain_network");
+
+    fireEvent.click(sw("brain_network"));
+    expect(setFeature).not.toHaveBeenCalled();
+    expect(screen.getByTestId("feature-preview-brain_network").textContent).toContain("켜면 이렇게 달라져요");
+    expect(sw("brain_network")).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(screen.getByTestId("feature-preview-confirm-brain_network"));
+    expect(setFeature).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("feature-preview-ack-brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-confirm-brain_network"));
+    await waitFor(() => expect(setFeature).toHaveBeenCalledWith("brain_network", true));
+    await waitFor(() => expect(document.activeElement).toBe(sw("brain_network")));
+  });
+
+  it("cancels a pending enable without writing", async () => {
+    const setFeature = vi.fn(() => Promise.resolve(ok(toggle({ id: "brain_network" }))));
+    renderPanel({ setFeature });
+    await screen.findByTestId("feature-switch-brain_network");
+
+    fireEvent.click(sw("brain_network"));
+    fireEvent.click(screen.getByTestId("feature-preview-cancel-brain_network"));
+    expect(screen.queryByTestId("feature-preview-brain_network")).toBeNull();
+    expect(setFeature).not.toHaveBeenCalled();
+  });
+
+  it("turns a risk-carrying switch off without a preview", async () => {
+    const setFeature = vi.fn(() => Promise.resolve(ok(toggle({ id: "brain_network", current: false }))));
+    const onCatalog = {
+      ...CATALOG,
+      features: CATALOG.features.map((feature) =>
+        feature.id === "brain_network" ? { ...feature, current: true } : feature,
+      ),
+    };
+    renderPanel({
+      features: () => Promise.resolve(ok(onCatalog)),
+      setFeature,
+    });
+    await screen.findByTestId("feature-switch-brain_network");
+
+    fireEvent.click(sw("brain_network"));
+    await waitFor(() => expect(setFeature).toHaveBeenCalledWith("brain_network", false));
+    expect(screen.queryByTestId("feature-preview-brain_network")).toBeNull();
   });
 
   it("turns an on switch back off", async () => {

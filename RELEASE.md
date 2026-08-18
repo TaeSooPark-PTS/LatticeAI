@@ -13,6 +13,73 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.0.0 — Open House (2026-08-18)
+
+집을 정리해 손님을 들이는 릴리스. 가장 큰 두 크레이트를 도메인으로 나누고
+(전부 `git mv`, 동작 변화 0), 처음 온 사람이 읽을 문서를 다시 썼으며,
+11.9.0이 정직하게 적어 둔 갭 네 개를 닫았다. 문은 네이티브 **422
+오퍼레이션 / 41 패밀리**(`POST /mcp` + 폴더 정리 라우트 가산), 워커는
+**20 라우트**(`POST /worker/vector/query` 가산).
+
+- **복잡도 관리(소유자 1순위)**: `lattice-agent` 43파일이
+  `kernel`/`parse`/`content`/`tools`/`surface`/`prompts` 여섯 그룹으로,
+  `lattice-platform` 31개 평면 모듈이 `workspaceos`/`toolsurface`/
+  `governance`/`adminops`/`knowledge`/`modelops`/`shell` 일곱 도메인으로
+  (100건 `git mv`). 두 크레이트 모두 크레이트 로컬 `ARCHITECTURE.md`를
+  싣고, 각 그룹 `mod.rs`가 무엇이 속하고 무엇이 절대 들어가면 안 되는지와
+  불변식을 적으며, 각 `src/lib.rs`가 호환 맵으로 끝나 기존 임포트 경로가
+  전부 그대로 해석된다. `docs/DEVELOPMENT.md`는 기여자 온보딩(10분
+  퀵스타트 + 어디에-무엇을 표 + 게이트 안내)으로 재작성,
+  `docs/ROADMAP.md` 신설(우선순위 있는 갭 목록).
+- **정직한 갭 4종 마감**: 복원이 스토어 세대(generation) 에폭으로
+  인프로세스 즉시 반영(재시작 불필요) · `/setup/install`이 **서버가
+  도출한 allowlist**의 항목에 한해 명시적 동의로 brew/pip/uv를 실행
+  (기본은 여전히 수동) · `POST /mcp`가 OpenAPI 계약 안으로(단일 JSON-RPC
+  봉투 오퍼레이션, 네이티브 마운트이므로 워커로 프록시되지 않음) · 포인터 도구가
+  `pip install "ltcai[pointer]"`로 선언됨.
+- **그래프 RAG 품질**: 한국어 2단계 조사 스트리핑 + 근거 게이트, 포함관계
+  중복 제거, 방향 있는 타입드 엣지(`PART_OF`·`CONTRADICTS`를 실제로
+  생산, 근거 분류), 섹션 트리(`Document ←PART_OF— Section —HAS_CHUNK→
+  Chunk`, 트리플 555개 중 549개가 섹션 출처 보유), 임베딩 자동 감지
+  (실모델 있으면 채택, 해시는 폴백이라고 표기, 벡터 정체성 `(model,dim)`
+  필터 검증).
+- **그래프 RAG 속도**: 무변경 재인덱스 33s → **0.26s**(낭비율 1.00 →
+  0.00, 핑거프린트는 `ingestion_provenance`에 정착) · 첫 인덱싱 25.8s →
+  7.2s · 드레인 ~66 → ~1,300 items/s(임베드를 트랜잭션 앞으로) · 백로그
+  991건 40분 → 15.3초(적응형 스케줄러) · HNSW 증분 append + 검색 실사용
+  (`LATTICEAI_VECTOR_INDEX=hnsw` → 워커 사이드카 후보 + Rust 정확 재스코어
+  `hnsw+rescore`, 실패 시 사유를 실은 폴백; **기본은 여전히 brute**) ·
+  vault-watch diff 스킵 · 삭제 파일 정리(`POST /api/ingestion/folder/prune`
+  dry-run/confirm, 「삭제된 파일 정리 (N)」 카드, `delete_document_tree`로
+  댕글링 0).
+- **범용 소형모델 하네스(모델 불문, per-model 핵 금지)**: GUIDED 모드가
+  JSON 요구 자체를 제거(번호 메뉴 → 인자 한 개씩 → 하네스가 액션 조립,
+  꼬리는 모든 모드와 동일한 `perform_action`) · 측정 기반 프로브가
+  standard/compact/guided를 고르고 모델 id + 크레이트 버전으로 캐시 ·
+  미드런 하향 자기강등(위로는 절대 안 감) · 통합 카탈로그(native +
+  `mcp.*` + `skill.*` 한 메뉴, mcp는 `POST /mcp`와 같은 거버넌스) ·
+  시임 prefix 강제 + stop. Qwen **0.5B가 guided로 DONE**(3.9초, 실파일).
+  모델 매트릭스 최종 수치는 릴리스 시점 `MATRIX_TABLE` 기준.
+- **프론트**: ErrorBoundary 전면(라우트 + 헤비 패널, 「다시 시도」),
+  Act/Brain 서브라우트 lazy 분할, 프리뷰 패턴 확장(권한 모드 diff
+  프리뷰, 위험 기능 토글 ack), 번들 **104.2 / 150 KiB**.
+- **고쳐진 기존 버그**: RAG 인용 지시가 에이전트 프롬프트로 새던 것,
+  모델 로딩 이름 로스터 게이트(Qwen AWQ 로드 불가였음), 베낄 수 있는
+  워크드 예제(`COPIED_EXAMPLE` fail-closed), `<|channel>` 한-파이프
+  제어 프레임 누수.
+- **정직한 고지**: 작은 모델의 *내용* 품질은 fail-closed 게이트가 잡는다
+  (기계적 실행은 안정) · `api_key` 클라우드 경로는 여전히 모의 검증만
+  (과금 0 정책) · DMG는 ad-hoc 서명 · 검색 기본은 brute(hnsw는 opt-in) ·
+  watch는 자동 삭제하지 않음 · 크레이트 재구조는 이동이지 결합 해소가
+  아님.
+
+빌드 산출물은 `dist/ltcai-12.0.0-py3-none-any.whl`,
+`dist/ltcai-12.0.0.tar.gz`, `ltcai-12.0.0.tgz`, `dist/ltcai-12.0.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.0.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
+상세: [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md)
+
 ## v11.9.0 — Working Order (2026-08-17)
 
 문서에만 있던 13개 Current 스텁을 실동작으로 올리고, 라이브 감사에서 깨진

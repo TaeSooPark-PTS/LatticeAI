@@ -8,9 +8,9 @@
 
 use serde_json::{json, Map, Value};
 
-use crate::sandbox::{resolve_soft, ToolError};
 use crate::tools::args;
 use crate::tools::files::{file_size, io_error};
+use crate::tools::sandbox::{resolve_soft, ToolError};
 
 /// `LOCAL_MAX_FILE_BYTES` — 2 MB, ten times the workspace cap.
 pub const LOCAL_MAX_FILE_BYTES: u64 = 2_000_000;
@@ -93,7 +93,7 @@ fn permission_error(error: std::io::Error) -> ToolError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::policy::default_blocked_write_prefixes;
+    use crate::kernel::policy::default_blocked_write_prefixes;
 
     fn args(value: Value) -> Map<String, Value> {
         value.as_object().expect("object").clone()

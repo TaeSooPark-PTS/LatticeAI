@@ -59,12 +59,13 @@ def test_the_keep_worker_surface_is_the_remaining_compute_and_status_routes():
     # seam (2): proposal state and the history chain are both native now.
     # v11.8.0 retired the nine routes with no caller anywhere in the tree:
     # eight product ones (17 → 9) and POST /worker/multimodal/describe (9 → 8).
+    # v12.0.0 added POST /worker/vector/query (8 → 9 compute; 19 → 20 total).
     assert len(WORKER_ROUTES) == 9
     assert len(set(WORKER_ROUTES)) == 9
     assert len(GRAPH_WRITER_ROUTES) == 0
     assert len(WORKER_SEAM_ROUTES) == 2
-    assert len(WORKER_COMPUTE_ROUTES) == 8
-    assert len(worker_route_keys()) == 19
+    assert len(WORKER_COMPUTE_ROUTES) == 9
+    assert len(worker_route_keys()) == 20
 
 
 def test_the_new_seams_are_absent_from_the_committed_product_contract():

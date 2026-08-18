@@ -14,6 +14,7 @@ import { navigateHash } from "@/features/brain/navigation";
 import { clamp } from "@/lib/utils";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
 import { CommandPaletteHost } from "@/features/command/CommandPaletteHost";
+import { LazyRoute } from "@/components/ErrorBoundary";
 
 // Heavy first-run onboarding and the conversation home each carry large subtrees
 // (setup flow, chat panels, markdown, memory rings). They are code-split so the
@@ -47,9 +48,9 @@ export default function App() {
 
   if (!flowComplete) {
     return (
-      <React.Suspense fallback={<PageLoader language={language} />}>
+      <LazyRoute language={language} resetKey="onboarding" fallback={<PageLoader language={language} />}>
         <ProductFlow onComplete={() => setFlowComplete(true)} />
-      </React.Suspense>
+      </LazyRoute>
     );
   }
 
@@ -59,56 +60,56 @@ export default function App() {
       <CoreServiceUnavailableBanner />
       <CommandPaletteHost language={language} />
       {rawRoute.startsWith("/admin") ? (
-        <React.Suspense fallback={<PageLoader language={language} />}>
+        <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
           <AdminConsole onBack={() => navigateHash("/brain")} />
-        </React.Suspense>
+        </LazyRoute>
       ) : parsed.primary === "act" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <ActPage initialTab={parsed.tab} />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       ) : parsed.primary === "capture" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <CapturePage initialTab={parsed.tab} />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       ) : parsed.primary === "chronicle" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <ChroniclePage />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       ) : parsed.primary === "library" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <LibraryPage initialTab={parsed.tab} />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       ) : parsed.primary === "system" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <SystemPage initialTab={parsed.tab} />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       ) : parsed.primary === "memory" ? (
         <BrainShell active="memory">
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <BrainPage initialTab="memory" />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       ) : parsed.primary === "brain" && parsed.tab && parsed.tab !== "conversation" ? (
         <BrainShell active={parsed.tab === "graph" || parsed.tab === "knowledge" || parsed.tab === "memory" ? "memory" : "brain"}>
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <BrainPage initialTab={parsed.tab} />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       ) : (
         <BrainShell active="brain" contentOwnsMain>
-          <React.Suspense fallback={<PageLoader language={language} />}>
+          <LazyRoute language={language} resetKey={rawRoute} fallback={<PageLoader language={language} />}>
             <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
-          </React.Suspense>
+          </LazyRoute>
         </BrainShell>
       )}
     </div>

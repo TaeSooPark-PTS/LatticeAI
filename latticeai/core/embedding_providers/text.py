@@ -57,7 +57,32 @@ def _as_float_list(value: Any) -> List[Any]:
     return list(value)
 
 
+#: Longest token sequence an encoder-family embedding model accepts. BERT and
+#: XLM-R both stop at 512 including the two special tokens; a longer sequence
+#: is a hard failure inside the model, not a slow answer, so the ids are cut
+#: here rather than discovered at inference time.
+MLX_MAX_TOKENS = 512
+
+#: The E5 family was trained with these literal prefixes and loses accuracy
+#: without them. Keyed on the ``kind`` ``POST /worker/embed`` already sends.
+E5_PREFIXES: Dict[str, str] = {"query": "query: ", "passage": "passage: "}
+
+
+def _wants_e5_prefix(model: str) -> bool:
+    """Whether this model id names an E5-family checkpoint."""
+    return "e5" in str(model or "").lower()
+
+
 class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
+    """A local Apple-Silicon sentence embedder through ``mlx_embeddings``.
+
+    Nothing here reaches the network: the model must already be in the local
+    Hugging Face cache (that is exactly what
+    :func:`~.autodetect.detect_local_mlx` looks for). A missing package or a
+    missing snapshot is :class:`EmbeddingUnavailable`, which
+    :func:`resolve_embedder` turns into the honest hash fallback.
+    """
+
     provider = "mlx"
 
     def __init__(self, cfg: _RemoteConfig):
@@ -66,6 +91,7 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             self.dim = _guess_dim(cfg.model, DEFAULT_EMBEDDING_DIM)
         self.model_id = f"mlx:{cfg.model}:{self.dim}"
         self._encoder: Optional[Tuple[str, Any, Any]] = None
+        self._prefixed = _wants_e5_prefix(cfg.model)
 
     def _load(self):
         if self._encoder is not None:
@@ -79,24 +105,36 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
         except Exception as exc:  # pragma: no cover - environment dependent
             raise EmbeddingUnavailable(f"MLX embedding model unavailable: {exc}") from exc
 
+    def embed_batch_for(
+        self, texts: Sequence[str], kind: str = "passage"
+    ) -> List[List[float]]:
+        """E5 asymmetry, honoured. Non-E5 models see the text unchanged."""
+        if not self._prefixed:
+            return self.embed_batch(texts)
+        prefix = E5_PREFIXES.get(str(kind or "passage").lower(), E5_PREFIXES["passage"])
+        return self.embed_batch([f"{prefix}{text}" for text in texts])
+
     def _embed_raw(self, texts: Sequence[str]) -> List[List[float]]:
-        kind, model, tokenizer = self._load()
+        _, model, tokenizer = self._load()
         try:
             import mlx.core as mx  # type: ignore
 
             out: List[List[float]] = []
             for text in texts:
-                ids = tokenizer.encode(text)
-                tokens = mx.array([ids])
-                result = model(tokens)
-                pooled = result[0] if isinstance(result, (tuple, list)) else result
-                vec = mx.mean(pooled, axis=1)[0] if pooled.ndim == 3 else pooled[0]
-                out.append([float(x) for x in _as_float_list(vec.tolist())])
+                ids = list(tokenizer.encode(text))[:MLX_MAX_TOKENS]
+                result = model(mx.array([ids]))
+                out.append([float(x) for x in _pool(mx, result)])
             return out
         except EmbeddingUnavailable:
             raise
         except Exception as exc:  # pragma: no cover - environment dependent
             raise EmbeddingUnavailable(f"MLX embedding failed: {exc}") from exc
+
+    def metadata(self) -> Dict[str, Any]:
+        info = super().metadata()
+        info["instruction_prefixes"] = self._prefixed
+        info["max_tokens"] = MLX_MAX_TOKENS
+        return info
 
     def health(self) -> Dict[str, Any]:
         try:
@@ -104,6 +142,27 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             return {"status": "ok", "detail": f"MLX model {self._cfg.model} loaded"}
         except Exception as exc:
             return {"status": "unavailable", "detail": str(exc)}
+
+
+def _pool(mx: Any, result: Any) -> List[Any]:
+    """One sentence vector out of whatever shape the model handed back.
+
+    ``mlx_embeddings`` models return an output object carrying a pooled
+    ``text_embeds`` on newer versions and a bare hidden-state tensor on older
+    ones. Preferring the model's own pooled output matters: a checkpoint with a
+    trained pooler produces a better vector than a mean over its last layer,
+    and mean-pooling on top of an already-pooled row would be nonsense.
+    """
+    for attribute in ("text_embeds", "pooler_output"):
+        pooled = getattr(result, attribute, None)
+        if pooled is not None:
+            row = pooled[0] if pooled.ndim > 1 else pooled
+            return _as_float_list(row.tolist())
+    hidden = getattr(result, "last_hidden_state", None)
+    if hidden is None:
+        hidden = result[0] if isinstance(result, (tuple, list)) else result
+    row = mx.mean(hidden, axis=1)[0] if hidden.ndim == 3 else hidden[0]
+    return _as_float_list(row.tolist())
 
 
 class OllamaEmbeddingProvider(_NetworkEmbeddingProvider):
@@ -285,9 +344,13 @@ class ResolvedEmbedder:
     fell_back: bool
     health: Dict[str, Any]
     detail: str = ""
+    #: What :mod:`.autodetect` found on this machine, if anyone looked. It is
+    #: reported whether or not it was adopted, so a user running on the hash
+    #: fallback with a real embedder already downloaded can *see* that.
+    detected: Optional[Any] = None
 
     def as_dict(self) -> Dict[str, Any]:
-        return {
+        payload: Dict[str, Any] = {
             "requested_provider": self.requested,
             "active_provider": self.active,
             "fell_back": self.fell_back,
@@ -295,6 +358,9 @@ class ResolvedEmbedder:
             "detail": self.detail,
             **self.provider.metadata(),
         }
+        if self.detected is not None and hasattr(self.detected, "as_dict"):
+            payload["detected"] = self.detected.as_dict()
+        return payload
 
 
 def resolve_embedder(

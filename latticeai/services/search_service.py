@@ -84,6 +84,13 @@ class SearchService:
             "state": state,
             "fell_back": fell_back,
             "health": health,
+            # v12.0.0, additive: is what this worker embeds with *semantic*, and
+            # if not, is a real embedder already sitting on the disk? The hash
+            # fallback is honest about being a fallback but said nothing about
+            # what it could have been, so nobody ever switched.
+            "semantic": grade != "fallback",
+            "detected": dict(resolved.get("detected") or {}),
+            "identity": f"{meta.get('model_id')}:{meta.get('dim')}",
             "detail": resolved.get("detail", ""),
             # Index completeness is native (lattice-jobs). Present and empty:
             # a reader learns this answer does not speak for the index, which

@@ -52,6 +52,8 @@ pub struct Behaviour {
     pub jobs_body: String,
     pub resume_status: u16,
     pub resume_body: String,
+    pub embed_status: u16,
+    pub embed_body: String,
 }
 
 impl Default for Behaviour {
@@ -67,6 +69,11 @@ impl Default for Behaviour {
             jobs_body: r#"{"jobs":[]}"#.to_string(),
             resume_status: 200,
             resume_body: r#"{"status":"resuming","job_id":"j","remaining":3}"#.to_string(),
+            embed_status: 200,
+            embed_body: r#"{"vectors":[[0.1,0.2],[0.3,0.4]],"dim":2,
+                           "provider":"local","model_id":"lattice-local-hash-v1:384",
+                           "kind":"passage","grade":"fallback"}"#
+                .to_string(),
         }
     }
 }
@@ -173,6 +180,8 @@ async fn handle_connection(
         (answer.jobs_status, answer.jobs_body)
     } else if path.starts_with("/api/ingestion/jobs/") && path.ends_with("/resume") {
         (answer.resume_status, answer.resume_body)
+    } else if path == "/worker/embed" {
+        (answer.embed_status, answer.embed_body)
     } else {
         (404, format!("{{\"detail\":\"no route {path}\"}}"))
     };

@@ -307,8 +307,8 @@ pub fn platform_router(state: &OneDoorState) -> Router {
             state.hooks.clone(),
         )))
         .merge({
-            // POST /mcp (streamable HTTP JSON-RPC) lives on this router but is
-            // not in mcp::MOUNTED — it is outside the OpenAPI product contract.
+            // POST /mcp (streamable HTTP JSON-RPC) is in mcp::MOUNTED and
+            // in the OpenAPI product contract as a single JSON-RPC envelope.
             let tools_state =
                 tools::ToolsState::new(auth(), state.workspace.clone(), &state.brain_dir)
                     .with_worker(state.seam.clone());

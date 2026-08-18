@@ -16,6 +16,11 @@ import {
   permissionModeSummary as optionSummary,
   permissionModeWarning as optionWarning,
 } from "@/lib/permissionCopy";
+import {
+  buildPermissionPreview,
+  flagsFromState,
+  previewModeCopy,
+} from "@/lib/permissionModePreview";
 import { useAppStore } from "@/store/appStore";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "danger"> = {
@@ -64,6 +69,12 @@ export function PermissionModePanel() {
   const needsAck = ackOption !== undefined;
   const blocked = needsAck && !acknowledged;
   const unchanged = draft === active;
+  const activeOption = catalog.find((option) => option.id === active);
+  const preview = !unchanged && draftOption && activeOption && data
+    ? buildPermissionPreview(language, activeOption, draftOption, flagsFromState(data))
+    : null;
+  const previewCurrent = activeOption ? previewModeCopy(activeOption, language) : null;
+  const previewDraft = draftOption ? previewModeCopy(draftOption, language) : null;
 
   if (state.isLoading) {
     return (
@@ -141,6 +152,39 @@ export function PermissionModePanel() {
             );
           })}
         </div>
+
+        {preview && previewCurrent && previewDraft ? (
+          <div className="settings-preview" data-testid="permission-mode-preview">
+            <p className="settings-preview-title">{t(language, "system.permission.preview.title")}</p>
+            <p className="settings-preview-hint">{t(language, "system.permission.preview.hint")}</p>
+            <div className="settings-preview-pair">
+              <div className="settings-preview-col">
+                <span>{t(language, "system.permission.preview.from")}</span>
+                <strong>{previewCurrent.label}</strong>
+                <p>{previewCurrent.summary}</p>
+              </div>
+              <div className="settings-preview-col is-next">
+                <span>{t(language, "system.permission.preview.to")}</span>
+                <strong>{previewDraft.label}</strong>
+                <p>{previewDraft.summary}</p>
+              </div>
+            </div>
+            <ul className="settings-preview-rows">
+              {preview.rows.filter((row) => row.changed).map((row) => (
+                <li key={row.id} data-testid={`permission-mode-preview-row-${row.id}`}>
+                  <span className="settings-preview-row-label">{row.label}</span>
+                  <span className="settings-preview-row-from">{row.current}</span>
+                  <span className="settings-preview-row-to">{row.next}</span>
+                </li>
+              ))}
+            </ul>
+            {preview.fromCatalogOnly ? (
+              <p className="settings-preview-limit" data-testid="permission-mode-preview-limit">
+                {t(language, "system.permission.preview.unknown")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {ackOption ? (
           <div className="space-y-2 rounded-md border border-border bg-muted p-3">

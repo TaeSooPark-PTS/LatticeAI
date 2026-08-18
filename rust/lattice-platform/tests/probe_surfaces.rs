@@ -217,6 +217,118 @@ async fn setup_install_brew_is_manual_not_complete_theatre() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn setup_install_consented_pip_version_executes() {
+    let install = support::Install::start();
+    let state = SetupState::new(install.auth.clone(), install.data_dir());
+    let (origin, app) = serve(setup::router(state)).await;
+    let answer = support::issue(
+        &origin,
+        "POST",
+        "/setup/install",
+        &json!({}),
+        &json!({
+            "cookie": "session:owner",
+            "origin": "http://127.0.0.1:4825",
+            "content-type": "application/json"
+        }),
+        &json!({
+            "execute": ["pip"],
+            "items": [{
+                "id": "pip",
+                "name": "pip",
+                "action": {"type": "pip", "verb": "version"}
+            }]
+        }),
+        &install,
+    )
+    .await;
+    assert!(
+        answer.body.contains("\"status\": \"done\""),
+        "{}",
+        answer.body
+    );
+    assert!(
+        answer.body.contains("\"status\": \"progress\""),
+        "stdout must stream as progress frames: {}",
+        answer.body
+    );
+    assert!(answer.body.contains("done=1"), "{}", answer.body);
+    assert!(
+        !answer.body.contains("\"status\": \"manual\""),
+        "consented pip must not stay manual: {}",
+        answer.body
+    );
+    app.abort();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn setup_install_unconsented_pip_stays_manual() {
+    let install = support::Install::start();
+    let state = SetupState::new(install.auth.clone(), install.data_dir());
+    let (origin, app) = serve(setup::router(state)).await;
+    let answer = support::issue(
+        &origin,
+        "POST",
+        "/setup/install",
+        &json!({}),
+        &json!({
+            "cookie": "session:owner",
+            "origin": "http://127.0.0.1:4825",
+            "content-type": "application/json"
+        }),
+        &json!({"items": [{"id": "mlx", "name": "MLX", "action": {"type": "pip"}}]}),
+        &install,
+    )
+    .await;
+    assert!(
+        answer.body.contains("\"status\": \"manual\""),
+        "{}",
+        answer.body
+    );
+    assert!(answer.body.contains("pip3 install mlx"), "{}", answer.body);
+    assert!(answer.body.contains("manual=1"), "{}", answer.body);
+    app.abort();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn setup_install_non_allowlisted_id_is_refused() {
+    let install = support::Install::start();
+    let state = SetupState::new(install.auth.clone(), install.data_dir());
+    let (origin, app) = serve(setup::router(state)).await;
+    let answer = support::issue(
+        &origin,
+        "POST",
+        "/setup/install",
+        &json!({}),
+        &json!({
+            "cookie": "session:owner",
+            "origin": "http://127.0.0.1:4825",
+            "content-type": "application/json"
+        }),
+        &json!({
+            "execute": ["curl", "not-a-plan-item"],
+            "items": [{"id": "curl", "name": "curl", "action": {"type": "apt"}}]
+        }),
+        &install,
+    )
+    .await;
+    assert!(
+        answer
+            .body
+            .contains("refused: not an allowlisted brew/pip/uv item"),
+        "{}",
+        answer.body
+    );
+    assert!(
+        !answer.body.contains("\"status\": \"done\""),
+        "apt must not execute: {}",
+        answer.body
+    );
+    assert!(answer.body.contains("failed=2"), "{}", answer.body);
+    app.abort();
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn computer_use_reads_pointer_capability() {
     let install = support::Install::start();
     let (worker, handle) = fake_worker(true).await;

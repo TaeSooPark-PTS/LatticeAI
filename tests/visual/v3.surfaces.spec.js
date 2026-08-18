@@ -526,12 +526,26 @@ test("the 기능 drawer turns opt-in features on without leaving home", async ({
   expect(onColours.size).toBe(1);
   expect([...onColours].some((colour) => offColours.has(colour))).toBe(false);
 
-  // A switch moves under the finger and the panel says so out loud.
+  // A risk-carrying switch names what turning it on means, then waits for an
+  // ack — the same preview-before-consent pattern as the network boundary.
   await page.getByTestId("feature-switch-brain_network").click();
-  await expect(page.getByTestId("feature-switch-brain_network")).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("feature-preview-brain_network")).toBeVisible();
+  await expect(page.getByTestId("feature-preview-brain_network")).toContainText("켜면 이렇게 달라져요");
+  await expect(page.getByTestId("feature-switch-brain_network")).toHaveAttribute("aria-checked", "false");
+  await page.locator("label.brain-feature-preview-ack").click();
+  await expect(page.getByTestId("feature-preview-ack-brain_network")).toBeChecked();
+  await expect(page.getByTestId("feature-preview-confirm-brain_network")).toHaveAttribute("aria-disabled", "false");
+  await page.getByTestId("feature-preview-confirm-brain_network").click();
+  // The write is confirmed out loud. The mock catalog does not persist the
+  // new value across the refetch that follows, so the switch is not the
+  // source of truth here — the notice is.
+  await expect(page.getByTestId("feature-preview-brain_network")).toHaveCount(0);
   await expect(panel.locator(".brain-features-notice")).toHaveText("바뀌었습니다.");
 
   // Focus-trapped modal: Escape returns to the home it never left.
+  // Confirming the preview unmounts the focused button; put focus back on
+  // the switch so Escape is still heard by the drawer.
+  await page.getByTestId("feature-switch-brain_network").focus();
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("brain-home-drawer")).toHaveCount(0);
   await expect(page.getByTestId("brain-home-station")).toBeVisible();

@@ -122,6 +122,8 @@ INTERNAL_WORKER_PATHS = frozenset(
         # ``/worker/multimodal/describe`` was here until v11.8.0 deleted the
         # seam: it described an image for a native ingest nothing ever built.
         "/worker/extract",
+        # v12.0.0 — HNSW sidecar query. Same loopback-only reasoning.
+        "/worker/vector/query",
     }
 )
 

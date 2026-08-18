@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.
@@ -30,6 +30,10 @@ External communication requires configuration plus a user/admin action:
   writes a shape-only egress audit (provider / model / reason, never
   content) and stages extracted knowledge as a Review Center proposal;
 - model downloads from registries after install consent;
+- package installs from `/setup/install` (brew / pip / uv) — only for an item
+  the request names that the **server-derived** allowlist also contains, with
+  the command taken from the server's own plan rather than from the request;
+  the default path remains manual;
 - Telegram bridge — removed in 11.6.0 with the platform code that became
   the AI worker; nothing replaces it;
 - Brain Network peer actions after pairing;
@@ -57,7 +61,17 @@ Lattice AI should fail closed or show an unavailable state for:
 - unknown or unreadable Knowledge Graph workspace scope;
 - Telegram inbound (the bridge was removed in 11.6.0; nothing replaces it);
 - wrong archive passphrase;
-- archive tampering, unsupported archive versions, or path traversal.
+- archive tampering, unsupported archive versions, or path traversal;
+- a hash-fallback embedder standing in for a real one — it is labelled
+  `fallback`, never presented as semantic recall;
+- an opted-in approximate vector index that cannot answer — the search falls
+  back to the exact scan and carries the reason rather than returning a
+  shorter list;
+- a model that cannot produce a tool call — the run is guided through numbered
+  choices under the same gates, and an unverifiable result is still
+  `NEEDS_REVIEW`;
+- deleting knowledge — a vanished file is reported and only a confirmed prune
+  removes its subtree.
 
 ## Product Boundary
 

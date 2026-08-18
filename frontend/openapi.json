@@ -1992,6 +1992,106 @@
         "title": "InvitationCreateRequest",
         "type": "object"
       },
+      "JsonRpcError": {
+        "description": "JSON-RPC 2.0 error object. Method-specific data is not modelled.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "title": "Data"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "JsonRpcError",
+        "type": "object"
+      },
+      "JsonRpcRequest": {
+        "description": "JSON-RPC 2.0 request envelope. Method-specific params are not modelled.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Request id. Absent on notifications.",
+            "title": "Id"
+          },
+          "jsonrpc": {
+            "enum": [
+              "2.0"
+            ],
+            "title": "Jsonrpc",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "params": {
+            "description": "Method params. Shape depends on the method.",
+            "title": "Params"
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "method"
+        ],
+        "title": "JsonRpcRequest",
+        "type": "object"
+      },
+      "JsonRpcResponse": {
+        "description": "JSON-RPC 2.0 result or error envelope. One of result or error is present.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/JsonRpcError"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "jsonrpc": {
+            "enum": [
+              "2.0"
+            ],
+            "title": "Jsonrpc",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result"
+          }
+        },
+        "required": [
+          "jsonrpc"
+        ],
+        "title": "JsonRpcResponse",
+        "type": "object"
+      },
       "KnowledgeGraphIngestRequest": {
         "properties": {
           "content": {
@@ -5187,7 +5287,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "11.9.0"
+    "version": "12.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -14525,6 +14625,35 @@
           }
         },
         "summary": "Export Template"
+      }
+    },
+    "/mcp": {
+      "post": {
+        "description": "Streamable-HTTP JSON-RPC 2.0 (initialize / ping / tools/list / tools/call). One envelope, not per-method schemas.",
+        "operationId": "mcp_jsonrpc_mcp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JsonRpcRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcResponse"
+                }
+              }
+            },
+            "description": "JSON-RPC result or error envelope"
+          }
+        },
+        "summary": "Mcp"
       }
     },
     "/mcp/call": {

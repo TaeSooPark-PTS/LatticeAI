@@ -5,6 +5,7 @@
 //! the brain never leaves the machine.
 
 pub mod agent_bind;
+pub mod agent_catalog;
 pub mod allowlist;
 pub mod identity;
 pub mod mounts;

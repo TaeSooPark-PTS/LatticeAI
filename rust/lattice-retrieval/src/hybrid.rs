@@ -6,7 +6,7 @@
 //! original step for step — policy, lanes, dedupe, normalize, fuse, decay, sort,
 //! rerank, cut — because every one of those steps can change a ranking.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use lattice_core::pytext::{parse_iso, recency_score, round6};
 use lattice_core::read::filter_scoped_nodes;
@@ -14,11 +14,14 @@ use lattice_core::{CoreError, LocalEmbeddingModel};
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
+use crate::expansion::{
+    expansion_enabled, one_hop, rrf_enabled, rrf_scores, EXPANSION_SCORE_FACTOR, EXPANSION_SEEDS,
+};
 use crate::keyword::search;
 use crate::policy::resolve_policy;
 use crate::shape::{
     class_json, empty_result, expansion_json, multimodal_signal, parent_node_id, policy_json,
-    py_str, sources_json, truthy,
+    py_str, sources_json, truthy, DEFAULT_EXPANSION_CAP,
 };
 use crate::vector::vector_search;
 
@@ -70,6 +73,13 @@ struct Entry {
     age_decay: Option<f64>,
     score: f64,
     fusion: &'static str,
+    /// 1-based position in each channel that returned it — RRF's whole input.
+    /// Collected unconditionally because it costs a push; read only when the
+    /// `LATTICEAI_FUSION_RRF` gate is on.
+    ranks: Vec<usize>,
+    /// How this row was reached when it was not a candidate at all: the seed,
+    /// the edge and the edge's own evidence. `None` for a normal hit.
+    via: Option<Value>,
 }
 
 /// `embedder_fingerprint_status()["stale_embedder"]`, read straight from `graph_meta`.
@@ -103,7 +113,7 @@ pub fn hybrid_search(
     let mut search_query = query.clone();
     let mut rewrite_rules: Vec<String> = Vec::new();
     let mut recency_half_life: Option<f64> = None;
-    let fusion_strategy = "alpha";
+    let mut fusion_strategy = "alpha";
 
     let mut alpha = match options.alpha {
         Some(alpha) => alpha,
@@ -272,6 +282,8 @@ pub fn hybrid_search(
             age_decay: None,
             score: 0.0,
             fusion: "lexical",
+            ranks: Vec::new(),
+            via: None,
         });
         order.insert(node_id.to_string(), entries.len() - 1);
         entries.len() - 1
@@ -286,6 +298,7 @@ pub fn hybrid_search(
         let scored = round6(1.0 / (rank as f64 + 1.0));
         entries[index].lexical = entries[index].lexical.max(scored);
         entries[index].from_lexical = true;
+        entries[index].ranks.push(rank + 1);
     }
 
     // Max-normalize cosine scores into [0, 1]. The comparisons are explicit
@@ -298,7 +311,7 @@ pub fn hybrid_search(
             }
         }
     }
-    for item in &vector_matches {
+    for (rank, item) in vector_matches.iter().enumerate() {
         let node_id = parent_node_id(item);
         if node_id.is_empty() {
             continue;
@@ -312,6 +325,7 @@ pub fn hybrid_search(
         let index = entry_for(&mut entries, &mut order, &node_id, item);
         entries[index].vector = entries[index].vector.max(round6(vec_norm));
         entries[index].from_vector = true;
+        entries[index].ranks.push(rank + 1);
         if !truthy(&entries[index].summary) {
             if let Some(summary) = item.get("summary").filter(|v| truthy(v)) {
                 entries[index].summary = summary.clone();
@@ -319,9 +333,28 @@ pub fn hybrid_search(
         }
     }
 
+    // Rank fusion, when the gate is on: the two channels' *positions* rather
+    // than their scores. `1/rank` and a normalized cosine are not on the same
+    // scale, so alpha-weighting them is arithmetic over two different units.
+    let use_rrf = rrf_enabled() && mode != "lexical_only";
+    let rrf = if use_rrf {
+        let ranks: BTreeMap<String, Vec<usize>> = entries
+            .iter()
+            .map(|entry| (entry.node_id.clone(), entry.ranks.clone()))
+            .collect();
+        rrf_scores(&ranks)
+    } else {
+        BTreeMap::new()
+    };
+    if use_rrf {
+        fusion_strategy = "rrf";
+    }
+
     for entry in entries.iter_mut() {
         let fused = if mode == "lexical_only" {
             entry.lexical
+        } else if use_rrf {
+            rrf.get(&entry.node_id).copied().unwrap_or(0.0)
         } else {
             alpha * entry.vector + (1.0 - alpha) * entry.lexical
         };
@@ -358,6 +391,53 @@ pub fn hybrid_search(
     entries.truncate(((top_k * 2).max(top_k)) as usize);
     entries.truncate(top_k.max(1) as usize);
 
+    // One-hop expansion, when the gate is on. It runs *after* the cut, so a
+    // neighbour never displaces a real hit — it lands underneath them, at half
+    // its seed's score, carrying the edge it was reached by.
+    let mut expansion = expansion_json();
+    if expansion_enabled() && !entries.is_empty() {
+        let seeds: Vec<String> = entries
+            .iter()
+            .take(EXPANSION_SEEDS)
+            .map(|entry| entry.node_id.clone())
+            .collect();
+        let seed_scores: Vec<f64> = entries
+            .iter()
+            .take(EXPANSION_SEEDS)
+            .map(|entry| entry.score)
+            .collect();
+        let present: BTreeSet<String> = entries.iter().map(|entry| entry.node_id.clone()).collect();
+        let cap = DEFAULT_EXPANSION_CAP.max(0) as usize;
+        let (neighbours, report) = one_hop(conn, &seeds, &present, cap)?;
+        for neighbour in neighbours {
+            let seed_score = seeds
+                .iter()
+                .position(|id| *id == neighbour.seed_id)
+                .and_then(|index| seed_scores.get(index).copied())
+                .unwrap_or(0.0);
+            let via = neighbour.provenance();
+            entries.push(Entry {
+                node_id: neighbour.node_id.clone(),
+                id: Value::String(neighbour.node_id),
+                node_type: neighbour.node_type,
+                title: neighbour.title,
+                summary: neighbour.summary,
+                metadata: neighbour.metadata,
+                updated_at: neighbour.updated_at,
+                lexical: 0.0,
+                vector: 0.0,
+                from_lexical: false,
+                from_vector: false,
+                age_decay: None,
+                score: round6(seed_score * EXPANSION_SCORE_FACTOR),
+                fusion: "graph",
+                ranks: Vec::new(),
+                via: Some(via),
+            });
+        }
+        expansion = report.as_json(DEFAULT_EXPANSION_CAP);
+    }
+
     let matches: Vec<Value> = entries
         .iter()
         .enumerate()
@@ -381,6 +461,12 @@ pub fn hybrid_search(
             item.insert("score".into(), Value::from(entry.score));
             item.insert("rerank_score".into(), Value::from(entry.score));
             item.insert("rank".into(), Value::from(index + 1));
+            // Additive, and only ever present on a row expansion added: a hit
+            // that stands on its own has no "via" to report, and an empty one
+            // would read as a path that led nowhere.
+            if let Some(via) = entry.via.as_ref() {
+                item.insert("via".into(), via.clone());
+            }
             Value::Object(item)
         })
         .collect();
@@ -406,7 +492,7 @@ pub fn hybrid_search(
         "fusion_strategy".into(),
         Value::String(fusion_strategy.to_string()),
     );
-    result.insert("graph_expansion".into(), expansion_json());
+    result.insert("graph_expansion".into(), expansion);
     result.insert("rerank".into(), Value::Object(rerank));
     result.insert(
         "detail".into(),

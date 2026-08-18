@@ -800,6 +800,72 @@
   font-size: 0.72rem;
 }
 
+.brain-feature-preview {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--lt-radius-md);
+  background: hsl(var(--surface));
+  box-shadow: inset 0 0 0 1px hsl(var(--border));
+}
+
+.brain-feature-preview-title {
+  margin: 0;
+  color: hsl(var(--fg));
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.brain-feature-preview-body,
+.brain-feature-preview-caution,
+.brain-feature-preview-limit {
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.brain-feature-preview-caution {
+  color: hsl(var(--warning-ink));
+}
+
+.brain-feature-preview-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  color: hsl(var(--fg));
+  font-size: 0.72rem;
+}
+
+.brain-feature-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.brain-feature-preview-confirm,
+.brain-feature-preview-actions > button {
+  min-height: 1.9rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--lt-radius-md);
+  background: transparent;
+  color: hsl(var(--fg));
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.brain-feature-preview-confirm {
+  background: hsl(var(--primary) / 0.14);
+  border-color: hsl(var(--primary) / 0.45);
+}
+
+.brain-feature-preview-confirm[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* Touch widths: the switch keeps its size, the copy gets the rest, and the
    choice pills wrap under their row rather than squeezing the sentence. */
 @media (max-width: 560px) {

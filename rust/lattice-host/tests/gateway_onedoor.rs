@@ -202,6 +202,7 @@ async fn one_door(worker: &FakeWorker, name: &str) -> (TestGateway, PathBuf) {
         // `OneDoorState` binds the sink over the registry it opens under
         // `data_dir`, which is scratch here for the same reason.
         hooks: None,
+        external: None,
     };
     let product = OneDoorState::open_with_config(
         config,

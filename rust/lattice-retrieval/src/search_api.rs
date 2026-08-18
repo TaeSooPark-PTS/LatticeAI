@@ -146,6 +146,7 @@ impl RetrievalApiState {
 
     /// Attach the worker seam the graph *writes* are delegated through.
     pub fn with_seam(mut self, seam: WorkerSeamClient) -> Self {
+        crate::vector_hnsw::bind_worker_origin(seam.origin());
         self.seam = Some(seam);
         self
     }

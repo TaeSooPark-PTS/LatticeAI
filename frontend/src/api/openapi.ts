@@ -4751,6 +4751,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mcp
+         * @description Streamable-HTTP JSON-RPC 2.0 (initialize / ping / tools/list / tools/call). One envelope, not per-method schemas.
+         */
+        post: operations["mcp_jsonrpc_mcp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mcp/call": {
         parameters: {
             query?: never;
@@ -8484,6 +8504,57 @@ export interface components {
             role: string;
             /** Workspace Id */
             workspace_id?: string | null;
+        };
+        /**
+         * JsonRpcError
+         * @description JSON-RPC 2.0 error object. Method-specific data is not modelled.
+         */
+        JsonRpcError: {
+            /** Code */
+            code: number;
+            /** Data */
+            data?: unknown;
+            /** Message */
+            message: string;
+        };
+        /**
+         * JsonRpcRequest
+         * @description JSON-RPC 2.0 request envelope. Method-specific params are not modelled.
+         */
+        JsonRpcRequest: {
+            /**
+             * Id
+             * @description Request id. Absent on notifications.
+             */
+            id?: string | number | null;
+            /**
+             * Jsonrpc
+             * @enum {string}
+             */
+            jsonrpc: "2.0";
+            /** Method */
+            method: string;
+            /**
+             * Params
+             * @description Method params. Shape depends on the method.
+             */
+            params?: unknown;
+        };
+        /**
+         * JsonRpcResponse
+         * @description JSON-RPC 2.0 result or error envelope. One of result or error is present.
+         */
+        JsonRpcResponse: {
+            error?: components["schemas"]["JsonRpcError"];
+            /** Id */
+            id?: string | number | null;
+            /**
+             * Jsonrpc
+             * @enum {string}
+             */
+            jsonrpc: "2.0";
+            /** Result */
+            result?: unknown;
         };
         /** KnowledgeGraphIngestRequest */
         KnowledgeGraphIngestRequest: {
@@ -18195,6 +18266,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mcp_jsonrpc_mcp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonRpcRequest"];
+            };
+        };
+        responses: {
+            /** @description JSON-RPC result or error envelope */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JsonRpcResponse"];
                 };
             };
         };

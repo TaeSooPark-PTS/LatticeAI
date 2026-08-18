@@ -1,5 +1,5 @@
 {
-  "count": 19,
+  "count": 20,
   "generated_by": "scripts/gen_worker_allowlist_fixture.py",
   "note": "The gateway's reverse proxy allowlist. Generated from latticeai.runtime.build_phases.worker_profile.worker_route_keys() by scripts/gen_worker_allowlist_fixture.py; a path absent here is answered natively or 404, never forwarded.",
   "routes": [
@@ -116,6 +116,12 @@
       "group": "compute_seam",
       "method": "POST",
       "path": "/worker/render/xlsx"
+    },
+    {
+      "axum": "/worker/vector/query",
+      "group": "compute_seam",
+      "method": "POST",
+      "path": "/worker/vector/query"
     }
   ],
   "schema": "worker-proxy-allowlist/v1",

@@ -403,23 +403,82 @@ def test_load_model_without_mlx_vlm_still_loads_gemma4_through_mlx_lm(
     assert router._cache["mlx-community/gemma-4-12b-it"][3] == "mlx_lm"
 
 
-def test_load_model_without_mlx_vlm_refuses_a_non_gemma4_model(monkeypatch, tmp_path):
-    """The mlx-lm retry is a Gemma 4 concession, not a general fallback.
+def test_load_model_without_mlx_vlm_refuses_a_model_that_declares_vision(
+    monkeypatch, tmp_path
+):
+    """A checkpoint that says it is multimodal is never downgraded to text.
 
-    Any other checkpoint surfaces the missing-package failure instead of
-    being silently loaded through a text-only loader that may not support it.
+    v12.0.0 generalised the mlx-lm retry from "the id looks like Gemma 4" to
+    "the checkpoint's own config declares no vision", because the old rule was
+    a one-family roster that failed every plain text model MLX-VLM cannot open.
+    What did **not** change is this: answering an image request from a
+    text-only load is worse than refusing it, so a config carrying
+    ``vision_config`` still surfaces the original failure.
     """
     _prepare_local_load(monkeypatch, tmp_path)
     monkeypatch.setattr(router_loading, "vlm_load", None)
     monkeypatch.setattr(
         router_loading, "lm_load", lambda _model_id: (object(), _TemplateTokenizer())
     )
+    monkeypatch.setattr(router_loading, "_declares_vision", lambda _model_id: True)
     router = router_mod.LLMRouter()
 
     with pytest.raises(RuntimeError, match="MLX-VLM is not installed"):
         asyncio.run(router.load_model("mlx-community/Qwen3-VL-8B"))
 
     assert router.loaded_model_ids == []
+
+
+def test_load_model_falls_back_to_text_for_any_model_without_vision(
+    monkeypatch, tmp_path
+):
+    """The v12.0.0 generalisation: "every small model works" needs this.
+
+    A 0.5B Qwen, an AWQ checkpoint, any fine-tune with a text-only
+    architecture — MLX-VLM cannot open them and MLX-LM can. Before this the
+    load failed outright unless the *name* matched Gemma 4.
+    """
+    _prepare_local_load(monkeypatch, tmp_path)
+    monkeypatch.setattr(router_loading, "vlm_load", None)
+    loaded: list = []
+
+    def fake_lm_load(model_id):
+        loaded.append(model_id)
+        return object(), _TemplateTokenizer()
+
+    monkeypatch.setattr(router_loading, "lm_load", fake_lm_load)
+    monkeypatch.setattr(router_loading, "_declares_vision", lambda _model_id: False)
+    router = router_mod.LLMRouter()
+
+    result = asyncio.run(router.load_model("Qwen/Qwen2.5-0.5B-Instruct-AWQ"))
+
+    assert result.endswith("(mlx_lm)")
+    assert loaded == ["Qwen/Qwen2.5-0.5B-Instruct-AWQ"]
+
+
+def test_a_failed_text_retry_reports_the_original_loader_failure(
+    monkeypatch, tmp_path
+):
+    """The text path is a fallback, so the useful diagnosis is the first one.
+
+    Raising the second failure would tell an operator their model is not a
+    text model, which they knew.
+    """
+    _prepare_local_load(monkeypatch, tmp_path)
+
+    def broken_vlm_load(_model_id):
+        raise RuntimeError("VLM said no")
+
+    def broken_lm_load(_model_id):
+        raise RuntimeError("LM said no")
+
+    monkeypatch.setattr(router_loading, "vlm_load", broken_vlm_load)
+    monkeypatch.setattr(router_loading, "lm_load", broken_lm_load)
+    monkeypatch.setattr(router_loading, "_declares_vision", lambda _model_id: False)
+    router = router_mod.LLMRouter()
+
+    with pytest.raises(RuntimeError, match="VLM said no"):
+        asyncio.run(router.load_model("some/text-model"))
 
 
 def test_load_model_loads_a_draft_model_on_the_vlm_path(monkeypatch, tmp_path):

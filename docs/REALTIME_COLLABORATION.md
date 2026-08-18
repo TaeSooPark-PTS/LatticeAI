@@ -5,7 +5,7 @@ Realtime Collaboration is the subsystem that gives a Lattice AI workspace a live
 workspace-scoped execution observability for agents, handoffs, reviews,
 workflows, plugins, retries, and failures. It is delivered over Server-Sent
 Events (SSE) by an in-process pub/sub bus, the
-[`RealtimeBus`](../rust/lattice-platform/src/realtime.rs), native since 11.6.0.
+[`RealtimeBus`](../rust/lattice-platform/src/workspaceos/realtime.rs), native since 11.6.0.
 
 The design goal is to surface "what is happening in the workspace right now"
 (workspaces created, graphs indexed, agents and workflows run, plugins enabled,

@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`
@@ -106,6 +106,7 @@ Edge {
 | `ORGANIZATION` | 조직 / 회사 / 팀 | `domain`, `members[]` |
 | `WORKFLOW` | 워크플로우 정의/실행 | `workflow_id`, `status` |
 | `AGENT` | 에이전트(역할/실행 주체) | `role`, `model_id` |
+| `SECTION` | 문서의 한 절 (제목 하나가 덮는 범위) | `heading_path`, `depth`, `document` — v12.0.0부터 실제로 쓰인다 |
 
 ### 추가 엣지 타입
 
@@ -115,10 +116,47 @@ Edge {
 | `MODIFIED_BY` | ANY → `PERSON` | 마지막 수정자 |
 | `BELONGS_TO_PROJECT` | ANY → `PROJECT` | 프로젝트 귀속 |
 | `PART_OF` | ANY → ANY | 구성요소 관계 |
+| `HAS_CHUNK` | `SECTION` → `CHUNK` | 이 절에 속한 텍스트 |
+| `CONTRADICTS` | ANY ↔ ANY | 두 진술이 서로 상충함 |
 | `DISCUSSED_IN` | `CONCEPT`·`DECISION` → `MEETING`·`CHAT` | 어디에서 논의됨 |
 | `DECIDED_BY` | `DECISION` → `PERSON` | 결정 주체 |
 | `GENERATED_BY` | ANY → `AGENT`·`MODEL`·`WORKFLOW` | 생성 주체 |
 | `USED_BY_AGENT` | ANY → `AGENT` | 에이전트가 사용함 |
+
+### 섹션 트리 (v12.0.0)
+
+`Section` 노드 타입과 `PART_OF` / `HAS_CHUNK` 엣지는 이전부터 분류 체계에
+있었지만 **쓰는 사람이 없었다**. v12.0.0부터 타입드 청커의 `heading_path`
+(`" > "`로 이어 붙인 제목 자취, 예: `아키텍처 > 저장소`)가 청크 메타데이터
+문자열에서 멈추지 않고 그래프의 나무가 된다:
+
+```
+Document ──◄PART_OF── Section(아키텍처) ──◄PART_OF── Section(아키텍처 > 저장소)
+                                                          │
+                                                          HAS_CHUNK
+                                                          ▼
+                                                        Chunk
+```
+
+| 요소 | 규칙 |
+|------|------|
+| `Section` 노드 | `label`은 그 절의 제목(마지막 마디), 전체 자취는 `attrs`에. id는 (문서, 제목 자취)의 결정적 해시라 재수집이 멱등이다 |
+| `Section —PART_OF→ Section`·`Document` | 목차의 등뼈. 부모가 없는 최상위 절은 문서에 직접 붙는다 |
+| `Section —HAS_CHUNK→ Chunk` | 어느 텍스트가 이 제목 아래 있는가 |
+| 제목이 없는 문서 | **섹션을 만들지 않는다.** 파일마다 "제목 없는 절"을 하나씩 지어내면, 저자가 쓴 적 없는 것의 이름을 그래프에 넣는 셈이다 |
+| 쓰기 경로 | 문서가 먼저 착지한 뒤 공개 `GraphWriter::upsert_nodes` / `upsert_edges` 문으로만 — 스키마는 넓어지지 않는다 |
+
+이로써 「이 사실은 어느 절에서 나왔나」와 「그 절에 또 뭐가 있나」가 둘 다
+답 가능한 질문이 된다. 릴리스 코퍼스 실측: 트리플 **555개 중 549개**가
+섹션 출처를 가진다.
+
+### 상충 관계와 근거 분류 (v12.0.0)
+
+`CONTRADICTS`도 어휘에만 있던 타입이었다. v12.0.0부터 추출이 `PART_OF`와
+`CONTRADICTS`를 **실제로 생산**하고, 엣지는 방향과 타입을 갖고 쓰이며,
+`evidence`는 그 관계가 동사에서 왔는지 공기(co-occurrence)에서 왔는지로
+분류되어 저장된다. 상충 자체는 자동으로 해소되지 않는다 — Review Center
+제안으로 올라가고, 사람이 승인해야 `valid_from`/`valid_to`가 찍힌다.
 
 ### 통합 수집 형태 (Unified Ingestion)
 
@@ -228,10 +266,18 @@ v2 로 백필한다. 기존 `nodes` / `edges` 테이블은 삭제하지 않는�
 
 - 차원: 환경 변수 `LATTICEAI_EMBED_DIM` (기본 `1024`)
 - 저장: SQLite `BLOB` 컬럼, `struct.pack('<{n}f', …)` 직렬화
-- 검색: `knowledge_graph.KnowledgeGraphStore.vector_search` — 순수 Python
-  코사인 (sqlite-vec/ANN 인덱스는 아직 없음). 기본 임베더는 해시 기반
-  폴백(`grade='fallback'`)이며, 실제 임베딩 모델은 setup wizard 를 통해
-  사용자 동의 하에 프로비저닝한다.
+- 검색: 기본은 **정확 스캔(`brute`)** 코사인이다. v12.0.0부터
+  `LATTICEAI_VECTOR_INDEX=hnsw`를 켜면 워커 사이드카
+  (`POST /worker/vector/query`)가 `k * 8`개(최대 200) 후보 id를 주고,
+  네이티브 쪽이 **브루트와 같은 코사인으로 그 행들을 다시 채점**한다 —
+  근사 리콜, 정확 순서, 이름은 `hnsw+rescore`. 사이드카가 답하지 못하면
+  사유를 실은 채 정확 스캔으로 떨어진다. `.hnsw` 사이드카는 증분
+  append이므로 쓰기 한 번이 인덱스 전체를 무효화하지 않는다.
+- 임베더: v12.0.0부터 **자동 감지**한다 — 다운로드된 실제 임베딩 모델이
+  있으면 채택하고, 없으면 해시 기반 폴백(`grade='fallback'`)을 **폴백이라고
+  표기한 채** 쓴다. 해시를 의미 벡터로 부르지 않는다. 벡터 정체성은
+  `(model, dim)`으로 필터되므로 서로 다른 임베딩 공간이 조용히 섞이지
+  않는다.
 - 키워드 검색: v4 부터 FTS5 trigram 인덱스(`node_fts`) 가 LIKE 스캔을
   대체한다 (한국어 부분 문자열 리콜 유지). FTS5/trigram 이 없는 SQLite
   빌드에서는 LIKE 경로가 그대로 동작하며 `index_status().storage.fts_enabled`

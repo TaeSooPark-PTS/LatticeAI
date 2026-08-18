@@ -13,6 +13,11 @@ generator whose subject is now native: they point at the cargo test or the
 committed golden that actually guards the behaviour. The assertions themselves
 were not deleted — an evidence path is repointed at the owner or it is a gate
 that has stopped meaning anything.
+
+12.0.0 regrouped the Rust crates into domain directories, so four needles that
+named a top-level file in ``rust/lattice-agent/src/`` now name the same symbol
+in ``src/kernel/``. The needle text is unchanged — only the path moved, and
+each one was re-checked against the file it now names rather than assumed.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "11.9.0"
+PRODUCT_VERSION_TARGET = "12.0.0"
 
 
 @dataclass(frozen=True)
@@ -74,7 +79,7 @@ PRODUCT_GATES: List[ProductGate] = [
             "latticeai/tools/documents.py::read_document",
             "latticeai/tools/filesystem.py::read_file",
             "latticeai/core/tool_governor.py::classify_tool_call",
-            "rust/lattice-agent/src/permission.rs::pub fn block_reason_for_tool",
+            "rust/lattice-agent/src/kernel/permission.rs::pub fn block_reason_for_tool",
             "tests/unit/test_worker_compute.py::test_the_docx_bytes_open_as_a_document_with_the_blocks_that_were_sent",
             "tests/unit/test_tool_registry.py::test_execute_tool_uses_registry",
         ],
@@ -119,10 +124,10 @@ PRODUCT_GATES: List[ProductGate] = [
             f"docs/CHANGELOG.md::## [{PRODUCT_VERSION_TARGET}]",
             "FEATURE_STATUS.md",
             f"RELEASE_NOTES_v{PRODUCT_VERSION_TARGET}.md",
-            "rust/lattice-agent/src/permission.rs::pub fn block_reason_for_tool",
-            "rust/lattice-agent/src/lib.rs::pub mod agentloop",
+            "rust/lattice-agent/src/kernel/permission.rs::pub fn block_reason_for_tool",
+            "rust/lattice-agent/src/kernel/mod.rs::pub mod agentloop",
             "latticeai/api/agent_worker_seam.py::create_agent_worker_seam_router",
-            "rust/lattice-agent/src/permission.rs::pub fn non_auto_plan_steps",
+            "rust/lattice-agent/src/kernel/permission.rs::pub fn non_auto_plan_steps",
             "latticeai/worker_app.py::create_worker_app",
             "latticeai/worker_app.py::def create_worker_app",
             "latticeai/services/architecture_readiness.py::lattice-architecture-contract/v1",

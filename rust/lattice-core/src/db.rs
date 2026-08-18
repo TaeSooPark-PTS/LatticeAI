@@ -23,6 +23,7 @@
 //! [`open_read_write`].
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
@@ -53,10 +54,12 @@ pub const DEFAULT_READER_POOL: usize = 4;
 
 /// Write connections a [`Store`] keeps open by default.
 ///
-/// One, because SQLite has one write lock per database. A second connection
-/// buys nothing but `SQLITE_BUSY` retries against ourselves; serialising on the
-/// pool instead means the busy timeout is reserved for the writer we do not
-/// control — the Python worker.
+/// One, and it stays one. SQLite WAL still has a single writer: a second
+/// pooled connection only waits on our own lock. A two-connection WAL
+/// writer microbench (400 INSERTs) did not double throughput — the
+/// writers serialized — so raising this after moving embed out of the
+/// write txn would not buy drain items/s. The busy timeout is reserved
+/// for a writer this process does not control.
 pub const DEFAULT_WRITER_POOL: usize = 1;
 
 /// `LATTICEAI_STATIC_DIR` — the SPA/asset root, read by
@@ -217,6 +220,22 @@ pub enum Access {
     Write,
 }
 
+/// A pooled connection tagged with the store generation it was opened under.
+#[derive(Debug)]
+struct Slot {
+    conn: Connection,
+    generation: u64,
+}
+
+#[derive(Debug)]
+struct PoolInner {
+    slots: Vec<Slot>,
+    /// Connections currently checked out. `slots.len() + outstanding` is the
+    /// number of live handles; after [`Pool::discard_idle`] the idle half is
+    /// gone and checkout opens a replacement rather than waiting forever.
+    outstanding: usize,
+}
+
 /// A fixed set of open connections, handed out one at a time.
 ///
 /// Rolled by hand rather than pulled from `r2d2`: the whole requirement is
@@ -225,35 +244,57 @@ pub enum Access {
 /// health-check policy this workspace has no use for.
 ///
 /// Connections are opened eagerly at construction so a bad path fails at
-/// startup rather than on the first request that needed the store.
+/// startup rather than on the first request that needed the store. A
+/// [`Store::bump_generation`] (restore) makes every cached handle stale:
+/// checkout closes it and opens a fresh one against the path.
 #[derive(Debug)]
 pub struct Pool {
-    slots: Mutex<Vec<Connection>>,
+    inner: Mutex<PoolInner>,
     free: Condvar,
     capacity: usize,
     access: Access,
+    path: PathBuf,
+    generation: Arc<AtomicU64>,
 }
 
 impl Pool {
     /// Open `capacity` connections in `access` mode against `path`.
     pub fn open(path: &Path, access: Access, capacity: usize) -> Result<Self, CoreError> {
+        Self::open_with_generation(path, access, capacity, Arc::new(AtomicU64::new(0)))
+    }
+
+    fn open_with_generation(
+        path: &Path,
+        access: Access,
+        capacity: usize,
+        generation: Arc<AtomicU64>,
+    ) -> Result<Self, CoreError> {
         if capacity == 0 {
             return Err(CoreError::InvalidRequest(
                 "a connection pool needs at least one connection".into(),
             ));
         }
+        let current = generation.load(Ordering::Acquire);
         let mut slots = Vec::with_capacity(capacity);
         for _ in 0..capacity {
-            slots.push(match access {
-                Access::Read => open_read_only(path)?,
-                Access::Write => open_read_write(path)?,
+            slots.push(Slot {
+                conn: match access {
+                    Access::Read => open_read_only(path)?,
+                    Access::Write => open_read_write(path)?,
+                },
+                generation: current,
             });
         }
         Ok(Self {
-            slots: Mutex::new(slots),
+            inner: Mutex::new(PoolInner {
+                slots,
+                outstanding: 0,
+            }),
             free: Condvar::new(),
             capacity,
             access,
+            path: path.to_path_buf(),
+            generation,
         })
     }
 
@@ -267,21 +308,73 @@ impl Pool {
         self.access
     }
 
+    /// Drop every idle handle. Outstanding checkouts are left alone; they
+    /// become stale on the next [`Store::bump_generation`] and are discarded
+    /// when they return.
+    fn discard_idle(&self) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.slots.clear();
+        }
+    }
+
+    fn open_fresh(&self) -> Result<Connection, CoreError> {
+        match self.access {
+            Access::Read => open_read_only(&self.path),
+            Access::Write => open_read_write(&self.path),
+        }
+    }
+
+    fn take_fresh(&self, generation: u64) -> Result<PooledConnection<'_>, CoreError> {
+        match self.open_fresh() {
+            Ok(conn) => Ok(PooledConnection {
+                pool: self,
+                conn: Some(conn),
+                generation,
+            }),
+            Err(err) => {
+                if let Ok(mut inner) = self.inner.lock() {
+                    inner.outstanding = inner.outstanding.saturating_sub(1);
+                }
+                self.free.notify_one();
+                Err(err)
+            }
+        }
+    }
+
     /// Take a connection, **blocking** until one is free.
     ///
     /// Blocking is why every caller inside an axum handler goes through
     /// `spawn_blocking` (or the async helpers on [`Store`]): holding a tokio
     /// worker thread here would starve the runtime the moment the pool is busy.
+    ///
+    /// A handle opened under a previous [`Store`] generation is closed here
+    /// and replaced. After [`Pool::discard_idle`] the idle list is empty and
+    /// this opens a new connection instead of waiting on a Condvar nobody
+    /// will signal.
     pub fn checkout(&self) -> Result<PooledConnection<'_>, CoreError> {
-        let mut slots = self.slots.lock().map_err(|_| poisoned())?;
+        let current = self.generation.load(Ordering::Acquire);
+        let mut inner = self.inner.lock().map_err(|_| poisoned())?;
         loop {
-            if let Some(conn) = slots.pop() {
-                return Ok(PooledConnection {
-                    pool: self,
-                    conn: Some(conn),
-                });
+            if let Some(slot) = inner.slots.pop() {
+                if slot.generation == current {
+                    inner.outstanding += 1;
+                    return Ok(PooledConnection {
+                        pool: self,
+                        conn: Some(slot.conn),
+                        generation: current,
+                    });
+                }
+                inner.outstanding += 1;
+                drop(inner);
+                drop(slot.conn);
+                return self.take_fresh(current);
             }
-            slots = self.free.wait(slots).map_err(|_| poisoned())?;
+            if inner.outstanding < self.capacity {
+                inner.outstanding += 1;
+                drop(inner);
+                return self.take_fresh(current);
+            }
+            inner = self.free.wait(inner).map_err(|_| poisoned())?;
         }
     }
 }
@@ -297,6 +390,7 @@ pub struct PooledConnection<'pool> {
     // `Option` only so `Drop` can move the connection back out; it is `Some`
     // for the whole observable life of the guard.
     conn: Option<Connection>,
+    generation: u64,
 }
 
 impl std::ops::Deref for PooledConnection<'_> {
@@ -319,8 +413,15 @@ impl Drop for PooledConnection<'_> {
             // A poisoned lock drops the connection instead of returning it: the
             // pool is already unusable (every `checkout` errors), so shrinking
             // it changes nothing a caller can observe.
-            if let Ok(mut slots) = self.pool.slots.lock() {
-                slots.push(conn);
+            if let Ok(mut inner) = self.pool.inner.lock() {
+                let current = self.pool.generation.load(Ordering::Acquire);
+                if self.generation == current {
+                    inner.slots.push(Slot {
+                        conn,
+                        generation: self.generation,
+                    });
+                }
+                inner.outstanding = inner.outstanding.saturating_sub(1);
             }
             self.pool.free.notify_one();
         }
@@ -342,6 +443,11 @@ pub struct Store {
     path: PathBuf,
     readers: Pool,
     writers: Pool,
+    /// Bumped by a restore after it swaps `knowledge_graph.sqlite`. Checkout
+    /// compares this to the generation stamped on each cached handle and
+    /// reopens when they disagree, so the next query sees post-restore bytes
+    /// without a process restart.
+    generation: Arc<AtomicU64>,
 }
 
 impl Store {
@@ -356,18 +462,42 @@ impl Store {
     /// machine whose Brain has never been built it is what brings the file into
     /// existence for the read-only handles that follow.
     pub fn open_with_sizes(path: &Path, readers: usize, writers: usize) -> Result<Self, CoreError> {
-        let writers = Pool::open(path, Access::Write, writers)?;
-        let readers = Pool::open(path, Access::Read, readers)?;
+        let generation = Arc::new(AtomicU64::new(0));
+        let writers =
+            Pool::open_with_generation(path, Access::Write, writers, Arc::clone(&generation))?;
+        let readers =
+            Pool::open_with_generation(path, Access::Read, readers, Arc::clone(&generation))?;
         Ok(Self {
             path: path.to_path_buf(),
             readers,
             writers,
+            generation,
         })
     }
 
     /// The file this store is open against.
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// The generation cached handles were opened under. Starts at 0.
+    pub fn generation(&self) -> u64 {
+        self.generation.load(Ordering::Acquire)
+    }
+
+    /// Close idle connections so a subsequent file replace cannot inherit
+    /// their WAL/SHM descriptors. Call this *before* swapping the live
+    /// database; [`Store::bump_generation`] after the swap makes any
+    /// in-flight handle stale on return.
+    pub fn discard_idle_handles(&self) {
+        self.readers.discard_idle();
+        self.writers.discard_idle();
+    }
+
+    /// Advance the store epoch. The next checkout on either pool reopens
+    /// against [`Store::path`] instead of serving the pre-restore inode.
+    pub fn bump_generation(&self) -> u64 {
+        self.generation.fetch_add(1, Ordering::AcqRel) + 1
     }
 
     /// The read pool, for callers that want to hold a connection themselves.

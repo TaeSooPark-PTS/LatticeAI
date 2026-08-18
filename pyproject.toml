@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "11.9.0"
+version = "12.0.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -101,6 +101,11 @@ voice = ["openai-whisper", "SpeechRecognition", "pydub"]
 # extra that no longer exists makes pip warn at people who follow it. An empty
 # alias keeps that command a silent no-op, which is now the truth.
 pdf = []
+# Pointer actuation (the six pyautogui tools on the worker). Not a core
+# dependency: a stock install answers capabilities.pointer_tools=false and
+# the tools stay "unavailable". `pip install "ltcai[pointer]"` is how a
+# user opts in; the worker probe already keys off find_spec("pyautogui").
+pointer = ["pyautogui>=0.9.54"]
 all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub"]
 # Development-only checkers. Coverage became measurable in 10.2.0: before the
 # connection-leak fix, running under a tracer exhausted file descriptors and

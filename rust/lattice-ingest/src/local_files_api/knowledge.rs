@@ -110,9 +110,24 @@ pub(super) async fn health(
                 for folder in folders {
                     if let Some(object) = folder.as_object_mut() {
                         object.insert("watch_active".into(), json!(false));
+                        let root = object
+                            .get("root_path")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string();
+                        let deleted = if root.is_empty() {
+                            Vec::new()
+                        } else {
+                            super::prune::deleted_files(&store, Path::new(&root))
+                        };
+                        if let Some(Value::Object(files)) = object.get_mut("files") {
+                            files.insert("deleted".into(), json!(deleted.len()));
+                        }
+                        object.insert("deleted".into(), json!(deleted));
                     }
                 }
             }
+            attach_watch_deletions(&state, &mut payload);
             if let Some(object) = payload.as_object_mut() {
                 object.insert("watch".into(), json!({"available": false, "active": {}}));
                 object.insert(
@@ -531,6 +546,92 @@ fn preview_tree(path: &str, max_items: i64) -> Result<Value, String> {
         "items": items,
         "privacy_notice": "현재 단계에서는 파일 내용을 읽지 않고, 폴더와 파일의 이름/크기/수정일만 확인합니다."
     }))
+}
+
+fn attach_watch_deletions(state: &LocalFilesState, payload: &mut Value) {
+    let watch = super::watch_bridge::read_watch_file(state.config.data_dir());
+    let watches = watch
+        .get("watches")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let existing: std::collections::HashSet<String> = payload
+        .get("folders")
+        .and_then(Value::as_array)
+        .map(|folders| {
+            folders
+                .iter()
+                .filter_map(|folder| {
+                    folder
+                        .get("root_path")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut extra = Vec::new();
+    for entry in &watches {
+        let path = entry
+            .get("path")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let deleted = entry
+            .get("last_result")
+            .and_then(|result| result.get("deleted"))
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        if deleted.is_empty() || existing.contains(path) {
+            continue;
+        }
+        extra.push(json!({
+            "id": entry.get("id").cloned().unwrap_or(Value::Null),
+            "label": path,
+            "root_path": path,
+            "status": "watching",
+            "watch_active": true,
+            "files": {
+                "total": 0,
+                "indexed": 0,
+                "failed": 0,
+                "skipped": 0,
+                "pending": 0,
+                "deleted": deleted.len()
+            },
+            "coverage": Value::Null,
+            "recent_errors": [],
+            "deleted": deleted,
+        }));
+    }
+    let folder_count = if let Some(Value::Array(folders)) = payload.get_mut("folders") {
+        folders.extend(extra);
+        folders.len()
+    } else {
+        0
+    };
+    if let Some(object) = payload.as_object_mut() {
+        object.insert("count".into(), json!(folder_count));
+    }
+    let pending: usize = payload
+        .get("folders")
+        .and_then(Value::as_array)
+        .map(|folders| {
+            folders
+                .iter()
+                .map(|folder| {
+                    folder
+                        .get("deleted")
+                        .and_then(Value::as_array)
+                        .map(Vec::len)
+                        .unwrap_or(0)
+                })
+                .sum()
+        })
+        .unwrap_or(0);
+    if let Some(object) = payload.as_object_mut() {
+        object.insert("pending_deletions".into(), json!(pending));
+    }
 }
 
 fn audit_folder(path: &str, max_files: i64) -> Result<Value, String> {

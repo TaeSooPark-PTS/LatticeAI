@@ -11,16 +11,19 @@
 //! who "just wanted to nudge the graph channel" therefore also turns off the
 //! decay, and that is the documented behaviour, not an accident to smooth over.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use lattice_core::pytext::{parse_iso, recency_score, round6};
 use lattice_core::{CoreError, LocalEmbeddingModel};
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
+use crate::expansion::{
+    expansion_enabled, one_hop, rrf_enabled, rrf_scores, EXPANSION_SCORE_FACTOR, EXPANSION_SEEDS,
+};
 use crate::policy::{class_weights, resolve_policy};
 use crate::service::{graph_search, keyword_search, vector_search, GraphSearchOptions, Scope};
-use crate::shape::truthy;
+use crate::shape::{truthy, DEFAULT_EXPANSION_CAP};
 
 /// `search_service.DEFAULT_HYBRID_WEIGHTS` — the base every explicit weight map
 /// is merged over, and (not by coincidence) the `fact` row of the class table.
@@ -71,10 +74,78 @@ struct Fused {
     sources: Vec<String>,
     source_scores: Map<String, Value>,
     graph_context: Option<Vec<Value>>,
+    /// 1-based position in each channel that returned this row. Read only when
+    /// `LATTICEAI_FUSION_RRF` is on; collecting it always costs one push.
+    ranks: Vec<usize>,
 }
 
 fn weights_value(weights: &Map<String, Value>, source: &str) -> f64 {
     weights.get(source).and_then(Value::as_f64).unwrap_or(0.0)
+}
+
+/// Append the one-hop neighbours of the strongest hits, when the gate is on.
+///
+/// Returns the `graph_expansion` block, or `None` when the gate is off — the
+/// caller only adds the key when there is something true to say. A neighbour
+/// row carries the *seed's* shape (`sources`, `source_scores`) deliberately
+/// left empty and a `via` block instead: it was not found by any channel, and
+/// claiming a channel score for it would be an invented number.
+fn expand_matches(conn: &Connection, matches: &mut Vec<Value>) -> Result<Option<Value>, CoreError> {
+    if !expansion_enabled() || matches.is_empty() {
+        return Ok(None);
+    }
+    let node_id = |item: &Value| -> String {
+        item.get("node_id")
+            .or_else(|| item.get("id"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
+    let seeds: Vec<String> = matches
+        .iter()
+        .take(EXPANSION_SEEDS)
+        .map(&node_id)
+        .filter(|id| !id.is_empty())
+        .collect();
+    let seed_scores: Vec<f64> = matches
+        .iter()
+        .take(EXPANSION_SEEDS)
+        .map(|item| item.get("score").and_then(Value::as_f64).unwrap_or(0.0))
+        .collect();
+    let present: BTreeSet<String> = matches.iter().map(&node_id).collect();
+    let (neighbours, report) = one_hop(
+        conn,
+        &seeds,
+        &present,
+        DEFAULT_EXPANSION_CAP.max(0) as usize,
+    )?;
+    for neighbour in neighbours {
+        let seed_score = seeds
+            .iter()
+            .position(|id| *id == neighbour.seed_id)
+            .and_then(|index| seed_scores.get(index).copied())
+            .unwrap_or(0.0);
+        let mut item = Map::new();
+        item.insert("id".into(), Value::String(neighbour.node_id.clone()));
+        item.insert("node_id".into(), Value::String(neighbour.node_id.clone()));
+        item.insert("type".into(), neighbour.node_type.clone());
+        item.insert("title".into(), neighbour.title.clone());
+        item.insert("summary".into(), neighbour.summary.clone());
+        item.insert("metadata".into(), neighbour.metadata.clone());
+        item.insert("updated_at".into(), neighbour.updated_at.clone());
+        item.insert(
+            "sources".into(),
+            Value::Array(vec![Value::String("graph_expansion".into())]),
+        );
+        item.insert("source_scores".into(), Value::Object(Map::new()));
+        item.insert(
+            "score".into(),
+            Value::from(round6(seed_score * EXPANSION_SCORE_FACTOR)),
+        );
+        item.insert("via".into(), neighbour.provenance());
+        matches.push(Value::Object(item));
+    }
+    Ok(Some(report.as_json(DEFAULT_EXPANSION_CAP)))
 }
 
 /// `SearchService.hybrid_search`.
@@ -183,6 +254,7 @@ pub fn service_hybrid_search(
                             .get("graph_context")
                             .and_then(Value::as_array)
                             .cloned(),
+                        ranks: Vec::new(),
                     });
                     let position = order.len() - 1;
                     index.insert(key.clone(), position);
@@ -191,6 +263,7 @@ pub fn service_hybrid_search(
             };
             let fused = &mut order[position];
             fused.score += contribution;
+            fused.ranks.push(rank + 1);
             if !fused.sources.iter().any(|known| known == source) {
                 fused.sources.push(source.to_string());
             }
@@ -210,6 +283,26 @@ pub fn service_hybrid_search(
                 let existing = fused.graph_context.get_or_insert_with(Vec::new);
                 existing.extend(incoming.iter().cloned());
             }
+        }
+    }
+
+    // Rank fusion, when the gate is on. The three channels score in three
+    // different units — a normalized cosine, a `1/rank`, a graph-walk weight —
+    // and a weighted sum of those is arithmetic across units. RRF sums
+    // `1/(60 + position)` instead, which only ever compares positions.
+    let use_rrf = rrf_enabled();
+    if use_rrf {
+        let ranks: BTreeMap<String, Vec<usize>> = order
+            .iter()
+            .enumerate()
+            .map(|(position, fused)| (position.to_string(), fused.ranks.clone()))
+            .collect();
+        let scored = rrf_scores(&ranks);
+        for (position, fused) in order.iter_mut().enumerate() {
+            fused.score = scored
+                .get(&position.to_string())
+                .copied()
+                .unwrap_or(fused.score);
         }
     }
 
@@ -254,6 +347,10 @@ pub fn service_hybrid_search(
         .collect();
     let mut matches = crate::service::scope_matches(conn, matches, scope)?;
     matches.truncate(options.limit.clamp(1, 100) as usize);
+    // One-hop expansion, when the gate is on. After the cut, so a neighbour is
+    // never in a position a real hit wanted; each lands at half its seed's
+    // score carrying the edge it was reached by.
+    let expansion = expand_matches(conn, &mut matches)?;
     for (index, item) in matches.iter_mut().enumerate() {
         let Some(item) = item.as_object_mut() else {
             continue;
@@ -289,6 +386,14 @@ pub fn service_hybrid_search(
     let mut report = Map::new();
     report.insert("query".into(), Value::String(query.to_string()));
     report.insert("mode".into(), Value::String("hybrid".into()));
+    // Both blocks are additive and appear only when their gate is on, so the
+    // default payload is byte-for-byte what the goldens recorded.
+    if use_rrf {
+        report.insert("fusion_strategy".into(), Value::String("rrf".into()));
+    }
+    if let Some(expansion) = expansion {
+        report.insert("graph_expansion".into(), expansion);
+    }
     report.insert(
         "query_class".into(),
         query_class.map(Value::String).unwrap_or(Value::Null),

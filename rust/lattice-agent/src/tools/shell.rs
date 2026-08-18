@@ -1,7 +1,7 @@
 //! `run_command` / `build_project` / `deploy_project` — the exec tools.
 //!
-//! `run_command` is already ported twice over: [`crate::command::validate`] is
-//! the validator and [`crate::exec::execute`] is the spawn, both pinned by the
+//! `run_command` is already ported twice over: [`crate::tools::command::validate`] is
+//! the validator and [`crate::tools::exec::execute`] is the spawn, both pinned by the
 //! kernel goldens. All this module adds is the handler's result shape — the
 //! five keys Python returns, and no more, because the transcript records them
 //! verbatim and the critic reads them.
@@ -16,8 +16,8 @@ use std::time::Duration;
 
 use serde_json::{json, Map, Value};
 
-use crate::sandbox::{ToolError, Workspace, MAX_COMMAND_OUTPUT, MAX_COMMAND_SECONDS};
 use crate::tools::args;
+use crate::tools::sandbox::{ToolError, Workspace, MAX_COMMAND_OUTPUT, MAX_COMMAND_SECONDS};
 
 /// `MAX_BUILD_SECONDS`.
 pub const MAX_BUILD_SECONDS: u64 = 180;
@@ -49,8 +49,8 @@ pub async fn run_command(
 ) -> Result<Value, ToolError> {
     let command = args::required_str(arguments, "command")?;
     let cwd = args::truthy_str(arguments, "cwd", ".")?;
-    let validated = crate::command::validate(workspace, &command, Some(&cwd))?;
-    let execution = crate::exec::execute(
+    let validated = crate::tools::command::validate(workspace, &command, Some(&cwd))?;
+    let execution = crate::tools::exec::execute(
         workspace,
         &validated,
         Duration::from_secs(MAX_COMMAND_SECONDS),
@@ -169,7 +169,7 @@ fn package_script(workdir: &std::path::Path, script: &str) -> Result<String, Too
     };
     match scripts.get(script) {
         // `{str(k): str(v)}` — a non-string body stringifies rather than fails.
-        Some(body) => Ok(crate::pystr::py_str(body)),
+        Some(body) => Ok(crate::parse::pystr::py_str(body)),
         None => Err(ToolError::tool(format!(
             "package.json does not define a '{script}' script."
         ))),

@@ -321,6 +321,43 @@
   font-size: 0.6rem;
 }
 
+.folder-memory-prune {
+  margin-top: 0.35rem;
+}
+
+.folder-memory-prune-open,
+.folder-memory-prune-actions button {
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+  background: hsl(var(--surface));
+  color: hsl(var(--fg));
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.folder-memory-prune-preview {
+  display: grid;
+  gap: 0.25rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+.folder-memory-prune-preview ul {
+  margin: 0;
+  padding-left: 0.9rem;
+}
+
+.folder-memory-prune-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.folder-memory-prune-error {
+  color: hsl(var(--warning, 32 78% 42%));
+}
+
 /* ── 지식 정원 (v9.9.7): 네 개의 화단 ──────────────────────────────────── */
 .brain-garden {
   border: 1px solid hsl(var(--border) / 0.55);

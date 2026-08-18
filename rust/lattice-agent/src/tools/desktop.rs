@@ -20,8 +20,8 @@ use std::time::Duration;
 
 use serde_json::{json, Map, Value};
 
-use crate::sandbox::ToolError;
 use crate::tools::args;
+use crate::tools::sandbox::ToolError;
 
 /// `subprocess.run(..., timeout=10)`.
 const OPEN_TIMEOUT: Duration = Duration::from_secs(10);
@@ -109,7 +109,7 @@ pub async fn computer_open_app(args: &Map<String, Value>) -> Result<Value, ToolE
 /// `computer_open_url(url, app="Google Chrome")`.
 pub async fn computer_open_url(args: &Map<String, Value>) -> Result<Value, ToolError> {
     let raw = args::required(args, "url")?;
-    let url = crate::pystr::py_str(raw).trim().to_string();
+    let url = crate::parse::pystr::py_str(raw).trim().to_string();
     // `str(app or "").strip()` — unlike `computer_open_app`, an explicitly
     // falsy app is **no app** here, and the opener drops its `-a` for it.
     let app = args::defaulted_str(args, "app", "Google Chrome")

@@ -68,6 +68,14 @@ from __future__ import annotations
 from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM as DEFAULT_EMBEDDING_DIM
 from lattice_brain.embeddings import LocalEmbeddingModel as LocalEmbeddingModel
 
+from .autodetect import AUTO_PROVIDER as AUTO_PROVIDER
+from .autodetect import AUTODETECT_ENV as AUTODETECT_ENV
+from .autodetect import LOCAL_MLX_MODELS as LOCAL_MLX_MODELS
+from .autodetect import Detection as Detection
+from .autodetect import detect_embedder as detect_embedder
+from .autodetect import detect_local_mlx as detect_local_mlx
+from .autodetect import detect_ollama as detect_ollama
+from .autodetect import resolve_auto_provider as resolve_auto_provider
 from .base import _KNOWN_DIMS as _KNOWN_DIMS
 from .base import EmbeddingProvider as EmbeddingProvider
 from .base import EmbeddingUnavailable as EmbeddingUnavailable
@@ -113,6 +121,14 @@ from .vision import build_vision_provider as build_vision_provider
 from .vision import resolve_vision_embedder as resolve_vision_embedder
 
 __all__ = [
+    "AUTODETECT_ENV",
+    "AUTO_PROVIDER",
+    "LOCAL_MLX_MODELS",
+    "Detection",
+    "detect_embedder",
+    "detect_local_mlx",
+    "detect_ollama",
+    "resolve_auto_provider",
     "DEFAULT_CAPTION_PROMPT",
     "DEFAULT_VISION_DIM",
     "VISION_CAPTION_TARGET_ENV",

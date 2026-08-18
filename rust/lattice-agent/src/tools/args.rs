@@ -9,8 +9,8 @@
 
 use serde_json::{Map, Value};
 
-use crate::pystr::{is_truthy, py_str};
-use crate::sandbox::ToolError;
+use crate::parse::pystr::{is_truthy, py_str};
+use crate::tools::sandbox::ToolError;
 
 /// `args[key]` — absent is `KeyError`, whose `str()` is `'key'`.
 pub fn required<'a>(args: &'a Map<String, Value>, key: &str) -> Result<&'a Value, ToolError> {

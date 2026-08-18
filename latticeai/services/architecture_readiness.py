@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-ARCHITECTURE_VERSION_TARGET = "11.9.0"
+ARCHITECTURE_VERSION_TARGET = "12.0.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",
@@ -177,7 +177,7 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
                 and not agent_alias_forbidden
             ) else "incomplete",
             evidence=[
-                "rust/lattice-agent/src/permission.rs block_reason_for_tool (native owner)",
+                "rust/lattice-agent/src/kernel/permission.rs block_reason_for_tool (native owner)",
                 "latticeai.api.agent_worker_seam.create_agent_worker_seam_router",
                 "tests/unit/test_agent_worker_seam.py",
             ],

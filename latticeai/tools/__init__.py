@@ -116,7 +116,12 @@ _CJK_FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
 ]
 
-_SUPPORTED_READ_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"}
+# `.html`/`.htm` joined in v12.0.0: they were classified as *code* and read
+# verbatim, so the graph stored markup instead of what the page says. See
+# `latticeai.tools.markup.html_to_text`.
+_SUPPORTED_READ_EXTENSIONS = {
+    ".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv", ".html", ".htm",
+}
 DOCUMENT_MAX_READ_BYTES = 10_000_000  # 10 MB
 
 

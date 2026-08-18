@@ -45,8 +45,18 @@ _KNOWN_DIMS = {
     "gte-small": 384,
     "gte-base": 768,
     "gte-large": 1024,
+    "e5-small": 384,
+    "e5-base": 768,
     "e5-large": 1024,
+    "multilingual-e5-small": 384,
+    "multilingual-e5-small-mlx": 384,
+    "multilingual-e5-base": 768,
+    "multilingual-e5-base-mlx": 768,
     "multilingual-e5-large": 1024,
+    "multilingual-e5-large-mlx": 1024,
+    "snowflake-arctic-embed-l-v2.0-8bit": 1024,
+    "embeddinggemma-300m-4bit": 768,
+    "embeddinggemma-300m-8bit": 768,
     "text-embedding-3-small": 1536,
     "text-embedding-3-large": 3072,
     "text-embedding-ada-002": 1536,
@@ -85,6 +95,21 @@ class EmbeddingProvider:
     # ── required ──────────────────────────────────────────────────────────
     def embed_batch(self, texts: Sequence[str]) -> List[List[float]]:
         raise NotImplementedError
+
+    # ── optional: asymmetric models ───────────────────────────────────────
+    def embed_batch_for(
+        self, texts: Sequence[str], kind: str = "passage"
+    ) -> List[List[float]]:
+        """Embed for a *role*: ``"query"`` or ``"passage"``.
+
+        Most embedders are symmetric and ignore the role — the default here
+        does. The E5 family is not: it was trained with a literal ``query: ``
+        or ``passage: `` in front of the text, and dropping the instruction
+        costs real retrieval accuracy. ``POST /worker/embed`` already carries
+        the role (``kind``), so the one provider that needs it can have it
+        without every caller learning about instructions.
+        """
+        return self.embed_batch(texts)
 
     # ── derived (shared) ──────────────────────────────────────────────────
     def _model_id_with_dim(self, dim: int) -> str:

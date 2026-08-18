@@ -39,9 +39,14 @@ exercises.
 
 The gating those two grids proved now has named unit tests in the crate:
 
-* `lattice_agent::permission::tests::trusted_reproduces_every_verdict_class_of_the_retired_grid`
-* `lattice_agent::permission::tests::bypass_reproduces_every_verdict_class_of_the_retired_grid`
-* `lattice_agent::mode::tests::{trusted_auto_runs_workspace_writes_but_not_exec_or_control,
+(v12.0.0 moved these two modules into the crate's `kernel/` group — the test
+names and what they assert are unchanged, and `lattice_agent::permission` /
+`lattice_agent::mode` still resolve as re-exports, so an older reference to
+them is still correct as a path, just not as a location.)
+
+* `lattice_agent::kernel::permission::tests::trusted_reproduces_every_verdict_class_of_the_retired_grid`
+* `lattice_agent::kernel::permission::tests::bypass_reproduces_every_verdict_class_of_the_retired_grid`
+* `lattice_agent::kernel::mode::tests::{trusted_auto_runs_workspace_writes_but_not_exec_or_control,
   trusted_accepts_a_workspace_write_on_either_axis,
   bypass_still_refuses_destructive_and_system_writes,
   proposals_are_staged_only_under_strict, plan_approval_is_skipped_only_by_bypass}`

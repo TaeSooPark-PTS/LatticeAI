@@ -51,7 +51,13 @@ vi.mock("@/features/brain/BrainHome", () => ({
     </div>
   ),
 }));
-vi.mock("@/pages/Act", () => ({ ActPage: () => <div data-testid="page-act" /> }));
+const { actPageState } = vi.hoisted(() => ({ actPageState: { shouldThrow: false } }));
+vi.mock("@/pages/Act", () => ({
+  ActPage: () => {
+    if (actPageState.shouldThrow) throw new Error("act exploded");
+    return <div data-testid="page-act" />;
+  },
+}));
 vi.mock("@/pages/Brain", () => ({
   BrainPage: ({ initialTab }: { initialTab?: string }) => (
     <div data-testid="page-brain" data-tab={initialTab ?? ""} />
@@ -104,6 +110,7 @@ function withLaidOutElements() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  actPageState.shouldThrow = false;
   useAppStore.setState({ language: "en", theme: "light", mode: "basic", workspaceId: null });
   localStorage.setItem(PRODUCT_FLOW_KEY, "true");
   window.location.hash = "";
@@ -140,6 +147,16 @@ describe("which screen the hash selects", () => {
   ])("routes %s to %s", async (hash, testId) => {
     renderApp(hash);
     expect(await screen.findByTestId(testId)).toBeTruthy();
+  });
+
+  it("contains a throwing route page instead of blanking the shell", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    actPageState.shouldThrow = true;
+    renderApp("#/review");
+    expect(await screen.findByTestId("error-boundary-route")).toBeTruthy();
+    expect(screen.queryByTestId("page-act")).toBeNull();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(spy).toHaveBeenCalled();
   });
 
   it("falls back to the Brain home for an unknown hash", async () => {

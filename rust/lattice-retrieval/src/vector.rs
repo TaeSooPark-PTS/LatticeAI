@@ -1,9 +1,13 @@
-//! Port of `vector_search` (`graph/retrieval_vector/search.py`), exact scan only.
+//! Port of `vector_search` (`graph/retrieval_vector/search.py`).
 //!
-//! The candidate cap is the part worth reading twice: when it bites, the rows
-//! kept are the most recently *indexed* ones — recency, not similarity — so the
-//! answer is partial recall, and the `recall` block says so instead of hiding
-//! it. That honesty block is part of the ported contract, not decoration.
+//! Default env is the exact scan. The candidate cap is the part worth reading
+//! twice: when it bites, the rows kept are the most recently *indexed* ones —
+//! recency, not similarity — so the answer is partial recall, and the `recall`
+//! block says so instead of hiding it.
+//!
+//! `LATTICEAI_VECTOR_INDEX=hnsw` asks the worker sidecar for `k*8` candidates
+//! and re-scores them exactly (`hnsw+rescore`). Any failure falls back to this
+//! scan and names the reason. Golden suites pin the default env.
 
 use lattice_core::pytext::{citation_locator, clean_text, round6, safe_loads, truncate_chars};
 use lattice_core::read::{vector_row_from, VectorRow, VECTOR_ROW_SELECT};
@@ -65,11 +69,10 @@ fn brute(requested: &str, detail: Option<String>) -> BackendSelection {
     }
 }
 
-/// `vector_index.resolve_vector_index` restricted to the exact backend.
+/// `vector_index.resolve_vector_index`.
 ///
-/// Phase 1 ports the brute-force scan only (the plan's explicit non-goal list
-/// keeps HNSW/quantized parity out of scope), so a request for an approximate
-/// backend resolves to the exact scan *and says so* rather than pretending.
+/// `hnsw` is honoured only when the worker sidecar answers; the scan below
+/// still falls back to brute and says why. `quantized` stays unimplemented.
 pub fn resolve_vector_index() -> BackendSelection {
     let raw = std::env::var(VECTOR_INDEX_ENV).unwrap_or_default();
     let name = raw.trim().to_lowercase();
@@ -80,12 +83,21 @@ pub fn resolve_vector_index() -> BackendSelection {
     };
     match name.as_str() {
         "brute" => brute("brute", None),
-        "quantized" | "hnsw" => brute(
-            &name,
-            Some(format!(
-                "{name} is not implemented in lattice-retrieval (v11.4.0 Phase 1 ports the \
-                 exact scan only) — using the exact brute-force scan"
-            )),
+        "hnsw" => BackendSelection {
+            requested: "hnsw".into(),
+            name: "hnsw".into(),
+            backend: "hnsw".into(),
+            approx: true,
+            exhaustive: false,
+            detail: None,
+        },
+        "quantized" => brute(
+            "quantized",
+            Some(
+                "quantized is not implemented in lattice-retrieval — using the exact \
+                 brute-force scan"
+                    .into(),
+            ),
         ),
         other => brute(
             other,
@@ -124,8 +136,20 @@ fn recall_report(
     scanned: i64,
     approx_detail: Option<&str>,
 ) -> Value {
+    recall_report_custom(backend, cap, total, scanned, approx_detail, true)
+}
+
+/// Same shape as [`recall_report`]; `recency_cut` is the brute-scan wording.
+pub(crate) fn recall_report_custom(
+    backend: &str,
+    cap: Option<i64>,
+    total: i64,
+    scanned: i64,
+    approx_detail: Option<&str>,
+    recency_cut: bool,
+) -> Value {
     let truncated = scanned < total;
-    let detail = if truncated {
+    let detail = if truncated && recency_cut {
         Some(format!(
             "partial recall: scored the {scanned} most recently indexed vectors of {total}. \
              The cut is by index recency, not similarity, so older matches were never \
@@ -273,6 +297,16 @@ pub fn vector_search(
     let model_id = model.model_id().to_string();
     let dim = model.dim() as i64;
 
+    let mut index_block = selection.as_json();
+    if selection.requested == "hnsw" && selection.name == "hnsw" {
+        match crate::vector_hnsw::try_hnsw(&query, &query_vector, conn, model, limit, min_score) {
+            Ok(payload) => return Ok(payload),
+            Err(reason) => {
+                index_block = crate::vector_hnsw::fallback_selection(&reason).as_json();
+            }
+        }
+    }
+
     let candidates_total: i64 = conn.query_row(
         "SELECT COUNT(*) AS c FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=?",
         rusqlite::params![model_id, dim],
@@ -326,7 +360,7 @@ pub fn vector_search(
         Value::Array(scored.into_iter().map(Value::Object).collect()),
     );
     out.insert("recall".into(), recall);
-    out.insert("index".into(), selection.as_json());
+    out.insert("index".into(), index_block);
     Ok(Value::Object(out))
 }
 

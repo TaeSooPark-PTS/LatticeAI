@@ -19,7 +19,7 @@ here opens a database, writes a file, or reaches a store. Each handler is a
 function of its request body, so a caller can retry it, cache it, or run two of
 them at once without asking who else is writing.
 
-The eight seams, and what each was extracted from:
+The nine seams, and what each was extracted from:
 
 ``POST /worker/embed``
     ``EmbeddingProvider.embed_batch`` on the *resolved* provider — the same
@@ -52,6 +52,12 @@ The eight seams, and what each was extracted from:
     structures ``ingest_message`` / ``ingest_document`` / ``ingest_source``
     consume, already classified. Rust writes the Concept/Task/Decision subgraph;
     this seam never opens a store.
+
+``POST /worker/vector/query``
+    Approximate nearest-neighbour over the ``.hnsw`` sidecar next to the
+    brain database. The one compute seam that *reads* the store (row count
+    + embeddings, never a write) so it can refresh the sidecar and say
+    ``index: "none"`` when there is nothing to serve.
 
 Gating is the seam gate the rest of the worker uses — ``LATTICEAI_AGENT_TOOL_SEAM``
 read per request through :func:`latticeai.api.agent_worker_seam._seam_open`,
@@ -108,6 +114,12 @@ EXTRACT_LIMITS: Dict[str, int] = {"message": 12, "document": 15}
 #: write-side module would tie this compute seam to a module W1 is replacing.
 PASSAGE_MAX_CHARS = 50_000
 
+#: Upper bound on ``texts`` for one ``POST /worker/embed``. Ingest already
+#: batches; a caller that dumps a whole vault into one request is a bug, not
+#: a use case. 256 sits in the 128–256 band G-RAG-A recommended. Additive:
+#: the request/response shape is unchanged.
+EMBED_MAX_BATCH = 256
+
 #: The CJK-capable fonts ``create_pdf`` looks for, as a module attribute so a
 #: test can point the probe at a font that exists (and at one that does not)
 #: instead of asserting whatever the host machine happens to have installed.
@@ -153,6 +165,14 @@ WORKER_COMPUTE_MESSAGES: Dict[str, Dict[str, str]] = {
     "worker_compute.extract_kind_invalid": {
         "ko": "'{kind}' 은(는) 추출 종류가 아닙니다. {allowed} 중 하나여야 합니다.",
         "en": "'{kind}' is not an extraction kind. Use one of {allowed}.",
+    },
+    "worker_compute.embed_batch_too_large": {
+        "ko": "임베딩 배치가 {count}개입니다. 한 번에 {limit}개까지입니다.",
+        "en": "The embed batch has {count} texts; the limit is {limit}.",
+    },
+    "worker_compute.vector_query_invalid": {
+        "ko": "벡터 질의는 embedding_model, embedding_dim, vector 가 필요합니다.",
+        "en": "A vector query needs embedding_model, embedding_dim, and vector.",
     },
 }
 
@@ -436,6 +456,16 @@ class ExtractRequest(BaseModel):
     kind: str = "message"
 
 
+class VectorQueryRequest(BaseModel):
+    """Approximate neighbours from the HNSW sidecar. ``k`` is capped at 200."""
+
+    workspace: Optional[str] = None
+    embedding_model: str
+    embedding_dim: int
+    vector: List[float] = Field(default_factory=list)
+    k: int = 10
+
+
 def build_extract_reply(text: str, kind: str) -> Dict[str, Any]:
     """The structures ``ingest_message`` / ``ingest_document`` / ``ingest_source`` consume.
 
@@ -490,8 +520,9 @@ def create_worker_compute_router(
     transcriber: Optional[Callable[[str], str]] = None,
     require_user: Callable[[Request], Any],
     enforce_rate_limit: Callable[[str, str], None],
+    db_path: Any = None,
 ) -> APIRouter:
-    """The eight compute seams, wired to what this worker actually resolved.
+    """The nine compute seams, wired to what this worker actually resolved.
 
     ``embedder`` is the :class:`~latticeai.core.embedding_providers.text.ResolvedEmbedder`
     ``phase_brain`` built (``None`` ⇒ 503, because a worker with no embedder is
@@ -580,15 +611,37 @@ def create_worker_compute_router(
             )
         provider = embedder.provider
         texts = list(req.texts)
+        if len(texts) > EMBED_MAX_BATCH:
+            raise http_error(
+                422,
+                "worker_compute.embed_batch_too_large",
+                language,
+                count=str(len(texts)),
+                limit=str(EMBED_MAX_BATCH),
+            )
         if kind == "passage":
             texts = [text[:PASSAGE_MAX_CHARS] for text in texts]
-        vectors = await asyncio.to_thread(provider.embed_batch, texts)
+        # `embed_batch_for` rather than `embed_batch`: an asymmetric model (the
+        # E5 family) needs to know whether this text is the question or the
+        # answer, and `kind` is exactly that. Symmetric providers ignore it.
+        # Resolved by name because the embedder arrives injected: a stand-in
+        # that predates the role-aware method still embeds, it just cannot be
+        # told which role it is embedding for.
+        role_aware = getattr(provider, "embed_batch_for", None)
+        vectors = (
+            await asyncio.to_thread(role_aware, texts, kind)
+            if callable(role_aware)
+            else await asyncio.to_thread(provider.embed_batch, texts)
+        )
         return {
             "vectors": vectors,
             "dim": provider.dim,
             "provider": embedder.active,
             "model_id": provider.model_id,
             "kind": kind,
+            # Additive (v12.0.0): `fallback` means these vectors are feature
+            # hashes, not meaning. A caller that stores them can say so.
+            "grade": getattr(provider, "grade", "fallback"),
         }
 
     @router.post("/worker/parse")
@@ -758,12 +811,33 @@ def create_worker_compute_router(
             )
         return await asyncio.to_thread(build_extract_reply, req.text, kind)
 
+    @router.post("/worker/vector/query")
+    async def worker_vector_query(req: VectorQueryRequest, request: Request):
+        """Top-k ids from the HNSW sidecar, or ``index: "none"`` honestly."""
+        _require_seam(request)
+        _admit(request)
+        language = resolve_language(request)
+        if not req.embedding_model or req.embedding_dim <= 0 or not req.vector:
+            raise http_error(422, "worker_compute.vector_query_invalid", language)
+        from latticeai.core.vector_index import query_sidecar
+
+        return await asyncio.to_thread(
+            query_sidecar,
+            workspace=req.workspace,
+            embedding_model=req.embedding_model,
+            embedding_dim=req.embedding_dim,
+            vector=req.vector,
+            k=req.k,
+            db_path=db_path,
+        )
+
     return router
 
 
 __all__ = [
     "CJK_FONT_CANDIDATES",
     "EMBED_KINDS",
+    "EMBED_MAX_BATCH",
     "EXTRACT_KINDS",
     "EXTRACT_LIMITS",
     "PASSAGE_MAX_CHARS",
@@ -772,6 +846,7 @@ __all__ = [
     "EmbedRequest",
     "ExtractRequest",
     "ParseRequest",
+    "VectorQueryRequest",
     "RenderDocxRequest",
     "RenderPdfRequest",
     "RenderPptxRequest",

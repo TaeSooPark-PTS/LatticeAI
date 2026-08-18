@@ -336,7 +336,7 @@
   },
   "schema_count": 2,
   "source": "frontend/openapi.json",
-  "spec_version": "11.9.0",
+  "spec_version": "12.0.0",
   "summary": "Static assets, SPA shells and the host status/sysinfo surface served straight from the gateway.",
   "target": "lattice-host (ServeDir + SPA shells)",
   "wp": "I4"

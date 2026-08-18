@@ -54,6 +54,7 @@ pub mod context;
 pub mod docgen;
 pub mod docgen_context;
 pub mod evidence_api;
+pub mod expansion;
 pub mod garden_api;
 pub mod graph_reads;
 pub mod history;
@@ -69,6 +70,7 @@ pub mod service;
 pub mod service_hybrid;
 pub mod shape;
 pub mod vector;
+pub mod vector_hnsw;
 
 pub use concepts::topic_candidates;
 pub use context::{assemble_context, ContextRequest};

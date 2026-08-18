@@ -20,6 +20,18 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.0.0": {
+    "_why": [
+      "Open House brings component and resilience updates across the frontend:",
+      "FolderMemoryHealth gained the 「삭제된 파일 정리 (N)」 button + preview dialog,",
+      "error boundaries added around views, preview pattern extended, and code",
+      "splitting (lazy view chunks).",
+      "",
+      "Brain/Chat home is unchanged since 11.8.0. Screens not touched are claimed",
+      "unchanged. The prune button renders conditionally and preview is user-triggered,",
+      "so static baseline captures remain unchanged. Empty claim set on purpose."
+    ]
+  },
   "11.9.0": {
     "_why": [
       "Working Order is a backend-truth release. The product work is live",

@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above
@@ -151,11 +151,27 @@ evaluated; changes to it must keep these invariants:
   repair. New tolerances must be deterministic and reported in `repairs`.
 - The loop verifier fails closed: an outcome that cannot be verified resolves
   to `NEEDS_REVIEW` and enters the review queue rather than being reported as
-  success. It lives in `lattice-agent` (`agentloop/verification.rs`) since the
-  loop moved to Rust, and its verdicts are covered by that crate's own tests.
+  success. It lives in `lattice-agent`
+  (`kernel/agentloop/verification.rs` since the 12.0.0 regrouping; the old
+  `agentloop::verification` path still resolves through the crate's
+  compatibility map), and its verdicts are covered by that crate's own tests.
   There is **no** `scripts/agent_eval.py` — the scripted-model harness stopped
   being a CI gate and was deleted in 11.8.0 rather than left as a script that
   looked like one.
+- Since 12.0.0 the two largest crates are grouped by purpose, and a change
+  belongs in the group that names its subject: `lattice-agent` is
+  `kernel` / `parse` / `content` / `tools` / `surface` / `prompts`, and
+  `lattice-platform` is `workspaceos` / `toolsurface` / `governance` /
+  `adminops` / `knowledge` / `modelops` / `shell`. Read the group's `mod.rs`
+  before adding a file — it states what belongs there and what must never.
+  The crate maps are `rust/lattice-agent/ARCHITECTURE.md` and
+  `rust/lattice-platform/ARCHITECTURE.md`; the contributor path is
+  `docs/DEVELOPMENT.md` and open gaps live in `docs/ROADMAP.md`.
+- The agent profile (`standard` / `compact` / `guided`) is **measured** by
+  `kernel/probe.rs`, not inferred from a model name. Do not add a per-model
+  branch anywhere in the loop: a new tolerance must work for any model that
+  behaves the same way, and the dial that selects it must be decided by the
+  loop's own parser scoring a real completion.
 - Change governance is proposal-first (`latticeai/core/tool_governor.py` +
   `latticeai/services/change_proposals.py`): additive creates run with
   minimal friction; mutations/deletions of existing files are staged as

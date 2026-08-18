@@ -1,6 +1,5 @@
 //! Ingestion jobs, folder/obsidian/interop, and folder-watch routes.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use axum::body::Bytes;
@@ -20,8 +19,6 @@ use super::watch_bridge::{
     disable_watch, enable_watch, ensure_poller, read_watch_file, vault_watch_on,
 };
 use super::{forward, LocalFilesState};
-use crate::watch::{walk_folder, WatchConfig};
-use crate::worker::{NoteIngestor, NoteSubmission};
 
 const FOLDER_REQUEST: &[FieldSpec] = &[
     required("path", Kind::Str(0)),
@@ -30,6 +27,11 @@ const FOLDER_REQUEST: &[FieldSpec] = &[
     optional("workspace_id", Kind::OptStr),
     optional("approved", Kind::Bool),
     optional("approval_token", Kind::OptStr),
+];
+
+const FOLDER_PRUNE_REQUEST: &[FieldSpec] = &[
+    required("path", Kind::Str(0)),
+    optional("confirm", Kind::Bool),
 ];
 
 const OBSIDIAN_REQUEST: &[FieldSpec] = &[
@@ -225,7 +227,7 @@ pub(super) async fn folder(
         .filter(|value| !value.is_empty())
         .map(str::to_string);
     let owner = if user.is_empty() { None } else { Some(user) };
-    match ingest_folder_native(
+    match super::folder::ingest_folder_native(
         &state,
         graph,
         &path,
@@ -236,6 +238,36 @@ pub(super) async fn folder(
     )
     .await
     {
+        Ok(value) => ok(&value),
+        Err(message) => detail(400, &message),
+    }
+}
+
+pub(super) async fn folder_prune(
+    State(state): State<Arc<LocalFilesState>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let model = match Model::parse(&body, FOLDER_PRUNE_REQUEST) {
+        Ok(model) => model,
+        Err(refusal) => return refusal,
+    };
+    if let Err(refusal) = state.require_user(&headers) {
+        return refusal;
+    }
+    let lang = language(&headers);
+    if let Err(refusal) = state.require_graph(lang) {
+        return refusal;
+    }
+    let path = model.str("path").trim().to_string();
+    if path.is_empty() {
+        return http_error(400, "common.path_required", lang);
+    }
+    let Some(graph) = state.graph().cloned() else {
+        return http_error(503, "capture.ingestion_disabled", lang);
+    };
+    let confirm = model.bool("confirm", false);
+    match super::prune::prune_deleted(&graph, std::path::Path::new(&path), confirm) {
         Ok(value) => ok(&value),
         Err(message) => detail(400, &message),
     }
@@ -454,240 +486,7 @@ pub(super) async fn watch_disable(
     }
 }
 
-async fn ingest_folder_native(
-    state: &Arc<LocalFilesState>,
-    graph: lattice_core::graph_write::GraphWriter,
-    path: &str,
-    recursive: bool,
-    background: bool,
-    owner: Option<&str>,
-    workspace_id: Option<&str>,
-) -> Result<Value, String> {
-    let root = Path::new(path);
-    let config = WatchConfig {
-        recursive,
-        ..WatchConfig::default()
-    };
-    let files = walk_folder(root, &config).map_err(|error| error.to_string())?;
-    let store = state
-        .store
-        .clone()
-        .ok_or_else(|| "the Brain is not wired".to_string())?;
-    let job_id = next_job_id(&store).await?;
-    let now = now_stamp(state);
-    write_job(
-        &store,
-        &job_id,
-        "running",
-        files.len() as i64,
-        0,
-        0,
-        &json!([]),
-        &now,
-        &now,
-    )
-    .await?;
-
-    if background {
-        let matched = files.len();
-        let state = Arc::clone(state);
-        let graph = graph.clone();
-        let owner = owner.map(str::to_string);
-        let workspace_id = workspace_id.map(str::to_string);
-        let job_id_task = job_id.clone();
-        tokio::spawn(async move {
-            let _ = run_folder_items(
-                &state,
-                graph,
-                &files,
-                &job_id_task,
-                owner.as_deref(),
-                workspace_id.as_deref(),
-            )
-            .await;
-        });
-        return Ok(folder_payload(
-            path,
-            recursive,
-            true,
-            matched,
-            0,
-            0,
-            0,
-            vec![],
-            "scheduled",
-            &job_id,
-            matched,
-        ));
-    }
-
-    let outcome = run_folder_items(state, graph, &files, &job_id, owner, workspace_id).await?;
-    Ok(folder_payload(
-        path,
-        recursive,
-        false,
-        files.len(),
-        outcome.ingested,
-        outcome.duplicate,
-        outcome.failed,
-        outcome.errors,
-        &outcome.status,
-        &job_id,
-        0,
-    ))
-}
-
-struct FolderOutcome {
-    ingested: usize,
-    duplicate: usize,
-    failed: usize,
-    errors: Vec<Value>,
-    status: String,
-}
-
-async fn run_folder_items(
-    state: &Arc<LocalFilesState>,
-    graph: lattice_core::graph_write::GraphWriter,
-    files: &[crate::watch::ScannedFile],
-    job_id: &str,
-    owner: Option<&str>,
-    workspace_id: Option<&str>,
-) -> Result<FolderOutcome, String> {
-    let mut ingestor = NoteIngestor::new(graph);
-    if let Some(seam) = state.seam() {
-        ingestor = ingestor.with_seam(seam.clone());
-    }
-    let mut ingested = 0usize;
-    let mut duplicate = 0usize;
-    let mut failed = 0usize;
-    let mut errors = Vec::new();
-    for file in files {
-        match ingest_one_folder_file(&ingestor, state.seam(), file, owner, workspace_id).await {
-            Ok(true) => {
-                ingested += 1;
-                duplicate += 1;
-            }
-            Ok(false) => ingested += 1,
-            Err(detail) => {
-                failed += 1;
-                errors.push(json!({"path": file.relative_path, "detail": detail}));
-            }
-        }
-    }
-    let status = if failed == 0 {
-        "completed"
-    } else if ingested > 0 {
-        "partial"
-    } else {
-        "failed"
-    };
-    if let Some(store) = &state.store {
-        let now = now_stamp(state);
-        let _ = write_job(
-            store,
-            job_id,
-            status,
-            files.len() as i64,
-            ingested as i64,
-            failed as i64,
-            &Value::Array(errors.clone()),
-            &now,
-            &now,
-        )
-        .await;
-    }
-    Ok(FolderOutcome {
-        ingested,
-        duplicate,
-        failed,
-        errors,
-        status: status.to_string(),
-    })
-}
-
-async fn ingest_one_folder_file(
-    ingestor: &NoteIngestor,
-    seam: Option<&lattice_core::worker::WorkerSeamClient>,
-    file: &crate::watch::ScannedFile,
-    owner: Option<&str>,
-    workspace_id: Option<&str>,
-) -> Result<bool, String> {
-    let bytes = std::fs::read(&file.path).map_err(|error| error.to_string())?;
-    let filename = Path::new(&file.relative_path)
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| file.relative_path.clone());
-    let text = if super::enrich::needs_parse(&filename, &bytes) {
-        super::enrich::parse_via_seam(seam, &filename, &bytes)
-            .await
-            .as_ref()
-            .map(super::enrich::parsed_text)
-            .unwrap_or_default()
-    } else {
-        String::from_utf8_lossy(&bytes).into_owned()
-    };
-    if text.trim().is_empty() {
-        return Err("no readable text".into());
-    }
-    let mut metadata = serde_json::Map::new();
-    metadata.insert(
-        "relative_path".into(),
-        Value::from(file.relative_path.as_str()),
-    );
-    metadata.insert("path".into(), Value::from(file.path.display().to_string()));
-    metadata.insert("folder_ingest".into(), Value::Bool(true));
-    metadata.insert("detected_by".into(), Value::from("lattice-ingest"));
-    let note = NoteSubmission {
-        title: filename,
-        content: text,
-        source: Some(file.path.display().to_string()),
-        metadata,
-    };
-    let receipt = ingestor
-        .ingest_note(&note, owner, workspace_id)
-        .await
-        .map_err(|error| error.to_string())?;
-    Ok(receipt.duplicate)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn folder_payload(
-    path: &str,
-    recursive: bool,
-    background: bool,
-    matched: usize,
-    ingested: usize,
-    duplicate: usize,
-    failed: usize,
-    errors: Vec<Value>,
-    status: &str,
-    job_id: &str,
-    scheduled: usize,
-) -> Value {
-    json!({
-        "root": path,
-        "recursive": recursive,
-        "background": background,
-        "scanned": matched,
-        "matched": matched,
-        "ingested": ingested,
-        "duplicate": duplicate,
-        "failed": failed,
-        "skipped": {
-            "ignored": 0,
-            "extension": 0,
-            "too_large": 0,
-            "hidden": 0
-        },
-        "truncated": false,
-        "errors": errors,
-        "status": status,
-        "job_id": job_id,
-        "scheduled": scheduled
-    })
-}
-
-async fn next_job_id(store: &Arc<lattice_core::db::Store>) -> Result<String, String> {
+pub(super) async fn next_job_id(store: &Arc<lattice_core::db::Store>) -> Result<String, String> {
     let store = Arc::clone(store);
     tokio::task::spawn_blocking(move || {
         store.with_write_conn(|conn| {
@@ -704,7 +503,7 @@ async fn next_job_id(store: &Arc<lattice_core::db::Store>) -> Result<String, Str
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn write_job(
+pub(super) async fn write_job(
     store: &Arc<lattice_core::db::Store>,
     job_id: &str,
     status: &str,
@@ -712,6 +511,7 @@ async fn write_job(
     processed: i64,
     failed: i64,
     errors: &Value,
+    report: &Value,
     created_at: &str,
     updated_at: &str,
 ) -> Result<(), String> {
@@ -719,6 +519,7 @@ async fn write_job(
     let job_id = job_id.to_string();
     let status = status.to_string();
     let errors = errors.to_string();
+    let report = report.to_string();
     let created_at = created_at.to_string();
     let updated_at = updated_at.to_string();
     tokio::task::spawn_blocking(move || {
@@ -728,16 +529,18 @@ async fn write_job(
                 "INSERT INTO ingestion_jobs(\
                     job_id, status, total, processed, failed, errors_json, \
                     created_at, updated_at, items_json, done_indices_json\
-                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', '[]') \
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '[]') \
                  ON CONFLICT(job_id) DO UPDATE SET \
                     status=excluded.status, \
                     total=excluded.total, \
                     processed=excluded.processed, \
                     failed=excluded.failed, \
                     errors_json=excluded.errors_json, \
+                    items_json=excluded.items_json, \
                     updated_at=excluded.updated_at",
                 rusqlite::params![
-                    job_id, status, total, processed, failed, errors, created_at, updated_at
+                    job_id, status, total, processed, failed, errors, created_at, updated_at,
+                    report
                 ],
             )?;
             Ok(())
@@ -766,7 +569,7 @@ fn ensure_jobs_table(conn: &rusqlite::Connection) -> Result<(), CoreError> {
     Ok(())
 }
 
-fn now_stamp(state: &LocalFilesState) -> String {
+pub(super) fn now_stamp(state: &LocalFilesState) -> String {
     match state.graph() {
         Some(graph) => graph.clock().now_iso(),
         None => SystemClock.now_iso(),
@@ -823,6 +626,25 @@ fn job_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
         "updated_at",
         json!(row.get::<_, Option<String>>(7)?.unwrap_or_default()),
     );
+    if let Ok(Some(raw)) = row.get::<_, Option<String>>(8) {
+        if let Ok(Value::Object(report)) = serde_json::from_str::<Value>(&raw) {
+            for key in [
+                "scanned",
+                "skipped",
+                "skipped_unchanged",
+                "reingested",
+                "ingested",
+                "deleted",
+            ] {
+                if let Some(value) = report.get(key) {
+                    job.insert(key, value.clone());
+                }
+            }
+            if let Some(processed) = report.get("processed") {
+                job.insert("processed", processed.clone());
+            }
+        }
+    }
     Ok(serde_json::to_value(job).unwrap_or(Value::Null))
 }
 

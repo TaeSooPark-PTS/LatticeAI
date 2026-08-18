@@ -167,6 +167,7 @@ async fn product_gateway(
             scratch.join("proposals"),
         ))),
         hooks: None,
+        external: None,
     };
     let product =
         OneDoorState::open_with_config(config, worker_origin, client(), &agent_root, loop_config)

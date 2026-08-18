@@ -18,8 +18,8 @@
   "source": {
     "spec": "frontend/openapi.json",
     "spec_version": "11.8.0",
-    "paths": 414,
-    "operations": 456,
+    "paths": 415,
+    "operations": 457,
     "classification": "scout_routes.md (v11.6.0 route inventory) + docs/v11.6.0_ONE_DOOR_PLAN.md",
     "module_attribution": "FastAPI route.endpoint.__module__ of the app built by scripts/export_openapi.py"
   },
@@ -82,7 +82,7 @@
       "wp": "R8",
       "target": "lattice-platform / lattice-agent",
       "summary": "MCP, marketplace, plugin SDK, agent registry, multi-agent runtime and the direct tool surface.",
-      "operations": 86
+      "operations": 87
     },
     "portability_network": {
       "wp": "R9",
@@ -1744,6 +1744,10 @@
     },
     "POST /marketplace/templates/{kind}/{template_id}/clone": {
       "module": "latticeai.api.marketplace",
+      "family": "mcp_market"
+    },
+    "POST /mcp": {
+      "module": "latticeai.api.mcp",
       "family": "mcp_market"
     },
     "POST /mcp/call": {

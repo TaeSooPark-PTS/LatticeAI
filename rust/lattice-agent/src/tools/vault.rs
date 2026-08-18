@@ -12,10 +12,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
 
-use crate::pystr::{char_slice, is_truthy, py_str};
-use crate::sandbox::{ToolError, MAX_FILE_BYTES};
+use crate::parse::pystr::{char_slice, is_truthy, py_str};
 use crate::tools::args;
 use crate::tools::files::io_error;
+use crate::tools::sandbox::{ToolError, MAX_FILE_BYTES};
 
 /// `STRUCTURE`'s keys — the only folders a note may land in.
 pub const KNOWLEDGE_FOLDERS: [&str; 5] =

@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **11.9.0 — Working Order**.
+Current release: **12.0.0 — Open House**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -54,6 +54,12 @@ External paths include:
 - **Update checks**: disabled unless explicitly enabled.
 - **Marketplace/registry refreshes**: contact remote registries only when the
   user/admin invokes the path.
+- **Setup package installs (12.0.0)**: `/setup/install` may run `brew`, `pip`
+  or `uv`, which contact the corresponding package registries. It does so only
+  for an item the request explicitly names *and* the server-derived allowlist
+  contains — the command comes from the plan the server produced, never from
+  the request — and the default path is still manual. Nothing is installed
+  because a page was opened.
 
 ## .latticebrain Archives
 
@@ -77,3 +83,11 @@ token itself.
 
 You can back up, export, inspect, verify, and move your Brain. Package
 publishing and public deployments are owner-run; local use remains the default.
+
+Deleting is yours too, and it is never automatic. A file that disappears from
+an indexed folder is *reported*, not removed: its memory stays until you run
+the folder-prune flow, which shows what it would remove before it removes
+anything and only acts with an explicit confirmation. No cleanup path touches
+files on your disk. Since 12.0.0 a restore takes effect immediately in the
+running process, so the Brain you restored is the Brain the next question
+reads — no restart, and no window in which an old copy answers.

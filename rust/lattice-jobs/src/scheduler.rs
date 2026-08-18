@@ -20,10 +20,14 @@ use reqwest::Client;
 use serde::Serialize;
 
 use crate::config::SchedulerConfig;
+use crate::drain::drain_plan;
 use crate::index_api;
 use crate::queue::{read_counts, QueueCounts};
 use crate::schedule::Backoff;
 use crate::tick::{self, pick_resumable, DrainOutcome, ResumeOutcome, TickReport};
+
+/// Safety cap on "keep draining while the queue is full" waves in one tick.
+const MAX_DRAIN_WAVES: u32 = 32;
 use lattice_core::graph_write::GraphWriter;
 
 /// The scheduler could not be built.
@@ -162,14 +166,88 @@ impl Scheduler {
     }
 
     async fn drain(&self) -> Result<DrainOutcome, String> {
+        let db = self.config.db_path.clone();
+        let counts = tokio::task::spawn_blocking({
+            let db = db.clone();
+            move || read_counts(&db)
+        })
+        .await
+        .unwrap_or_else(|error| QueueCounts::unavailable(format!("queue read failed: {error}")));
+        let pending = counts.available.then_some(counts.pending);
+        let plan = drain_plan(pending, self.config.drain_limit);
         if let Some(graph) = self.graph.clone() {
-            let db = self.config.db_path.clone();
-            let limit = self.config.drain_limit.max(1) as usize;
-            return tokio::task::spawn_blocking(move || index_api::drain_queue(&graph, &db, limit))
-                .await
-                .map_err(|error| error.to_string());
+            return self.drain_native(graph, db, plan).await;
         }
-        tick::drain(&self.client, &self.config).await
+        self.drain_http(plan).await
+    }
+
+    /// Native path: keep claiming while each wave comes back full, so a deep
+    /// backlog does not wait a minute between 25-node bites.
+    async fn drain_native(
+        &self,
+        graph: GraphWriter,
+        db: std::path::PathBuf,
+        plan: crate::drain::DrainPlan,
+    ) -> Result<DrainOutcome, String> {
+        let started = Instant::now();
+        let budget = self.config.request_timeout;
+        let limit = plan.limit.max(1) as usize;
+        let mut total = DrainOutcome::default();
+        for _ in 0..MAX_DRAIN_WAVES {
+            let graph = graph.clone();
+            let db = db.clone();
+            let outcome =
+                tokio::task::spawn_blocking(move || index_api::drain_queue(&graph, &db, limit))
+                    .await
+                    .map_err(|error| error.to_string())?;
+            let claimed = outcome.claimed;
+            total.absorb(outcome);
+            if claimed == 0 || claimed < plan.limit as u64 {
+                break;
+            }
+            if started.elapsed() >= budget {
+                break;
+            }
+        }
+        Ok(total)
+    }
+
+    /// HTTP path: one wave of concurrent POSTs, width from the plan. A fake
+    /// worker does not shrink `vector_jobs`, so we do not loop on the pending
+    /// count — only on what this wave actually claimed.
+    async fn drain_http(&self, plan: crate::drain::DrainPlan) -> Result<DrainOutcome, String> {
+        if plan.inflight <= 1 {
+            return tick::drain_with_limit(&self.client, &self.config, plan.limit).await;
+        }
+        let mut set = tokio::task::JoinSet::new();
+        for _ in 0..plan.inflight {
+            let client = self.client.clone();
+            let config = self.config.clone();
+            let limit = plan.limit;
+            set.spawn(async move { tick::drain_with_limit(&client, &config, limit).await });
+        }
+        let mut total = DrainOutcome::default();
+        let mut first_err: Option<String> = None;
+        while let Some(joined) = set.join_next().await {
+            match joined {
+                Ok(Ok(outcome)) => total.absorb(outcome),
+                Ok(Err(error)) => {
+                    if first_err.is_none() {
+                        first_err = Some(error);
+                    }
+                }
+                Err(error) => {
+                    if first_err.is_none() {
+                        first_err = Some(error.to_string());
+                    }
+                }
+            }
+        }
+        if total.did_work() || first_err.is_none() {
+            Ok(total)
+        } else {
+            Err(first_err.unwrap_or_else(|| "drain failed".into()))
+        }
     }
 
     /// The `/host/jobs` payload, with the queue counted off the event loop.

@@ -10,9 +10,9 @@
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
-use crate::pystr::is_truthy;
-use crate::sandbox::{resolve_soft, ToolError, Workspace};
+use crate::parse::pystr::is_truthy;
 use crate::tools::files::{file_size, io_error};
+use crate::tools::sandbox::{resolve_soft, ToolError, Workspace};
 
 /// `package.json`, in Python's key order.
 #[derive(Debug, Serialize)]
@@ -131,7 +131,7 @@ button { padding: 10px 14px; border-radius: 10px; border: 1px solid #d6d6d6; bac
 
 /// `Path(path).name.replace(" ", "-").lower() or "vite-react-app"`.
 fn package_name(path: &str) -> String {
-    let name = crate::transcript::path_name(path)
+    let name = crate::kernel::transcript::path_name(path)
         .replace(' ', "-")
         .to_lowercase();
     if name.is_empty() {

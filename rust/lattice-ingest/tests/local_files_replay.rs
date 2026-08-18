@@ -373,8 +373,8 @@ fn mounted_local_and_browser_routes_are_in_the_committed_contract() {
         .collect();
     ours.sort();
     for key in &ours {
-        if key.ends_with("/upload/document") {
-            // W3b native; spec stays in worker_keep.json.
+        if key.ends_with("/upload/document") || key.ends_with("/folder/prune") {
+            // W3b native upload; v12 prune is additive and not in the frozen fragment.
             continue;
         }
         assert!(
@@ -382,7 +382,7 @@ fn mounted_local_and_browser_routes_are_in_the_committed_contract() {
             "{key} is not in knowledge_search.json"
         );
     }
-    assert_eq!(lattice_ingest::local_files_api::MOUNTED.len(), 25);
+    assert_eq!(lattice_ingest::local_files_api::MOUNTED.len(), 26);
     assert_eq!(lattice_ingest::browser_api::MOUNTED.len(), 2);
 }
 

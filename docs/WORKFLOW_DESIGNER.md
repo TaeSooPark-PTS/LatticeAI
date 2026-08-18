@@ -8,9 +8,9 @@ node to an injected *runner* that calls the real tool registry, skill registry,
 plugin registry, or multi-agent orchestrator.
 
 The execution model lives in
-[`rust/lattice-platform/src/workflow_designer/definition.rs`](../rust/lattice-platform/src/workflow_designer/definition.rs)
+[`rust/lattice-platform/src/governance/workflow_designer/definition.rs`](../rust/lattice-platform/src/governance/workflow_designer/definition.rs)
 (pure logic with injected runners) and the HTTP surface lives in
-[`rust/lattice-platform/src/workflow_designer/handlers.rs`](../rust/lattice-platform/src/workflow_designer/handlers.rs).
+[`rust/lattice-platform/src/governance/workflow_designer/handlers.rs`](../rust/lattice-platform/src/governance/workflow_designer/handlers.rs).
 Both moved from Python in 11.6.0.
 Persistence reuses the existing `WorkspaceOSStore`, so pre-2.0 workflow history
 is preserved.
