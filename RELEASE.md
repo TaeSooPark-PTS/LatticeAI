@@ -3,9 +3,11 @@
 이 문서는 `npm`, `PyPI`, `VS Code`, `Cursor`, `Antigravity`, `Open VSX` 배포를
 한 번에 처리하기 위한 체크리스트입니다.
 
-> **현재 `.github/workflows/release.yml`은 태그 push에서 빌드와 검증만 수행합니다.**
-> PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
-> 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
+> **`.github/workflows/release.yml`은 태그 push에서 빌드와 검증만 수행합니다.**
+> 패키지 스토어 배포는 `.github/workflows/publish.yml` (CD)이 **GitHub
+> Release를 published로 만들 때** 돌립니다. 태그 생성만으로는 npm / PyPI /
+> VS Code Marketplace / Open VSX에 올라가지 않습니다. CD는 이미 올라간
+> 버전을 `already-published`로 건너뛰므로 재실행해도 안전합니다.
 
 > **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는
 > 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로
