@@ -1,6 +1,6 @@
 # CI & Release Gates
 
-> Status: reference 2026-08-16
+> Status: reference 2026-08-29
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection
@@ -13,6 +13,7 @@ configuration. Companion to [SECURITY_AUDIT.md](SECURITY_AUDIT.md) and
 |----------|------|----------|---------|
 | CI | `.github/workflows/ci.yml` | push/PR to `main` | Lint, typecheck, unit + coverage + integration tests, product-readiness, build + wheel smoke, Rust workspace |
 | Release | `.github/workflows/release.yml` | tags `v*` / `[0-9]*` | Build & validate artifacts (no publish; does not re-run CI lint/tests) |
+| CD | `.github/workflows/publish.yml` | GitHub Release `published`, dispatch | Publish npm / PyPI / Marketplace / Open VSX (idempotent; never on a bare tag) |
 | Visual Smoke | `.github/workflows/visual.yml` | push to `main`, nightly cron, dispatch | Playwright visual smoke (not on PRs) |
 | Sidecar E2E | `.github/workflows/e2e-sidecar.yml` | nightly cron, dispatch | Live sidecar Playwright first-value loop |
 | Dependency Audit | `.github/workflows/dependency-audit.yml` | weekly cron, dispatch | pip-audit + npm audit + CycloneDX SBOMs |
@@ -183,9 +184,11 @@ It still runs:
 - `npm pack`, vsce package
 - `validate_release_artifacts.py <v> --require-vsix --require-tgz`
 
-Package publication (PyPI / npm / VS Code Marketplace / Open VSX) is a manual
-step (`npm run publish:*`) using **exact version filenames**, never a `dist/*`
-glob, so pushing a tag can never publish by accident. See
+Package publication (PyPI / npm / VS Code Marketplace / Open VSX) is
+`publish.yml` (CD). It runs when a GitHub Release is **published**, or on
+`workflow_dispatch` if that version already has a pushed `v*` tag. A bare
+tag push never publishes. Local `npm run publish:*` still uses **exact
+version filenames**, never a `dist/*` glob. See
 [../RELEASE.md](../RELEASE.md) for the full procedure.
 
 ## Limitations (honest)
