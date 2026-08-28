@@ -138,9 +138,9 @@ impl LocalEmbeddingModel {
             count = payload.len() / 4;
         }
         let mut out = Vec::with_capacity(count);
-        for chunk in payload[..count * 4].chunks_exact(4) {
-            let bits = [chunk[0], chunk[1], chunk[2], chunk[3]];
-            out.push(f32::from_le_bytes(bits) as f64);
+        let (chunks, _) = payload[..count * 4].as_chunks::<4>();
+        for chunk in chunks {
+            out.push(f32::from_le_bytes(*chunk) as f64);
         }
         out
     }
