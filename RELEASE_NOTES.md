@@ -1,3 +1,13 @@
+# [v12.1.0 - Fast Path] (2026-08-29)
+
+폴더 인제스트와 vault-watch가 파일을 겹쳐 돌리고, 노트당
+`/worker/embed`는 한 방이며, rebuild는 쓰기 락 밖에서 해시하고, 512행
+이상 Brain은 묶인 워커 시임이 있으면 `hnsw+rescore`를 먼저 시도합니다.
+문은 422 / 41, 워커는 20. 주간 pip-audit와 Postgres CI가 깨끗한 런에서
+빨개지던 것을 고쳤습니다.
+
+See [RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md).
+
 # [v12.0.0 - Open House] (2026-08-18)
 
 가장 큰 두 크레이트를 도메인으로 나눴습니다 — `lattice-agent` 43파일이
@@ -179,7 +189,7 @@ See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 12.0.0**.
+This repository keeps public release history from **11.0.0 through 12.1.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only that era — 11.x and 12.x — and this index
 follows the same boundary. Sub-11 note files remain in the tree as history; they
@@ -187,6 +197,7 @@ are no longer listed here as supported releases.
 
 ## Current Release
 
+- [v12.1.0 - Fast Path](RELEASE_NOTES_v12.1.0.md)
 - [v12.0.0 - Open House](RELEASE_NOTES_v12.0.0.md)
 
 ## Recent Release Notes

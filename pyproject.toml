@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "12.0.0"
+version = "12.1.0"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -103,6 +103,10 @@ voice = ["openai-whisper", "SpeechRecognition", "pydub"]
 # extra that no longer exists makes pip warn at people who follow it. An empty
 # alias keeps that command a silent no-op, which is now the truth.
 pdf = []
+# Empty: the Python Postgres writer left in 11.6.0. The extra stays so
+# `pip install "ltcai[postgres]"` (and the scheduled workflow that still
+# names it) is a silent no-op instead of a missing extra.
+postgres = []
 # Pointer actuation (the six pyautogui tools on the worker). Not a core
 # dependency: a stock install answers capabilities.pointer_tools=false and
 # the tools stay "unavailable". `pip install "ltcai[pointer]"` is how a

@@ -12,7 +12,7 @@
 [![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v12.0.0 Living Brain walkthrough](output/release/v12.0.0/gifs/v12.0.0-living-brain-walkthrough.gif)
+![v12.1.0 Living Brain walkthrough](output/release/v12.1.0/gifs/v12.1.0-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. The default is local. Cloud is optional — an
@@ -26,10 +26,10 @@ nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v12.0.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.0.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.0.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.0.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.0.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.0.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.0.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v12.0.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v12.1.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.1.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.1.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.1.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.1.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.1.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.1.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v12.1.0/screenshots/08-system.png) |
 
 ## Why Lattice AI
 
@@ -64,57 +64,47 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v12.0.0/screenshots/01-login.png) | ![Model install](output/release/v12.0.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.0.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v12.1.0/screenshots/01-login.png) | ![Model install](output/release/v12.1.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.1.0/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v12.0.0/SCREENSHOT_INDEX.md](output/release/v12.0.0/SCREENSHOT_INDEX.md)
+[output/release/v12.1.0/SCREENSHOT_INDEX.md](output/release/v12.1.0/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **12.0.0 — Open House**:
+The current release is **12.1.0 — Fast Path**:
 
-11.9.0 made the doors answer. This release opens the house: the two
-largest crates are grouped by what a file is *for*, the contributor
-documentation is a real path in, and four gaps the last release wrote
-down are closed. `lattice-host` serves **422 operations across 41 route
-families** (`POST /mcp` and the folder-prune route are the two new ones),
-and the AI worker is **20 routes** (`POST /worker/vector/query` is the
-one addition). Cloud is still optional and the default is still local.
+12.0.0 opened the house. This release makes remembering the house faster:
+folder ingest and vault-watch overlap parse/extract/embed across files,
+one `/worker/embed` call carries the document plus its chunks, rebuild
+hashes outside the SQLite write lock, and a Brain with 512+ vectors tries
+`hnsw+rescore` when a worker sidecar is bound. The door is still **422
+operations / 41 families** over a **20-route worker**. Cloud is still
+optional and the default is still local.
 
-- **Complexity management first.** `lattice-agent` is six groups —
-  `kernel` (the loop and every decision that can refuse), `parse`,
-  `content`, `tools`, `surface`, `prompts` — and `lattice-platform` is
-  seven domains. Every move is a rename, so the goldens answer
-  identically; each crate carries its own `ARCHITECTURE.md`, and
-  `docs/DEVELOPMENT.md` and the new `docs/ROADMAP.md` are the way in.
-- **Small models become agents.** A measured probe (not a size regex)
-  picks the profile, and the `guided` profile stops asking for JSON at
-  all: pick an action by number, then one argument per turn, and the
-  harness assembles the call. A 0.5B model finished a real file in 3.9s.
-  The same gates, snapshots and sanitizers run on every profile.
-- **Remembering got faster and more careful.** Re-indexing an unchanged
-  folder went **33s → 0.26s**, a 991-item embedding backlog went 40
-  minutes → 15.3s, and a document's own section outline is now in the
-  graph, so an answer can name the heading it came from. Korean queries
-  strip their particles properly, and deleted files get a **「삭제된 파일
-  정리」** button instead of quietly lingering as memory.
-- **Four honest gaps closed.** Restore takes effect without a restart,
-  `/setup/install` really installs on per-item consent, `POST /mcp` is
-  inside the OpenAPI contract, and pointer tools are declared as
-  `pip install "ltcai[pointer]"`.
+- **Ingest is a pipeline, not a queue of one.** Up to four files parse and
+  embed at once. Unchanged files still skip on fingerprint and never
+  enter the pool. Writes still go through the single `GraphWriter`.
+- **One embed round-trip per note.** The document vector and every chunk
+  share a `texts` body; extract runs beside it, not in front of it; the
+  native incremental index files those vectors instead of hashing them
+  again.
+- **Search stays exact until it does not need to.** Env default is still
+  `brute`. At 512 vectors with a bound sidecar, search asks HNSW first
+  and falls back to the exact scan with the original `brute` block if
+  the sidecar cannot answer.
 
 What this release does not close — small-model *content* quality, the
-mock-only `api_key` path, `brute` still being the search default, watch
-never deleting on its own, the ad-hoc-signed dmg — is listed in
-[RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md).
+mock-only `api_key` path, hash embeddings as the no-download fallback,
+watch never deleting on its own, the ad-hoc-signed dmg — is listed in
+[RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md).
 
-Expected artifacts for 12.0.0 release must use exact filenames:
+Expected artifacts for 12.1.0 release must use exact filenames:
 
-- `dist/ltcai-12.0.0-py3-none-any.whl`
-- `dist/ltcai-12.0.0.tar.gz`
-- `ltcai-12.0.0.tgz`
-- `dist/ltcai-12.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.0.0_aarch64.dmg`
+- `dist/ltcai-12.1.0-py3-none-any.whl`
+- `dist/ltcai-12.1.0.tar.gz`
+- `ltcai-12.1.0.tgz`
+- `dist/ltcai-12.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.1.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -143,7 +133,7 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
 
 - External package registries are owner-published and can lag behind GitHub.
 - SQLite is the live local Brain store. The optional PostgreSQL/pgvector
-  migration tooling is not part of the 12.0.0 worker.
+  migration tooling is not part of the 12.1.0 worker.
 - Docker, model downloads, cloud model calls, Brain Network, and update checks
   require explicit user action. Cloud is optional: `cli_oauth` (`agy` /
   `grok`) was live-checked at zero billing; the `api_key` path is
@@ -170,9 +160,11 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
   profile even a 0.5B model writes the requested file and reaches DONE;
   a weak summary still fails the critic and the run ends
   FAILED/NEEDS_REVIEW rather than claiming success.
-- Vector search still defaults to `brute` — exact and byte-compatible.
-  `hnsw+rescore` is real but opt-in, and falls back to the exact scan
-  with its reason when the sidecar cannot answer.
+- Vector search env still defaults to `brute` — exact and byte-compatible
+  on a small Brain. At 512+ vectors with a bound worker sidecar it tries
+  `hnsw+rescore` first and falls back to the exact scan if the sidecar
+  cannot answer. `LATTICEAI_VECTOR_INDEX=hnsw` is still the explicit
+  opt-in.
 - Watch never deletes on its own: a vanished file is reported, and
   cleanup runs only through the confirmed folder-prune flow.
 - The macOS dmg is ad-hoc signed — effectively unsigned — so first launch
@@ -182,7 +174,7 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
   pending-only, no Self-Model refiner, `delete_node` leaving `PART_OF`,
   review events silent without an owner, KG-api ingest text-only, two
   store cycles per review mutation) are listed with their reasons in
-  [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md) and prioritized in
+  [RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md) and prioritized in
   [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Release History
@@ -194,6 +186,7 @@ same boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.
 
 | Version | Theme |
 | --- | --- |
+| 12.1.0 | Fast Path |
 | 12.0.0 | Open House |
 | 11.9.0 | Working Order |
 | 11.8.0 | Travel Light |

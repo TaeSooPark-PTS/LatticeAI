@@ -1673,7 +1673,7 @@
   },
   "schema_count": 9,
   "source": "frontend/openapi.json",
-  "spec_version": "12.0.0",
+  "spec_version": "12.1.0",
   "summary": "Admin console, security dashboard, feature toggles, funnel metrics and the setup wizard.",
   "target": "lattice-platform (admin)",
   "wp": "R2"

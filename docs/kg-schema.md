@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **12.0.0 — Open House**.
+Current release: **12.1.0 — Fast Path**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`

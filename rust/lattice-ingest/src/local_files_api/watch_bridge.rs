@@ -461,23 +461,54 @@ async fn scan_one_watch(
     let mut ingested = 0usize;
     let mut hash_skipped = 0usize;
     let mut errors: Vec<Value> = Vec::new();
+    let mut in_flight = tokio::task::JoinSet::new();
+    let root_path = PathBuf::from(root);
+    let watch_id = id.clone();
+    let owner_s = owner.map(str::to_string);
+    let workspace_s = workspace_id.map(str::to_string);
+    let store = state.store.clone();
+    let seam = state.seam().cloned();
     for relative in &diff.pending {
-        match deliver(
-            ingestor,
-            state.store.as_deref(),
-            state.seam(),
-            Path::new(root),
-            relative,
-            &id,
-            owner,
-            workspace_id,
-        )
-        .await
-        {
-            Ok(Delivered::Ingested) => ingested += 1,
-            Ok(Delivered::Skipped) => hash_skipped += 1,
-            Err(detail) => errors.push(json!({"path": relative, "detail": detail})),
+        while in_flight.len() >= crate::worker::INGEST_INFLIGHT {
+            collect_watch_join(
+                &mut in_flight,
+                &mut ingested,
+                &mut hash_skipped,
+                &mut errors,
+            )
+            .await;
         }
+        let ingestor = ingestor.clone();
+        let store = store.clone();
+        let seam = seam.clone();
+        let root_path = root_path.clone();
+        let relative = relative.clone();
+        let watch_id = watch_id.clone();
+        let owner_s = owner_s.clone();
+        let workspace_s = workspace_s.clone();
+        in_flight.spawn(async move {
+            let result = deliver(
+                &ingestor,
+                store.as_deref(),
+                seam.as_ref(),
+                &root_path,
+                &relative,
+                &watch_id,
+                owner_s.as_deref(),
+                workspace_s.as_deref(),
+            )
+            .await;
+            (relative, result)
+        });
+    }
+    while !in_flight.is_empty() {
+        collect_watch_join(
+            &mut in_flight,
+            &mut ingested,
+            &mut hash_skipped,
+            &mut errors,
+        )
+        .await;
     }
     let skipped = stamp_skipped + hash_skipped;
     let status = if errors.is_empty() {
@@ -531,6 +562,23 @@ fn record_report(
         "last_errors".into(),
         json!(errors.iter().take(3).collect::<Vec<_>>()),
     );
+}
+
+async fn collect_watch_join(
+    in_flight: &mut tokio::task::JoinSet<(String, Result<Delivered, String>)>,
+    ingested: &mut usize,
+    hash_skipped: &mut usize,
+    errors: &mut Vec<Value>,
+) {
+    let Some(joined) = in_flight.join_next().await else {
+        return;
+    };
+    match joined {
+        Ok((_, Ok(Delivered::Ingested))) => *ingested += 1,
+        Ok((_, Ok(Delivered::Skipped))) => *hash_skipped += 1,
+        Ok((relative, Err(detail))) => errors.push(json!({"path": relative, "detail": detail})),
+        Err(error) => errors.push(json!({"path": "", "detail": error.to_string()})),
+    }
 }
 
 /// What delivering one watched file did.

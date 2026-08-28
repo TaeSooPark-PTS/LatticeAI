@@ -15,13 +15,16 @@
 //!
 //! 1. `POST /worker/extract` (W5) for concepts / triples / semantic items — the
 //!    one part that is genuinely model compute and still belongs to the worker;
-//! 2. `POST /worker/embed` (W2) for the passage vector and, in one batch, for
-//!    every retrieval chunk; the reply's `(model_id, dim)` is the authority on
-//!    which index those rows are filed under;
-//! 3. [`GraphWriter::ingest_content`] with `source_type="note"`, then the
-//!    incremental `write_vectors` sync **only** when the seam's embedder is the
-//!    one this process would write with, then `record_ingestion` so the note
-//!    carries provenance like every other source.
+//!    it runs **alongside** the embed call, not in front of it;
+//! 2. **one** `POST /worker/embed` (W2) whose `texts` is the document vector
+//!    followed by every retrieval chunk — the reply's `(model_id, dim)` is the
+//!    authority on which index those rows are filed under;
+//! 3. [`GraphWriter::ingest_content`] with `source_type="note"`, then
+//!    [`GraphWriter::write_vectors_with`] carrying the same supplied vectors
+//!    so the native hash model is not asked to re-derive them. The incremental
+//!    sync still runs **only** when the seam's embedder is the one this process
+//!    would write with. `record_ingestion` then stamps provenance like every
+//!    other source.
 //!
 //! Steps 1 and 2 and the chunking go through [`crate::local_files_api::enrich`],
 //! which is the one place the upload, browser and watch doors talk to those
@@ -38,7 +41,9 @@
 use std::path::Path;
 use std::time::Duration;
 
-use lattice_core::graph_write::types::{IngestContentRequest, IngestionRecord};
+use lattice_core::graph_write::types::{
+    ChunkPiece, IngestContentRequest, IngestionRecord, SuppliedVector,
+};
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
 use serde_json::{json, Map, Value};
@@ -51,6 +56,12 @@ pub const PIPELINE_NAME: &str = "unified-ingestion";
 pub const NOTE_SOURCE_TYPE: &str = "note";
 /// How long one enrichment call may take before the note lands without it.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+/// How many folder / watch files may parse+embed+write at once.
+///
+/// Writes still serialize on the single SQLite writer; the overlap is the
+/// parse / extract / embed seam, which is what made a folder of PDFs feel
+/// single-threaded. Stamp-skip stays free because it never enters the pool.
+pub const INGEST_INFLIGHT: usize = 4;
 
 /// Why a note did not reach the Brain.
 ///
@@ -274,32 +285,21 @@ impl NoteIngestor {
             return Err(NoteIngestError::Empty);
         }
         let enrichment = note.enrichment_text();
-        let extracted = enrich::extract_via_seam(self.seam.as_ref(), &enrichment, "document").await;
-        let embedding = enrich::embed_via_seam(self.seam.as_ref(), &enrichment).await;
-        // The seam owns the embedding provider, so it — not a native guess — is
-        // the authority on the index identity. Agreement is the licence to run
-        // the native incremental sync; a mismatch leaves the node as backlog
-        // rather than writing a row `similarity()` would refuse.
-        let native_agrees = match embedding.as_ref() {
-            Some(vector) => {
-                vector.model_id == self.graph.embedder().model_id()
-                    && vector.dim == self.graph.embedder().dim()
-            }
-            None => true,
-        };
-        // Retrieval chunks, through the *same* helpers the upload and browser
-        // doors use (`local_files_api::enrich`) rather than a fourth copy of
-        // the chunk → batch-embed → attach chain. A watched note is therefore
-        // as searchable as the same file dragged onto the upload door.
         let mime = enrich::mime_hint(&note.title).unwrap_or_default();
         let chunks = enrich::chunk_pieces_for(&note.content, &note.title, &mime);
-        let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
-        let chunk_batch = enrich::embed_texts_via_seam(self.seam.as_ref(), &chunk_texts).await;
-        let chunks_agree = match chunk_batch.as_ref() {
-            Some((model_id, dim, _)) => enrich::model_agrees(&self.graph, model_id, *dim),
-            None => true,
-        };
-        let chunks = enrich::attach_chunk_embeddings(chunks, chunk_batch, chunks_agree);
+        // One embed body: document text, then every chunk. Two HTTP round-trips
+        // against a single-executor worker was the ingest-time tax the drain
+        // path had already stopped paying.
+        let mut embed_texts = Vec::with_capacity(chunks.len() + 1);
+        embed_texts.push(enrichment.clone());
+        embed_texts.extend(chunks.iter().map(|piece| piece.text.clone()));
+        let (extracted, embed_batch) = tokio::join!(
+            enrich::extract_via_seam(self.seam.as_ref(), &enrichment, "document"),
+            enrich::embed_texts_via_seam(self.seam.as_ref(), &embed_texts),
+        );
+        let (embedding, chunk_batch, native_agrees) =
+            split_note_embed(embed_batch, chunks.len(), &self.graph);
+        let chunks = enrich::attach_chunk_embeddings(chunks, chunk_batch, native_agrees);
 
         let mut request = note.content_request(owner, workspace_id);
         request.concepts = extracted.concepts;
@@ -345,9 +345,15 @@ impl NoteIngestor {
                     _ => 0,
                 }
             };
+            let supplied = supplied_for_note(
+                &outcome.node_id,
+                request.embedding.as_ref(),
+                &outcome.chunk_ids,
+                &request.chunks,
+            );
             let indexed = native_agrees
                 && !outcome.node_id.is_empty()
-                && graph.write_vectors(&outcome.node_id).status != "failed";
+                && graph.write_vectors_with(&outcome.node_id, &supplied).status != "failed";
             // Provenance must never turn an already-persisted note into a
             // failure: the node is in the Brain either way.
             let provenance = graph
@@ -385,6 +391,69 @@ impl NoteIngestor {
             Err(error) => Err(NoteIngestError::Task(error.to_string())),
         }
     }
+}
+
+/// One `/worker/embed` reply: model identity plus one row per text.
+type EmbedBatch = (String, usize, Vec<Vec<f64>>);
+
+/// Split the single embed reply into the document vector and the chunk batch.
+///
+/// Index 0 is the document. The rest are chunks in the same order
+/// [`enrich::chunk_pieces_for`] produced them. A missing seam is `None` and
+/// agrees with the native hash model, so `write_vectors_with` still hashes.
+fn split_note_embed(
+    batch: Option<EmbedBatch>,
+    chunk_count: usize,
+    graph: &GraphWriter,
+) -> (Option<SuppliedVector>, Option<EmbedBatch>, bool) {
+    let Some((model_id, dim, mut rows)) = batch else {
+        return (None, None, true);
+    };
+    let agrees = enrich::model_agrees(graph, &model_id, dim);
+    let document = if rows.is_empty() {
+        None
+    } else {
+        let values = rows.remove(0);
+        if values.is_empty() {
+            None
+        } else {
+            Some(SuppliedVector {
+                model_id: model_id.clone(),
+                dim: if dim == 0 { values.len() } else { dim },
+                values,
+            })
+        }
+    };
+    rows.truncate(chunk_count);
+    let chunk_batch = if rows.iter().all(|row| row.is_empty()) {
+        None
+    } else {
+        Some((model_id, dim, rows))
+    };
+    (document, chunk_batch, agrees)
+}
+
+/// `(item_id, vector)` pairs `write_vectors_with` should file without hashing.
+fn supplied_for_note(
+    node_id: &str,
+    embedding: Option<&SuppliedVector>,
+    chunk_ids: &[String],
+    chunks: &[ChunkPiece],
+) -> Vec<(String, SuppliedVector)> {
+    let mut supplied = Vec::new();
+    if let Some(vector) = embedding {
+        if !vector.values.is_empty() {
+            supplied.push((node_id.to_string(), vector.clone()));
+        }
+    }
+    for (chunk_id, piece) in chunk_ids.iter().zip(chunks) {
+        if let Some(vector) = &piece.embedding {
+            if !vector.values.is_empty() {
+                supplied.push((chunk_id.clone(), vector.clone()));
+            }
+        }
+    }
+    supplied
 }
 
 #[cfg(test)]
@@ -565,6 +634,63 @@ mod tests {
             })
             .expect("read");
         assert_eq!(sections, 0, "a heading nobody wrote is not a section");
+    }
+
+    #[test]
+    fn one_embed_reply_splits_into_the_document_and_its_chunks() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let graph = writer(dir.path());
+        let (document, chunks, agrees) = split_note_embed(
+            Some((
+                graph.embedder().model_id().to_string(),
+                graph.embedder().dim(),
+                vec![vec![1.0, 0.0], vec![0.0, 1.0], vec![0.5, 0.5]],
+            )),
+            2,
+            &graph,
+        );
+        assert!(agrees);
+        assert_eq!(document.unwrap().values, vec![1.0, 0.0]);
+        let chunk_rows = chunks.expect("chunk batch").2;
+        assert_eq!(chunk_rows.len(), 2);
+        assert_eq!(chunk_rows[0], vec![0.0, 1.0]);
+        let empty = split_note_embed(None, 2, &graph);
+        assert!(empty.2, "a missing seam still licenses the native hash");
+        assert!(empty.0.is_none());
+        assert!(empty.1.is_none());
+        assert_eq!(INGEST_INFLIGHT, 4);
+    }
+
+    #[test]
+    fn supplied_vectors_follow_the_node_then_its_chunks() {
+        let chunks = vec![
+            ChunkPiece {
+                text: "a".into(),
+                embedding: Some(SuppliedVector {
+                    values: vec![0.1],
+                    model_id: "m".into(),
+                    dim: 1,
+                }),
+                ..ChunkPiece::default()
+            },
+            ChunkPiece {
+                text: "b".into(),
+                ..ChunkPiece::default()
+            },
+        ];
+        let supplied = supplied_for_note(
+            "doc-1",
+            Some(&SuppliedVector {
+                values: vec![1.0],
+                model_id: "m".into(),
+                dim: 1,
+            }),
+            &["chunk-a".into(), "chunk-b".into()],
+            &chunks,
+        );
+        assert_eq!(supplied.len(), 2);
+        assert_eq!(supplied[0].0, "doc-1");
+        assert_eq!(supplied[1].0, "chunk-a");
     }
 
     #[test]

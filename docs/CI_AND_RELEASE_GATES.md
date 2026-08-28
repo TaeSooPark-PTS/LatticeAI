@@ -120,13 +120,19 @@ uploaded as artifacts. Regenerate locally with `scripts/generate_sbom.py`.
 
 ## Postgres integration gate
 
-`postgres-integration.yml` runs the migration-integrity suite
-(`tests/integration/test_postgres_migration_live.py`) that is skipped
-everywhere else. The suite is gated by `LTCAI_LIVE_POSTGRES_DOCKER_CONSENT=1`;
-the workflow sets that variable, and the test itself starts and tears down a
-`pgvector/pgvector:pg16` container via `docker compose` (preinstalled on
-GitHub-hosted `ubuntu-latest`). It is deliberately kept off the PR path (slow,
-image pull, needs Docker) and runs weekly + on demand.
+`postgres-integration.yml` still runs weekly + on demand, but the live
+SQLite→Postgres writer it used to drive left in 11.6.0 with the Python
+product write path. The suite file remains so a Monday cron is not a
+missing-file failure; it skip-explains the retirement. SQLite is the live
+Brain store. Restore a native pgvector door before making this job start
+a container again.
+
+## Dependency-audit clean run
+
+`pip-audit --format markdown --output FILE` writes the file only when it
+has findings. A clean run used to then fail on `cat FILE`. The workflow
+now writes a placeholder report when the file is missing so a clean audit
+is green.
 
 ## Visual smoke and sidecar E2E
 

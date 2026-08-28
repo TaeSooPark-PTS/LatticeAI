@@ -6,7 +6,7 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const releaseDir = `output/release/v${version}`;
-const releaseTheme = "Open House";
+const releaseTheme = "Fast Path";
 const title = `${version} — ${releaseTheme}`;
 const escapedVersion = version.replaceAll(".", "\\.");
 

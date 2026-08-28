@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **12.0.0 — Open House**.
+Current release: **12.1.0 — Fast Path**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -32,7 +32,7 @@ flowchart TB
       direction TB
       plat["lattice-platform (317 ops) — <b>7 domains (12.0.0)</b><br/>workspaceos · toolsurface · governance · adminops<br/>knowledge · modelops · shell"]
       retr["lattice-retrieval (65 ops)<br/>search · knowledge_graph · brain · memory<br/>hybrid + hnsw+rescore · chronicle clock seam"]
-      ingestc["lattice-ingest (28 ops)<br/>browser · local_files · fingerprint · sections<br/>vault-watch poller · folder prune"]
+      ingestc["lattice-ingest (28 ops)<br/>browser · local_files · fingerprint · sections<br/>vault-watch poller · folder prune<br/>ingest inflight 4 · one embed body"]
       chatc["lattice-chat (8 ops)<br/>chat + history · native ingest_generated"]
       jobsc["lattice-jobs (4 ops)<br/>index · adaptive drain scheduler"]
       authc["lattice-auth<br/>password login · sessions · CSRF"]
@@ -156,7 +156,10 @@ gave the two biggest crates a domain map and closed four named gaps:
   re-read, re-chunked or re-embedded, and a file that vanished is
   **reported, never removed** — deleting a node is a product decision, so
   it needs the explicit `POST /api/ingestion/folder/prune` door
-  (dry-run, then `confirm`).
+  (dry-run, then `confirm`). 12.1.0 overlaps up to four changed files
+  (`INGEST_INFLIGHT`) so parse and embed no longer stand in a single
+  file's shadow, and one `/worker/embed` body carries the document vector
+  plus every chunk.
 - **Restore is live.** `lattice_core::db::Store` carries a generation
   epoch. A restore bumps it, every pooled connection opened under the old
   generation is stale on its next checkout and is closed, and the next
@@ -1750,13 +1753,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-12.0.0 exact artifact names:
+12.1.0 exact artifact names:
 
-- `dist/ltcai-12.0.0-py3-none-any.whl`
-- `dist/ltcai-12.0.0.tar.gz`
-- `ltcai-12.0.0.tgz`
-- `dist/ltcai-12.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.0.0_aarch64.dmg`
+- `dist/ltcai-12.1.0-py3-none-any.whl`
+- `dist/ltcai-12.1.0.tar.gz`
+- `ltcai-12.1.0.tgz`
+- `dist/ltcai-12.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.1.0_aarch64.dmg`
 
 The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
 far. First launch needs the usual Gatekeeper step.
@@ -1780,7 +1783,7 @@ Do not document or use wildcard artifact upload commands.
   request.
 - Cloud models, Docker, Brain Network, update checks and marketplace refreshes
   are not default local behavior. The optional PostgreSQL scale/migration
-  tooling is not part of the 12.0.0 worker. Cloud is opt-in: `api_key` is
+  tooling is not part of the 12.1.0 worker. Cloud is opt-in: `api_key` is
   mock-verified only; `cli_oauth` was live-checked at zero billing.
 - The **image and video multimodal functions have no HTTP door** since 11.8.0.
   They stay in Brain Core under unit test with the reason in the module header.
@@ -1790,9 +1793,11 @@ Do not document or use wildcard artifact upload commands.
   mechanical half reliable — the requested file gets written and a 0.5B model
   can reach `DONE` — but a weak summary still fails the critic and ends
   `FAILED` / `NEEDS_REVIEW`. That is a visible failure, not a hidden one.
-- **Vector search still defaults to `brute`.** `hnsw+rescore` is opt-in
-  (`LATTICEAI_VECTOR_INDEX=hnsw`) and falls back to the exact scan with its
-  reason whenever the sidecar cannot answer.
+- **Vector search env still defaults to `brute`.** A Brain with 512 or more
+  vectors and a bound worker sidecar now tries `hnsw+rescore` first and
+  falls back to the exact scan with the original `brute` index block if
+  the sidecar cannot answer. `LATTICEAI_VECTOR_INDEX=hnsw` is still the
+  explicit opt-in.
 - **Watch never deletes.** A vanished file is reported; removing its subtree
   needs the explicit `POST /api/ingestion/folder/prune` consent flow.
 - **The crate regrouping is a move, not a decoupling.** Seven domains and six

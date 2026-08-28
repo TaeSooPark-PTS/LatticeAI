@@ -4,6 +4,29 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.1.0] - 2026-08-29 — Fast Path
+
+### Added
+- Folder ingest and vault-watch overlap up to four files (`INGEST_INFLIGHT`).
+  Stamp-skip never enters the pool.
+- One `POST /worker/embed` per note: document text then every chunk.
+  Extract runs beside embed, not in front of it.
+- Default brute search tries `hnsw+rescore` when the store has 512+ vectors
+  and a worker sidecar is bound; failure keeps the original `brute` index
+  block.
+
+### Changed
+- `rebuild_vector_index` embeds outside the write transaction.
+- `write_vectors_with` files the ingest-time supplied vectors so the hash
+  model does not re-derive them.
+- Empty `ltcai[postgres]` extra alias; the live Postgres writer left in 11.6.0.
+
+### Fixed
+- Weekly pip-audit failed on a missing markdown report when there were no
+  findings.
+- Weekly Postgres integration job failed because
+  `tests/integration/test_postgres_migration_live.py` was gone.
+
 ## [12.0.0] - 2026-08-18 — Open House
 
 ### Added

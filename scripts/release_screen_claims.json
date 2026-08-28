@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.1.0": {
+    "_why": [
+      "Fast Path is a backend ingest/search release. Folder ingest overlaps",
+      "parse and embed, one /worker/embed body carries the document plus its",
+      "chunks, rebuild hashes outside the write lock, and a Brain with 512+",
+      "vectors tries hnsw+rescore when a worker sidecar is bound.",
+      "",
+      "No screen was redesigned. Empty claim set on purpose. Unclaimed screens",
+      "are still measured and printed; they are not gated."
+    ]
+  },
   "12.0.0": {
     "_why": [
       "Open House brings component and resilience updates across the frontend:",

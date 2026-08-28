@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **12.0.0 — Open House**.
+Current release: **12.1.0 — Fast Path**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

@@ -2846,7 +2846,7 @@
   },
   "schema_count": 22,
   "source": "frontend/openapi.json",
-  "spec_version": "12.0.0",
+  "spec_version": "12.1.0",
   "summary": "Knowledge graph, search, index jobs, local files, local knowledge roots and browser capture.",
   "target": "lattice-ingest / lattice-retrieval",
   "wp": "R6"

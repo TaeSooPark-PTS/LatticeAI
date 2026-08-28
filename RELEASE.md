@@ -13,6 +13,36 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.1.0 — Fast Path (2026-08-29)
+
+디스크에서 회상까지 줄을 세우던 경로를 겹친 릴리스. 쓰기 엔진은 그대로
+하나고, 느렸던 것은 그 앞의 시임과 그 안의 락이다. 문은 **422
+오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음).
+
+- **폴더·watch 인제스트 파이프라인.** 최대 4개 파일이 parse / extract /
+  embed를 겹친다. 스탬프 스킵은 풀에 들어가지 않는다. 쓰기는 여전히
+  `GraphWriter` 하나다.
+- **노트당 `/worker/embed` 한 방.** 문서 벡터와 청크 벡터가 한 `texts`
+  바디. extract는 그 앞에 서지 않고 옆에 선다.
+  `write_vectors_with`가 그 벡터를 파일해서 해시 모델이 같은 텍스트를
+  다시 돌리지 않는다.
+- **rebuild가 임베드를 쓰기 락 밖에서.** 12.0.0 drain과 같은 모양.
+- **검색 auto-HNSW.** env 기본은 여전히 `brute`. 512행 이상이고 워커
+  시임이 묶여 있으면 `hnsw+rescore`를 먼저 시도하고, 실패하면 원래
+  brute 블록으로 정확 스캔한다. 골든은 바이트 동일.
+- **CI.** 주간 pip-audit가 깨끗한 런에서 리포트 파일 부재로 실패하던
+  것, 주간 Postgres 잡이 삭제된 테스트 파일을 찾다 실패하던 것을
+  고쳤다. `ltcai[postgres]`는 빈 extra 별칭.
+
+정직한 고지: 작은 모델 내용 품질, `api_key` 모의 검증, ad-hoc DMG,
+watch 자동 삭제 없음, 실임베딩 기본 롤아웃은 아직. 자세한 목록은
+[RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md).
+
+빌드 산출물은 `dist/ltcai-12.1.0-py3-none-any.whl`,
+`dist/ltcai-12.1.0.tar.gz`, `ltcai-12.1.0.tgz`, `dist/ltcai-12.1.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.1.0_aarch64.dmg` 입니다.
+와일드카드 업로드는 사용하지 않습니다.
+
 ## v12.0.0 — Open House (2026-08-18)
 
 집을 정리해 손님을 들이는 릴리스. 가장 큰 두 크레이트를 도메인으로 나누고

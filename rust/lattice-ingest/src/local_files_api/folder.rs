@@ -133,7 +133,7 @@ async fn run_folder_items(
 ) -> Result<FolderOutcome, String> {
     let store = state
         .store
-        .as_ref()
+        .clone()
         .ok_or_else(|| "the Brain is not wired".to_string())?;
     let mut ingestor = NoteIngestor::new(graph);
     if let Some(seam) = state.seam() {
@@ -145,26 +145,55 @@ async fn run_folder_items(
     let mut skipped_unchanged = 0usize;
     let mut errors = Vec::new();
     let mut present = HashSet::new();
+    let mut in_flight = tokio::task::JoinSet::new();
+    let owner = owner.map(str::to_string);
+    let workspace_id = workspace_id.map(str::to_string);
+    let seam = state.seam().cloned();
     for file in files {
-        let uri = file.path.display().to_string();
-        present.insert(uri.clone());
-        match ingest_one_folder_file(&ingestor, store, state.seam(), file, owner, workspace_id)
-            .await
-        {
-            Ok(FileResult::Skipped) => skipped_unchanged += 1,
-            Ok(FileResult::Ingested { duplicate: is_dup }) => {
-                ingested += 1;
-                if is_dup {
-                    duplicate += 1;
-                }
-            }
-            Err(detail) => {
-                failed += 1;
-                errors.push(json!({"path": file.relative_path, "detail": detail}));
-            }
+        present.insert(file.path.display().to_string());
+        while in_flight.len() >= crate::worker::INGEST_INFLIGHT {
+            collect_folder_join(
+                &mut in_flight,
+                &mut ingested,
+                &mut duplicate,
+                &mut failed,
+                &mut skipped_unchanged,
+                &mut errors,
+            )
+            .await;
         }
+        let ingestor = ingestor.clone();
+        let store = Arc::clone(&store);
+        let seam = seam.clone();
+        let file = file.clone();
+        let owner = owner.clone();
+        let workspace_id = workspace_id.clone();
+        in_flight.spawn(async move {
+            let relative = file.relative_path.clone();
+            let result = ingest_one_folder_file(
+                &ingestor,
+                store.as_ref(),
+                seam.as_ref(),
+                &file,
+                owner.as_deref(),
+                workspace_id.as_deref(),
+            )
+            .await;
+            (relative, result)
+        });
     }
-    let deleted = fingerprint::missing_under_root(store, root, &present);
+    while !in_flight.is_empty() {
+        collect_folder_join(
+            &mut in_flight,
+            &mut ingested,
+            &mut duplicate,
+            &mut failed,
+            &mut skipped_unchanged,
+            &mut errors,
+        )
+        .await;
+    }
+    let deleted = fingerprint::missing_under_root(store.as_ref(), root, &present);
     let status = if failed == 0 {
         "completed"
     } else if ingested > 0 || skipped_unchanged > 0 {
@@ -174,7 +203,7 @@ async fn run_folder_items(
     };
     let now = now_stamp(state);
     let _ = write_job(
-        store,
+        &store,
         job_id,
         status,
         files.len() as i64,
@@ -200,6 +229,36 @@ async fn run_folder_items(
 enum FileResult {
     Skipped,
     Ingested { duplicate: bool },
+}
+
+async fn collect_folder_join(
+    in_flight: &mut tokio::task::JoinSet<(String, Result<FileResult, String>)>,
+    ingested: &mut usize,
+    duplicate: &mut usize,
+    failed: &mut usize,
+    skipped_unchanged: &mut usize,
+    errors: &mut Vec<Value>,
+) {
+    let Some(joined) = in_flight.join_next().await else {
+        return;
+    };
+    match joined {
+        Ok((_, Ok(FileResult::Skipped))) => *skipped_unchanged += 1,
+        Ok((_, Ok(FileResult::Ingested { duplicate: is_dup }))) => {
+            *ingested += 1;
+            if is_dup {
+                *duplicate += 1;
+            }
+        }
+        Ok((relative, Err(detail))) => {
+            *failed += 1;
+            errors.push(json!({"path": relative, "detail": detail}));
+        }
+        Err(error) => {
+            *failed += 1;
+            errors.push(json!({"path": "", "detail": error.to_string()}));
+        }
+    }
 }
 
 async fn ingest_one_folder_file(

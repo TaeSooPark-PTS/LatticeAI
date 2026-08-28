@@ -8,6 +8,12 @@
 //! `LATTICEAI_VECTOR_INDEX=hnsw` asks the worker sidecar for `k*8` candidates
 //! and re-scores them exactly (`hnsw+rescore`). Any failure falls back to this
 //! scan and names the reason. Golden suites pin the default env.
+//!
+//! When the env is the default `brute` *and* the store has at least
+//! [`HNSW_AUTO_MIN_ROWS`] vectors *and* a worker origin is bound, search tries
+//! the sidecar first. A miss falls through to this scan with the original
+//! `brute` index block, so goldens (small fixtures, no worker) stay byte-
+//! identical.
 
 use lattice_core::pytext::{citation_locator, clean_text, round6, safe_loads, truncate_chars};
 use lattice_core::read::{vector_row_from, VectorRow, VECTOR_ROW_SELECT};
@@ -25,6 +31,11 @@ pub const DEFAULT_VECTOR_MAX_CANDIDATES: i64 = 10_000;
 pub const VECTOR_MAX_CANDIDATES_CEILING: i64 = 500_000;
 /// `vector_index.brute_force.BRUTE_FORCE_BACKEND`.
 pub const BRUTE_FORCE_BACKEND: &str = "bruteforce-cosine";
+/// Row count at which default brute search tries the HNSW sidecar first.
+///
+/// Below this the exact scan is cheap and golden-pinned. Above it, a bound
+/// worker sidecar is asked for candidates and the rows are re-scored exactly.
+pub const HNSW_AUTO_MIN_ROWS: i64 = 512;
 
 /// `vector_index.BackendSelection` for the backends this crate can honour.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,6 +280,17 @@ pub fn vector_match(row: &VectorRow, score: f64) -> Map<String, Value> {
     item
 }
 
+/// Whether this search should ask the HNSW sidecar before the exact scan.
+pub fn should_try_hnsw(selection: &BackendSelection, candidates_total: i64) -> bool {
+    if selection.requested == "hnsw" && selection.name == "hnsw" {
+        return true;
+    }
+    selection.requested == "brute"
+        && selection.detail.is_none()
+        && candidates_total >= HNSW_AUTO_MIN_ROWS
+        && crate::vector_hnsw::hnsw_worker_is_bound()
+}
+
 /// `KnowledgeGraphStore.vector_search(query, limit=…, min_score=…)`.
 pub fn vector_search(
     conn: &Connection,
@@ -297,21 +319,23 @@ pub fn vector_search(
     let model_id = model.model_id().to_string();
     let dim = model.dim() as i64;
 
-    let mut index_block = selection.as_json();
-    if selection.requested == "hnsw" && selection.name == "hnsw" {
-        match crate::vector_hnsw::try_hnsw(&query, &query_vector, conn, model, limit, min_score) {
-            Ok(payload) => return Ok(payload),
-            Err(reason) => {
-                index_block = crate::vector_hnsw::fallback_selection(&reason).as_json();
-            }
-        }
-    }
-
     let candidates_total: i64 = conn.query_row(
         "SELECT COUNT(*) AS c FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=?",
         rusqlite::params![model_id, dim],
         |row| row.get(0),
     )?;
+
+    let mut index_block = selection.as_json();
+    if should_try_hnsw(&selection, candidates_total) {
+        match crate::vector_hnsw::try_hnsw(&query, &query_vector, conn, model, limit, min_score) {
+            Ok(payload) => return Ok(payload),
+            Err(reason) => {
+                if selection.requested == "hnsw" {
+                    index_block = crate::vector_hnsw::fallback_selection(&reason).as_json();
+                }
+            }
+        }
+    }
 
     let mut sql = format!("{VECTOR_ROW_SELECT} ORDER BY ve.indexed_at DESC");
     if cap.is_some() {
@@ -378,6 +402,30 @@ fn sort_key(item: &Map<String, Value>) -> (f64, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn auto_hnsw_stays_off_for_small_stores_and_unbound_workers() {
+        assert!(!should_try_hnsw(&brute("brute", None), 10));
+        assert!(
+            !should_try_hnsw(&brute("brute", None), HNSW_AUTO_MIN_ROWS),
+            "a store at the threshold still needs a bound worker"
+        );
+        assert!(should_try_hnsw(
+            &BackendSelection {
+                requested: "hnsw".into(),
+                name: "hnsw".into(),
+                backend: "hnsw".into(),
+                approx: true,
+                exhaustive: false,
+                detail: None,
+            },
+            1
+        ));
+        assert!(!should_try_hnsw(
+            &brute("quantized", Some("not implemented".into())),
+            HNSW_AUTO_MIN_ROWS
+        ));
+    }
 
     #[test]
     fn backend_selection_reports_what_it_did() {

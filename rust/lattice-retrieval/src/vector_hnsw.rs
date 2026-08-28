@@ -45,6 +45,11 @@ fn worker_origin() -> Option<String> {
         .or_else(|| BOUND_ORIGIN.get().cloned())
 }
 
+/// True when search can reach the HNSW sidecar (env origin or a bound seam).
+pub(crate) fn hnsw_worker_is_bound() -> bool {
+    worker_origin().is_some()
+}
+
 /// What the worker returned for one ANN query.
 #[derive(Debug, Clone)]
 pub struct HnswReply {

@@ -45,9 +45,19 @@ jobs:
 
       - name: pip-audit (strict on schedule/dispatch)
         run: |
+          set +e
           pip-audit -r requirements.txt --strict --desc on \
             --format markdown --output pip-audit-report.md
+          status=$?
+          set -e
+          # pip-audit writes the markdown file only when it has findings.
+          # A clean run prints "No known vulnerabilities found" and leaves
+          # no file, which then made `cat` fail the job.
+          if [ ! -s pip-audit-report.md ]; then
+            printf '# pip-audit\n\nNo known vulnerabilities found.\n' > pip-audit-report.md
+          fi
           cat pip-audit-report.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - name: Generate Python SBOM (CycloneDX)
         if: always()

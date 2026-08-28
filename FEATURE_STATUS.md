@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v12.0.0)
+# Lattice AI Feature Status (v12.1.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **12.0.0 — Open House**.
+Current release: **12.1.0 — Fast Path**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 11.0.0 and later in `RELEASE.md` and
@@ -257,11 +257,12 @@ still open — including small-model *content* quality and the mock-only
 - **The macOS dmg remains ad-hoc signed** (effectively unsigned). First
   launch needs the usual Gatekeeper step. `npm run release:validate` checks
   names and presence, not a Developer ID.
-- **Vector search still defaults to `brute`.** `hnsw+rescore` is real and
-  used when opted into (`LATTICEAI_VECTOR_INDEX=hnsw`), but the default is the
-  exact scan: it is exact, byte-compatible with every previous release, and
-  needs nothing installed. An opted-in `hnsw` that cannot answer falls back to
-  brute carrying its reason rather than returning a short list.
+- **Vector search env still defaults to `brute`.** `hnsw+rescore` is used
+  when opted into (`LATTICEAI_VECTOR_INDEX=hnsw`) and, since 12.1.0, when the
+  store has 512 or more vectors and a worker sidecar is bound. A miss falls
+  back to the exact scan: opted-in `hnsw` carries its reason; the auto path
+  keeps the original `brute` index block so small-fixture goldens stay
+  byte-identical.
 - **Watch never deletes.** A file that disappeared from a watched folder is
   reported, not removed. Cleanup happens only through the explicit
   `POST /api/ingestion/folder/prune` consent flow (dry-run, then `confirm`).
@@ -304,14 +305,13 @@ still open — including small-model *content* quality and the mock-only
   with work left per tick; and on an install with authentication switched on an
   unauthenticated tick answers 401, which surfaces verbatim in the schedule's
   `last_tick.error` rather than passing as a quiet success.
-- **The HNSW index appends now, and is still not the default.** Through 11.9.0
-  the `.hnsw` sidecar was fingerprinted on row count plus newest `indexed_at`,
-  so *any* write invalidated it and the next search paid a full rebuild
-  (measured in `docs/PERFORMANCE.md` as the "first query" column). 12.0.0
+- **The HNSW index appends, and env default is still brute.** 12.0.0
   appends new vectors into the existing index and uses it in real search
-  (`hnsw+rescore`: worker-sidecar candidates, native exact rescore). It stays
-  **opt-in**: `brute` remains the default until recall@10 against the exact
-  scan is re-measured on a Brain that has been ingesting continuously.
+  (`hnsw+rescore`: worker-sidecar candidates, native exact rescore). 12.1.0
+  auto-tries that path when the store has 512+ vectors and a worker origin
+  is bound. Explicit `LATTICEAI_VECTOR_INDEX=hnsw` is unchanged. Flipping
+  the env default still wants recall@10 re-measured on a Brain that has
+  been ingesting continuously.
 - **The quantized backend's memory advantage is not realized in this release.**
   int8 codes are 8x smaller than boxed floats, but the measurement says peak
   memory barely moves (38.4 MB vs 39.7 MB at 10k): the exact scan already feeds

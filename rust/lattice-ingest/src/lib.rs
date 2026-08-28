@@ -73,4 +73,4 @@ pub use pystr::{is_py_space, py_strip, py_suffix};
 pub use sections::{build_overlay, section_id, SectionOverlay};
 pub use strategy::chunk_strategy_for;
 pub use watch::{ScanDiff, WatchConfig, WatchScanner, MAX_FILES_PER_SCAN};
-pub use worker::{NoteIngestError, NoteIngestor, NoteReceipt, NoteSubmission};
+pub use worker::{NoteIngestError, NoteIngestor, NoteReceipt, NoteSubmission, INGEST_INFLIGHT};

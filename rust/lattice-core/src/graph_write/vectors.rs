@@ -189,7 +189,11 @@ impl GraphWriter {
             let mut indexed = 0usize;
             let mut skipped = 0usize;
             for (item, offered) in &prepared {
-                if self.upsert_vector_item_with(txn, item, offered.as_ref())? {
+                let wrote = match offered.as_ref() {
+                    Some(vector) => self.upsert_vector_item_with(txn, item, Some(vector))?,
+                    None => self.upsert_vector_item(txn, item)?,
+                };
+                if wrote {
                     indexed += 1;
                 } else {
                     skipped += 1;
@@ -313,6 +317,11 @@ impl GraphWriter {
 
     /// `rebuild_vector_index` — rebuild the derived index without touching
     /// graph content.
+    ///
+    /// Embed happens *outside* the write txn, the same way
+    /// [`Self::write_vectors_with`] already does. Holding BEGIN IMMEDIATE
+    /// while hashing every changed passage was the remaining writer stall
+    /// on a full rebuild.
     pub fn rebuild_vector_index(
         &self,
         request: &RebuildRequest,
@@ -332,6 +341,29 @@ impl GraphWriter {
         } else {
             "rebuild_incremental"
         };
+        let items = self.store.with_read_conn(|conn| {
+            self.iter_vector_source_items(conn, request.include_nodes, request.include_chunks)
+        })?;
+        let known = if request.full {
+            Vec::new()
+        } else {
+            self.store
+                .with_read_conn(|conn| self.vector_text_hashes(conn))?
+        };
+        let mut to_embed = Vec::new();
+        let mut skipped = 0usize;
+        for item in &items {
+            let hash = sha256_text(&clean_text(&item.text));
+            if known
+                .iter()
+                .any(|(id, stored)| *id == item.item_id && *stored == hash)
+            {
+                skipped += 1;
+                continue;
+            }
+            to_embed.push(item.clone());
+        }
+        let prepared = self.embed_items_outside_txn(&to_embed, &[]);
         let outcome = self.store.with_write_txn(|txn| {
             let mut opening = Map::new();
             opening.insert("include_nodes".into(), json!(request.include_nodes));
@@ -363,36 +395,15 @@ impl GraphWriter {
                     ))?;
                 }
             }
-            // After a full wipe nothing is current by definition, so the
-            // prefetch would only scan a table we just emptied. Incremental is
-            // where it pays: one query instead of one SELECT per item, nearly
-            // all of which answer "unchanged".
-            let known = if request.full {
-                Vec::new()
-            } else {
-                self.vector_text_hashes(txn)?
-            };
-            let items =
-                self.iter_vector_source_items(txn, request.include_nodes, request.include_chunks)?;
-            let mut total = 0usize;
             let mut indexed = 0usize;
-            let mut skipped = 0usize;
-            for item in &items {
-                total += 1;
-                let hash = sha256_text(&clean_text(&item.text));
-                if known
-                    .iter()
-                    .any(|(id, stored)| *id == item.item_id && *stored == hash)
-                {
-                    skipped += 1;
-                    continue;
-                }
-                if self.upsert_vector_item(txn, item)? {
+            for (item, offered) in &prepared {
+                if self.upsert_vector_item_with(txn, item, offered.as_ref())? {
                     indexed += 1;
                 } else {
                     skipped += 1;
                 }
             }
+            let total = items.len();
             let duration_ms = self.elapsed_ms(started);
             let mut closing = Map::new();
             closing.insert("include_nodes".into(), json!(request.include_nodes));
@@ -471,9 +482,9 @@ impl GraphWriter {
     /// missing and get re-embedded, which is what an embedder swap requires.
     fn vector_text_hashes(
         &self,
-        txn: &Transaction<'_>,
+        conn: &rusqlite::Connection,
     ) -> Result<Vec<(String, String)>, CoreError> {
-        let mut statement = txn.prepare(
+        let mut statement = conn.prepare(
             "SELECT item_id, text_hash FROM vector_embeddings \
              WHERE embedding_model=? AND embedding_dim=?",
         )?;
@@ -487,13 +498,13 @@ impl GraphWriter {
     /// `_iter_vector_source_items` — the graph's embeddable text.
     fn iter_vector_source_items(
         &self,
-        txn: &Transaction<'_>,
+        conn: &rusqlite::Connection,
         include_nodes: bool,
         include_chunks: bool,
     ) -> Result<Vec<VectorItem>, CoreError> {
         let mut items: Vec<VectorItem> = Vec::new();
         if include_nodes {
-            let mut statement = txn.prepare(
+            let mut statement = conn.prepare(
                 "SELECT id, type, title, summary, metadata_json FROM nodes \
                  WHERE type <> 'Chunk' ORDER BY updated_at DESC, id ASC",
             )?;
@@ -529,7 +540,7 @@ impl GraphWriter {
             }
         }
         if include_chunks {
-            let mut statement = txn.prepare(
+            let mut statement = conn.prepare(
                 "SELECT c.id, c.source_node AS parent_source_node, c.text, c.metadata_json \
                  FROM chunks c JOIN nodes n ON n.id=c.id \
                  ORDER BY c.created_at DESC, c.id ASC",

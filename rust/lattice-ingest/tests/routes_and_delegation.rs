@@ -415,9 +415,9 @@ async fn a_watched_note_is_written_here_and_never_posted_to_the_worker() {
     assert_eq!(seams.count("/worker/extract"), 1);
     assert_eq!(
         seams.count("/worker/embed"),
-        2,
-        "once for the document vector, once for every chunk in a single batch \
-         — the `enrich` chain the upload door uses, not a second copy of it"
+        1,
+        "one body: the document vector followed by every chunk — not a second \
+         HTTP round-trip against the same worker"
     );
     assert_eq!(
         seams.count("/knowledge-graph/ingest"),

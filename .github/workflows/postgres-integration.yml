@@ -1,16 +1,12 @@
 name: Postgres Integration (live)
 
-# Exercises the SQLite -> Postgres/pgvector migration integrity test that is
-# SKIPPED everywhere by default. The suite
-# (tests/integration/test_postgres_migration_live.py) is gated behind
-# LTCAI_LIVE_POSTGRES_DOCKER_CONSENT=1 because it starts a real database via
-# lattice_brain.storage.DockerPostgresWizard (image: pgvector/pgvector:pg16)
-# using `docker compose`, which is preinstalled on GitHub-hosted ubuntu
-# runners. The test brings the container up and tears it down itself, so no
-# GitHub `services:` block is needed (and would be ignored by the wizard).
+# The live SQLite -> Postgres/pgvector suite used to start a pgvector
+# container via lattice_brain.storage.DockerPostgresWizard. That writer
+# left in v11.6.0 with the rest of the Python product write path; SQLite
+# is the live Brain store. The job still runs so a Monday cron is not a
+# missing-file failure. The suite now skip-explains the retirement.
 #
-# This job is deliberately NOT wired into the PR path: it is slow, pulls an
-# image, and needs Docker. It runs on a weekly schedule and on demand.
+# This job is deliberately NOT wired into the PR path.
 
 on:
   schedule:
@@ -46,10 +42,10 @@ jobs:
           docker --version
           docker compose version
 
-      - name: Install project + Postgres extra + test deps
+      - name: Install project + test deps
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[postgres]" pytest pytest-asyncio httpx
+          pip install -e "." pytest pytest-asyncio httpx
 
       - name: Run live Postgres migration integration test
         env:

@@ -179,3 +179,30 @@ async fn a_changed_file_is_reingested_and_a_deleted_file_is_only_reported() {
         "deletion is report-only; the old node stays ({docs})"
     );
 }
+
+#[tokio::test]
+async fn a_folder_of_many_files_lands_every_note_through_the_inflight_pool() {
+    let data = tempfile::tempdir().expect("tempdir");
+    let install = Install::start(data.path()).await;
+    for index in 0..8 {
+        std::fs::write(
+            install.folder.join(format!("n{index}.md")),
+            format!("note number {index} body\n"),
+        )
+        .expect("write");
+    }
+    let (status, body) = install.ingest().await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["status"], json!("completed"), "{body}");
+    assert_eq!(
+        body["ingested"],
+        json!(10),
+        "eight new files plus the two the install seeded: {body}"
+    );
+    assert_eq!(body["skipped_unchanged"], json!(0), "{body}");
+
+    let (status, second) = install.ingest().await;
+    assert_eq!(status, 200, "{second}");
+    assert_eq!(second["ingested"], json!(0), "{second}");
+    assert_eq!(second["skipped_unchanged"], json!(10), "{second}");
+}
