@@ -496,6 +496,14 @@ Choose one of these exact names: {known}."
                         &[("action", json!(original)), ("args", json!(filled))],
                     );
                 }
+                let stated = self.fill_stated_request_args(entry, &mut args, req, &catalog);
+                if !stated.is_empty() {
+                    ctx.trace.decision(
+                        "execute",
+                        "request_arg_filled",
+                        &[("action", json!(original)), ("args", json!(stated))],
+                    );
+                }
                 if let Some(missing) = crate::tools::catalog::missing_required(entry, &args) {
                     return self.refuse_incomplete_call(ctx, &original, &args, &missing);
                 }

@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **12.1.0 — Fast Path**.
+Current release: **12.2.0 — Small Voice**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

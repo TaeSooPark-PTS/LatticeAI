@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **12.1.0 — Fast Path**.
+Current release: **12.2.0 — Small Voice**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -1753,13 +1753,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-12.1.0 exact artifact names:
+12.2.0 exact artifact names:
 
-- `dist/ltcai-12.1.0-py3-none-any.whl`
-- `dist/ltcai-12.1.0.tar.gz`
-- `ltcai-12.1.0.tgz`
-- `dist/ltcai-12.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.1.0_aarch64.dmg`
+- `dist/ltcai-12.2.0-py3-none-any.whl`
+- `dist/ltcai-12.2.0.tar.gz`
+- `ltcai-12.2.0.tgz`
+- `dist/ltcai-12.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.0_aarch64.dmg`
 
 The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
 far. First launch needs the usual Gatekeeper step.

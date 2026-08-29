@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**12.1.0 — Fast Path** keeps the One Door topology (422 operations / 41 families, 20-route worker) and makes ingest and recall faster: folder and vault-watch overlap parse/embed across files, one `/worker/embed` body carries the document plus its chunks, rebuild hashes outside the write lock, and a Brain with 512+ vectors tries `hnsw+rescore` when a worker sidecar is bound. Full disclosure of what is still open is in `RELEASE_NOTES_v12.1.0.md`.
+**12.2.0 — Small Voice** keeps the One Door topology (422 operations / 41 families, 20-route worker) and lets a 2B-class local model call MCP tools and skills without perfect JSON. The home composer names those actions in plain words. Full disclosure of what is still open is in `RELEASE_NOTES_v12.2.0.md`.
 
 **The extension surface is unchanged apart from its version.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before.
 

@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **12.1.0 — Fast Path**.
+Current release: **12.2.0 — Small Voice**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

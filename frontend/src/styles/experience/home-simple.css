@@ -254,6 +254,37 @@
   color: hsl(var(--muted-foreground));
 }
 
+.brain-composer-can {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 1.15rem 0.35rem;
+}
+
+.brain-composer-can-chip {
+  display: inline-flex;
+  min-height: 1.85rem;
+  align-items: center;
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 999px;
+  background: hsl(var(--background) / 0.55);
+  color: hsl(var(--muted-foreground));
+  padding: 0.15rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.brain-composer-can-chip:hover:not(:disabled),
+.brain-composer-can-chip:focus-visible {
+  border-color: hsl(var(--primary) / 0.55);
+  color: hsl(var(--foreground));
+  background: hsl(var(--surface-raised));
+}
+
+.brain-composer-can-chip:disabled {
+  opacity: 0.55;
+}
+
 .brain-home-station .brain-attach-toggle {
   min-height: 2.6rem;
   padding: 0.4rem 0.85rem 0.4rem 0.7rem;

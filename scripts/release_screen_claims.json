@@ -20,6 +20,29 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.2.0": {
+    "_why": [
+      "Small Voice is a 2B tool-calling release with two visible surfaces.",
+      "",
+      "1. Brain home composer: four plain-language chips (folder search, read",
+      "   and summarize, memory, skill review) sit under the textarea. The",
+      "   Living Brain still dominates the shot, so the whole-image delta sits",
+      "   under the 8% live floor; the claim uses the measured 3.96% as the",
+      "   floor, not a redesign of the shell.",
+      "",
+      "2. Settings: a new 'small models can use tools' card with four badges.",
+      "   That card is why 08 grew 168px.",
+      "",
+      "No other screen was redesigned. Unclaimed screens are measured and",
+      "printed; they are not gated."
+    ],
+    "04-brain-chat-home.png": {
+      "min_pct": 3.0
+    },
+    "08-system.png": {
+      "min_pct": 1.5
+    }
+  },
   "12.1.0": {
     "_why": [
       "Fast Path is a backend ingest/search release. Folder ingest overlaps",

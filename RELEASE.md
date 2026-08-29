@@ -15,6 +15,27 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.2.0 — Small Voice (2026-08-29)
+
+2B급 로컬 모델이 MCP·스킬·도구를 고를 수 있게, 그리고 그 일을 홈 화면에서
+바로 고를 수 있게 만든 릴리스. 문은 **422 오퍼레이션 / 41 패밀리**,
+워커는 **20 라우트** (변동 없음).
+
+- **툴콜 봉투.** `name`/`arguments`, Qwen `<function=…>` XML,
+  `Action: mcp.grep`이 같은 호출이 된다. 콤팩트 액션 목록은 9행.
+- **스킬 when.** 요청이 스킬의 "use when" 문구와 맞으면 이름을 안 해도
+  안내문을 먼저 읽는다.
+- **요청이 이미 말한 인자.** 따옴표 친 검색어가 빠진 `pattern`을 채운다.
+- **홈 작곡기.** 폴더 찾기 · 파일 읽고 요약 · 기억 찾기 · 스킬 검토
+  칩. 설정에 같은 설명이 한 카드로 있다.
+
+12.1.0 Fast Path 인제스트 겹치기는 그대로다. 자세한 목록은
+[RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md).
+
+빌드 산출물은 `dist/ltcai-12.2.0-py3-none-any.whl`,
+`dist/ltcai-12.2.0.tar.gz`, `ltcai-12.2.0.tgz`, `dist/ltcai-12.2.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.2.0_aarch64.dmg` 입니다.
+
 ## v12.1.0 — Fast Path (2026-08-29)
 
 디스크에서 회상까지 줄을 세우던 경로를 겹친 릴리스. 쓰기 엔진은 그대로

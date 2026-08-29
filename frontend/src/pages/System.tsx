@@ -3,7 +3,7 @@ import * as React from "react";
 // table and keeps it inside this lazy chunk instead of the entry bundle.
 import "@/i18n/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Network, ShieldCheck, UserCircle, Users } from "lucide-react";
+import { CheckCircle2, Network, ShieldCheck, Sparkles, UserCircle, Users } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, ModeGate, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -436,6 +436,20 @@ function SettingsPanel() {
         <CardContent className="flex flex-wrap gap-2">
           {(["basic", "advanced", "admin"] as const).map((item) => (
             <Button key={item} variant={mode === item ? "default" : "outline"} onClick={() => setMode(item)}>{t(language, `shell.mode.${item}`)}</Button>
+          ))}
+        </CardContent>
+      </Card>
+      <Card data-testid="system-tools-panel">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {t(language, "system.panel.tools")}
+          </CardTitle>
+          <CardDescription>{t(language, "system.panel.tools.hint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {(["search", "read", "skill", "mcp"] as const).map((item) => (
+            <Badge key={item} variant="muted">{t(language, `system.panel.tools.${item}`)}</Badge>
           ))}
         </CardContent>
       </Card>

@@ -42,6 +42,22 @@ describe("AgentStepTimeline", () => {
     expect(timeline.querySelectorAll(".brain-step-item.is-proposed").length).toBe(1);
   });
 
+  it("names mcp and skill rows in plain language", () => {
+    render(
+      <AgentStepTimeline
+        language="ko"
+        streaming
+        steps={[
+          { phase: "execute", event: "tool", action: "mcp.grep", ok: true },
+          { phase: "execute", event: "tool", action: "skill.code_review", ok: true },
+        ]}
+      />,
+    );
+    const timeline = screen.getByTestId("agent-step-timeline");
+    expect(timeline.textContent).toContain("검색·읽기 · mcp.grep");
+    expect(timeline.textContent).toContain("안내 읽기 · skill.code_review");
+  });
+
   it("collapses to an expandable summary once the run is done", () => {
     render(<AgentStepTimeline language="ko" steps={STEPS} streaming={false} />);
     const timeline = screen.getByTestId("agent-step-timeline") as HTMLDetailsElement;

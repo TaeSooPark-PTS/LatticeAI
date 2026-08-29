@@ -107,6 +107,26 @@ export function BrainComposer({
         aria-keyshortcuts="Control+K Meta+K"
         placeholder={t(language, "brain.placeholder")}
       />
+      <nav className="brain-composer-can" aria-label={t(language, "brain.composer.can.aria")}>
+        {(
+          [
+            ["brain.composer.can.search", "brain.composer.can.search.prompt"],
+            ["brain.composer.can.read", "brain.composer.can.read.prompt"],
+            ["brain.composer.can.memory", "brain.composer.can.memory.prompt"],
+            ["brain.composer.can.skill", "brain.composer.can.skill.prompt"],
+          ] as const
+        ).map(([labelKey, promptKey]) => (
+          <button
+            key={labelKey}
+            type="button"
+            className="brain-composer-can-chip"
+            disabled={streaming}
+            onClick={() => onDraftChange(t(language, promptKey))}
+          >
+            {t(language, labelKey)}
+          </button>
+        ))}
+      </nav>
       <div className="brain-composer-actions">
         <div
           ref={attachRef}

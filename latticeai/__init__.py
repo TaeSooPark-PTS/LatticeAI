@@ -1,3 +1,3 @@
 """Lattice AI - modular server package."""
 
-__version__ = "12.1.0"
+__version__ = "12.2.0"

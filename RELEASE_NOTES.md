@@ -1,3 +1,11 @@
+# [v12.2.0 - Small Voice] (2026-08-29)
+
+2B급 로컬 모델이 MCP·스킬·도구를 JSON 없이 고르고, 홈 작곡기가 그 일을
+평범한 말로 제안합니다. 문은 422 / 41, 워커는 20. 12.1.0 Fast Path
+인제스트 겹치기는 그대로입니다.
+
+See [RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md).
+
 # [v12.1.0 - Fast Path] (2026-08-29)
 
 폴더 인제스트와 vault-watch가 파일을 겹쳐 돌리고, 노트당
@@ -189,7 +197,7 @@ See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 12.1.0**.
+This repository keeps public release history from **11.0.0 through 12.2.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only that era — 11.x and 12.x — and this index
 follows the same boundary. Sub-11 note files remain in the tree as history; they

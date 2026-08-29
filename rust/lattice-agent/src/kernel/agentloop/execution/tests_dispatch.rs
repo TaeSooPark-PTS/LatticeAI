@@ -832,3 +832,28 @@ async fn a_named_skill_is_consulted_once_and_never_again_on_a_retry() {
         .expect("worker");
     assert_eq!(catalog.calls.lock().expect("lock").len(), 1);
 }
+
+#[tokio::test]
+async fn a_skill_when_clause_is_consulted_without_naming_the_skill() {
+    let catalog = std::sync::Arc::new(SkillCatalog::default());
+    let mut harness = harness(&[FINAL]).await;
+    harness.runtime.deps.external = Some(catalog.clone());
+    harness.request.message = "reviewing a diff, write notes/review.md".into();
+    harness.request.skills = vec![crate::prompts::SkillBrief {
+        name: "code_review".into(),
+        brief: "review code for defects".into(),
+        when: "reviewing a diff".into(),
+    }];
+    let mut ctx = harness.context();
+    ctx.state = AgentState::Executing;
+    harness
+        .runtime
+        .execute(&mut ctx, &harness.request)
+        .await
+        .expect("worker");
+    assert_eq!(
+        catalog.calls.lock().expect("lock").as_slice(),
+        ["skill.code_review"],
+        "the when-clause is the request naming the skill"
+    );
+}

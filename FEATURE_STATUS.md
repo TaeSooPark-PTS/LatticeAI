@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v12.1.0)
+# Lattice AI Feature Status (v12.2.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **12.1.0 — Fast Path**.
+Current release: **12.2.0 — Small Voice**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 11.0.0 and later in `RELEASE.md` and
@@ -243,10 +243,13 @@ still open — including small-model *content* quality and the mock-only
 
 - **Small-model *content* quality is honestly gated.** The mechanical half is
   solved: with `guided`, a model as small as 0.5B writes the requested file
-  and reaches `DONE` (3.9s in the release run), and the harness never asks it
-  for JSON. The *writing* is the part that still fails — a weak summary is
-  caught by the critic and the run ends `FAILED` / `NEEDS_REVIEW` rather than
-  claiming success. The funnel still advises a larger model for agent runs.
+  and reaches `DONE` (3.9s in the 12.0.0 run), and the harness never asks it
+  for JSON. **12.2.0** also lets a compact 2B emit `name`/`arguments`, Qwen
+  XML, or `Action: mcp.grep` and still dispatch, caps the compact action
+  list at nine, and consults a skill whose `when` line matches the request.
+  The *writing* is the part that still fails — a weak summary is caught by
+  the critic and the run ends `FAILED` / `NEEDS_REVIEW` rather than claiming
+  success. The funnel still advises a larger model for agent runs.
   The cross-model matrix is a release-time measurement; the honest current
   reading is "improving from 11 of 18", with the remaining failures of this
   same content-quality kind.

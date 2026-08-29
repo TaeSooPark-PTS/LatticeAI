@@ -83,6 +83,7 @@ describe("SystemPage", () => {
 
     await waitFor(() => expect(screen.getByTestId("permission-mode-panel")).toBeTruthy());
     expect(screen.getByTestId("network-boundary-panel")).toBeTruthy();
+    expect(screen.getByTestId("system-tools-panel")).toBeTruthy();
   });
 
   it("keeps the two dials independent: neither reads the other's state", async () => {

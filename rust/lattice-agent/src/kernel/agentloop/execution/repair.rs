@@ -340,7 +340,8 @@ Call write_file with that path and the content you write."
         }
         let Some(entry) = self.run_catalog(&req.message).into_iter().find(|entry| {
             entry.kind == crate::tools::catalog::EntryKind::Skill
-                && guided::request_names(&req.message, entry)
+                && (guided::request_names(&req.message, entry)
+                    || skill_when_invites(&req.message, entry, &req.skills))
                 && !guided::action_succeeded(ctx, &entry.name)
         }) else {
             return;
@@ -544,7 +545,7 @@ Send it again with that argument's value."
 \n\nUser request: {}{}\n\nExecution transcript:\n{}",
             self.deps.prompts.executor_prompt(
                 profile,
-                &self.prompt_action_names(&req.message),
+                &self.prompt_action_names_for(&req.message, profile),
                 &req.skills,
             ),
             req.language_hint,
@@ -589,6 +590,60 @@ Send it again with that argument's value."
             .collect()
     }
 
+    /// Copy a path or search term the *request already named* into a missing
+    /// required argument. Nothing is invented: the same two readers the guided
+    /// dial uses ([`guided::term_named_in_request`], [`guided::path_named_in_request`]).
+    /// A compact 2B that emits `mcp.grep` with no `pattern` still searched
+    /// `"LatticeAI"` when that was the only quoted term in the request.
+    pub(super) fn fill_stated_request_args(
+        &self,
+        entry: &crate::tools::catalog::CatalogEntry,
+        args: &mut Map<String, Value>,
+        req: &crate::kernel::agentloop::RunRequest,
+        catalog: &[crate::tools::catalog::CatalogEntry],
+    ) -> Vec<String> {
+        let mut filled = Vec::new();
+        for spec in &entry.required {
+            if !matches!(args.get(&spec.name), None | Some(Value::Null)) {
+                continue;
+            }
+            if crate::tools::catalog::is_search_arg(&spec.name) {
+                if let Some(term) = guided::term_named_in_request(&req.message, catalog) {
+                    args.insert(spec.name.clone(), json!(term));
+                    filled.push(spec.name.clone());
+                }
+                continue;
+            }
+            if spec.name == "path" {
+                if let Some(path) =
+                    guided::path_named_in_request(&req.message, entry, &self.deps.workspace)
+                {
+                    args.insert(spec.name.clone(), json!(path));
+                    filled.push(spec.name.clone());
+                }
+            }
+        }
+        filled
+    }
+
+    /// [`prompt_action_names`], capped when the dial cannot hold a long list.
+    ///
+    /// Named rows stay first, `final` stays last, and the cap is the same
+    /// [`crate::kernel::agentloop::guided::MENU_LIMIT`] the numbered menu uses
+    /// — a 2B that is shown forty MCP rows loses the contract the compact
+    /// prefix exists to keep.
+    pub(in crate::kernel::agentloop) fn prompt_action_names_for(
+        &self,
+        request: &str,
+        profile: crate::kernel::profile::AgentProfile,
+    ) -> Vec<String> {
+        let names = self.prompt_action_names(request);
+        if !profile.lean_context {
+            return names;
+        }
+        cap_lean_action_names(names, crate::kernel::agentloop::guided::MENU_LIMIT)
+    }
+
     /// Loop guard: the same file-create action+args re-issued right after a result.
     pub(super) fn is_repeated_create(
         &self,
@@ -612,5 +667,79 @@ Send it again with that argument's value."
                 .unwrap_or(json!({}))
                 == Value::Object(args.clone())
             && last.get("result").is_some()
+    }
+}
+
+/// Whether the request matches a skill's own "use when" line.
+///
+/// Naming the skill is [`guided::request_names`]. This is the other way a
+/// user asks for one: they describe the situation the skill's `when` field
+/// already named, without repeating `skill.code_review`. A 2B that cannot
+/// hold the catalog name still said the work.
+fn skill_when_invites(
+    request: &str,
+    entry: &crate::tools::catalog::CatalogEntry,
+    skills: &[crate::prompts::SkillBrief],
+) -> bool {
+    let hay = request.to_lowercase();
+    let bare = entry
+        .name
+        .strip_prefix(crate::tools::catalog::SKILL_PREFIX)
+        .unwrap_or(entry.name.as_str());
+    let from_brief = skills
+        .iter()
+        .find(|skill| skill.name.eq_ignore_ascii_case(bare));
+    let sources: Vec<&str> = match from_brief {
+        Some(skill) => vec![
+            skill.when.as_str(),
+            skill.brief.as_str(),
+            entry.summary.as_str(),
+        ],
+        None => vec![entry.summary.as_str()],
+    };
+    sources.into_iter().any(|source| phrase_hits(&hay, source))
+}
+
+fn phrase_hits(hay: &str, source: &str) -> bool {
+    source
+        .split([',', ';', '/', '\n'])
+        .map(|chunk| chunk.trim().to_lowercase())
+        .filter(|chunk| chunk.chars().count() >= 6)
+        .any(|needle| hay.contains(&needle))
+}
+
+fn cap_lean_action_names(names: Vec<String>, limit: usize) -> Vec<String> {
+    let mut kept = Vec::new();
+    let mut has_final = false;
+    for name in names {
+        if name == "final" {
+            has_final = true;
+            continue;
+        }
+        if kept.len() + 1 < limit {
+            kept.push(name);
+        }
+    }
+    if has_final {
+        kept.push("final".into());
+    }
+    kept
+}
+
+#[cfg(test)]
+mod lean_list_tests {
+    use super::cap_lean_action_names;
+
+    #[test]
+    fn a_long_catalog_keeps_the_head_and_final() {
+        let names: Vec<String> = (0..20)
+            .map(|index| format!("tool_{index}"))
+            .chain(std::iter::once("final".into()))
+            .collect();
+        let capped = cap_lean_action_names(names, 9);
+        assert_eq!(capped.len(), 9);
+        assert_eq!(capped[0], "tool_0");
+        assert_eq!(capped.last().map(String::as_str), Some("final"));
+        assert!(!capped.iter().any(|name| name == "tool_19"));
     }
 }

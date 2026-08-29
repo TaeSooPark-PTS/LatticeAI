@@ -44,11 +44,20 @@ function baseName(path: string): string {
   return path.split(/[\\/]/).filter(Boolean).pop() || path;
 }
 
+function friendlyAction(language: Language, action?: string): string {
+  if (!action) return "";
+  if (action.startsWith("mcp.")) return `${t(language, "brain.steps.action.mcp")} · ${action}`;
+  if (action.startsWith("skill.")) return `${t(language, "brain.steps.action.skill")} · ${action}`;
+  return action;
+}
+
 // Machine detail shown next to the label: tool name, target file, decision/
-// verdict/state values. Raw data values, never display copy.
-function stepMeta(step: AgentStepEvent): string {
+// verdict/state values. Raw data values, never display copy. MCP/skill rows
+// get a plain-language prefix so a first-run user is not left with a dotted
+// catalog name.
+function stepMeta(language: Language, step: AgentStepEvent): string {
   return [
-    step.action,
+    friendlyAction(language, step.action),
     step.path ? baseName(step.path) : "",
     step.decision,
     step.verdict,
@@ -78,7 +87,7 @@ export function AgentStepTimeline({
     <ol className="brain-step-list">
       {visible.map((step, index) => {
         const kind = stepKind(step);
-        const meta = stepMeta(step);
+        const meta = stepMeta(language, step);
         return (
           <li key={index} className={`brain-step-item is-${kind}`}>
             <span className="brain-step-dot" aria-hidden="true" />

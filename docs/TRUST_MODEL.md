@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **12.1.0 — Fast Path**.
+Current release: **12.2.0 — Small Voice**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

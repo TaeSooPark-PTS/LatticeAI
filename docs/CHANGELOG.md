@@ -4,6 +4,24 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.2.0] - 2026-08-29 — Small Voice
+
+### Added
+- Function-calling envelope parse: `name`/`arguments`, nested `function`,
+  Qwen `<function=…><parameter=…>`, `Action: mcp.grep`.
+- Compact executor lists cap at the guided menu size (9). Skills whose
+  `when` line matches the request are consulted without naming `skill.`.
+- A quoted search term fills a missing MCP/native `pattern`/`query`.
+- Home composer chips for folder search, read-and-summarize, memory, and
+  skill review. Settings card states the same. MCP/skill timeline rows
+  get a plain-language prefix.
+
+### Changed
+- Compact prompt names the function-calling envelope 2B models emit.
+
+### Fixed
+- Labeled salvage refused dotted `mcp.` / `skill.` names as chatter.
+
 ## [12.1.0] - 2026-08-29 — Fast Path
 
 ### Added

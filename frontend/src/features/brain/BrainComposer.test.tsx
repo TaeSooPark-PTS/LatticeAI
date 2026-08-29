@@ -54,6 +54,13 @@ afterEach(() => {
 });
 
 describe("BrainComposer typing and sending", () => {
+  it("offers tool starters that fill the draft", () => {
+    const { props } = renderComposer();
+    const search = screen.getByRole("button", { name: t("ko", "brain.composer.can.search") });
+    fireEvent.click(search);
+    expect(props.onDraftChange).toHaveBeenCalledWith(t("ko", "brain.composer.can.search.prompt"));
+  });
+
   it("sends on Enter, never mid-composition or with Shift", () => {
     const { props } = renderComposer({ draft: "질문" });
     const textarea = screen.getByPlaceholderText(t("ko", "brain.placeholder"));

@@ -287,7 +287,8 @@ pub fn executor_prompt(
         return format!(
             "Example:\n{WRITE_EXAMPLE}\n\n\
 {ONE_OBJECT_RULE}\n\n\
-{{\"thoughts\": \"<short>\", \"action\": \"<name>\", \"args\": {{...}}}}\n\n\
+{{\"thoughts\": \"<short>\", \"action\": \"<name>\", \"args\": {{...}}}}\n\
+Also accepted: {{\"name\": \"<tool>\", \"arguments\": {{...}}}}\n\n\
 To make a file: action write_file, with the whole file in args.content \
 (escape newlines as \\n, quotes as \\\").\n\
 When the work is done: {{\"action\": \"final\", \"message\": \"<what you did>\"}}\n\n\
@@ -437,6 +438,10 @@ mod tests {
         );
         assert!(
             executor_prompt(COMPACT, &names(&["write_file"]), &skills).contains("Available skills")
+        );
+        assert!(
+            executor_prompt(COMPACT, &names(&["write_file"]), &[]).contains("Also accepted:"),
+            "compact names the function-calling envelope 2B models actually emit"
         );
     }
 

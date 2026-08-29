@@ -1815,6 +1815,55 @@
         "labeled"
       ],
       "why": "verify5 tape execute slip 3. Labeled Action:/Args: inside the thought; never a JSON object."
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "README.md"
+        },
+        "name": "read_file",
+        "arguments": {
+          "path": "README.md"
+        }
+      },
+      "key": "alias_name_arguments",
+      "ok": true,
+      "raw": "{\"name\": \"read_file\", \"arguments\": {\"path\": \"README.md\"}}",
+      "repairs": [
+        "alias_keys"
+      ],
+      "why": "2B instruct models emit the function-calling envelope instead of action/args"
+    },
+    {
+      "action": {
+        "action": "mcp.grep",
+        "args": {
+          "pattern": "LatticeAI"
+        }
+      },
+      "key": "labeled_mcp_grep",
+      "ok": true,
+      "raw": "Action: `mcp.grep`\nArgs: `pattern: \"LatticeAI\"`",
+      "repairs": [
+        "labeled"
+      ],
+      "why": "the labeled rung used to refuse a dotted mcp. name as chatter"
+    },
+    {
+      "action": {
+        "action": "read_file",
+        "args": {
+          "path": "README.md"
+        }
+      },
+      "key": "xml_function_parameter",
+      "ok": true,
+      "raw": "<function=read_file>\n<parameter=path>README.md</parameter>\n</function>",
+      "repairs": [
+        "xml_call"
+      ],
+      "why": "Qwen-style XML tool call with no JSON object"
     }
   ],
   "filter_learnings": [
