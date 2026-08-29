@@ -709,15 +709,26 @@ fn phrase_hits(hay: &str, source: &str) -> bool {
 }
 
 fn cap_lean_action_names(names: Vec<String>, limit: usize) -> Vec<String> {
+    const CORE: [&str; 4] = ["write_file", "read_file", "edit_file", "list_dir"];
+    let has_final = names.iter().any(|name| name == "final");
+    let present: std::collections::BTreeSet<&str> = names.iter().map(String::as_str).collect();
     let mut kept = Vec::new();
-    let mut has_final = false;
-    for name in names {
+    for name in &names {
         if name == "final" {
-            has_final = true;
             continue;
         }
         if kept.len() + 1 < limit {
-            kept.push(name);
+            kept.push(name.clone());
+        }
+    }
+    for core in CORE {
+        if !present.contains(core) || kept.iter().any(|name| name == core) {
+            continue;
+        }
+        if let Some(index) = kept.iter().rposition(|name| !CORE.contains(&name.as_str())) {
+            kept[index] = core.to_string();
+        } else if kept.len() + 1 < limit {
+            kept.push(core.to_string());
         }
     }
     if has_final {
@@ -741,5 +752,17 @@ mod lean_list_tests {
         assert_eq!(capped[0], "tool_0");
         assert_eq!(capped.last().map(String::as_str), Some("final"));
         assert!(!capped.iter().any(|name| name == "tool_19"));
+    }
+
+    #[test]
+    fn core_file_tools_survive_an_alphabetical_flood() {
+        let mut names: Vec<String> = (0..20).map(|index| format!("computer_{index}")).collect();
+        names.push("write_file".into());
+        names.push("read_file".into());
+        names.push("final".into());
+        let capped = cap_lean_action_names(names, 9);
+        assert!(capped.iter().any(|name| name == "write_file"), "{capped:?}");
+        assert!(capped.iter().any(|name| name == "read_file"), "{capped:?}");
+        assert_eq!(capped.last().map(String::as_str), Some("final"));
     }
 }
