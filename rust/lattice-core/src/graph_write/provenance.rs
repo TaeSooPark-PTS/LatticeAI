@@ -127,6 +127,51 @@ impl GraphWriter {
         })
     }
 
+    /// Merge ``patch`` into the latest provenance row for ``source_uri``.
+    ///
+    /// Skip-by-hash restamps size/mtime here so a later scan can skip by
+    /// stamp. The row identity (node, content hash, source, pipeline) does
+    /// not change — this is not a second writer, it is the same upsert door
+    /// touching metadata only.
+    pub fn update_ingestion_metadata(
+        &self,
+        source_uri: &str,
+        patch: &Map<String, Value>,
+    ) -> Result<bool, CoreError> {
+        if source_uri.is_empty() || patch.is_empty() {
+            return Ok(false);
+        }
+        let uri = source_uri.to_string();
+        let patch = patch.clone();
+        self.store.with_write_txn(move |txn| {
+            let row: Option<(String, Option<String>)> = txn
+                .query_row(
+                    "SELECT id, metadata_json FROM ingestion_provenance \
+                     WHERE source_uri = ?1 \
+                     ORDER BY created_at DESC, id DESC LIMIT 1",
+                    rusqlite::params![uri],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .ok();
+            let Some((id, raw)) = row else {
+                return Ok(false);
+            };
+            let mut meta: Map<String, Value> = raw
+                .as_deref()
+                .and_then(|text| serde_json::from_str::<Value>(text).ok())
+                .and_then(|value| value.as_object().cloned())
+                .unwrap_or_default();
+            for (key, value) in &patch {
+                meta.insert(key.clone(), value.clone());
+            }
+            let n = txn.execute(
+                "UPDATE ingestion_provenance SET metadata_json = ?1 WHERE id = ?2",
+                rusqlite::params![json_of(&meta), id],
+            )?;
+            Ok(n > 0)
+        })
+    }
+
     /// `import_graph_data` — a logical export back into the store.
     ///
     /// `mode="replace"` clears the graph **inside the same transaction** as the

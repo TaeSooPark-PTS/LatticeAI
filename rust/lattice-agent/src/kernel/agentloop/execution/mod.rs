@@ -28,7 +28,7 @@ use super::gates::Call;
 use super::{RunRequest, Runtime};
 use crate::kernel::profile::AgentProfile;
 use crate::kernel::state::{AgentRunContext, AgentState};
-use crate::kernel::transcript::{complete_a_count, complete_created_files};
+use crate::kernel::transcript::{complete_counted_and_summarized, complete_created_files};
 use crate::parse::action::extract_action_details;
 use crate::parse::pystr::{char_slice, is_truthy, py_str, py_str_or_empty};
 use crate::surface::worker::{Completion, ToolOutcome, WorkerError};
@@ -570,7 +570,8 @@ Choose one of these exact names: {known}."
             // than substituted so nothing the model said is thrown away, and it
             // is only ever added when the request asked *how many* and the
             // answer named no figure at all.
-            ctx.final_message = complete_a_count(&settled, &req.message, &ctx.transcript);
+            ctx.final_message =
+                complete_counted_and_summarized(&settled, &req.message, &ctx.transcript);
             ctx.transcript.push(json!({
                 "state": AgentState::Executing.as_str(),
                 "action": "final", "thoughts": thoughts,

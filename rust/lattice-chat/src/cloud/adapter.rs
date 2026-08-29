@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde_json::{json, Map, Value};
 
 use crate::boundary::NetworkMode;
@@ -153,6 +155,64 @@ impl OpenAiCompatibleAdapter {
     /// Whether a call could even be made.
     pub fn configured(&self) -> bool {
         !self.api_key.is_empty()
+    }
+
+    /// Live `GET {base}/models` with the key. No completion, no billing.
+    ///
+    /// Fail-closed: an unreachable provider or a rejected key is an error,
+    /// never a silent "configured". Tests point this at a loopback mock.
+    pub async fn probe_models(&self) -> Result<Vec<String>, String> {
+        if !self.configured() {
+            return Err("The API key is empty.".into());
+        }
+        let url = format!("{}/models", self.base_url.trim_end_matches('/'));
+        let request = self
+            .client
+            .get(&url)
+            .header("authorization", format!("Bearer {}", self.api_key))
+            .header("content-type", "application/json")
+            .send();
+        let response = tokio::time::timeout(Duration::from_secs(3), request)
+            .await
+            .map_err(|_| "cloud provider unreachable: timed out".to_string())?
+            .map_err(|error| format!("cloud provider unreachable: {error}"))?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "cloud provider answered {}",
+                response.status().as_u16()
+            ));
+        }
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|error| format!("cloud /models body failed: {error}"))?;
+        let body: Value = serde_json::from_slice(&bytes)
+            .map_err(|error| format!("cloud /models was not JSON: {error}"))?;
+        let ids = body
+            .get("data")
+            .and_then(Value::as_array)
+            .map(|rows| {
+                rows.iter()
+                    .filter_map(|row| row.get("id").and_then(Value::as_str))
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            })
+            .or_else(|| {
+                body.get("models").and_then(Value::as_array).map(|rows| {
+                    rows.iter()
+                        .filter_map(|row| {
+                            row.as_str()
+                                .or_else(|| row.get("id").and_then(Value::as_str))
+                        })
+                        .map(str::to_string)
+                        .collect()
+                })
+            })
+            .unwrap_or_default();
+        if ids.is_empty() {
+            return Err("cloud /models listed no models".into());
+        }
+        Ok(ids)
     }
 
     /// The `messages` array a turn sends.

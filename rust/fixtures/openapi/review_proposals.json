@@ -1809,7 +1809,7 @@
   },
   "schema_count": 18,
   "source": "frontend/openapi.json",
-  "spec_version": "12.2.0",
+  "spec_version": "12.2.1",
   "summary": "Review queue, change proposals, automation intelligence and the hooks registry.",
   "target": "lattice-platform (review)",
   "wp": "R7"

@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`

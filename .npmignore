@@ -1,0 +1,15 @@
+# npm pack walks the tree even with package.json "files". Exclude the
+# dirs that make that walk hang (90k+ object files).
+rust/
+rust/target
+src-tauri/target
+node_modules
+.git
+output
+playwright-report
+test-results
+__pycache__
+*.pyc
+.venv
+dist
+*.tgz

@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 12.2.0. Security
+The public Git tree keeps release history from 11.0.0 through 12.2.1. Security
 support follows that same product era: **only the 11.x and 12.x line receives
 fixes.**
 

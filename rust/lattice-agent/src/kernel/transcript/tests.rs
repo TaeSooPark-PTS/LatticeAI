@@ -606,3 +606,32 @@ fn a_created_file_is_completed_from_the_transcript_and_bare_negation_is_dropped(
         "notes/a.md 파일을 작성했습니다 (10B).\nnotes/b.md 파일을 작성했습니다 (20B)."
     );
 }
+
+#[test]
+fn a_thin_summary_is_completed_from_the_file_that_was_read() {
+    let body = "Lattice keeps knowledge on this computer. The graph is the memory.";
+    let read = vec![json!({
+        "action": "mcp.read_file",
+        "result": {"path": "README.md", "content": body},
+    })];
+    let request = "README.md를 읽고 요약해줘";
+    let filled = complete_a_summary("요약을 했습니다", request, &read);
+    assert!(filled.contains("README.md"), "{filled}");
+    assert!(filled.contains("Lattice keeps knowledge"), "{filled}");
+    assert!(
+        !answer_owes_a_summary(&filled, request, &read),
+        "a grounded excerpt settles the deliverable"
+    );
+    assert_eq!(
+        complete_a_summary("확인했습니다", "파일 개수를 알려줘", &read),
+        "확인했습니다",
+        "a request that asked for no summary is left alone"
+    );
+    assert_eq!(
+        complete_a_summary("요약을 했습니다", request, &[]),
+        "요약을 했습니다",
+        "no file was read, so the harness invents nothing"
+    );
+    let already = complete_a_summary("Lattice keeps knowledge on this computer.", request, &read);
+    assert_eq!(already, "Lattice keeps knowledge on this computer.");
+}

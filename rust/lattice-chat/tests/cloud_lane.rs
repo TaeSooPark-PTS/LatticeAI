@@ -82,28 +82,33 @@ async fn spawn_mock_openai(status: u16, pieces: &[&str]) -> String {
             )
         })
         .collect();
-    let app = Router::new().route(
-        "/chat/completions",
-        post(move || {
-            let frames = frames.clone();
-            let status = status;
-            async move {
-                if status != 200 {
-                    return Response::builder()
-                        .status(StatusCode::from_u16(status).unwrap())
-                        .body(axum::body::Body::from("provider down"))
-                        .unwrap();
+    let app = Router::new()
+        .route(
+            "/models",
+            get(|| async { axum::Json(json!({"data": [{"id": "mock-model"}]})) }),
+        )
+        .route(
+            "/chat/completions",
+            post(move || {
+                let frames = frames.clone();
+                let status = status;
+                async move {
+                    if status != 200 {
+                        return Response::builder()
+                            .status(StatusCode::from_u16(status).unwrap())
+                            .body(axum::body::Body::from("provider down"))
+                            .unwrap();
+                    }
+                    let mut body = frames.join("");
+                    body.push_str("data: [DONE]\n\n");
+                    Response::builder()
+                        .status(StatusCode::OK)
+                        .header("content-type", "text/event-stream")
+                        .body(axum::body::Body::from(body))
+                        .unwrap()
                 }
-                let mut body = frames.join("");
-                body.push_str("data: [DONE]\n\n");
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header("content-type", "text/event-stream")
-                    .body(axum::body::Body::from(body))
-                    .unwrap()
-            }
-        }),
-    );
+            }),
+        );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind");
@@ -328,6 +333,28 @@ async fn cloud_status_matches_the_injected_provider() {
     assert_eq!(body["mode"], "api_key");
     assert_eq!(body["provider"], "openai_compatible");
     assert_eq!(body["model"], "mock-model");
+    assert_eq!(body["verified"], true);
+}
+
+#[tokio::test]
+async fn an_unreachable_api_key_fail_closes_status() {
+    let adapter =
+        OpenAiCompatibleAdapter::from_parts("sk-test", "http://127.0.0.1:1", "mock-model");
+    let provider = CloudProvider::api_key(adapter, "openai_compatible");
+    let status = provider.status().await.to_value();
+    assert_eq!(status["configured"], false);
+    assert_eq!(status["verified"], false);
+    assert!(
+        status["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("unreachable")
+            || status["detail"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("answered"),
+        "{status}"
+    );
 }
 
 #[tokio::test]

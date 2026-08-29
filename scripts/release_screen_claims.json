@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.2.1": {
+    "_why": [
+      "True Count is a backend honesty release: HNSW COUNT+delta, SkipByHash",
+      "restamp, watch graph prune, summary salvage, MCP CORE, api_key /models",
+      "probe, and hash-search copy. The library embedding panel and first-run",
+      "hint changed wording; that is below a redesign floor.",
+      "",
+      "No screen was redesigned. Empty claim set on purpose. Unclaimed screens",
+      "are still measured and printed; they are not gated."
+    ]
+  },
   "12.2.0": {
     "_why": [
       "Small Voice is a 2B tool-calling release with two visible surfaces.",

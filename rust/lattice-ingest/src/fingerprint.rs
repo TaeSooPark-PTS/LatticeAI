@@ -5,13 +5,15 @@
 //! digest ride in ``metadata_json`` so we do not invent a second table.
 //! sha256 is computed only when size or mtime moved.
 //!
-//! Deleted files are **reported, never removed** — dropping a node is a
-//! product decision, not an incremental-ingest side effect.
+//! Folder ingest **reports** vanished files and leaves the nodes in place.
+//! The watch poller prunes matching graph nodes through GraphWriter
+//! (`delete_document_tree`) — still one writer, never a second delete door.
 
 use std::collections::HashSet;
 use std::path::Path;
 
 use lattice_core::db::Store;
+use lattice_core::graph_write::GraphWriter;
 use serde_json::{json, Map, Value};
 
 use crate::hashes::file_content_hash;
@@ -90,6 +92,19 @@ pub fn attach(meta: &mut Map<String, Value>, size: u64, mtime: f64, sha256: &str
 /// sha256 of the file's raw bytes — the identity half of the fingerprint.
 pub fn hash_bytes(bytes: &[u8]) -> String {
     file_content_hash(bytes)
+}
+
+/// Write a new size/mtime onto an existing provenance row (same bytes).
+///
+/// Skip-by-hash used to return without touching the row, so a `touch` that
+/// did not change the file re-hashed on every later scan. The writer is
+/// still [`GraphWriter`] — metadata only, same row identity.
+pub fn restamp(graph: &GraphWriter, source_uri: &str, size: u64, mtime: f64, sha256: &str) -> bool {
+    let mut patch = Map::new();
+    attach(&mut patch, size, mtime, sha256);
+    graph
+        .update_ingestion_metadata(source_uri, &patch)
+        .unwrap_or(false)
 }
 
 /// Latest stored fingerprint for this absolute path, if one exists.
@@ -266,6 +281,12 @@ mod tests {
         assert_eq!(found.size, 12);
         assert_eq!(found.sha256, "deadbeef");
         assert_eq!(round3(found.mtime), round3(99.1234));
+
+        assert!(restamp(&writer, &uri, 20, 100.5, "deadbeef"));
+        let touched = lookup(&store, &uri).expect("restamped");
+        assert_eq!(touched.size, 20);
+        assert_eq!(touched.sha256, "deadbeef");
+        assert_eq!(round3(touched.mtime), round3(100.5));
 
         let present = HashSet::from([uri]);
         assert!(missing_under_root(&store, dir.path(), &present).is_empty());

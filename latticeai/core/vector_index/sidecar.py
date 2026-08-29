@@ -2,10 +2,10 @@
 
 The live graph is cached per ``(db_path, model_id, dim)``. A missing sidecar
 is ``index: "none"``. When the store has vectors the cache (or a rebuild from
-``vector_embeddings``) can serve, the reply is ``index: "hnsw"``. Staleness is
-sidecar size vs ``COUNT(*)`` for that identity — reported honestly, and
-refreshed through :meth:`HnswIndex.add_items` so an ingest append does not
-rebuild the whole graph.
+``vector_embeddings``) can serve, the reply is ``index: "hnsw"``. Freshness is
+sidecar size vs ``COUNT(*)`` for that identity. A warm COUNT match never
+opens embedding blobs. Growth loads **missing ids only** and appends; a
+shrink still rebuilds from the remaining rows.
 """
 
 from __future__ import annotations
@@ -79,6 +79,83 @@ def load_store_items(
             continue
         items.append((str(item_id), vector, {}))
     return items
+
+
+def load_store_ids(conn: sqlite3.Connection, model_id: str, dim: int) -> List[str]:
+    """Item ids only — the COUNT+delta path must not pull embedding blobs."""
+    rows = conn.execute(
+        "SELECT item_id FROM vector_embeddings "
+        "WHERE embedding_model=? AND embedding_dim=? ORDER BY indexed_at ASC, item_id ASC",
+        (model_id, int(dim)),
+    )
+    return [str(item_id) for (item_id,) in rows]
+
+
+def load_store_items_for(
+    conn: sqlite3.Connection,
+    model_id: str,
+    dim: int,
+    item_ids: Sequence[str],
+) -> List[Tuple[str, List[float], Dict[str, Any]]]:
+    """Blobs for ``item_ids`` only, preserving the caller's order."""
+    if not item_ids:
+        return []
+    by_id: Dict[str, List[float]] = {}
+    wanted = [str(item_id) for item_id in item_ids]
+    # SQLite caps bound parameters; 400 leaves room for the identity pair.
+    for start in range(0, len(wanted), 400):
+        chunk = wanted[start : start + 400]
+        qmarks = ",".join("?" * len(chunk))
+        query = "SELECT item_id, embedding FROM vector_embeddings WHERE embedding_model=? AND embedding_dim=? AND item_id IN (%s)" % qmarks  # noqa: S608
+        for item_id, blob in conn.execute(query, (model_id, int(dim), *chunk)):
+            vector = decode_f32le(bytes(blob or b""), int(dim))
+            if len(vector) != int(dim):
+                continue
+            by_id[str(item_id)] = vector
+    return [
+        (item_id, by_id[item_id], {})
+        for item_id in wanted
+        if item_id in by_id
+    ]
+
+
+def _open_and_count(path: Path, model_id: str, dim: int) -> int:
+    conn = _open_readonly(path)
+    if conn is None:
+        return 0
+    try:
+        return store_vector_count(conn, model_id, dim)
+    finally:
+        conn.close()
+
+
+def _load_all_items(
+    path: Path, model_id: str, dim: int
+) -> List[Tuple[str, List[float], Dict[str, Any]]]:
+    conn = _open_readonly(path)
+    if conn is None:
+        return []
+    try:
+        return load_store_items(conn, model_id, dim)
+    finally:
+        conn.close()
+
+
+def _load_missing_items(
+    path: Path,
+    model_id: str,
+    dim: int,
+    have: Sequence[str],
+) -> List[Tuple[str, List[float], Dict[str, Any]]]:
+    conn = _open_readonly(path)
+    if conn is None:
+        return []
+    try:
+        have_set = set(have)
+        missing = [item_id for item_id in load_store_ids(conn, model_id, dim) if item_id not in have_set]
+        return load_store_items_for(conn, model_id, dim, missing)
+    finally:
+        conn.close()
 
 
 def sidecar_meta_size(db_path: Path) -> Optional[int]:
@@ -185,17 +262,8 @@ def query_sidecar(
     if not model_id:
         return _none_reply(detail="embedding_model is required")
 
-    conn = _open_readonly(path)
-    store_size = 0
-    items: List[Tuple[str, List[float], Dict[str, Any]]] = []
-    if conn is not None:
-        try:
-            store_size = store_vector_count(conn, model_id, dim)
-            if store_size > 0:
-                items = load_store_items(conn, model_id, dim)
-                store_size = len(items)
-        finally:
-            conn.close()
+    # COUNT first. Warm queries that already match never open embedding blobs.
+    store_size = _open_and_count(path, model_id, dim)
 
     key = (str(path), model_id, dim)
     with _LOCK:
@@ -203,8 +271,20 @@ def query_sidecar(
         refreshed: Optional[str] = None
         if index is None:
             index = HnswIndex(dim=dim, model_id=model_id)
-            loaded = index.load(path, fingerprint=sidecar_fingerprint(model_id, dim, store_size))
+            loaded = index.load(
+                path, fingerprint=sidecar_fingerprint(model_id, dim, store_size)
+            )
+            if not loaded and store_size > 0:
+                # Sidecar exists for this identity but the COUNT moved —
+                # load the graph and append the missing ids below.
+                loaded = index.load(
+                    path,
+                    fingerprint=sidecar_fingerprint(model_id, dim, store_size),
+                    strict=False,
+                )
             if not loaded:
+                items = _load_all_items(path, model_id, dim)
+                store_size = len(items)
                 if not items:
                     return _none_reply(
                         store_size=store_size,
@@ -216,25 +296,31 @@ def query_sidecar(
 
         cached_size = int(index.stats().get("size") or 0)
         stale = cached_size != store_size
-        if stale:
-            if not items and store_size > 0:
-                conn = _open_readonly(path)
-                if conn is not None:
-                    try:
-                        items = load_store_items(conn, model_id, dim)
-                    finally:
-                        conn.close()
+        if stale and store_size == 0:
+            _CACHE.pop(key, None)
+            return _none_reply(
+                store_size=0,
+                detail="vector store is empty for this embedding identity",
+            )
+        if stale and store_size > cached_size:
+            delta = _load_missing_items(path, model_id, dim, index.labels)
+            if delta:
+                refreshed = _refresh_index(index, delta, model_id, dim)
+                cached_size = int(index.stats().get("size") or 0)
+                index.save(
+                    path, fingerprint=sidecar_fingerprint(model_id, dim, cached_size)
+                )
+                stale = cached_size != store_size
+        elif stale:
+            items = _load_all_items(path, model_id, dim)
+            store_size = len(items)
             if items:
                 refreshed = _refresh_index(index, items, model_id, dim)
-                index.save(path, fingerprint=sidecar_fingerprint(model_id, dim, len(items)))
                 cached_size = int(index.stats().get("size") or 0)
-                stale = cached_size != len(items)
-            elif store_size == 0:
-                _CACHE.pop(key, None)
-                return _none_reply(
-                    store_size=0,
-                    detail="vector store is empty for this embedding identity",
+                index.save(
+                    path, fingerprint=sidecar_fingerprint(model_id, dim, cached_size)
                 )
+                stale = cached_size != store_size
 
         if cached_size <= 0:
             return _none_reply(
@@ -326,4 +412,7 @@ __all__ = [
     "sidecar_freshness",
     "sidecar_meta_size",
     "store_vector_count",
+    "load_store_ids",
+    "load_store_items",
+    "load_store_items_for",
 ]

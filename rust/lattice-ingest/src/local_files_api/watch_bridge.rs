@@ -377,8 +377,9 @@ pub fn resume_watches(state: &Arc<LocalFilesState>) -> bool {
 /// One pass over every enabled watch. Returns the per-watch reports.
 ///
 /// Never raises: one unreadable folder is a counted failure, not the end of the
-/// poller. Deleted files are counted and never removed from the Brain — the
-/// `note` field on the status route has promised that since v11.5.0.
+/// poller. Files that vanished from a watched folder are pruned from the
+/// Brain through [`super::prune::prune_deleted`] (GraphWriter, confirm=true).
+/// Disk files are never deleted.
 pub async fn scan_watches(state: &Arc<LocalFilesState>) -> Value {
     let data_dir = state.config.data_dir().to_path_buf();
     let Some(graph) = state.graph().cloned() else {
@@ -511,6 +512,12 @@ async fn scan_one_watch(
         .await;
     }
     let skipped = stamp_skipped + hash_skipped;
+    let pruned = if diff.removed.is_empty() {
+        json!({"status": "ok", "files": [], "removed": {"nodes": 0}})
+    } else {
+        super::prune::prune_deleted(ingestor.graph(), Path::new(root), true)
+            .unwrap_or_else(|detail| json!({"status": "error", "detail": detail}))
+    };
     let status = if errors.is_empty() {
         "ok"
     } else if ingested > 0 || skipped > 0 {
@@ -529,6 +536,7 @@ async fn scan_one_watch(
         "failed": errors.len(),
         "removed": diff.removed.len(),
         "deleted": diff.removed,
+        "pruned": pruned,
         "truncated": diff.truncated,
     });
     record_report(runtime, &id, scanner.snapshot(), now, &report, &errors);
@@ -624,6 +632,7 @@ async fn deliver(
     let sha = crate::fingerprint::hash_bytes(&bytes);
     if let Some(fp) = stored.as_ref() {
         if fp.hash_matches(&sha) {
+            let _ = crate::fingerprint::restamp(ingestor.graph(), &uri, size, mtime, &sha);
             return Ok(Delivered::Skipped);
         }
     }

@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
@@ -80,7 +80,7 @@ worker interpreter with `LTCAI_PYTHON` when both exist.
 `rust/target/release/lattice-host`, then `rust/target/debug/lattice-host`. If
 none exist it runs `cargo build -p lattice-host` (debug). A stale
 `rust/target/release/lattice-host` wins over a current debug binary — pin or
-rebuild (`cargo build -p lattice-host --release`) if `-V` is not 12.2.0.
+rebuild (`cargo build -p lattice-host --release`) if `-V` is not 12.2.1.
 
 Do not run `npm start` and `npm run dev` on the same port. The worker
 entrypoint defaults to `LATTICEAI_PORT` or **4825**, the same port as the
@@ -237,7 +237,7 @@ in `rust/`.
 Markdown) and `scripts/check_doc_status.mjs` (every relative link under the
 root canonical docs and `docs/**`). A red line is a broken relative path —
 fix the href or put the file where the href says. Canonical docs (this one
-included) must carry `Current release: **12.2.0 — …**` matching
+included) must carry `Current release: **12.2.1 — …**` matching
 `package.json`; do not bump that marker here ahead of the release lane.
 `npm run docs:check-current` is the release-set version pin
 ([`scripts/check_current_release_docs.mjs`](../scripts/check_current_release_docs.mjs)).
@@ -248,7 +248,7 @@ changelog entries that mention old versions stay.
 ### Release-evidence binding
 
 `scripts/check_release_evidence_bound.mjs` (lint member 9) checks that
-`output/release/v12.2.0/SCREENSHOT_INDEX.md` still names the live
+`output/release/v12.2.1/SCREENSHOT_INDEX.md` still names the live
 `static/app/asset-manifest.json` digest and the visual mock-server
 fingerprint. It exists so a later `npm run build:assets` cannot ship
 screenshots of an older UI, and so a mock-server edit cannot leave the
@@ -317,19 +317,19 @@ For user-facing, API, runtime, release, or packaging changes, check:
   appears
 
 The release-docs lane owns README / ARCHITECTURE / FEATURE_STATUS version
-bumps. Do not move this file's `Current release` marker off 12.2.0 ahead of
+bumps. Do not move this file's `Current release` marker off 12.2.1 ahead of
 that lane.
 
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 12.2.0 release work, exact artifacts are:
+For 12.2.1 release work, exact artifacts are:
 
-- `dist/ltcai-12.2.0-py3-none-any.whl`
-- `dist/ltcai-12.2.0.tar.gz`
-- `ltcai-12.2.0.tgz`
-- `dist/ltcai-12.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.0_aarch64.dmg`
+- `dist/ltcai-12.2.1-py3-none-any.whl`
+- `dist/ltcai-12.2.1.tar.gz`
+- `ltcai-12.2.1.tgz`
+- `dist/ltcai-12.2.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.1_aarch64.dmg`
 
 The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
 checks the names and presence, not a Developer ID signature.

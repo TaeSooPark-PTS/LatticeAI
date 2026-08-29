@@ -3,7 +3,7 @@
 > **Status: reference** — point-in-time inventory, redated at v12.0.0. Not a
 > canonical current-release document; version gates do not bind it.
 
-As of **2026-08-29**, against the 12.1.0 — Fast Path tree. The rows below
+As of **2026-08-29**, against the 12.2.1 — True Count tree. The rows below
 were gathered against 11.9.0 and re-checked when 12.0.0 shipped; what that
 release closed is marked closed rather than deleted, so the ledger still
 shows what was owed.
@@ -17,8 +17,8 @@ the contributor path is [DEVELOPMENT.md](DEVELOPMENT.md). This page is the
 honest leftover list, gathered from
 [FEATURE_STATUS.md](../FEATURE_STATUS.md) Known Limitations and the §정직한
 고지 sections of
-[RELEASE_NOTES_v11.9.0.md](../RELEASE_NOTES_v11.9.0.md) and
-[RELEASE_NOTES_v12.0.0.md](../RELEASE_NOTES_v12.0.0.md).
+[releases/RELEASE_NOTES_v11.9.0.md](releases/RELEASE_NOTES_v11.9.0.md) and
+[releases/RELEASE_NOTES_v12.0.0.md](releases/RELEASE_NOTES_v12.0.0.md).
 
 Four items those ledgers named **closed in 12.0.0**. They are kept below so
 they are not re-opened as work. Everything else is still open.
@@ -43,18 +43,18 @@ rather than being deleted: the small-model harness (P1) and the HNSW index
 
 | 무엇 | 왜 남았나 | 난이도 | 우선순위 | 제안 경로 |
 | --- | --- | --- | --- | --- |
-| **Small-model agent-run content quality** | **Half closed in 12.0.0.** The mechanical half is done: the `guided` profile stops asking for JSON, the dial is chosen by a measured probe, a run that produces nothing demotes itself downward mid-run, and a 0.5B model reached `DONE` in 3.9s with a real file. The half still open is the *writing* — a weak summary fails the critic and the run ends `FAILED` / `NEEDS_REVIEW`. The cross-model matrix is improving from 11 of 18. | L | **P1** — still the voice the product ships on 8GB, and still the reason a first run can end in a review state. | Keep measuring with the loop's own parser, not a second harness. New answers go under new fixture keys (`agent_loop` `*_extended`); do not rewrite frozen rows. The remaining lever is content, not format: better plan→content prompting and a critic that says *what* was thin, per-model hacks still forbidden. |
-| **Real-embedding default rollout** | **Narrowed in 12.0.0, not closed.** Auto-detection now adopts a real downloaded embedding model when one is present, the hash model is labelled `fallback` rather than presented as semantic, and vector identity is filtered by `(model, dim)` so two spaces cannot mix. What is still true: on a machine that has downloaded nothing, the default remains `lattice-local-hash-v1` (blake2 bag-of-features), and "semantic" recall is then a hash of tokens. | M | **P1** — recall is the product. Hash as a labelled fallback is fine; hash as the silent default is not. | Make the first-run flow offer the embedding model the way it offers a chat model, and keep the switch honest: drain the backlog through `lattice-jobs` so a change of embedder is a reindex, and report `stale_embedder` until the queue is empty. |
+| **Small-model agent-run content quality** | **Narrowed in 12.2.1.** Mechanical half closed in 12.0.0 (`guided`, measured probe). 12.2.1 fills a thin summary from the `read_file` / `mcp.read_file` result already on the transcript; missing evidence is `NEEDS_REVIEW`, not a false DONE. Remaining: a 2B that never read the file, and writing that is fluent but wrong. | L | **P1** — still the voice on 8GB. | Keep measuring with the loop's own parser. Do not add a per-model branch. |
+| **Real-embedding default rollout** | **Narrowed again in 12.2.1.** First-run and the library name hash search as hash and point at a meaning model. Auto-detection still adopts a real downloaded embedder when one is present. The no-download default is still `lattice-local-hash-v1`. | M | **P1** — recall is the product. | Offer an embedding model in first-run the way a chat model is offered. Drain through `lattice-jobs` on switch. No second embedder in `lattice-core`. |
 | **Worker-side batch embed** | **Closed in 12.1.0 on the ingest-time door**: one `/worker/embed` body is the document vector followed by every chunk, extract runs beside it, and `write_vectors_with` files those vectors. The drain planner stays the backlog path. Folder/watch overlap up to four files. What remains for a real-embed default is auto-detection on first run, not a second embedder. | M | **P1 → closed for the ingest door; the real-embed default row above is still open.** | Keep. Do not open a second embedder inside `lattice-core`. |
 
 ## P2 — real, but the product still works without them
 
 | 무엇 | 왜 남았나 | 난이도 | 우선순위 | 제안 경로 |
 | --- | --- | --- | --- | --- |
-| **HNSW whole-rebuild** | **Closed in 12.0.0; the default is deliberately unchanged.** The sidecar appends incrementally instead of being invalidated by every write, and the index is now used in real search: `hnsw+rescore` fetches `k * 8` candidate ids (cap 200) from `POST /worker/vector/query` and rescores exactly those rows natively, so recall is approximate and ordering is exact. Failures fall back to the exact scan carrying their reason. | L | **P2 → resolved for scale; the default stays `brute`.** | Nothing to build. The remaining decision is when to flip the default, and that needs recall@10 re-measured against the exact scan on a Brain that has been ingesting continuously — not a synthetic corpus. |
+| **HNSW whole-rebuild / full-table dump** | **Closed in 12.2.1.** 12.0.0 appended instead of invalidating. 12.2.1 warm queries are `COUNT(*)` then missing ids only; a loaded sidecar appends a delta instead of rebuilding from the incoming set. Env default stays `brute`. | L | **P2 → closed for the dump; the default stays `brute`.** | Flip the default only after recall@10 vs exact scan on a live Brain. |
 | **Unsigned DMG** | `Lattice AI_12.0.0_aarch64.dmg` is ad-hoc signed (= unsigned). First launch needs the Gatekeeper bypass. `npm run release:validate` checks names and presence, not a Developer ID. | M | **P2** — first-run tax on desktop, not a Brain bug. Needs an Apple identity. | Developer ID Application + notarization in the release path. Exact artifact name stays `dist/…` / `src-tauri/target/release/bundle/dmg/Lattice AI_X.Y.Z_aarch64.dmg`. Credentials stay off the tree. |
-| **`api_key` cloud path is mock-only** | Contract-tested against a mock server. Never live-called — no billing budget. Live E2E is `cli_oauth` (`agy` / `grok`) at zero API billing. | S | **P2** — the supported cloud path already works. This is the paid-key twin. | One live contract test against a real OpenAI-compatible endpoint once a budget exists. Do not call the mock path "verified" in FEATURE_STATUS. Keep `local_only` winning on the request. |
-| **Vault-watch full-resync** | **Largely closed in 12.0.0**: the ingest fingerprint (size + mtime + content sha256) is on the watch path, so an unchanged note is not re-read, re-chunked or re-embedded. The pass itself still runs once through the bridge, because link edges need node ids only a completed ingest has. Cap is still 2,000 notes/run (`truncated: true`), still off by default. | M | **P2** — the wasteful part is gone; the shape of the pass is unchanged. | Attach links from the ids that already landed so the bridge does not need a whole pass at all. Keep the 2,000 cap and the `truncated` flag. Inline `#tags` stay out of scope. Watch still never deletes — cleanup is the confirmed prune door. |
+| **`api_key` cloud path is mock-only** | **Narrowed in 12.2.1.** Status now live-probes `GET /models` with the key (no completion) and fail-closes when the provider is unreachable. Chat completions are still not billed in CI. Live E2E remains `cli_oauth`. | S | **P2** — the key is proven to work; a billed completion is still a budget. | One live contract completion once a budget exists. Keep `local_only` winning on the request. |
+| **Vault-watch full-resync** | **Closed the remaining two holes in 12.2.1**: skip-by-hash restamps so a `touch` is not re-hashed forever, and vanished watched files are pruned from the graph (`delete_document_tree`). Disk is never deleted. Cap is still 2,000 notes/run. | M | **P2 → closed for skip and prune.** | Attach links from ids that already landed so the bridge does not need a whole pass. Keep the cap. |
 | **Self-Model has no screen** | Writes were restored in 11.7.0. `GET/POST/DELETE /api/memory/self-model*` and Review Center proposals work. `/app` has no profile view — "Brain이 나에 대해 뭐라고 생각하나" is an API call. | M | **P2** — the data path is real; the reader cannot see it. | A panel under `frontend/src/features/brain/` + `frontend/src/i18n/brain/`, reading the existing API. No new writer. Vitest 100% `all: true`. |
 
 ## P3 — honesty leftovers that should not grow

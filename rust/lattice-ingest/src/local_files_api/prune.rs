@@ -1,8 +1,10 @@
 //! Consent prune of folder-ingest orphans: deleted files' graph, not the disk.
 //!
-//! Incremental ingest *counts* vanished files and leaves their nodes. This
-//! module is the explicit product door: dry-run without `confirm`, and only
-//! `delete_document_tree` (both-direction edges) when the user confirms.
+//! Folder ingest *counts* vanished files and leaves their nodes. The watch
+//! poller calls this door with ``confirm=true`` so a vanished watched file
+//! leaves the graph. The HTTP prune route is still the explicit consent
+//! path for a one-shot folder. Only `delete_document_tree` (both-direction
+//! edges); `GraphWriter::delete_node` is the 11.7 trap and is never used.
 //! `GraphWriter::delete_node` is the 11.7 trap — it leaves `PART_OF` dangling
 //! — and is never used here.
 

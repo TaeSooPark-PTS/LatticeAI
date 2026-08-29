@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -46,7 +46,7 @@ flowchart TB
       sanitize["sanitize on every write path<br/>loop + /tools/write_file"]
       selfm["native Self-Model writes<br/>9 recorded bodies match"]
       osstore["one WorkspaceOsStore<br/>registry + ports"]
-      watch["vault-watch poller<br/>diff-skip → GraphWriter"]
+      watch["vault-watch poller<br/>diff-skip · restamp · prune vanished"]
       epoch["store generation epoch<br/>restore is live — no restart"]
     end
     supervisor["Supervisor<br/>uvicorn factory spawn · /health gate ·<br/>backoff restart · graceful stop ·<br/>CSRF + CORS origin injection"]
@@ -67,7 +67,7 @@ flowchart TB
   subgraph worker["Python AI Worker — compute only (latticeai.worker_app)"]
     direction LR
     llm["Inference<br/>/agent/llm · /worker/llm/stream<br/>Completion::prefix forces the opening bytes"]
-    compute["Compute seams — 20 routes since 12.0.0<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,<br/><b>vector/query</b> — HNSW candidates}"]
+    compute["Compute seams — 20 routes since 12.0.0<br/>/worker/{embed,extract,parse,asr,<br/>render/docx|pdf|pptx|xlsx,<br/><b>vector/query</b> — COUNT then delta}"]
     catalog["Model + engine catalog<br/>/models · /engines/* · /worker/sysinfo<br/>(+ capabilities · python_version) · /health"]
     llm ~~~ compute ~~~ catalog
   end
@@ -80,7 +80,7 @@ flowchart TB
     kg ~~~ store ~~~ archive
   end
 
-  cloud["Cloud LLM lane — opt-in, off by default<br/>api_key (mock-verified) · cli_oauth (agy / grok)<br/>ReviewSink + shape-only EgressAudit"]
+  cloud["Cloud LLM lane — opt-in, off by default<br/>api_key (GET /models probe) · cli_oauth (agy / grok)<br/>ReviewSink + shape-only EgressAudit"]
 
   user --> surfaces
   surfaces --> host
@@ -104,6 +104,88 @@ flowchart TB
   breakers -. "sensitive · private · do_not_share<br/>filtered in BOTH modes" .-> cloud
 
   style cloud stroke-dasharray: 5 5
+```
+
+## Ingest, skip, and watch (12.2.1)
+
+One writer. The scan decides whether a file is work; the graph is never
+opened for write by a second process.
+
+```mermaid
+flowchart LR
+  walk["Walk folder / watch snapshot"]
+  stamp{"size + mtime<br/>match provenance?"}
+  hash{"sha256 matches<br/>stored digest?"}
+  restamp["GraphWriter<br/>restamp metadata"]
+  parse["parse · extract · embed<br/>inflight 4"]
+  write["GraphWriter<br/>ingest_content + vectors"]
+  gone{"watched file<br/>vanished?"}
+  prune["GraphWriter<br/>delete_document_tree"]
+  report["report vanished<br/>folder ingest only"]
+
+  walk --> stamp
+  stamp -->|yes| skip["SkipByStamp — do not open"]
+  stamp -->|no| hash
+  hash -->|yes| restamp
+  restamp --> skip
+  hash -->|no| parse
+  parse --> write
+  walk --> gone
+  gone -->|watch poller| prune
+  gone -->|folder ingest| report
+```
+
+## Vector search COUNT+delta (12.2.1)
+
+The Python sidecar next to the Brain answers `POST /worker/vector/query`.
+Native search still re-scores. Env default remains `brute`.
+
+```mermaid
+flowchart TB
+  q["ANN query · model_id · dim"]
+  count["COUNT(*) vector_embeddings"]
+  cache{"in-process HNSW<br/>size == COUNT?"}
+  search["hnswlib knn"]
+  delta["SELECT item_id<br/>then blobs for missing ids"]
+  append["add_items append<br/>loaded graph included"]
+  shrink["store smaller:<br/>load remaining rows · rebuild"]
+  cold["no sidecar:<br/>load all blobs once"]
+
+  q --> count --> cache
+  cache -->|yes| search
+  cache -->|store grew| delta --> append --> search
+  cache -->|store shrank| shrink --> search
+  cache -->|nothing loaded| cold --> search
+```
+
+## Agent deliverables (12.2.1)
+
+The critic still fail-closes. Deterministic facts on the transcript
+outrank a thin sentence.
+
+```mermaid
+flowchart TB
+  req["User request"]
+  loop["Agent loop · profile measured by probe"]
+  tools["read_file / mcp.* / write_file"]
+  critic["Critic · fail-closed"]
+  count{"asked how many?"}
+  sum{"asked to summarize?"}
+  fillc["complete_a_count<br/>from list/grep result"]
+  fills["complete_a_summary<br/>from file content"]
+  done["DONE"]
+  review["NEEDS_REVIEW"]
+
+  req --> loop --> tools --> critic
+  critic --> count
+  count -->|yes, thin| fillc
+  fillc -->|number present| done
+  fillc -->|still missing| review
+  count -->|no| sum
+  sum -->|yes, thin| fills
+  fills -->|file words present| done
+  fills -->|no read evidence| review
+  sum -->|no| done
 ```
 
 One Door is still the top of this diagram. 11.7.0 filled in what that door
@@ -153,13 +235,14 @@ gave the two biggest crates a domain map and closed four named gaps:
   watched binary goes through `/worker/parse` and the same enrich chain as
   upload. Chat `ingest_generated` is the same native door, not a POST to a
   schema it never matched. A file whose fingerprint is unchanged is not
-  re-read, re-chunked or re-embedded, and a file that vanished is
-  **reported, never removed** — deleting a node is a product decision, so
-  it needs the explicit `POST /api/ingestion/folder/prune` door
-  (dry-run, then `confirm`). 12.1.0 overlaps up to four changed files
-  (`INGEST_INFLIGHT`) so parse and embed no longer stand in a single
-  file's shadow, and one `/worker/embed` body carries the document vector
-  plus every chunk.
+  re-read, re-chunked or re-embedded. 12.2.1 restamps provenance on
+  skip-by-hash so a `touch` is not re-hashed forever, and the **watch
+  poller** prunes vanished files through `delete_document_tree` (disk is
+  never touched). A one-shot folder ingest still reports vanished files
+  and waits for `POST /api/ingestion/folder/prune`. 12.1.0 overlaps up
+  to four changed files (`INGEST_INFLIGHT`) so parse and embed no longer
+  stand in a single file's shadow, and one `/worker/embed` body carries
+  the document vector plus every chunk.
 - **Restore is live.** `lattice_core::db::Store` carries a generation
   epoch. A restore bumps it, every pooled connection opened under the old
   generation is stale on its next checkout and is closed, and the next
@@ -169,9 +252,10 @@ gave the two biggest crates a domain map and closed four named gaps:
   independent gates still stand in front of it: the boundary dial must be
   `cloud_allowed`, and the sensitivity filter runs regardless. The
   Knowledge Graph itself never crosses that edge. 11.9.0 bound ReviewSink
-  and EgressAudit in production, added dual credentials (`api_key` mock-
-  verified only; `cli_oauth` via locally OAuth-authenticated `agy` /
-  `grok`, live-checked with zero billing), and an escalation policy
+  and EgressAudit in production, added dual credentials (`api_key`
+  live-probes `GET /models` with the key and fail-closes when the
+  provider is unreachable; `cli_oauth` via locally OAuth-authenticated
+  `agy` / `grok`, live-checked with zero billing), and an escalation policy
   (`auto` default / `manual` / `always`) that a per-request
   `network_mode:"local_only"` always beats. Extracted cloud knowledge
   stages as a Review Center `kg_cloud_expansion` proposal; the egress
@@ -179,7 +263,7 @@ gave the two biggest crates a domain map and closed four named gaps:
 
 The Telegram bridge is gone from this diagram because it is gone from the
 product: it lived in the platform code that became the worker (see
-[RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md) §5.1).
+[docs/releases/RELEASE_NOTES_v11.6.0.md](docs/releases/RELEASE_NOTES_v11.6.0.md) §5.1).
 
 Key boundaries:
 
@@ -858,7 +942,7 @@ already called Current.
   the requested file and can still fail the critic on the summary.
 
 What 11.9.0 did not close is listed in the section below, in Known
-Limitations, and in [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+Limitations, and in [docs/releases/RELEASE_NOTES_v11.9.0.md](docs/releases/RELEASE_NOTES_v11.9.0.md).
 
 ## Open House — what 12.0.0 closed
 
@@ -901,7 +985,7 @@ by one (`POST /worker/vector/query`); nothing else about the topology moved.
   real file on disk.
 
 What 12.0.0 does not close is listed in Known Limitations and in
-[RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md).
+[docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md).
 
 ## Brain Core
 
@@ -1339,7 +1423,7 @@ flowchart LR
 
 Test counts move on every commit, so this diagram states the *gates* and
 leaves the counts to the release run that produces them; the figures for this
-release are in [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md) §게이트.
+release are in [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md) §게이트.
 Both coverage figures are enforced floors, but they are not the same floor.
 Frontend coverage has pinned 100% on all four vitest metrics since 10.10.0 and
 still does. **Python coverage moved in 11.8.0 from `fail_under = 100` on lines
@@ -1753,13 +1837,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-12.2.0 exact artifact names:
+12.2.1 exact artifact names:
 
-- `dist/ltcai-12.2.0-py3-none-any.whl`
-- `dist/ltcai-12.2.0.tar.gz`
-- `ltcai-12.2.0.tgz`
-- `dist/ltcai-12.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.0_aarch64.dmg`
+- `dist/ltcai-12.2.1-py3-none-any.whl`
+- `dist/ltcai-12.2.1.tar.gz`
+- `ltcai-12.2.1.tgz`
+- `dist/ltcai-12.2.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.1_aarch64.dmg`
 
 The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
 far. First launch needs the usual Gatekeeper step.
@@ -1783,30 +1867,33 @@ Do not document or use wildcard artifact upload commands.
   request.
 - Cloud models, Docker, Brain Network, update checks and marketplace refreshes
   are not default local behavior. The optional PostgreSQL scale/migration
-  tooling is not part of the 12.1.0 worker. Cloud is opt-in: `api_key` is
-  mock-verified only; `cli_oauth` was live-checked at zero billing.
+  tooling is not part of the 12.1.0 worker. Cloud is opt-in: `api_key`
+  probes `GET /models` and fail-closes when unreachable; `cli_oauth` was
+  live-checked at zero billing.
 - The **image and video multimodal functions have no HTTP door** since 11.8.0.
   They stay in Brain Core under unit test with the reason in the module header.
 - The **Python coverage gate is a line floor of 90** since 11.8.0. The
   enforced claim is the floor, whatever a given run measures.
 - **Small-model *content* quality is gated honestly.** `guided` made the
   mechanical half reliable — the requested file gets written and a 0.5B model
-  can reach `DONE` — but a weak summary still fails the critic and ends
-  `FAILED` / `NEEDS_REVIEW`. That is a visible failure, not a hidden one.
+  can reach `DONE`. 12.2.1 fills a thin summary from the file that was
+  read; if those words are still missing the run is `NEEDS_REVIEW`, not a
+  false success.
 - **Vector search env still defaults to `brute`.** A Brain with 512 or more
   vectors and a bound worker sidecar now tries `hnsw+rescore` first and
   falls back to the exact scan with the original `brute` index block if
   the sidecar cannot answer. `LATTICEAI_VECTOR_INDEX=hnsw` is still the
   explicit opt-in.
-- **Watch never deletes.** A vanished file is reported; removing its subtree
-  needs the explicit `POST /api/ingestion/folder/prune` consent flow.
+- **Watch prune is graph-only.** A vanished watched file is removed from
+  the Brain through `delete_document_tree`. Disk is never deleted. A
+  one-shot folder ingest still reports and waits for the prune door.
 - **The crate regrouping is a move, not a decoupling.** Seven domains and six
   groups draw the lines; the four couplings that cross a domain line in
   `lattice-platform` are named in the relevant `mod.rs` rather than resolved.
 - Honest leftovers carried forward — `open_keys` pending-only, no extraction
   refiner, review events silent without an installed owner, KG-api ingest
   text-only, two store cycles per review mutation — are listed in
-  [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md), and the prioritized
+  [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md), and the prioritized
   view of what is still open is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 - Package registry publication is owner-run and can lag behind the GitHub
   release.

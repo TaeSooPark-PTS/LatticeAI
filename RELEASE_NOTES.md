@@ -1,10 +1,17 @@
+# [v12.2.1 - True Count] (2026-08-29)
+
+검색·스킵·워치·작은 모델 답이 있는 것만 셉니다. 문은 422 / 41, 워커는
+20. 쓰기는 GraphWriter 하나. 노트 파일은 `docs/releases/`로 모았습니다.
+
+See [docs/releases/RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md).
+
 # [v12.2.0 - Small Voice] (2026-08-29)
 
 2B급 로컬 모델이 MCP·스킬·도구를 JSON 없이 고르고, 홈 작곡기가 그 일을
 평범한 말로 제안합니다. 문은 422 / 41, 워커는 20. 12.1.0 Fast Path
 인제스트 겹치기는 그대로입니다.
 
-See [RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md).
+See [RELEASE_NOTES_v12.2.0.md](docs/releases/RELEASE_NOTES_v12.2.0.md).
 
 # [v12.1.0 - Fast Path] (2026-08-29)
 
@@ -14,7 +21,7 @@ See [RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md).
 문은 422 / 41, 워커는 20. 주간 pip-audit와 Postgres CI가 깨끗한 런에서
 빨개지던 것을 고쳤습니다.
 
-See [RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md).
+See [RELEASE_NOTES_v12.1.0.md](docs/releases/RELEASE_NOTES_v12.1.0.md).
 
 # [v12.0.0 - Open House] (2026-08-18)
 
@@ -34,7 +41,7 @@ See [RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md).
 JSON을 요구하지 않으며 Qwen 0.5B가 3.9초에 실파일로 DONE에 닿았습니다.
 닫지 않은 것은 노트에 그대로 적었습니다.
 
-See [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md).
+See [RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md).
 
 # [v11.9.0 - Working Order] (2026-08-17)
 
@@ -47,7 +54,7 @@ streamable-HTTP JSON-RPC 실서버이고, 2B(gemma-4-e2b)가 compact
 프로파일로 돌아가며, 채팅 파일 생성(v9.2.0 헤드라인)이 복원됐습니다.
 닫지 않은 여섯 가지는 노트에 그대로 적었습니다.
 
-See [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
+See [RELEASE_NOTES_v11.9.0.md](docs/releases/RELEASE_NOTES_v11.9.0.md).
 
 # [v11.8.0 - Travel Light] (2026-08-16)
 
@@ -63,7 +70,7 @@ See [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md).
 히어로 컴포저로 다시 그렸습니다. 커버리지 강제 바닥이 100 → 90(라인)으로
 내려간 것을 포함해, 닫지 않은 것은 노트에 그대로 적었습니다.
 
-See [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md).
+See [RELEASE_NOTES_v11.8.0.md](docs/releases/RELEASE_NOTES_v11.8.0.md).
 
 # [v11.7.0 - Clean Sweep] (2026-08-15)
 
@@ -78,7 +85,7 @@ Self-Model 쓰기 전면 정지, xlsx 502, chat/vault-watch 좌초 시임 — �
 elevation 언어로 다시 그렸습니다(유리 없음, ~103 KiB). 남은 구멍은
 노트에 그대로 적었습니다.
 
-See [RELEASE_NOTES_v11.7.0.md](RELEASE_NOTES_v11.7.0.md).
+See [RELEASE_NOTES_v11.7.0.md](docs/releases/RELEASE_NOTES_v11.7.0.md).
 
 # [v11.6.0 - One Door] (2026-08-15)
 
@@ -95,7 +102,7 @@ parse, render×4, ASR, multimodal-describe, models/engines, sysinfo, health)로
 고쳤고, **Telegram 브리지와 SSO OIDC 로그인/콜백 제거**, 그대로 이식한
 오라클 버그 3건과 남은 구멍은 노트에 전부 적었습니다.
 
-See [RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md).
+See [RELEASE_NOTES_v11.6.0.md](docs/releases/RELEASE_NOTES_v11.6.0.md).
 
 # [v11.5.2 - Tight Ship] (2026-08-12)
 
@@ -108,7 +115,7 @@ X-Forwarded-* 홉·CORS 주입), 도달 불가였던 `POST /api/search/graph`와
 멀티모달 상태 라우트 배선, `recent_chat` 골든이 잡아낸 실제 발산 수정.
 플로어: 7,022+1,761 테스트 · 100.00% · Rust 760 · 골든 251.
 
-See [RELEASE_NOTES_v11.5.2.md](RELEASE_NOTES_v11.5.2.md).
+See [RELEASE_NOTES_v11.5.2.md](docs/releases/RELEASE_NOTES_v11.5.2.md).
 
 # [v11.5.1 - Rust Full Loop] (2026-08-12)
 
@@ -118,7 +125,7 @@ AI Worker 시임 3종(불변 가드 유지), 문서 생성 컨텍스트 네이�
 총 247). 다이어그램의 모든 Rust 박스 구현 — Python은 설계된 AI Worker로.
 플로어: 7,006+1,761 테스트 · 100.00% · Rust 739.
 
-See [RELEASE_NOTES_v11.5.1.md](RELEASE_NOTES_v11.5.1.md).
+See [RELEASE_NOTES_v11.5.1.md](docs/releases/RELEASE_NOTES_v11.5.1.md).
 
 # [v11.5.0 - Rust Complete] (2026-08-11)
 
@@ -129,7 +136,7 @@ Rust 로드맵 Phase 2·3·4 완결: 데스크톱 front-door 기본화(CSRF env 
 Worker로 수렴(파서·임베딩 생산·LLM·변이·그래프 쓰기 소유). 플로어:
 6,861+1,761 테스트 · 100.00% · Rust 534.
 
-See [RELEASE_NOTES_v11.5.0.md](RELEASE_NOTES_v11.5.0.md).
+See [RELEASE_NOTES_v11.5.0.md](docs/releases/RELEASE_NOTES_v11.5.0.md).
 
 # [v11.4.0 - Rust Foundation] (2026-08-11)
 
@@ -140,7 +147,7 @@ lattice-host(HTTP 헬스·자동 재시작·포트 통일·SSE 프록시, 옵트
 셸이 수퍼바이저에 올라탐(451→149줄, IPC 계약 보존). CI rust 잡 신설.
 플로어 유지: 6,643+1,761 테스트 · 100.00% · Rust 194.
 
-See [RELEASE_NOTES_v11.4.0.md](RELEASE_NOTES_v11.4.0.md).
+See [RELEASE_NOTES_v11.4.0.md](docs/releases/RELEASE_NOTES_v11.4.0.md).
 
 # [v11.3.0 - Time Remembers] (2026-08-11)
 
@@ -150,7 +157,7 @@ See [RELEASE_NOTES_v11.4.0.md](RELEASE_NOTES_v11.4.0.md).
 i18n 키맵 동일 증명, 동작 변화 0) + 라인 상한 lint 게이트. 플로어 유지:
 6,560+1,761 테스트 · 40,488문·11,052분기 100.00% · 프론트 4지표 100%.
 
-See [RELEASE_NOTES_v11.3.0.md](RELEASE_NOTES_v11.3.0.md).
+See [RELEASE_NOTES_v11.3.0.md](docs/releases/RELEASE_NOTES_v11.3.0.md).
 
 # [v11.2.0 - All Systems On] (2026-08-11)
 
@@ -161,7 +168,7 @@ See [RELEASE_NOTES_v11.3.0.md](RELEASE_NOTES_v11.3.0.md).
 · 일괄 승인 등), 58행 증거 감사로 죽은 기능·미배선 7건 수정. 플로어 유지:
 6,490 테스트 · 39,054문·11,014분기 100.00%.
 
-See [RELEASE_NOTES_v11.2.0.md](RELEASE_NOTES_v11.2.0.md).
+See [RELEASE_NOTES_v11.2.0.md](docs/releases/RELEASE_NOTES_v11.2.0.md).
 
 # [v11.1.0 - Product Intelligence] (2026-08-10)
 
@@ -171,7 +178,7 @@ p50 299ms → 10.1ms(10k), 모순→제안→temporal 스탬프(`as_of` 지원),
 (제안-우선, 투명 소유), Obsidian 브릿지 + 서명된 서브그래프 공유 프로토
 타입(기본 꺼짐). 플로어 유지: 6,261 테스트 · 37,590문·10,658분기 100.00%.
 
-See [RELEASE_NOTES_v11.1.0.md](RELEASE_NOTES_v11.1.0.md).
+See [RELEASE_NOTES_v11.1.0.md](docs/releases/RELEASE_NOTES_v11.1.0.md).
 
 # [v11.0.1 - Both Branches] (2026-08-10)
 
@@ -180,7 +187,7 @@ See [RELEASE_NOTES_v11.1.0.md](RELEASE_NOTES_v11.1.0.md).
 (`branch = true`, 9,828아크, 테스트 5,798개). linux 컨테이너 검증이 드러낸
 개발 머신 우연 커버 3아크도 밀폐 테스트로 교체. 화면 변경 없음.
 
-See [RELEASE_NOTES_v11.0.1.md](RELEASE_NOTES_v11.0.1.md).
+See [RELEASE_NOTES_v11.0.1.md](docs/releases/RELEASE_NOTES_v11.0.1.md).
 
 # [v11.0.0 - Full Measure] (2026-08-10)
 
@@ -191,13 +198,13 @@ See [RELEASE_NOTES_v11.0.1.md](RELEASE_NOTES_v11.0.1.md).
 결함들은 고치지 않고 기록했습니다 — 검증 릴리스는 동작 변경을 싣지
 않습니다. 화면 변경 없음.
 
-See [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md).
+See [RELEASE_NOTES_v11.0.0.md](docs/releases/RELEASE_NOTES_v11.0.0.md).
 
 ---
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 12.2.0**.
+This repository keeps public release history from **11.0.0 through 12.2.1**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only that era — 11.x and 12.x — and this index
 follows the same boundary. Sub-11 note files remain in the tree as history; they
@@ -205,24 +212,26 @@ are no longer listed here as supported releases.
 
 ## Current Release
 
-- [v12.1.0 - Fast Path](RELEASE_NOTES_v12.1.0.md)
-- [v12.0.0 - Open House](RELEASE_NOTES_v12.0.0.md)
+- [v12.2.1 - True Count](docs/releases/RELEASE_NOTES_v12.2.1.md)
+- [v12.2.0 - Small Voice](docs/releases/RELEASE_NOTES_v12.2.0.md)
+- [v12.1.0 - Fast Path](docs/releases/RELEASE_NOTES_v12.1.0.md)
+- [v12.0.0 - Open House](docs/releases/RELEASE_NOTES_v12.0.0.md)
 
 ## Recent Release Notes
 
-- [v11.9.0 - Working Order](RELEASE_NOTES_v11.9.0.md)
-- [v11.8.0 - Travel Light](RELEASE_NOTES_v11.8.0.md)
-- [v11.7.0 - Clean Sweep](RELEASE_NOTES_v11.7.0.md)
-- [v11.6.0 - One Door](RELEASE_NOTES_v11.6.0.md)
-- [v11.5.2 - Tight Ship](RELEASE_NOTES_v11.5.2.md)
-- [v11.5.1 - Rust Full Loop](RELEASE_NOTES_v11.5.1.md)
-- [v11.5.0 - Rust Complete](RELEASE_NOTES_v11.5.0.md)
-- [v11.4.0 - Rust Foundation](RELEASE_NOTES_v11.4.0.md)
-- [v11.3.0 - Time Remembers](RELEASE_NOTES_v11.3.0.md)
-- [v11.2.0 - All Systems On](RELEASE_NOTES_v11.2.0.md)
-- [v11.1.0 - Product Intelligence](RELEASE_NOTES_v11.1.0.md)
-- [v11.0.1 - Both Branches](RELEASE_NOTES_v11.0.1.md)
-- [v11.0.0 - Full Measure](RELEASE_NOTES_v11.0.0.md)
+- [v11.9.0 - Working Order](docs/releases/RELEASE_NOTES_v11.9.0.md)
+- [v11.8.0 - Travel Light](docs/releases/RELEASE_NOTES_v11.8.0.md)
+- [v11.7.0 - Clean Sweep](docs/releases/RELEASE_NOTES_v11.7.0.md)
+- [v11.6.0 - One Door](docs/releases/RELEASE_NOTES_v11.6.0.md)
+- [v11.5.2 - Tight Ship](docs/releases/RELEASE_NOTES_v11.5.2.md)
+- [v11.5.1 - Rust Full Loop](docs/releases/RELEASE_NOTES_v11.5.1.md)
+- [v11.5.0 - Rust Complete](docs/releases/RELEASE_NOTES_v11.5.0.md)
+- [v11.4.0 - Rust Foundation](docs/releases/RELEASE_NOTES_v11.4.0.md)
+- [v11.3.0 - Time Remembers](docs/releases/RELEASE_NOTES_v11.3.0.md)
+- [v11.2.0 - All Systems On](docs/releases/RELEASE_NOTES_v11.2.0.md)
+- [v11.1.0 - Product Intelligence](docs/releases/RELEASE_NOTES_v11.1.0.md)
+- [v11.0.1 - Both Branches](docs/releases/RELEASE_NOTES_v11.0.1.md)
+- [v11.0.0 - Full Measure](docs/releases/RELEASE_NOTES_v11.0.0.md)
 
 ## Canonical History
 

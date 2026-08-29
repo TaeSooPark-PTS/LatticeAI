@@ -14,9 +14,10 @@ use serde_json::{json, Map, Value};
 use super::{RunRequest, Runtime};
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::kernel::transcript::{
-    answer_owes_a_count, artifact_checklist, complete_a_count, complete_created_files,
+    answer_owes_a_count, answer_owes_a_summary, artifact_checklist, attributed_count,
+    attributed_summary, complete_counted_and_summarized, complete_created_files,
     contains_ascii_word, delivered_answer, format_artifact_checklist, format_requirement_coverage,
-    requirement_coverage, truncate_strings,
+    request_asks_for_a_count, request_asks_for_a_summary, requirement_coverage, truncate_strings,
 };
 use crate::parse::action::extract_verdict_details;
 use crate::parse::pystr::py_str;
@@ -283,7 +284,8 @@ impl Runtime {
                 &ctx.transcript,
                 &self.deps.file_create_actions,
             );
-            ctx.final_message = complete_a_count(&ctx.final_message, &req.message, &ctx.transcript);
+            ctx.final_message =
+                complete_counted_and_summarized(&ctx.final_message, &req.message, &ctx.transcript);
             ctx.final_message = if has_evidence && !ctx.final_message.trim().is_empty() {
                 ctx.trace
                     .decision("verify", "needs_review_unverified_answer", &[]);
@@ -452,8 +454,11 @@ impl Runtime {
                     &ctx.transcript,
                     &self.deps.file_create_actions,
                 );
-                ctx.final_message =
-                    complete_a_count(&ctx.final_message, &req.message, &ctx.transcript);
+                ctx.final_message = complete_counted_and_summarized(
+                    &ctx.final_message,
+                    &req.message,
+                    &ctx.transcript,
+                );
                 // **And a run that delivered has an answer even when it never
                 // said one** (v12.0.0). The rule above keys on
                 // `ctx.final_message`, which only the `final` action writes — so
@@ -569,13 +574,17 @@ impl Runtime {
                 &ctx.transcript,
                 &self.deps.file_create_actions,
             );
-            let restored = complete_a_count(&restored, &req.message, &ctx.transcript);
+            let restored =
+                complete_counted_and_summarized(&restored, &req.message, &ctx.transcript);
             let counted = has_evidence
                 && !restored.trim().is_empty()
-                && crate::kernel::transcript::attributed_count(&req.message, &ctx.transcript)
-                    .is_some()
-                && crate::kernel::transcript::request_asks_for_a_count(&req.message);
-            if counted {
+                && attributed_count(&req.message, &ctx.transcript).is_some()
+                && request_asks_for_a_count(&req.message);
+            let summarized = has_evidence
+                && !restored.trim().is_empty()
+                && attributed_summary(&ctx.transcript).is_some()
+                && request_asks_for_a_summary(&req.message);
+            if counted || summarized {
                 let doubt = py_str(&verdict.get("reason").cloned().unwrap_or_else(|| json!("")));
                 ctx.trace
                     .decision("verify", "needs_review_counted_answer", &[]);
@@ -617,19 +626,25 @@ impl Runtime {
     ) -> bool {
         ctx.final_message =
             complete_created_files(&ctx.final_message, &ctx.transcript, file_create_actions);
-        ctx.final_message = complete_a_count(&ctx.final_message, &req.message, &ctx.transcript);
-        if !answer_owes_a_count(&ctx.final_message, &req.message, &ctx.transcript) {
-            return false;
-        }
-        // Traced, not emitted: the sibling gates above (no evidence, missing
-        // files) record the reason on the trace and leave the single verdict
-        // frame the caller already sent alone, and a second `verdict` frame for
-        // one run would read as two verdicts.
-        ctx.trace.decision("verify", "needs_review_no_count", &[]);
-        const CAVEAT: &str = "요청하신 개수를 확인하지 못했습니다 — 개수를 센 도구 실행 기록이 \
+        ctx.final_message =
+            complete_counted_and_summarized(&ctx.final_message, &req.message, &ctx.transcript);
+        if answer_owes_a_count(&ctx.final_message, &req.message, &ctx.transcript) {
+            ctx.trace.decision("verify", "needs_review_no_count", &[]);
+            const CAVEAT: &str =
+                "요청하신 개수를 확인하지 못했습니다 — 개수를 센 도구 실행 기록이 \
 없어 완료로 처리하지 않았습니다. 결과를 직접 확인해 주세요.";
-        Self::hold_for_review(ctx, req, file_create_actions, CAVEAT);
-        true
+            Self::hold_for_review(ctx, req, file_create_actions, CAVEAT);
+            return true;
+        }
+        if answer_owes_a_summary(&ctx.final_message, &req.message, &ctx.transcript) {
+            ctx.trace
+                .decision("verify", "needs_review_thin_summary", &[]);
+            const CAVEAT: &str = "요청하신 요약을 파일 내용으로 확인하지 못해 완료로 처리하지 \
+않았습니다. 결과를 직접 확인해 주세요.";
+            Self::hold_for_review(ctx, req, file_create_actions, CAVEAT);
+            return true;
+        }
+        false
     }
 
     /// A non-success the user must review, said **without discarding the run's
@@ -655,7 +670,8 @@ impl Runtime {
     ) {
         ctx.final_message =
             complete_created_files(&ctx.final_message, &ctx.transcript, file_create_actions);
-        ctx.final_message = complete_a_count(&ctx.final_message, &req.message, &ctx.transcript);
+        ctx.final_message =
+            complete_counted_and_summarized(&ctx.final_message, &req.message, &ctx.transcript);
         // The run's own words first and whole, the caveat after — and nothing
         // but the caveat when the run never produced any words at all.
         let said = ctx.final_message.trim();

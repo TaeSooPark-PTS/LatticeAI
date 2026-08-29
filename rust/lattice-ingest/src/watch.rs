@@ -98,7 +98,8 @@ pub struct ScanDiff {
     pub added: Vec<String>,
     /// Files whose `(mtime, size)` stamp moved, in walk order.
     pub changed: Vec<String>,
-    /// Files gone since the last scan — counted, never deleted from the graph.
+    /// Files gone since the last scan. The watch bridge prunes matching
+    /// graph nodes; this field is the list the prune door is handed.
     /// Sorted, because a removal has no walk order to inherit.
     pub removed: Vec<String>,
     /// `added + changed` in walk order, capped at [`MAX_FILES_PER_SCAN`]: the

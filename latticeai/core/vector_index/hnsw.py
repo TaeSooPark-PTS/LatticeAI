@@ -118,6 +118,11 @@ class HnswIndex:
     def model_id(self) -> str:
         return self._model_id
 
+    @property
+    def labels(self) -> List[str]:
+        """Live label order — the sidecar's identity, loaded or rebuilt."""
+        return list(self._labels)
+
     def _identity_matches(self, dim: int, space: str, model_id: str) -> bool:
         return (
             int(dim) == self._dim
@@ -177,10 +182,12 @@ class HnswIndex:
         doors without guessing.
 
         Full rebuild when the embedder identity changed, when any currently
-        indexed id is missing from the incoming set (a deletion), when
-        deletes would exceed :data:`DELETE_REBUILD_RATIO`, or when this
-        instance was loaded from a sidecar and cannot append (no source
-        vectors to keep the label map honest).
+        indexed id is missing from a *full* incoming snapshot (a deletion),
+        or when deletes would exceed :data:`DELETE_REBUILD_RATIO`. A sidecar
+        that was loaded without source vectors still **appends**: the
+        caller passes only the new ids (COUNT+delta) and ``_append_live``
+        extends the graph. A disjoint incoming set is that delta, not a
+        wipe.
         """
         incoming: Dict[str, IndexItem] = {}
         for item_id, vector, metadata in items:
@@ -197,13 +204,36 @@ class HnswIndex:
             return "rebuild"
 
         if self._loaded:
+            current = set(self._labels)
+            incoming_ids = set(incoming)
+            overlap = current & incoming_ids
+            deleted = current - incoming_ids
+            # Delta-only: the caller passed new ids, none of the live labels.
+            # A full snapshot that dropped ids is a deletion and must rebuild.
+            delta_only = bool(incoming_ids) and not overlap
+            if deleted and not delta_only:
+                self.rebuild(incoming.values())
+                return "rebuild"
+            new_ids = [item_id for item_id in incoming if item_id not in current]
+            if not new_ids:
+                return "append"
+            for item_id in new_ids:
+                _, vector, metadata = incoming[item_id]
+                self._vectors[item_id] = [float(value) for value in vector]
+                self._metadata[item_id] = dict(metadata or {})
+            if self._ann is not None and self._module is not None:
+                self._append_live(new_ids)
+                return "append"
             self.rebuild(incoming.values())
             return "rebuild"
 
         current = set(self._vectors)
         incoming_ids = set(incoming)
         deleted = current - incoming_ids
-        if deleted:
+        overlap = current & incoming_ids
+        # Same discriminant as the loaded path: a disjoint incoming set is
+        # COUNT+delta, not a snapshot that deleted every live id.
+        if deleted and not (bool(incoming_ids) and not overlap):
             ratio = len(deleted) / max(1, len(current))
             if ratio >= DELETE_REBUILD_RATIO or not current:
                 self.rebuild(incoming.values())
@@ -339,18 +369,25 @@ class HnswIndex:
             return False
         return True
 
-    def load(self, db_path: Any, *, fingerprint: str) -> bool:
-        """Adopt a sidecar graph when it provably matches ``fingerprint``."""
+    def load(self, db_path: Any, *, fingerprint: str, strict: bool = True) -> bool:
+        """Adopt a sidecar graph when it matches this embedder identity.
+
+        ``strict`` (the default) also requires the stored fingerprint — size
+        included — so a grown store does not search a stale graph. Relaxed
+        load keeps dim/model and leaves COUNT+delta to append the missing
+        ids rather than dumping the whole table.
+        """
         module = self._module
         if module is None:
             return False
         index_path, meta_path = sidecar_paths(db_path)
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            matches = str(meta["fingerprint"]) == str(fingerprint)
-            matches = matches and int(meta["dim"]) == self._dim
+            matches = int(meta["dim"]) == self._dim
             if meta.get("model_id") not in (None, "", self._model_id):
                 matches = False
+            if strict:
+                matches = matches and str(meta["fingerprint"]) == str(fingerprint)
             labels = [str(label) for label in meta["labels"]]
         except Exception:  # noqa: BLE001 — absent/corrupt sidecar = rebuild
             return False
@@ -358,7 +395,9 @@ class HnswIndex:
             return False
         try:
             graph = module.Index(space=self._space, dim=self._dim)
-            graph.load_index(str(index_path), max_elements=len(labels))
+            # Headroom so an in-process append does not have to rebuild
+            # just because load_index pinned max_elements to the old size.
+            graph.load_index(str(index_path), max_elements=max(len(labels) + 64, 1))
         except Exception:  # noqa: BLE001 — corrupt binary = rebuild
             return False
         self._ann = graph

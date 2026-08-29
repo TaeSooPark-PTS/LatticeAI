@@ -12,99 +12,96 @@
 [![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v12.2.0 Living Brain walkthrough](output/release/v12.2.0/gifs/v12.2.0-living-brain-walkthrough.gif)
+![v12.2.1 Living Brain walkthrough](output/release/v12.2.1/gifs/v12.2.1-living-brain-walkthrough.gif)
 
-Chat, files, folders, notes, and web pages all flow into one durable knowledge
-graph on your computer. The default is local. Cloud is optional — an
-OAuth-authenticated CLI (`agy` / `grok`) or an API key you configure — and
-nothing leaves your machine without explicit consent.
+Lattice AI is a Digital Brain that lives on your computer. Chat, files,
+folders, notes, and web pages all land in one knowledge graph you own.
+The default is local. Cloud is optional, and nothing leaves the machine
+without your consent.
 
 대화·파일·폴더·웹페이지가 전부 내 컴퓨터 안의 지식 그래프로 쌓입니다.
-기본은 로컬이고, 클라우드는 선택입니다 (OAuth CLI 지원).
+기본은 로컬이고, 클라우드는 선택입니다.
 
-## What You Can Do
-
-| | |
-| --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story, rewindable to any past moment ![Brain Chronicle](output/release/v12.2.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.2.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.2.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.2.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.2.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.2.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.2.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words; dangerous actions stay blocked either way ![Settings](output/release/v12.2.0/screenshots/08-system.png) |
-
-## Why Lattice AI
-
-- **Own your memory** — knowledge lives in a local SQLite Brain you can back up,
-  export, inspect, and restore (`.latticebrain` encrypted archive).
-- **Model-independent** — switch between local MLX models and cloud models
-  without rebuilding context from zero.
-- **Honest by design** — the Brain tells you when retrieval context is limited,
-  when captured pages extracted poorly, and when the vector index is catching up.
-- **Safe automation** — automations are consent-first drafts; edits to existing
-  content always pass through a reviewable proposal with a diff.
-- **Runs on the model your machine can hold** — the loop measures what a model
-  can actually produce and adapts: a model too small to emit a tool call is
-  walked through numbered choices instead, with the same permission gates,
-  snapshots and sanitizers as every other profile.
-
-매번 AI에게 프로젝트 맥락을 다시 설명하고 있다면, 지식이 여러 서비스에 흩어져
-있다면, 그 기억을 특정 회사가 아니라 내가 소유하고 싶다면 — Lattice AI가 그
-브레인입니다.
-
-## Quick Start
+## Install
 
 ```bash
 pip install ltcai        # or: npm install -g ltcai
 LTCAI                    # then open http://127.0.0.1:4825/app
 ```
 
-Apple Silicon local models: `pip install "ltcai[local]"`. Desktop app (Tauri)
-ships as a dmg on each [GitHub Release](https://github.com/TaeSooPark-PTS/LatticeAI/releases).
+- Apple Silicon local models: `pip install "ltcai[local]"`
+- Mac app: the `.dmg` on each [GitHub Release](https://github.com/TaeSooPark-PTS/LatticeAI/releases)
+- Editor: the [VS Code / Cursor / Open VSX](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) extension
 
-First-run flow — wake the Brain, pick the owner, load a recommended model:
+## First five minutes
+
+1. Open the app and sign in as the owner.
+2. Pick a recommended local model for this computer.
+3. Drop a folder, a file, or a note into Capture.
+4. Ask the Brain a question in your own words.
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v12.2.0/screenshots/01-login.png) | ![Model install](output/release/v12.2.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.2.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v12.2.1/screenshots/01-login.png) | ![Model install](output/release/v12.2.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.2.1/screenshots/07-model-library.png) |
 
-Screenshot index and capture notes:
-[output/release/v12.2.0/SCREENSHOT_INDEX.md](output/release/v12.2.0/SCREENSHOT_INDEX.md)
+Screenshot index:
+[output/release/v12.2.1/SCREENSHOT_INDEX.md](output/release/v12.2.1/SCREENSHOT_INDEX.md)
+
+## What you can do
+
+| | |
+| --- | --- |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.2.1/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.2.1/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.2.1/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.2.1/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.2.1/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.2.1/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.2.1/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.2.1/screenshots/08-system.png) |
+
+## Why this is yours
+
+- **The memory stays.** Knowledge lives in a local SQLite Brain you can back up, export, inspect, and restore (`.latticebrain`).
+- **The model is replaceable.** Switch local MLX and optional cloud without rebuilding context from zero.
+- **It says when it does not know.** Thin retrieval, a poor page extract, or hash-only search is named, not dressed as meaning.
+- **Edits wait for you.** New files can land with little friction. Changing or deleting existing files becomes a proposal with a diff.
+- **Small models can still act.** A 2B-class local model can call tools and skills; a model too small to emit JSON is walked through numbered choices.
+
+매번 AI에게 프로젝트 맥락을 다시 설명하고 있다면, 지식이 여러 서비스에 흩어져
+있다면, 그 기억을 특정 회사가 아니라 내가 소유하고 싶다면 — Lattice AI가 그
+브레인입니다.
 
 ## Current Release
 
-The current release is **12.2.0 — Small Voice**:
+The current release is **12.2.1 — True Count**:
 
-12.1.0 made remembering faster. This release makes a small local model
-able to *act*: 2B-class models can call MCP tools and skills without
-emitting perfect JSON, and the home screen names those actions in
-plain words. The door is still **422 operations / 41 families** over a
-**20-route worker**. Cloud is still optional and the default is still local.
+Search, skip, watch, and small-model answers now count what is actually
+there instead of dumping, rehashing, or pretending. The door is still
+**422 operations / 41 families** over a **20-route worker**. Cloud is
+still optional and the default is still local.
 
-- **Small models speak tools.** `name`/`arguments`, Qwen XML, and
-  `Action: mcp.grep` parse as the same call. Compact lists stay at nine
-  rows. A skill's "use when" line is consulted even if the user never
-  typed `skill.`. A quoted search term fills a missing `pattern`.
-- **The composer offers the work.** Folder search, read-and-summarize,
-  memory, and skill review are chips under the box. Settings says the
-  same in one card. MCP/skill steps in the timeline get a plain prefix.
-- **12.1.0 Fast Path is unchanged.** Folder overlap, one embed body,
-  rebuild outside the write lock, auto-HNSW at 512.
+- **Search does not dump the Brain.** A warm HNSW query is `COUNT(*)`
+  then, if needed, the missing vectors only. Writes stay on one
+  `GraphWriter`.
+- **A touch is a stamp, not a re-ingest.** Same bytes with a new mtime
+  restamp provenance so the next scan skips by stamp.
+- **A vanished watched file leaves the graph.** Disk is never deleted.
+- **A thin summary is filled from the file that was read**, or held for
+  review — never marked done with empty words.
+- **MCP tools stay in the compact nine-row list.** `api_key` cloud
+  verifies with a live `GET /models` (no billed completion). Hash
+  search is named as hash, with a path to a meaning model.
 
-What this release does not close — small-model *content* quality, the
-mock-only `api_key` path, hash embeddings as the no-download fallback,
-watch never deleting on its own, the ad-hoc-signed dmg — is listed in
-[RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md).
+Release notes live in [docs/releases/](docs/releases/). This version:
+[docs/releases/RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md).
+Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.2.0 release must use exact filenames:
+Expected artifacts for 12.2.1 must use exact filenames:
 
-- `dist/ltcai-12.2.0-py3-none-any.whl`
-- `dist/ltcai-12.2.0.tar.gz`
-- `ltcai-12.2.0.tgz`
-- `dist/ltcai-12.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.0_aarch64.dmg`
+- `dist/ltcai-12.2.1-py3-none-any.whl`
+- `dist/ltcai-12.2.1.tar.gz`
+- `ltcai-12.2.1.tgz`
+- `dist/ltcai-12.2.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.1_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
-
-Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 ## Architecture At A Glance
 
@@ -132,8 +129,9 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
   migration tooling is not part of the 12.1.0 worker.
 - Docker, model downloads, cloud model calls, Brain Network, and update checks
   require explicit user action. Cloud is optional: `cli_oauth` (`agy` /
-  `grok`) was live-checked at zero billing; the `api_key` path is
-  mock-verified only.
+  `grok`) was live-checked at zero billing; the `api_key` path probes
+  `GET /models` with the key and fail-closes if the provider is
+  unreachable — it does not run a billed completion to verify.
 - **The Telegram bridge was removed in 11.6.0** — it lived in the platform code
   that became the AI worker. **SSO/OIDC login and callback flows were removed
   with it**; the configuration surface remains and password login is native.
@@ -153,16 +151,18 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
   100%-lines-and-branches gate was removed). The enforced claim is the
   floor, not whatever a given run measures.
 - **Small-model *content* quality is gated honestly.** With the `guided`
-  profile even a 0.5B model writes the requested file and reaches DONE;
-  a weak summary still fails the critic and the run ends
-  FAILED/NEEDS_REVIEW rather than claiming success.
+  profile even a 0.5B model writes the requested file and reaches DONE.
+  A requested summary is filled from the file that was actually read;
+  if those words are still missing the run is held for review, not
+  marked done.
 - Vector search env still defaults to `brute` — exact and byte-compatible
   on a small Brain. At 512+ vectors with a bound worker sidecar it tries
   `hnsw+rescore` first and falls back to the exact scan if the sidecar
   cannot answer. `LATTICEAI_VECTOR_INDEX=hnsw` is still the explicit
   opt-in.
-- Watch never deletes on its own: a vanished file is reported, and
-  cleanup runs only through the confirmed folder-prune flow.
+- Watch prune removes vanished files from the **graph**, never from
+  disk. A one-shot folder ingest still reports vanished files and
+  waits for the confirmed prune door.
 - The macOS dmg is ad-hoc signed — effectively unsigned — so first launch
   needs the usual Gatekeeper step.
 - Pointer-control tools execute in the worker and are installed with
@@ -170,18 +170,19 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
   pending-only, no Self-Model refiner, `delete_node` leaving `PART_OF`,
   review events silent without an owner, KG-api ingest text-only, two
   store cycles per review mutation) are listed with their reasons in
-  [RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md) and prioritized in
-  [docs/ROADMAP.md](docs/ROADMAP.md).
+  [docs/releases/RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md)
+  and prioritized in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Release History
 
 Public history starts at 11.0.0. 11.6.0 rebuilt the product server in Rust and
 reduced the Python package to an AI worker, so a 10.x or 9.x install is a
 different program; `SECURITY.md` supports only 11.x, and this table states the
-same boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.
+same boundary. Earlier notes live in [docs/releases/](docs/releases/).
 
 | Version | Theme |
 | --- | --- |
+| 12.2.1 | True Count |
 | 12.2.0 | Small Voice |
 | 12.1.0 | Fast Path |
 | 12.0.0 | Open House |
@@ -199,4 +200,4 @@ same boundary. Earlier notes stay in the tree as `RELEASE_NOTES_v*.md` files.
 | 11.0.1 | Both Branches |
 | 11.0.0 | Full Measure |
 
-Per-release details: [RELEASE_NOTES.md](RELEASE_NOTES.md)
+Per-release details: [RELEASE_NOTES.md](RELEASE_NOTES.md) · folder: [docs/releases/](docs/releases/)

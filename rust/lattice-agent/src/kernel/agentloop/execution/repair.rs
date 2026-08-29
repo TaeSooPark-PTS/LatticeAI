@@ -709,7 +709,16 @@ fn phrase_hits(hay: &str, source: &str) -> bool {
 }
 
 fn cap_lean_action_names(names: Vec<String>, limit: usize) -> Vec<String> {
-    const CORE: [&str; 4] = ["write_file", "read_file", "edit_file", "list_dir"];
+    const CORE: [&str; 8] = [
+        "write_file",
+        "read_file",
+        "edit_file",
+        "list_dir",
+        "mcp.grep",
+        "mcp.list_dir",
+        "mcp.read_file",
+        "mcp.knowledge_search",
+    ];
     let has_final = names.iter().any(|name| name == "final");
     let present: std::collections::BTreeSet<&str> = names.iter().map(String::as_str).collect();
     let mut kept = Vec::new();
@@ -763,6 +772,23 @@ mod lean_list_tests {
         let capped = cap_lean_action_names(names, 9);
         assert!(capped.iter().any(|name| name == "write_file"), "{capped:?}");
         assert!(capped.iter().any(|name| name == "read_file"), "{capped:?}");
+        assert_eq!(capped.last().map(String::as_str), Some("final"));
+    }
+
+    #[test]
+    fn named_mcp_tools_survive_an_alphabetical_flood() {
+        let mut names: Vec<String> = (0..20).map(|index| format!("computer_{index}")).collect();
+        names.push("mcp.grep".into());
+        names.push("mcp.read_file".into());
+        names.push("write_file".into());
+        names.push("final".into());
+        let capped = cap_lean_action_names(names, 9);
+        assert!(capped.iter().any(|name| name == "mcp.grep"), "{capped:?}");
+        assert!(
+            capped.iter().any(|name| name == "mcp.read_file"),
+            "{capped:?}"
+        );
+        assert!(capped.iter().any(|name| name == "write_file"), "{capped:?}");
         assert_eq!(capped.last().map(String::as_str), Some("final"));
     }
 }

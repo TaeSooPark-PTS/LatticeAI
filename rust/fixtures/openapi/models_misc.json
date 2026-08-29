@@ -1273,7 +1273,7 @@
   },
   "schema_count": 13,
   "source": "frontend/openapi.json",
-  "spec_version": "12.2.0",
+  "spec_version": "12.2.1",
   "summary": "Model catalog/recommendation reads, engine install surface, permission mode, workflow designer and the residual runtime probes.",
   "target": "lattice-platform (misc)",
   "wp": "R10"

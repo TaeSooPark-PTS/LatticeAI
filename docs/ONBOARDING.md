@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

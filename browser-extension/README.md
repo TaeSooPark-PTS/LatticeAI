@@ -1,6 +1,6 @@
 # Lattice AI — browser extension (Manifest V3)
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
 Knowledge Graph. Cloud stays on the host (optional, default local); this

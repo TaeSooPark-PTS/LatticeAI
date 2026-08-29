@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**12.2.0 — Small Voice** keeps the One Door topology (422 operations / 41 families, 20-route worker) and lets a 2B-class local model call MCP tools and skills without perfect JSON. The home composer names those actions in plain words. Full disclosure of what is still open is in `RELEASE_NOTES_v12.2.0.md`.
+**12.2.1 — True Count** keeps the One Door topology (422 operations / 41 families, 20-route worker) and makes search, skip, watch, and small-model summaries count what is actually there. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.2.1.md`.
 
 **The extension surface is unchanged apart from its version.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before.
 

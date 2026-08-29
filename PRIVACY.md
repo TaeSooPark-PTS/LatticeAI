@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -40,7 +40,7 @@ External paths include:
   Knowledge extracted from a cloud answer is staged as a Review Center
   `kg_cloud_expansion` proposal — it is not written to the graph until a
   person approves it (`auto_commit` default off). Two credential modes:
-  `api_key` (OpenAI-compatible, mock-verified only in this release) and
+  `api_key` (OpenAI-compatible; `GET /models` probe, no billed completion) and
   `cli_oauth` (locally OAuth-authenticated `agy` / `grok`).
 - **Model downloads**: model identifiers and download requests go to model
   registries such as Hugging Face or Ollama registries after user consent.

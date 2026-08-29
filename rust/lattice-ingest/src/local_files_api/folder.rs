@@ -275,10 +275,11 @@ async fn ingest_one_folder_file(
         return Ok(FileResult::Skipped);
     }
     let bytes = std::fs::read(&file.path).map_err(|error| error.to_string())?;
-    if fingerprint::decide(stored.as_ref(), file, Some(&bytes)) == SkipDecision::SkipByHash {
+    let sha = fingerprint::hash_bytes(&bytes);
+    if stored.as_ref().is_some_and(|fp| fp.hash_matches(&sha)) {
+        let _ = fingerprint::restamp(ingestor.graph(), &uri, file.size, file.mtime, &sha);
         return Ok(FileResult::Skipped);
     }
-    let sha = fingerprint::hash_bytes(&bytes);
     let filename = Path::new(&file.relative_path)
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())

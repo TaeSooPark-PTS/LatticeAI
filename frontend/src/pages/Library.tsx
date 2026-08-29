@@ -552,7 +552,10 @@ function ModelsPanel() {
             // plain sentence in every mode; the table stays underneath for
             // anyone who wants the detail.
             <div className="space-y-3">
-              <ValuePreview value={embeddingStateLabel((data as Record<string, unknown>).state, language)} />
+              <ValuePreview value={embeddingStateLabel((data as Record<string, unknown>).state ?? (data as Record<string, unknown>).grade, language)} />
+              {["fallback", "hash"].includes(String((data as Record<string, unknown>).state || (data as Record<string, unknown>).grade || "").toLowerCase()) ? (
+                <p className="text-sm text-muted-foreground">{t(language, "library.embedding.fallbackHint")}</p>
+              ) : null}
               {mode === "basic" ? null : <StructuredView value={data} />}
             </div>
           )}

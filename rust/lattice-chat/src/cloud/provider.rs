@@ -84,6 +84,8 @@ pub struct CloudStatus {
     pub model: Option<String>,
     /// Extra, cheap detail (CLI name + version when obtainable).
     pub detail: Option<String>,
+    /// `GET /models` probe for `api_key` mode. `None` when not applicable.
+    pub verified: Option<bool>,
 }
 
 impl CloudStatus {
@@ -95,6 +97,7 @@ impl CloudStatus {
             "provider": self.provider,
             "model": self.model,
             "detail": self.detail,
+            "verified": self.verified,
         })
     }
 
@@ -106,6 +109,7 @@ impl CloudStatus {
             provider: None,
             model: None,
             detail: None,
+            verified: None,
         }
     }
 }
@@ -191,18 +195,37 @@ impl CloudProvider {
         }
     }
 
-    /// Status payload, with a cheap `{bin} --version` for CLI mode.
+    /// Status payload. CLI mode adds `{bin} --version`. API-key mode probes
+    /// `GET /models` (no completion) and fail-closes when the provider is
+    /// unreachable or the key is rejected.
     pub async fn status(&self) -> CloudStatus {
-        let mut detail = None;
-        if let CloudBackend::Cli(spec) = &self.backend {
-            detail = cli_version_line(&spec.bin).await;
-        }
-        CloudStatus {
-            configured: self.configured(),
-            mode: self.mode,
-            provider: Some(self.name.clone()),
-            model: Some(self.model.clone()),
-            detail,
+        match &self.backend {
+            CloudBackend::Http(adapter) => match adapter.probe_models().await {
+                Ok(ids) => CloudStatus {
+                    configured: true,
+                    mode: self.mode,
+                    provider: Some(self.name.clone()),
+                    model: Some(self.model.clone()),
+                    detail: Some(format!("{} models", ids.len())),
+                    verified: Some(true),
+                },
+                Err(error) => CloudStatus {
+                    configured: false,
+                    mode: self.mode,
+                    provider: Some(self.name.clone()),
+                    model: Some(self.model.clone()),
+                    detail: Some(error),
+                    verified: Some(false),
+                },
+            },
+            CloudBackend::Cli(spec) => CloudStatus {
+                configured: self.configured(),
+                mode: self.mode,
+                provider: Some(self.name.clone()),
+                model: Some(self.model.clone()),
+                detail: cli_version_line(&spec.bin).await,
+                verified: None,
+            },
         }
     }
 

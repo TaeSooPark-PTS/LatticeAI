@@ -18,6 +18,7 @@ from latticeai.core.vector_index import (
     sidecar_fingerprint,
     sidecar_freshness,
 )
+from latticeai.core.vector_index.sidecar import load_store_items_for
 
 
 def _blob(values: list[float]) -> bytes:
@@ -161,7 +162,89 @@ def test_append_after_ingest_keeps_the_new_id(tmp_path):
     assert second["size"] == 3
     assert second["stale"] is False
     assert "c" in second["ids"]
-    assert second["refreshed"] in {"append", "rebuild"}
+    assert second["refreshed"] == "append"
+
+
+@pytest.mark.skipif(not hnswlib_available(), reason="warm COUNT path needs a live HNSW graph")
+def test_warm_query_does_not_reload_embedding_blobs(tmp_path, monkeypatch):
+    reset_sidecar_cache()
+    db = tmp_path / "kg.sqlite"
+    _seed_db(db, [("a", [1.0, 0.0, 0.0, 0.0]), ("b", [0.0, 1.0, 0.0, 0.0])])
+    first = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[1.0, 0.0, 0.0, 0.0],
+        k=2,
+        db_path=db,
+    )
+    assert first["index"] == "hnsw"
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("warm query must not dump vector_embeddings")
+
+    monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items", boom)
+    monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items_for", boom)
+    second = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[1.0, 0.0, 0.0, 0.0],
+        k=2,
+        db_path=db,
+    )
+    assert second["index"] == "hnsw"
+    assert second["size"] == 2
+    assert second["stale"] is False
+    assert second["ids"][0] == "a"
+
+
+@pytest.mark.skipif(not hnswlib_available(), reason="delta load needs a live HNSW graph")
+def test_delta_query_loads_only_missing_ids(tmp_path, monkeypatch):
+    reset_sidecar_cache()
+    db = tmp_path / "kg.sqlite"
+    _seed_db(db, [("a", [1.0, 0.0, 0.0, 0.0]), ("b", [0.0, 1.0, 0.0, 0.0])])
+    first = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[1.0, 0.0, 0.0, 0.0],
+        k=3,
+        db_path=db,
+    )
+    assert first["index"] == "hnsw"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "INSERT INTO vector_embeddings VALUES (?,?,?,?,?,?,?,?)",
+        ("c", "chunk", "c", _blob([0.0, 0.0, 1.0, 0.0]), 4, "hash", "{}", "2026-01-01T00:01:00"),
+    )
+    conn.commit()
+    conn.close()
+
+    seen: list[str] = []
+    real_for = load_store_items_for
+
+    def wrapped(conn, model_id, dim, item_ids):
+        seen.extend(str(item) for item in item_ids)
+        return real_for(conn, model_id, dim, item_ids)
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("delta query must not dump the whole vector table")
+
+    monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items", boom)
+    monkeypatch.setattr("latticeai.core.vector_index.sidecar.load_store_items_for", wrapped)
+    second = query_sidecar(
+        workspace=None,
+        embedding_model="hash",
+        embedding_dim=4,
+        vector=[0.0, 0.0, 1.0, 0.0],
+        k=3,
+        db_path=db,
+    )
+    assert second["index"] == "hnsw"
+    assert seen == ["c"]
+    assert "c" in second["ids"]
+    assert second["refreshed"] == "append"
 
 
 def test_empty_model_id_and_zero_dim_are_none():

@@ -14,6 +14,7 @@ export type CloudProviderStatus = {
   provider: string;
   model: string;
   detail?: string | null;
+  verified?: boolean | null;
 };
 
 export const CLOUD_STATUS_UNCONFIGURED: CloudProviderStatus = {

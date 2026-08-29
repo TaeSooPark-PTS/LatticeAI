@@ -129,6 +129,7 @@ export function RecommendationScreen({
       <header>
         <h1 className="ritual-title">{t(language, "flow.recommend.title")}</h1>
         <p className="ritual-subtitle">{t(language, "flow.recommend.body")}</p>
+        <p className="ritual-muted-hint">{t(language, "flow.recommend.embedHint")}</p>
         <div className="ritual-env-line">
           {renderEnvironmentCheck(analysis, language)}
         </div>

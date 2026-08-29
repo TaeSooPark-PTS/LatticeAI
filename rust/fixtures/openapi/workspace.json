@@ -2840,7 +2840,7 @@
   },
   "schema_count": 21,
   "source": "frontend/openapi.json",
-  "spec_version": "12.2.0",
+  "spec_version": "12.2.1",
   "summary": "Workspace OS and org surface plus scope, invitations and the permission approval queue.",
   "target": "lattice-platform (workspace)",
   "wp": "R1"

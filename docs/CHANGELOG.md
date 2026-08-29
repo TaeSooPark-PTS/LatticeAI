@@ -4,6 +4,32 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.2.1] - 2026-08-29 — True Count
+
+### Added
+- HNSW sidecar COUNT+delta load: a warm query never dumps `vector_embeddings`;
+  growth fetches missing ids only and appends.
+- Skip-by-hash restamps size/mtime on the existing provenance row via
+  `GraphWriter`.
+- Watch prune: a vanished watched file is removed from the graph
+  (`delete_document_tree`, confirm=true). Disk is never deleted.
+- `complete_a_summary`: a thin "I summarized" answer is filled from the
+  `read_file` / `mcp.read_file` result already on the transcript.
+- Compact catalog CORE now keeps `mcp.grep`, `mcp.list_dir`, `mcp.read_file`,
+  `mcp.knowledge_search` through the nine-row cap.
+- `api_key` cloud `GET /models` probe (no completion). Unreachable keys
+  fail-close status.
+- First-run and library copy name hash search as hash, with a path to a
+  meaning model.
+
+### Changed
+- Per-version `RELEASE_NOTES_v*.md` files live in `docs/releases/`.
+- README is user-first: install, first five minutes, then the release.
+
+### Fixed
+- Loaded HNSW graphs can append a delta instead of rebuilding from the
+  incoming set alone (which wiped live labels).
+
 ## [12.2.0] - 2026-08-29 — Small Voice
 
 ### Added
@@ -210,7 +236,7 @@ existed at that release.
 - DMG는 ad-hoc 서명(미서명)이다.
 - 11.8.0이 열어 둔 항목(커버리지 바닥 라인 90, 멀티모달 이미지/비디오
   HTTP 문 없음, 11.7.0 leftover)은 그대로다. 전문은
-  [RELEASE_NOTES_v11.9.0.md](../RELEASE_NOTES_v11.9.0.md).
+  [RELEASE_NOTES_v11.9.0.md](releases/RELEASE_NOTES_v11.9.0.md).
 
 ## [11.8.0] - 2026-08-16 — Travel Light
 
@@ -292,7 +318,7 @@ existed at that release.
 - `tests/visual/mock_server`가 고아 mock 라우트 하나를 아직 서빙합니다
   (현재 증거가 해시로 묶여 있어 다음 캡처 사이클에 정리).
 - 11.7.0이 열어 둔 항목은 그대로입니다. 전문은
-  [RELEASE_NOTES_v11.8.0.md](../RELEASE_NOTES_v11.8.0.md).
+  [RELEASE_NOTES_v11.8.0.md](releases/RELEASE_NOTES_v11.8.0.md).
 
 ## [11.7.0] - 2026-08-15 — Clean Sweep
 
@@ -336,7 +362,7 @@ existed at that release.
   `delete_node`는 `PART_OF`를 남김. owner 없는 리뷰 이벤트는 침묵.
   KG-api ingest는 텍스트 전용. 리뷰 변이 = 스토어 사이클 2회.
   snooze 422 detail은 영문 리터럴. 전문은
-  [RELEASE_NOTES_v11.7.0.md](../RELEASE_NOTES_v11.7.0.md).
+  [RELEASE_NOTES_v11.7.0.md](releases/RELEASE_NOTES_v11.7.0.md).
 
 ## [11.6.0] - 2026-08-15 — One Door
 
@@ -411,7 +437,7 @@ existed at that release.
   비어 있음 · 리뷰 스누즈 offset-aware 500 · 제안 이중 거절 500),
   업로드 추출 UTF-8 전용, 공급 벡터 1차 노드 한정, 네이티브 도구의 사용자
   훅 미발화, `sanitize_write_content` 미적용, 워커 원점으로 남은 seam 호출
-  3건. 전문은 [RELEASE_NOTES_v11.6.0.md](../RELEASE_NOTES_v11.6.0.md).
+  3건. 전문은 [RELEASE_NOTES_v11.6.0.md](releases/RELEASE_NOTES_v11.6.0.md).
 
 ## [11.5.2] - 2026-08-12 — Tight Ship
 

@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **12.2.0 — Small Voice**.
+Current release: **12.2.1 — True Count**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.
@@ -87,7 +87,7 @@ does not mean secrets should appear in clear text.
 - Cloud model prompts follow the selected provider's policy once the user
   explicitly chooses that provider (or the `auto`/`always` escalation
   policy does, behind `cloud_allowed`). The `api_key` path is
-  mock-verified only in this release; live OAuth used `cli_oauth` at
+  probed with `GET /models` (no billed completion); live OAuth used `cli_oauth` at
   zero billing. Extracted cloud knowledge is proposal-first.
 - A local admin can inspect local files and process memory outside Lattice AI.
 - Marketplace and model registries are third-party services when explicitly

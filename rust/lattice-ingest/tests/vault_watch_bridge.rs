@@ -526,6 +526,38 @@ async fn a_vault_that_vanishes_is_a_counted_failure_not_a_dead_poller() {
     assert_eq!(entry["last_result"]["status"], "failed");
 }
 
+#[tokio::test]
+async fn a_deleted_watched_file_is_pruned_from_the_graph() {
+    let data = tempfile::tempdir().expect("data");
+    let vault = tempfile::tempdir().expect("vault");
+    let install = boot(data.path()).await;
+    // Enable is consent, not ingest: files added after the baseline are the
+    // ones this scan delivers, and the one we then delete is the prune case.
+    install.enable(vault.path()).await;
+    std::fs::write(vault.path().join("keep.md"), "남는다\n").unwrap();
+    std::fs::write(vault.path().join("gone.md"), "사라진다\n").unwrap();
+
+    let first = local_files_api::scan_watches(&install.state).await;
+    assert_eq!(first["watches"][0]["ingested"], 2, "{first}");
+    assert_eq!(install.documents().len(), 2);
+
+    std::fs::remove_file(vault.path().join("gone.md")).unwrap();
+    let second = local_files_api::scan_watches(&install.state).await;
+    let scan = &second["watches"][0];
+    assert_eq!(scan["removed"], 1, "{second}");
+    assert_eq!(scan["status"], "ok", "{second}");
+    let titles: Vec<String> = install
+        .documents()
+        .into_iter()
+        .map(|(title, _)| title)
+        .collect();
+    assert!(titles.contains(&"keep.md".to_string()), "{titles:?}");
+    assert!(
+        !titles.contains(&"gone.md".to_string()),
+        "the vanished file must leave the graph: {titles:?}"
+    );
+}
+
 /// Percent-encode a filesystem path for a query string. Small on purpose.
 fn urlencode(value: &str) -> String {
     let mut out = String::new();

@@ -15,6 +15,35 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.2.1 — True Count (2026-08-29)
+
+검색·스킵·워치·작은 모델 답이 *있는 것만* 세는 패치. 문은 **422
+오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는
+계속 `GraphWriter` 하나다.
+
+- **HNSW 사이드카 COUNT+델타.** 따뜻한 쿼리는 벡터 테이블을 통째로
+  읽지 않는다. 늘어난 행만 불러 붙인다.
+- **SkipByHash가 스탬프를 다시 찍는다.** 같은 바이트의 `touch`가 다음
+  스캔에서 스탬프 스킵이 된다.
+- **워치에서 사라진 파일은 그래프에서 지운다.** 디스크는 건드리지
+  않는다. 폴더 인제스트는 여전히 보고만 한다.
+- **얇은 요약은 읽은 파일에서 채운다.** 근거가 없으면 검토 대기.
+- **콤팩트 9행에 MCP 코어가 남는다.** `api_key`는 과금 없이
+  `GET /models`로 살아 있는지 확인하고, 안 되면 닫는다.
+- **해시 검색은 해시라고 말한다.** 첫 실행·라이브러리가 의미 모델
+  설치를 가리킨다.
+
+릴리스 노트는 [docs/releases/](docs/releases/)에 모아 두었다. 이
+버전: [docs/releases/RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md).
+
+빌드 산출물은 `dist/ltcai-12.2.1-py3-none-any.whl`,
+`dist/ltcai-12.2.1.tar.gz`, `ltcai-12.2.1.tgz`, `dist/ltcai-12.2.1.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.2.1_aarch64.dmg` 입니다.
+
+정직한 고지: 해시 임베딩은 여전히 다운로드 없는 기본값(이제 정직하게
+표시), DMG는 Apple Developer ID가 없으면 ad-hoc, Marketplace는 게시
+직후 몇 분 검증이 걸릴 수 있다.
+
 ## v12.2.0 — Small Voice (2026-08-29)
 
 2B급 로컬 모델이 MCP·스킬·도구를 고를 수 있게, 그리고 그 일을 홈 화면에서
@@ -30,7 +59,7 @@
   칩. 설정에 같은 설명이 한 카드로 있다.
 
 12.1.0 Fast Path 인제스트 겹치기는 그대로다. 자세한 목록은
-[RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md).
+[docs/releases/RELEASE_NOTES_v12.2.0.md](docs/releases/RELEASE_NOTES_v12.2.0.md).
 
 빌드 산출물은 `dist/ltcai-12.2.0-py3-none-any.whl`,
 `dist/ltcai-12.2.0.tar.gz`, `ltcai-12.2.0.tgz`, `dist/ltcai-12.2.0.vsix`,
@@ -59,7 +88,7 @@
 
 정직한 고지: 작은 모델 내용 품질, `api_key` 모의 검증, ad-hoc DMG,
 watch 자동 삭제 없음, 실임베딩 기본 롤아웃은 아직. 자세한 목록은
-[RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md).
+[RELEASE_NOTES_v12.1.0.md](docs/releases/RELEASE_NOTES_v12.1.0.md).
 
 빌드 산출물은 `dist/ltcai-12.1.0-py3-none-any.whl`,
 `dist/ltcai-12.1.0.tar.gz`, `ltcai-12.1.0.tgz`, `dist/ltcai-12.1.0.vsix`,
@@ -131,7 +160,7 @@ watch 자동 삭제 없음, 실임베딩 기본 롤아웃은 아직. 자세한 �
 `src-tauri/target/release/bundle/dmg/Lattice AI_12.0.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v12.0.0.md](RELEASE_NOTES_v12.0.0.md)
+상세: [RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md)
 
 ## v11.9.0 — Working Order (2026-08-17)
 
@@ -185,7 +214,7 @@ N1–N9와 이전에 고장난 22항목을 다시 통과시킨 릴리스. 문은
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.9.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.9.0.md](RELEASE_NOTES_v11.9.0.md)
+상세: [RELEASE_NOTES_v11.9.0.md](docs/releases/RELEASE_NOTES_v11.9.0.md)
 
 ## v11.8.0 — Travel Light (2026-08-16)
 
@@ -258,7 +287,7 @@ lint 억제 헤더 — 을 덜어낸 릴리스. 문은 그대로(네이티브 42
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.8.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.8.0.md](RELEASE_NOTES_v11.8.0.md)
+상세: [RELEASE_NOTES_v11.8.0.md](docs/releases/RELEASE_NOTES_v11.8.0.md)
 
 ## v11.7.0 — Clean Sweep (2026-08-15)
 
@@ -297,7 +326,7 @@ lint 억제 헤더 — 을 덜어낸 릴리스. 문은 그대로(네이티브 42
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.7.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.7.0.md](RELEASE_NOTES_v11.7.0.md)
+상세: [RELEASE_NOTES_v11.7.0.md](docs/releases/RELEASE_NOTES_v11.7.0.md)
 
 ## v11.6.0 — One Door (2026-08-15)
 
@@ -334,7 +363,7 @@ AI 워커입니다.
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.6.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.6.0.md](RELEASE_NOTES_v11.6.0.md)
+상세: [RELEASE_NOTES_v11.6.0.md](docs/releases/RELEASE_NOTES_v11.6.0.md)
 
 ## v11.5.2 — Tight Ship (2026-08-12)
 
@@ -375,7 +404,7 @@ AI 워커입니다.
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.2_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.5.2.md](RELEASE_NOTES_v11.5.2.md)
+상세: [RELEASE_NOTES_v11.5.2.md](docs/releases/RELEASE_NOTES_v11.5.2.md)
 
 ## v11.5.1 — Rust Full Loop (2026-08-12)
 
@@ -397,7 +426,7 @@ AI 워커입니다.
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.1_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.5.1.md](RELEASE_NOTES_v11.5.1.md)
+상세: [RELEASE_NOTES_v11.5.1.md](docs/releases/RELEASE_NOTES_v11.5.1.md)
 
 ## v11.5.0 — Rust Complete (2026-08-11)
 
@@ -422,7 +451,7 @@ Rust 로드맵 Phase 2·3·4 완결 — 검증된 조각만, Python은 AI Worker
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.5.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.5.0.md](RELEASE_NOTES_v11.5.0.md)
+상세: [RELEASE_NOTES_v11.5.0.md](docs/releases/RELEASE_NOTES_v11.5.0.md)
 
 ## v11.4.0 — Rust Foundation (2026-08-11)
 
@@ -446,7 +475,7 @@ Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각�
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.4.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.4.0.md](RELEASE_NOTES_v11.4.0.md)
+상세: [RELEASE_NOTES_v11.4.0.md](docs/releases/RELEASE_NOTES_v11.4.0.md)
 
 ## v11.3.0 — Time Remembers (2026-08-11)
 
@@ -470,7 +499,7 @@ Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각�
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.3.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.3.0.md](RELEASE_NOTES_v11.3.0.md)
+상세: [RELEASE_NOTES_v11.3.0.md](docs/releases/RELEASE_NOTES_v11.3.0.md)
 
 ## v11.2.0 — All Systems On (2026-08-11)
 
@@ -495,7 +524,7 @@ Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각�
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.2.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.2.0.md](RELEASE_NOTES_v11.2.0.md)
+상세: [RELEASE_NOTES_v11.2.0.md](docs/releases/RELEASE_NOTES_v11.2.0.md)
 
 ## v11.1.0 — Product Intelligence (2026-08-10)
 
@@ -523,7 +552,7 @@ Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각�
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.1.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.1.0.md](RELEASE_NOTES_v11.1.0.md)
+상세: [RELEASE_NOTES_v11.1.0.md](docs/releases/RELEASE_NOTES_v11.1.0.md)
 
 ## v11.0.1 — Both Branches (2026-08-10)
 
@@ -546,7 +575,7 @@ Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각�
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.0.1_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.0.1.md](RELEASE_NOTES_v11.0.1.md)
+상세: [RELEASE_NOTES_v11.0.1.md](docs/releases/RELEASE_NOTES_v11.0.1.md)
 
 ## v11.0.0 — Full Measure (2026-08-10)
 
@@ -573,7 +602,7 @@ Rust 전환 Phase 1 — 전면 재작성 없이, 작동하고 증명된 조각�
 `src-tauri/target/release/bundle/dmg/Lattice AI_11.0.0_aarch64.dmg` 입니다.
 와일드카드 업로드는 사용하지 않습니다.
 
-상세: [RELEASE_NOTES_v11.0.0.md](RELEASE_NOTES_v11.0.0.md)
+상세: [RELEASE_NOTES_v11.0.0.md](docs/releases/RELEASE_NOTES_v11.0.0.md)
 
 ## v10.10.0 — Quiet Station (2026-08-06)
 
@@ -686,7 +715,7 @@ Brain 대화 홈을 "고요한 스테이션"으로 다시 지은 릴리스입니
 - 빌드: 프론트 빌드 신선도 게이트
 - 프론트: SSE 파서 분리, 스티키 스크롤 수정
 
-상세: [RELEASE_NOTES_v10.6.3.md](RELEASE_NOTES_v10.6.3.md)
+상세: [RELEASE_NOTES_v10.6.3.md](docs/releases/RELEASE_NOTES_v10.6.3.md)
 
 ## v10.6.2 — Ask First (2026-08-03)
 
@@ -1279,7 +1308,7 @@ gzip and the budget returns to its original 150 KiB. A new
 build if a chunk reads a key whose namespace it never imported — the one failure
 mode of this split that is otherwise silent.
 
-- 상세: [RELEASE_NOTES_v9.9.9.md](RELEASE_NOTES_v9.9.9.md)
+- 상세: [RELEASE_NOTES_v9.9.9.md](docs/releases/RELEASE_NOTES_v9.9.9.md)
 
 ## v9.9.8 — Autonomy Dial (2026-07-27)
 
@@ -1294,7 +1323,7 @@ and a lock re-entry deadlock that hung every `POST /api/permission-mode`. The
 gates are implemented in `SingleAgentRuntime` directly rather than patched onto
 it at construction time.
 
-- 상세: [RELEASE_NOTES_v9.9.8.md](RELEASE_NOTES_v9.9.8.md)
+- 상세: [RELEASE_NOTES_v9.9.8.md](docs/releases/RELEASE_NOTES_v9.9.8.md)
 
 ## v9.9.7 — No Gaps Left (2026-07-27)
 
@@ -1306,7 +1335,7 @@ garden, a compact agent profile for small local models with a direct-path
 fallback, per-folder memory state, two pay-off-on-install skills, and voice
 memo capture with honest degradation when no local transcriber exists.
 
-- 상세: [RELEASE_NOTES_v9.9.7.md](RELEASE_NOTES_v9.9.7.md)
+- 상세: [RELEASE_NOTES_v9.9.7.md](docs/releases/RELEASE_NOTES_v9.9.7.md)
 
 ## v9.9.6 — Same Brain Everywhere (2026-07-27)
 
@@ -1319,7 +1348,7 @@ graph relations, persistent project sessions, three closed agent loops
 (re-search, critic requirement coverage, failure learning), funnel alerts, and
 embedding-swap recovery UX.
 
-- 상세: [RELEASE_NOTES_v9.9.6.md](RELEASE_NOTES_v9.9.6.md)
+- 상세: [RELEASE_NOTES_v9.9.6.md](docs/releases/RELEASE_NOTES_v9.9.6.md)
 
 ## v9.9.5 — Closed Gaps (2026-07-26)
 
@@ -1330,7 +1359,7 @@ checklist (L4), VS Code/Telegram approval flows (SURFACE_PARITY), and
 unification of legacy human_in_loop onto the durable approval store (L1).
 Also finishes the knowledge-graph retrieval_reads decomposition.
 
-- 상세: [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md)
+- 상세: [RELEASE_NOTES_v9.9.5.md](docs/releases/RELEASE_NOTES_v9.9.5.md)
 
 ## v9.9.4 — Durable Loops (2026-07-26)
 
@@ -1348,7 +1377,7 @@ for graph promotions, five workflow harness scenarios, a funnel soft gate,
 approval TTL countdown/replan UX, source→chunk drill-down, watch health
 signals, and a weekly fail-open real-model agent smoke.
 
-- 상세: [RELEASE_NOTES_v9.9.4.md](RELEASE_NOTES_v9.9.4.md)
+- 상세: [RELEASE_NOTES_v9.9.4.md](docs/releases/RELEASE_NOTES_v9.9.4.md)
 
 ## v9.9.3 — Closed Loops (2026-07-22)
 
@@ -1365,7 +1394,7 @@ validation, and a deeper harness (23 agent_eval scenarios, golden sanitize
 fixtures, multi-model filegen bench, deterministic knowledge-pipeline E2E,
 funnel metrics).
 
-- 상세: [RELEASE_NOTES_v9.9.3.md](RELEASE_NOTES_v9.9.3.md)
+- 상세: [RELEASE_NOTES_v9.9.3.md](docs/releases/RELEASE_NOTES_v9.9.3.md)
 
 ## v9.9.2 — Artifact Trust (2026-07-21)
 
@@ -1380,7 +1409,7 @@ learnings before they enter the Brain, and renders honesty in the UI:
 `NEEDS_REVIEW`/`FAILED` runs. The FG-01..FG-08 scenario matrix from the
 2026-07-21 review is pinned as a permanent unit-test harness.
 
-- 상세: [RELEASE_NOTES_v9.9.2.md](RELEASE_NOTES_v9.9.2.md)
+- 상세: [RELEASE_NOTES_v9.9.2.md](docs/releases/RELEASE_NOTES_v9.9.2.md)
 
 ## v9.9.1 — Clean Foundations (2026-07-21)
 
@@ -1394,7 +1423,7 @@ scenario-named (37 files renamed), `output/release/` keeps only the newest
 three evidence sets via an automated retention policy, and the current-release
 docs gate now also verifies the ARCHITECTURE artifact map.
 
-- 상세: [RELEASE_NOTES_v9.9.1.md](RELEASE_NOTES_v9.9.1.md)
+- 상세: [RELEASE_NOTES_v9.9.1.md](docs/releases/RELEASE_NOTES_v9.9.1.md)
 
 ## v9.9.0 — Fail-Closed Trust (2026-07-21)
 
