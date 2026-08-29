@@ -123,7 +123,7 @@ PRODUCT_GATES: List[ProductGate] = [
             f"vscode-extension/README.md::**{PRODUCT_VERSION_TARGET}",
             f"docs/CHANGELOG.md::## [{PRODUCT_VERSION_TARGET}]",
             "FEATURE_STATUS.md",
-            f"RELEASE_NOTES_v{PRODUCT_VERSION_TARGET}.md",
+            f"docs/releases/RELEASE_NOTES_v{PRODUCT_VERSION_TARGET}.md",
             "rust/lattice-agent/src/kernel/permission.rs::pub fn block_reason_for_tool",
             "rust/lattice-agent/src/kernel/mod.rs::pub mod agentloop",
             "latticeai/api/agent_worker_seam.py::create_agent_worker_seam_router",

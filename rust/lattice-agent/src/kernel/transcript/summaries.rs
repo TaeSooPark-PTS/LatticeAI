@@ -101,7 +101,7 @@ pub fn answer_carries_summary(answer: &str, source: &SourcedText) -> bool {
 
 fn excerpt(text: &str, max_chars: usize) -> String {
     let mut out = String::new();
-    for sentence in text.split(|ch: char| matches!(ch, '.' | '!' | '?' | '\n')) {
+    for sentence in text.split(['.', '!', '?', '\n']) {
         let piece = sentence.trim();
         if piece.is_empty() {
             continue;
