@@ -80,6 +80,11 @@ fn fenced_block() -> &'static Regex {
     compiled(&RE, r"(?s)```(?:json)?\s*(\{.*?\})\s*```")
 }
 
+fn fenced_content_block() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    compiled(&RE, r"(?s)```[A-Za-z0-9_-]*\r?\n(.*?)```")
+}
+
 fn trailing_comma() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     compiled(&RE, r",\s*([}\]])")
@@ -353,11 +358,18 @@ const KNOWN_ACTIONS: &[&str] = &[
     "create_web_project",
     "edit_file",
     "final",
+    "grep",
+    "inspect_html",
+    "knowledge_save",
+    "knowledge_search",
     "list_dir",
     "local_write",
+    "preview_url",
     "read_file",
     "run_command",
+    "search_files",
     "todo_write",
+    "workspace_tree",
     "write_file",
 ];
 
@@ -458,10 +470,24 @@ fn nonempty_string<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a str
 fn object_from_args_value(value: &Value) -> Option<(Map<String, Value>, &'static str)> {
     match value {
         Value::Object(inner) => Some((inner.clone(), "alias_keys")),
-        Value::String(text) => match pyjson::loads(text) {
-            Ok(Value::Object(inner)) => Some((inner, "args_string")),
-            _ => None,
-        },
+        Value::String(text) => {
+            if let Ok(Value::Object(inner)) = pyjson::loads(text) {
+                return Some((inner, "args_string"));
+            }
+            let comma_repaired = trailing_comma().replace_all(text, "$1");
+            if let Ok(Value::Object(inner)) = pyjson::loads(&comma_repaired) {
+                return Some((inner, "args_string"));
+            }
+            for candidate in truncation_repairs(text) {
+                if let Ok(Value::Object(inner)) = pyjson::loads(&candidate) {
+                    return Some((inner, "args_string"));
+                }
+            }
+            if let Some(Value::Object(inner)) = crate::parse::pyliteral::literal_eval(text) {
+                return Some((inner, "args_string"));
+            }
+            None
+        }
         _ => None,
     }
 }
@@ -469,14 +495,20 @@ fn object_from_args_value(value: &Value) -> Option<(Map<String, Value>, &'static
 /// Map the function-calling envelope onto `action` / `args`.
 ///
 /// Qwen, Llama and Gemma 2B instruct models emit `name`+`arguments` (or a
-/// nested `function` object) more often than this crate's `action`+`args`.
-/// The object already parsed; this only copies keys. An object that already
-/// has `action` is untouched, so a genuine `{"action": "final"}` cannot
-/// become something else.
+/// nested `function` object or `tool_calls` array) more often than this
+/// crate's `action`+`args`. The object already parsed; this only copies keys.
+/// An object that already has `action` is untouched, so a genuine
+/// `{"action": "final"}` cannot become something else.
 fn normalize_call_keys(
     mut map: Map<String, Value>,
     repairs: &mut Vec<String>,
 ) -> Map<String, Value> {
+    let first_tool_call = map
+        .get("tool_calls")
+        .and_then(Value::as_array)
+        .and_then(|arr| arr.first())
+        .and_then(Value::as_object)
+        .cloned();
     if nonempty_string(&map, "action").is_none() {
         let aliased = nonempty_string(&map, "name")
             .or_else(|| nonempty_string(&map, "tool"))
@@ -486,6 +518,18 @@ fn normalize_call_keys(
                 map.get("function")
                     .and_then(Value::as_object)
                     .and_then(|function| nonempty_string(function, "name").map(str::to_string))
+            })
+            .or_else(|| {
+                first_tool_call.as_ref().and_then(|tc| {
+                    nonempty_string(tc, "name")
+                        .or_else(|| nonempty_string(tc, "tool"))
+                        .map(str::to_string)
+                        .or_else(|| {
+                            tc.get("function")
+                                .and_then(Value::as_object)
+                                .and_then(|f| nonempty_string(f, "name").map(str::to_string))
+                        })
+                })
             });
         if let Some(name) = aliased {
             map.insert("action".into(), Value::String(name));
@@ -509,6 +553,18 @@ fn normalize_call_keys(
                             .or_else(|| function.get("parameters"))
                             .cloned()
                     })
+            })
+            .or_else(|| {
+                first_tool_call.as_ref().and_then(|tc| {
+                    tc.get("arguments")
+                        .or_else(|| tc.get("parameters"))
+                        .cloned()
+                        .or_else(|| {
+                            tc.get("function").and_then(Value::as_object).and_then(|f| {
+                                f.get("arguments").or_else(|| f.get("parameters")).cloned()
+                            })
+                        })
+                })
             });
         if let Some(value) = candidate {
             if let Some((inner, repair)) = object_from_args_value(&value) {
@@ -614,7 +670,7 @@ fn action_object(action: &str, args: Map<String, Value>) -> Map<String, Value> {
 fn usable_labeled(action: &str, args: Map<String, Value>) -> Option<Map<String, Value>> {
     if matches!(
         action,
-        "read_file" | "write_file" | "edit_file" | "list_dir" | "local_write"
+        "read_file" | "write_file" | "edit_file" | "list_dir" | "local_write" | "inspect_html"
     ) {
         let path = args
             .get("path")
@@ -662,12 +718,25 @@ fn salvage_labeled_action(raw: &str) -> Option<Parsed> {
     if let Some(captures) = labeled_action_line().captures(&text).ok().flatten() {
         let name = captures.get(1).map(|found| found.as_str()).unwrap_or("");
         if let Some(action) = accepted_action(name) {
-            let args = labeled_args_line()
+            let mut args = labeled_args_line()
                 .captures(&text)
                 .ok()
                 .flatten()
                 .map(|found| parse_kv_pairs(found.get(1).map(|group| group.as_str()).unwrap_or("")))
                 .unwrap_or_default();
+            if matches!(action.as_str(), "write_file" | "local_write")
+                && !args.contains_key("content")
+            {
+                if let Some(fenced) = fenced_content_block()
+                    .captures(&text)
+                    .ok()
+                    .flatten()
+                    .and_then(|c| c.get(1).map(|g| g.as_str().trim().to_string()))
+                    .filter(|body| !body.is_empty())
+                {
+                    args.insert("content".into(), Value::String(fenced));
+                }
+            }
             if let Some(map) = usable_labeled(&action, args) {
                 repairs.push("labeled".into());
                 return Some((map, repairs));

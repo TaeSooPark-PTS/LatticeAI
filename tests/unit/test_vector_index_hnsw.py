@@ -95,8 +95,9 @@ def test_sidecar_roundtrip_rejects_a_stale_fingerprint(tmp_path):
     loaded2.load(db, fingerprint="fp-1")
     with pytest.raises(RuntimeError):
         loaded2.remove("id-0")
-    # A sidecar graph has no source vectors — mutation must rebuild.
-    assert loaded.add_items(_items(7)) == "rebuild"
+    # A sidecar graph appends new ids live and rebuilds when a live id is dropped.
+    assert loaded.add_items(_items(7)) == "append"
+    assert loaded.add_items(_items(5)) == "rebuild"
 
 
 def test_search_respects_min_score_and_empty_index():

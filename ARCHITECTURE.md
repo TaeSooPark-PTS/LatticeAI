@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **12.2.1 — True Count**.
+Current release: **12.3.0 — Live Wire**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -40,7 +40,7 @@ flowchart TB
       corec["lattice-core<br/>store (generation epoch) · embeddings · <b>graph_write</b>"]
       hostc["lattice-host<br/>gateway · supervisor · static UI"]
     end
-    subgraph closures["Native closures (11.7.0 → 12.0.0)"]
+    subgraph closures["Native closures (11.7.0 → 12.3.0)"]
       direction LR
       hooks["HooksStore → HookSink<br/>user hooks fire on native tools"]
       sanitize["sanitize on every write path<br/>loop + /tools/write_file"]
@@ -186,6 +186,44 @@ flowchart TB
   fills -->|file words present| done
   fills -->|no read evidence| review
   sum -->|no| done
+```
+
+## Model catalog, tool/MCP recovery, and HTML verification (12.3.0)
+
+Every GGUF route carries the quantization tag its Hugging Face repository
+actually publishes (`Q4_0` for `ggml-org/gemma-4-*-GGUF`, `MXFP4` for
+`ggml-org/gpt-oss-20b-GGUF`), auxiliary GGUFs (`mmproj-`, `mtp-`, `dflash-`,
+`eagle3-`, `imatrix`) are excluded from primary weight selection while
+companion `mmproj-*.gguf` files are passed to `llama-server --mmproj`, and
+small-model tool/MCP outputs flow through deterministic argument recovery into
+native HTML structure inspection and RFC 5987 UTF-8 download.
+
+```mermaid
+flowchart LR
+  subgraph modelops["Model catalog & runtime (12.3.0)"]
+    direction TB
+    cat["Catalog routes<br/>gemma-4 ⇒ :Q4_0 · gpt-oss ⇒ :MXFP4<br/>Qwen3.5-9B & Qwen3.6-35B GGUF wired"]
+    dl["Download & verify<br/>filter mmproj/mtp/dflash/eagle3/imatrix<br/>check safetensors index shards"]
+    srv["llama-server / MLX<br/>auto-attach companion --mmproj"]
+    cat --> dl --> srv
+  end
+
+  subgraph parse["Small-model tool & MCP parse (lattice-agent)"]
+    direction TB
+    env["Unwrap tool_calls[] · recover stringified arguments<br/>(trailing comma · truncation · Python dict)"]
+    salvage["Salvage labeled action + fenced HTML/code block<br/>adopt_named_args (html/code/source/data ⇒ content)"]
+    exec["Runtime::perform_action<br/>governed write_file / mcp.* / skill.*"]
+    env --> salvage --> exec
+  end
+
+  subgraph html["HTML inspect & download (lattice-platform)"]
+    direction TB
+    insp["POST /tools/inspect_html<br/>title · links · scripts · stylesheets<br/>images · forms · headings (h1–h6)"]
+    dlf["GET /tools/download · /tools/download_zip<br/>UTF-8 percent-decode · RFC 5987 filename*=UTF-8''"]
+    insp --> dlf
+  end
+
+  srv --> parse --> html
 ```
 
 One Door is still the top of this diagram. 11.7.0 filled in what that door
@@ -1837,13 +1875,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-12.2.1 exact artifact names:
+12.3.0 exact artifact names:
 
-- `dist/ltcai-12.2.1-py3-none-any.whl`
-- `dist/ltcai-12.2.1.tar.gz`
-- `ltcai-12.2.1.tgz`
-- `dist/ltcai-12.2.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.1_aarch64.dmg`
+- `dist/ltcai-12.3.0-py3-none-any.whl`
+- `dist/ltcai-12.3.0.tar.gz`
+- `ltcai-12.3.0.tgz`
+- `dist/ltcai-12.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.3.0_aarch64.dmg`
 
 The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
 far. First launch needs the usual Gatekeeper step.

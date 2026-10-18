@@ -27,29 +27,28 @@ OPENAI_COMPATIBLE_PROVIDERS = {
     "together": {
         "env_key": "TOGETHER_API_KEY",
         "base_url": "https://api.together.xyz/v1",
-        "default_model": "Qwen/Qwen3-VL-32B-Instruct",
+        "default_model": "Qwen/Qwen3.6-27B",
     },
     "xai": {
         "env_key": "XAI_API_KEY",
         "base_url": "https://api.x.ai/v1",
         # ``grok-beta`` was xAI's 2024 preview id and has been decommissioned;
-        # a request naming it now 404s at the provider. ``grok-4.5`` is the
-        # current flagship on api.x.ai and is multimodal, which is also why the
-        # separate ``grok-vision-beta`` row below is gone rather than renamed.
-        "default_model": "grok-4.5",
+        # a request naming it now 404s at the provider. ``grok-4.6`` is the
+        # current flagship on api.x.ai and matches the Rust cloud adapter.
+        "default_model": "grok-4.6",
     },
     "ollama": {
         "env_key": "OLLAMA_API_KEY",
         "base_url_env": "OLLAMA_BASE_URL",
         "base_url": "http://localhost:11434/v1",
-        "default_model": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
+        "default_model": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0",
         "api_key_fallback": "ollama",
     },
     "vllm": {
         "env_key": "VLLM_API_KEY",
         "base_url_env": "VLLM_BASE_URL",
         "base_url": "http://localhost:8000/v1",
-        "default_model": "Qwen/Qwen3-VL-8B-Instruct",
+        "default_model": "google/gemma-4-12B-it",
         "api_key_fallback": "vllm",
     },
     "lmstudio": {
@@ -85,9 +84,9 @@ PROVIDER_MODEL_CATALOG = {
         {"id": "anthropic/claude-opus-4.7", "name": "Claude Opus 4.7 via OpenRouter", "family": "Claude"},
         {"id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
         {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
-        {"id": "qwen/qwen3-vl-235b-a22b-instruct", "name": "Qwen3-VL 235B A22B via OpenRouter", "family": "Qwen"},
+        {"id": "qwen/qwen3.6-35b-a3b", "name": "Qwen3.6 35B A3B via OpenRouter", "family": "Qwen"},
         {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B via OpenRouter", "family": "Gemma"},
-        {"id": "x-ai/grok-4.5", "name": "Grok 4.5 via OpenRouter", "family": "Grok"},
+        {"id": "x-ai/grok-4.6", "name": "Grok 4.6 via OpenRouter", "family": "Grok"},
         {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout via OpenRouter", "family": "Llama"},
         {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash via OpenRouter", "family": "Gemini"},
     ],
@@ -95,7 +94,7 @@ PROVIDER_MODEL_CATALOG = {
         {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout", "family": "Llama"},
     ],
     "together": [
-        {"id": "Qwen/Qwen3-VL-32B-Instruct", "name": "Qwen3-VL 32B", "family": "Qwen"},
+        {"id": "Qwen/Qwen3.6-27B", "name": "Qwen3.6 27B", "family": "Qwen"},
         {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B", "family": "Gemma"},
         {"id": "meta-llama/Llama-4-Scout-17B-16E-Instruct", "name": "Llama 4 Scout", "family": "Llama"},
     ],
@@ -105,7 +104,7 @@ PROVIDER_MODEL_CATALOG = {
         # (grok-beta / grok-vision-beta) are not carried as fallbacks: a model
         # the provider no longer serves is not compatibility, it is a 404 the
         # user has to discover for themselves.
-        {"id": "grok-4.5", "name": "Grok 4.5", "family": "Grok"},
+        {"id": "grok-4.6", "name": "Grok 4.6", "family": "Grok"},
     ],
 }
 

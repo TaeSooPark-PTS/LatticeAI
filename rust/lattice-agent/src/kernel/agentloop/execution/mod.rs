@@ -488,6 +488,15 @@ Choose one of these exact names: {known}."
         };
         if original != "final" {
             if let Some(entry) = crate::tools::catalog::entry_for(&catalog, &original) {
+                let snapshot = args.clone();
+                let adopted = crate::tools::catalog::adopt_named_args(entry, &snapshot, &mut args);
+                if !adopted.is_empty() {
+                    ctx.trace.decision(
+                        "execute",
+                        "synonym_arg_adopted",
+                        &[("action", json!(original)), ("args", json!(adopted))],
+                    );
+                }
                 let filled = crate::tools::catalog::fill_documented_defaults(entry, &mut args);
                 if !filled.is_empty() {
                     ctx.trace.decision(

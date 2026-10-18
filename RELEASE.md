@@ -15,6 +15,22 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.3.0 — Live Wire (2026-10-19)
+
+Hugging Face 실저장소 양자화 태그·GGUF 라우팅·클라우드 공급자 기본값을 전수 정렬하고, 작은 로컬 모델의 툴콜/MCP 인자 복구와 HTML 생성·점검·다운로드를 실모델(`mlx-community/gemma-4-e2b-it-4bit`)로 끝까지 검증한 릴리스. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.
+
+- **Hugging Face GGUF 태그 및 라우팅 정합성.** `ggml-org/gemma-4-*-GGUF`는 `Q4_0`, `ggml-org/gpt-oss-20b-GGUF`는 `MXFP4` 태그를 가리키며, `Qwen3.5-9B-MLX-4bit` (`unsloth/Qwen3.5-9B-GGUF`)와 `Qwen3.6-35B-A3B-4bit` (`ggml-org/Qwen3.6-35B-A3B-GGUF`) GGUF 경로가 `ollama` / `lmstudio` / `llamacpp`에 연결됐다.
+- **클라우드·로컬 공급자 기본값 동기화.** `xai` 기본값을 `grok-4.6`, `together`를 `Qwen/Qwen3.6-27B`, `openrouter`를 `qwen/qwen3.6-35b-a3b`·`x-ai/grok-4.6`으로 맞추고, 존재하지 않는 `mlx-community/bge-m3`를 로컬 MLX 목록에서 제거했다.
+- **보조 GGUF 필터링 · `--mmproj` 동반 로드 · 샤드 검증.** `mmproj-`/`mtp-`/`dflash-`/`eagle3-`/`imatrix` GGUF를 주 모델 선택에서 제외하고, `llama-server` 기동 시 동반 `mmproj-*.gguf`를 다운로드해 `--mmproj`로 전달하며, `model.safetensors.index.json`의 샤드 완결성을 검증한다.
+- **작은 모델 툴콜·MCP 호출 보강.** `KNOWN_ACTIONS` 확장, 문자열화된 `arguments` 복구, OpenAI `tool_calls` 배열 언래핑, 코드블록 HTML 추출(`fenced_content_block`), `perform_action` 내 `adopt_named_args`(`html`/`code`/`source`/`data` → `content`) 적용.
+- **HTML 구조 점검 및 RFC 5987 UTF-8 다운로드.** `POST /tools/inspect_html`이 `title`·`links`·`scripts`·`stylesheets`·`images`·`forms`·`headings`를 추출하고, `GET /tools/download`가 UTF-8 경로 디코딩과 `filename*=UTF-8''...` 헤더를 제공한다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md).
+
+빌드 산출물은 `dist/ltcai-12.3.0-py3-none-any.whl`,
+`dist/ltcai-12.3.0.tar.gz`, `ltcai-12.3.0.tgz`, `dist/ltcai-12.3.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.3.0_aarch64.dmg` 입니다.
+
 ## v12.2.1 — True Count (2026-08-29)
 
 검색·스킵·워치·작은 모델 답이 *있는 것만* 세는 패치. 문은 **422

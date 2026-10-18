@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use axum::extract::{Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
-use lattice_agent::sandbox::Workspace;
+use lattice_agent::sandbox::{Workspace, MAX_FILE_BYTES};
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
@@ -164,7 +164,198 @@ pub(crate) async fn inspect_html(
     if ext != "html" && ext != "htm" {
         return tool_err("Path is not an HTML file.");
     }
-    tool_err("HTML file does not exist.")
+    if target.metadata().map(|m| m.len()).unwrap_or(0) > MAX_FILE_BYTES {
+        return tool_err("HTML file is too large to inspect.");
+    }
+    let content = match std::fs::read_to_string(&target) {
+        Ok(text) => text,
+        Err(_) => match std::fs::read(&target) {
+            Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+            Err(_) => return tool_err("HTML file does not exist."),
+        },
+    };
+    let rel = relative(&state.workspace, &target);
+    tool_ok(&state.workspace, inspect_html_source(&rel, &content))
+}
+
+fn inspect_html_source(rel_path: &str, html: &str) -> Value {
+    let mut title = String::new();
+    let mut in_title = false;
+    let mut links: Vec<String> = Vec::new();
+    let mut scripts: Vec<String> = Vec::new();
+    let mut stylesheets: Vec<String> = Vec::new();
+    let mut images: Vec<String> = Vec::new();
+    let mut forms: usize = 0;
+    let mut headings: Vec<(String, String)> = Vec::new();
+    let mut active_heading: Option<usize> = None;
+
+    let mut rest = html;
+    while let Some(lt) = rest.find('<') {
+        let text_chunk = rest[..lt].trim();
+        if !text_chunk.is_empty() {
+            if in_title {
+                title.push_str(text_chunk);
+            } else if let Some(idx) = active_heading {
+                if headings[idx].1.is_empty() {
+                    headings[idx].1 = text_chunk.chars().take(120).collect();
+                }
+            }
+        }
+        let after_lt = &rest[lt + 1..];
+        if after_lt.starts_with("!--") {
+            if let Some(end_comment) = after_lt.find("-->") {
+                rest = &after_lt[end_comment + 3..];
+                continue;
+            } else {
+                break;
+            }
+        }
+        let Some(gt) = after_lt.find('>') else {
+            break;
+        };
+        let raw_tag = after_lt[..gt].trim();
+        rest = &after_lt[gt + 1..];
+        if raw_tag.is_empty() || raw_tag.starts_with('!') || raw_tag.starts_with('?') {
+            continue;
+        }
+        if let Some(closing) = raw_tag.strip_prefix('/') {
+            let tag_name = closing
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            if tag_name == "title" {
+                in_title = false;
+            } else if matches!(tag_name.as_str(), "h1" | "h2" | "h3") {
+                active_heading = None;
+            }
+            continue;
+        }
+        let raw_open = raw_tag.strip_suffix('/').unwrap_or(raw_tag).trim();
+        let mut parts = raw_open.splitn(2, char::is_whitespace);
+        let tag_name = parts.next().unwrap_or("").to_ascii_lowercase();
+        let attr_str = parts.next().unwrap_or("");
+        let attrs = parse_html_attrs(attr_str);
+
+        match tag_name.as_str() {
+            "title" => in_title = true,
+            "a" => {
+                if let Some(href) = attrs.get("href").filter(|v| !v.is_empty()) {
+                    if links.len() < 50 {
+                        links.push(href.clone());
+                    }
+                }
+            }
+            "script" => {
+                if let Some(src) = attrs.get("src").filter(|v| !v.is_empty()) {
+                    if scripts.len() < 50 {
+                        scripts.push(src.clone());
+                    }
+                }
+            }
+            "link" => {
+                let is_stylesheet = attrs
+                    .get("rel")
+                    .map(|rel| {
+                        rel.split_whitespace()
+                            .any(|tok| tok.eq_ignore_ascii_case("stylesheet"))
+                    })
+                    .unwrap_or(false);
+                if is_stylesheet {
+                    if let Some(href) = attrs.get("href").filter(|v| !v.is_empty()) {
+                        if stylesheets.len() < 50 {
+                            stylesheets.push(href.clone());
+                        }
+                    }
+                }
+            }
+            "img" => {
+                if let Some(src) = attrs.get("src").filter(|v| !v.is_empty()) {
+                    if images.len() < 50 {
+                        images.push(src.clone());
+                    }
+                }
+            }
+            "form" => forms += 1,
+            "h1" | "h2" | "h3" => {
+                headings.push((tag_name, String::new()));
+                active_heading = Some(headings.len() - 1);
+            }
+            _ => {}
+        }
+    }
+
+    let heading_values: Vec<Value> = headings
+        .into_iter()
+        .filter(|(_, text)| !text.is_empty())
+        .take(30)
+        .map(|(level, text)| json!({"level": level, "text": text}))
+        .collect();
+
+    json!({
+        "path": rel_path,
+        "title": title,
+        "links": links,
+        "scripts": scripts,
+        "stylesheets": stylesheets,
+        "images": images,
+        "forms": forms,
+        "headings": heading_values,
+    })
+}
+
+fn parse_html_attrs(raw: &str) -> std::collections::BTreeMap<String, String> {
+    let mut map = std::collections::BTreeMap::new();
+    let bytes = raw.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        let key_start = i;
+        while i < bytes.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'=' {
+            i += 1;
+        }
+        if i == key_start {
+            break;
+        }
+        let key = raw[key_start..i].to_ascii_lowercase();
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] != b'=' {
+            map.insert(key, String::new());
+            continue;
+        }
+        i += 1; // skip '='
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        if i >= bytes.len() {
+            map.insert(key, String::new());
+            break;
+        }
+        let quote = bytes[i];
+        if quote == b'"' || quote == b'\'' {
+            i += 1;
+            let val_start = i;
+            while i < bytes.len() && bytes[i] != quote {
+                i += 1;
+            }
+            let val = raw[val_start..i].to_string();
+            if i < bytes.len() {
+                i += 1;
+            }
+            map.insert(key, val);
+        } else {
+            let val_start = i;
+            while i < bytes.len() && !bytes[i].is_ascii_whitespace() {
+                i += 1;
+            }
+            map.insert(key, raw[val_start..i].to_string());
+        }
+    }
+    map
 }
 
 pub(crate) async fn preview_url(
@@ -215,6 +406,34 @@ fn download_target(ws: &Workspace, raw: &str) -> Result<PathBuf, (StatusCode, &'
         .map_err(|_| (StatusCode::FORBIDDEN, "tools.path_outside_workspace"))
 }
 
+fn content_disposition_attachment(filename: &str) -> Option<HeaderValue> {
+    if filename.is_ascii() {
+        return HeaderValue::from_str(&format!("attachment; filename=\"{filename}\"")).ok();
+    }
+    let ascii_fallback: String = filename
+        .chars()
+        .map(|c| {
+            if c.is_ascii_graphic() && c != '"' && c != '\\' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let mut encoded = String::new();
+    for b in filename.as_bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(*b as char);
+        } else {
+            encoded.push_str(&format!("%{b:02X}"));
+        }
+    }
+    HeaderValue::from_str(&format!(
+        "attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
+    ))
+    .ok()
+}
+
 pub(crate) async fn download(
     State(state): State<ToolsState>,
     headers: HeaderMap,
@@ -243,7 +462,7 @@ pub(crate) async fn download(
         header::CONTENT_TYPE,
         HeaderValue::from_static("application/octet-stream"),
     );
-    if let Ok(v) = HeaderValue::from_str(&format!("attachment; filename=\"{name}\"")) {
+    if let Some(v) = content_disposition_attachment(&name) {
         response
             .headers_mut()
             .insert(header::CONTENT_DISPOSITION, v);
@@ -282,7 +501,7 @@ pub(crate) async fn download_zip(
         header::CONTENT_TYPE,
         HeaderValue::from_static("application/zip"),
     );
-    if let Ok(v) = HeaderValue::from_str(&format!("attachment; filename=\"{filename}\"")) {
+    if let Some(v) = content_disposition_attachment(&filename) {
         response
             .headers_mut()
             .insert(header::CONTENT_DISPOSITION, v);
@@ -291,22 +510,23 @@ pub(crate) async fn download_zip(
 }
 
 fn urlencoding_decode(s: &str) -> String {
-    let mut out = String::new();
+    let mut out = Vec::with_capacity(s.len());
     let bytes = s.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
-            let hex = &s[i + 1..i + 3];
-            if let Ok(v) = u8::from_str_radix(hex, 16) {
-                out.push(v as char);
-                i += 3;
-                continue;
+            if let Ok(hex) = std::str::from_utf8(&bytes[i + 1..i + 3]) {
+                if let Ok(v) = u8::from_str_radix(hex, 16) {
+                    out.push(v);
+                    i += 3;
+                    continue;
+                }
             }
         }
-        out.push(bytes[i] as char);
+        out.push(bytes[i]);
         i += 1;
     }
-    out
+    String::from_utf8(out).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
 }
 
 fn zip_dir_store(dir: &Path) -> Result<Vec<u8>, String> {
@@ -404,4 +624,65 @@ fn crc32(data: &[u8]) -> u32 {
         }
     }
     !crc
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn urlencoding_decode_preserves_utf8_and_decodes_percent_escapes() {
+        assert_eq!(urlencoding_decode("out/페이지.html"), "out/페이지.html");
+        assert_eq!(
+            urlencoding_decode("out/%ED%8E%98%EC%9D%B4%EC%A7%80.html"),
+            "out/페이지.html"
+        );
+        assert_eq!(urlencoding_decode("index.html"), "index.html");
+    }
+
+    #[test]
+    fn content_disposition_supports_ascii_and_utf8_filenames() {
+        let ascii = content_disposition_attachment("index.html").expect("ascii");
+        assert_eq!(
+            ascii.to_str().expect("str"),
+            "attachment; filename=\"index.html\""
+        );
+        let utf8 = content_disposition_attachment("페이지.html").expect("utf8");
+        let s = utf8.to_str().expect("str");
+        assert!(s.contains("filename*=UTF-8''%ED%8E%98%EC%9D%B4%EC%A7%80.html"));
+    }
+
+    #[test]
+    fn inspect_html_source_extracts_title_headings_and_assets() {
+        let html = r#"<!DOCTYPE html>
+<html>
+<head>
+  <title>Lattice Demo</title>
+  <link rel="stylesheet preload" href="styles/main.css">
+  <script src="app.js"></script>
+</head>
+<body>
+  <h1>Welcome to LatticeAI</h1>
+  <h2>Interactive Dashboard</h2>
+  <a href="https://example.com">Docs</a>
+  <img src="logo.png" alt="Logo" />
+  <form><input type="text" /></form>
+</body>
+</html>"#;
+        let report = inspect_html_source("index.html", html);
+        assert_eq!(report["path"], json!("index.html"));
+        assert_eq!(report["title"], json!("Lattice Demo"));
+        assert_eq!(report["links"], json!(["https://example.com"]));
+        assert_eq!(report["scripts"], json!(["app.js"]));
+        assert_eq!(report["stylesheets"], json!(["styles/main.css"]));
+        assert_eq!(report["images"], json!(["logo.png"]));
+        assert_eq!(report["forms"], json!(1));
+        assert_eq!(
+            report["headings"],
+            json!([
+                {"level": "h1", "text": "Welcome to LatticeAI"},
+                {"level": "h2", "text": "Interactive Dashboard"}
+            ])
+        );
+    }
 }

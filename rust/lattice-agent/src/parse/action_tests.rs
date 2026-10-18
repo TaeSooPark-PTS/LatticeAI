@@ -421,3 +421,26 @@ fn tool_call_name_plus_path_tag_is_a_call() {
     assert_eq!(parsed.0["action"], json!("read_file"));
     assert_eq!(parsed.0["args"]["path"], json!("notes/hello.md"));
 }
+
+#[test]
+fn openai_tool_calls_array_and_malformed_args_string_are_recovered() {
+    let parsed = parse(
+        r#"{"tool_calls": [{"type": "function", "function": {"name": "mcp.grep", "arguments": "{'pattern': 'LatticeAI',}"}}]}"#,
+    );
+    assert!(parsed.1.iter().any(|repair| repair == "alias_keys"));
+    assert!(parsed.1.iter().any(|repair| repair == "args_string"));
+    assert_eq!(parsed.0["action"], json!("mcp.grep"));
+    assert_eq!(parsed.0["args"]["pattern"], json!("LatticeAI"));
+}
+
+#[test]
+fn labeled_write_file_recovers_fenced_html_content() {
+    let raw = "Action: `write_file`\nArgs: `path: \"out/page.html\"`\n```html\n<!DOCTYPE html><html><body><h1>Hi</h1></body></html>\n```";
+    let parsed = parse(raw);
+    assert_eq!(parsed.0["action"], json!("write_file"));
+    assert_eq!(parsed.0["args"]["path"], json!("out/page.html"));
+    assert_eq!(
+        parsed.0["args"]["content"],
+        json!("<!DOCTYPE html><html><body><h1>Hi</h1></body></html>")
+    );
+}

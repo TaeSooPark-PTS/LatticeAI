@@ -256,7 +256,7 @@ def _gemma4_runtime_candidates(raw_model_id: str) -> List[Dict[str, Any]]:
         {
             "engine": "ollama",
             "runtime": "Ollama GGUF",
-            "load_id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
+            "load_id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0",
             "available": None,
             "role": "gguf_local_server",
         },
@@ -354,7 +354,7 @@ def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> 
             ],
             "alternatives": [
                 {"id": "mlx-community/gemma-4-26b-a4b-it-4bit", "name": "Gemma 4 26B A4B", "engine": "local_mlx"},
-                {"id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M", "name": "Gemma 4 12B GGUF", "engine": "ollama"},
+                {"id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0", "name": "Gemma 4 12B GGUF", "engine": "ollama"},
                 {"id": "lmstudio:ggml-org/gemma-4-12B-it-GGUF", "name": "Gemma 4 12B GGUF", "engine": "lmstudio"},
             ],
             "action": "Runtime update needed",

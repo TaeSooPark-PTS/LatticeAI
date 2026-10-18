@@ -75,3 +75,44 @@ def test_catalog_omits_superseded_generation_models():
     )
     for fragment in blocked_fragments:
         assert not any(fragment in model_id for model_id in all_ids), fragment
+
+
+def test_every_recommended_model_has_all_five_engine_routes_and_exact_gguf_tags():
+    aliases = model_catalog.MODEL_ENGINE_ALIASES
+    for model in model_catalog.ENGINE_MODEL_CATALOG["local_mlx"]:
+        repo = model["id"].lower()
+        routes = aliases[repo]
+        for engine in ("local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"):
+            assert engine in routes, (repo, engine)
+        if "gemma-4-" in repo:
+            assert routes["ollama"].endswith(":Q4_0"), routes["ollama"]
+        elif "gpt-oss-20b" in repo:
+            assert routes["ollama"].endswith(":MXFP4"), routes["ollama"]
+        else:
+            assert routes["ollama"].endswith(":Q4_K_M"), routes["ollama"]
+
+
+def test_auxiliary_gguf_and_shard_completeness_guards(tmp_path):
+    from latticeai.services.model_runtime.download import (
+        _shards_complete,
+        is_auxiliary_gguf,
+    )
+
+    assert is_auxiliary_gguf("mmproj-BF16.gguf") is True
+    assert is_auxiliary_gguf("eagle3-gpt-oss-20b-BF16.gguf") is True
+    assert is_auxiliary_gguf("dflash-Qwen3.6-35B-A3B-Q8_0.gguf") is True
+    assert is_auxiliary_gguf("mtp-Qwen3.6-27B-BF16.gguf") is True
+    assert is_auxiliary_gguf("gpt-oss-20b-MXFP4.gguf") is False
+    assert is_auxiliary_gguf("gemma-4-12B-it-Q4_0.gguf") is False
+
+    assert _shards_complete(tmp_path) is True
+    index = tmp_path / "model.safetensors.index.json"
+    index.write_text(
+        '{"weight_map": {"w1": "model-00001-of-00002.safetensors", "w2": "model-00002-of-00002.safetensors"}}',
+        encoding="utf-8",
+    )
+    (tmp_path / "model-00001-of-00002.safetensors").write_bytes(b"s1")
+    assert _shards_complete(tmp_path) is False
+    (tmp_path / "model-00002-of-00002.safetensors").write_bytes(b"s2")
+    assert _shards_complete(tmp_path) is True
+

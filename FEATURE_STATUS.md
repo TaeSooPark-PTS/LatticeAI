@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v12.2.1)
+# Lattice AI Feature Status (v12.3.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **12.2.1 — True Count**.
+Current release: **12.3.0 — Live Wire**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 11.0.0 and later in `RELEASE.md` and

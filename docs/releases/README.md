@@ -11,6 +11,7 @@ files. Historical notes keep their original filenames.
 
 | Version | Theme | Note |
 | --- | --- | --- |
+| 12.3.0 | Live Wire | [RELEASE_NOTES_v12.3.0.md](RELEASE_NOTES_v12.3.0.md) |
 | 12.2.1 | True Count | [RELEASE_NOTES_v12.2.1.md](RELEASE_NOTES_v12.2.1.md) |
 | 12.2.0 | Small Voice | [RELEASE_NOTES_v12.2.0.md](RELEASE_NOTES_v12.2.0.md) |
 | 12.1.0 | Fast Path | [RELEASE_NOTES_v12.1.0.md](RELEASE_NOTES_v12.1.0.md) |

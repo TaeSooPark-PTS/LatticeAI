@@ -54,7 +54,7 @@ def test_gemma4_catalog_aliases_do_not_force_mlx_vlm():
     # Lookups fold case; the value is the Hub's canonical id (capital B).
     aliases = MODEL_ENGINE_ALIASES["mlx-community/gemma-4-12b-it-4bit"]
     assert aliases["local_mlx"] == "mlx-community/gemma-4-12B-it-4bit"
-    assert aliases["ollama"] == "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
+    assert aliases["ollama"] == "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0"
     assert aliases["lmstudio"] == "ggml-org/gemma-4-12B-it-GGUF"
     assert aliases["llamacpp"] == "ggml-org/gemma-4-12B-it-GGUF"
 
@@ -64,7 +64,7 @@ def test_gemma4_catalog_aliases_do_not_force_mlx_vlm():
         engine_aliases=MODEL_ENGINE_ALIASES,
     )
     assert ollama.engine == "ollama"
-    assert ollama.load_id == "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
+    assert ollama.load_id == "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0"
 
 
 def test_gemma4_26b_common_name_resolves_to_a4b_mlx_repo():

@@ -58,7 +58,6 @@ LOCAL_MLX_MODELS: Tuple[Tuple[str, int, bool], ...] = (
     ("mlx-community/multilingual-e5-large-mlx", 1024, True),
     ("mlx-community/snowflake-arctic-embed-l-v2.0-8bit", 1024, False),
     ("mlx-community/embeddinggemma-300m-4bit", 768, False),
-    ("mlx-community/bge-m3", 1024, False),
 )
 
 #: Ollama model names that are embedders rather than chat models.

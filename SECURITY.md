@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **12.2.1 — True Count**.
+Current release: **12.3.0 — Live Wire**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 12.2.1. Security
+The public Git tree keeps release history from 11.0.0 through 12.3.0. Security
 support follows that same product era: **only the 11.x and 12.x line receives
 fixes.**
 
@@ -24,7 +24,8 @@ history; the support line does not.
 
 | Version | Support |
 | --- | --- |
-| 12.2.x (latest) | Supported |
+| 12.3.x (latest) | Supported |
+| 12.2.x | Supported |
 | 11.9.x | Supported |
 | 11.8.x | Supported |
 | 11.7.x | Supported |

@@ -12,7 +12,7 @@
 [![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v12.2.1 Living Brain walkthrough](output/release/v12.2.1/gifs/v12.2.1-living-brain-walkthrough.gif)
+![v12.3.0 Living Brain walkthrough](output/release/v12.3.0/gifs/v12.3.0-living-brain-walkthrough.gif)
 
 Lattice AI is a Digital Brain that lives on your computer. Chat, files,
 folders, notes, and web pages all land in one knowledge graph you own.
@@ -42,19 +42,19 @@ LTCAI                    # then open http://127.0.0.1:4825/app
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v12.2.1/screenshots/01-login.png) | ![Model install](output/release/v12.2.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.2.1/screenshots/07-model-library.png) |
+| ![Login](output/release/v12.3.0/screenshots/01-login.png) | ![Model install](output/release/v12.3.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.3.0/screenshots/07-model-library.png) |
 
 Screenshot index:
-[output/release/v12.2.1/SCREENSHOT_INDEX.md](output/release/v12.2.1/SCREENSHOT_INDEX.md)
+[output/release/v12.3.0/SCREENSHOT_INDEX.md](output/release/v12.3.0/SCREENSHOT_INDEX.md)
 
 ## What you can do
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.2.1/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.2.1/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.2.1/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.2.1/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.2.1/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.2.1/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.2.1/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.2.1/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.3.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.3.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.3.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.3.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.3.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.3.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.3.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.3.0/screenshots/08-system.png) |
 
 ## Why this is yours
 
@@ -70,36 +70,42 @@ Screenshot index:
 
 ## Current Release
 
-The current release is **12.2.1 — True Count**:
+The current release is **12.3.0 — Live Wire**:
 
-Search, skip, watch, and small-model answers now count what is actually
-there instead of dumping, rehashing, or pretending. The door is still
-**422 operations / 41 families** over a **20-route worker**. Cloud is
-still optional and the default is still local.
+Model catalog routes, GGUF quantization tags, small-model tool/MCP calling,
+and HTML generation/inspection/download are verified end-to-end against live
+repositories and a loaded local model. The door is still **422 operations /
+41 families** over a **20-route worker**. Cloud is still optional and the
+default is still local.
 
-- **Search does not dump the Brain.** A warm HNSW query is `COUNT(*)`
-  then, if needed, the missing vectors only. Writes stay on one
-  `GraphWriter`.
-- **A touch is a stamp, not a re-ingest.** Same bytes with a new mtime
-  restamp provenance so the next scan skips by stamp.
-- **A vanished watched file leaves the graph.** Disk is never deleted.
-- **A thin summary is filled from the file that was read**, or held for
-  review — never marked done with empty words.
-- **MCP tools stay in the compact nine-row list.** `api_key` cloud
-  verifies with a live `GET /models` (no billed completion). Hash
-  search is named as hash, with a path to a meaning model.
+- **Verified Hugging Face GGUF tags & routes.** `ggml-org/gemma-4-*-GGUF`
+  uses `Q4_0`, `ggml-org/gpt-oss-20b-GGUF` uses `MXFP4`, and `Qwen3.5-9B` /
+  `Qwen3.6-35B-A3B` GGUF routes are wired across `ollama`, `lmstudio`, and
+  `llamacpp`.
+- **Auxiliary GGUF filtering, `--mmproj` companion load, and shard checks.**
+  `mmproj-`/`mtp-`/`dflash-`/`eagle3-`/`imatrix` GGUFs are excluded from
+  primary weight selection, companion `mmproj-*.gguf` files are downloaded
+  for `llama-server`, and `model.safetensors.index.json` shards are verified.
+- **Small-model tool calling & MCP calling hardening.** Expanded
+  `KNOWN_ACTIONS`, stringified `arguments` recovery, OpenAI `tool_calls`
+  array unwrapping, fenced HTML/code block salvage, and `adopt_named_args`
+  in `perform_action`.
+- **HTML structure inspection & RFC 5987 UTF-8 download.**
+  `POST /tools/inspect_html` extracts `title`, `links`, `scripts`,
+  `stylesheets`, `images`, `forms`, and `headings`; `GET /tools/download`
+  decodes UTF-8 paths and sends `filename*=UTF-8''...`.
 
 Release notes live in [docs/releases/](docs/releases/). This version:
-[docs/releases/RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md).
+[docs/releases/RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md).
 Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.2.1 must use exact filenames:
+Expected artifacts for 12.3.0 must use exact filenames:
 
-- `dist/ltcai-12.2.1-py3-none-any.whl`
-- `dist/ltcai-12.2.1.tar.gz`
-- `ltcai-12.2.1.tgz`
-- `dist/ltcai-12.2.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.2.1_aarch64.dmg`
+- `dist/ltcai-12.3.0-py3-none-any.whl`
+- `dist/ltcai-12.3.0.tar.gz`
+- `ltcai-12.3.0.tgz`
+- `dist/ltcai-12.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.3.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -170,7 +176,7 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
   pending-only, no Self-Model refiner, `delete_node` leaving `PART_OF`,
   review events silent without an owner, KG-api ingest text-only, two
   store cycles per review mutation) are listed with their reasons in
-  [docs/releases/RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md)
+  [docs/releases/RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md)
   and prioritized in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Release History
@@ -182,6 +188,7 @@ same boundary. Earlier notes live in [docs/releases/](docs/releases/).
 
 | Version | Theme |
 | --- | --- |
+| 12.3.0 | Live Wire |
 | 12.2.1 | True Count |
 | 12.2.0 | Small Voice |
 | 12.1.0 | Fast Path |

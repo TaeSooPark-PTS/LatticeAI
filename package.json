@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "12.2.1",
+  "version": "12.3.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -111,16 +111,14 @@
     "!TOOLS.md",
     "!USER.md",
     "!docs/images/tmp_frames/",
-    "!**/__pycache__/",
-    "!**/*.pyc",
-    "!**/*.map",
+    "!{latticeai,lattice_brain,skills,plugins,scripts}/**/__pycache__/",
+    "!{latticeai,lattice_brain,skills,plugins,scripts}/**/*.pyc",
+    "!static/**/*.map",
     "README.md",
     "static/vendor/",
     "src-tauri/",
     "!src-tauri/gen/",
-    "!src-tauri/gen/**",
     "!src-tauri/target/",
-    "!src-tauri/target/**",
     "docs/*.md",
     "!docs/assets/",
     "!docs/images/"

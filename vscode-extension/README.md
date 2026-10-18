@@ -12,6 +12,8 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
+**12.3.0 — Live Wire** keeps the One Door topology (422 operations / 41 families, 20-route worker) and verifies Hugging Face GGUF quantization tags (`Q4_0` for Gemma 4, `MXFP4` for GPT-OSS 20B), `Qwen3.5-9B` / `Qwen3.6-35B-A3B` GGUF routes, auxiliary GGUF filtering + companion `--mmproj` download, small-model tool/MCP argument recovery, and native HTML structure inspection (`/tools/inspect_html`) + RFC 5987 UTF-8 download (`/tools/download`). Full disclosure is in `docs/releases/RELEASE_NOTES_v12.3.0.md`.
+
 **12.2.1 — True Count** keeps the One Door topology (422 operations / 41 families, 20-route worker) and makes search, skip, watch, and small-model summaries count what is actually there. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.2.1.md`.
 
 **The extension surface is unchanged apart from its version.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before.

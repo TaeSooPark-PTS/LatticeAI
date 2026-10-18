@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **12.2.1 — True Count**.
+Current release: **12.3.0 — Live Wire**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -31,7 +31,7 @@ from .multimodal import (
     transcribe_audio,
 )
 
-__version__ = "12.2.1"
+__version__ = "12.3.0"
 
 __all__ = [
     "AudioFacts",

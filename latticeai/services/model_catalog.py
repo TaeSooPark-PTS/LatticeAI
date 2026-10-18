@@ -102,11 +102,17 @@ ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, Any]]] = {}
 # gated — the download could never succeed without Hub credentials.
 
 
-def _gguf_routes(mlx_repo: str, gguf_repo: str, hf_repo: str) -> Dict[str, str]:
+def _gguf_routes(
+    mlx_repo: str,
+    gguf_repo: str,
+    hf_repo: str,
+    *,
+    ollama_tag: str = "Q4_K_M",
+) -> Dict[str, str]:
     """One model's engine map: MLX weights, a GGUF repo, and the upstream HF repo."""
     return {
         "local_mlx": mlx_repo,
-        "ollama": f"hf.co/{gguf_repo}:Q4_K_M",
+        "ollama": f"hf.co/{gguf_repo}:{ollama_tag}",
         "vllm": hf_repo,
         "lmstudio": gguf_repo,
         "llamacpp": gguf_repo,
@@ -119,36 +125,38 @@ _ENGINE_ROUTES: Dict[str, Dict[str, str]] = {
     ),
     "mlx-community/gemma-4-e2b-it-4bit": _gguf_routes(
         "mlx-community/gemma-4-e2b-it-4bit", "ggml-org/gemma-4-E2B-it-GGUF", "google/gemma-4-E2B-it",
+        ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-e4b-it-4bit": _gguf_routes(
         "mlx-community/gemma-4-e4b-it-4bit", "ggml-org/gemma-4-E4B-it-GGUF", "google/gemma-4-E4B-it",
+        ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-12B-it-4bit": _gguf_routes(
         "mlx-community/gemma-4-12B-it-4bit", "ggml-org/gemma-4-12B-it-GGUF", "google/gemma-4-12B-it",
+        ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-26b-a4b-it-4bit": _gguf_routes(
         "mlx-community/gemma-4-26b-a4b-it-4bit", "ggml-org/gemma-4-26B-A4B-it-GGUF",
         "google/gemma-4-26B-A4B-it",
+        ollama_tag="Q4_0",
     ),
     "mlx-community/gemma-4-31b-it-4bit": _gguf_routes(
         "mlx-community/gemma-4-31b-it-4bit", "ggml-org/gemma-4-31B-it-GGUF", "google/gemma-4-31B-it",
+        ollama_tag="Q4_0",
     ),
     "mlx-community/Qwen3.6-27B-4bit": _gguf_routes(
         "mlx-community/Qwen3.6-27B-4bit", "ggml-org/Qwen3.6-27B-GGUF", "Qwen/Qwen3.6-27B",
     ),
     "mlx-community/gpt-oss-20b-MXFP4-Q8": _gguf_routes(
         "mlx-community/gpt-oss-20b-MXFP4-Q8", "ggml-org/gpt-oss-20b-GGUF", "openai/gpt-oss-20b",
+        ollama_tag="MXFP4",
     ),
-    # No community GGUF build verified for these two, so they offer the MLX
-    # weights and the upstream repo only rather than a route that would 404.
-    "mlx-community/Qwen3.5-9B-MLX-4bit": {
-        "local_mlx": "mlx-community/Qwen3.5-9B-MLX-4bit",
-        "vllm": "Qwen/Qwen3.5-9B",
-    },
-    "mlx-community/Qwen3.6-35B-A3B-4bit": {
-        "local_mlx": "mlx-community/Qwen3.6-35B-A3B-4bit",
-        "vllm": "Qwen/Qwen3.6-35B-A3B",
-    },
+    "mlx-community/Qwen3.5-9B-MLX-4bit": _gguf_routes(
+        "mlx-community/Qwen3.5-9B-MLX-4bit", "unsloth/Qwen3.5-9B-GGUF", "Qwen/Qwen3.5-9B",
+    ),
+    "mlx-community/Qwen3.6-35B-A3B-4bit": _gguf_routes(
+        "mlx-community/Qwen3.6-35B-A3B-4bit", "ggml-org/Qwen3.6-35B-A3B-GGUF", "Qwen/Qwen3.6-35B-A3B",
+    ),
 }
 
 # Names people actually type that are not the repo's own short name. Kept

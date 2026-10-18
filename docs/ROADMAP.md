@@ -3,7 +3,7 @@
 > **Status: reference** — point-in-time inventory, redated at v12.0.0. Not a
 > canonical current-release document; version gates do not bind it.
 
-As of **2026-08-29**, against the 12.2.1 — True Count tree. The rows below
+As of **2026-10-19**, against the 12.3.0 — Live Wire tree. The rows below
 were gathered against 11.9.0 and re-checked when 12.0.0 shipped; what that
 release closed is marked closed rather than deleted, so the ledger still
 shows what was owed.

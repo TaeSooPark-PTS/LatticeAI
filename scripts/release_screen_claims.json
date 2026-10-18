@@ -20,6 +20,19 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.3.0": {
+    "_why": [
+      "Live Wire is a backend and runtime release: verified Hugging Face GGUF",
+      "quantization tags (Q4_0 for gemma-4, MXFP4 for gpt-oss-20b), Qwen3.5-9B",
+      "and Qwen3.6-35B-A3B GGUF routing, auxiliary GGUF filtering + companion",
+      "mmproj- download for llama-server, shard-index verification, small-model",
+      "tool/MCP argument recovery and fenced HTML salvage, full HTML structure",
+      "inspection in /tools/inspect_html, and UTF-8 / RFC 5987 download headers.",
+      "",
+      "No screen was redesigned. Empty claim set on purpose. Unclaimed screens",
+      "are still measured and printed; they are not gated."
+    ]
+  },
   "12.2.1": {
     "_why": [
       "True Count is a backend honesty release: HNSW COUNT+delta, SkipByHash",

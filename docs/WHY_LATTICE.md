@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **12.2.1 — True Count**.
+Current release: **12.3.0 — Live Wire**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

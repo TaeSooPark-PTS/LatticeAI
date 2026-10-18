@@ -4,6 +4,40 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.3.0] - 2026-10-19 — Live Wire
+
+### Added
+- Full HTML structure parser in `POST /tools/inspect_html`: extracts `title`,
+  `links`, `scripts`, `stylesheets`, `images`, `forms`, and `headings`
+  (`h1`–`h6`) with `MAX_FILE_BYTES` enforcement.
+- RFC 5987 `filename*=UTF-8''...` `Content-Disposition` attachment headers and
+  UTF-8 percent-decoding in `GET /tools/download`.
+- Verified GGUF routing for `mlx-community/Qwen3.5-9B-MLX-4bit`
+  (`unsloth/Qwen3.5-9B-GGUF`) and `mlx-community/Qwen3.6-35B-A3B-4bit`
+  (`ggml-org/Qwen3.6-35B-A3B-GGUF`) across `ollama`, `lmstudio`, and `llamacpp`.
+- Companion `mmproj-*.gguf` download and `--mmproj` flag in
+  `ensure_llamacpp_server`, plus `is_auxiliary_gguf` filtering (`mmproj-`,
+  `mtp-`, `dflash-`, `eagle3-`, `imatrix`) and `_shards_complete` verification
+  for `model.safetensors.index.json`.
+- Small-model tool/MCP calling tolerances in `lattice-agent`: expanded
+  `KNOWN_ACTIONS`, stringified `arguments` recovery (trailing comma, truncation,
+  Python dict literal), OpenAI `tool_calls` array unwrapping, fenced HTML/code
+  block salvage for `write_file`/`local_write`, and `adopt_named_args` in
+  `perform_action`.
+
+### Changed
+- `_gguf_routes` now accepts per-repository `ollama_tag` (`Q4_0` for
+  `ggml-org/gemma-4-*-GGUF`, `MXFP4` for `ggml-org/gpt-oss-20b-GGUF`).
+- Cloud and local provider defaults updated to current models (`grok-4.6`,
+  `Qwen/Qwen3.6-27B`, `qwen/qwen3.6-35b-a3b`, `x-ai/grok-4.6`,
+  `hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_0`, `google/gemma-4-12B-it`).
+
+### Fixed
+- Removed nonexistent `mlx-community/bge-m3` from `LOCAL_MLX_MODELS` while
+  retaining `bge-m3` in `OLLAMA_EMBEDDING_MODELS`.
+- Fixed Latin-1 byte-to-char corruption on non-ASCII percent-encoded paths in
+  `/tools/download`.
+
 ## [12.2.1] - 2026-08-29 — True Count
 
 ### Added

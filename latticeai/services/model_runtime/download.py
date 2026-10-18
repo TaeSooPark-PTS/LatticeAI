@@ -10,6 +10,7 @@ differently.
 from __future__ import annotations
 
 import importlib.util
+import json
 import logging
 import time
 from pathlib import Path
@@ -18,6 +19,29 @@ from typing import Any, Dict, List, Optional
 from latticeai.core.quiet import quiet
 from latticeai.models.router import hf_cache_model_dir, hf_model_dir
 from latticeai.services.model_errors import ModelRuntimeError
+
+_AUXILIARY_GGUF_PREFIXES = ("mmproj-", "mtp-", "dflash-", "eagle3-")
+GGUF_QUANT_PREFERENCE = ("q4_k_m", "q4_0", "mxfp4", "q4_k_s", "q3_k_m", "q2_k", "q8_0")
+
+
+def is_auxiliary_gguf(filename: str) -> bool:
+    base = Path(str(filename)).name.lower()
+    return base.startswith(_AUXILIARY_GGUF_PREFIXES) or "imatrix" in base
+
+
+def _shards_complete(model_dir: Path) -> bool:
+    index_file = model_dir / "model.safetensors.index.json"
+    if not index_file.exists():
+        return True
+    try:
+        payload = json.loads(index_file.read_text(encoding="utf-8"))
+        weight_map = payload.get("weight_map") if isinstance(payload, dict) else None
+        if isinstance(weight_map, dict) and weight_map:
+            shards = {str(shard) for shard in weight_map.values() if shard}
+            return all((model_dir / shard).exists() for shard in shards)
+    except Exception:
+        quiet()
+    return True
 
 
 def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
@@ -32,9 +56,11 @@ def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
     if not model_dir.exists() or not model_dir.is_dir():
         return False
     if provider == "llamacpp":
-        return any(model_dir.rglob("*.gguf"))
+        return any(not is_auxiliary_gguf(p.name) for p in model_dir.rglob("*.gguf"))
     has_config = (model_dir / "config.json").exists()
-    has_weights = any(model_dir.glob("*.safetensors")) or any(model_dir.glob("*.bin"))
+    has_weights = (
+        any(model_dir.glob("*.safetensors")) or any(model_dir.glob("*.bin"))
+    ) and _shards_complete(model_dir)
     has_tokenizer = (
         (model_dir / "tokenizer.json").exists()
         or (model_dir / "tokenizer.model").exists()
@@ -139,15 +165,36 @@ def download_hf_model(
                 [item for item in all_files if str(item["name"]).lower().endswith(".gguf")],
                 key=lambda item: str(item["name"]),
             )
-            if not ggufs:
+            primary_ggufs = [item for item in ggufs if not is_auxiliary_gguf(str(item["name"]))]
+            if not primary_ggufs:
                 raise RuntimeError("GGUF 파일을 찾지 못했습니다.")
-            preference = ("q4_k_m", "q4_0", "q4_k_s", "q3_k_m", "q2_k")
             selected_files = [
                 next(
-                    (item for pref in preference for item in ggufs if pref in str(item["name"]).lower()),
-                    ggufs[0],
+                    (
+                        item
+                        for pref in GGUF_QUANT_PREFERENCE
+                        for item in primary_ggufs
+                        if pref in str(item["name"]).lower()
+                    ),
+                    primary_ggufs[0],
                 )
             ]
+            mmprojs = [
+                item
+                for item in ggufs
+                if Path(str(item["name"])).name.lower().startswith("mmproj-")
+            ]
+            if mmprojs:
+                preferred_mmproj = next(
+                    (
+                        item
+                        for pref in ("bf16", "f16", "f32")
+                        for item in mmprojs
+                        if pref in str(item["name"]).lower()
+                    ),
+                    mmprojs[0],
+                )
+                selected_files.append(preferred_mmproj)
         else:
             selected_files = all_files
 

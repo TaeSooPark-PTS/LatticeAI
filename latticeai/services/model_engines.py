@@ -332,6 +332,10 @@ def ensure_llamacpp_server(model_name: str) -> None:
         hf_model_dir,
         hf_model_ready,
     )
+    from latticeai.services.model_runtime.download import (
+        GGUF_QUANT_PREFERENCE,
+        is_auxiliary_gguf,
+    )
 
     served_models = get_openai_compatible_server_models("llamacpp")
     if model_name in served_models:
@@ -347,23 +351,31 @@ def ensure_llamacpp_server(model_name: str) -> None:
         download_hf_model(model_name, "llamacpp")
 
     gguf_files = sorted(hf_model_dir(model_name).rglob("*.gguf"))
-    if not gguf_files:
+    primary_ggufs = [p for p in gguf_files if not is_auxiliary_gguf(p.name)]
+    if not primary_ggufs:
         raise ModelRuntimeError(status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다.")
 
-    preferred = next((p for p in gguf_files if "q4_k_m" in p.name.lower()), None)
-    model_file = preferred or gguf_files[0]
+    preferred = next(
+        (p for pref in GGUF_QUANT_PREFERENCE for p in primary_ggufs if pref in p.name.lower()),
+        None,
+    )
+    model_file = preferred or primary_ggufs[0]
+    command = [
+        "llama-server",
+        "-m",
+        str(model_file),
+        "--alias",
+        model_name,
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8080",
+    ]
+    mmprojs = [p for p in gguf_files if p.name.lower().startswith("mmproj-")]
+    if mmprojs:
+        command.extend(["--mmproj", str(mmprojs[0])])
     LOCAL_SERVER_PROCESSES["llamacpp"] = subprocess.Popen(
-        [
-            "llama-server",
-            "-m",
-            str(model_file),
-            "--alias",
-            model_name,
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8080",
-        ],
+        command,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,

@@ -262,9 +262,14 @@ fn native_args(tool: &str) -> Vec<ArgSpec> {
             "workspace-relative path",
             ".",
         )],
-        "read_file" | "local_read" | "read_document" => {
+        "read_file" | "local_read" | "read_document" | "inspect_html" => {
             vec![ArgSpec::line("path", "workspace-relative path")]
         }
+        "preview_url" => vec![ArgSpec::line_defaulting(
+            "path",
+            "workspace-relative HTML file path",
+            "index.html",
+        )],
         "grep" | "search_files" => vec![ArgSpec::line("pattern", "the text or regex to look for")],
         "knowledge_search" | "obsidian_search" => {
             vec![ArgSpec::line("query", "what to look for")]
@@ -335,7 +340,7 @@ pub fn arg_synonyms(arg: &str) -> &'static [&'static str] {
             "directory",
             "dir",
         ],
-        "content" => &["body", "contents", "text"],
+        "content" => &["body", "contents", "text", "html", "code", "source", "data"],
         "command" => &["cmd", "command_line", "commandLine"],
         "url" => &["address", "link", "href"],
         "app" => &["application", "name"],
