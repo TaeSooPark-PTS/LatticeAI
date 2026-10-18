@@ -762,7 +762,7 @@ impl Runtime {
                 // `{"action": "mcp.grep", "args": {"search_term": "LatticeAI"}}`
                 // — so the run asked the model to invent a pattern while its own
                 // plan carried the user's word.
-                if let Some(value) = args.and_then(Value::as_object).and_then(&keyworded) {
+                if let Some(value) = args.and_then(Value::as_object).and_then(keyworded) {
                     return Some(value);
                 }
                 continue;

@@ -104,7 +104,7 @@ fn expand_matches(conn: &Connection, matches: &mut Vec<Value>) -> Result<Option<
     let seeds: Vec<String> = matches
         .iter()
         .take(EXPANSION_SEEDS)
-        .map(&node_id)
+        .map(node_id)
         .filter(|id| !id.is_empty())
         .collect();
     let seed_scores: Vec<f64> = matches
@@ -112,7 +112,7 @@ fn expand_matches(conn: &Connection, matches: &mut Vec<Value>) -> Result<Option<
         .take(EXPANSION_SEEDS)
         .map(|item| item.get("score").and_then(Value::as_f64).unwrap_or(0.0))
         .collect();
-    let present: BTreeSet<String> = matches.iter().map(&node_id).collect();
+    let present: BTreeSet<String> = matches.iter().map(node_id).collect();
     let (neighbours, report) = one_hop(
         conn,
         &seeds,
