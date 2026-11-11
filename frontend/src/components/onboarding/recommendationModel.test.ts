@@ -341,6 +341,123 @@ describe("naming helpers", () => {
     expect(rec16.role).toBe("embedding");
     expect(rec16.shortName).toBe("EmbeddingGemma 2");
 
+    const recFromCatalog = recommendedEmbeddingModel({
+      models: {
+        catalog: [
+          {
+            id: "google/embeddinggemma-2",
+            name: "Google EmbeddingGemma 2",
+            role: "embedding",
+            recommended_load_id: "mlx-community/embeddinggemma-2-4bit",
+          },
+        ],
+      },
+    });
+    expect(recFromCatalog.id).toBe("google/embeddinggemma-2");
+    expect(recFromCatalog.role).toBe("embedding");
+
+    // Profile and x86_64 fallback path (non-Apple Silicon)
+    const recX86 = recommendedEmbeddingModel({
+      recommendations: {
+        profile: { ram_gb: 32, apple_silicon: false },
+      },
+    });
+    expect(recX86.id).toBe("google/embeddinggemma-2");
+    expect(recX86.loadId).toBe("google/embeddinggemma-2");
+    expect(recX86.size).toBe("1.5GB");
+
+    // Profile and x86_64 constrained fallback path (<8GB RAM)
+    const recX86Low = recommendedEmbeddingModel({
+      setup: { environment: { ram_gb: 4, arch: "x86_64" } },
+    });
+    expect(recX86Low.id).toBe("google/embeddinggemma-300m");
+    expect(recX86Low.loadId).toBe("google/embeddinggemma-300m");
+    expect(recX86Low.size).toBe("0.3GB");
+
+    // Catalog matches by category, task, and name pattern
+    const recByCategory = recommendedEmbeddingModel({
+      models: {
+        catalog: [{ id: "custom-emb-cat", name: "Custom", category: "embedding" }],
+      },
+    });
+    expect(recByCategory.id).toBe("custom-emb-cat");
+
+    const recByTask = recommendedEmbeddingModel({
+      models: {
+        catalog: [{ id: "custom-emb-task", name: "Custom", task: "embedding" }],
+      },
+    });
+    expect(recByTask.id).toBe("custom-emb-task");
+
+    const recByRegex = recommendedEmbeddingModel({
+      models: {
+        catalog: [{ id: "org/embeddinggemma-2-custom", name: "Custom Gemma" }],
+      },
+    });
+    expect(recByRegex.id).toBe("org/embeddinggemma-2-custom");
+
+    const recByNameMatch = recommendedEmbeddingModel({
+      models: {
+        catalog: [{ name: "Custom Google EmbeddingGemma 2", recommended_load_id: "custom-id" }],
+      },
+    });
+    expect(recByNameMatch.id).toBe("custom-id");
+
+    const recByHf = recommendedEmbeddingModel({
+      models: {
+        catalog: [{ hf_repo_id: "google/embeddinggemma-2", recommended_load_id: "hf-id" }],
+      },
+    });
+    expect(recByHf.id).toBe("hf-id");
+
+    const recEmptyRow = recommendedEmbeddingModel({
+      models: {
+        catalog: [{}],
+      },
+    });
+    expect(recEmptyRow.id).toBe("google/embeddinggemma-2");
+
+    const recFallback16 = recommendedEmbeddingModel({});
+    expect(recFallback16.id).toBe("google/embeddinggemma-2");
+
+    const recFromRootRam = recommendedEmbeddingModel({
+      recommendations: {
+        recommendations: { ram_gb: 32 },
+      },
+    });
+    expect(recFromRootRam.id).toBe("google/embeddinggemma-2");
+
+    // Apple Silicon unconstrained (no explicit embedding_recommendation)
+    const recMacUnconstrained = recommendedEmbeddingModel({
+      setup: { environment: { ram_gb: 16, arch: "arm64", mlx: true } },
+    });
+    expect(recMacUnconstrained.id).toBe("google/embeddinggemma-2");
+    expect(recMacUnconstrained.loadId).toBe("mlx-community/embeddinggemma-2-4bit");
+    expect(recMacUnconstrained.size).toBe("0.4GB");
+
+    // models.embedding_recommendation and setup.recommendations.embedding_recommendation
+    const recFromModels = recommendedEmbeddingModel({
+      models: {
+        embedding_recommendation: {
+          hf_repo_id: "google/embeddinggemma-2",
+          name: "EmbeddingGemma 2",
+        },
+      },
+    });
+    expect(recFromModels.id).toBe("google/embeddinggemma-2");
+
+    const recFromSetup = recommendedEmbeddingModel({
+      setup: {
+        recommendations: {
+          embedding_recommendation: {
+            model_id: "google/embeddinggemma-2",
+            name: "EmbeddingGemma 2",
+          },
+        },
+      },
+    });
+    expect(recFromSetup.id).toBe("google/embeddinggemma-2");
+
     const recLowRam = recommendedEmbeddingModel({
       setup: { environment: { ram_gb: 6, arch: "arm64", mlx: true } },
     });

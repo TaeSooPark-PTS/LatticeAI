@@ -929,4 +929,23 @@ describe("MarketplacePanel", () => {
       ),
     );
   });
+
+  it("shows active badge when Google EmbeddingGemma 2 is currently loaded and ranks embedding models in catalog", async () => {
+    renderLibrary({
+      models: ok({
+        models: [
+          { id: "mlx-community/gemma-4-26b-a4b-it-4bit", name: "Gemma 4 26B", state: "loaded", engine: "local_mlx" },
+        ],
+        catalog: [
+          { id: "mlx-community/gemma-4-26b-a4b-it-4bit", name: "Gemma 4 26B", state: "loaded", engine: "local_mlx" },
+          { id: "google/embeddinggemma-2", name: "Google EmbeddingGemma 2", role: "embedding", state: "loaded", engine: "local_mlx" },
+        ],
+        current: "google/embeddinggemma-2",
+        loaded: ["google/embeddinggemma-2"],
+      }),
+      embeddingsStatus: ok({ grade: "ok", provider: "huggingface", ready: true }),
+    });
+    const recCard = await screen.findByTestId("library-embedding-recommendation");
+    expect(recCard.textContent).toContain(t("ko", "library.embedding.recommend.active"));
+  });
 });

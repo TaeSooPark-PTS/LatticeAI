@@ -237,9 +237,13 @@ pub fn recommend_from_catalog(
                 .or_insert_with(|| json!("embedding"));
             enriched.entry("role").or_insert_with(|| json!("embedding"));
             enriched.entry("task").or_insert_with(|| json!("embedding"));
-            enriched
-                .entry("hf_repo_id")
-                .or_insert_with(|| json!(if id.contains("300m") { "google/embeddinggemma-300m" } else { "google/embeddinggemma-2" }));
+            enriched.entry("hf_repo_id").or_insert_with(|| {
+                json!(if id.contains("300m") {
+                    "google/embeddinggemma-300m"
+                } else {
+                    "google/embeddinggemma-2"
+                })
+            });
             enriched.entry("dimensions").or_insert_with(|| json!(768));
         }
         if !enriched.contains_key("hardware") {
