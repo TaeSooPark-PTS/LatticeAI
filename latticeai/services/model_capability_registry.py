@@ -43,6 +43,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from .embedding_recommendation import (
+    build_embedding_capabilities,
+)
+from .embedding_recommendation import (
+    recommend_embedding_for_hardware as _rec_embedding_for_hardware,
+)
+
 
 @dataclass(frozen=True)
 class HardwareProfile:
@@ -109,6 +116,9 @@ class ModelCapability:
     # UI / rec hints
     recommended_default: bool = False
     display_priority: int = 100
+    category: str = "chat"
+    task: str = "chat"
+    dimensions: Optional[int] = None
 
     def to_legacy_dict(self) -> Dict[str, Any]:
         """Exact shape expected by older ENGINE_MODEL_CATALOG consumers + extra 5.2 fields."""
@@ -123,6 +133,9 @@ class ModelCapability:
             "modality": self.modality,
             "architecture": self.architecture,
             "lifecycle": self.lifecycle,
+            "category": self.category,
+            "task": self.task,
+            "role": "embedding" if self.category == "embedding" else "chat",
             "source_country": self.source_country,
             "source_company": self.source_company,
             "execution_method": self.execution_method,
@@ -162,6 +175,8 @@ class ModelCapability:
             },
             "recommended_default": self.recommended_default,
         }
+        if self.dimensions is not None:
+            base["dimensions"] = self.dimensions
         return base
 
 
@@ -526,6 +541,7 @@ _REGISTRY: List[ModelCapability] = [
         display_priority=60,
     ),
 ]
+_REGISTRY.extend(build_embedding_capabilities(ModelCapability, HardwareProfile, VerificationStatus))
 
 
 # ── Recognised-only entries (LEGACY) ──────────────────────────────────────────
@@ -782,4 +798,25 @@ def get_verified_models() -> List[Dict[str, Any]]:
         c.to_legacy_dict() for c in _REGISTRY
         if c.verification.hf_exists and c.verification.has_config and c.verification.has_tokenizer
     ]
+
+
+def get_embedding_capabilities() -> List[ModelCapability]:
+    """Return recommended embedding model capabilities (Google EmbeddingGemma 2 / 300M)."""
+    return [c for c in _REGISTRY if c.category == "embedding"]
+
+
+def recommend_embedding_for_hardware(
+    *,
+    ram_gb: Optional[float] = None,
+    apple_silicon: bool = False,
+    cuda: bool = False,
+) -> Dict[str, Any]:
+    """Return a PC-tailored embedding model recommendation accounting for RAM & accelerator."""
+    return _rec_embedding_for_hardware(
+        ram_gb=ram_gb,
+        apple_silicon=apple_silicon,
+        cuda=cuda,
+        get_capability_fn=get_capability,
+    )
+
 

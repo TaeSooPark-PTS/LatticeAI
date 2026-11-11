@@ -4,6 +4,19 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.5.0] - 2026-11-11 — Deep Vector
+
+### Added
+- Added native Hugging Face embedding provider for Google EmbeddingGemma 2 (`google/embeddinggemma-2`, `embeddinggemma-2`, `embeddinggemma-2-4bit`, `embeddinggemma-2-8bit`, `embeddinggemma-300m`, 768-dim) with mean-pooling, L2 normalization, task prefixes, and fallback protection in `latticeai/core/embedding_providers/text.py`.
+- Added hardware-aware PC-tailored embedding recommendations (`recommend_embedding_for_host`) in `rust/lattice-platform/src/modelops/models_catalog/embedding.rs` and `latticeai/services/embedding_recommendation.py` with memory reservation (0.5GB–1.5GB for Gemma 2, 0.3GB for 300M) before LLM selection.
+- Added PC-tailored EmbeddingGemma 2 recommendation card in `ProductFlow.tsx` (i18n supported) and surfaced Google EmbeddingGemma 2 in `Library.tsx` with 1-click prepare/download.
+- Added comprehensive visual E2E test suite `tests/visual/v3.all_buttons_inspection.spec.js` asserting all routes, controls, tabs, and buttons operate with 0 errors.
+
+### Changed
+- Migrated `scripts/check_screenshot_pixel_delta.py` from Pillow 14-deprecated `diff.getdata()` to `diff.get_flattened_data()`.
+- Upgraded all GitHub Actions workflows (`.github/workflows/*.yml`) to Node 24 native major versions with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"`.
+- Automated OpenAPI specification and fixture version synchronization across 49 targets in `scripts/bump_version.py`.
+
 ## [12.4.0] - 2026-11-11 — Sharp Weight
 
 ### Added

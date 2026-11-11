@@ -324,10 +324,14 @@ def _pixel_delta_pct(
                 w, h = canvas_a.size
         diff = ImageChops.difference(canvas_a, canvas_b)
         # Any channel delta > 8 counts as changed (ignore sub-pixel AA noise).
-        # Count on RGB getdata: a pixel is changed if any channel exceeds the
+        # Count on RGB get_flattened_data: a pixel is changed if any channel exceeds the
         # threshold. (A point()+convert("L") mask would average channels and
         # under-count single-channel diffs, so we do not use it.)
-        pixels = list(diff.getdata())
+        pixels = (
+            diff.get_flattened_data()
+            if hasattr(diff, "get_flattened_data")
+            else diff.getdata()
+        )
         changed = sum(1 for r, g, b in pixels if r > 8 or g > 8 or b > 8)
         total = w * h
         pct = (100.0 * changed / total) if total else 0.0

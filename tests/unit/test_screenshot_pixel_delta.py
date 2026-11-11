@@ -224,3 +224,31 @@ def test_capture_script_blocks_tagged_release_overwrite():
     guard_at = script.index("assertNotOverwritingTaggedRelease()")
     wipe_at = script.index("fs.rmSync(root")
     assert guard_at < wipe_at, "tag guard must run before wiping the evidence dir"
+
+
+def test_pixel_delta_pct_uses_get_flattened_data_without_deprecation_warning(delta, tmp_path):
+    """Pillow deprecated Image.getdata() in favor of get_flattened_data()."""
+    import warnings
+
+    from PIL import Image
+
+    img_a = tmp_path / "a.png"
+    img_b = tmp_path / "b.png"
+
+    im1 = Image.new("RGB", (4, 4), (0, 0, 0))
+    im2 = Image.new("RGB", (4, 4), (0, 0, 0))
+    # Change 4 of 16 pixels (25.0%) above the >8 channel delta threshold.
+    for x in range(4):
+        im2.putpixel((x, 0), (20, 0, 0))
+    im1.save(img_a)
+    im2.save(img_b)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        pct, changed, total, h_a, h_b = delta._pixel_delta_pct(img_a, img_b)
+
+    assert total == 16
+    assert changed == 4
+    assert pct == pytest.approx(25.0)
+    assert h_a == 4 and h_b == 4
+

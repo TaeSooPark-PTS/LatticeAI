@@ -9,7 +9,51 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+RECOMMENDED_EMBEDDING_MODEL = "google/embeddinggemma-2"
+RECOMMENDED_EMBEDDING_PROFILE = "local:embeddinggemma-2"
+
 PRODUCTION_PROVIDER_PROFILES: Dict[str, Dict[str, Any]] = {
+    # ── primary Google EmbeddingGemma 2 profiles ──────────────────────────
+    "local:embeddinggemma-2": {
+        "id": "local:embeddinggemma-2",
+        "provider": "huggingface",
+        "model": "google/embeddinggemma-2",
+        "hf_repo_id": "google/embeddinggemma-2",
+        "download_gb": 1.48,
+        "dimensions": 768,
+        "grade": "production",
+        "family": "local",
+        "recommended": True,
+        "label": "Google EmbeddingGemma 2 (Hugging Face 로컬)",
+        "detail": "Google DeepMind의 740M 다국어·멀티모달 시맨틱 임베딩 모델 (google/embeddinggemma-2, 768차원). 한국어·코드·문서 의미 검색에 최적화.",
+    },
+    "mlx:embeddinggemma-2": {
+        "id": "mlx:embeddinggemma-2",
+        "provider": "mlx",
+        "model": "mlx-community/embeddinggemma-2-4bit",
+        "hf_repo_id": "mlx-community/embeddinggemma-2-4bit",
+        "download_gb": 0.42,
+        "dimensions": 768,
+        "grade": "production",
+        "family": "mlx",
+        "recommended": True,
+        "label": "Google EmbeddingGemma 2 4-bit (Apple Silicon MLX)",
+        "detail": "Apple Silicon 가속 4비트 양자화 EmbeddingGemma 2 (768차원, 420MB).",
+    },
+    "local:embeddinggemma-300m": {
+        "id": "local:embeddinggemma-300m",
+        "provider": "huggingface",
+        "model": "google/embeddinggemma-300m",
+        "hf_repo_id": "google/embeddinggemma-300m",
+        "mlx_model": "mlx-community/embeddinggemma-300m-4bit",
+        "download_gb": 0.30,
+        "dimensions": 768,
+        "grade": "production",
+        "family": "local",
+        "recommended": False,
+        "label": "Google EmbeddingGemma 300M (저사양 PC 로컬)",
+        "detail": "저사양 PC를 위한 경량 다국어 시맨틱 임베딩 모델 (google/embeddinggemma-300m / mlx-community/embeddinggemma-300m-4bit, 768차원, 300MB).",
+    },
     # ── one-click local profiles (v12.0.0) ────────────────────────────────
     # These three carry `hf_repo_id` and `download_gb` because they are the
     # ones a setup surface can *offer to fetch*: the id is what

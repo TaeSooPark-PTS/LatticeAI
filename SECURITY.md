@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **12.4.0 — Sharp Weight**.
+Current release: **12.5.0 — Deep Vector**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 12.4.0. Security
+The public Git tree keeps release history from 11.0.0 through 12.5.0. Security
 support follows that same product era: **only the 11.x and 12.x line receives
 fixes.**
 
@@ -24,7 +24,8 @@ history; the support line does not.
 
 | Version | Support |
 | --- | --- |
-| 12.4.x (latest) | Supported |
+| 12.5.x (latest) | Supported |
+| 12.4.x | Supported |
 | 12.3.x | Supported |
 | 12.2.x | Supported |
 | 11.9.x | Supported |

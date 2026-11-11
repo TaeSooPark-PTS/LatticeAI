@@ -27,7 +27,13 @@ from latticeai.services.model_capability_registry import (
     get_capability as _get_capability,
 )
 from latticeai.services.model_capability_registry import (
+    get_embedding_capabilities as _get_embedding_capabilities,
+)
+from latticeai.services.model_capability_registry import (
     get_verified_models as _get_verified_models,
+)
+from latticeai.services.model_capability_registry import (
+    recommend_embedding_for_hardware as _recommend_embedding_for_hardware,
 )
 
 ENGINE_INSTALLERS: Dict[str, Dict[str, Any]] = {
@@ -170,6 +176,18 @@ _ENGINE_ROUTES: Dict[str, Dict[str, str]] = {
     "mlx-community/Qwen3.6-35B-A3B-4bit": _gguf_routes(
         "mlx-community/Qwen3.6-35B-A3B-4bit", "ggml-org/Qwen3.6-35B-A3B-GGUF", "Qwen/Qwen3.6-35B-A3B",
     ),
+    "google/embeddinggemma-2": _gguf_routes(
+        "google/embeddinggemma-2", "ggml-org/embeddinggemma-2-GGUF", "google/embeddinggemma-2",
+    ),
+    "mlx-community/embeddinggemma-2-4bit": _gguf_routes(
+        "mlx-community/embeddinggemma-2-4bit", "mlx-community/embeddinggemma-2-4bit-GGUF", "mlx-community/embeddinggemma-2-4bit",
+    ),
+    "google/embeddinggemma-300m": _gguf_routes(
+        "google/embeddinggemma-300m", "ggml-org/embeddinggemma-300m-GGUF", "google/embeddinggemma-300m",
+    ),
+    "mlx-community/embeddinggemma-300m-4bit": _gguf_routes(
+        "mlx-community/embeddinggemma-300m-4bit", "mlx-community/embeddinggemma-300m-4bit-GGUF", "mlx-community/embeddinggemma-300m-4bit",
+    ),
 }
 
 # Names people actually type that are not the repo's own short name. Kept
@@ -182,6 +200,8 @@ _COMMON_MISNAMES: Dict[str, str] = {
     "gemma-4-26b-optiq-4bit": "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
     "qwen-3.8-27b-4bit": "mlx-community/Qwen3.8-27B-4bit",
     "qwen3.8-27b": "mlx-community/Qwen3.8-27B-4bit",
+    "embeddinggemma2": "google/embeddinggemma-2",
+    "embeddinggemma-2-hf": "google/embeddinggemma-2",
 }
 
 # Keyed by both the lowercase short name ("gemma-4-12b-it-4bit") and the
@@ -198,7 +218,9 @@ MODEL_ENGINE_ALIASES: Dict[str, Dict[str, str]] = {
 # Also expose registry helpers directly from here for consumers who want the rich objects
 get_all_capabilities = _get_all_capabilities
 get_capability = _get_capability
+get_embedding_capabilities = _get_embedding_capabilities
 get_verified_models = _get_verified_models
+recommend_embedding_for_hardware = _recommend_embedding_for_hardware
 
 _VERSIONED_MODEL_PATTERNS = (
     ("gemma", re.compile(r"\bgemma[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
@@ -213,6 +235,8 @@ def _version_tuple(raw: str) -> tuple[int, ...]:
 
 def _model_family_version(model: Dict[str, Any]) -> Optional[tuple[str, tuple[int, ...]]]:
     text = " ".join(str(model.get(key) or "") for key in ("family", "name", "id"))
+    if "embeddinggemma" in text.lower() or model.get("category") == "embedding" or model.get("task") == "embedding":
+        return None
     for family, pattern in _VERSIONED_MODEL_PATTERNS:
         match = pattern.search(text)
         if match:
@@ -270,6 +294,8 @@ _BLOCKED_CATALOG_FRAGMENTS = (
 
 def _is_blocked_catalog_id(model: Dict[str, Any]) -> bool:
     ident = str(model.get("id") or "").lower()
+    if "embeddinggemma" in ident:
+        return False
     return any(fragment in ident for fragment in _BLOCKED_CATALOG_FRAGMENTS)
 
 
@@ -311,3 +337,107 @@ def _finalize_engine_catalog(
 
 
 ENGINE_MODEL_CATALOG = _finalize_engine_catalog(_RAW_ENGINE_MODEL_CATALOG)
+
+
+def recommend_models_for_pc(
+    *,
+    ram_gb: float = 16.0,
+    apple_silicon: bool = True,
+    cuda: bool = False,
+    engine: str = "local_mlx",
+) -> Dict[str, Any]:
+    """Compute PC-tailored model recommendations including EmbeddingGemma 2.
+
+    Evaluates the system RAM/VRAM budget while accounting for the embedding
+    model's memory footprint (``google/embeddinggemma-2`` uses ~0.5 GB in 4-bit
+    MLX / ~1.5 GB in FP16 HF; ``google/embeddinggemma-300m`` uses ~0.3 GB) so
+    the recommended LLM + embedding model setup fits comfortably on the host.
+    """
+    embedding_rec = recommend_embedding_for_hardware(
+        ram_gb=ram_gb,
+        apple_silicon=apple_silicon,
+        cuda=cuda,
+    )
+    embedding_ram_gb = float(embedding_rec.get("memory_footprint_gb") or 0.5)
+    effective_llm_ram_gb = max(0.0, float(ram_gb) - embedding_ram_gb)
+
+    catalog_rows = list(ENGINE_MODEL_CATALOG.get(engine) or ENGINE_MODEL_CATALOG.get("local_mlx") or [])
+    models_out: List[Dict[str, Any]] = []
+    chat_candidates: List[Dict[str, Any]] = []
+
+    for row in catalog_rows:
+        entry = dict(row)
+        category = str(entry.get("category") or "chat")
+        min_ram = float(entry.get("min_ram_gb") or 4.0)
+        rec_ram = float(entry.get("recommended_ram_gb") or max(min_ram, 8.0))
+        dl_gb = float(entry.get("download_size_gb") or 0.0)
+        if category == "embedding":
+            fits = float(ram_gb) + 0.01 >= min_ram
+            comfortable = float(ram_gb) + 0.01 >= rec_ram
+            status = "recommended" if comfortable else ("compatible" if fits else "not_recommended")
+            entry["compatibility"] = {
+                "status": status,
+                "reason": embedding_rec.get("reason") if status != "not_recommended" else f"최소 {min_ram:.0f}GB RAM이 필요합니다.",
+                "min_ram_gb": min_ram,
+                "recommended_ram_gb": rec_ram,
+            }
+            models_out.append(entry)
+            continue
+
+        # Account for the embedding model footprint when evaluating LLM fit.
+        exceeds_combined = dl_gb > 0.0 and (dl_gb + embedding_ram_gb) > float(ram_gb)
+        if exceeds_combined or effective_llm_ram_gb + 0.01 < min_ram:
+            status = "not_recommended"
+            reason = (
+                f"임베딩 모델({embedding_rec['id']}, ~{embedding_ram_gb:.1f}GB)과 함께 실행 시 "
+                f"최소 {min_ram + embedding_ram_gb:.1f}GB RAM이 필요합니다 (현재 {ram_gb:.1f}GB)."
+            )
+        elif effective_llm_ram_gb + 0.01 >= rec_ram or float(ram_gb) + 0.01 >= rec_ram:
+            status = "recommended"
+            reason = (
+                f"{ram_gb:.0f}GB RAM 환경에서 {embedding_rec['name']} (~{embedding_ram_gb:.1f}GB) 임베딩 모델과 "
+                f"동시에 여유 있게 실행됩니다 (권장 {rec_ram:.0f}GB)."
+            )
+        else:
+            status = "compatible"
+            reason = (
+                f"실행 가능하지만 임베딩 모델(~{embedding_ram_gb:.1f}GB) 병행 시 메모리가 빠듯할 수 있습니다 "
+                f"(최소 {min_ram:.0f}GB / 권장 {rec_ram:.0f}GB)."
+            )
+        entry["compatibility"] = {
+            "status": status,
+            "reason": reason,
+            "min_ram_gb": min_ram,
+            "recommended_ram_gb": rec_ram,
+            "embedding_reserved_ram_gb": embedding_ram_gb,
+        }
+        models_out.append(entry)
+        if status in {"recommended", "compatible"}:
+            chat_candidates.append(entry)
+
+    # Ensure the PC-tailored embedding recommendation is present in models_out
+    if not any(str(m.get("category") or "") == "embedding" for m in models_out):
+        models_out.append(dict(embedding_rec))
+
+    chat_candidates.sort(
+        key=lambda m: (
+            0 if m.get("compatibility", {}).get("status") == "recommended" else 1,
+            -float(m.get("recommended_ram_gb") or 0.0),
+            0 if m.get("recommended_default") else 1,
+            int(m.get("recommendation_priority") or 99),
+        )
+    )
+    top_pick = chat_candidates[0] if chat_candidates else None
+
+    return {
+        "ram_gb": float(ram_gb),
+        "effective_ram_gb": round(effective_llm_ram_gb, 2),
+        "embedding_reserved_ram_gb": embedding_ram_gb,
+        "apple_silicon": bool(apple_silicon),
+        "cuda": bool(cuda),
+        "top_pick": top_pick,
+        "embedding_model": embedding_rec["id"],
+        "embedding_recommendation": embedding_rec,
+        "models": models_out,
+    }
+

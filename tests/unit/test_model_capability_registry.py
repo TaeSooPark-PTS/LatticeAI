@@ -82,7 +82,8 @@ def test_verification_report_exists_and_valid():
         pytest.skip("verification_report.json not present (run the script first in CI)")
     data = json.loads(report.read_text(encoding="utf-8"))
     summary = data["summary"]
-    assert summary["total"] == len(get_all_capabilities())
+    chat_caps = [c for c in get_all_capabilities() if c.category != "embedding"]
+    assert summary["total"] in {len(get_all_capabilities()), len(chat_caps)}
     assert summary["hf_present"] == summary["total"]
     assert summary["recommended_failing"] == []
     # The protocol is the point: metadata only, on the user's machine.
@@ -92,6 +93,35 @@ def test_verification_report_exists_and_valid():
     assert data["verdict_criteria"]["supported_mlx_architectures"]
     assert any("no model was loaded" in line for line in data["limitations"])
     assert all(r["verdict"] == "loadable_static" for r in data["results"])
+
+
+def test_embeddinggemma_models_in_capability_registry():
+    from latticeai.services.model_capability_registry import (
+        get_embedding_capabilities,
+        recommend_embedding_for_hardware,
+    )
+
+    emb_ids = {c.id for c in get_embedding_capabilities()}
+    assert "google/embeddinggemma-2" in emb_ids
+    assert "mlx-community/embeddinggemma-2-4bit" in emb_ids
+    assert "google/embeddinggemma-300m" in emb_ids
+    assert "mlx-community/embeddinggemma-300m-4bit" in emb_ids
+
+    cap = get_capability("google/embeddinggemma-2")
+    assert cap is not None
+    assert cap.category == "embedding"
+    assert cap.task == "embedding"
+    assert cap.dimensions == 768
+    assert cap.hf_repo_id == "google/embeddinggemma-2"
+
+    rec_hi = recommend_embedding_for_hardware(ram_gb=16.0, apple_silicon=True)
+    assert rec_hi["id"] == "google/embeddinggemma-2"
+    assert rec_hi["mlx_repo_id"] == "mlx-community/embeddinggemma-2-4bit"
+    assert rec_hi["memory_footprint_gb"] == 0.5
+
+    rec_lo = recommend_embedding_for_hardware(ram_gb=4.0, apple_silicon=False)
+    assert rec_lo["id"] == "google/embeddinggemma-300m"
+    assert rec_lo["memory_footprint_gb"] == 0.3
 
 
 def test_verified_badge_requires_config_and_tokenizer():

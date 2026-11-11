@@ -18,7 +18,7 @@ export type RecommendedModel = {
   shortName: string;
   family: string;
   size: string;
-  role: "best" | "faster" | "advanced";
+  role: "best" | "faster" | "advanced" | "embedding";
   reason: string;
   supported: boolean;
   downloadRequired: boolean;
@@ -50,8 +50,10 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
   }
   if (topPick.id && !merged.has(String(topPick.id))) merged.set(String(topPick.id), topPick);
   const all = Array.from(merged.values()).map(toRecommendedModel).filter((item) => item.id);
-  const supported = all.filter((item) => item.supported);
-  const pool = supported.length ? supported : all;
+  const nonEmbeddingAll = all.filter((item) => item.role !== "embedding");
+  const candidateAll = nonEmbeddingAll.length ? nonEmbeddingAll : all;
+  const supported = candidateAll.filter((item) => item.supported);
+  const pool = supported.length ? supported : candidateAll;
   const byName = (pattern: RegExp) => pool.find((item) => pattern.test(`${item.name} ${item.id}`));
   const byId = (id?: unknown) => pool.find((item) => item.id === String(id));
   const best = byId(topPick.id) || byName(/gemma.*12|12b/i) || pool[0];
@@ -67,6 +69,99 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
     faster ? { ...faster, role: "faster" as const, reason: faster.reason || "faster" } : null,
     advanced ? { ...advanced, role: "advanced" as const, reason: advanced.reason || "advanced" } : null,
   ].filter(Boolean) as RecommendedModel[];
+}
+
+/**
+ * Derive the PC-tailored embedding model recommendation (`google/embeddinggemma-2`
+ * on >=8 GB RAM / Apple Silicon, or `google/embeddinggemma-300m` on constrained <8 GB RAM).
+ */
+export function recommendedEmbeddingModel(analysis: FlowAnalysis | null): RecommendedModel {
+  const models = asRecord(analysis?.models);
+  const recommendationRoot = asRecord(analysis?.recommendations?.recommendations);
+  const setupRoot = asRecord(analysis?.setup);
+  const setupRecs = asRecord(setupRoot.recommendations);
+  const setupEnv = asRecord(setupRoot.environment);
+  const profile = asRecord(analysis?.recommendations?.profile);
+
+  const explicitRec = asRecord(
+    recommendationRoot.embedding_recommendation
+      || models.embedding_recommendation
+      || setupRecs.embedding_recommendation,
+  );
+  if (explicitRec.id || explicitRec.model_id || explicitRec.hf_repo_id) {
+    const model = toRecommendedModel({
+      ...explicitRec,
+      id: explicitRec.id || explicitRec.hf_repo_id || "google/embeddinggemma-2",
+      category: "embedding",
+      role: "embedding",
+    });
+    return {
+      ...model,
+      role: "embedding",
+      reason: model.reason || "PC 맞춤 시맨틱 검색 · 지식 그래프 임베딩 모델 (Google EmbeddingGemma 2, 768차원)",
+    };
+  }
+
+  const allRows = [
+    ...asArray<ApiData>(recommendationRoot.models),
+    ...asArray<ApiData>(models.recommended),
+    ...asArray<ApiData>(models.catalog),
+  ];
+  const rowMatch = allRows.find((row) =>
+    row.category === "embedding"
+    || row.role === "embedding"
+    || row.task === "embedding"
+    || /embeddinggemma/i.test(String(row.id || row.name || row.hf_repo_id || "")),
+  );
+  if (rowMatch) {
+    const model = toRecommendedModel({ ...rowMatch, category: "embedding", role: "embedding" });
+    return {
+      ...model,
+      role: "embedding",
+      reason: model.reason || "PC 맞춤 시맨틱 검색 · 지식 그래프 임베딩 모델 (Google EmbeddingGemma 2, 768차원)",
+    };
+  }
+
+  const ramGb = Number(
+    recommendationRoot.ram_gb
+      || profile.ram_gb
+      || setupEnv.ram_gb
+      || 16,
+  );
+  const appleSilicon = Boolean(
+    recommendationRoot.apple_silicon
+      ?? profile.apple_silicon
+      ?? (String(setupEnv.arch || "").toLowerCase().includes("arm") || Boolean(setupEnv.mlx)),
+  );
+  const constrained = Number.isFinite(ramGb) && ramGb > 0 && ramGb < 8;
+  const id = constrained ? "google/embeddinggemma-300m" : "google/embeddinggemma-2";
+  const loadId = appleSilicon
+    ? (constrained ? "mlx-community/embeddinggemma-300m-4bit" : "mlx-community/embeddinggemma-2-4bit")
+    : id;
+  const name = constrained ? "Google EmbeddingGemma 300M" : "Google EmbeddingGemma 2";
+  const size = constrained ? "0.3GB" : (appleSilicon ? "0.4GB" : "1.5GB");
+
+  return {
+    id,
+    loadId,
+    engine: appleSilicon ? "local_mlx" : "huggingface",
+    name,
+    shortName: friendlyModelName(name),
+    family: "EmbeddingGemma",
+    size,
+    role: "embedding",
+    reason: constrained
+      ? `저사양 PC (${ramGb}GB RAM) 맞춤 초경량 시맨틱 임베딩 모델 (${name}, 768차원)`
+      : `PC 맞춤 Hugging Face / MLX 시맨틱 임베딩 모델 (${name}, 768차원)`,
+    supported: true,
+    downloadRequired: false,
+    downloadSize: size,
+    storageLocation: "~/.latticeai/models",
+    externalHost: "huggingface",
+    estimatedDownloadMinutes: 1,
+    estimatedFirstResponseSeconds: 2,
+    parameterBillions: constrained ? 0.3 : 2,
+  };
 }
 
 /**
@@ -171,6 +266,10 @@ export function toRecommendedModel(row: ApiData): RecommendedModel {
   const id = String(row.id || row.model_id || row.recommended_load_id || "");
   const loadId = String(row.recommended_load_id || row.load_id || id);
   const name = String(row.display_name || row.name || id || "recommended_brain");
+  const isEmbedding = row.category === "embedding"
+    || row.role === "embedding"
+    || row.task === "embedding"
+    || /embeddinggemma/i.test(`${name} ${id}`);
   const supported = row.load_status !== "unsupported"
     && row.load_status !== "runtime_update_needed"
     && row.status !== "not_recommended"
@@ -188,7 +287,7 @@ export function toRecommendedModel(row: ApiData): RecommendedModel {
     shortName: friendlyModelName(name),
     family: friendlyModelName(String(row.family || name)),
     size: String(row.size || ""),
-    role: "best",
+    role: isEmbedding ? "embedding" : "best",
     reason: String(row.reason || ""),
     supported,
     downloadRequired,
@@ -248,7 +347,7 @@ export function estimateFirstResponseSeconds(parameterBillions: number | null): 
 function externalHostLabel(row: ApiData) {
   const raw = String(row.source_url || row.download_url || row.repository || row.provider || row.id || "");
   if (!raw) return "";
-  if (/huggingface|hf\\.co|mlx-community/i.test(raw)) return "huggingface";
+  if (/huggingface|hf\.co|mlx-community|google\/embeddinggemma/i.test(raw)) return "huggingface";
   if (/ollama/i.test(raw)) return "ollama";
   return raw.replace(/^https?:\/\//, "").split("/")[0] || raw;
 }
@@ -256,8 +355,12 @@ function externalHostLabel(row: ApiData) {
 export function friendlyModelName(value: string) {
   return String(value || "recommended_brain")
     .replace(/^mlx-community\//i, "")
+    .replace(/^google\//i, "")
     .replace(/[-_]?Instruct/gi, "")
     .replace(/[-_]?4bit/gi, "")
+    .replace(/embeddinggemma[-_ ]?2\b/gi, "EmbeddingGemma 2")
+    .replace(/embeddinggemma[-_ ]?300m\b/gi, "EmbeddingGemma 300M")
+    .replace(/^Google\s+EmbeddingGemma/i, "EmbeddingGemma")
     .replace(/Qwen3[-_ ]?VL/gi, "Qwen 3")
     .replace(/Qwen3/gi, "Qwen 3")
     .replace(/Gemma[-_ ]?4/gi, "Gemma 4")

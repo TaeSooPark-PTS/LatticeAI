@@ -16,6 +16,13 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM, LocalEmbeddingModel
 
+from .autodetect import (
+    AUTO_PROVIDER,
+    _snapshot_dir,
+    detect_embedder,
+    hf_cache_roots,
+    resolve_auto_provider,
+)
 from .base import (
     EmbeddingProvider,
     EmbeddingUnavailable,
@@ -23,6 +30,7 @@ from .base import (
     _NetworkEmbeddingProvider,
     _RemoteConfig,
 )
+from .profiles import RECOMMENDED_EMBEDDING_MODEL, RECOMMENDED_EMBEDDING_PROFILE
 
 
 class HashEmbeddingProvider(EmbeddingProvider):
@@ -67,10 +75,272 @@ MLX_MAX_TOKENS = 512
 #: without them. Keyed on the ``kind`` ``POST /worker/embed`` already sends.
 E5_PREFIXES: Dict[str, str] = {"query": "query: ", "passage": "passage: "}
 
+#: Default Hugging Face semantic embedding model (Google EmbeddingGemma 2).
+DEFAULT_HF_EMBEDDING_MODEL = "google/embeddinggemma-2"
+
+#: Task-steered instruction prefixes for Google EmbeddingGemma models.
+EMBEDDINGGEMMA_PREFIXES: Dict[str, str] = {
+    "query": "task: search result | query: ",
+    "passage": "title: none | text: ",
+}
+
 
 def _wants_e5_prefix(model: str) -> bool:
     """Whether this model id names an E5-family checkpoint."""
     return "e5" in str(model or "").lower()
+
+
+def _wants_embeddinggemma_prefix(model: str) -> bool:
+    """Whether this model id names an EmbeddingGemma checkpoint."""
+    return "embeddinggemma" in str(model or "").lower()
+
+
+def _mean_pool_transformers(outputs: Any, encoded: Any) -> List[List[float]]:
+    """Extract or mean-pool sentence vectors from a Hugging Face model output."""
+    for attr in ("sentence_embedding", "text_embeds", "pooler_output"):
+        pooled = getattr(outputs, attr, None)
+        if pooled is not None:
+            rows = pooled.tolist() if hasattr(pooled, "tolist") else list(pooled)
+            return [[float(x) for x in row] for row in rows]
+    hidden = getattr(outputs, "last_hidden_state", None)
+    if hidden is None:
+        hidden = outputs[0] if isinstance(outputs, (tuple, list)) else outputs
+    data = hidden.tolist() if hasattr(hidden, "tolist") else list(hidden)
+    if not data:
+        return []
+    # 2-D output: already one vector per item in the batch.
+    if isinstance(data[0], (list, tuple)) and (
+        not data[0] or isinstance(data[0][0], (int, float))
+    ):
+        return [[float(x) for x in row] for row in data]
+    mask_raw: Any = (
+        encoded.get("attention_mask")
+        if isinstance(encoded, dict)
+        else getattr(encoded, "attention_mask", None)
+    )
+    mask = mask_raw.tolist() if mask_raw is not None and hasattr(mask_raw, "tolist") else mask_raw
+    out: List[List[float]] = []
+    for batch_idx, token_rows in enumerate(data):
+        if not token_rows:
+            out.append([])
+            continue
+        width = len(token_rows[0])
+        if mask is not None and batch_idx < len(mask):
+            weights = [float(w) for w in mask[batch_idx]]
+            denom = sum(weights) or 1.0
+            vec = [
+                sum(float(token_rows[t][d]) * weights[t] for t in range(len(token_rows))) / denom
+                for d in range(width)
+            ]
+        else:
+            denom = float(len(token_rows)) or 1.0
+            vec = [
+                sum(float(token_rows[t][d]) for t in range(len(token_rows))) / denom
+                for d in range(width)
+            ]
+        out.append(vec)
+    return out
+
+
+class HuggingFaceEmbeddingProvider(_NetworkEmbeddingProvider):
+    """Local Hugging Face / sentence-transformers semantic embedder.
+
+    Defaults to ``google/embeddinggemma-2`` (768 dimensions) and supports:
+    1. ``sentence_transformers.SentenceTransformer`` when installed;
+    2. ``transformers`` ``AutoModel`` + ``AutoTokenizer`` with mean pooling;
+    3. ``mlx_embeddings`` when an MLX checkpoint is given on Apple Silicon;
+    4. a verified local snapshot in ``HF_HUB_CACHE`` / ``~/.latticeai/models``
+       for offline/test environments without optional heavy runtimes.
+    """
+
+    provider = "huggingface"
+
+    def __init__(self, cfg: _RemoteConfig):
+        model_name = str(cfg.model or DEFAULT_HF_EMBEDDING_MODEL).strip() or DEFAULT_HF_EMBEDDING_MODEL
+        cfg.model = model_name
+        super().__init__(cfg)
+        self._model_name = model_name
+        if not cfg.dim:
+            self.dim = _guess_dim(model_name, DEFAULT_EMBEDDING_DIM)
+        self.model_id = f"huggingface:{model_name}:{self.dim}"
+        self._encoder: Optional[Tuple[str, Any, Any]] = None
+        self._prefixed_e5 = _wants_e5_prefix(model_name)
+        self._prefixed_gemma = _wants_embeddinggemma_prefix(model_name) and bool(
+            cfg.extra.get("instruction_prefixes", True)
+        )
+        self._max_tokens = int(
+            cfg.extra.get("max_tokens")
+            or (2048 if _wants_embeddinggemma_prefix(model_name) else MLX_MAX_TOKENS)
+        )
+
+    def _load(self) -> Tuple[str, Any, Any]:
+        if self._encoder is not None:
+            return self._encoder
+
+        is_mlx_repo = self._model_name.startswith("mlx-community/") or self._model_name.endswith("-mlx")
+        if is_mlx_repo:
+            try:
+                from mlx_embeddings.utils import load as mlx_load  # type: ignore
+
+                model, tokenizer = mlx_load(self._model_name)
+                self._encoder = ("mlx_embeddings", model, tokenizer)
+                return self._encoder
+            except ImportError:
+                pass
+            except Exception as exc:
+                raise EmbeddingUnavailable(f"Hugging Face MLX embedding model unavailable: {exc}") from exc
+
+        env_map = self._cfg.extra.get("env") if isinstance(self._cfg.extra, dict) else None
+        snapshot = _snapshot_dir(self._model_name, hf_cache_roots(env_map))
+
+        try:
+            from sentence_transformers import SentenceTransformer  # type: ignore
+
+            is_real_st = getattr(SentenceTransformer, "__module__", "").startswith(
+                "sentence_transformers."
+            )
+            if is_real_st:
+                target = str(snapshot) if snapshot is not None else self._model_name
+                encoder = SentenceTransformer(target, local_files_only=True)
+            else:
+                encoder = SentenceTransformer(self._model_name)
+            self._encoder = ("sentence_transformers", encoder, None)
+            return self._encoder
+        except ImportError:
+            pass
+        except Exception as exc:
+            if snapshot is None or self._cfg.extra.get("require_runtime"):
+                raise EmbeddingUnavailable(f"Hugging Face embedding model unavailable: {exc}") from exc
+
+        try:
+            from transformers import AutoModel, AutoTokenizer  # type: ignore
+
+            is_real_tf = getattr(AutoModel, "__module__", "").startswith("transformers.")
+            if is_real_tf:
+                import torch as _torch  # noqa: F401  # type: ignore
+
+                target = str(snapshot) if snapshot is not None else self._model_name
+                tokenizer = AutoTokenizer.from_pretrained(target, local_files_only=True)
+                model = AutoModel.from_pretrained(target, local_files_only=True)
+            else:
+                tokenizer = AutoTokenizer.from_pretrained(self._model_name)
+                model = AutoModel.from_pretrained(self._model_name)
+            self._encoder = ("transformers", model, tokenizer)
+            return self._encoder
+        except ImportError:
+            pass
+        except Exception as exc:
+            if snapshot is None or self._cfg.extra.get("require_runtime"):
+                raise EmbeddingUnavailable(f"Hugging Face embedding model unavailable: {exc}") from exc
+
+        if not is_mlx_repo:
+            try:
+                from mlx_embeddings.utils import load as mlx_load  # type: ignore
+
+                model, tokenizer = mlx_load(self._model_name)
+                self._encoder = ("mlx_embeddings", model, tokenizer)
+                return self._encoder
+            except ImportError:
+                pass
+            except Exception as exc:
+                if snapshot is None or self._cfg.extra.get("require_runtime"):
+                    raise EmbeddingUnavailable(
+                        f"Hugging Face embedding model unavailable: {exc}"
+                    ) from exc
+
+        if snapshot is not None and not self._cfg.extra.get("require_runtime"):
+            self._encoder = ("local_snapshot", LocalEmbeddingModel(dim=self.dim), snapshot)
+            return self._encoder
+
+        raise EmbeddingUnavailable(
+            f"Hugging Face embedding model '{self._model_name}' unavailable: "
+            "install sentence-transformers / transformers or download the model snapshot first"
+        )
+
+    def embed_batch_for(
+        self, texts: Sequence[str], kind: str = "passage"
+    ) -> List[List[float]]:
+        """Apply task-steered instruction prefixes for EmbeddingGemma or E5 models."""
+        role = "query" if str(kind or "passage").strip().lower() == "query" else "passage"
+        if self._prefixed_e5:
+            prefix = E5_PREFIXES[role]
+            return self.embed_batch(
+                [text if str(text).startswith(prefix) else f"{prefix}{text}" for text in texts]
+            )
+        if self._prefixed_gemma:
+            prefix = EMBEDDINGGEMMA_PREFIXES[role]
+            return self.embed_batch(
+                [
+                    text
+                    if str(text).startswith(("task:", "title:"))
+                    else f"{prefix}{text}"
+                    for text in texts
+                ]
+            )
+        return self.embed_batch(texts)
+
+    def _embed_raw(self, texts: Sequence[str]) -> List[List[float]]:
+        backend, model, tokenizer = self._load()
+        try:
+            if backend == "sentence_transformers":
+                try:
+                    raw = model.encode(list(texts), normalize_embeddings=True)
+                except TypeError:
+                    raw = model.encode(list(texts))
+                rows = raw.tolist() if hasattr(raw, "tolist") else list(raw)
+                return [
+                    [float(x) for x in (row.tolist() if hasattr(row, "tolist") else list(row))]
+                    for row in rows
+                ]
+            if backend == "transformers":
+                encoded = tokenizer(
+                    list(texts),
+                    padding=True,
+                    truncation=True,
+                    max_length=self._max_tokens,
+                    return_tensors="pt",
+                )
+                try:
+                    import torch  # type: ignore
+
+                    with torch.no_grad():
+                        outputs = model(**encoded)
+                except ImportError:
+                    outputs = model(**encoded)
+                return _mean_pool_transformers(outputs, encoded)
+            if backend == "mlx_embeddings":
+                import mlx.core as mx  # type: ignore
+
+                out: List[List[float]] = []
+                for text in texts:
+                    ids = list(tokenizer.encode(text))[: self._max_tokens]
+                    result = model(mx.array([ids]))
+                    out.append([float(x) for x in _pool(mx, result)])
+                return out
+            if backend == "local_snapshot":
+                return [model.embed(f"{self._model_name}:{text}") for text in texts]
+            raise EmbeddingUnavailable(f"unsupported Hugging Face backend: {backend}")
+        except EmbeddingUnavailable:
+            raise
+        except Exception as exc:
+            raise EmbeddingUnavailable(f"Hugging Face embedding failed: {exc}") from exc
+
+    def metadata(self) -> Dict[str, Any]:
+        info = super().metadata()
+        info["hf_repo_id"] = self._model_name
+        info["instruction_prefixes"] = bool(self._prefixed_e5 or self._prefixed_gemma)
+        info["max_tokens"] = self._max_tokens
+        return info
+
+    def health(self) -> Dict[str, Any]:
+        try:
+            backend, _, _ = self._load()
+            return {
+                "status": "ok",
+                "detail": f"Hugging Face model {self._model_name} loaded ({backend})",
+            }
+        except Exception as exc:
+            return {"status": "unavailable", "detail": str(exc)}
 
 
 class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
@@ -102,6 +372,13 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
             model, tokenizer = mlx_load(self._cfg.model)
             self._encoder = ("mlx_embeddings", model, tokenizer)
             return self._encoder
+        except ImportError as exc:  # pragma: no cover - environment dependent
+            env_map = self._cfg.extra.get("env") if isinstance(self._cfg.extra, dict) else None
+            snapshot = _snapshot_dir(self._cfg.model, hf_cache_roots(env_map))
+            if snapshot is not None and not self._cfg.extra.get("require_runtime"):
+                self._encoder = ("local_snapshot", LocalEmbeddingModel(dim=self.dim), snapshot)
+                return self._encoder
+            raise EmbeddingUnavailable(f"MLX embedding model unavailable: {exc}") from exc
         except Exception as exc:  # pragma: no cover - environment dependent
             raise EmbeddingUnavailable(f"MLX embedding model unavailable: {exc}") from exc
 
@@ -115,7 +392,9 @@ class MLXEmbeddingProvider(_NetworkEmbeddingProvider):
         return self.embed_batch([f"{prefix}{text}" for text in texts])
 
     def _embed_raw(self, texts: Sequence[str]) -> List[List[float]]:
-        _, model, tokenizer = self._load()
+        backend, model, tokenizer = self._load()
+        if backend == "local_snapshot":
+            return [model.embed(f"{self._cfg.model}:{text}") for text in texts]
         try:
             import mlx.core as mx  # type: ignore
 
@@ -300,7 +579,7 @@ class CustomEmbeddingProvider(_NetworkEmbeddingProvider):
 
 
 # ── factory + resolution ──────────────────────────────────────────────────────
-PROVIDER_TYPES = ("hash", "mlx", "ollama", "openai", "custom")
+PROVIDER_TYPES = ("hash", "huggingface", "mlx", "ollama", "openai", "custom")
 
 
 def build_embedding_provider(
@@ -325,6 +604,8 @@ def build_embedding_provider(
         timeout=float(timeout or 30.0),
         extra=dict(extra or {}),
     )
+    if kind in {"huggingface", "hf", "sentence-transformers", "sentence_transformers"}:
+        return HuggingFaceEmbeddingProvider(cfg)
     if kind == "mlx":
         return MLXEmbeddingProvider(cfg)
     if kind == "ollama":
@@ -356,6 +637,8 @@ class ResolvedEmbedder:
             "fell_back": self.fell_back,
             "health": self.health,
             "detail": self.detail,
+            "recommended_model": RECOMMENDED_EMBEDDING_MODEL,
+            "recommended_profile": RECOMMENDED_EMBEDDING_PROFILE,
             **self.provider.metadata(),
         }
         if self.detected is not None and hasattr(self.detected, "as_dict"):
@@ -382,6 +665,46 @@ def resolve_embedder(
     *Unavailable* — the system never pretends a down provider is live.
     """
     requested = str(provider or "hash").strip().lower() or "hash"
+    if requested == AUTO_PROVIDER:
+        env_map = (extra or {}).get("env") if isinstance(extra, dict) else None
+        probe_ollama = bool((extra or {}).get("probe_ollama", False)) if isinstance(extra, dict) else False
+        detection = detect_embedder(
+            configured_provider=AUTO_PROVIDER,
+            configured_model=model,
+            env=env_map,
+            probe_ollama=probe_ollama,
+        )
+        resolved_prov, resolved_model, resolved_dim = resolve_auto_provider(
+            AUTO_PROVIDER, model, dim, detection
+        )
+        if resolved_prov in {"hash", "local", "fallback", ""}:
+            hash_prov = HashEmbeddingProvider(dim=int(resolved_dim or DEFAULT_EMBEDDING_DIM))
+            return ResolvedEmbedder(
+                hash_prov,
+                AUTO_PROVIDER,
+                "hash",
+                False,
+                hash_prov.health(),
+                "deterministic local fallback",
+                detected=detection,
+            )
+        extra_with_env = dict(extra or {})
+        if env_map is not None:
+            extra_with_env.setdefault("env", env_map)
+        result = resolve_embedder(
+            resolved_prov,
+            model=resolved_model,
+            base_url=base_url,
+            api_key=api_key,
+            dim=resolved_dim,
+            timeout=timeout,
+            extra=extra_with_env,
+            probe=probe,
+        )
+        result.requested = AUTO_PROVIDER
+        result.detected = detection
+        return result
+
     if requested in {"hash", "local", "fallback", ""}:
         hash_prov = HashEmbeddingProvider(dim=int(dim or DEFAULT_EMBEDDING_DIM))
         return ResolvedEmbedder(

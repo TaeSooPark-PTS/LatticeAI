@@ -125,6 +125,8 @@ pub async fn fetch_worker_catalog(worker: Option<&WorkerSeamClient>) -> WorkerCa
     }
 }
 
+pub use super::embedding::recommend_embedding_for_host;
+
 /// Build the `/models/recommendations` body from a probe + worker payload.
 pub fn recommend_from_catalog(
     probe: &HostProbe,
@@ -133,6 +135,14 @@ pub fn recommend_from_catalog(
 ) -> (OrderedMap, OrderedMap) {
     let rows = merge_catalog_rows(&catalog.models);
     let engine_available = engine_is_available(&catalog.models, engine);
+    let embedding_rec = recommend_embedding_for_host(probe, engine);
+    let embedding_ram_gb = embedding_rec
+        .get("memory_footprint_gb")
+        .and_then(Value::as_f64)
+        .unwrap_or(0.5);
+    let ram_gb = probe.ram_gb as f64;
+    let effective_llm_ram_gb = (ram_gb - embedding_ram_gb).max(0.0);
+
     let mut models = Vec::new();
     let mut families: BTreeMap<String, Vec<Value>> = BTreeMap::new();
     let mut recommended = 0u64;
@@ -149,12 +159,20 @@ pub fn recommend_from_catalog(
         let family = row_str(&row, "family")
             .or_else(|| hints.map(|h| h.family.to_string()))
             .unwrap_or_else(|| "unknown".into());
+        let is_embedding = row_str(&row, "category").as_deref() == Some("embedding")
+            || row_str(&row, "role").as_deref() == Some("embedding")
+            || row_str(&row, "task").as_deref() == Some("embedding")
+            || id.to_ascii_lowercase().contains("embeddinggemma");
         let rec_ram = row_ram(&row, "recommended_ram_gb")
             .or_else(|| hints.map(|h| h.recommended_ram_gb))
             .unwrap_or(0.0);
         let min_ram = row_ram(&row, "min_ram_gb")
             .or_else(|| hints.map(|h| h.min_ram_gb))
             .unwrap_or(rec_ram);
+        let dl_gb = row
+            .get("download_size_gb")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0);
         let display_priority = row
             .get("display_priority")
             .and_then(Value::as_i64)
@@ -168,15 +186,27 @@ pub fn recommend_from_catalog(
             .pointer("/runtime_compatibility/supported")
             .and_then(Value::as_bool)
             != Some(false);
-        let ram_gb = probe.ram_gb as f64;
+
+        let exceeds_combined = !is_embedding
+            && probe.ram_bytes.is_some()
+            && dl_gb > 0.0
+            && (dl_gb + embedding_ram_gb) > ram_gb + 0.01;
+
         let status = if !runtime_supported
             || load_status == "not_recommended"
+            || exceeds_combined
             || (min_ram > 0.0 && ram_gb + 0.01 < min_ram)
+            || (!is_embedding
+                && probe.ram_bytes.is_some()
+                && min_ram > 0.0
+                && effective_llm_ram_gb + 0.01 < min_ram)
         {
             "not_recommended"
         } else if rec_ram > 0.0 && ram_gb + 0.01 >= rec_ram {
             "recommended"
-        } else if probe.ram_bytes.is_none() || (min_ram > 0.0 && ram_gb + 0.01 >= min_ram) {
+        } else if probe.ram_bytes.is_none()
+            || (min_ram > 0.0 && effective_llm_ram_gb + 0.01 >= min_ram)
+        {
             "compatible"
         } else {
             "not_recommended"
@@ -201,6 +231,17 @@ pub fn recommend_from_catalog(
         enriched
             .entry("display_priority")
             .or_insert_with(|| json!(display_priority));
+        if is_embedding {
+            enriched
+                .entry("category")
+                .or_insert_with(|| json!("embedding"));
+            enriched.entry("role").or_insert_with(|| json!("embedding"));
+            enriched.entry("task").or_insert_with(|| json!("embedding"));
+            enriched
+                .entry("hf_repo_id")
+                .or_insert_with(|| json!(if id.contains("300m") { "google/embeddinggemma-300m" } else { "google/embeddinggemma-2" }));
+            enriched.entry("dimensions").or_insert_with(|| json!(768));
+        }
         if !enriched.contains_key("hardware") {
             if let Some(hints) = hints {
                 enriched.insert(
@@ -215,16 +256,40 @@ pub fn recommend_from_catalog(
         let value = Value::Object(enriched);
         let default_rank = if recommended_default { 0 } else { 1 };
         let ram_rank = if status == "not_recommended" { 1 } else { 0 };
-        scored.push((ram_rank, default_rank, display_priority, value.clone()));
+        if !is_embedding {
+            scored.push((ram_rank, default_rank, display_priority, value.clone()));
+        }
         families.entry(family).or_default().push(value.clone());
         models.push(value);
+    }
+
+    if catalog.reachable
+        && !models.iter().any(|m| {
+            m.get("category").and_then(Value::as_str) == Some("embedding")
+                || m.get("role").and_then(Value::as_str) == Some("embedding")
+                || m.get("id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|s| s.to_ascii_lowercase().contains("embeddinggemma"))
+        })
+    {
+        families
+            .entry("EmbeddingGemma".to_string())
+            .or_default()
+            .push(embedding_rec.clone());
+        models.push(embedding_rec.clone());
     }
 
     scored.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
     let top_pick = scored
         .into_iter()
         .find(|(ram_rank, _, _, _)| *ram_rank == 0)
-        .or_else(|| models.first().cloned().map(|value| (1, 1, 100, value)))
+        .or_else(|| {
+            models
+                .iter()
+                .find(|m| m.get("category").and_then(Value::as_str) != Some("embedding"))
+                .cloned()
+                .map(|value| (1, 1, 100, value))
+        })
         .map(|(_, _, _, value)| value);
 
     let family_rows: Vec<Value> = families
@@ -243,6 +308,12 @@ pub fn recommend_from_catalog(
     counts.insert("compatible", json!(compatible));
     counts.insert("not_recommended", json!(not_recommended));
 
+    let embedding_model_id = embedding_rec
+        .get("id")
+        .and_then(Value::as_str)
+        .unwrap_or("google/embeddinggemma-2")
+        .to_string();
+
     let mut recs = OrderedMap::new();
     recs.insert("engine", json!(engine));
     recs.insert(
@@ -251,6 +322,10 @@ pub fn recommend_from_catalog(
     );
     recs.insert("apple_silicon", json!(probe.apple_silicon));
     recs.insert("ram_gb", json!(probe.ram_gb));
+    recs.insert("effective_ram_gb", json!(effective_llm_ram_gb));
+    recs.insert("embedding_reserved_ram_gb", json!(embedding_ram_gb));
+    recs.insert("embedding_model", json!(embedding_model_id));
+    recs.insert("embedding_recommendation", embedding_rec);
     recs.insert("counts", serde_json::to_value(&counts).unwrap_or(json!({})));
     recs.insert("top_pick", top_pick.unwrap_or(Value::Null));
     recs.insert("families", json!(family_rows));
@@ -296,12 +371,12 @@ pub fn recommend_from_catalog(
 }
 
 #[derive(Clone, Copy)]
-struct CatalogHint {
-    family: &'static str,
-    min_ram_gb: f64,
-    recommended_ram_gb: f64,
-    recommended_default: bool,
-    display_priority: i64,
+pub(crate) struct CatalogHint {
+    pub(crate) family: &'static str,
+    pub(crate) min_ram_gb: f64,
+    pub(crate) recommended_ram_gb: f64,
+    pub(crate) recommended_default: bool,
+    pub(crate) display_priority: i64,
 }
 
 /// Display priority / RAM floors the worker `to_legacy_dict` omits.
@@ -443,6 +518,7 @@ fn catalog_hints(id: &str) -> Option<&'static CatalogHint> {
         .iter()
         .find(|(known, _)| *known == id)
         .map(|(_, hint)| hint)
+        .or_else(|| super::embedding::embedding_catalog_hints(id))
 }
 
 fn merge_catalog_rows(payload: &Value) -> Vec<Value> {
@@ -828,5 +904,54 @@ mod tests {
             catalog_hints("mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit").expect("optiq hint");
         assert_eq!(optiq.family, "Gemma 4");
         assert_eq!(optiq.display_priority, 51);
+
+        let emb2 = catalog_hints("google/embeddinggemma-2").expect("embeddinggemma-2 hint");
+        assert_eq!(emb2.family, "EmbeddingGemma");
+        assert_eq!(emb2.display_priority, 70);
+    }
+
+    #[test]
+    fn recommend_embedding_for_host_tailors_to_ram_and_accounts_for_footprint() {
+        let probe_16gb = HostProbe {
+            os: "macos".into(),
+            os_version: "15.0".into(),
+            arch: "aarch64".into(),
+            apple_silicon: true,
+            ram_bytes: Some(16 * 1024 * 1024 * 1024),
+            ram_gb: 16,
+            ram_mb: 16 * 1024,
+            cpu_model: "Apple M-series".into(),
+            cpu_cores: 8,
+            cpu_logical_cores: 8,
+            disk_free_bytes: None,
+            disk_free_gb: 0,
+            disk_free_mb: 0,
+            package_manager: "brew".into(),
+            has_internet: true,
+        };
+        let emb_16 = recommend_embedding_for_host(&probe_16gb, "local_mlx");
+        assert_eq!(emb_16["id"], json!("google/embeddinggemma-2"));
+        assert_eq!(emb_16["hf_repo_id"], json!("google/embeddinggemma-2"));
+        assert_eq!(
+            emb_16["mlx_repo_id"],
+            json!("mlx-community/embeddinggemma-2-4bit")
+        );
+        assert_eq!(emb_16["category"], json!("embedding"));
+        assert_eq!(emb_16["role"], json!("embedding"));
+        assert_eq!(emb_16["task"], json!("embedding"));
+        assert_eq!(emb_16["dimensions"], json!(768));
+        assert_eq!(emb_16["memory_footprint_gb"], json!(0.5));
+
+        let mut probe_6gb = probe_16gb.clone();
+        probe_6gb.ram_gb = 6;
+        probe_6gb.ram_mb = 6 * 1024;
+        probe_6gb.ram_bytes = Some(6 * 1024 * 1024 * 1024);
+        let emb_6 = recommend_embedding_for_host(&probe_6gb, "local_mlx");
+        assert_eq!(emb_6["id"], json!("google/embeddinggemma-300m"));
+        assert_eq!(
+            emb_6["mlx_repo_id"],
+            json!("mlx-community/embeddinggemma-300m-4bit")
+        );
+        assert_eq!(emb_6["memory_footprint_gb"], json!(0.3));
     }
 }

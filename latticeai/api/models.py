@@ -264,6 +264,11 @@ def create_models_router(
                 "size": item["size"],
                 "display_name": item.get("name") or item.get("id"),
                 "modality": item.get("modality") or "multimodal",
+                "category": item.get("category") or ("embedding" if item.get("task") == "embedding" else "chat"),
+                "task": item.get("task") or ("embedding" if item.get("category") == "embedding" else "chat"),
+                "role": item.get("role") or ("embedding" if item.get("category") == "embedding" else "chat"),
+                "dimensions": item.get("dimensions"),
+                "hf_repo_id": item.get("hf_repo_id") or item["id"],
                 "source_country": item.get("source_country"),
                 "source_company": item.get("source_company"),
                 "execution_method": item.get("execution_method"),
@@ -356,12 +361,27 @@ def create_models_router(
         )
         # 5.2.0: surface structured registry info (verified status, hf, hardware, strategies) for UX
         try:
-            from latticeai.services.model_catalog import get_verified_models
+            from latticeai.services.model_catalog import (
+                get_verified_models,
+                recommend_embedding_for_hardware,
+            )
             verified = get_verified_models()
+            embedding_rec = recommend_embedding_for_hardware()
         except Exception:
             verified = []
+            embedding_rec = {
+                "id": "google/embeddinggemma-2",
+                "hf_repo_id": "google/embeddinggemma-2",
+                "name": "Google EmbeddingGemma 2",
+                "category": "embedding",
+                "task": "embedding",
+                "role": "embedding",
+                "dimensions": 768,
+            }
         return {
             "recommended": recommended,
+            "embedding_model": embedding_rec.get("id") or "google/embeddinggemma-2",
+            "embedding_recommendation": embedding_rec,
             "cloud": _router.detected_cloud_models(),
             "engines": engines,
             "loaded": _router.loaded_model_ids,

@@ -67,6 +67,7 @@ def test_catalog_omits_superseded_generation_models():
         for models in model_catalog.ENGINE_MODEL_CATALOG.values()
         for model in models
     }
+    chat_ids = {mid for mid in all_ids if "embeddinggemma" not in mid}
     blocked_fragments = (
         "gemma-3", "gemma3", "gemma-2",
         "qwen2.5", "qwen3-vl",
@@ -74,7 +75,38 @@ def test_catalog_omits_superseded_generation_models():
         "smollm", "phi-", "mistral", "pixtral", "moondream", "deepseek",
     )
     for fragment in blocked_fragments:
-        assert not any(fragment in model_id for model_id in all_ids), fragment
+        assert not any(fragment in model_id for model_id in chat_ids), fragment
+    # Google EmbeddingGemma 2 must be present in the catalog despite the "gemma-2" substring.
+    assert "google/embeddinggemma-2" in all_ids
+
+
+def test_embeddinggemma_2_pc_tailored_recommendations():
+    # Apple Silicon >= 8 GB RAM recommends google/embeddinggemma-2 with MLX 4-bit (~0.5 GB)
+    rec_16gb = model_catalog.recommend_models_for_pc(ram_gb=16.0, apple_silicon=True)
+    assert rec_16gb["embedding_model"] == "google/embeddinggemma-2"
+    emb_16 = rec_16gb["embedding_recommendation"]
+    assert emb_16["hf_repo_id"] == "google/embeddinggemma-2"
+    assert emb_16["mlx_repo_id"] == "mlx-community/embeddinggemma-2-4bit"
+    assert emb_16["category"] == "embedding"
+    assert emb_16["task"] == "embedding"
+    assert emb_16["role"] == "embedding"
+    assert emb_16["dimensions"] == 768
+    assert emb_16["memory_footprint_gb"] == 0.5
+    assert rec_16gb["effective_ram_gb"] == 15.5
+    assert any(
+        m.get("id") == "google/embeddinggemma-2" and m.get("category") == "embedding"
+        for m in rec_16gb["models"]
+    )
+
+    # Constrained RAM (< 8 GB) recommends google/embeddinggemma-300m (~0.3 GB)
+    rec_4gb = model_catalog.recommend_models_for_pc(ram_gb=6.0, apple_silicon=True)
+    assert rec_4gb["embedding_model"] == "google/embeddinggemma-300m"
+    emb_4 = rec_4gb["embedding_recommendation"]
+    assert emb_4["hf_repo_id"] == "google/embeddinggemma-300m"
+    assert emb_4["mlx_repo_id"] == "mlx-community/embeddinggemma-300m-4bit"
+    assert emb_4["dimensions"] == 768
+    assert emb_4["memory_footprint_gb"] == 0.3
+    assert rec_4gb["effective_ram_gb"] == 5.7
 
 
 def test_every_recommended_model_has_all_five_engine_routes_and_exact_gguf_tags():

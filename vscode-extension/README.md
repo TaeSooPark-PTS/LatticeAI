@@ -12,6 +12,8 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
+**12.5.0 — Deep Vector** adds native Google EmbeddingGemma 2 support, hardware-aware PC-tailored embedding recommendations, Pillow 13+ flattened data compatibility, Node 24 native CI/CD, and automated OpenAPI specification and fixture synchronization. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.5.0.md`.
+
 **12.4.0 — Sharp Weight** keeps the One Door topology (422 operations / 41 families, 20-route worker), adds verified `mlx-community/Qwen3.8-27B-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-4bit`, and `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit` local/cloud routes, and closes all Python (`pillow>=13,<14`) and npm dependency security advisories. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.4.0.md`.
 
 **12.3.0 — Live Wire** keeps the One Door topology (422 operations / 41 families, 20-route worker) and verifies Hugging Face GGUF quantization tags (`Q4_0` for Gemma 4, `MXFP4` for GPT-OSS 20B), `Qwen3.5-9B` / `Qwen3.6-35B-A3B` GGUF routes, auxiliary GGUF filtering + companion `--mmproj` download, small-model tool/MCP argument recovery, and native HTML structure inspection (`/tools/inspect_html`) + RFC 5987 UTF-8 download (`/tools/download`). Full disclosure is in `docs/releases/RELEASE_NOTES_v12.3.0.md`.

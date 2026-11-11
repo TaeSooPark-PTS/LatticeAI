@@ -33,10 +33,11 @@ module.exports = function handleModels({ req, res, url, pathname }) {
   });
 
   if (pathname === "/api/embeddings/status") return json(res, {
-    provider: "ollama", requested_provider: "ollama", active_provider: "ollama",
-    model: "nomic-embed-text", model_id: "ollama:nomic-embed-text:768", dimensions: 768,
+    provider: "huggingface", requested_provider: "huggingface", active_provider: "huggingface",
+    model: "google/embeddinggemma-2", model_id: "huggingface:google/embeddinggemma-2:768", dimensions: 768,
+    recommended_model: "google/embeddinggemma-2", recommended_profile: "local:embeddinggemma-2",
     grade: "production", state: "production", fell_back: false,
-    health: { status: "ok", detail: "Ollama reachable" },
+    health: { status: "ok", detail: "Hugging Face google/embeddinggemma-2 ready" },
     last_indexed_at: "2026-06-06T12:30:00", index: { status: "ready", indexed_items: 48230 },
   });
   if (pathname === "/api/embeddings/providers") return json(res, { active: "ollama", requested: "ollama", providers: [
@@ -161,13 +162,31 @@ module.exports = function handleModels({ req, res, url, pathname }) {
       engine_available: true,
       apple_silicon: true,
       ram_gb: 64,
-      counts: { recommended: 2, compatible: 0, not_recommended: 1 },
+      effective_ram_gb: 63.5,
+      embedding_reserved_ram_gb: 0.5,
+      embedding_model: "google/embeddinggemma-2",
+      embedding_recommendation: {
+        id: "google/embeddinggemma-2",
+        name: "Google EmbeddingGemma 2",
+        display_name: "Google EmbeddingGemma 2",
+        family: "EmbeddingGemma",
+        category: "embedding",
+        role: "embedding",
+        task: "embedding",
+        dimensions: 768,
+        size: "0.4GB",
+        reason: "Apple Silicon (64GB RAM) 맞춤 4-bit MLX / Hugging Face 시맨틱 임베딩 모델 (Google EmbeddingGemma 2, 768차원)",
+        status: "recommended",
+        supported: true,
+      },
+      counts: { recommended: 3, compatible: 0, not_recommended: 1 },
       top_pick: { id: "mlx-community/gemma-4-26b-a4b-it-4bit", name: "Gemma 4 26B A4B Instruct", family: "Gemma 4", status: "recommended", size: "15.6GB" },
       families: [],
       models: [
         { id: "mlx-community/Qwen3-VL-8B-Instruct-4bit", name: "Qwen3-VL 8B", family: "Qwen3-VL", status: "recommended", reason: "현재 메모리에서 안정적으로 사용할 가능성이 높습니다", size: "4.8GB", runtime_compatibility: { supported: true, status: "supported" } },
         { id: "mlx-community/gemma-4-12b-it-4bit", name: "Gemma 4 12B Instruct", family: "Gemma 4", status: "not_recommended", reason: "Runtime update needed", size: "7.6GB", runtime_compatibility: { supported: false, status: "runtime_update_needed", action: "Runtime update needed" } },
         { id: "mlx-community/gemma-4-26b-a4b-it-4bit", name: "Gemma 4 26B A4B Instruct", family: "Gemma 4", status: "recommended", reason: "현재 메모리에서 안정적으로 사용할 가능성이 높습니다", size: "15.6GB", runtime_compatibility: { supported: true, status: "supported", model_type: "gemma4" } },
+        { id: "google/embeddinggemma-2", name: "Google EmbeddingGemma 2", family: "EmbeddingGemma", category: "embedding", role: "embedding", task: "embedding", status: "recommended", reason: "Apple Silicon (64GB RAM) 맞춤 시맨틱 임베딩 모델 (768차원)", size: "0.4GB", dimensions: 768, runtime_compatibility: { supported: true, status: "supported" } },
       ],
     },
   });

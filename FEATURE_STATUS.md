@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v12.4.0)
+# Lattice AI Feature Status (v12.5.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **12.4.0 — Sharp Weight**.
+Current release: **12.5.0 — Deep Vector**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 11.0.0 and later in `RELEASE.md` and

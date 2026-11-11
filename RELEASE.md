@@ -15,6 +15,23 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.5.0 — Deep Vector (2026-11-11)
+
+Hugging Face에서 제공되는 **Google EmbeddingGemma 2**(`google/embeddinggemma-2`, 768차원)를 네이티브 임베딩 제공자로 전면 통합하고, 사용자 호스트 하드웨어(RAM/VRAM)를 정밀 측정하여 임베딩 모델 메모리를 사전 예약한 후 최적 LLM을 선정하는 맞춤형 모델 추천 시스템을 도입한 릴리스. Pillow 13+ `get_flattened_data()` 전환, GitHub Actions CI/CD 워크플로우의 Node 24 네이티브 업그레이드, `scripts/bump_version.py`의 OpenAPI 스펙·파편 49개 타깃 자동 갱신을 완료했다. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.
+
+- **Google EmbeddingGemma 2 네이티브 통합.** `latticeai/core/embedding_providers/text.py`에 Hugging Face 임베딩 프로바이더(`google/embeddinggemma-2`, `embeddinggemma-2`, `embeddinggemma-2-4bit`, `embeddinggemma-2-8bit`, `embeddinggemma-300m`, 768차원)를 구현하고 Mean pooling, L2 정규화, 태스크 접두사를 지원하며, 오프라인 시 결정론적 해시 임베딩 fallback을 유지했다.
+- **PC 하드웨어 맞춤형 임베딩 모델 추천 시스템.** `rust/lattice-platform/src/modelops/models_catalog/embedding.rs` 및 `latticeai/services/embedding_recommendation.py`로 분리 모듈화하여 8GB 이상 호스트는 EmbeddingGemma 2(0.5GB~1.5GB RAM 예약), 미만 호스트는 EmbeddingGemma 300M(0.3GB RAM 예약)을 추천하며 가용 메모리(`effective_ram_gb`)를 사전 차감하여 LLM을 추천하도록 했다.
+- **온보딩 및 모델 라이브러리 임베딩 UI.** 온보딩 화면(`ProductFlow.tsx`)에 PC 맞춤 EmbeddingGemma 2 추천 카드를 추가(다국어 i18n 지원)하고, 모델 라이브러리(`Library.tsx`)에 추천 임베딩 모델 섹션 및 원클릭 준비 버튼을 배치했다.
+- **Pillow 13+ 권장 API 전환 및 CI/CD 현대화.** `scripts/check_screenshot_pixel_delta.py`에서 Pillow 14 제거 예정인 `diff.getdata()`를 `diff.get_flattened_data()`로 교체하고, GitHub Actions 워크플로우 7종 전체에 Node 24 네이티브 메이저 버전과 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"`를 적용했다.
+- **OpenAPI 명세 및 파편 버전 동기화 자동화.** `scripts/bump_version.py`가 `frontend/openapi.json`, `rust/fixtures/openapi/_envelope.json`, 13개 패밀리 파편, `_index.json`(SHA-256 재계산) 등 총 49개 타깃을 일괄 갱신하도록 확장했다.
+- **전체 인터랙티브 UI 점검 완료.** `tests/visual/v3.all_buttons_inspection.spec.js` Playwright E2E 스위트로 전체 라우트와 모든 버튼을 클릭 검증하여 0 콘솔 에러, 0 서버 에러를 확인했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md).
+
+빌드 산출물은 `dist/ltcai-12.5.0-py3-none-any.whl`,
+`dist/ltcai-12.5.0.tar.gz`, `ltcai-12.5.0.tgz`, `dist/ltcai-12.5.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.5.0_aarch64.dmg` 입니다.
+
 ## v12.4.0 — Sharp Weight (2026-11-11)
 
 Hugging Face에서 검증된 **Qwen 3.8 27B 4-bit**(`mlx-community/Qwen3.8-27B-4bit`)와 **Gemma 4 26B A4B QAT / QAT-OptiQ 4-bit**(`mlx-community/gemma-4-26B-A4B-it-qat-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit`)를 모델 추천 및 다운로드 카탈로그에 추가하고, Python(`pillow>=13,<14`)과 npm 의존성 보안 취약점을 전수 해소한 릴리스. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.

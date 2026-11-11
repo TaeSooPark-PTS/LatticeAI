@@ -910,4 +910,23 @@ describe("MarketplacePanel", () => {
     await screen.findByText(t("ko", "library.market.templateInstall"));
     expect(body()).toContain(t("ko", "ui.empty.listDetail"));
   });
+
+  it("surfaces Google EmbeddingGemma 2 in the embedding section and activates it with one click", async () => {
+    const streamModelPrepare = vi.fn(() => Promise.resolve(ok({ status: "done" })));
+    renderLibrary({
+      embeddingsStatus: ok({ state: "fallback", grade: "fallback" }),
+      streamModelPrepare,
+    });
+    const recCard = await screen.findByTestId("library-embedding-recommendation");
+    expect(recCard.textContent).toContain("Google EmbeddingGemma 2");
+    expect(recCard.textContent).toContain("google/embeddinggemma-2");
+
+    await userEvent.click(screen.getByTestId("library-activate-embeddinggemma-2"));
+    await waitFor(() =>
+      expect(streamModelPrepare).toHaveBeenCalledWith(
+        { model: "google/embeddinggemma-2", engine: "local_mlx", allow_download: true },
+        expect.any(Object),
+      ),
+    );
+  });
 });

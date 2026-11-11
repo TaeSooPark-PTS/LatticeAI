@@ -16,6 +16,10 @@ use crate::db::CoreError;
 pub const VECTOR_DIM_ENV: &str = "LATTICEAI_VECTOR_DIM";
 /// `lattice_brain.embeddings.DEFAULT_EMBEDDING_DIM` with nothing configured.
 pub const DEFAULT_EMBEDDING_DIM: usize = 384;
+/// Primary Hugging Face semantic embedding model (`google/embeddinggemma-2`).
+pub const EMBEDDINGGEMMA_2_MODEL_ID: &str = "google/embeddinggemma-2";
+/// Output vector dimensionality of `google/embeddinggemma-2`.
+pub const EMBEDDINGGEMMA_2_DIM: usize = 768;
 
 type Blake2b64 = Blake2b<U8>;
 

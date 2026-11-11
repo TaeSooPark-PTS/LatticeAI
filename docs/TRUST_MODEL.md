@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **12.4.0 — Sharp Weight**.
+Current release: **12.5.0 — Deep Vector**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

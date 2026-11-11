@@ -20,6 +20,7 @@ import {
   type FlowStep,
   type RecommendedModel,
 } from "@/components/onboarding/ProductFlowScreens";
+import { recommendedEmbeddingModel } from "@/components/onboarding/recommendationModel";
 
 import { markProductFlowComplete } from "@/components/productFlowState";
 
@@ -37,6 +38,7 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   const [selected, setSelected] = React.useState<RecommendedModel | null>(null);
 
   const outcome = React.useMemo(() => evaluateAnalysis({ analysis, endpoints }), [analysis, endpoints]);
+  const embeddingModel = React.useMemo(() => recommendedEmbeddingModel(analysis), [analysis]);
 
   // Run analysis in background immediately to save user wait time. `reloadToken`
   // lets the user retry from the unavailable state.
@@ -106,19 +108,53 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
         {step === "login" && <LoginScreen onSuccess={() => setStep("recommend")} />}
 
         {step === "recommend" && (
-          <RecommendationScreen
-            status={outcome.status}
-            reason={outcome.reason}
-            recommendations={outcome.recommendations}
-            analysis={analysis}
-            onBack={() => setStep("login")}
-            onRetry={retryAnalysis}
-            onSkipModel={() => completeFlow(onComplete)}
-            onSelect={(model) => {
-              setSelected(model);
-              setStep("install");
-            }}
-          />
+          <>
+            <RecommendationScreen
+              status={outcome.status}
+              reason={outcome.reason}
+              recommendations={outcome.recommendations}
+              analysis={analysis}
+              onBack={() => setStep("login")}
+              onRetry={retryAnalysis}
+              onSkipModel={() => completeFlow(onComplete)}
+              onSelect={(model) => {
+                setSelected(model);
+                setStep("install");
+              }}
+            />
+            {outcome.status === "ready" && (
+              <section
+                className="ritual-embedding-recommendation mt-4 rounded-xl border border-border bg-background/60 p-4"
+                data-testid="flow-embedding-recommendation"
+                aria-label={t(language, "flow.recommend.embedding.aria")}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-medium text-primary">
+                      {t(language, "flow.recommend.embedding.tag")}
+                    </div>
+                    <div className="mt-0.5 text-base font-semibold">
+                      {embeddingModel.name} <span className="text-xs font-normal text-muted-foreground">({embeddingModel.id})</span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {embeddingModel.reason}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="ritual-secondary-button"
+                    data-testid="flow-select-embedding-model"
+                    onClick={() => {
+                      setSelected(embeddingModel);
+                      setStep("install");
+                    }}
+                  >
+                    {t(language, "flow.recommend.embedding.action")}
+                  </button>
+                </div>
+              </section>
+            )}
+          </>
         )}
 
         {step === "install" && (

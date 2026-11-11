@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -44,6 +45,25 @@ RUST_CRATES = (
 )
 RUST_LOCKFILES = ("rust/Cargo.lock", "src-tauri/Cargo.lock")
 
+# Committed OpenAPI fragments (`rust/fixtures/openapi/<family>.json`) plus
+# `_envelope.json` and `_index.json`. Serialized with `sort_keys=True, indent=2`
+# (`scripts/gen_openapi_fragments.py::canonical_json`).
+OPENAPI_FRAGMENTS = (
+    "admin",
+    "auth",
+    "chat",
+    "knowledge_search",
+    "mcp_market",
+    "memory_brain",
+    "models_misc",
+    "portability_network",
+    "review_proposals",
+    "static_ui",
+    "ui_redirects",
+    "worker_keep",
+    "workspace",
+)
+
 # (path, kind, pattern) — pattern groups: (prefix, version)
 TARGETS = [
     ("latticeai/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
@@ -68,7 +88,18 @@ TARGETS = [
         for crate in RUST_CRATES
     ],
     ("static/app/asset-manifest.json", "json", "version"),
+    ("frontend/openapi.json", "openapi-spec", None),
+    ("rust/fixtures/openapi/_envelope.json", "openapi-envelope", None),
+    *[
+        (f"rust/fixtures/openapi/{family}.json", "openapi-fragment", None)
+        for family in OPENAPI_FRAGMENTS
+    ],
+    ("rust/fixtures/openapi/_index.json", "openapi-index", None),
 ]
+
+
+def _canonical_openapi_json(payload: object) -> str:
+    return json.dumps(payload, sort_keys=True, indent=2) + "\n"
 
 
 def bump(version: str, *, check: bool = False) -> int:
@@ -82,26 +113,96 @@ def bump(version: str, *, check: bool = False) -> int:
             print(f"  skip  {rel} (missing)")
             continue
         text = path.read_text(encoding="utf-8")
+        current = ""
+        new = text
         if kind == "regex":
-            new, n = re.subn(spec, lambda m: m.group(1) + version + m.group(3), text, count=1, flags=re.MULTILINE)
-            changed = n == 1 and new != text
-            ok = n == 1
+            m = re.search(spec, text, flags=re.MULTILINE)
+            ok = m is not None
+            if ok and m is not None:
+                current = m.group(2)
+                new, n = re.subn(spec, lambda match: match.group(1) + version + match.group(3), text, count=1, flags=re.MULTILINE)
+                changed = n == 1 and new != text
+            else:
+                changed = False
         elif kind == "json":
             data = json.loads(text)
             ok = spec in data
-            changed = ok and data.get(spec) != version
             if ok:
+                current = str(data.get(spec))
+                changed = current != version
                 data[spec] = version
                 new = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+            else:
+                changed = False
         elif kind == "package-lock":
             data = json.loads(text)
             ok = "version" in data
-            changed = ok and data.get("version") != version
             if ok:
+                current = str(data.get("version"))
+                changed = current != version
                 data["version"] = version
                 if "packages" in data and "" in data["packages"]:
                     data["packages"][""]["version"] = version
                 new = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+            else:
+                changed = False
+        elif kind == "openapi-spec":
+            data = json.loads(text)
+            info = data.get("info") if isinstance(data.get("info"), dict) else None
+            ok = info is not None and "version" in info
+            if ok and info is not None:
+                current = str(info["version"])
+                changed = current != version
+                info["version"] = version
+                new = _canonical_openapi_json(data)
+            else:
+                changed = False
+        elif kind == "openapi-envelope":
+            data = json.loads(text)
+            spec_obj = data.get("spec") if isinstance(data.get("spec"), dict) else None
+            info = spec_obj.get("info") if isinstance(spec_obj, dict) and isinstance(spec_obj.get("info"), dict) else None
+            ok = "spec_version" in data and info is not None and "version" in info
+            if ok and info is not None:
+                sv = str(data["spec_version"])
+                iv = str(info["version"])
+                current = sv if sv != version else iv
+                changed = sv != version or iv != version
+                data["spec_version"] = version
+                info["version"] = version
+                new = _canonical_openapi_json(data)
+            else:
+                changed = False
+        elif kind == "openapi-fragment":
+            data = json.loads(text)
+            ok = "spec_version" in data
+            if ok:
+                current = str(data["spec_version"])
+                changed = current != version
+                data["spec_version"] = version
+                new = _canonical_openapi_json(data)
+            else:
+                changed = False
+        elif kind == "openapi-index":
+            data = json.loads(text)
+            ok = "spec_version" in data
+            if ok:
+                current = str(data["spec_version"])
+                data["spec_version"] = version
+                if not check:
+                    env_meta = data.get("envelope")
+                    if isinstance(env_meta, dict) and "file" in env_meta:
+                        env_path = path.parent / str(env_meta["file"])
+                        if env_path.is_file():
+                            env_meta["sha256"] = hashlib.sha256(env_path.read_bytes()).hexdigest()
+                    for entry in data.get("fragments", []):
+                        if isinstance(entry, dict) and "file" in entry:
+                            frag_path = path.parent / str(entry["file"])
+                            if frag_path.is_file():
+                                entry["sha256"] = hashlib.sha256(frag_path.read_bytes()).hexdigest()
+                new = _canonical_openapi_json(data)
+                changed = current != version or new != text
+            else:
+                changed = False
         else:  # pragma: no cover
             raise AssertionError(kind)
         if not ok:
@@ -109,7 +210,6 @@ def bump(version: str, *, check: bool = False) -> int:
             failures += 1
             continue
         if check:
-            current = re.search(spec, text, flags=re.MULTILINE).group(2) if kind == "regex" else json.loads(text)["version"]
             status = "ok" if current == version else f"MISMATCH ({current})"
             if current != version:
                 failures += 1

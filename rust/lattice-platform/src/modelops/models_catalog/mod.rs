@@ -35,7 +35,9 @@ use lattice_core::worker::WorkerSeamClient;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
+pub mod embedding;
 mod probe;
+pub use embedding::recommend_embedding_for_host;
 pub use probe::{
     command_exists, fetch_worker_catalog, parse_meminfo_total, probe_host, read_ram_bytes,
     recommend_from_catalog, HostProbe, WorkerCatalog,

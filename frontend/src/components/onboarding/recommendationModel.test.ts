@@ -9,6 +9,7 @@ import {
   friendlyModelName,
   parseDownloadMegabytes,
   parseParameterBillions,
+  recommendedEmbeddingModel,
   toRecommendedModel,
   type AnalysisEndpointStatus,
   type FlowAnalysis,
@@ -301,7 +302,51 @@ describe("naming helpers", () => {
     expect(friendlyModelName("mlx-community/Qwen3-VL-8B-Instruct-4bit")).toBe("Qwen 3 8B");
     expect(friendlyModelName("Gemma-4-26B-A4B")).toBe("Gemma 4 26B");
     expect(friendlyModelName("Qwen3 Coder")).toBe("Qwen 3 Coder");
+    expect(friendlyModelName("google/embeddinggemma-2")).toBe("EmbeddingGemma 2");
+    expect(friendlyModelName("mlx-community/embeddinggemma-2-4bit")).toBe("EmbeddingGemma 2");
+    expect(friendlyModelName("google/embeddinggemma-300m")).toBe("EmbeddingGemma 300M");
     expect(friendlyModelName("")).toBe("recommended brain");
+  });
+
+  it("recognises embedding models and derives PC-tailored EmbeddingGemma 2 recommendations", () => {
+    const embRow = toRecommendedModel({
+      id: "google/embeddinggemma-2",
+      recommended_load_id: "mlx-community/embeddinggemma-2-4bit",
+      name: "Google EmbeddingGemma 2",
+      category: "embedding",
+      size: "0.4GB",
+      download_required: true,
+    });
+    expect(embRow.role).toBe("embedding");
+    expect(embRow.shortName).toBe("EmbeddingGemma 2");
+    expect(embRow.externalHost).toBe("huggingface");
+
+    const rec16 = recommendedEmbeddingModel({
+      recommendations: {
+        recommendations: {
+          ram_gb: 16,
+          apple_silicon: true,
+          embedding_recommendation: {
+            id: "google/embeddinggemma-2",
+            recommended_load_id: "mlx-community/embeddinggemma-2-4bit",
+            name: "Google EmbeddingGemma 2",
+            size: "0.4GB",
+            reason: "Apple Silicon (16GB RAM) 맞춤 시맨틱 임베딩 모델",
+          },
+        },
+      },
+    });
+    expect(rec16.id).toBe("google/embeddinggemma-2");
+    expect(rec16.loadId).toBe("mlx-community/embeddinggemma-2-4bit");
+    expect(rec16.role).toBe("embedding");
+    expect(rec16.shortName).toBe("EmbeddingGemma 2");
+
+    const recLowRam = recommendedEmbeddingModel({
+      setup: { environment: { ram_gb: 6, arch: "arm64", mlx: true } },
+    });
+    expect(recLowRam.id).toBe("google/embeddinggemma-300m");
+    expect(recLowRam.loadId).toBe("mlx-community/embeddinggemma-300m-4bit");
+    expect(recLowRam.role).toBe("embedding");
   });
 
   it("asRecord accepts only plain objects", () => {

@@ -193,6 +193,19 @@ describe("ProductFlow", () => {
     // or update state on an unmounted tree.
     expect(models).toHaveBeenCalledTimes(1);
   });
+
+  it("shows the PC-tailored EmbeddingGemma 2 recommendation card and lets the user prepare it", async () => {
+    renderFlow();
+    await goToLogin();
+    await signIn();
+
+    const embCard = await screen.findByTestId("flow-embedding-recommendation");
+    expect(embCard.textContent).toContain("Google EmbeddingGemma 2");
+    expect(embCard.textContent).toContain("google/embeddinggemma-2");
+
+    fireEvent.click(screen.getByTestId("flow-select-embedding-model"));
+    await screen.findByText(t("ko", "flow.install.title.ready"));
+  });
 });
 
 describe("brainStateForStep", () => {

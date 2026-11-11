@@ -12,7 +12,7 @@
 [![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v12.4.0 Living Brain walkthrough](output/release/v12.4.0/gifs/v12.4.0-living-brain-walkthrough.gif)
+![v12.5.0 Living Brain walkthrough](output/release/v12.5.0/gifs/v12.5.0-living-brain-walkthrough.gif)
 
 Lattice AI is a Digital Brain that lives on your computer. Chat, files,
 folders, notes, and web pages all land in one knowledge graph you own.
@@ -42,19 +42,19 @@ LTCAI                    # then open http://127.0.0.1:4825/app
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v12.4.0/screenshots/01-login.png) | ![Model install](output/release/v12.4.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.4.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v12.5.0/screenshots/01-login.png) | ![Model install](output/release/v12.5.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.5.0/screenshots/07-model-library.png) |
 
 Screenshot index:
-[output/release/v12.4.0/SCREENSHOT_INDEX.md](output/release/v12.4.0/SCREENSHOT_INDEX.md)
+[output/release/v12.5.0/SCREENSHOT_INDEX.md](output/release/v12.5.0/SCREENSHOT_INDEX.md)
 
 ## What you can do
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.4.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.4.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.4.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.4.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.4.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.4.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.4.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.4.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.5.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.5.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.5.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.5.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.5.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.5.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.5.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.5.0/screenshots/08-system.png) |
 
 ## Why this is yours
 
@@ -70,41 +70,27 @@ Screenshot index:
 
 ## Current Release
 
-The current release is **12.4.0 — Sharp Weight**:
+The current release is **12.5.0 — Deep Vector**:
 
-The local and cloud model catalog adds **Qwen 3.8 27B 4-bit** and **Gemma 4 26B
-A4B QAT / QAT-OptiQ 4-bit** builds, closes all Python (`pillow>=13,<14`) and npm
-dependency security advisories, hardens engine URL scheme validation, and scopes
-Tailwind CSS v4's oxide scanner to `frontend/`. The door is still **422
-operations / 41 families** over a **20-route worker**. Cloud is still optional
-and the default is still local.
+The embedding pipeline adds native **Google EmbeddingGemma 2** (`google/embeddinggemma-2`, 768-dim) support with Hugging Face mean-pooling and L2 normalization, adds **hardware-aware embedding model recommendations** that calculate host RAM/VRAM reservations before recommending LLMs, migrates screenshot pixel diffing to Pillow 13+ `get_flattened_data()`, upgrades GitHub Actions CI/CD to Node 24 native major versions, and automates full OpenAPI specification and fragment synchronization in `scripts/bump_version.py`. The door is still **422 operations / 41 families** over a **20-route worker**. Cloud is still optional and the default is still local.
 
-- **Qwen 3.8 27B 4-bit local & cloud integration.** Added
-  `mlx-community/Qwen3.8-27B-4bit` (`16.1GB`, `qwen3_5`), wired GGUF/HF routes
-  (`ggml-org/Qwen3.8-27B-GGUF:Q4_K_M`, `Qwen/Qwen3.8-27B`) across all 5 local
-  engines, and added `Qwen/Qwen3.8-27B` / `qwen/qwen3.8-27b` to `together` and
-  `openrouter`.
-- **Gemma 4 26B A4B QAT & QAT-OptiQ 4-bit builds.** Added
-  `mlx-community/gemma-4-26B-A4B-it-qat-4bit` (`15.6GB`, routed to Google's
-  official QAT GGUF `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`) and
-  `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit` (`21.9GB`, sensitivity-guided
-  mixed 4-bit/8-bit `mlx-optiq` build).
-- **Dependency security audit closure & runtime hardening.** Upgraded `pillow`
-  to `>=13,<14`, resolved all npm lockfile advisories in root and
-  `vscode-extension`, enforced `http(s)://` scheme checks in `model_engines`,
-  and scoped `@import "tailwindcss" source("..");` in `frontend/src/styles.css`.
+- **Google EmbeddingGemma 2 native integration.** Native Hugging Face embedding provider support (`google/embeddinggemma-2`, `embeddinggemma-2`, `embeddinggemma-2-4bit`, `embeddinggemma-2-8bit`, `embeddinggemma-300m`, 768-dimensional vectors) in `latticeai/core/embedding_providers/text.py` with mean pooling, L2 normalization, task instruction prefixes, and automatic semantic activation. Hash embedding fallback remains preserved when offline.
+- **Hardware-aware PC-tailored embedding recommendations.** Modularized `recommend_embedding_for_host` in `lattice-platform` and `latticeai/services/embedding_recommendation.py`. Systems with >=8GB RAM receive `google/embeddinggemma-2` with a 0.5GB–1.5GB reserved RAM budget; smaller hosts receive `google/embeddinggemma-300m`. The host probe calculates `effective_ram_gb` before LLM tier selection.
+- **Onboarding and Model Library embedding UI.** Added the PC-tailored EmbeddingGemma 2 recommendation card in `ProductFlow.tsx` with full i18n support, and surfaced Google EmbeddingGemma 2 in the Model Library (`Library.tsx`) embedding section with 1-click install and activation.
+- **Pillow 13+ flattened data & CI/CD modernisation.** Replaced Pillow 14-deprecated `diff.getdata()` calls in `scripts/check_screenshot_pixel_delta.py` with `diff.get_flattened_data()`, and pinned GitHub Actions to Node 24 native versions with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"`.
+- **OpenAPI specification and fixture version automation.** Extended `scripts/bump_version.py` to synchronize `frontend/openapi.json`, `rust/fixtures/openapi/_envelope.json`, all 13 OpenAPI fragment files, and `rust/fixtures/openapi/_index.json` with recomputed SHA-256 digests across 49 targets.
 
 Release notes live in [docs/releases/](docs/releases/). This version:
-[docs/releases/RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md).
+[docs/releases/RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md).
 Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.4.0 must use exact filenames:
+Expected artifacts for 12.5.0 must use exact filenames:
 
-- `dist/ltcai-12.4.0-py3-none-any.whl`
-- `dist/ltcai-12.4.0.tar.gz`
-- `ltcai-12.4.0.tgz`
-- `dist/ltcai-12.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.4.0_aarch64.dmg`
+- `dist/ltcai-12.5.0-py3-none-any.whl`
+- `dist/ltcai-12.5.0.tar.gz`
+- `ltcai-12.5.0.tgz`
+- `dist/ltcai-12.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.5.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 

@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **12.4.0 — Sharp Weight**.
+Current release: **12.5.0 — Deep Vector**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
@@ -237,7 +237,7 @@ in `rust/`.
 Markdown) and `scripts/check_doc_status.mjs` (every relative link under the
 root canonical docs and `docs/**`). A red line is a broken relative path —
 fix the href or put the file where the href says. Canonical docs (this one
-included) must carry `Current release: **12.4.0 — …**` matching
+included) must carry `Current release: **12.5.0 — …**` matching
 `package.json`; do not bump that marker here ahead of the release lane.
 `npm run docs:check-current` is the release-set version pin
 ([`scripts/check_current_release_docs.mjs`](../scripts/check_current_release_docs.mjs)).
@@ -317,19 +317,19 @@ For user-facing, API, runtime, release, or packaging changes, check:
   appears
 
 The release-docs lane owns README / ARCHITECTURE / FEATURE_STATUS version
-bumps. Do not move this file's `Current release` marker off 12.4.0 ahead of
+bumps. Do not move this file's `Current release` marker off 12.5.0 ahead of
 that lane.
 
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 12.4.0 release work, exact artifacts are:
+For 12.5.0 release work, exact artifacts are:
 
-- `dist/ltcai-12.4.0-py3-none-any.whl`
-- `dist/ltcai-12.4.0.tar.gz`
-- `ltcai-12.4.0.tgz`
-- `dist/ltcai-12.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.4.0_aarch64.dmg`
+- `dist/ltcai-12.5.0-py3-none-any.whl`
+- `dist/ltcai-12.5.0.tar.gz`
+- `ltcai-12.5.0.tgz`
+- `dist/ltcai-12.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.5.0_aarch64.dmg`
 
 The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
 checks the names and presence, not a Developer ID signature.

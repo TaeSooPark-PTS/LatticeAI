@@ -243,6 +243,7 @@ function ModelsPanel() {
   // here works". Loaded first, then ready to use, then everything else.
   const catalogRank = (model: Record<string, unknown>) => {
     const id = String(model.id || model.model_id || "");
+    if (model.category === "embedding" || model.role === "embedding" || model.task === "embedding") return 4;
     // A row with neither `id` nor `model_id` (the registry ships these) must
     // never rank as "currently active" just because both sides of the
     // comparison happen to be the empty string.
@@ -269,6 +270,18 @@ function ModelsPanel() {
     return Boolean(id) && (loadedIds.includes(id) || id === currentId);
   });
   const topPick = (((recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined)?.top_pick || null) as Record<string, unknown> | null;
+  const rawEmbeddingRec = (
+    ((recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined)?.embedding_recommendation
+    || (models.data?.data as Record<string, unknown> | undefined)?.embedding_recommendation
+    || recommendationRows.find((item) => item.category === "embedding" || item.role === "embedding" || /embeddinggemma/i.test(String(item.id || "")))
+    || null
+  ) as Record<string, unknown> | null;
+  const embeddingRecId = String(rawEmbeddingRec?.hf_repo_id || rawEmbeddingRec?.id || "google/embeddinggemma-2");
+  const embeddingRecLoadId = String(rawEmbeddingRec?.recommended_load_id || rawEmbeddingRec?.id || "google/embeddinggemma-2");
+  const embeddingRecEngine = String(rawEmbeddingRec?.recommended_engine || "local_mlx");
+  const embeddingRecName = String(rawEmbeddingRec?.name || t(language, "library.embedding.recommend.title"));
+  const embeddingRecSize = String(rawEmbeddingRec?.size || "0.4GB");
+  const embeddingLoaded = loadedIds.includes(embeddingRecId) || loadedIds.includes(embeddingRecLoadId) || currentId === embeddingRecId || currentId === embeddingRecLoadId;
   const latestProgress = progress[progress.length - 1] || null;
 
   const modelMessage = React.useCallback((message: unknown, fallbackKey = "library.model.notReady") => {
@@ -556,6 +569,39 @@ function ModelsPanel() {
               {["fallback", "hash"].includes(String((data as Record<string, unknown>).state || (data as Record<string, unknown>).grade || "").toLowerCase()) ? (
                 <p className="text-sm text-muted-foreground">{t(language, "library.embedding.fallbackHint")}</p>
               ) : null}
+              <div
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-border bg-background/55 p-3"
+                data-testid="library-embedding-recommendation"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold">{embeddingRecName}</span>
+                    <Badge variant="success">{t(language, "library.embedding.recommend.badge")}</Badge>
+                    <Badge variant="muted">{embeddingRecId}</Badge>
+                    <Badge variant="muted">{embeddingRecSize}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t(language, "library.embedding.recommend.desc")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {embeddingLoaded ? (
+                    <Badge variant="success">{t(language, "library.embedding.recommend.active")}</Badge>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      data-testid="library-activate-embeddinggemma-2"
+                      onClick={() => void prepareModel(embeddingRecLoadId, embeddingRecEngine, true)}
+                    >
+                      {activeModel === embeddingRecLoadId && busy
+                        ? t(language, "library.btn.preparing")
+                        : t(language, "library.embedding.recommend.activate")}
+                    </Button>
+                  )}
+                </div>
+              </div>
               {mode === "basic" ? null : <StructuredView value={data} />}
             </div>
           )}

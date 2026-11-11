@@ -70,9 +70,11 @@ from lattice_brain.embeddings import LocalEmbeddingModel as LocalEmbeddingModel
 
 from .autodetect import AUTO_PROVIDER as AUTO_PROVIDER
 from .autodetect import AUTODETECT_ENV as AUTODETECT_ENV
+from .autodetect import LOCAL_HF_MODELS as LOCAL_HF_MODELS
 from .autodetect import LOCAL_MLX_MODELS as LOCAL_MLX_MODELS
 from .autodetect import Detection as Detection
 from .autodetect import detect_embedder as detect_embedder
+from .autodetect import detect_local_hf as detect_local_hf
 from .autodetect import detect_local_mlx as detect_local_mlx
 from .autodetect import detect_ollama as detect_ollama
 from .autodetect import resolve_auto_provider as resolve_auto_provider
@@ -92,11 +94,16 @@ from .captions import VisionCaptioner as VisionCaptioner
 from .captions import resolve_vision_captioner as resolve_vision_captioner
 from .captions import vision_caption_port as vision_caption_port
 from .profiles import PRODUCTION_PROVIDER_PROFILES as PRODUCTION_PROVIDER_PROFILES
+from .profiles import RECOMMENDED_EMBEDDING_MODEL as RECOMMENDED_EMBEDDING_MODEL
+from .profiles import RECOMMENDED_EMBEDDING_PROFILE as RECOMMENDED_EMBEDDING_PROFILE
 from .profiles import embedding_provider_profiles as embedding_provider_profiles
 from .profiles import resolve_embedding_profile as resolve_embedding_profile
+from .text import DEFAULT_HF_EMBEDDING_MODEL as DEFAULT_HF_EMBEDDING_MODEL
+from .text import EMBEDDINGGEMMA_PREFIXES as EMBEDDINGGEMMA_PREFIXES
 from .text import PROVIDER_TYPES as PROVIDER_TYPES
 from .text import CustomEmbeddingProvider as CustomEmbeddingProvider
 from .text import HashEmbeddingProvider as HashEmbeddingProvider
+from .text import HuggingFaceEmbeddingProvider as HuggingFaceEmbeddingProvider
 from .text import MLXEmbeddingProvider as MLXEmbeddingProvider
 from .text import OllamaEmbeddingProvider as OllamaEmbeddingProvider
 from .text import OpenAICompatibleEmbeddingProvider as OpenAICompatibleEmbeddingProvider
@@ -123,9 +130,15 @@ from .vision import resolve_vision_embedder as resolve_vision_embedder
 __all__ = [
     "AUTODETECT_ENV",
     "AUTO_PROVIDER",
+    "DEFAULT_HF_EMBEDDING_MODEL",
+    "EMBEDDINGGEMMA_PREFIXES",
+    "LOCAL_HF_MODELS",
     "LOCAL_MLX_MODELS",
+    "RECOMMENDED_EMBEDDING_MODEL",
+    "RECOMMENDED_EMBEDDING_PROFILE",
     "Detection",
     "detect_embedder",
+    "detect_local_hf",
     "detect_local_mlx",
     "detect_ollama",
     "resolve_auto_provider",
@@ -151,6 +164,7 @@ __all__ = [
     "resolve_vision_embedder",
     "vision_caption_port",
     "HashEmbeddingProvider",
+    "HuggingFaceEmbeddingProvider",
     "MLXEmbeddingProvider",
     "OllamaEmbeddingProvider",
     "OpenAICompatibleEmbeddingProvider",

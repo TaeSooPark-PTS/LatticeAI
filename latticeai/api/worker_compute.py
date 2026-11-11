@@ -85,6 +85,10 @@ from pydantic import BaseModel, Field
 
 from latticeai.api.agent_worker_seam import SEAM_RATE_BUCKET
 from latticeai.api.agent_worker_seam import _seam_open as seam_open
+from latticeai.core.embedding_providers.profiles import (
+    RECOMMENDED_EMBEDDING_MODEL,
+    RECOMMENDED_EMBEDDING_PROFILE,
+)
 from latticeai.core.messages import MESSAGES, http_error, resolve_language
 from latticeai.core.quiet import quiet
 from latticeai.services.voice_capture import (
@@ -633,6 +637,7 @@ def create_worker_compute_router(
             if callable(role_aware)
             else await asyncio.to_thread(provider.embed_batch, texts)
         )
+        grade = getattr(provider, "grade", "fallback")
         return {
             "vectors": vectors,
             "dim": provider.dim,
@@ -641,7 +646,10 @@ def create_worker_compute_router(
             "kind": kind,
             # Additive (v12.0.0): `fallback` means these vectors are feature
             # hashes, not meaning. A caller that stores them can say so.
-            "grade": getattr(provider, "grade", "fallback"),
+            "grade": grade,
+            "semantic": grade != "fallback",
+            "recommended_model": RECOMMENDED_EMBEDDING_MODEL,
+            "recommended_profile": RECOMMENDED_EMBEDDING_PROFILE,
         }
 
     @router.post("/worker/parse")

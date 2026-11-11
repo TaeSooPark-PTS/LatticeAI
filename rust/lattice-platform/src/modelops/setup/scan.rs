@@ -54,6 +54,15 @@ pub(crate) fn scan_environment(probe: &HostProbe, catalog: &WorkerCatalog) -> Or
 pub(super) fn auto_state(probe: &HostProbe, catalog: &WorkerCatalog) -> OrderedMap {
     let (recs, _) = recommend_from_catalog(probe, "local_mlx", catalog);
     let top = recs.get("top_pick").cloned().unwrap_or(Value::Null);
+    let embedding_rec = recs
+        .get("embedding_recommendation")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let embedding_model_id = recs
+        .get("embedding_model")
+        .and_then(Value::as_str)
+        .unwrap_or("google/embeddinggemma-2")
+        .to_string();
     let top_id = top
         .get("id")
         .and_then(Value::as_str)
@@ -139,6 +148,8 @@ pub(super) fn auto_state(probe: &HostProbe, catalog: &WorkerCatalog) -> OrderedM
         }),
     );
     recommend.insert("model_id", json!(top_id));
+    recommend.insert("embedding_model", json!(embedding_model_id.clone()));
+    recommend.insert("embedding_recommendation", embedding_rec.clone());
     recommend.insert("quantization", json!(quantization));
     recommend.insert("rationale", json!(rationale));
     recommend.insert("estimated_tokens_per_sec", json!(0));
@@ -167,6 +178,8 @@ pub(super) fn auto_state(probe: &HostProbe, catalog: &WorkerCatalog) -> OrderedM
     let mut preset = OrderedMap::new();
     preset.insert("mode", json!("local"));
     preset.insert("model", json_from_ordered(&model));
+    preset.insert("embedding_model", json!(embedding_model_id));
+    preset.insert("embedding_recommendation", embedding_rec);
     preset.insert("shortcuts", json!([]));
     preset.insert("mcp", json!([]));
     preset.insert("theme", json!("system"));
@@ -203,6 +216,12 @@ pub(super) fn recommendations_from_zero(zero: &OrderedMap, catalog: &WorkerCatal
         let mut summary = OrderedMap::new();
         summary.insert("zero_config", recommend.clone());
         recs.insert("summary", json_from_ordered(&summary));
+        if let Some(emb_id) = recommend.get("embedding_model") {
+            recs.insert("embedding_model", emb_id.clone());
+        }
+        if let Some(emb_rec) = recommend.get("embedding_recommendation") {
+            recs.insert("embedding_recommendation", emb_rec.clone());
+        }
     }
     recs.insert(
         "install_plan",

@@ -135,3 +135,88 @@ def test_no_stale_hardcoded_version_in_settings_view():
     assert not re.search(r'v\d+\.\d+\.\d+(?! Release Candidate)', app), (
         "frontend shell must not hard-code a release version except the RC label; read runtime versions from /health"
     )
+
+
+def _load_bump_version():
+    import importlib.util
+
+    path = ROOT / "scripts" / "bump_version.py"
+    spec = importlib.util.spec_from_file_location("bump_version", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_openapi_versions_and_bump_version_targets_agree(tmp_path, monkeypatch):
+    v = _canonical()
+    assert _json("frontend/openapi.json")["info"]["version"] == v
+
+    envelope = _json("rust/fixtures/openapi/_envelope.json")
+    assert envelope["spec_version"] == v
+    assert envelope["spec"]["info"]["version"] == v
+
+    fixture_paths = sorted((ROOT / "rust" / "fixtures" / "openapi").glob("*.json"))
+    assert fixture_paths, "no OpenAPI fixtures found under rust/fixtures/openapi/"
+    for fp in fixture_paths:
+        rel = fp.relative_to(ROOT).as_posix()
+        data = _json(rel)
+        assert data["spec_version"] == v, f"{rel} spec_version is {data.get('spec_version')}, expected {v}"
+
+    bump_mod = _load_bump_version()
+    target_paths = {rel for rel, _kind, _spec in bump_mod.TARGETS}
+    assert "frontend/openapi.json" in target_paths
+    for fp in fixture_paths:
+        rel = fp.relative_to(ROOT).as_posix()
+        assert rel in target_paths, f"scripts/bump_version.py TARGETS is missing {rel}"
+
+    assert bump_mod.bump(v, check=True) == 0
+
+    # Verify write mode on OpenAPI files preserves canonical formatting and updates index hashes.
+    (tmp_path / "frontend").mkdir(parents=True)
+    (tmp_path / "rust" / "fixtures" / "openapi").mkdir(parents=True)
+    (tmp_path / "frontend" / "openapi.json").write_text(
+        json.dumps({"info": {"title": "Lattice AI", "version": "1.0.0"}, "openapi": "3.1.0", "paths": {}}, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "rust" / "fixtures" / "openapi" / "_envelope.json").write_text(
+        json.dumps(
+            {
+                "family": "_envelope",
+                "spec": {"info": {"title": "Lattice AI", "version": "1.0.0"}, "openapi": "3.1.0"},
+                "spec_version": "1.0.0",
+            },
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "rust" / "fixtures" / "openapi" / "admin.json").write_text(
+        json.dumps({"family": "admin", "paths": {}, "spec_version": "1.0.0"}, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "rust" / "fixtures" / "openapi" / "_index.json").write_text(
+        json.dumps(
+            {
+                "envelope": {"file": "_envelope.json", "sha256": "stale"},
+                "fragments": [{"family": "admin", "file": "admin.json", "sha256": "stale"}],
+                "spec_version": "1.0.0",
+            },
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(bump_mod, "REPO", tmp_path)
+    assert bump_mod.bump("2.0.0", check=False) == 0
+    assert bump_mod.bump("2.0.0", check=True) == 0
+    bumped_env = json.loads((tmp_path / "rust" / "fixtures" / "openapi" / "_envelope.json").read_text(encoding="utf-8"))
+    assert bumped_env["spec_version"] == "2.0.0"
+    assert bumped_env["spec"]["info"]["version"] == "2.0.0"
+    bumped_idx = json.loads((tmp_path / "rust" / "fixtures" / "openapi" / "_index.json").read_text(encoding="utf-8"))
+    assert bumped_idx["spec_version"] == "2.0.0"
+    assert bumped_idx["envelope"]["sha256"] != "stale"
+    assert bumped_idx["fragments"][0]["sha256"] != "stale"
+

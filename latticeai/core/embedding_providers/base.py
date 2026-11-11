@@ -55,6 +55,12 @@ _KNOWN_DIMS = {
     "multilingual-e5-large": 1024,
     "multilingual-e5-large-mlx": 1024,
     "snowflake-arctic-embed-l-v2.0-8bit": 1024,
+    "embeddinggemma-2": 768,
+    "google/embeddinggemma-2": 768,
+    "embeddinggemma-2-4bit": 768,
+    "embeddinggemma-2-8bit": 768,
+    "embeddinggemma-300m": 768,
+    "google/embeddinggemma-300m": 768,
     "embeddinggemma-300m-4bit": 768,
     "embeddinggemma-300m-8bit": 768,
     "text-embedding-3-small": 1536,
@@ -64,8 +70,10 @@ _KNOWN_DIMS = {
 
 
 def _guess_dim(model: str, default: int) -> int:
-    key = str(model or "").split("/")[-1].strip().lower()
-    key = key.split(":")[0]
+    raw = str(model or "").strip().lower().split(":")[0]
+    if raw in _KNOWN_DIMS:
+        return _KNOWN_DIMS[raw]
+    key = raw.split("/")[-1].strip()
     return _KNOWN_DIMS.get(key, default)
 
 

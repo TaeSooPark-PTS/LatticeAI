@@ -1,3 +1,9 @@
+# [v12.5.0 - Deep Vector] (2026-11-11)
+
+Google EmbeddingGemma 2(768차원) 네이티브 통합, 하드웨어(RAM/VRAM) 메모리 사전 예약 기반 PC 맞춤형 임베딩 모델 추천 시스템 구축, Pillow 13+ `get_flattened_data()` 전환, GitHub Actions Node 24 네이티브 메이저 버전 업그레이드, `scripts/bump_version.py`의 OpenAPI 스펙·파편 49개 타깃 자동 동기화를 적용했습니다. 문은 422 / 41, 워커는 20. 쓰기는 GraphWriter 하나.
+
+See [docs/releases/RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md).
+
 # [v12.4.0 - Sharp Weight] (2026-11-11)
 
 Hugging Face 실저장소 검증을 거친 **Qwen 3.8 27B 4-bit**(`mlx-community/Qwen3.8-27B-4bit`)와 **Gemma 4 26B A4B QAT / QAT-OptiQ 4-bit**(`mlx-community/gemma-4-26B-A4B-it-qat-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit`)를 추천·다운로드 카탈로그와 멀티엔진 라우팅에 추가하고, `pillow>=13,<14` 및 npm 의존성 보안 취약점 0건 달성, `model_engines` URL 스킴 검증, Tailwind CSS v4 소스 스캔 범위 제한을 적용했습니다. 문은 422 / 41, 워커는 20. 쓰기는 GraphWriter 하나.
@@ -216,7 +222,7 @@ See [RELEASE_NOTES_v11.0.0.md](docs/releases/RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 12.4.0**.
+This repository keeps public release history from **11.0.0 through 12.5.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only that era — 11.x and 12.x — and this index
 follows the same boundary. Sub-11 note files remain in the tree as history; they
