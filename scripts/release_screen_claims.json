@@ -20,6 +20,23 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.5.0": {
+    "_why": [
+      "Deep Vector integrates Google EmbeddingGemma 2 natively into Lattice AI,",
+      "adds PC-tailored embedding recommendations to onboarding (02-recommended-models.png)",
+      "and the model library (07-model-library.png), and updates memory graph (05-memory-graph.png).",
+      "Other screens were not redesigned."
+    ],
+    "02-recommended-models.png": {
+      "min_percent": 1.5
+    },
+    "05-memory-graph.png": {
+      "min_percent": 1.5
+    },
+    "07-model-library.png": {
+      "min_percent": 1.5
+    }
+  },
   "12.4.0": {
     "_why": [
       "Sharp Weight is a model catalog and security audit release: Qwen 3.8 27B",

@@ -32,7 +32,11 @@ jobs:
         run: npm ci
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
+          for i in 1 2 3; do
+            npx playwright install --with-deps chromium && break || sleep 5
+          done
 
       - name: Run visual smoke tests
         run: npm run test:visual
