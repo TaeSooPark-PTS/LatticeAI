@@ -12,7 +12,7 @@
 [![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v12.3.0 Living Brain walkthrough](output/release/v12.3.0/gifs/v12.3.0-living-brain-walkthrough.gif)
+![v12.4.0 Living Brain walkthrough](output/release/v12.4.0/gifs/v12.4.0-living-brain-walkthrough.gif)
 
 Lattice AI is a Digital Brain that lives on your computer. Chat, files,
 folders, notes, and web pages all land in one knowledge graph you own.
@@ -42,19 +42,19 @@ LTCAI                    # then open http://127.0.0.1:4825/app
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v12.3.0/screenshots/01-login.png) | ![Model install](output/release/v12.3.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.3.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v12.4.0/screenshots/01-login.png) | ![Model install](output/release/v12.4.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.4.0/screenshots/07-model-library.png) |
 
 Screenshot index:
-[output/release/v12.3.0/SCREENSHOT_INDEX.md](output/release/v12.3.0/SCREENSHOT_INDEX.md)
+[output/release/v12.4.0/SCREENSHOT_INDEX.md](output/release/v12.4.0/SCREENSHOT_INDEX.md)
 
 ## What you can do
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.3.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.3.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.3.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.3.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.3.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.3.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.3.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.3.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.4.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.4.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.4.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.4.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.4.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.4.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.4.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.4.0/screenshots/08-system.png) |
 
 ## Why this is yours
 
@@ -70,42 +70,41 @@ Screenshot index:
 
 ## Current Release
 
-The current release is **12.3.0 — Live Wire**:
+The current release is **12.4.0 — Sharp Weight**:
 
-Model catalog routes, GGUF quantization tags, small-model tool/MCP calling,
-and HTML generation/inspection/download are verified end-to-end against live
-repositories and a loaded local model. The door is still **422 operations /
-41 families** over a **20-route worker**. Cloud is still optional and the
-default is still local.
+The local and cloud model catalog adds **Qwen 3.8 27B 4-bit** and **Gemma 4 26B
+A4B QAT / QAT-OptiQ 4-bit** builds, closes all Python (`pillow>=13,<14`) and npm
+dependency security advisories, hardens engine URL scheme validation, and scopes
+Tailwind CSS v4's oxide scanner to `frontend/`. The door is still **422
+operations / 41 families** over a **20-route worker**. Cloud is still optional
+and the default is still local.
 
-- **Verified Hugging Face GGUF tags & routes.** `ggml-org/gemma-4-*-GGUF`
-  uses `Q4_0`, `ggml-org/gpt-oss-20b-GGUF` uses `MXFP4`, and `Qwen3.5-9B` /
-  `Qwen3.6-35B-A3B` GGUF routes are wired across `ollama`, `lmstudio`, and
-  `llamacpp`.
-- **Auxiliary GGUF filtering, `--mmproj` companion load, and shard checks.**
-  `mmproj-`/`mtp-`/`dflash-`/`eagle3-`/`imatrix` GGUFs are excluded from
-  primary weight selection, companion `mmproj-*.gguf` files are downloaded
-  for `llama-server`, and `model.safetensors.index.json` shards are verified.
-- **Small-model tool calling & MCP calling hardening.** Expanded
-  `KNOWN_ACTIONS`, stringified `arguments` recovery, OpenAI `tool_calls`
-  array unwrapping, fenced HTML/code block salvage, and `adopt_named_args`
-  in `perform_action`.
-- **HTML structure inspection & RFC 5987 UTF-8 download.**
-  `POST /tools/inspect_html` extracts `title`, `links`, `scripts`,
-  `stylesheets`, `images`, `forms`, and `headings`; `GET /tools/download`
-  decodes UTF-8 paths and sends `filename*=UTF-8''...`.
+- **Qwen 3.8 27B 4-bit local & cloud integration.** Added
+  `mlx-community/Qwen3.8-27B-4bit` (`16.1GB`, `qwen3_5`), wired GGUF/HF routes
+  (`ggml-org/Qwen3.8-27B-GGUF:Q4_K_M`, `Qwen/Qwen3.8-27B`) across all 5 local
+  engines, and added `Qwen/Qwen3.8-27B` / `qwen/qwen3.8-27b` to `together` and
+  `openrouter`.
+- **Gemma 4 26B A4B QAT & QAT-OptiQ 4-bit builds.** Added
+  `mlx-community/gemma-4-26B-A4B-it-qat-4bit` (`15.6GB`, routed to Google's
+  official QAT GGUF `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`) and
+  `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit` (`21.9GB`, sensitivity-guided
+  mixed 4-bit/8-bit `mlx-optiq` build).
+- **Dependency security audit closure & runtime hardening.** Upgraded `pillow`
+  to `>=13,<14`, resolved all npm lockfile advisories in root and
+  `vscode-extension`, enforced `http(s)://` scheme checks in `model_engines`,
+  and scoped `@import "tailwindcss" source("..");` in `frontend/src/styles.css`.
 
 Release notes live in [docs/releases/](docs/releases/). This version:
-[docs/releases/RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md).
+[docs/releases/RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md).
 Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.3.0 must use exact filenames:
+Expected artifacts for 12.4.0 must use exact filenames:
 
-- `dist/ltcai-12.3.0-py3-none-any.whl`
-- `dist/ltcai-12.3.0.tar.gz`
-- `ltcai-12.3.0.tgz`
-- `dist/ltcai-12.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.3.0_aarch64.dmg`
+- `dist/ltcai-12.4.0-py3-none-any.whl`
+- `dist/ltcai-12.4.0.tar.gz`
+- `ltcai-12.4.0.tgz`
+- `dist/ltcai-12.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.4.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -176,7 +175,7 @@ Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
   pending-only, no Self-Model refiner, `delete_node` leaving `PART_OF`,
   review events silent without an owner, KG-api ingest text-only, two
   store cycles per review mutation) are listed with their reasons in
-  [docs/releases/RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md)
+  [docs/releases/RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md)
   and prioritized in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Release History
@@ -188,6 +187,7 @@ same boundary. Earlier notes live in [docs/releases/](docs/releases/).
 
 | Version | Theme |
 | --- | --- |
+| 12.4.0 | Sharp Weight |
 | 12.3.0 | Live Wire |
 | 12.2.1 | True Count |
 | 12.2.0 | Small Voice |

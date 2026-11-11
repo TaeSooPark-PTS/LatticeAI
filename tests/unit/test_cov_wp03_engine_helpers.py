@@ -266,6 +266,14 @@ def test_json_request_treats_a_whitespace_body_as_empty(monkeypatch):
     assert model_engines._json_request("http://127.0.0.1:1234/x") == {}
 
 
+def test_json_request_and_openai_models_reject_non_http_schemes(monkeypatch):
+    with pytest.raises(ValueError, match="Unsupported URL scheme"):
+        model_engines._json_request("file:///etc/passwd")
+
+    monkeypatch.setenv("OPENAI_BASE_URL", "file:///etc/passwd")
+    assert model_engines.get_openai_compatible_server_models("openai") == []
+
+
 # ── LM Studio base URLs ──────────────────────────────────────────────────────
 
 

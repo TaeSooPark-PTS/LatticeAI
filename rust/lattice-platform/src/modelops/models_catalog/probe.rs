@@ -367,6 +367,16 @@ const CATALOG_HINTS: &[(&str, CatalogHint)] = &[
         },
     ),
     (
+        "mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+        CatalogHint {
+            family: "Gemma 4",
+            min_ram_gb: 22.0,
+            recommended_ram_gb: 32.0,
+            recommended_default: false,
+            display_priority: 48,
+        },
+    ),
+    (
         "mlx-community/gemma-4-26b-a4b-it-4bit",
         CatalogHint {
             family: "Gemma 4",
@@ -374,6 +384,26 @@ const CATALOG_HINTS: &[(&str, CatalogHint)] = &[
             recommended_ram_gb: 32.0,
             recommended_default: false,
             display_priority: 50,
+        },
+    ),
+    (
+        "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
+        CatalogHint {
+            family: "Gemma 4",
+            min_ram_gb: 28.0,
+            recommended_ram_gb: 48.0,
+            recommended_default: false,
+            display_priority: 51,
+        },
+    ),
+    (
+        "mlx-community/Qwen3.8-27B-4bit",
+        CatalogHint {
+            family: "Qwen3.8",
+            min_ram_gb: 24.0,
+            recommended_ram_gb: 48.0,
+            recommended_default: false,
+            display_priority: 52,
         },
     ),
     (
@@ -782,5 +812,21 @@ mod tests {
         assert_eq!(registry.get("verified_total"), Some(&json!(3)));
         let families = recs.get("families").and_then(Value::as_array).unwrap();
         assert!(families.iter().any(|row| row["family"] == "Gemma 4"));
+    }
+
+    #[test]
+    fn catalog_hints_cover_qwen38_and_gemma4_qat_models() {
+        let qwen38 = catalog_hints("mlx-community/Qwen3.8-27B-4bit").expect("qwen3.8 hint");
+        assert_eq!(qwen38.family, "Qwen3.8");
+        assert_eq!(qwen38.display_priority, 52);
+
+        let qat = catalog_hints("mlx-community/gemma-4-26B-A4B-it-qat-4bit").expect("qat hint");
+        assert_eq!(qat.family, "Gemma 4");
+        assert_eq!(qat.display_priority, 48);
+
+        let optiq =
+            catalog_hints("mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit").expect("optiq hint");
+        assert_eq!(optiq.family, "Gemma 4");
+        assert_eq!(optiq.display_priority, 51);
     }
 }

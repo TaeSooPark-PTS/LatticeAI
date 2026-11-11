@@ -40,9 +40,12 @@ def test_registry_has_core_models_and_verification():
     assert "mlx-community/gemma-4-12B-it-4bit" in ids         # mid — note the capital B
     assert "mlx-community/Qwen3.5-9B-MLX-4bit" in ids         # mid, vision
     assert "mlx-community/gpt-oss-20b-MXFP4-Q8" in ids        # general purpose
+    assert "mlx-community/gemma-4-26B-A4B-it-qat-4bit" in ids     # MoE QAT 4-bit
     assert "mlx-community/gemma-4-26b-a4b-it-4bit" in ids     # MoE
+    assert "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit" in ids  # MoE QAT OptiQ 4-bit
     assert "mlx-community/Qwen3.6-35B-A3B-4bit" in ids        # MoE
-    assert "mlx-community/Qwen3.6-27B-4bit" in ids            # large dense
+    assert "mlx-community/Qwen3.8-27B-4bit" in ids            # large dense 3.8
+    assert "mlx-community/Qwen3.6-27B-4bit" in ids            # large dense 3.6
     assert "mlx-community/gemma-4-31b-it-4bit" in ids         # large
 
     verified = get_verified_models()

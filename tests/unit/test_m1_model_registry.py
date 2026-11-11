@@ -152,6 +152,18 @@ def test_a_common_misname_still_resolves():
     routes = model_catalog.MODEL_ENGINE_ALIASES["gemma-4-26b-it-4bit"]
 
     assert routes["local_mlx"] == "mlx-community/gemma-4-26b-a4b-it-4bit"
+    assert (
+        model_catalog.MODEL_ENGINE_ALIASES["gemma-4-26b-qat-4bit"]["local_mlx"]
+        == "mlx-community/gemma-4-26B-A4B-it-qat-4bit"
+    )
+    assert (
+        model_catalog.MODEL_ENGINE_ALIASES["gemma-4-26b-optiq-4bit"]["local_mlx"]
+        == "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit"
+    )
+    assert (
+        model_catalog.MODEL_ENGINE_ALIASES["qwen-3.8-27b-4bit"]["local_mlx"]
+        == "mlx-community/Qwen3.8-27B-4bit"
+    )
 
 
 # ── family filtering ──────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 # Lattice AI — browser extension (Manifest V3)
 
-Current release: **12.3.0 — Live Wire**.
+Current release: **12.4.0 — Sharp Weight**.
 
 A minimal Chrome/Edge (Manifest V3) extension for your **local** Lattice AI
 Knowledge Graph. Cloud stays on the host (optional, default local); this

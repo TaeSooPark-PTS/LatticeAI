@@ -347,6 +347,32 @@ _REGISTRY: List[ModelCapability] = [
 
     # ── MoE tier (32GB+ RAM) ─────────────────────────────────────────────────
     ModelCapability(
+        id="mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+        hf_repo_id="mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+        name="Gemma 4 26B A4B QAT Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="15.6GB",
+        architecture="gemma4",
+        download_size_gb=15.64,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=22.0, recommended_ram_gb=32.0, apple_silicon_pref=True,
+            notes="Quantization-Aware Trained (QAT) 4-bit MoE with 8-bit shared MLP and router layers; higher accuracy than standard 4-bit PTQ on 32GB+ Apple Silicon.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=9, license="apache-2.0",
+            notes="library_name=mlx, ungated, 3 safetensors shards, official Google QAT base.",
+            verified_by="hf-api-light",
+        ),
+        display_priority=48,
+    ),
+    ModelCapability(
         id="mlx-community/gemma-4-26b-a4b-it-4bit",
         hf_repo_id="mlx-community/gemma-4-26b-a4b-it-4bit",
         name="Gemma 4 26B A4B Instruct",
@@ -370,6 +396,32 @@ _REGISTRY: List[ModelCapability] = [
             notes="library_name=mlx, ungated, 3 safetensors shards.", verified_by="hf-api-light",
         ),
         display_priority=50,
+    ),
+    ModelCapability(
+        id="mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
+        hf_repo_id="mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
+        name="Gemma 4 26B A4B QAT OptiQ Instruct",
+        family="Gemma 4",
+        tag="local-vlm",
+        size="21.9GB",
+        architecture="gemma4",
+        download_size_gb=21.89,
+        quantization="OptiQ-4bit",
+        provider_hints=["local_mlx"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=28.0, recommended_ram_gb=48.0, apple_silicon_pref=True,
+            notes="Sensitivity-guided mixed 4-bit/8-bit OptiQ quantization built on Google's QAT Gemma 4 26B A4B base for higher reasoning and tool-calling fidelity.",
+        ),
+        source_country="미국", source_company="Google",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="text-generation", likes=4, license="apache-2.0",
+            notes="library_name=mlx, ungated, 5 safetensors shards, mlx-optiq sensitivity-guided mixed 4/8-bit.",
+            verified_by="hf-api-light",
+        ),
+        display_priority=51,
     ),
     ModelCapability(
         id="mlx-community/Qwen3.6-35B-A3B-4bit",
@@ -398,6 +450,31 @@ _REGISTRY: List[ModelCapability] = [
     ),
 
     # ── Large tier (48GB+ RAM) ───────────────────────────────────────────────
+    ModelCapability(
+        id="mlx-community/Qwen3.8-27B-4bit",
+        hf_repo_id="mlx-community/Qwen3.8-27B-4bit",
+        name="Qwen3.8 27B",
+        family="Qwen3.8",
+        tag="local-vlm",
+        size="16.1GB",
+        architecture="qwen3_5",
+        download_size_gb=16.08,
+        quantization="4bit",
+        provider_hints=["local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"],
+        download_strategy="hf_hub",
+        load_strategy="mlx_vlm",
+        hardware=HardwareProfile(
+            min_ram_gb=24.0, recommended_ram_gb=48.0, apple_silicon_pref=True,
+            notes="Latest Qwen 3.8 27B dense multimodal model; higher coding, reasoning, and agentic tool accuracy than Qwen 3.6 27B at identical 16.1GB 4-bit footprint.",
+        ),
+        source_country="중국", source_company="Alibaba",
+        verification=VerificationStatus(
+            hf_exists=True, hf_last_checked="2026-11-11", has_config=True, has_tokenizer=True,
+            has_weights_hint=True, pipeline_tag="image-text-to-text", likes=237, license="apache-2.0",
+            notes="library_name=mlx, ungated, 3 safetensors shards.", verified_by="hf-api-light",
+        ),
+        display_priority=52,
+    ),
     ModelCapability(
         id="mlx-community/Qwen3.6-27B-4bit",
         hf_repo_id="mlx-community/Qwen3.6-27B-4bit",

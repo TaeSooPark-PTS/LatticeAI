@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **12.3.0 — Live Wire**.
+Current release: **12.4.0 — Sharp Weight**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

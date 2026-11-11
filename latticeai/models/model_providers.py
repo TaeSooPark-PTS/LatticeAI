@@ -84,6 +84,7 @@ PROVIDER_MODEL_CATALOG = {
         {"id": "anthropic/claude-opus-4.7", "name": "Claude Opus 4.7 via OpenRouter", "family": "Claude"},
         {"id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
         {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
+        {"id": "qwen/qwen3.8-27b", "name": "Qwen3.8 27B via OpenRouter", "family": "Qwen"},
         {"id": "qwen/qwen3.6-35b-a3b", "name": "Qwen3.6 35B A3B via OpenRouter", "family": "Qwen"},
         {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B via OpenRouter", "family": "Gemma"},
         {"id": "x-ai/grok-4.6", "name": "Grok 4.6 via OpenRouter", "family": "Grok"},
@@ -94,6 +95,7 @@ PROVIDER_MODEL_CATALOG = {
         {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout", "family": "Llama"},
     ],
     "together": [
+        {"id": "Qwen/Qwen3.8-27B", "name": "Qwen3.8 27B", "family": "Qwen"},
         {"id": "Qwen/Qwen3.6-27B", "name": "Qwen3.6 27B", "family": "Qwen"},
         {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B", "family": "Gemma"},
         {"id": "meta-llama/Llama-4-Scout-17B-16E-Instruct", "name": "Llama 4 Scout", "family": "Llama"},

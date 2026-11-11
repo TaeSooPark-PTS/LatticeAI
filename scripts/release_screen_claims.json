@@ -20,6 +20,17 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.4.0": {
+    "_why": [
+      "Sharp Weight is a model catalog and security audit release: Qwen 3.8 27B",
+      "4-bit and Gemma 4 26B A4B QAT / QAT-OptiQ 4-bit catalog expansion,",
+      "Pillow 13.0.0 and npm lockfile vulnerability closure, model_engines",
+      "URL scheme validation, and scoped Tailwind CSS v4 source scanning.",
+      "",
+      "No screen was redesigned. Empty claim set on purpose. Unclaimed screens",
+      "are still measured and printed; they are not gated."
+    ]
+  },
   "12.3.0": {
     "_why": [
       "Live Wire is a backend and runtime release: verified Hugging Face GGUF",

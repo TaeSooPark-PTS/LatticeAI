@@ -135,14 +135,27 @@ _ENGINE_ROUTES: Dict[str, Dict[str, str]] = {
         "mlx-community/gemma-4-12B-it-4bit", "ggml-org/gemma-4-12B-it-GGUF", "google/gemma-4-12B-it",
         ollama_tag="Q4_0",
     ),
+    "mlx-community/gemma-4-26B-A4B-it-qat-4bit": _gguf_routes(
+        "mlx-community/gemma-4-26B-A4B-it-qat-4bit", "google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
+        "google/gemma-4-26B-A4B-it-qat-q4_0-unquantized",
+        ollama_tag="Q4_0",
+    ),
     "mlx-community/gemma-4-26b-a4b-it-4bit": _gguf_routes(
         "mlx-community/gemma-4-26b-a4b-it-4bit", "ggml-org/gemma-4-26B-A4B-it-GGUF",
         "google/gemma-4-26B-A4B-it",
         ollama_tag="Q4_0",
     ),
+    "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit": _gguf_routes(
+        "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit", "unsloth/gemma-4-26B-A4B-it-GGUF",
+        "google/gemma-4-26B-A4B-it-qat-q4_0-unquantized",
+        ollama_tag="Q4_0",
+    ),
     "mlx-community/gemma-4-31b-it-4bit": _gguf_routes(
         "mlx-community/gemma-4-31b-it-4bit", "ggml-org/gemma-4-31B-it-GGUF", "google/gemma-4-31B-it",
         ollama_tag="Q4_0",
+    ),
+    "mlx-community/Qwen3.8-27B-4bit": _gguf_routes(
+        "mlx-community/Qwen3.8-27B-4bit", "ggml-org/Qwen3.8-27B-GGUF", "Qwen/Qwen3.8-27B",
     ),
     "mlx-community/Qwen3.6-27B-4bit": _gguf_routes(
         "mlx-community/Qwen3.6-27B-4bit", "ggml-org/Qwen3.6-27B-GGUF", "Qwen/Qwen3.6-27B",
@@ -164,6 +177,11 @@ _ENGINE_ROUTES: Dict[str, Dict[str, str]] = {
 # is no other Gemma 4 26B — and resolving that to nothing would be pedantry.
 _COMMON_MISNAMES: Dict[str, str] = {
     "gemma-4-26b-it-4bit": "mlx-community/gemma-4-26b-a4b-it-4bit",
+    "gemma-4-26b-qat-4bit": "mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+    "gemma-4-26b-a4b-qat-4bit": "mlx-community/gemma-4-26B-A4B-it-qat-4bit",
+    "gemma-4-26b-optiq-4bit": "mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit",
+    "qwen-3.8-27b-4bit": "mlx-community/Qwen3.8-27B-4bit",
+    "qwen3.8-27b": "mlx-community/Qwen3.8-27B-4bit",
 }
 
 # Keyed by both the lowercase short name ("gemma-4-12b-it-4bit") and the

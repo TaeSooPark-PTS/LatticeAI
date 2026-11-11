@@ -4,6 +4,37 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.4.0] - 2026-11-11 — Sharp Weight
+
+### Added
+- Added `mlx-community/Qwen3.8-27B-4bit` (`16.1GB`, `qwen3_5`) to the local
+  model capability registry, multi-engine GGUF/HF routes
+  (`ggml-org/Qwen3.8-27B-GGUF:Q4_K_M`, `Qwen/Qwen3.8-27B`), `together` and
+  `openrouter` cloud catalogs, and Rust `CATALOG_HINTS`.
+- Added `mlx-community/gemma-4-26B-A4B-it-qat-4bit` (`15.6GB`, routed to
+  Google's official QAT GGUF `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0` and
+  `google/gemma-4-26B-A4B-it-qat-q4_0-unquantized`) and
+  `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit` (`21.9GB`, sensitivity-guided
+  mixed 4-bit/8-bit `mlx-optiq` build on Google's QAT base) to the capability
+  registry, engine routes, and Rust `CATALOG_HINTS`.
+
+### Changed
+- Upgraded `pillow` dependency constraint to `>=13,<14` in `pyproject.toml` and
+  `requirements.txt` (closing 39 CVEs in `pillow 12.3.0`), and synchronized
+  `reportlab>=4,<5` and `huggingface_hub>=1.0,<2` in `requirements.txt`.
+- Updated npm dependencies and lockfiles in root and `vscode-extension`
+  (`vitest` and `@vitest/coverage-v8` `^4.1.12`, `glob` `^14.0.4`, `minimatch`
+  `^11.0.7`) so `npm audit` reports 0 vulnerabilities.
+
+### Fixed
+- Hardened `_json_request` and `get_openai_compatible_server_models` in
+  `latticeai/services/model_engines.py` to reject non-`http(s)://` URL schemes.
+- Fixed `admin_log_retention` in `rust/lattice-platform/src/adminops/admin/handlers.rs`
+  to read `state.auth.clock().now()` instead of real wall-clock `unix_now()`,
+  eliminating wall-clock drift against deterministic audit fixtures.
+- Scoped `@import "tailwindcss" source("..");` in `frontend/src/styles.css` so
+  `@tailwindcss/oxide` only scans `frontend/` instead of walking `rust/target`.
+
 ## [12.3.0] - 2026-10-19 — Live Wire
 
 ### Added

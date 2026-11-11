@@ -22,7 +22,7 @@ use super::enterprise::{poc_overview, siem_export_stub};
 use super::http::{json_ok, json_ok_value, language_from, message_error, workspace_from_headers};
 use super::internal::{
     external_origin, filter_audit_log, json_from_ordered, parse_object_body, parse_timestamp_unix,
-    query_bound_error, unix_now,
+    query_bound_error,
 };
 use super::AdminState;
 
@@ -419,7 +419,8 @@ pub(crate) async fn admin_log_retention(
 ) -> Result<Response, Response> {
     require_admin(&state, &headers)?;
     let events = scoped_audit(&state, &headers);
-    let cutoff = unix_now().saturating_sub(90 * 24 * 3600);
+    let now_secs = state.auth.clock().now().max(0.0) as u64;
+    let cutoff = now_secs.saturating_sub(90 * 24 * 3600);
     let mut retained = 0u64;
     let mut prune = 0u64;
     for event in &events {

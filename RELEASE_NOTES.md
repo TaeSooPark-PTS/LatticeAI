@@ -1,3 +1,9 @@
+# [v12.4.0 - Sharp Weight] (2026-11-11)
+
+Hugging Face 실저장소 검증을 거친 **Qwen 3.8 27B 4-bit**(`mlx-community/Qwen3.8-27B-4bit`)와 **Gemma 4 26B A4B QAT / QAT-OptiQ 4-bit**(`mlx-community/gemma-4-26B-A4B-it-qat-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit`)를 추천·다운로드 카탈로그와 멀티엔진 라우팅에 추가하고, `pillow>=13,<14` 및 npm 의존성 보안 취약점 0건 달성, `model_engines` URL 스킴 검증, Tailwind CSS v4 소스 스캔 범위 제한을 적용했습니다. 문은 422 / 41, 워커는 20. 쓰기는 GraphWriter 하나.
+
+See [docs/releases/RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md).
+
 # [v12.3.0 - Live Wire] (2026-10-19)
 
 Hugging Face 실저장소 양자화 태그(`Q4_0`·`MXFP4`)와 GGUF 라우팅, 보조 GGUF 필터링·`--mmproj` 동반 로드·샤드 검증, 작은 모델의 툴콜/MCP 인자 복구와 코드블록 HTML 추출, `POST /tools/inspect_html` 구조 분석과 RFC 5987 UTF-8 다운로드를 실모델(`mlx-community/gemma-4-e2b-it-4bit`) E2E로 검증했습니다. 문은 422 / 41, 워커는 20. 쓰기는 GraphWriter 하나.
@@ -210,7 +216,7 @@ See [RELEASE_NOTES_v11.0.0.md](docs/releases/RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 12.3.0**.
+This repository keeps public release history from **11.0.0 through 12.4.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only that era — 11.x and 12.x — and this index
 follows the same boundary. Sub-11 note files remain in the tree as history; they
@@ -218,6 +224,7 @@ are no longer listed here as supported releases.
 
 ## Current Release
 
+- [v12.4.0 - Sharp Weight](docs/releases/RELEASE_NOTES_v12.4.0.md)
 - [v12.3.0 - Live Wire](docs/releases/RELEASE_NOTES_v12.3.0.md)
 - [v12.2.1 - True Count](docs/releases/RELEASE_NOTES_v12.2.1.md)
 - [v12.2.0 - Small Voice](docs/releases/RELEASE_NOTES_v12.2.0.md)

@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.",
-  "version": "12.3.0",
+  "version": "12.4.0",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
@@ -199,6 +199,10 @@
     "@vscode/vsce": "^3.9.2",
     "ovsx": "^0.10.6",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "glob": "^14.0.4",
+    "minimatch": "^11.0.7"
   },
   "repository": {
     "type": "git",

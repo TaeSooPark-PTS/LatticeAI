@@ -112,6 +112,8 @@ def _json_request(
     payload: Optional[Dict[str, Any]] = None,
     timeout: float = 10.0,
 ) -> Dict[str, Any]:
+    if not str(url).startswith(("http://", "https://")):
+        raise ValueError(f"Unsupported URL scheme in {url!r}")
     data = None
     req_headers = dict(headers or {})
     if payload is not None:
@@ -225,7 +227,7 @@ def get_openai_compatible_server_models(provider: str) -> List[str]:
     config = OPENAI_COMPATIBLE_PROVIDERS.get(provider) or {}
     base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
     base_url = (base_url or config.get("base_url") or "").rstrip("/")
-    if not base_url:
+    if not base_url or not base_url.startswith(("http://", "https://")):
         return []
 
     api_key = os.getenv(config.get("env_key", "")) or config.get("api_key_fallback") or provider

@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.4.0 — Sharp Weight (2026-11-11)
+
+Hugging Face에서 검증된 **Qwen 3.8 27B 4-bit**(`mlx-community/Qwen3.8-27B-4bit`)와 **Gemma 4 26B A4B QAT / QAT-OptiQ 4-bit**(`mlx-community/gemma-4-26B-A4B-it-qat-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit`)를 모델 추천 및 다운로드 카탈로그에 추가하고, Python(`pillow>=13,<14`)과 npm 의존성 보안 취약점을 전수 해소한 릴리스. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.
+
+- **Qwen 3.8 27B 4-bit 추가 및 멀티엔진 라우팅.** `mlx-community/Qwen3.8-27B-4bit` (`16.1GB`, `qwen3_5`)를 대형 티어에 추가하고, `ggml-org/Qwen3.8-27B-GGUF:Q4_K_M` 및 `Qwen/Qwen3.8-27B` 경로를 5개 로컬 엔진(`local_mlx`·`ollama`·`vllm`·`lmstudio`·`llamacpp`)과 클라우드 공급자(`together`·`openrouter`), Rust `CATALOG_HINTS`에 연결했다.
+- **Gemma 4 26B A4B QAT & QAT-OptiQ 4-bit 추가.** Google 공식 QAT 기반의 `mlx-community/gemma-4-26B-A4B-it-qat-4bit` (`15.6GB`, `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0` 라우팅)와 민감도 기반 혼합 4/8-bit `mlx-optiq` 빌드인 `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit` (`21.9GB`)를 추가했다.
+- **Python · npm 의존성 보안 감사 해소 및 런타임 보강.** `pillow>=13,<14` 상향으로 `Pillow 12.3.0`의 39개 CVE를 해결하고, 루트 및 `vscode-extension`의 npm audit 취약점을 0건으로 정리했으며, `model_engines`의 HTTP(S) 스킴 검증, `lattice-platform` `admin_log_retention`의 주입형 시계(`state.auth.clock()`) 연동, `frontend/src/styles.css`의 `@import "tailwindcss" source("..");` 스캔 범위 제한을 적용했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md).
+
+빌드 산출물은 `dist/ltcai-12.4.0-py3-none-any.whl`,
+`dist/ltcai-12.4.0.tar.gz`, `ltcai-12.4.0.tgz`, `dist/ltcai-12.4.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.4.0_aarch64.dmg` 입니다.
+
 ## v12.3.0 — Live Wire (2026-10-19)
 
 Hugging Face 실저장소 양자화 태그·GGUF 라우팅·클라우드 공급자 기본값을 전수 정렬하고, 작은 로컬 모델의 툴콜/MCP 인자 복구와 HTML 생성·점검·다운로드를 실모델(`mlx-community/gemma-4-e2b-it-4bit`)로 끝까지 검증한 릴리스. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.
