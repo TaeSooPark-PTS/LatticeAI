@@ -6,6 +6,7 @@
 //! behaviour is the contract and the Rust side is bent to match it, never the
 //! other way round. The parity harness in `lattice-retrieval` is what proves it.
 
+pub mod bm25_stats;
 pub mod db;
 pub mod embeddings;
 pub mod graph_write;

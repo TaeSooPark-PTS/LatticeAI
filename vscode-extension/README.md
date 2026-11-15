@@ -12,6 +12,8 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
+**12.7.0 — Fast Index** adds a Pre-Tokenized BM25F Sidecar (`Bm25SidecarIndex`), SQLite `bm25_node_stats` persistence, and an inverted posting-list & GraphRAG adjacency cache for O(1) lookup without query-time re-tokenization, alongside a product-first `README.md` and `v12.0.0+` release-history polish. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.7.0.md`.
+
 **12.6.0 — Hybrid Graph** adds 3-way BM25F + Vector + Knowledge Graph RRF hybrid indexing & graph-aware agent skills, multi-scale subword `FallbackTextEmbedder`, unauthenticated EmbeddingGemma 2 public mirrors & quantized GGUF/MLX/ONNX fallbacks, real-time SSE download progress streaming (`MB/s` & `ETA`) in Onboarding and Model Library, Pillow 13+ cleanup, Ubuntu 24.04/26.04 `t64` CI resilience, and the modular `scripts/bump_version/` CLI. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.6.0.md`.
 
 **12.5.0 — Deep Vector** adds native Google EmbeddingGemma 2 support, hardware-aware PC-tailored embedding recommendations, Pillow 13+ flattened data compatibility, Node 24 native CI/CD, and automated OpenAPI specification and fixture synchronization. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.5.0.md`.
@@ -24,118 +26,11 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 **The extension surface is unchanged apart from its version.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before.
 
-**12.0.0 — Open House** grouped the two largest crates by purpose (`lattice-agent` six groups, `lattice-platform` seven domains, all `git mv`) and closed four named gaps: restore is live without a restart, `/setup/install` installs on per-item consent, `POST /mcp` is inside the OpenAPI contract, and pointer tools are `pip install "ltcai[pointer]"`. Full disclosure of that release is in `RELEASE_NOTES_v12.0.0.md`.
+**12.0.0 — Open House** grouped the two largest crates by purpose (`lattice-agent` six groups, `lattice-platform` seven domains, all `git mv`) and closed four named gaps: restore is live without a restart, `/setup/install` installs on per-item consent, `POST /mcp` is inside the OpenAPI contract, and pointer tools are `pip install "ltcai[pointer]"`. Full disclosure of that release is in `docs/releases/RELEASE_NOTES_v12.0.0.md`.
 
 **The extension surface is unchanged apart from its version.** Sync, status, recall, staged proposals, `POST /agent` with `stream:true`, and `strict` / `trusted` / `bypass` travel over the wire as before — the crate regrouping renamed files, not routes. Cloud escalation and MCP live on the host, not in the editor.
 
-**11.9.0 — Working Order** keeps the One Door topology (`lattice-host`, 420 operations / 41 families, 19-route worker) and makes the remaining Current stubs and the half-wired lanes actually run. Hybrid cloud is optional (default local; OAuth CLI `agy` / `grok` supported; `api_key` mock-verified only). MCP is a real JSON-RPC server at `POST /mcp`. Chat file generation is restored. Full disclosure of what was still open in that release is in `RELEASE_NOTES_v11.9.0.md`.
-
-**11.8.0 — Travel Light** keeps the One Door topology (`lattice-host`, 420 operations / 41 families) and takes weight off the Python side of it: the AI worker went from **28 routes to 19** by deleting nine that no caller in the tree reached, along with their modules and the `pypdfium2` dependency one of them pulled in. The Rust crates lost their blanket `#![allow]` headers (about 191 files) and the ~650 diagnostics underneath were fixed at the source; two 702-row decision grids became named unit tests; the dead Python halves of chunking, permissions and password handling are gone. One real bug came out of it: the worker read `sessions.json` only at boot, so a login *after* worker start was invisible to it — silently under `trusted_local_owner`, and as a 401 under `LATTICEAI_REQUIRE_AUTH=true`. Full disclosure of what is still open — including the coverage gate dropping from 100% to a line floor of 90 — is in `RELEASE_NOTES_v11.8.0.md`.
-
-**The extension is unchanged apart from its version.** No endpoint an editor session uses moved: sync, status, recall, staged proposals with their 409 conflicts, `POST /agent` with `stream:true` and the `agent_step` timeline, and `strict` / `trusted` / `bypass` all travel over the wire exactly as before. None of the nine deleted routes was one the extension called. What you may notice: if you sign in to the app *after* the worker has started, recall and agent actions from the editor now work immediately instead of failing until a restart.
-
-**11.7.0 — Clean Sweep** closed the backlog One Door shipped with. Command-search knowledge returns nodes; review snooze accepts offset-aware datetimes; double-reject is 409, which the extension already treated as a conflict. Binary uploads parse, per-chunk vectors land, user hooks fire on native tools, writes are sanitized, review timeline events record, and `workspace_os.json` has one writer. Self-Model writes, the xlsx export, chat ingest and vault-watch — stranded on retired seams in 11.6.0 — became native, and the SPA was restyled (elevation, no glass).
-
-**11.6.0 — One Door** moved the product server itself into Rust. `lattice-host` now serves **420 operations across 41 route families** at the paths they always had, every write goes through the native knowledge-graph write engine (held to Python's bytes by a 32-step row-parity battery and a 67-object schema comparison), and the Python package became a **28-route AI worker**: LLM inference and streaming, embedding, extraction, parsing, four document renderers, speech-to-text, multimodal description, the model and engine catalog, `sysinfo` and `/health`. Anything not on the committed allowlist is answered natively or `404` — never forwarded. 298 Python files and 73,617 lines were deleted; the 1,487 recorded HTTP cases captured from the old server are replayed against the new routes.
-
-**One thing to know from 11.6.0:** the **Telegram bridge and the SSO/OIDC login and callback flows were removed**, as consequences of the worker boundary. The SSO configuration surface remains and **password login is native**, so an editor connecting to a local Brain is unaffected; a workspace that authenticated its users through an external OIDC provider is not, and should stay on 11.5.2 until those flows are ported.
-
-**11.5.2 — Tight Ship** is a cleanup-and-correctness release built from three audits of the settled 11.5.1 tree: a Rust↔Python duplication map (verdict: the boundary is sound — zero cross-boundary deletions, because every twin is either the live Python-direct surface or pinned by a parity golden), an arc-level dead-code and test audit, and a live front-door parity sweep across 192 endpoints. About 1,100 lines were deleted (six moved-module shims, a never-wired streaming seam, ~27 zero-caller symbols, the legacy Electron shell that was still shipping in the npm tarball) with per-assertion test surgery so the 100% line and branch floor never moved; duplicate embedders, workspace selectors, sha256/SSE/data-dir helpers and seven byte-identical Rust copies were each given one home; and the Rust front door was fixed with live before/after proof — proxied redirects now keep `Set-Cookie` and `Location`, the native `/rust/*` and `/host/*` lanes are posture-gated fail-closed, and `X-Forwarded-For/Proto/Host` cross the hop.
-
-**This release does not touch the extension**; it ships unchanged apart from its version. Nothing an editor session depends on moved: no endpoint, token, or approval path changed, `strict` / `trusted` / `bypass` still travel over the wire, and governed tool behaviour, the approval prompts, and the audit trail are exactly as they were. There is also nothing new to notice on the app side — 11.5.2 is a backend and front-door release, and the app's screens are byte-for-byte the ones 11.5.1 shipped. What changes for you is failure modes that used to be silent: if you reach the app through the desktop shell's Rust gateway, the invite gate and SSO login now complete instead of dead-ending, and links the server generates name the address you actually use rather than an internal worker port.
-
-**11.5.1 — Rust Full Loop** completes the migration's explicit remainders — the agent loop orchestrator now runs in Rust (proven byte-identical against the real Python runtime and by a live worker smoke) and the document-generation context builder is native. Building on 11.5.0: the desktop now fronts through the Rust gateway by default, the native surface covers three-channel search, graph reads, history, context assembly, typed chunking, a permission kernel with 2,452 exact decision-table verdicts, and a scheduler that finally drives the background embed queue — all pinned by bidirectional parity goldens (191/191 retrieval, 332 chunks, zero epsilon). The Python worker keeps parsers, embedding production, LLM inference, mutations, and graph writes; the extension surface is unchanged.
-The memory stats moved into a hover badge with a small summary graph, the six
-capture chips folded behind one + on the composer, the model banner became a
-status pill with the single accented CTA, and past conversations / stats / the
-memory map moved onto a dock rail that opens a focus-trapped drawer instead of
-stacking cards under the fold. Cards trade borders for soft shadow, and the
-accent colour appears exactly twice. Alongside: the frontend test suite now
-covers 100% of statements, branches, functions and lines, with vitest
-thresholds and a CI coverage gate holding that floor, and the public release
-history now starts at 9.0.0.
-
-**This release does not touch the extension**; it ships unchanged apart from its
-version. Nothing an editor session depends on moved: no endpoint, token, or
-approval path changed, `strict` / `trusted` / `bypass` still travel over the
-wire, and governed tool behaviour, the approval prompts, and the audit trail are
-exactly as they were. What you will notice is on the app side — a proposal you
-raise from the editor now lands in a 검토함 that leads the 작업 screen, and the
-approval rows name the action in words (`파일 읽기`) instead of showing the raw
-lookup key.
-
-**10.6.1 — First Things** rebuilt the layout of five app screens. One of them
-matters to anyone working between the editor and the app: a review item is
-**evidence on the left, decision on the right**. A proposal raised from the
-editor used to render as one long column that ended in a button row, so a large
-diff pushed 승인 / 거절 off the bottom of the screen. 승인하고 적용 and 거절 now
-sit in a panel that stays beside the diff, and the app's 작업 → 실행 tab leads
-with **승인함** instead of finishing with it.
-
-**10.6.0 — Promoted Panels** rebuilt the layout of the app's main screens. The
-review inbox became what the app's **작업** link opens — it used to open the goal
-composer — so a proposal raised from the editor is on screen as soon as you
-switch over. And **작업 · AI 모델 · 설정** moved out of the app's 더보기 menu into
-the top bar on a wide window; on a narrow one they are still in the menu, now
-under **관리**.
-
-**10.5.0 — Everyday Words** changed what the app calls things. The autonomy dial
-the editor obeys is called **혼자 해도 되는 일** (설정 → 혼자 해도 되는 일), and its
-three settings read 먼저 물어보기 / 웬만하면 알아서 / 거의 다 알아서.
-
-**10.4.0 — Named Ground** closed the extension's last three surface-parity gaps,
-and all three were rendering gaps rather than contract gaps — the sidecar was
-already reporting the data and the extension was discarding it:
-
-- **`Lattice AI: Capture Folder Into Brain`** sends a whole folder through the
-  same `/api/ingestion/folder` endpoint the web Capture view uses, including
-  the same per-path local-read approval. Previously the editor could only push
-  the current file.
-- **`Lattice AI: Show Run Artifacts`** renders `artifacts[]` as cards carrying
-  the server's own flags, so a deterministically repaired scaffold no longer
-  looks identical to clean model output. The extension never upgrades a
-  `valid: false` verdict, and an older sidecar that reports only
-  `created_files` is labelled "no artifact detail reported" rather than implied
-  to be verified.
-- **The model picker now explains itself** — it reads the hardware-derived
-  recommendation from `GET /setup/scan` and shows the server's reasoning for
-  this machine. No scan means no banner; the extension does not invent a
-  reason.
-
-10.3.0 added a local-first hybrid path: the Knowledge Graph stays on-device
-while cloud LLMs become an opt-in worker. The default network boundary is
-`local_only` — cloud use requires an explicit acknowledgement, only minimal
-related nodes leave the machine, and streamed answers expand the local Brain
-with provenance under Review Queue gates.
-
-9.9.8 added a `strict` / `trusted` / `bypass` permission mode. Editor actions
-run through the same governed tool path, so the mode set in the Lattice AI app
-(설정 → 혼자 해도 되는 일) applies here too; the dial itself lives in the app
-rather than in editor settings, so there is one place to raise autonomy and one
-audit trail for it.
-
-The extension follows the main app positioning: Lattice AI is a local-first
-Digital Brain, not just a model launcher or editor chat panel. The 9.9.6 line closes the editor's
-surface-parity gaps: recall answers carry the same grounding verdict the web
-app badges (`Lattice AI: Ask Your Brain`, `Ask About Current File`), staged
-change proposals can be reviewed and applied in place
-(`Lattice AI: Review Center`), and `Lattice AI: Run Agent Task` reports a
-run's steps, files, and plain-language outcome. 9.9.7 adds the last two
-editor gaps: `Lattice AI: Run Agent Task (Live Steps)` streams the same
-`agent_step` frames the web timeline renders, and
-`Lattice AI: Build From This Evidence` turns the sources your last recall
-actually cited into one-click follow-ups. It connects editor actions to the same
-durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v9.9.0 line hardens
-trust: change proposals record the original content hash and refuse to apply
-over a file you edited in the meantime (atomic apply, exactly-once approval);
-a verifier that can't be parsed ends as needs-review instead of a fabricated
-success; every mutating tool is inventory-governed with a fail-closed CI gate;
-and device analysis no longer fabricates a "ready" model card on probe failure
-— while preserving the 9.8.0 honest knowledge pipeline, 9.7.0 hybrid graph
-retrieval, model-agnostic file generation, fail-closed boundaries, typed
-runtime and model state, exact release artifacts, and the visible VS Code sync
-status and runtime architecture contract.
+The extension connects your editor to the same local-first Digital Brain, explicit consent gates, replaceable model workflow (`MLX-VLM` / `llama.cpp` / `Ollama` / `LM Studio` / optional cloud), and proposal-first Review Center used by the desktop and web app.
 
 ## Quick Start
 

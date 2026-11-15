@@ -74,10 +74,11 @@ pub mod vector;
 pub mod vector_hnsw;
 
 pub use bm25::{
-    bm25f_graphrag_enabled, bm25f_score_nodes, bm25f_search, expand_knowledge_graph,
-    extract_query_terms, extract_wikilinks_and_tags, hybrid_bm25_vector_graph_search,
-    tokenize_bm25_cjk, Bm25fParams, Bm25fScoredNode, GraphRagConfig, GraphRagOptions,
-    GraphStructuralHit, QueryTerm,
+    bm25f_graphrag_enabled, bm25f_score_nodes, bm25f_search, cached_sidecar_stats,
+    expand_knowledge_graph, expand_knowledge_graph_with_sidecar, extract_query_terms,
+    extract_wikilinks_and_tags, hybrid_bm25_vector_graph_search, tokenize_bm25_cjk,
+    with_bm25_sidecar, Bm25SidecarIndex, Bm25fParams, Bm25fScoredNode, GraphRagConfig,
+    GraphRagOptions, GraphStructuralHit, PostingEntry, QueryTerm, SidecarCacheStats,
 };
 pub use concepts::topic_candidates;
 pub use context::{assemble_context, ContextRequest};

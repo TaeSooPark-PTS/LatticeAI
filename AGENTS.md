@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **12.6.0 — Hybrid Graph**.
+Current release: **12.7.0 — Fast Index**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

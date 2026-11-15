@@ -6,7 +6,7 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const releaseDir = `output/release/v${version}`;
-const releaseTheme = "Hybrid Graph";
+const releaseTheme = "Fast Index";
 const title = `${version} — ${releaseTheme}`;
 const escapedVersion = version.replaceAll(".", "\\.");
 
@@ -96,19 +96,28 @@ requireIncludes("RELEASE.md", `## v${version} — ${releaseTheme}`);
 requireIncludes("docs/CHANGELOG.md", `## [${version}]`);
 requireIncludes("RELEASE_NOTES.md", `[v${version} - ${releaseTheme}]`);
 requireIncludes("CHANGELOG.md", "starts at v8.0.0");
-// 10.10.0 moved the public history floor from 8.0.0 to 9.0.0; 11.6.0 moved it
-// again, to 11.0.0, because "One Door" rebuilt the product server in Rust and
-// SECURITY.md now supports only 11.x. This gate follows the boundary the docs
-// state, and `test_markdown_current_release_references_match_release` holds the
-// README table to the same floor.
-requireIncludes("RELEASE_NOTES.md", `11.0.0 through ${version}`);
+// 12.7.0 moved the public release-history floor to 12.0.0 ("v12.0.0+ Only"),
+// pruning pre-v12 release notes from docs/releases/, RELEASE.md,
+// RELEASE_NOTES.md, docs/CHANGELOG.md, README.md, and SECURITY.md.
+requireIncludes("RELEASE_NOTES.md", `12.0.0 through ${version}`);
 requireIncludes("SECURITY.md", `${version.split(".").slice(0, 2).join(".")}.x (latest)`);
 
 for (const rel of ["README.md", "RELEASE.md", "docs/CHANGELOG.md", "RELEASE_NOTES.md"]) {
   const text = read(rel);
-  for (const forbidden of ["RELEASE_NOTES_v7", "output/release/v7", "## v7.", "## [7."]) {
+  for (const forbidden of [
+    "RELEASE_NOTES_v11",
+    "RELEASE_NOTES_v10",
+    "RELEASE_NOTES_v9",
+    "RELEASE_NOTES_v8",
+    "RELEASE_NOTES_v7",
+    "output/release/v7",
+    "## v11.",
+    "## [11.",
+    "## v7.",
+    "## [7.",
+  ]) {
     if (text.includes(forbidden)) {
-      errors.push(`${rel}: forbidden pre-8.0 release-history reference ${forbidden}`);
+      errors.push(`${rel}: forbidden pre-12.0 release-history reference ${forbidden}`);
     }
   }
 }

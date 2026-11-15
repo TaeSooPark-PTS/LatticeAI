@@ -547,6 +547,10 @@ impl GraphWriter {
                     )?;
                     txn.execute("DELETE FROM nodes WHERE id=?", rusqlite::params![node_id])?;
                     delete_nodes_v2(txn, std::slice::from_ref(&node_id))?;
+                    crate::bm25_stats::delete_bm25_node_stats_by_ids(
+                        txn,
+                        std::slice::from_ref(&node_id),
+                    )?;
                     removed_count += 1;
                 }
                 for (original, canonical) in &verb_plan {

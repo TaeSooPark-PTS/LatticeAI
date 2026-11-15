@@ -3,16 +3,16 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **12.6.0 — Hybrid Graph**.
+Current release: **12.7.0 — Fast Index**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
 product honest. Product positioning and the five-minute first-run stay in
 [README.md](../README.md) and [ONBOARDING.md](ONBOARDING.md). Supported
-release history is 11.0.0 and later in [CHANGELOG.md](CHANGELOG.md) and
-[RELEASE.md](../RELEASE.md) (11.6.0 rebuilt the product server in Rust, so
-[SECURITY.md](../SECURITY.md) supports only 11.x). Open gaps toward v12.0.0
-live in [ROADMAP.md](ROADMAP.md) (reference, not canonical).
+release history is 12.0.0 and later in [CHANGELOG.md](CHANGELOG.md) and
+[RELEASE.md](../RELEASE.md) (`12.x` is the modern Rust-host + domain-grouped
+architecture era, so [SECURITY.md](../SECURITY.md) supports only `12.x`). Open
+gaps live in [ROADMAP.md](ROADMAP.md) (reference, not canonical).
 
 ## Product Contract
 
@@ -80,7 +80,7 @@ worker interpreter with `LTCAI_PYTHON` when both exist.
 `rust/target/release/lattice-host`, then `rust/target/debug/lattice-host`. If
 none exist it runs `cargo build -p lattice-host` (debug). A stale
 `rust/target/release/lattice-host` wins over a current debug binary — pin or
-rebuild (`cargo build -p lattice-host --release`) if `-V` is not 12.4.0.
+rebuild (`cargo build -p lattice-host --release`) if `-V` is not 12.7.0.
 
 Do not run `npm start` and `npm run dev` on the same port. The worker
 entrypoint defaults to `LATTICEAI_PORT` or **4825**, the same port as the
@@ -117,7 +117,7 @@ lattice-host            one door — mounts every family
   lattice-jobs          embed drain + index API
   lattice-chat          POST /chat
   lattice-auth          who is this
-Python worker           compute only — 19 allowlisted routes
+Python worker           compute only — 20 allowlisted routes
 frontend/src            SPA
 ```
 
@@ -130,7 +130,7 @@ working for *consumers*. New code inside a crate uses the real path
 | **새 제품 API 라우트** | The `lattice-platform` domain that names the subject (`workspaceos/`, `toolsurface/`, `governance/`, `knowledge/`, `modelops/`, `adminops/`). One module owns one family: `MOUNTED: &[(&str, &str)]` + `router(state)`, then mount the factory in [`rust/lattice-host/src/gateway/product.rs`](../rust/lattice-host/src/gateway/product.rs). A **page shell** is a 308 in `shell/ui_redirects`, not a second handler — except `GET /plugins/sdk` (it carries `require_user`, so it is `toolsurface::plugins`). | Do not put retrieval/search/chronicle in platform — that is `lattice-retrieval`. Ingest doors are `lattice-ingest`. Chat is `lattice-chat`. Index drain is `lattice-jobs`. Identity is `lattice-auth`. Agent-loop HTTP is `lattice-agent` `surface/`. A handler here that re-derives "is this allowed" has forked `lattice_agent::kernel::permission`. A module that opens the graph has become a second writer. |
 | **에이전트 툴 추가** | A tool that runs *inside an agent turn* goes in `lattice-agent` `tools/`, in the file named for what it *touches*: `files` (workspace), `vault` (Brain/Obsidian), `shell` (subprocesses), `desktop` (OS actuation), `render` (document creators), `scaffold` (templates), `local` (paths outside the workspace). Add the name to `tools::host::MUTATING_TOOLS` or `RENDER_TOOLS` and the arm to the dispatcher in [`tools/host.rs`](../rust/lattice-agent/src/tools/host.rs). `is_native` follows from those tables. Every path resolves through `tools::sandbox::Workspace::resolve`; every write passes `content::sanitize::sanitize_write_content`. HTTP exposure of an existing capability is `lattice-platform` `toolsurface/tools/` plus `tools::governance_for` — not a second implementation. | Do not add a permission check in the handler — the kernel already said yes. Do not `std::fs` a raw path. Do not put a read-only compute handler here; those stay on the worker (`POST /agent/tool`). Pointer tools (`computer_*` click/move/type/…) stay on the worker on purpose. |
 | **파싱 러그 추가** | `lattice-agent` `parse/action.rs` (or `parse/channel.rs` for a new model-family frame). Append it to the ordered chain — cheapest and most literal first — and **name it in the returned `repairs` list**. CPython primitives (`pyjson`, `pyliteral`, `pyshlex`, `pystr`) are pinned by [`rust/fixtures/agent/`](../rust/fixtures/agent/FROZEN.md). New answers that Python never gave live under **new keys** (see [`agent_loop/FROZEN.md`](../rust/fixtures/agent_loop/FROZEN.md) `*_extended`). | A silent repair is a bug. Never supply a tool name, path, or argument the model did not write. Do not put a decision here (that is `kernel/`) or file-body salvage (that is `content/`). Do not rewrite a frozen row in place. |
-| **새 워커 계산** | Compute only — embed, parse, extract, render, ASR, LLM. Add the handler next to its family (`latticeai/api/worker_compute.py` for the `/worker/*` seams, or `WORKER_ROUTES` / `WORKER_SEAM_ROUTES` in [`latticeai/runtime/build_phases/worker_profile.py`](../latticeai/runtime/build_phases/worker_profile.py) if it is a model/engine door). Append `(method, path)` to the matching tuple. Regenerate the committed projection: `.venv/bin/python scripts/gen_worker_allowlist_fixture.py`. `tests/unit/test_worker_allowlist.py` pins the file; `lattice-host` `include_str!`s [`rust/fixtures/worker_allowlist.json`](../rust/fixtures/worker_allowlist.json). There are **19** routes. Anything not native and not on that list is `404`. | Do not add a worker route for a product feature. The worker stores nothing — no graph, no sessions, no files. `latticeai.app_factory.build_context` is the **worker** composition root (`create_worker_app`); it is not the product. Import of `latticeai.app_factory` must stay free of MLX/GPU init, singleton construction, filesystem writes, and network calls. |
+| **새 워커 계산** | Compute only — embed, parse, extract, render, ASR, LLM. Add the handler next to its family (`latticeai/api/worker_compute.py` for the `/worker/*` seams, or `WORKER_ROUTES` / `WORKER_SEAM_ROUTES` in [`latticeai/runtime/build_phases/worker_profile.py`](../latticeai/runtime/build_phases/worker_profile.py) if it is a model/engine door). Append `(method, path)` to the matching tuple. Regenerate the committed projection: `.venv/bin/python scripts/gen_worker_allowlist_fixture.py`. `tests/unit/test_worker_allowlist.py` pins the file; `lattice-host` `include_str!`s [`rust/fixtures/worker_allowlist.json`](../rust/fixtures/worker_allowlist.json). There are **20** routes. Anything not native and not on that list is `404`. | Do not add a worker route for a product feature. The worker stores nothing — no graph, no sessions, no files. `latticeai.app_factory.build_context` is the **worker** composition root (`create_worker_app`); it is not the product. Import of `latticeai.app_factory` must stay free of MLX/GPU init, singleton construction, filesystem writes, and network calls. |
 | **프론트 화면 / 패널** | Route screens in `frontend/src/pages/` (`Brain`, `Capture`, `Chronicle`, `Act`, `Library`, `System`). Feature panels in `frontend/src/features/<area>/`. Shared chrome in `frontend/src/components/`. Hash routes and aliases in `frontend/src/routes.ts`. Copy in `frontend/src/i18n/`: one namespace module calls `registerCopy` (`shell` is eager; `brain`, `workspace`, `onboarding`, `chronicle` register from the lazy route). Author Korean first; ship the English pair in the same module. `t()` falls back to `COPY.ko`. Colors from [`frontend/src/styles/tokens.css`](../frontend/src/styles/tokens.css) as `hsl(var(--token))`; surface rules in the narrowest file under `frontend/src/styles/experience/`. Brain behavior belongs in `useBrainChat` / `useBrainHistory` / `useBrainIngestion` / `useBrainProof`. Failed `ApiResult` stays an unavailable/error state. Colocate a Vitest file; the floor is 100% `all: true`. | No user-facing English/Korean literals in TSX (`scripts/check_i18n_literals.mjs`). Do not import a namespace you do not register (`check:i18n-namespaces`). Do not add a competing shell rule to `styles.css`. Do not put runtime metrics or admin tools on the default first screen. Regenerate `frontend/src/api/openapi.ts` with `npm run frontend:openapi` when a contract changes — do not edit it by hand. |
 | **지식 그래프 쓰기** | [`lattice_core::graph_write::GraphWriter`](../rust/lattice-core/src/graph_write/mod.rs) only. Public doors: `open` / `with_parts`; ingest `ingest_file` / `ingest_content` / `ingest_message` / `ingest_event`; vectors `write_vectors` / `write_vectors_with` / `rebuild_vector_index`; curation `curate` / `curate_scan` / `curate_noise` / promotions / `mark_superseded`; documents `delete_document_tree` / `delete_node` / `set_node_sensitivity` / `stamp_node_validity` / `set_local_source_watch` / `remove_local_source` / `upsert_nodes` / `upsert_edges`; provenance `record_ingestion` / `import_graph_data`. Production `open()` stamps `"personal"` when a write omits a workspace. Chunks, concepts, triples and embeddings arrive as *data* on the request types — the writer never calls a model. | Do not open `knowledge_graph.sqlite` for writing from another crate. Do not go through the retired `/worker/graph/mutate`. `with_parts` leaves `default_workspace` unset so frozen goldens keep their legacy-null rows — that constructor is for parity, not the product. |
 | **검증 / 골든** | Each family has a `FROZEN.md` stating what wrote it and that it must not be regenerated. **Agent kernel** — [`rust/fixtures/agent/`](../rust/fixtures/agent/FROZEN.md), `lattice-agent` `tests/parity.rs`. **Agent loop** — [`rust/fixtures/agent_loop/`](../rust/fixtures/agent_loop/FROZEN.md), `tests/agent_loop.rs`. **Retrieval / embeddings** — [`rust/fixtures/golden/`](../rust/fixtures/golden/FROZEN.md), `lattice-retrieval` + `lattice-core` `tests/golden_embeddings.rs`. **Graph writes** — [`rust/fixtures/graph_write/`](../rust/fixtures/graph_write/FROZEN.md). **Chunking** — [`rust/fixtures/chunking/`](../rust/fixtures/chunking/FROZEN.md), `lattice-ingest`. **HTTP replay** — [`rust/fixtures/http/`](../rust/fixtures/http/FROZEN.md). Python worker: `npm run test:unit`. SPA: `npm run test:frontend`. Visual: `npm run test:visual`. Integration starts its own loopback host with disposable HOME/data and refuses non-loopback URLs (`npm run test:integration`). | Frozen expected values are inviolable. If the port disagrees, **the port changed** — fix the port. A deliberate new answer goes under a **new key** (or a new file) and is named as not-parity; do not edit a row in place. Do not resurrect a deleted generator to "refresh" a golden. |
@@ -237,7 +237,7 @@ in `rust/`.
 Markdown) and `scripts/check_doc_status.mjs` (every relative link under the
 root canonical docs and `docs/**`). A red line is a broken relative path —
 fix the href or put the file where the href says. Canonical docs (this one
-included) must carry `Current release: **12.6.0 — …**` matching
+included) must carry `Current release: **12.7.0 — …**` matching
 `package.json`; do not bump that marker here ahead of the release lane.
 `npm run docs:check-current` is the release-set version pin
 ([`scripts/check_current_release_docs.mjs`](../scripts/check_current_release_docs.mjs)).
@@ -248,7 +248,7 @@ changelog entries that mention old versions stay.
 ### Release-evidence binding
 
 `scripts/check_release_evidence_bound.mjs` (lint member 9) checks that
-`output/release/v12.4.0/SCREENSHOT_INDEX.md` still names the live
+`output/release/v12.7.0/SCREENSHOT_INDEX.md` still names the live
 `static/app/asset-manifest.json` digest and the visual mock-server
 fingerprint. It exists so a later `npm run build:assets` cannot ship
 screenshots of an older UI, and so a mock-server edit cannot leave the
@@ -317,19 +317,19 @@ For user-facing, API, runtime, release, or packaging changes, check:
   appears
 
 The release-docs lane owns README / ARCHITECTURE / FEATURE_STATUS version
-bumps. Do not move this file's `Current release` marker off 12.6.0 ahead of
+bumps. Do not move this file's `Current release` marker off 12.7.0 ahead of
 that lane.
 
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 12.6.0 release work, exact artifacts are:
+For 12.7.0 release work, exact artifacts are:
 
-- `dist/ltcai-12.6.0-py3-none-any.whl`
-- `dist/ltcai-12.6.0.tar.gz`
-- `ltcai-12.6.0.tgz`
-- `dist/ltcai-12.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.6.0_aarch64.dmg`
+- `dist/ltcai-12.7.0-py3-none-any.whl`
+- `dist/ltcai-12.7.0.tar.gz`
+- `ltcai-12.7.0.tgz`
+- `dist/ltcai-12.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.7.0_aarch64.dmg`
 
 The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
 checks the names and presence, not a Developer ID signature.

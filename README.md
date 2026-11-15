@@ -1,8 +1,9 @@
+<div align="center">
+
 # Lattice AI
 
-**Your model is the voice you use today. Your Brain is the asset you keep.**
-
-**모델은 갈아타도, 내 지식은 내 컴퓨터에 남는 로컬 우선 AI 브레인.**
+**Your model is the voice you use today. Your Brain is the asset you keep.**<br/>
+*모델은 갈아타도, 내 지식은 내 컴퓨터에 남는 로컬 우선 AI 브레인.*
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -12,187 +13,135 @@
 [![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v12.6.0 Living Brain walkthrough](output/release/v12.6.0/gifs/v12.6.0-living-brain-walkthrough.gif)
+<br/>
 
-Lattice AI is a Digital Brain that lives on your computer. Chat, files,
-folders, notes, and web pages all land in one knowledge graph you own.
-The default is local. Cloud is optional, and nothing leaves the machine
-without your consent.
+![v12.7.0 Living Brain walkthrough](output/release/v12.7.0/gifs/v12.7.0-living-brain-walkthrough.gif)
 
-대화·파일·폴더·웹페이지가 전부 내 컴퓨터 안의 지식 그래프로 쌓입니다.
-기본은 로컬이고, 클라우드는 선택입니다.
+</div>
 
-## Install
+Lattice AI is a **local-first Digital Brain** that unifies your conversations, files, folders, notes, and web captures into one private Knowledge Graph you own. Local inference is the default; cloud models are strictly optional, and nothing leaves your machine without explicit consent.
+
+대화·파일·폴더·노트·웹페이지가 모두 내 컴퓨터 안의 단일 지식 그래프로 축적됩니다. 기본값은 100% 로컬이며, 클라우드 연결은 사용자가 직접 선택한 경우에만 동작합니다.
+
+---
+
+## Why Lattice AI
+
+- **Local-First Digital Brain & Hardware Auto-Fit** — All memories, provenance, and graph relationships live locally in SQLite and portable encrypted `.latticebrain` archives. Lattice automatically measures your host RAM/VRAM to recommend the right local LLM and **EmbeddingGemma 2** (`768d`) with unauthenticated public mirrors (`mlx-community`, `ggml-org` GGUF, `onnx-community`) and **live SSE download progress (`MB/s` & `ETA`)**.
+- **Hybrid GraphRAG (BM25F + Vector + 2-Hop Knowledge Graph RRF)** — Combines field-weighted Okapi BM25F (with Korean particle stripping, CJK bigrams, and identifier subwords), dense/subword vector recall, and 1-hop/2-hop Knowledge Graph structural expansion (`RELATES_TO`, `MENTIONS`, `PART_OF`, `[[wikilinks]]`, `#tags`) via Reciprocal Rank Fusion — backed by graph-aware agent skills and MCP search tools.
+- **Proposal-First Safe Autonomy & Review Center** — Additive creations run with minimal friction; edits or deletions of existing user files and cloud-extracted memories stage as hash-verified **Review Center** proposals with side-by-side diffs before applying. Even small 2B-class local models can safely act via guided prompts, and workflow/agent simulation without a loaded LLM is explicitly **deterministic** and **LLM-free** (it does not call a model).
+- **One Brain Across Every Surface** — Use the **macOS Desktop App (`.dmg`)**, the **Web Studio (`/app`)**, the **VS Code / Cursor / Open VSX Extension**, the **Browser Extension**, or the **`LTCAI` CLI** against the same local Brain.
+
+---
+
+## Quick Start
+
+### 1. Desktop App (macOS)
+
+Download `Lattice AI_12.7.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+
+### 2. One-Command CLI & Web Studio
 
 ```bash
-pip install ltcai        # or: npm install -g ltcai
-LTCAI                    # then open http://127.0.0.1:4825/app
+pip install ltcai          # or: npm install -g ltcai
+LTCAI                      # opens the Web Studio at http://127.0.0.1:4825/app
 ```
 
-- Apple Silicon local models: `pip install "ltcai[local]"`
-- Mac app: the `.dmg` on each [GitHub Release](https://github.com/TaeSooPark-PTS/LatticeAI/releases)
-- Editor: the [VS Code / Cursor / Open VSX](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) extension
+- **Apple Silicon local models (MLX)**: `pip install "ltcai[local]"`
+- **Pointer automation tools (optional)**: `pip install "ltcai[pointer]"`
 
-## First five minutes
+### 3. Editor Extension (VS Code · Cursor · Antigravity)
 
-1. Open the app and sign in as the owner.
-2. Pick a recommended local model for this computer.
-3. Drop a folder, a file, or a note into Capture.
-4. Ask the Brain a question in your own words.
+Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) or [Open VSX](https://open-vsx.org/extension/parktaesoo/ltcai) to sync files, ask Brain-grounded questions, and review proposals directly inside your editor.
 
-| | | |
-| --- | --- | --- |
-| ![Login](output/release/v12.6.0/screenshots/01-login.png) | ![Model install](output/release/v12.6.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.6.0/screenshots/07-model-library.png) |
+### First Five Minutes
 
-Screenshot index:
-[output/release/v12.6.0/SCREENSHOT_INDEX.md](output/release/v12.6.0/SCREENSHOT_INDEX.md)
+1. **Wake your Brain** and confirm your local owner profile.
+2. **Pick a recommended local model & embedder** sized for your hardware (with real-time SSE download progress).
+3. **Capture a source** — drop a folder, document, note, or web page.
+4. **Ask in your own words** and inspect the grounded citations, Knowledge Graph connections, and Review Center diffs.
 
-## What you can do
+---
 
-| | |
+## Product Tour
+
+| Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.6.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.6.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.6.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.6.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.6.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.6.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.6.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.6.0/screenshots/08-system.png) |
+| ![Recommended Models](output/release/v12.7.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v12.7.0/screenshots/03-install-load-progress.png) |
+| **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
+| ![Brain Chat Home](output/release/v12.7.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v12.7.0/screenshots/05-memory-graph.png) |
+| **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
+| ![Material to Memory](output/release/v12.7.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v12.7.0/screenshots/12-review-center.png) |
+| **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
+| ![Brain Chronicle](output/release/v12.7.0/screenshots/13-chronicle.png) | ![Settings](output/release/v12.7.0/screenshots/08-system.png) |
 
-## Why this is yours
+Full visual index: [output/release/v12.7.0/SCREENSHOT_INDEX.md](output/release/v12.7.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v12.7.0/screenshots/01-login.png), [06-capture.png](output/release/v12.7.0/screenshots/06-capture.png), [07-model-library.png](output/release/v12.7.0/screenshots/07-model-library.png)).
 
-- **The memory stays.** Knowledge lives in a local SQLite Brain you can back up, export, inspect, and restore (`.latticebrain`).
-- **The model is replaceable.** Switch local MLX and optional cloud without rebuilding context from zero.
-- **It says when it does not know.** Thin retrieval, a poor page extract, or hash-only search is named, not dressed as meaning.
-- **Edits wait for you.** New files can land with little friction. Changing or deleting existing files becomes a proposal with a diff.
-- **Small models can still act.** A 2B-class local model can call tools and skills; a model too small to emit JSON is walked through numbered choices.
+---
 
-매번 AI에게 프로젝트 맥락을 다시 설명하고 있다면, 지식이 여러 서비스에 흩어져
-있다면, 그 기억을 특정 회사가 아니라 내가 소유하고 싶다면 — Lattice AI가 그
-브레인입니다.
+## Documentation & Architecture Hub
+
+| Area | Document | What You'll Find |
+| --- | --- | --- |
+| **Getting Started** | [docs/ONBOARDING.md](docs/ONBOARDING.md) | 5-minute product flow and first-run guarantees |
+| **Product Philosophy** | [docs/WHY_LATTICE.md](docs/WHY_LATTICE.md) | Why the Brain outlives any individual AI model |
+| **System Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) | `lattice-host` Rust server, single `GraphWriter`, and 20-route Python AI worker |
+| **Feature Matrix** | [FEATURE_STATUS.md](FEATURE_STATUS.md) | Current shipped capabilities and honest system boundaries |
+| **Operations & Self-Hosting** | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Storage layout, `.latticebrain` backup/restore, and public mode checklist |
+| **Enterprise & Open Core** | [docs/ENTERPRISE.md](docs/ENTERPRISE.md) | Open-core capability seam and [EDITION_STRATEGY.md](docs/EDITION_STRATEGY.md) |
+| **Security & Privacy** | [SECURITY.md](SECURITY.md) · [PRIVACY.md](PRIVACY.md) | Threat model, loopback defaults, egress audit, and [TRUST_MODEL.md](docs/TRUST_MODEL.md) |
+| **Contributor Guide** | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local build, Rust crate maps, quality gates, and [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **Releases & Changelog** | [RELEASE.md](RELEASE.md) · [docs/CHANGELOG.md](docs/CHANGELOG.md) | Per-release notes ([`docs/releases/`](docs/releases/)) and [RELEASE_NOTES.md](RELEASE_NOTES.md) |
+
+---
 
 ## Current Release
 
-The current release is **12.6.0 — Hybrid Graph**:
+The current release is **12.7.0 — Fast Index**:
 
-Hybrid Graph introduces **3-way BM25F + Vector + Knowledge Graph RRF Hybrid Indexing**, graph-aware agent skills and MCP search tools, a **multi-scale subword `FallbackTextEmbedder`**, **unauthenticated EmbeddingGemma 2 public mirrors & quantized GGUF/MLX/ONNX fallbacks**, **real-time SSE download progress streaming (`MB/s` & `ETA`)** in Onboarding and Model Library, **Pillow 13+ cleanup**, **Ubuntu 24.04/26.04 `t64` & Chromium CI resilience**, and a **modular `scripts/bump_version/` CLI**. The door is still **422 operations / 41 families** over a **20-route worker**. Cloud is still optional and the default is still local.
+- **Pre-Tokenized BM25F Sidecar & SQLite `bm25_node_stats` Persistence** — `GraphWriter` persists pre-tokenized field lengths (`dl_title`, `dl_tags`, `dl_body`, `dl_meta`) and term frequencies (`tf_json`) into `bm25_node_stats`, while `Bm25SidecarIndex` hydrates incrementally by `(node_id, updated_at, content_hash)` for O(1) field-length/term-frequency lookup and inverted posting-list evaluation without query-time re-tokenization.
+- **Cached GraphRAG Adjacency & Wikilink/Tag Index** — `expand_knowledge_graph_with_sidecar` and `score_and_expand_with_sidecar` reuse cached `title_to_doc_idxs`, `wikilink_to_doc_idxs`, `tag_to_doc_idxs`, and `edge_adj` maps across `fusion.rs` and `service_hybrid.rs`.
+- **Product-First `README.md` & `v12.0.0+` Release-History Polish** — Rebuilt `README.md` around product pillars, quick start, and product tour, and pruned pre-v12 release notes/review snapshots locally and on GitHub Releases while enforcing the `v12.0.0+` floor in `scripts/check_current_release_docs.mjs`.
 
-- **3-Way BM25F + Vector + Knowledge Graph RRF Hybrid Indexing & Graph Skills.** Field-weighted Okapi BM25F (`k1=1.2, b=0.75`, Korean particle stripping, CJK bigrams, identifier subwords), 1-hop/2-hop Knowledge Graph structural expansion (`RELATES_TO`, `MENTIONS`, `PART_OF`, shared concepts, `[[wikilinks]]`, `#tags`), and 3-way Reciprocal Rank Fusion (`hybrid_bm25_vector_graph_search`) with automatic zero-hit rescue on `/api/search/hybrid`. Agent/MCP tools (`knowledge_search`, `obsidian_search`, `knowledge_graph_search`, `knowledge_graph_context`) support `mode=hybrid|bm25f|graph|graphrag|subgraph`, `hops`, and `include_graph` subgraph extraction.
-- **Multi-Scale Subword `FallbackTextEmbedder` (#13.1).** Offline zero-download fallback embeddings (`768d`, `lattice-fallback-subword-v2:768`) in Python and Rust now extract `3..5`-gram subwords, CJK bigrams/trigrams, Korean particle-stripped syllables & Jamo lead pairs, and word bigrams with 2-probe signed Blake2b projection and L2 normalization.
-- **Unauthenticated EmbeddingGemma 2 Public Mirrors & Quantized Fallbacks (#14.2).** When `HF_TOKEN` is unset or Hugging Face returns gated `401`/`403` errors for `google/embeddinggemma-2`, Lattice AI automatically falls back to public unauthenticated mirrors and quantized GGUF/MLX/ONNX distributions (`mlx-community/embeddinggemma-2-4bit`, `mlx-community/embeddinggemma-2-8bit`, `ggml-org/embeddinggemma-2-GGUF`, `onnx-community/embeddinggemma-300m-ONNX`) and honors `HF_ENDPOINT` custom mirror URLs.
-  - Set `HF_TOKEN=<your_token>` to download gated upstream weights directly, or set `HF_ENDPOINT=https://hf-mirror.com` (or your internal mirror) to route Hugging Face downloads without manual repo overrides.
-- **Real-Time SSE Embedding Download Progress Streaming (#15.2).** Model download preparation streams live byte-level progress (`percent`, `speed_bps` / `MB/s`, `eta_seconds`, `current_file`, and `gated_fallback`) over `text/event-stream` SSE and `GET /models`, rendered in `ProductFlow.tsx` / `InstallScreen.tsx` and `Library.tsx` with 100% Vitest coverage.
-- **Pillow 13+ Cleanup, Ubuntu 24.04/26.04 `t64` CI Resilience & Modular `scripts/bump_version/` CLI.** Removed the Pillow `<=12` `getdata()` fallback in `scripts/check_screenshot_pixel_delta.py` (#13.2), added `scripts/check_ubuntu_runner_compat.mjs` and `t64` apt fallback chains across GitHub Actions workflows (#14.1), and decomposed `scripts/bump_version.py` into `scripts/bump_version/` with `all`, `openapi`, `cargo`, and `markers` subcommands (#15.1).
+<details>
+<summary>Release notes & exact 12.7.0 distribution artifacts</summary>
 
-Release notes live in [docs/releases/](docs/releases/). This version:
-[docs/releases/RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md).
-Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.6.0 must use exact filenames:
+Expected artifacts for 12.7.0 must use exact filenames:
 
-- `dist/ltcai-12.6.0-py3-none-any.whl`
-- `dist/ltcai-12.6.0.tar.gz`
-- `ltcai-12.6.0.tgz`
-- `dist/ltcai-12.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.6.0_aarch64.dmg`
+- `dist/ltcai-12.7.0-py3-none-any.whl`
+- `dist/ltcai-12.7.0.tar.gz`
+- `ltcai-12.7.0.tgz`
+- `dist/ltcai-12.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.7.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
-## Architecture At A Glance
+</details>
 
-One Rust server on localhost is the source of truth: `lattice-host` answers
-every product route, owns every write to the Brain, and supervises a Python
-**AI worker** it reaches over loopback for the things a model does — inference,
-embedding, extraction, parsing, rendering, speech-to-text. The React/Vite
-frontend and the Tauri desktop shell sit on top of that one door. Local-first
-by default — cloud is optional (OAuth CLI or an API key you configure),
-and downloads, Brain Network, and update checks are opt-in.
+---
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the developer workflow
-(`npm start` / `bin/ltcai.js` is the product; `npm run dev` is the
-20-route worker). Each of the two largest crates carries its own domain
-map — [rust/lattice-agent/ARCHITECTURE.md](rust/lattice-agent/ARCHITECTURE.md)
-and [rust/lattice-platform/ARCHITECTURE.md](rust/lattice-platform/ARCHITECTURE.md)
-— and open gaps are tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
-Validation via `npm run lint`, `npm run test:unit`, `npm run test:visual`.
+## Honest Boundaries
 
-## Known Limitations
+- **Local by default**: SQLite is the live Brain store; cloud models (`cli_oauth` or `api_key` probed via `GET /models`), model downloads, Brain Network, and update checks require explicit user action.
+- **Honest retrieval & simulation**: When no LLM is loaded, agent and workflow simulation is deterministic and LLM-free (it does not call a model) and is labeled as such. Exact brute-force vector search is the default (`LATTICEAI_VECTOR_INDEX=hnsw` opts into `hnsw+rescore` at 512+ vectors).
+- **Safe deletion & signing**: Watch prune removes vanished files from the Knowledge Graph only after confirmation (never from disk). The macOS `.dmg` is ad-hoc signed, so first launch uses the standard Gatekeeper allow step. Remaining honest gaps are tracked in [docs/ROADMAP.md](docs/ROADMAP.md) and [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
-- External package registries are owner-published and can lag behind GitHub.
-- SQLite is the live local Brain store. The optional PostgreSQL/pgvector
-  migration tooling is not part of the 12.1.0 worker.
-- Docker, model downloads, cloud model calls, Brain Network, and update checks
-  require explicit user action. Cloud is optional: `cli_oauth` (`agy` /
-  `grok`) was live-checked at zero billing; the `api_key` path probes
-  `GET /models` with the key and fail-closes if the provider is
-  unreachable — it does not run a billed completion to verify.
-- **The Telegram bridge was removed in 11.6.0** — it lived in the platform code
-  that became the AI worker. **SSO/OIDC login and callback flows were removed
-  with it**; the configuration surface remains and password login is native.
-- Conversation does not fabricate answers when no model is loaded. Agent and
-  workflow simulation without a loaded LLM is deterministic and LLM-free (it
-  does not call a model) — labeled as such, never presented as autonomous
-  model success.
-- `POST /worker/render/pdf` ships working out of the box: `reportlab` is a
-  required dependency as of 11.6.0 (it used to be an undeclared lazy import
-  that raised a 500; `ltcai[pdf]` remains as an empty alias for older
-  install instructions).
-- The multimodal image and video analysis functions have no HTTP door as of
-  11.8.0: their only route wrapped a native image ingest that was never
-  built. The observation code stays in Brain Core under unit test, and its
-  module header says so.
-- The Python coverage gate is a **line floor of 90** since 11.8.0 (the
-  100%-lines-and-branches gate was removed). The enforced claim is the
-  floor, not whatever a given run measures.
-- **Small-model *content* quality is gated honestly.** With the `guided`
-  profile even a 0.5B model writes the requested file and reaches DONE.
-  A requested summary is filled from the file that was actually read;
-  if those words are still missing the run is held for review, not
-  marked done.
-- Vector search env still defaults to `brute` — exact and byte-compatible
-  on a small Brain. At 512+ vectors with a bound worker sidecar it tries
-  `hnsw+rescore` first and falls back to the exact scan if the sidecar
-  cannot answer. `LATTICEAI_VECTOR_INDEX=hnsw` is still the explicit
-  opt-in.
-- Watch prune removes vanished files from the **graph**, never from
-  disk. A one-shot folder ingest still reports vanished files and
-  waits for the confirmed prune door.
-- The macOS dmg is ad-hoc signed — effectively unsigned — so first launch
-  needs the usual Gatekeeper step.
-- Pointer-control tools execute in the worker and are installed with
-  `pip install "ltcai[pointer]"`. Remaining honest gaps (`open_keys`
-  pending-only, no Self-Model refiner, `delete_node` leaving `PART_OF`,
-  review events silent without an owner, KG-api ingest text-only, two
-  store cycles per review mutation) are listed with their reasons in
-  [docs/releases/RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md)
-  and prioritized in [docs/ROADMAP.md](docs/ROADMAP.md).
+---
 
 ## Release History
 
-Public history starts at 11.0.0. 11.6.0 rebuilt the product server in Rust and
-reduced the Python package to an AI worker, so a 10.x or 9.x install is a
-different program; `SECURITY.md` supports only 11.x, and this table states the
-same boundary. Earlier notes live in [docs/releases/](docs/releases/).
+Public release history in this repository covers the `v12.0.0+` era (the Rust-host + domain-grouped architecture). Full per-release notes live in [RELEASE_NOTES.md](RELEASE_NOTES.md) and [docs/releases/](docs/releases/).
 
-| Version | Theme |
-| --- | --- |
-| 12.5.0 | Deep Vector |
-| 12.4.0 | Sharp Weight |
-| 12.3.0 | Live Wire |
-| 12.2.1 | True Count |
-| 12.2.0 | Small Voice |
-| 12.1.0 | Fast Path |
-| 12.0.0 | Open House |
-| 11.9.0 | Working Order |
-| 11.8.0 | Travel Light |
-| 11.7.0 | Clean Sweep |
-| 11.6.0 | One Door |
-| 11.5.2 | Tight Ship |
-| 11.5.1 | Rust Full Loop |
-| 11.5.0 | Rust Complete |
-| 11.4.0 | Rust Foundation |
-| 11.3.0 | Time Remembers |
-| 11.2.0 | All Systems On |
-| 11.1.0 | Product Intelligence |
-| 11.0.1 | Both Branches |
-| 11.0.0 | Full Measure |
-
-Per-release details: [RELEASE_NOTES.md](RELEASE_NOTES.md) · folder: [docs/releases/](docs/releases/)
+| Version | Theme | Release Note |
+| --- | --- | --- |
+| 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md) |
+| 12.6.0 | Hybrid Graph | [RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md) |
+| 12.5.0 | Deep Vector | [RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md) |
+| 12.4.0 | Sharp Weight | [RELEASE_NOTES_v12.4.0.md](docs/releases/RELEASE_NOTES_v12.4.0.md) |
+| 12.3.0 | Live Wire | [RELEASE_NOTES_v12.3.0.md](docs/releases/RELEASE_NOTES_v12.3.0.md) |
+| 12.2.1 | True Count | [RELEASE_NOTES_v12.2.1.md](docs/releases/RELEASE_NOTES_v12.2.1.md) |
+| 12.2.0 | Small Voice | [RELEASE_NOTES_v12.2.0.md](docs/releases/RELEASE_NOTES_v12.2.0.md) |
+| 12.1.0 | Fast Path | [RELEASE_NOTES_v12.1.0.md](docs/releases/RELEASE_NOTES_v12.1.0.md) |
+| 12.0.0 | Open House | [RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0.md) |

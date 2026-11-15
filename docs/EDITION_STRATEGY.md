@@ -21,9 +21,9 @@ the boundary stays predictable for contributors and users.
    throttled, or gated to push Enterprise. The capability seam only answers "is
    this *Enterprise* capability available?" — `False` in the open build — and
    never disables a Community code path.
-2. **Open-core boundary is a runtime seam, not a fork.** Enterprise attaches via
-   `capability_registry.register_provider(...)`
-   (`latticeai/core/enterprise.py`). The Community repository contains no
+2. **Open-core boundary is a runtime seam, not a fork.** The seam lives in
+   Rust (`rust/lattice-platform/src/adminops/admin/enterprise.rs`) via
+   `capability_registry.register_provider(...)`. The Community repository contains no
    Enterprise implementation and imports no Enterprise code.
 3. **Capabilities are declared, not hidden.** `EnterpriseCapability` enumerates
    reserved capabilities so the contract is visible and stable, even though
@@ -60,7 +60,7 @@ the boundary stays predictable for contributors and users.
   organization settings, and capability status UI.
 - `GET /admin/enterprise` and `GET /admin/enterprise/siem-export` → descriptive
   Community-safe Enterprise surfaces for integrations.
-- `latticeai.core.enterprise.detect_edition()` for in-process checks.
+- `GET /workspace/editions` and `rust/lattice-platform/src/adminops/admin/enterprise.rs` for edition checks.
 
 In the Community build all of the above report `community` with every Enterprise
 capability `false`.

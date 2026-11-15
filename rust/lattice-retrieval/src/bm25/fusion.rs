@@ -13,8 +13,9 @@ use crate::policy::{classify_query, rewrite_query};
 use crate::service::{vector_search as scoped_vector_search, Scope};
 use crate::shape::json_opt;
 
-use super::graph_rag::{expand_knowledge_graph, GraphRagConfig};
-use super::scoring::{bm25f_score_nodes, load_scoped_corpus, Bm25fParams};
+use super::graph_rag::{expand_knowledge_graph_with_sidecar, GraphRagConfig, GraphStructuralHit};
+use super::scoring::{Bm25fParams, Bm25fScoredNode};
+use super::sidecar_cache::with_bm25_sidecar;
 
 /// Options for 3-Way Hybrid BM25F + Vector + Knowledge Graph RRF search.
 #[derive(Debug, Clone)]
@@ -82,12 +83,14 @@ pub fn hybrid_bm25_vector_graph_search(
         return Ok(serde_json::to_value(empty).unwrap_or(Value::Null));
     }
 
-    let corpus = load_scoped_corpus(conn, &options.scope, 5_000)?;
+    let (corpus, mut bm25_hits) = with_bm25_sidecar(conn, &options.scope, 5_000, |sidecar| {
+        let hits = sidecar.score(&effective_query, &options.bm25_params);
+        Ok((sidecar.corpus_nodes(), hits))
+    })?;
     let corpus_map: HashMap<String, NodeRow> =
         corpus.iter().map(|n| (n.id.clone(), n.clone())).collect();
 
-    // 1. Channel 1: Calibrated Field-Weighted Okapi BM25F
-    let mut bm25_hits = bm25f_score_nodes(&corpus, &effective_query, &options.bm25_params);
+    // 1. Channel 1: Calibrated Field-Weighted Okapi BM25F (via pre-tokenized sidecar)
     bm25_hits.truncate(options.bm25_limit.max(1) as usize);
     let max_bm25 = bm25_hits
         .first()
@@ -203,13 +206,15 @@ pub fn hybrid_bm25_vector_graph_search(
     let mut seed_list: Vec<(String, f64)> = seed_map.into_iter().collect();
     seed_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
-    let mut graph_hits = expand_knowledge_graph(
-        conn,
-        &seed_list,
-        &corpus,
-        &options.scope,
-        &options.graph_config,
-    )?;
+    let mut graph_hits = with_bm25_sidecar(conn, &options.scope, 5_000, |sidecar| {
+        expand_knowledge_graph_with_sidecar(
+            conn,
+            &seed_list,
+            sidecar,
+            &options.scope,
+            &options.graph_config,
+        )
+    })?;
     graph_hits.truncate(options.graph_limit.max(1) as usize);
     let max_graph = graph_hits
         .first()
@@ -439,4 +444,31 @@ pub fn hybrid_bm25_vector_graph_search(
     out.insert("results", Value::Array(results));
     out.insert("expanded_results", Value::Array(expanded_results));
     Ok(serde_json::to_value(out).unwrap_or(Value::Null))
+}
+
+/// Run inverted-index BM25F scoring and sidecar-cached GraphRAG expansion in one sidecar borrow.
+pub fn score_and_expand_with_sidecar(
+    conn: &Connection,
+    scope: &Scope,
+    query: &str,
+    take: usize,
+    bm25_params: &Bm25fParams,
+    graph_cfg: &GraphRagConfig,
+) -> Result<(Vec<Bm25fScoredNode>, Vec<GraphStructuralHit>), CoreError> {
+    with_bm25_sidecar(conn, scope, 5_000, |sidecar| {
+        let mut hits = sidecar.score(query, bm25_params);
+        hits.truncate(take.max(1));
+        let max_bm25 = hits.first().map(|h| h.bm25_score).unwrap_or(1.0).max(1e-6);
+        let seeds: Vec<(String, f64)> = hits
+            .iter()
+            .map(|hit| {
+                (
+                    hit.node.id.clone(),
+                    (hit.bm25_score / max_bm25).clamp(0.0, 1.0),
+                )
+            })
+            .collect();
+        let ghits = expand_knowledge_graph_with_sidecar(conn, &seeds, sidecar, scope, graph_cfg)?;
+        Ok((hits, ghits))
+    })
 }

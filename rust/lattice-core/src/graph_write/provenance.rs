@@ -226,6 +226,9 @@ impl GraphWriter {
                     txn.execute_batch(&format!("DELETE FROM {table}"))?;
                 }
                 txn.execute_batch("DELETE FROM edges_v2; DELETE FROM nodes_v2;")?;
+                if crate::bm25_stats::bm25_node_stats_exists(txn) {
+                    txn.execute_batch("DELETE FROM bm25_node_stats;")?;
+                }
             }
             for node in &nodes {
                 let Some(node) = node.as_object() else { continue };

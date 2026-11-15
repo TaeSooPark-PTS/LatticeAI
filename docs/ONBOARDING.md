@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **12.6.0 — Hybrid Graph**.
+Current release: **12.7.0 — Fast Index**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

@@ -82,6 +82,10 @@ pub struct GraphWriter {
     /// The parity battery uses [`Self::with_parts`] (this stays `None`) so
     /// frozen goldens keep their legacy-null rows.
     default_workspace: Option<String>,
+    /// Production `open()` persists pre-tokenized BM25F stats in
+    /// `bm25_node_stats`; [`Self::with_parts`] leaves this off unless the
+    /// table already exists so parity/schema goldens stay byte-identical.
+    persist_bm25_sidecar: bool,
 }
 
 impl GraphWriter {
@@ -99,6 +103,8 @@ impl GraphWriter {
             Arc::new(SystemClock),
         )?;
         writer.default_workspace = Some(crate::read::DEFAULT_WORKSPACE_ID.to_string());
+        writer.persist_bm25_sidecar = true;
+        writer.ensure_bm25_sidecar_schema()?;
         Ok(writer)
     }
 
@@ -125,6 +131,7 @@ impl GraphWriter {
             embedder,
             clock,
             default_workspace: None,
+            persist_bm25_sidecar: false,
         };
         writer.bootstrap()?;
         Ok(writer)
@@ -135,6 +142,17 @@ impl GraphWriter {
         let now = self.clock.now_iso();
         self.store
             .with_write_txn(|txn| schema::bootstrap(txn, &now))
+    }
+
+    /// Ensure the `bm25_node_stats` sidecar table exists.
+    pub fn ensure_bm25_sidecar_schema(&self) -> Result<(), CoreError> {
+        self.store
+            .with_write_txn(|txn| crate::bm25_stats::ensure_bm25_node_stats_schema(txn))
+    }
+
+    /// Whether BM25F sidecar persistence should run inside `txn`.
+    pub(crate) fn should_persist_bm25_sidecar(&self, txn: &rusqlite::Transaction<'_>) -> bool {
+        self.persist_bm25_sidecar || crate::bm25_stats::bm25_node_stats_exists(txn)
     }
 
     /// The store this writer writes through.

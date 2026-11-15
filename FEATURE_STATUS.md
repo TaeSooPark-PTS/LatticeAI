@@ -1,12 +1,12 @@
-# Lattice AI Feature Status (v12.6.0)
+# Lattice AI Feature Status (v12.7.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **12.6.0 — Hybrid Graph**.
+Current release: **12.7.0 — Fast Index**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 11.0.0 and later in `RELEASE.md` and
+change history is intentionally limited to 12.0.0 and later in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -508,24 +508,18 @@ still open — including small-model *content* quality and the mock-only
 
 ## Release-Era History Kept In Git
 
-The Git tree keeps supported release history from:
+The Git tree keeps supported release history for the `v12.x` era (`12.0.0+`):
 
+- 12.7.0
+- 12.6.0
+- 12.5.0
+- 12.4.0
+- 12.3.0
+- 12.2.1
+- 12.2.0
+- 12.1.0
 - 12.0.0
-- 11.9.0
-- 11.8.0
-- 11.7.0
-- 11.6.0
-- 11.5.2
-- 11.5.1
-- 11.5.0
-- 11.4.0
-- 11.3.0
-- 11.2.0
-- 11.1.0
-- 11.0.1
-- 11.0.0
 
-11.6.0 rebuilt the product server in Rust, so a 10.x or 9.x install is a
-different program and `SECURITY.md` supports only 11.x. Their note files remain
-in the tree as history rather than as supported releases; anything older than
-8.0.0 was removed from the tracked tree.
+`SECURITY.md` supports the `12.x` era; pre-v12 release notes were pruned from
+`docs/releases/` so the active repository stays focused on the modern `v12.x`
+Rust-host and domain-grouped architecture.

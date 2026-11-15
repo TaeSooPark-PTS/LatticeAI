@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **12.6.0 — Hybrid Graph**.
+Current release: **12.7.0 — Fast Index**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -300,8 +300,8 @@ gave the two biggest crates a domain map and closed four named gaps:
   record is shape — provider, model, reason — never content.
 
 The Telegram bridge is gone from this diagram because it is gone from the
-product: it lived in the platform code that became the worker (see
-[docs/releases/RELEASE_NOTES_v11.6.0.md](docs/releases/RELEASE_NOTES_v11.6.0.md) §5.1).
+product: it lived in the legacy Python platform code retired before the `v12.x`
+era (see [SECURITY.md](SECURITY.md)).
 
 Key boundaries:
 
@@ -980,7 +980,7 @@ already called Current.
   the requested file and can still fail the critic on the summary.
 
 What 11.9.0 did not close is listed in the section below, in Known
-Limitations, and in [docs/releases/RELEASE_NOTES_v11.9.0.md](docs/releases/RELEASE_NOTES_v11.9.0.md).
+Limitations, and in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Open House — what 12.0.0 closed
 
@@ -1875,13 +1875,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-12.6.0 exact artifact names:
+12.7.0 exact artifact names:
 
-- `dist/ltcai-12.6.0-py3-none-any.whl`
-- `dist/ltcai-12.6.0.tar.gz`
-- `ltcai-12.6.0.tgz`
-- `dist/ltcai-12.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.6.0_aarch64.dmg`
+- `dist/ltcai-12.7.0-py3-none-any.whl`
+- `dist/ltcai-12.7.0.tar.gz`
+- `ltcai-12.7.0.tgz`
+- `dist/ltcai-12.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.7.0_aarch64.dmg`
 
 The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
 far. First launch needs the usual Gatekeeper step.

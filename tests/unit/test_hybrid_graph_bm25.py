@@ -4,7 +4,10 @@ and Hybrid BM25F + Vector + Knowledge Graph retrieval capabilities.
 
 from __future__ import annotations
 
+import json
 import math
+import sqlite3
+from pathlib import Path
 
 from latticeai.core.embedding_providers import (
     DEFAULT_FALLBACK_DIM,
@@ -106,3 +109,60 @@ def test_hash_embedding_provider_and_fallback_subword_embedder_preserve_contract
     v3 = fallback.embed("unrelated audio waveform filter")
     assert fallback.similarity(v1, v2) > 0.50
     assert fallback.similarity(v1, v2) > fallback.similarity(v1, v3) + 0.30
+
+
+def test_bm25_node_stats_sidecar_schema_and_readonly_contract(tmp_path: Path) -> None:
+    db_path = tmp_path / "sidecar_contract.sqlite"
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE bm25_node_stats (
+              node_id TEXT PRIMARY KEY,
+              updated_at TEXT NOT NULL,
+              dl_title INTEGER NOT NULL,
+              dl_tags INTEGER NOT NULL,
+              dl_body INTEGER NOT NULL,
+              dl_meta INTEGER NOT NULL,
+              tf_json TEXT NOT NULL
+            )
+            """
+        )
+        payload = {
+            "tf_title": {"bm25f": 1, "sidecar": 1},
+            "tf_tags": {"graphrag": 1},
+            "tf_body": {"inverted": 2, "postings": 1},
+            "tf_meta": {"document": 1},
+            "wikilinks": ["knowledge graph"],
+            "tags": ["graphrag"],
+        }
+        conn.execute(
+            "INSERT INTO bm25_node_stats VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("doc-1", "2026-11-15T00:00:00Z", 2, 1, 3, 1, json.dumps(payload)),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    ro = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        cols = [row[1] for row in ro.execute("PRAGMA table_info(bm25_node_stats)").fetchall()]
+        assert cols == [
+            "node_id",
+            "updated_at",
+            "dl_title",
+            "dl_tags",
+            "dl_body",
+            "dl_meta",
+            "tf_json",
+        ]
+        row = ro.execute(
+            "SELECT dl_title, dl_tags, dl_body, dl_meta, tf_json FROM bm25_node_stats WHERE node_id=?",
+            ("doc-1",),
+        ).fetchone()
+        assert row[:4] == (2, 1, 3, 1)
+        loaded = json.loads(row[4])
+        assert loaded["tf_title"]["sidecar"] == 1
+        assert loaded["wikilinks"] == ["knowledge graph"]
+    finally:
+        ro.close()

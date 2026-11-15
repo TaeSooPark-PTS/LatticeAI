@@ -37,18 +37,23 @@ def test_version_metadata_matches_release():
 
 
 def test_markdown_current_release_references_match_release():
-    # Public release history starts at 11.0.0 since 11.6.0. The floor is the
-    # support policy, not housekeeping: 11.6.0 ("One Door") rebuilt the product
-    # server in Rust and reduced the Python package to a pure-compute AI worker,
-    # so a 10.x or 9.x install is a different program and SECURITY.md now says
-    # only 11.x receives fixes. The README table states the same boundary, and
-    # this assertion is what keeps the two from drifting apart. (10.10.0 moved
-    # this floor 8.0.0 → 9.0.0 the same way, test and doc gate together.)
+    # Public release history starts at 12.0.0 (modern v12.x Rust-host +
+    # domain-grouped era). Pre-v12 release notes were pruned from the active
+    # ledger and SECURITY.md supports the 12.x line.
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     history = readme.split("## Release History", 1)[1]
-    assert "11.0.0" in history
-    for retired in ("10.10.0", "10.0.0", "9.9.9", "9.0.0", "8.9.0", "8.0.0"):
-        assert retired not in history, f"{retired} is below the supported floor"
+    assert "12.0.0" in history
+    for retired in (
+        "11.9.0",
+        "11.0.0",
+        "10.10.0",
+        "10.0.0",
+        "9.9.9",
+        "9.0.0",
+        "8.9.0",
+        "8.0.0",
+    ):
+        assert retired not in history, f"{retired} is below the supported v12.0.0+ floor"
     assert "New in 1.3.0" not in readme
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
     release = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]

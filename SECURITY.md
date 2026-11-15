@@ -3,43 +3,33 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **12.6.0 — Hybrid Graph**.
+Current release: **12.7.0 — Fast Index**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 11.0.0 through 12.6.0. Security
-support follows that same product era: **only the 11.x and 12.x line receives
-fixes.**
+The public Git tree keeps release history from **12.0.0 through 12.7.0** (the
+modern `v12.x` Rust-host and domain-grouped architecture era). Security support
+follows that same product era: **only the 12.x line receives fixes.**
 
-11.6.0 rebuilt the product server in Rust and reduced the Python package to a
-pure-compute AI worker; 11.7.0 closed the holes that door disclosed, 11.8.0
-narrowed the worker further — from 28 routes to **19** — 11.9.0 kept that
-19-route worker while wiring the hybrid cloud lane and the local MCP server
-that sit on the host, and 12.0.0 regrouped the two largest Rust crates without
-moving the boundary, adding exactly one worker route (`POST
-/worker/vector/query`, **20** in total). A fix for this line is a fix to a
-different program than the one 10.x and 9.x shipped, so backporting it would
-be a claim this project cannot honour. Those release notes stay in the tree as
-history; the support line does not.
+12.0.0 organized the Rust product server (`lattice-host` serving 422 native
+operations across 41 route families, single `GraphWriter`, and the 20-route
+loopback AI worker) into explicit domain modules where security-relevant rules
+have clear ownership (`lattice-agent::kernel/` for permission gates, `parse/` for
+untrusted model output, and `content/sanitize` for write sanitization). Pre-12
+releases belong to an earlier era and are no longer supported or kept in the
+active release ledger.
 
 | Version | Support |
 | --- | --- |
-| 12.6.x (latest) | Supported |
+| 12.7.x (latest) | Supported |
+| 12.6.x | Supported |
 | 12.5.x | Supported |
 | 12.4.x | Supported |
 | 12.3.x | Supported |
 | 12.2.x | Supported |
-| 11.9.x | Supported |
-| 11.8.x | Supported |
-| 11.7.x | Supported |
-| 11.6.x | Supported |
-| 11.5.x | Supported |
-| 11.4.x | Supported |
-| 11.3.x | Supported |
-| 11.2.x | Supported |
-| 11.1.x | Supported |
-| 11.0.x | Supported |
-| Older than 11.0.0 | Not supported — see the note above |
+| 12.1.x | Supported |
+| 12.0.x | Supported |
+| Older than 12.0.0 | Not supported — see the note above |
 
 ## Reporting Vulnerabilities
 

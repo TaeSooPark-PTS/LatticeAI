@@ -224,6 +224,13 @@ pub const TABLES: &[TableOwnership] = &[
         written_by: "lattice_brain/conversations.py",
         note: "R4/R5 own direct history state (list, search, clear); since W3a the chat-turn record is native too (lattice_chat::turn), so there is no exception left",
     },
+    TableOwnership {
+        file: GRAPH_DB,
+        table: "bm25_node_stats",
+        owner: Owner::RustPlatform,
+        written_by: "lattice-core::graph_write",
+        note: "pre-tokenized BM25F field stats sidecar for O(1) retrieval",
+    },
 ];
 
 /// The table's owner, or `None` when the map does not know it.

@@ -309,6 +309,17 @@ impl GraphWriter {
                 now,
             ],
         )?;
+        if self.should_persist_bm25_sidecar(txn) {
+            let (stats, _) = crate::bm25_stats::compute_node_bm25_stats(
+                &spec.id,
+                Some(&spec.node_type),
+                Some(&title_s),
+                Some(&summary_s),
+                Some(&meta_json),
+                Some(&now),
+            );
+            crate::bm25_stats::upsert_bm25_node_stats(txn, &stats)?;
+        }
         if spec.node_type != "Chunk" {
             let mut metadata = Map::new();
             metadata.insert("node_type".into(), Value::String(spec.node_type.clone()));

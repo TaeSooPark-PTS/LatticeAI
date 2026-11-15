@@ -91,6 +91,9 @@ impl GraphWriter {
                     node_id,
                 ],
             )?;
+            if self.should_persist_bm25_sidecar(txn) {
+                crate::bm25_stats::sync_bm25_node_stats_by_id(txn, node_id)?;
+            }
             Ok(json!({
                 "ok": true,
                 "node_id": node_id,
@@ -181,6 +184,7 @@ impl GraphWriter {
                 params.as_slice(),
             )?;
             delete_nodes_v2(txn, &remove_ids)?;
+            crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, &remove_ids)?;
 
             let mut removed_sources = 0usize;
             for source_id in &source_ids {
@@ -200,6 +204,10 @@ impl GraphWriter {
                 )?;
                 txn.execute("DELETE FROM nodes WHERE id=?", rusqlite::params![source_id])?;
                 delete_nodes_v2(txn, std::slice::from_ref(source_id))?;
+                crate::bm25_stats::delete_bm25_node_stats_by_ids(
+                    txn,
+                    std::slice::from_ref(source_id),
+                )?;
                 removed_sources += 1;
             }
             Ok(json!({
@@ -228,6 +236,7 @@ impl GraphWriter {
             let removed =
                 txn.execute("DELETE FROM nodes WHERE id=?", rusqlite::params![node_id])?;
             delete_nodes_v2(txn, std::slice::from_ref(&node_id))?;
+            crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, std::slice::from_ref(&node_id))?;
             Ok(removed > 0)
         })
     }
@@ -429,6 +438,7 @@ impl GraphWriter {
             rusqlite::params![file_node_id],
         )?;
         delete_nodes_v2(txn, &[file_node_id.to_string()])?;
+        crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, &[file_node_id.to_string()])?;
         delete_node_set(txn, &owned_ids)?;
 
         // An auto-extracted concept only goes when nothing outside the set
@@ -510,6 +520,7 @@ impl GraphWriter {
                 params.as_slice(),
             )?;
             delete_nodes_v2(txn, &leaf_ids)?;
+            crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, &leaf_ids)?;
         }
         for node_type in ["Drive", "Computer"] {
             let ids: Vec<String> = {
@@ -549,6 +560,7 @@ impl GraphWriter {
                 params.as_slice(),
             )?;
             delete_nodes_v2(txn, &removable)?;
+            crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, &removable)?;
         }
         Ok(())
     }
@@ -615,5 +627,6 @@ fn delete_node_set(txn: &Transaction<'_>, ids: &[String]) -> Result<(), CoreErro
         params.as_slice(),
     )?;
     delete_nodes_v2(txn, ids)?;
+    crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, ids)?;
     Ok(())
 }

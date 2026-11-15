@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **12.6.0 — Hybrid Graph**.
+Current release: **12.7.0 — Fast Index**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

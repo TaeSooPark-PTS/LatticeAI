@@ -1,4 +1,7 @@
 //! Knowledge Graph 1-hop & 2-hop structural expansion (GraphRAG).
+//!
+//! Uses [`super::sidecar::Bm25SidecarIndex`] for O(1) / O(deg) edge adjacency,
+//! wikilink, hashtag, and title lookups without re-scanning node text.
 
 use std::collections::{HashMap, HashSet};
 
@@ -8,7 +11,7 @@ use rusqlite::Connection;
 use crate::service::Scope;
 
 use super::scoring::row_to_node;
-use super::tokenizer::extract_wikilinks_and_tags;
+use super::sidecar::{detect_edge_columns, Bm25SidecarIndex};
 
 /// Configuration for Knowledge Graph structural neighborhood traversal & boosting.
 #[derive(Debug, Clone)]
@@ -61,23 +64,109 @@ fn relation_type_weight(relation_type: &str) -> f64 {
     }
 }
 
-/// Expand seed nodes across 1-hop and 2-hop Knowledge Graph edges (`RELATES_TO`,
-/// `MENTIONS`, `PART_OF`, etc.), shared Concept/Entity bridge nodes, `[[wikilinks]]`,
-/// and `#tags`, returning structurally scored nodes ordered by `graph_score`.
-pub fn expand_knowledge_graph(
+fn edges_for_frontier(
+    conn: &Connection,
+    sidecar: &Bm25SidecarIndex,
+    frontier_ids: &[String],
+) -> Result<Vec<(String, String, String, f64)>, CoreError> {
+    if frontier_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    if sidecar.has_cached_edges() {
+        let mut seen: HashSet<usize> = HashSet::new();
+        let mut out = Vec::new();
+        for fid in frontier_ids {
+            if let Some(idxs) = sidecar.cached_edge_indices_for(fid) {
+                for &idx in idxs {
+                    if seen.insert(idx) {
+                        if let Some(edge) = sidecar.cached_edge(idx) {
+                            out.push((
+                                edge.src.clone(),
+                                edge.dst.clone(),
+                                edge.rel.clone(),
+                                edge.weight,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        return Ok(out);
+    }
+
+    let Some(layout) = sidecar.edge_layout().or_else(|| detect_edge_columns(conn)) else {
+        return Ok(Vec::new());
+    };
+    let placeholders = (1..=frontier_ids.len())
+        .map(|i| format!("?{i}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        "SELECT {}, {}, {}, weight FROM edges \
+         WHERE {} IN ({placeholders}) OR {} IN ({placeholders})",
+        layout.src_col, layout.dst_col, layout.rel_col, layout.src_col, layout.dst_col
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(frontier_ids.iter()), |row| {
+        let source_id: String = row.get(0)?;
+        let target_id: String = row.get(1)?;
+        let relation_type: Option<String> = row.get(2)?;
+        let weight: Option<f64> = row.get(3)?;
+        Ok((
+            source_id,
+            target_id,
+            relation_type.unwrap_or_else(|| "RELATES_TO".to_string()),
+            weight.unwrap_or(1.0).clamp(0.05, 5.0),
+        ))
+    })?;
+    let mut out = Vec::new();
+    for item in rows {
+        out.push(item?);
+    }
+    Ok(out)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn record_implicit_link(
+    cand_id: &str,
+    seed_id: &str,
+    score_delta: f64,
+    hop: usize,
+    relation: String,
+    raw_scores: &mut HashMap<String, f64>,
+    min_hops: &mut HashMap<String, usize>,
+    seed_links: &mut HashMap<String, HashSet<String>>,
+    relation_kinds: &mut HashMap<String, HashSet<String>>,
+) {
+    if seed_id == cand_id {
+        return;
+    }
+    *raw_scores.entry(cand_id.to_string()).or_insert(0.0) += score_delta;
+    min_hops
+        .entry(cand_id.to_string())
+        .and_modify(|h| *h = (*h).min(hop))
+        .or_insert(hop);
+    seed_links
+        .entry(cand_id.to_string())
+        .or_default()
+        .insert(seed_id.to_string());
+    relation_kinds
+        .entry(cand_id.to_string())
+        .or_default()
+        .insert(relation);
+}
+
+/// Expand seed nodes using the pre-tokenized [`Bm25SidecarIndex`] and cached graph adjacency.
+pub fn expand_knowledge_graph_with_sidecar(
     conn: &Connection,
     seeds: &[(String, f64)],
-    corpus: &[NodeRow],
+    sidecar: &mut Bm25SidecarIndex,
     scope: &Scope,
     cfg: &GraphRagConfig,
 ) -> Result<Vec<GraphStructuralHit>, CoreError> {
     if seeds.is_empty() {
         return Ok(Vec::new());
     }
-
-    let mut node_map: HashMap<String, NodeRow> =
-        corpus.iter().map(|n| (n.id.clone(), n.clone())).collect();
-
     let active_seeds: Vec<(String, f64)> = seeds
         .iter()
         .take(cfg.max_seeds.max(1))
@@ -88,62 +177,37 @@ pub fn expand_knowledge_graph(
         return Ok(Vec::new());
     }
 
+    sidecar.sync_edges_from_conn(conn)?;
+
     let max_seed_score = active_seeds
         .iter()
         .map(|(_, s)| *s)
         .fold(0.0f64, f64::max)
         .max(1e-6);
 
-    // Track structural evidence per node_id
     let mut raw_scores: HashMap<String, f64> = HashMap::new();
     let mut min_hops: HashMap<String, usize> = HashMap::new();
     let mut seed_links: HashMap<String, HashSet<String>> = HashMap::new();
     let mut relation_kinds: HashMap<String, HashSet<String>> = HashMap::new();
     let mut degree_map: HashMap<String, usize> = HashMap::new();
 
-    // Load edges connected to seeds (1-hop) and their neighbors (2-hop)
     let mut frontier_ids: Vec<String> = active_seeds.iter().map(|(id, _)| id.clone()).collect();
     let mut visited_frontier: HashSet<String> = frontier_ids.iter().cloned().collect();
 
-    // Map from seed_id -> normalized seed strength in (0, 1]
     let seed_strength: HashMap<String, f64> = active_seeds
         .iter()
         .map(|(id, s)| (id.clone(), (*s / max_seed_score).clamp(0.15, 1.0)))
         .collect();
 
-    // Track 1-hop intermediate nodes: node_id -> (best_seed_id, path_score, relation_type)
     let mut hop1_paths: HashMap<String, Vec<(String, f64, String)>> = HashMap::new();
 
     for hop in 1..=cfg.max_hops.clamp(1, 2) {
         if frontier_ids.is_empty() {
             break;
         }
-        let placeholders = (1..=frontier_ids.len())
-            .map(|i| format!("?{i}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let sql = format!(
-            "SELECT source_id, target_id, relation_type, weight
-             FROM edges
-             WHERE source_id IN ({placeholders}) OR target_id IN ({placeholders})"
-        );
-        let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt.query_map(rusqlite::params_from_iter(frontier_ids.iter()), |row| {
-            let source_id: String = row.get(0)?;
-            let target_id: String = row.get(1)?;
-            let relation_type: Option<String> = row.get(2)?;
-            let weight: Option<f64> = row.get(3)?;
-            Ok((
-                source_id,
-                target_id,
-                relation_type.unwrap_or_else(|| "RELATES_TO".to_string()),
-                weight.unwrap_or(1.0).clamp(0.05, 5.0),
-            ))
-        })?;
-
+        let edges = edges_for_frontier(conn, sidecar, &frontier_ids)?;
         let mut next_frontier: Vec<String> = Vec::new();
-        for edge in rows {
-            let (src, dst, rel, weight) = edge?;
+        for (src, dst, rel, weight) in edges {
             *degree_map.entry(src.clone()).or_insert(0) += 1;
             *degree_map.entry(dst.clone()).or_insert(0) += 1;
 
@@ -167,7 +231,6 @@ pub fn expand_knowledge_graph(
                             .or_default()
                             .insert(rel.clone());
 
-                        // Credit the seed itself for verified structural edges
                         *raw_scores.entry(from.clone()).or_insert(0.0) += 0.22 * rel_w;
                         min_hops.entry(from.clone()).or_insert(0);
                         seed_links
@@ -192,19 +255,18 @@ pub fn expand_knowledge_graph(
                     }
                 }
             } else {
-                // Hop 2: expand from 1-hop intermediates (especially Concept/Entity/Topic bridges)
                 for (from, to) in [(&src, &dst), (&dst, &src)] {
-                    if let Some(paths) = hop1_paths.get(from).cloned() {
-                        let bridge_mult = node_map
-                            .get(from)
-                            .and_then(|n| n.node_type.as_deref())
+                    if let Some(paths) = hop1_paths.get(from) {
+                        let bridge_mult = sidecar
+                            .get_doc(from)
+                            .and_then(|d| d.node.node_type.as_deref())
                             .map(|nt| match nt {
                                 "Concept" | "Entity" | "Topic" | "Decision" => 1.25,
                                 _ => 1.0,
                             })
                             .unwrap_or(1.0);
                         for (origin_seed, p_score, rel1) in paths {
-                            if &origin_seed == to {
+                            if origin_seed == to {
                                 continue;
                             }
                             let contrib = p_score * rel_w * cfg.hop2_decay * bridge_mult;
@@ -216,7 +278,7 @@ pub fn expand_knowledge_graph(
                             seed_links
                                 .entry(to.clone())
                                 .or_default()
-                                .insert(origin_seed);
+                                .insert(origin_seed.clone());
                             relation_kinds
                                 .entry(to.clone())
                                 .or_default()
@@ -230,10 +292,11 @@ pub fn expand_knowledge_graph(
         frontier_ids = next_frontier;
     }
 
-    // Fetch any missing node rows referenced by edges
+    // Fetch only node rows referenced by edges that are not already in the sidecar cache
+    let mut fetched_nodes: HashMap<String, NodeRow> = HashMap::new();
     let missing_ids: Vec<String> = raw_scores
         .keys()
-        .filter(|id| !node_map.contains_key(*id))
+        .filter(|id| sidecar.get_doc(id).is_none())
         .cloned()
         .collect();
     if !missing_ids.is_empty() {
@@ -260,113 +323,88 @@ pub fn expand_knowledge_graph(
             |r| r.id.clone(),
         )?;
         for node in scoped_fetched {
-            node_map.insert(node.id.clone(), node);
+            fetched_nodes.insert(node.id.clone(), node);
         }
     }
 
-    // Link nodes via implicit wikilinks `[[...]]` and `#tags` shared with seeds
+    // Link nodes via cached implicit [[wikilinks]] and #tags (no text re-scanning!)
     let mut seed_wikilinks: HashMap<String, Vec<(String, f64)>> = HashMap::new();
     let mut seed_tags: HashMap<String, Vec<(String, f64)>> = HashMap::new();
     for (seed_id, &strength) in &seed_strength {
-        if let Some(seed_node) = node_map.get(seed_id) {
-            let s_title = seed_node.title.as_deref().unwrap_or_default();
-            let s_sum = seed_node.summary.as_deref().unwrap_or_default();
-            let s_meta = seed_node.metadata_json.as_deref().unwrap_or_default();
-            let combined = format!("{s_title} {s_sum} {s_meta}");
-            let (wls, tgs) = extract_wikilinks_and_tags(&combined);
-            let seed_title_norm = s_title.trim().to_lowercase();
-            if !seed_title_norm.is_empty() {
+        if let Some(seed_doc) = sidecar.get_doc(seed_id) {
+            if !seed_doc.title_norm.is_empty() {
                 seed_wikilinks
-                    .entry(seed_title_norm)
+                    .entry(seed_doc.title_norm.clone())
                     .or_default()
                     .push((seed_id.clone(), strength));
             }
-            for wl in wls {
+            for wl in &seed_doc.wikilinks {
                 seed_wikilinks
-                    .entry(wl)
+                    .entry(wl.clone())
                     .or_default()
                     .push((seed_id.clone(), strength));
             }
-            for tg in tgs {
+            for tg in &seed_doc.tags {
                 seed_tags
-                    .entry(tg)
+                    .entry(tg.clone())
                     .or_default()
                     .push((seed_id.clone(), strength));
             }
         }
     }
 
-    if !seed_wikilinks.is_empty() || !seed_tags.is_empty() {
-        for cand in corpus {
-            let c_title = cand.title.as_deref().unwrap_or_default();
-            let c_sum = cand.summary.as_deref().unwrap_or_default();
-            let c_meta = cand.metadata_json.as_deref().unwrap_or_default();
-            let combined = format!("{c_title} {c_sum} {c_meta}");
-            let (cand_wls, cand_tgs) = extract_wikilinks_and_tags(&combined);
-            let cand_title_norm = c_title.trim().to_lowercase();
-
-            if let Some(origins) = seed_wikilinks.get(&cand_title_norm) {
+    for (wl, origins) in &seed_wikilinks {
+        for &doc_idx in sidecar.doc_idxs_by_title(wl) {
+            if let Some(cand) = sidecar.doc_at(doc_idx) {
                 for (seed_id, strength) in origins {
-                    if seed_id != &cand.id {
-                        *raw_scores.entry(cand.id.clone()).or_insert(0.0) +=
-                            strength * 0.80 * cfg.hop1_decay;
-                        min_hops
-                            .entry(cand.id.clone())
-                            .and_modify(|h| *h = (*h).min(1))
-                            .or_insert(1);
-                        seed_links
-                            .entry(cand.id.clone())
-                            .or_default()
-                            .insert(seed_id.clone());
-                        relation_kinds
-                            .entry(cand.id.clone())
-                            .or_default()
-                            .insert("WIKILINK".to_string());
-                    }
+                    record_implicit_link(
+                        &cand.node.id,
+                        seed_id,
+                        strength * 0.80 * cfg.hop1_decay,
+                        1,
+                        "WIKILINK".to_string(),
+                        &mut raw_scores,
+                        &mut min_hops,
+                        &mut seed_links,
+                        &mut relation_kinds,
+                    );
                 }
             }
-            for wl in &cand_wls {
-                if let Some(origins) = seed_wikilinks.get(wl) {
-                    for (seed_id, strength) in origins {
-                        if seed_id != &cand.id {
-                            *raw_scores.entry(cand.id.clone()).or_insert(0.0) +=
-                                strength * 0.72 * cfg.hop1_decay;
-                            min_hops
-                                .entry(cand.id.clone())
-                                .and_modify(|h| *h = (*h).min(1))
-                                .or_insert(1);
-                            seed_links
-                                .entry(cand.id.clone())
-                                .or_default()
-                                .insert(seed_id.clone());
-                            relation_kinds
-                                .entry(cand.id.clone())
-                                .or_default()
-                                .insert("WIKILINK".to_string());
-                        }
-                    }
+        }
+        for &doc_idx in sidecar.doc_idxs_by_wikilink(wl) {
+            if let Some(cand) = sidecar.doc_at(doc_idx) {
+                for (seed_id, strength) in origins {
+                    record_implicit_link(
+                        &cand.node.id,
+                        seed_id,
+                        strength * 0.72 * cfg.hop1_decay,
+                        1,
+                        "WIKILINK".to_string(),
+                        &mut raw_scores,
+                        &mut min_hops,
+                        &mut seed_links,
+                        &mut relation_kinds,
+                    );
                 }
             }
-            for tg in &cand_tgs {
-                if let Some(origins) = seed_tags.get(tg) {
-                    for (seed_id, strength) in origins {
-                        if seed_id != &cand.id {
-                            *raw_scores.entry(cand.id.clone()).or_insert(0.0) +=
-                                strength * 0.55 * cfg.hop2_decay;
-                            min_hops
-                                .entry(cand.id.clone())
-                                .and_modify(|h| *h = (*h).min(2))
-                                .or_insert(2);
-                            seed_links
-                                .entry(cand.id.clone())
-                                .or_default()
-                                .insert(seed_id.clone());
-                            relation_kinds
-                                .entry(cand.id.clone())
-                                .or_default()
-                                .insert(format!("TAG:#{tg}"));
-                        }
-                    }
+        }
+    }
+
+    for (tg, origins) in &seed_tags {
+        for &doc_idx in sidecar.doc_idxs_by_tag(tg) {
+            if let Some(cand) = sidecar.doc_at(doc_idx) {
+                for (seed_id, strength) in origins {
+                    record_implicit_link(
+                        &cand.node.id,
+                        seed_id,
+                        strength * 0.55 * cfg.hop2_decay,
+                        2,
+                        format!("TAG:#{tg}"),
+                        &mut raw_scores,
+                        &mut min_hops,
+                        &mut seed_links,
+                        &mut relation_kinds,
+                    );
                 }
             }
         }
@@ -377,7 +415,11 @@ pub fn expand_knowledge_graph(
         if base_score <= 0.0 {
             continue;
         }
-        let Some(node) = node_map.get(&node_id).cloned() else {
+        let Some(node) = sidecar
+            .get_doc(&node_id)
+            .map(|d| d.node.clone())
+            .or_else(|| fetched_nodes.get(&node_id).cloned())
+        else {
             continue;
         };
         let connected: Vec<String> = {
@@ -399,8 +441,6 @@ pub fn expand_knowledge_graph(
             v
         };
         let degree = *degree_map.get(&node_id).unwrap_or(&1);
-
-        // Multi-seed convergence bonus + log-degree centrality boost
         let convergence_bonus = if connected.len() >= 2 {
             1.0 + 0.25 * (connected.len() as f64).ln()
         } else {
@@ -428,4 +468,21 @@ pub fn expand_knowledge_graph(
     });
     hits.truncate(cfg.max_neighbors.max(1));
     Ok(hits)
+}
+
+/// Expand seed nodes across 1-hop and 2-hop Knowledge Graph edges (`RELATES_TO`,
+/// `MENTIONS`, `PART_OF`, etc.), shared Concept/Entity bridge nodes, `[[wikilinks]]`,
+/// and `#tags`, returning structurally scored nodes ordered by `graph_score`.
+pub fn expand_knowledge_graph(
+    conn: &Connection,
+    seeds: &[(String, f64)],
+    corpus: &[NodeRow],
+    scope: &Scope,
+    cfg: &GraphRagConfig,
+) -> Result<Vec<GraphStructuralHit>, CoreError> {
+    if seeds.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut sidecar = Bm25SidecarIndex::from_corpus(corpus);
+    expand_knowledge_graph_with_sidecar(conn, seeds, &mut sidecar, scope, cfg)
 }

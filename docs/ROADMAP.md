@@ -3,10 +3,10 @@
 > **Status: reference** — point-in-time inventory, redated at v12.0.0. Not a
 > canonical current-release document; version gates do not bind it.
 
-As of **2026-11-11**, against the 12.4.0 — Sharp Weight tree. The rows below
-were gathered against 11.9.0 and re-checked when 12.0.0 shipped; what that
-release closed is marked closed rather than deleted, so the ledger still
-shows what was owed.
+As of **2026-11-16**, against the **12.7.0 — Fast Index** tree. The rows below
+were gathered against the `v12.0.0` baseline; what subsequent `v12.x` releases
+closed is marked closed rather than deleted, so the ledger still shows what was
+owed.
 
 The owner's v12.0.0 priority was complexity management. The crate maps that
 landed with that work are
@@ -17,8 +17,9 @@ the contributor path is [DEVELOPMENT.md](DEVELOPMENT.md). This page is the
 honest leftover list, gathered from
 [FEATURE_STATUS.md](../FEATURE_STATUS.md) Known Limitations and the §정직한
 고지 sections of
-[releases/RELEASE_NOTES_v11.9.0.md](releases/RELEASE_NOTES_v11.9.0.md) and
-[releases/RELEASE_NOTES_v12.0.0.md](releases/RELEASE_NOTES_v12.0.0.md).
+[releases/RELEASE_NOTES_v12.0.0.md](releases/RELEASE_NOTES_v12.0.0.md),
+[releases/RELEASE_NOTES_v12.6.0.md](releases/RELEASE_NOTES_v12.6.0.md), and
+[releases/RELEASE_NOTES_v12.7.0.md](releases/RELEASE_NOTES_v12.7.0.md).
 
 Four items those ledgers named **closed in 12.0.0**. They are kept below so
 they are not re-opened as work. Everything else is still open.
@@ -44,7 +45,7 @@ rather than being deleted: the small-model harness (P1) and the HNSW index
 | 무엇 | 왜 남았나 | 난이도 | 우선순위 | 제안 경로 |
 | --- | --- | --- | --- | --- |
 | **Small-model agent-run content quality** | **Narrowed in 12.2.1.** Mechanical half closed in 12.0.0 (`guided`, measured probe). 12.2.1 fills a thin summary from the `read_file` / `mcp.read_file` result already on the transcript; missing evidence is `NEEDS_REVIEW`, not a false DONE. Remaining: a 2B that never read the file, and writing that is fluent but wrong. | L | **P1** — still the voice on 8GB. | Keep measuring with the loop's own parser. Do not add a per-model branch. |
-| **Real-embedding default rollout** | **Narrowed again in 12.2.1.** First-run and the library name hash search as hash and point at a meaning model. Auto-detection still adopts a real downloaded embedder when one is present. The no-download default is still `lattice-local-hash-v1`. | M | **P1** — recall is the product. | Offer an embedding model in first-run the way a chat model is offered. Drain through `lattice-jobs` on switch. No second embedder in `lattice-core`. |
+| **Real-embedding default rollout** | **Narrowed in 12.5.0–12.6.0.** 12.5.0 integrated native Google EmbeddingGemma 2 (`768d`) with hardware-aware onboarding recommendations; 12.6.0 added unauthenticated public mirrors, quantized GGUF/MLX/ONNX fallbacks, real-time SSE download progress (`MB/s` & `ETA`), and upgraded the zero-download offline fallback to multi-scale subword `FallbackTextEmbedder` (`lattice-fallback-subword-v2:768`) alongside 3-way BM25F + Vector + Knowledge Graph RRF. Fresh offline installs without downloaded weights still start on the subword fallback until an embedding model is prepared. | M | **P1 — largely closed in 12.6.0; offline first-boot still uses subword fallback until weights are downloaded.** | Keep offering EmbeddingGemma 2 in first-run with live SSE progress and public mirrors. Drain through `lattice-jobs` on switch. |
 | **Worker-side batch embed** | **Closed in 12.1.0 on the ingest-time door**: one `/worker/embed` body is the document vector followed by every chunk, extract runs beside it, and `write_vectors_with` files those vectors. The drain planner stays the backlog path. Folder/watch overlap up to four files. What remains for a real-embed default is auto-detection on first run, not a second embedder. | M | **P1 → closed for the ingest door; the real-embed default row above is still open.** | Keep. Do not open a second embedder inside `lattice-core`. |
 
 ## P2 — real, but the product still works without them

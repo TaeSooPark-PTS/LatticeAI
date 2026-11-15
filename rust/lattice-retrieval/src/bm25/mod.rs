@@ -4,16 +4,22 @@
 mod fusion;
 mod graph_rag;
 mod scoring;
+mod sidecar;
+mod sidecar_cache;
 mod tokenizer;
 
 #[cfg(test)]
 mod tests;
 
-pub use fusion::{hybrid_bm25_vector_graph_search, GraphRagOptions};
-pub use graph_rag::{expand_knowledge_graph, GraphRagConfig, GraphStructuralHit};
+pub use fusion::{hybrid_bm25_vector_graph_search, score_and_expand_with_sidecar, GraphRagOptions};
+pub use graph_rag::{
+    expand_knowledge_graph, expand_knowledge_graph_with_sidecar, GraphRagConfig, GraphStructuralHit,
+};
 pub use scoring::{
     bm25f_score_nodes, bm25f_search, load_scoped_corpus, Bm25fParams, Bm25fScoredNode,
 };
+pub use sidecar::{Bm25SidecarIndex, PostingEntry, SidecarCacheStats};
+pub use sidecar_cache::{cached_sidecar_stats, with_bm25_sidecar};
 pub use tokenizer::{
     extract_query_terms, extract_wikilinks_and_tags, tokenize_bm25_cjk, QueryTerm,
 };

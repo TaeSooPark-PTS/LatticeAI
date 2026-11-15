@@ -20,6 +20,18 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.7.0": {
+    "_why": [
+      "Fast Index adds the Pre-Tokenized BM25F Sidecar (Bm25SidecarIndex),",
+      "SQLite bm25_node_stats persistence on GraphWriter upserts, and an",
+      "inverted posting-list and GraphRAG adjacency cache for O(1) lookup",
+      "without query-time re-tokenization, plus product-first README and",
+      "v12.0.0+ release-history polish.",
+      "",
+      "Backend indexing/retrieval & documentation polish release; no UI",
+      "screen was redesigned. Empty claim set on purpose."
+    ]
+  },
   "12.6.0": {
     "_why": [
       "Hybrid Graph introduces 3-way BM25F + Vector + Knowledge Graph RRF",
