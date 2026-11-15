@@ -15,6 +15,23 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.6.0 — Hybrid Graph (2026-11-15)
+
+**3-way BM25F + Vector + Knowledge Graph RRF 하이브리드 인덱싱·검색**, 그래프 인식 에이전트 스킬 및 MCP 검색 도구, **멀티스케일 서브워드 `FallbackTextEmbedder`**, **비인증 EmbeddingGemma 2 공개 미러 및 양자화(GGUF/MLX/ONNX) fallback**, **SSE 실시간 다운로드 속도(`MB/s`)·남은 시간(`ETA`) 스트리밍 UI**, **Pillow 13+ 레거시 제거**, **Ubuntu 24.04/26.04 `t64`·Chromium CI 복원력**, **모듈화 `scripts/bump_version/` CLI**를 통합한 릴리스. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.
+
+- **3-Way BM25F + Vector + Knowledge Graph RRF 하이브리드 검색.** `rust/lattice-retrieval/src/bm25/`, `service_hybrid.rs`, `hybrid.rs`, `search_api/handlers.rs`에 필드 가중 오카피 BM25F(`k1=1.2, b=0.75`, 한국어 조사 제거·CJK 바이그램·식별자 서브워드), 1-hop/2-hop 지식 그래프 구조 확장(`RELATES_TO`, `MENTIONS`, `PART_OF`, 공유 개념 노드, `[[wikilinks]]`, `#tags`), 3-way RRF 융합 및 `/api/search/hybrid` zero-hit rescue fallback을 구현했다.
+- **그래프 스킬 및 에이전트·MCP 그래프 도구.** `rust/lattice-platform/src/toolsurface/tools/knowledge.rs`와 `rust/lattice-agent`(`tools/catalog.rs`, `prompts/mod.rs`)에서 `knowledge_search`/`obsidian_search`의 `mode`(`hybrid`/`bm25f`/`graph`/`graphrag`/`subgraph`), `hops`, `include_graph` 서브그래프 추출과 `knowledge_graph_search`/`knowledge_graph_context`, `GRAPH_SKILL_BRIEFS`를 지원한다.
+- **멀티스케일 서브워드 `FallbackTextEmbedder` (#13.1).** `latticeai/core/embedding_providers/text.py`와 `rust/lattice-core/src/embeddings.rs`의 오프라인 임베더(`768d`, `lattice-fallback-subword-v2:768`)를 `3..5-gram` 서브워드, 한국어 조사 제거 음절·초성 쌍, CJK n-gram, 2-probe 부호 있는 Blake2b 투영 및 L2 정규화로 고도화했다.
+- **EmbeddingGemma 2 비인증 공개 미러 및 양자화 fallback (#14.2).** `HF_TOKEN` 미설정 또는 gated `401`/`403` 응답 시 `mlx-community/embeddinggemma-2-4bit`, `mlx-community/embeddinggemma-2-8bit`, `ggml-org/embeddinggemma-2-GGUF`, `onnx-community/embeddinggemma-300m-ONNX` 공개 미러로 자동 전환하며 `HF_ENDPOINT` 커스텀 미러를 지원한다.
+- **실시간 SSE 다운로드 진행률 스트리밍 UI (#15.2).** 다운로드 엔진(`download.py`, `rust/lattice-platform/src/modelops`)이 `downloaded_bytes`, `total_bytes`, `percent`, `speed_bps`, `eta_seconds`, `gated_fallback`을 SSE(`text/event-stream`)로 전송하고 `ProductFlow.tsx`·`InstallScreen.tsx`·`Library.tsx`에 실시간 진행률·속도(`MB/s`)·ETA·미러 안내를 시각화했다(Vitest 100% 커버리지).
+- **Pillow 13+ 정리(#13.2), Ubuntu 24.04/26.04 `t64` CI 복원력(#14.1) & `scripts/bump_version/` CLI(#15.1).** `scripts/check_screenshot_pixel_delta.py`에서 `diff.getdata()` 레거시를 제거하고, `.github/workflows/*.yml`과 `scripts/check_ubuntu_runner_compat.mjs`에 `t64` 패키지 fallback 및 Chromium 검증을 추가했으며, `scripts/bump_version/` 패키지(`all`, `openapi`, `cargo`, `markers` 서브커맨드)로 모듈화했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md).
+
+빌드 산출물은 `dist/ltcai-12.6.0-py3-none-any.whl`,
+`dist/ltcai-12.6.0.tar.gz`, `ltcai-12.6.0.tgz`, `dist/ltcai-12.6.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.6.0_aarch64.dmg` 입니다.
+
 ## v12.5.0 — Deep Vector (2026-11-11)
 
 Hugging Face에서 제공되는 **Google EmbeddingGemma 2**(`google/embeddinggemma-2`, 768차원)를 네이티브 임베딩 제공자로 전면 통합하고, 사용자 호스트 하드웨어(RAM/VRAM)를 정밀 측정하여 임베딩 모델 메모리를 사전 예약한 후 최적 LLM을 선정하는 맞춤형 모델 추천 시스템을 도입한 릴리스. Pillow 13+ `get_flattened_data()` 전환, GitHub Actions CI/CD 워크플로우의 Node 24 네이티브 업그레이드, `scripts/bump_version.py`의 OpenAPI 스펙·파편 49개 타깃 자동 갱신을 완료했다. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.

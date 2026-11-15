@@ -1,235 +1,85 @@
 #!/usr/bin/env python3
-"""Single-source version bump — rewrites every synchronized version copy.
-
-The canonical version has always been nine hand-edited copies guarded by
-tests/unit/test_version_consistency.py. This script makes the bump one
-command; the consistency test keeps guarding the result.
+"""Single-source version bump — thin wrapper delegating to ``scripts.bump_version``.
 
 Usage:
-    python scripts/bump_version.py 4.0.0
-    python scripts/bump_version.py 4.0.0 --check   # verify only, no writes
+    python scripts/bump_version.py 12.5.0
+    python scripts/bump_version.py 12.5.0 --check
+    python scripts/bump_version.py openapi 12.5.0 --check
+    python scripts/bump_version.py cargo 12.5.0 --check
+    python scripts/bump_version.py markers 12.5.0 --check
+    python -m scripts.bump_version openapi 12.5.0 --check
 """
 
 from __future__ import annotations
 
-import argparse
-import hashlib
-import json
-import re
 import sys
 from pathlib import Path
+from typing import Iterable, Optional, Sequence, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 
-# The rust/ workspace crates carry `version.workspace = true`, so the workspace
-# root is the only hand-edited copy of the number. Both lockfiles still record
-# it per crate — src-tauri's too, since 11.4.0, because the desktop shell now
-# depends on lattice-host by path — and a lockfile left behind is a file the
-# next `cargo build` silently rewrites underneath a tagged release.
-#
-# 11.5.2: this tuple listed only the three Phase-1 crates, so every bump since
-# 11.5.0 left `lattice-agent`, `lattice-ingest` and `lattice-jobs` at the
-# previous version in both lockfiles — and the first `cargo` invocation of the
-# test suite rewrote them, dirtying the tree mid-release. Every workspace
-# member belongs here.
-RUST_CRATES = (
-    "lattice-agent",
-    "lattice-auth",
-    "lattice-chat",
-    "lattice-core",
-    "lattice-host",
-    "lattice-ingest",
-    "lattice-jobs",
-    "lattice-platform",
-    "lattice-retrieval",
+from scripts.bump_version.cargo import (  # noqa: E402
+    CARGO_TARGETS,
+    RUST_CRATES,
+    RUST_LOCKFILES,
+    bump_cargo,
 )
-RUST_LOCKFILES = ("rust/Cargo.lock", "src-tauri/Cargo.lock")
-
-# Committed OpenAPI fragments (`rust/fixtures/openapi/<family>.json`) plus
-# `_envelope.json` and `_index.json`. Serialized with `sort_keys=True, indent=2`
-# (`scripts/gen_openapi_fragments.py::canonical_json`).
-OPENAPI_FRAGMENTS = (
-    "admin",
-    "auth",
-    "chat",
-    "knowledge_search",
-    "mcp_market",
-    "memory_brain",
-    "models_misc",
-    "portability_network",
-    "review_proposals",
-    "static_ui",
-    "ui_redirects",
-    "worker_keep",
-    "workspace",
+from scripts.bump_version.cli import (  # noqa: E402
+    bump as _cli_bump,
 )
+from scripts.bump_version.cli import (
+    main as _cli_main,
+)
+from scripts.bump_version.markers import (  # noqa: E402
+    MARKER_FILES,
+    bump_markers,
+)
+from scripts.bump_version.openapi import (  # noqa: E402
+    OPENAPI_FRAGMENTS,
+    OPENAPI_TARGETS,
+    _canonical_openapi_json,
+    bump_openapi,
+    canonical_openapi_json,
+)
+from scripts.bump_version.targets import DEFAULT_REPO, TARGETS  # noqa: E402
 
-# (path, kind, pattern) — pattern groups: (prefix, version)
-TARGETS = [
-    ("latticeai/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
-    ("lattice_brain/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
-    # WP-P1 deleted workspace_os / marketplace / multi_agent / the legacy
-    # shim registry. The package version is the runtime canonical now.
-    ("latticeai/services/architecture_readiness.py", "regex", r'(ARCHITECTURE_VERSION_TARGET = ")([^"]+)(")'),
-    ("latticeai/services/product_readiness.py", "regex", r'(PRODUCT_VERSION_TARGET = ")([^"]+)(")'),
-    ("pyproject.toml", "regex", r'(^version = ")([^"]+)(")'),
-    ("package.json", "json", "version"),
-    ("package-lock.json", "package-lock", None),
-    ("vscode-extension/package.json", "json", "version"),
-    ("vscode-extension/package-lock.json", "package-lock", None),
-    ("browser-extension/manifest.json", "json", "version"),
-    ("src-tauri/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
-    ("src-tauri/Cargo.lock", "regex", r'(name = "lattice-ai-desktop"\nversion = ")([^"]+)(")'),
-    ("src-tauri/tauri.conf.json", "json", "version"),
-    ("rust/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
-    *[
-        (lock, "regex", rf'(name = "{crate}"\nversion = ")([^"]+)(")')
-        for lock in RUST_LOCKFILES
-        for crate in RUST_CRATES
-    ],
-    ("static/app/asset-manifest.json", "json", "version"),
-    ("frontend/openapi.json", "openapi-spec", None),
-    ("rust/fixtures/openapi/_envelope.json", "openapi-envelope", None),
-    *[
-        (f"rust/fixtures/openapi/{family}.json", "openapi-fragment", None)
-        for family in OPENAPI_FRAGMENTS
-    ],
-    ("rust/fixtures/openapi/_index.json", "openapi-index", None),
+
+def bump(
+    version: str,
+    *,
+    check: bool = False,
+    repo: Optional[Path] = None,
+    targets: Optional[Iterable[Tuple[str, str, Optional[str]]]] = None,
+) -> int:
+    """Delegate version synchronization to ``scripts.bump_version.cli.bump``."""
+    effective_repo = repo if repo is not None else (REPO if REPO != DEFAULT_REPO else None)
+    return _cli_bump(version, check=check, repo=effective_repo, targets=targets)
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """Delegate CLI execution to ``scripts.bump_version.cli.main``."""
+    return _cli_main(argv)
+
+
+__all__ = [
+    "CARGO_TARGETS",
+    "MARKER_FILES",
+    "OPENAPI_FRAGMENTS",
+    "OPENAPI_TARGETS",
+    "REPO",
+    "RUST_CRATES",
+    "RUST_LOCKFILES",
+    "TARGETS",
+    "_canonical_openapi_json",
+    "bump",
+    "bump_cargo",
+    "bump_markers",
+    "bump_openapi",
+    "canonical_openapi_json",
+    "main",
 ]
-
-
-def _canonical_openapi_json(payload: object) -> str:
-    return json.dumps(payload, sort_keys=True, indent=2) + "\n"
-
-
-def bump(version: str, *, check: bool = False) -> int:
-    if not re.fullmatch(r"\d+\.\d+\.\d+([-.][0-9A-Za-z.]+)?", version):
-        print(f"error: '{version}' is not a sane semantic version", file=sys.stderr)
-        return 2
-    failures = 0
-    for rel, kind, spec in TARGETS:
-        path = REPO / rel
-        if not path.exists():
-            print(f"  skip  {rel} (missing)")
-            continue
-        text = path.read_text(encoding="utf-8")
-        current = ""
-        new = text
-        if kind == "regex":
-            m = re.search(spec, text, flags=re.MULTILINE)
-            ok = m is not None
-            if ok and m is not None:
-                current = m.group(2)
-                new, n = re.subn(spec, lambda match: match.group(1) + version + match.group(3), text, count=1, flags=re.MULTILINE)
-                changed = n == 1 and new != text
-            else:
-                changed = False
-        elif kind == "json":
-            data = json.loads(text)
-            ok = spec in data
-            if ok:
-                current = str(data.get(spec))
-                changed = current != version
-                data[spec] = version
-                new = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
-            else:
-                changed = False
-        elif kind == "package-lock":
-            data = json.loads(text)
-            ok = "version" in data
-            if ok:
-                current = str(data.get("version"))
-                changed = current != version
-                data["version"] = version
-                if "packages" in data and "" in data["packages"]:
-                    data["packages"][""]["version"] = version
-                new = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
-            else:
-                changed = False
-        elif kind == "openapi-spec":
-            data = json.loads(text)
-            info = data.get("info") if isinstance(data.get("info"), dict) else None
-            ok = info is not None and "version" in info
-            if ok and info is not None:
-                current = str(info["version"])
-                changed = current != version
-                info["version"] = version
-                new = _canonical_openapi_json(data)
-            else:
-                changed = False
-        elif kind == "openapi-envelope":
-            data = json.loads(text)
-            spec_obj = data.get("spec") if isinstance(data.get("spec"), dict) else None
-            info = spec_obj.get("info") if isinstance(spec_obj, dict) and isinstance(spec_obj.get("info"), dict) else None
-            ok = "spec_version" in data and info is not None and "version" in info
-            if ok and info is not None:
-                sv = str(data["spec_version"])
-                iv = str(info["version"])
-                current = sv if sv != version else iv
-                changed = sv != version or iv != version
-                data["spec_version"] = version
-                info["version"] = version
-                new = _canonical_openapi_json(data)
-            else:
-                changed = False
-        elif kind == "openapi-fragment":
-            data = json.loads(text)
-            ok = "spec_version" in data
-            if ok:
-                current = str(data["spec_version"])
-                changed = current != version
-                data["spec_version"] = version
-                new = _canonical_openapi_json(data)
-            else:
-                changed = False
-        elif kind == "openapi-index":
-            data = json.loads(text)
-            ok = "spec_version" in data
-            if ok:
-                current = str(data["spec_version"])
-                data["spec_version"] = version
-                if not check:
-                    env_meta = data.get("envelope")
-                    if isinstance(env_meta, dict) and "file" in env_meta:
-                        env_path = path.parent / str(env_meta["file"])
-                        if env_path.is_file():
-                            env_meta["sha256"] = hashlib.sha256(env_path.read_bytes()).hexdigest()
-                    for entry in data.get("fragments", []):
-                        if isinstance(entry, dict) and "file" in entry:
-                            frag_path = path.parent / str(entry["file"])
-                            if frag_path.is_file():
-                                entry["sha256"] = hashlib.sha256(frag_path.read_bytes()).hexdigest()
-                new = _canonical_openapi_json(data)
-                changed = current != version or new != text
-            else:
-                changed = False
-        else:  # pragma: no cover
-            raise AssertionError(kind)
-        if not ok:
-            print(f"  FAIL  {rel}: version field not found")
-            failures += 1
-            continue
-        if check:
-            status = "ok" if current == version else f"MISMATCH ({current})"
-            if current != version:
-                failures += 1
-            print(f"  {status:>9}  {rel}")
-            continue
-        if changed:
-            path.write_text(new, encoding="utf-8")
-            print(f"  bumped  {rel}")
-        else:
-            print(f"  ok      {rel}")
-    return 1 if failures else 0
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("version")
-    parser.add_argument("--check", action="store_true", help="verify only; write nothing")
-    args = parser.parse_args()
-    return bump(args.version, check=args.check)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

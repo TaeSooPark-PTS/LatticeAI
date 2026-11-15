@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **12.5.0 — Deep Vector**.
+Current release: **12.6.0 — Hybrid Graph**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

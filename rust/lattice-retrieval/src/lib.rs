@@ -46,6 +46,7 @@ pub(crate) fn build_pattern(pattern: &str) -> fancy_regex::Regex {
     fancy_regex::Regex::new(pattern).expect("ported pattern must compile")
 }
 
+pub mod bm25;
 pub mod brain_api;
 pub mod chronicle_api;
 pub mod command_center_api;
@@ -72,6 +73,12 @@ pub mod shape;
 pub mod vector;
 pub mod vector_hnsw;
 
+pub use bm25::{
+    bm25f_graphrag_enabled, bm25f_score_nodes, bm25f_search, expand_knowledge_graph,
+    extract_query_terms, extract_wikilinks_and_tags, hybrid_bm25_vector_graph_search,
+    tokenize_bm25_cjk, Bm25fParams, Bm25fScoredNode, GraphRagConfig, GraphRagOptions,
+    GraphStructuralHit, QueryTerm,
+};
 pub use concepts::topic_candidates;
 pub use context::{assemble_context, ContextRequest};
 pub use docgen::{context_for_query, multi_hop_context, search_for_document_generation};

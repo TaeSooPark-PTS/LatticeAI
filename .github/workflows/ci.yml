@@ -79,6 +79,7 @@ jobs:
           npm run typecheck
           npm run docs:check-current
           npm run docs:check-links
+          node scripts/check_ubuntu_runner_compat.mjs --diagnostic
 
       - name: Lint (Python only, other matrix legs)
         if: matrix.python-version != '3.11' || matrix.os != 'ubuntu-latest'

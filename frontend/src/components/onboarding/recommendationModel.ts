@@ -31,7 +31,46 @@ export type RecommendedModel = {
   estimatedFirstResponseSeconds: number;
   /** Rough parameter scale (e.g. 8, 12, 70) parsed from the model name; null when unknown. */
   parameterBillions: number | null;
+  /** Whether unauthenticated public mirror / quantized GGUF·MLX fallback applies. */
+  gatedFallback?: boolean;
+  /** Public mirror or quantized repository used when unauthenticated. */
+  fallbackRepo?: string;
+  /** Ordered list of public mirror / quantized repositories. */
+  publicMirrorRepos?: string[];
 };
+
+export type StreamMetrics = {
+  percent: number;
+  speedMbps: string | null;
+  etaSeconds: number | null;
+  currentFile: string;
+  gatedFallback: boolean;
+  fallbackRepo: string;
+};
+
+export function formatStreamMetrics(event: ApiData | null | undefined): StreamMetrics {
+  const rec = asRecord(event);
+  const rawPercent = Number(rec.percent ?? 0);
+  const percent = Math.max(0, Math.min(100, Math.round(rawPercent)));
+  const rawSpeedBps = Number(rec.speed_bps ?? 0);
+  const rawSpeedMbps = Number(rec.speed_mbps ?? (rawSpeedBps > 0 ? rawSpeedBps / (1024 * 1024) : 0));
+  const speedMbps = rawSpeedMbps > 0 ? rawSpeedMbps.toFixed(1) : null;
+  const rawEta = rec.eta_seconds;
+  const etaSeconds = rawEta !== undefined && rawEta !== null && rawEta !== ""
+    ? Math.max(0, Math.round(Number(rawEta)))
+    : null;
+  const currentFile = String(rec.current_file || rec.file || rec.detail || "");
+  const gatedFallback = Boolean(rec.gated_fallback);
+  const fallbackRepo = String(rec.fallback_repo || "");
+  return {
+    percent,
+    speedMbps,
+    etaSeconds,
+    currentFile,
+    gatedFallback,
+    fallbackRepo,
+  };
+}
 
 export function buildRecommendations(analysis: FlowAnalysis | null): RecommendedModel[] {
   const models = asRecord(analysis?.models);
@@ -161,6 +200,21 @@ export function recommendedEmbeddingModel(analysis: FlowAnalysis | null): Recomm
     estimatedDownloadMinutes: 1,
     estimatedFirstResponseSeconds: 2,
     parameterBillions: constrained ? 0.3 : 2,
+    gatedFallback: true,
+    fallbackRepo: constrained ? "mlx-community/embeddinggemma-300m-4bit" : "mlx-community/embeddinggemma-2-4bit",
+    publicMirrorRepos: constrained
+      ? [
+          "mlx-community/embeddinggemma-300m-4bit",
+          "mlx-community/embeddinggemma-300m-8bit",
+          "ggml-org/embeddinggemma-300m-GGUF",
+          "onnx-community/embeddinggemma-300m-ONNX",
+        ]
+      : [
+          "mlx-community/embeddinggemma-2-4bit",
+          "mlx-community/embeddinggemma-2-8bit",
+          "ggml-org/embeddinggemma-2-GGUF",
+          "onnx-community/embeddinggemma-300m-ONNX",
+        ],
   };
 }
 
@@ -277,6 +331,14 @@ export function toRecommendedModel(row: ApiData): RecommendedModel {
   const downloadRequired = Boolean(row.download_required);
   const downloadSize = downloadRequired ? String(row.download_size || row.size || "") : "";
   const parameterBillions = parseParameterBillions(`${name} ${id}`);
+  const gatedInfo = asRecord(row.gated_fallback);
+  const fallbackRepo = String(
+    gatedInfo.fallback_repo
+      || row.mlx_repo_id
+      || row.gguf_repo_id
+      || (isEmbedding ? "mlx-community/embeddinggemma-2-4bit" : ""),
+  );
+  const publicMirrorRepos = asArray<string>(row.public_mirror_repos);
   return {
     id,
     loadId,
@@ -297,6 +359,9 @@ export function toRecommendedModel(row: ApiData): RecommendedModel {
     estimatedDownloadMinutes: downloadRequired ? estimateDownloadMinutes(downloadSize) : 0,
     estimatedFirstResponseSeconds: estimateFirstResponseSeconds(parameterBillions),
     parameterBillions,
+    gatedFallback: Boolean(gatedInfo.active ?? isEmbedding),
+    fallbackRepo,
+    publicMirrorRepos,
   };
 }
 

@@ -12,6 +12,8 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
+**12.6.0 — Hybrid Graph** adds 3-way BM25F + Vector + Knowledge Graph RRF hybrid indexing & graph-aware agent skills, multi-scale subword `FallbackTextEmbedder`, unauthenticated EmbeddingGemma 2 public mirrors & quantized GGUF/MLX/ONNX fallbacks, real-time SSE download progress streaming (`MB/s` & `ETA`) in Onboarding and Model Library, Pillow 13+ cleanup, Ubuntu 24.04/26.04 `t64` CI resilience, and the modular `scripts/bump_version/` CLI. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.6.0.md`.
+
 **12.5.0 — Deep Vector** adds native Google EmbeddingGemma 2 support, hardware-aware PC-tailored embedding recommendations, Pillow 13+ flattened data compatibility, Node 24 native CI/CD, and automated OpenAPI specification and fixture synchronization. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.5.0.md`.
 
 **12.4.0 — Sharp Weight** keeps the One Door topology (422 operations / 41 families, 20-route worker), adds verified `mlx-community/Qwen3.8-27B-4bit`, `mlx-community/gemma-4-26B-A4B-it-qat-4bit`, and `mlx-community/gemma-4-26B-A4B-it-qat-OptiQ-4bit` local/cloud routes, and closes all Python (`pillow>=13,<14`) and npm dependency security advisories. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.4.0.md`.

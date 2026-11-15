@@ -1,12 +1,159 @@
 """Embedding model capability registry and PC-tailored hardware recommendations.
 
 Dedicated module to keep `model_capability_registry.py` under the 1000-line cap
-while providing first-class Google EmbeddingGemma 2 / 300M recommendation logic.
+while providing first-class Google EmbeddingGemma 2 / 300M recommendation logic,
+unauthenticated public mirror resolution, and quantized GGUF/MLX/ONNX fallbacks.
 """
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+import os
+from typing import Any, Callable, Dict, List, Mapping, Optional
+
+DEFAULT_HF_ENDPOINT = "https://huggingface.co"
+
+PUBLIC_EMBEDDING_MIRRORS: Dict[str, List[str]] = {
+    "google/embeddinggemma-2": [
+        "mlx-community/embeddinggemma-2-4bit",
+        "mlx-community/embeddinggemma-2-8bit",
+        "ggml-org/embeddinggemma-2-GGUF",
+        "onnx-community/embeddinggemma-300m-ONNX",
+    ],
+    "google/embeddinggemma-300m": [
+        "mlx-community/embeddinggemma-300m-4bit",
+        "mlx-community/embeddinggemma-300m-8bit",
+        "ggml-org/embeddinggemma-300m-GGUF",
+        "onnx-community/embeddinggemma-300m-ONNX",
+    ],
+}
+
+QUANTIZED_DISTRIBUTIONS: Dict[str, Dict[str, str]] = {
+    "google/embeddinggemma-2": {
+        "mlx_4bit": "mlx-community/embeddinggemma-2-4bit",
+        "mlx_8bit": "mlx-community/embeddinggemma-2-8bit",
+        "gguf": "ggml-org/embeddinggemma-2-GGUF",
+        "onnx": "onnx-community/embeddinggemma-300m-ONNX",
+    },
+    "google/embeddinggemma-300m": {
+        "mlx_4bit": "mlx-community/embeddinggemma-300m-4bit",
+        "mlx_8bit": "mlx-community/embeddinggemma-300m-8bit",
+        "gguf": "ggml-org/embeddinggemma-300m-GGUF",
+        "onnx": "onnx-community/embeddinggemma-300m-ONNX",
+    },
+}
+
+
+def _canonical_embedding_repo(repo_id: str) -> Optional[str]:
+    norm = str(repo_id or "").strip().lower()
+    if not norm:
+        return None
+    if norm in PUBLIC_EMBEDDING_MIRRORS:
+        return norm
+    if "embeddinggemma-300m" in norm or "embeddinggemma_300m" in norm:
+        return "google/embeddinggemma-300m"
+    if "embeddinggemma-2" in norm or "embeddinggemma_2" in norm or norm == "embeddinggemma":
+        return "google/embeddinggemma-2"
+    return None
+
+
+def has_hf_auth_token(env: Optional[Mapping[str, str]] = None) -> bool:
+    """Return True when an explicit Hugging Face authentication token is configured."""
+    source = env if env is not None else os.environ
+    for key in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN"):
+        value = str(source.get(key) or "").strip()
+        if value:
+            return True
+    return False
+
+
+def resolve_hf_endpoint(env: Optional[Mapping[str, str]] = None) -> str:
+    """Resolve the active Hugging Face Hub endpoint or custom mirror URL."""
+    source = env if env is not None else os.environ
+    for key in ("HF_ENDPOINT", "HUGGINGFACE_HUB_ENDPOINT", "LATTICEAI_HF_MIRROR"):
+        raw = str(source.get(key) or "").strip().rstrip("/")
+        if raw:
+            return raw
+    return DEFAULT_HF_ENDPOINT
+
+
+def get_public_mirror_repos(repo_id: str, provider: str = "local_mlx") -> List[str]:
+    """Return ordered unauthenticated public mirror / quantized repos for an embedding model."""
+    canonical = _canonical_embedding_repo(repo_id)
+    if canonical is None:
+        return []
+    dists = QUANTIZED_DISTRIBUTIONS[canonical]
+    base_list = list(PUBLIC_EMBEDDING_MIRRORS[canonical])
+    prov = str(provider or "local_mlx").strip().lower()
+    if prov == "llamacpp":
+        gguf = dists["gguf"]
+        return [gguf] + [item for item in base_list if item != gguf]
+    if prov in {"onnx", "cpu"}:
+        onnx = dists["onnx"]
+        return [onnx] + [item for item in base_list if item != onnx]
+    return base_list
+
+
+def select_public_fallback_repo(
+    repo_id: str,
+    provider: str = "local_mlx",
+    *,
+    prefer_8bit: bool = False,
+) -> Optional[str]:
+    """Select the primary public unauthenticated fallback repo for a gated embedding model."""
+    canonical = _canonical_embedding_repo(repo_id)
+    if canonical is None:
+        return None
+    dists = QUANTIZED_DISTRIBUTIONS[canonical]
+    prov = str(provider or "local_mlx").strip().lower()
+    if prov == "llamacpp":
+        return dists["gguf"]
+    if prov in {"onnx", "cpu"}:
+        return dists["onnx"]
+    if prefer_8bit:
+        return dists["mlx_8bit"]
+    return dists["mlx_4bit"]
+
+
+def build_gated_fallback_metadata(
+    repo_id: str,
+    *,
+    apple_silicon: bool = False,
+    provider: str = "local_mlx",
+    env: Optional[Mapping[str, str]] = None,
+) -> Dict[str, Any]:
+    """Build structured mirror/fallback metadata for gated HF embedding models."""
+    canonical = _canonical_embedding_repo(repo_id) or "google/embeddinggemma-2"
+    dists = dict(QUANTIZED_DISTRIBUTIONS[canonical])
+    mirrors = get_public_mirror_repos(canonical, provider=provider)
+    authenticated = has_hf_auth_token(env)
+    endpoint = resolve_hf_endpoint(env)
+    fallback_repo = select_public_fallback_repo(
+        canonical,
+        provider="local_mlx" if apple_silicon and provider in {"", "huggingface"} else provider,
+    ) or dists["mlx_4bit"]
+    return {
+        "enabled": True,
+        "active": not authenticated,
+        "authenticated": authenticated,
+        "requires_hf_auth": True,
+        "requires_hf_token": False,
+        "hf_endpoint": endpoint,
+        "custom_mirror_active": endpoint != DEFAULT_HF_ENDPOINT,
+        "primary_repo": canonical,
+        "fallback_repo": fallback_repo,
+        "mlx_4bit_repo": dists["mlx_4bit"],
+        "mlx_8bit_repo": dists["mlx_8bit"],
+        "gguf_repo": dists["gguf"],
+        "onnx_repo": dists["onnx"],
+        "public_mirror_repos": mirrors,
+        "quantized_distributions": dists,
+        "strategy": "unauthenticated_public_mirror_and_quantized_fallback",
+        "notice": (
+            f"HF_TOKEN 미설정 시 공개 무인증 미러({fallback_repo} · {dists['gguf']})로 자동 전환됩니다."
+            if not authenticated
+            else f"HF_TOKEN 인증 활성화됨 (게이트/권한 오류 시 {fallback_repo} 공개 미러로 자동 폴백)"
+        ),
+    }
 
 
 def build_embedding_capabilities(
@@ -145,6 +292,7 @@ def recommend_embedding_for_hardware(
     apple_silicon: bool = False,
     cuda: bool = False,
     get_capability_fn: Optional[Callable[[str], Any]] = None,
+    env: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, Any]:
     """Return a PC-tailored embedding model recommendation accounting for RAM & accelerator."""
     effective_ram = 16.0 if ram_gb is None or ram_gb <= 0 else float(ram_gb)
@@ -156,14 +304,27 @@ def recommend_embedding_for_hardware(
         footprint_gb = 0.5 if use_mlx else 1.5
         chosen_cap = cap or mlx_cap
         base = chosen_cap.to_legacy_dict() if chosen_cap is not None else {}
+        rec_engine = "local_mlx" if use_mlx else "huggingface"
+        fallback_meta = build_gated_fallback_metadata(
+            "google/embeddinggemma-2",
+            apple_silicon=apple_silicon,
+            provider=rec_engine,
+            env=env,
+        )
         return {
             **base,
             "id": "google/embeddinggemma-2",
             "model_id": "google/embeddinggemma-2",
             "hf_repo_id": "google/embeddinggemma-2",
             "mlx_repo_id": "mlx-community/embeddinggemma-2-4bit",
+            "mlx_8bit_repo_id": "mlx-community/embeddinggemma-2-8bit",
+            "gguf_repo_id": "ggml-org/embeddinggemma-2-GGUF",
+            "onnx_repo_id": "onnx-community/embeddinggemma-300m-ONNX",
+            "public_mirror_repos": fallback_meta["public_mirror_repos"],
+            "quantized_distributions": fallback_meta["quantized_distributions"],
+            "gated_fallback": fallback_meta,
             "recommended_load_id": "mlx-community/embeddinggemma-2-4bit" if use_mlx else "google/embeddinggemma-2",
-            "recommended_engine": "local_mlx" if use_mlx else "huggingface",
+            "recommended_engine": rec_engine,
             "provider": "mlx" if use_mlx else "huggingface",
             "profile_id": "mlx:embeddinggemma-2" if use_mlx else "local:embeddinggemma-2",
             "name": "Google EmbeddingGemma 2",
@@ -196,14 +357,27 @@ def recommend_embedding_for_hardware(
     use_mlx = bool(apple_silicon)
     footprint_gb = 0.3
     base = cap_300m.to_legacy_dict() if cap_300m else {}
+    rec_engine = "local_mlx" if use_mlx else "huggingface"
+    fallback_meta = build_gated_fallback_metadata(
+        "google/embeddinggemma-300m",
+        apple_silicon=apple_silicon,
+        provider=rec_engine,
+        env=env,
+    )
     return {
         **base,
         "id": "google/embeddinggemma-300m",
         "model_id": "google/embeddinggemma-300m",
         "hf_repo_id": "google/embeddinggemma-300m",
         "mlx_repo_id": "mlx-community/embeddinggemma-300m-4bit",
+        "mlx_8bit_repo_id": "mlx-community/embeddinggemma-300m-8bit",
+        "gguf_repo_id": "ggml-org/embeddinggemma-300m-GGUF",
+        "onnx_repo_id": "onnx-community/embeddinggemma-300m-ONNX",
+        "public_mirror_repos": fallback_meta["public_mirror_repos"],
+        "quantized_distributions": fallback_meta["quantized_distributions"],
+        "gated_fallback": fallback_meta,
         "recommended_load_id": "mlx-community/embeddinggemma-300m-4bit" if use_mlx else "google/embeddinggemma-300m",
-        "recommended_engine": "local_mlx" if use_mlx else "huggingface",
+        "recommended_engine": rec_engine,
         "provider": "mlx" if use_mlx else "huggingface",
         "profile_id": "local:embeddinggemma-300m",
         "name": "Google EmbeddingGemma 300M",

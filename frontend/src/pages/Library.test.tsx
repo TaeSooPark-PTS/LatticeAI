@@ -912,7 +912,19 @@ describe("MarketplacePanel", () => {
   });
 
   it("surfaces Google EmbeddingGemma 2 in the embedding section and activates it with one click", async () => {
-    const streamModelPrepare = vi.fn(() => Promise.resolve(ok({ status: "done" })));
+    const streamModelPrepare = vi.fn(async (_body: unknown, handlers: { onProgress?: (ev: Record<string, unknown>) => void }) => {
+      handlers.onProgress?.({
+        stage: "download",
+        message: "모델 다운로드 중입니다.",
+        percent: 48,
+        speed_bps: 12.4 * 1024 * 1024,
+        eta_seconds: 18,
+        detail: "model.safetensors",
+        gated_fallback: true,
+        fallback_repo: "mlx-community/embeddinggemma-2-4bit",
+      });
+      return ok({ status: "done" });
+    });
     renderLibrary({
       embeddingsStatus: ok({ state: "fallback", grade: "fallback" }),
       streamModelPrepare,
@@ -920,6 +932,7 @@ describe("MarketplacePanel", () => {
     const recCard = await screen.findByTestId("library-embedding-recommendation");
     expect(recCard.textContent).toContain("Google EmbeddingGemma 2");
     expect(recCard.textContent).toContain("google/embeddinggemma-2");
+    expect(screen.getByTestId("library-embedding-mirror-notice").textContent).toContain("mlx-community/embeddinggemma-2-4bit");
 
     await userEvent.click(screen.getByTestId("library-activate-embeddinggemma-2"));
     await waitFor(() =>
@@ -928,6 +941,9 @@ describe("MarketplacePanel", () => {
         expect.any(Object),
       ),
     );
+    expect(screen.getByTestId("library-progress-speed").textContent).toContain("12.4 MB/s");
+    expect(screen.getByTestId("library-progress-eta").textContent).toContain("ETA 18s");
+    expect(screen.getByTestId("library-progress-fallback").textContent).toContain("mlx-community/embeddinggemma-2-4bit");
   });
 
   it("shows active badge when Google EmbeddingGemma 2 is currently loaded and ranks embedding models in catalog", async () => {

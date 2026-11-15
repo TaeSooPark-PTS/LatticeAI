@@ -66,6 +66,7 @@ jobs:
       - name: Release readiness gates
         run: |
           npm run docs:check-current
+          node scripts/check_ubuntu_runner_compat.mjs --diagnostic
           npm run build:assets
           python scripts/product_readiness.py
 

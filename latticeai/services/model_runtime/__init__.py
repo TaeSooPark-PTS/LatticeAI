@@ -70,10 +70,19 @@ from latticeai.services.model_catalog import (
 )
 from latticeai.services.model_errors import ModelRuntimeError as ModelRuntimeError
 from latticeai.services.model_runtime.download import (
+    clear_download_progress_snapshots as clear_download_progress_snapshots,
+)
+from latticeai.services.model_runtime.download import (
     download_hf_model as download_hf_model,
 )
 from latticeai.services.model_runtime.download import (
     estimate_eta_seconds as estimate_eta_seconds,
+)
+from latticeai.services.model_runtime.download import (
+    estimate_speed_bps as estimate_speed_bps,
+)
+from latticeai.services.model_runtime.download import (
+    get_download_progress_snapshot as get_download_progress_snapshot,
 )
 from latticeai.services.model_runtime.download import (
     hf_model_ready as hf_model_ready,
@@ -82,7 +91,16 @@ from latticeai.services.model_runtime.download import (
     hf_repo_files_with_sizes as hf_repo_files_with_sizes,
 )
 from latticeai.services.model_runtime.download import (
+    is_gated_or_auth_error as is_gated_or_auth_error,
+)
+from latticeai.services.model_runtime.download import (
     model_download_progress_payload as model_download_progress_payload,
+)
+from latticeai.services.model_runtime.download import (
+    record_download_progress_snapshot as record_download_progress_snapshot,
+)
+from latticeai.services.model_runtime.download import (
+    resolve_download_candidates as resolve_download_candidates,
 )
 from latticeai.services.model_runtime.engines import (
     _LMSTUDIO_MODELS_CACHE_TTL as _LMSTUDIO_MODELS_CACHE_TTL,

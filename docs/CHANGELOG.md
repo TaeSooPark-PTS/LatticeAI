@@ -4,6 +4,20 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.6.0] - 2026-11-15 — Hybrid Graph
+
+### Added
+- Implemented 3-way **BM25F + Vector + Knowledge Graph RRF Hybrid Indexing & GraphRAG Retrieval** in `rust/lattice-retrieval/src/bm25/`, `service_hybrid.rs`, `hybrid.rs`, and `search_api/handlers.rs` with calibrated Okapi BM25F (`k1=1.2, b=0.75`), Korean particle stripping, CJK character bigrams, 1-hop/2-hop Knowledge Graph structural expansion (`RELATES_TO`, `MENTIONS`, `PART_OF`, shared concept nodes, `[[wikilinks]]`, `#tags`), and automatic zero-hit rescue fallback on `/api/search/hybrid`.
+- Upgraded graph-aware agent skills and MCP tools (`knowledge_search`, `obsidian_search`, `knowledge_graph_search`, `knowledge_graph_context`, `GRAPH_SKILL_BRIEFS`) in `rust/lattice-platform/src/toolsurface/tools/knowledge.rs` and `rust/lattice-agent` with `mode`, `hops`, `include_graph`, and extracted `subgraph` payloads while preserving the frozen 422 operations / 41 families contract.
+- Added unauthenticated public mirror and quantized GGUF/MLX/ONNX fallback support (`mlx-community/embeddinggemma-2-4bit`, `mlx-community/embeddinggemma-2-8bit`, `ggml-org/embeddinggemma-2-GGUF`, `onnx-community/embeddinggemma-300m-ONNX`) plus `HF_ENDPOINT` custom mirror resolution in `latticeai/services/embedding_recommendation.py`, `model_runtime/download.py`, `model_loading.py`, and `rust/lattice-platform/src/modelops/models_catalog/embedding.rs`.
+- Added real-time SSE download progress streaming (`downloaded_bytes`, `total_bytes`, `percent`, `speed_bps`, `speed_mbps`, `eta_seconds`, `current_file`, `gated_fallback`) across Python download runtime, Rust `modelops`, and Frontend (`ProductFlow.tsx`, `InstallScreen.tsx`, `Library.tsx`, `ko`/`en` i18n) with 100% Vitest coverage.
+- Added `scripts/check_ubuntu_runner_compat.mjs` and Debian/Ubuntu `t64` transition package fallback chains (`libasound2t64 || libasound2`, `libatk1.0-0t64 || libatk1.0-0`, `libatk-bridge2.0-0t64 || libatk-bridge2.0-0`, `libcups2t64 || libcups2`, `libgtk-3-0t64 || libgtk-3-0`, `libwebkit2gtk-4.1-0 || webkit2gtk-4.1`) across `.github/workflows/*.yml`.
+- Refactored `scripts/bump_version.py` into the modular `scripts/bump_version/` CLI package (`__init__`, `targets`, `openapi`, `cargo`, `markers`, `cli`) with `all`, `openapi`, `cargo`, and `markers` subcommands and `--check` support.
+
+### Changed
+- Upgraded offline zero-download `FallbackTextEmbedder` (`768d`, `lattice-fallback-subword-v2:768`) in `latticeai/core/embedding_providers/text.py` and `rust/lattice-core/src/embeddings.rs` to use multi-scale `3..5`-gram subwords, CJK n-grams, Korean particle stripping & Jamo lead pairs, word bigrams, 2-probe signed Blake2b projection, and L2 normalization.
+- Removed the legacy Pillow `<=12` `diff.getdata()` fallback in `scripts/check_screenshot_pixel_delta.py` in favor of Pillow 13+'s `diff.get_flattened_data()`.
+
 ## [12.5.0] - 2026-11-11 — Deep Vector
 
 ### Added

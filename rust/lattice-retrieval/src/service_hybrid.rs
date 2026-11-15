@@ -149,6 +149,45 @@ fn expand_matches(conn: &Connection, matches: &mut Vec<Value>) -> Result<Option<
 }
 
 /// `SearchService.hybrid_search`.
+fn node_row_to_item(node: &lattice_core::read::NodeRow) -> Map<String, Value> {
+    let mut item = Map::new();
+    item.insert("id".into(), Value::String(node.id.clone()));
+    item.insert("node_id".into(), Value::String(node.id.clone()));
+    item.insert("item_type".into(), Value::String("node".into()));
+    item.insert(
+        "type".into(),
+        node.node_type
+            .clone()
+            .map(Value::String)
+            .unwrap_or(Value::Null),
+    );
+    item.insert(
+        "title".into(),
+        node.title.clone().map(Value::String).unwrap_or(Value::Null),
+    );
+    item.insert(
+        "summary".into(),
+        node.summary
+            .clone()
+            .map(Value::String)
+            .unwrap_or(Value::Null),
+    );
+    item.insert(
+        "metadata".into(),
+        Value::Object(lattice_core::pytext::safe_loads(
+            node.metadata_json.as_deref(),
+        )),
+    );
+    item.insert(
+        "updated_at".into(),
+        node.updated_at
+            .clone()
+            .map(Value::String)
+            .unwrap_or(Value::Null),
+    );
+    item
+}
+
 pub fn service_hybrid_search(
     conn: &Connection,
     model: &LocalEmbeddingModel,
@@ -290,7 +329,96 @@ pub fn service_hybrid_search(
     // different units — a normalized cosine, a `1/rank`, a graph-walk weight —
     // and a weighted sum of those is arithmetic across units. RRF sums
     // `1/(60 + position)` instead, which only ever compares positions.
-    let use_rrf = rrf_enabled();
+    let use_bm25_graphrag = crate::bm25::bm25f_graphrag_enabled();
+    let rescue_empty = !use_bm25_graphrag && order.is_empty() && !search_query.trim().is_empty();
+    if use_bm25_graphrag || rescue_empty {
+        let bm25_params = crate::bm25::Bm25fParams::default();
+        if let Ok(bm25_hits) = crate::bm25::bm25f_search(
+            conn,
+            &search_query,
+            options.keyword_limit,
+            scope,
+            &bm25_params,
+        ) {
+            let max_bm25 = bm25_hits
+                .first()
+                .map(|h| h.bm25_score)
+                .unwrap_or(1.0)
+                .max(1e-6);
+            let mut seeds: Vec<(String, f64)> = Vec::new();
+            for (rank, hit) in bm25_hits.iter().enumerate() {
+                let key = hit.node.id.clone();
+                let norm = (hit.bm25_score / max_bm25).clamp(0.0, 1.0);
+                seeds.push((key.clone(), norm));
+                let pos = match index.get(&key) {
+                    Some(&pos) => pos,
+                    None => {
+                        order.push(Fused {
+                            item: node_row_to_item(&hit.node),
+                            score: 0.35 * norm,
+                            sources: vec!["bm25f".to_string()],
+                            source_scores: Map::new(),
+                            graph_context: None,
+                            ranks: Vec::new(),
+                        });
+                        let new_pos = order.len() - 1;
+                        index.insert(key.clone(), new_pos);
+                        new_pos
+                    }
+                };
+                let fused = &mut order[pos];
+                fused.ranks.push(rank + 1);
+                if !fused.sources.iter().any(|s| s == "bm25f") {
+                    fused.sources.push("bm25f".to_string());
+                }
+                fused
+                    .source_scores
+                    .insert("bm25f".to_string(), Value::from(round6(hit.bm25_score)));
+            }
+            if let Ok(corpus) = crate::bm25::load_scoped_corpus(conn, scope, 2_000) {
+                let graph_cfg = crate::bm25::GraphRagConfig::default();
+                if let Ok(ghits) =
+                    crate::bm25::expand_knowledge_graph(conn, &seeds, &corpus, scope, &graph_cfg)
+                {
+                    let max_graph = ghits
+                        .first()
+                        .map(|g| g.graph_score)
+                        .unwrap_or(1.0)
+                        .max(1e-6);
+                    for (rank, ghit) in ghits.iter().enumerate() {
+                        let key = ghit.node.id.clone();
+                        let gnorm = (ghit.graph_score / max_graph).clamp(0.0, 1.0);
+                        let pos = match index.get(&key) {
+                            Some(&pos) => pos,
+                            None => {
+                                order.push(Fused {
+                                    item: node_row_to_item(&ghit.node),
+                                    score: 0.25 * gnorm,
+                                    sources: vec!["graph_rag".to_string()],
+                                    source_scores: Map::new(),
+                                    graph_context: None,
+                                    ranks: Vec::new(),
+                                });
+                                let new_pos = order.len() - 1;
+                                index.insert(key.clone(), new_pos);
+                                new_pos
+                            }
+                        };
+                        let fused = &mut order[pos];
+                        fused.ranks.push(rank + 1);
+                        if !fused.sources.iter().any(|s| s == "graph_rag") {
+                            fused.sources.push("graph_rag".to_string());
+                        }
+                        fused.source_scores.insert(
+                            "graph_rag".to_string(),
+                            Value::from(round6(ghit.graph_score)),
+                        );
+                    }
+                }
+            }
+        }
+    }
+    let use_rrf = rrf_enabled() || use_bm25_graphrag || (rescue_empty && !order.is_empty());
     if use_rrf {
         let ranks: BTreeMap<String, Vec<usize>> = order
             .iter()

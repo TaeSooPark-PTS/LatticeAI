@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **12.5.0 — Deep Vector**.
+Current release: **12.6.0 — Hybrid Graph**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

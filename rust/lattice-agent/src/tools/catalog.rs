@@ -271,7 +271,10 @@ fn native_args(tool: &str) -> Vec<ArgSpec> {
             "index.html",
         )],
         "grep" | "search_files" => vec![ArgSpec::line("pattern", "the text or regex to look for")],
-        "knowledge_search" | "obsidian_search" => {
+        "knowledge_search"
+        | "obsidian_search"
+        | "knowledge_graph_search"
+        | "knowledge_graph_context" => {
             vec![ArgSpec::line("query", "what to look for")]
         }
         // `safe_title(None, content)` derives the title from the note's first
@@ -484,6 +487,17 @@ fn native_summary(tool: &str) -> &'static str {
         "read_file" => "read a file",
         "list_dir" => "list a directory",
         "grep" => "search the workspace for text",
+        "knowledge_search" | "obsidian_search" => {
+            "hybrid BM25F + vector + multi-hop knowledge graph search"
+        }
+        "knowledge_save" | "obsidian_save" => "save a markdown note into the knowledge garden",
+        "knowledge_tree" | "obsidian_tree" => "list markdown notes in the knowledge garden",
+        "knowledge_graph_search" => {
+            "search knowledge graph nodes, entities, concepts, and 1-2 hop edges"
+        }
+        "knowledge_graph_context" => {
+            "extract multi-hop entity/concept subgraph context for GraphRAG"
+        }
         "run_command" => "run a shell command",
         "final" => "the work is done — finish the run",
         _ => "",

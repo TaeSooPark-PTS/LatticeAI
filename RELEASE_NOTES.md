@@ -1,3 +1,9 @@
+# [v12.6.0 - Hybrid Graph] (2026-11-15)
+
+3-way BM25F + Vector + Knowledge Graph RRF 하이브리드 인덱싱·검색, 그래프 인식 에이전트 스킬 및 MCP 도구, 멀티스케일 서브워드 `FallbackTextEmbedder`(#13.1), Pillow 13+ 레거시 제거(#13.2), Ubuntu 24.04/26.04 `t64`·Chromium CI 복원력(#14.1), 비인증 EmbeddingGemma 2 공개 미러 및 GGUF/MLX/ONNX fallback(#14.2), 모듈화 `scripts/bump_version/` CLI(#15.1), `ProductFlow.tsx`·`Library.tsx` 실시간 SSE 다운로드 속도·ETA 시각화(#15.2)를 적용했습니다. 문은 422 / 41, 워커는 20. 쓰기는 GraphWriter 하나.
+
+See [docs/releases/RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md).
+
 # [v12.5.0 - Deep Vector] (2026-11-11)
 
 Google EmbeddingGemma 2(768차원) 네이티브 통합, 하드웨어(RAM/VRAM) 메모리 사전 예약 기반 PC 맞춤형 임베딩 모델 추천 시스템 구축, Pillow 13+ `get_flattened_data()` 전환, GitHub Actions Node 24 네이티브 메이저 버전 업그레이드, `scripts/bump_version.py`의 OpenAPI 스펙·파편 49개 타깃 자동 동기화를 적용했습니다. 문은 422 / 41, 워커는 20. 쓰기는 GraphWriter 하나.
@@ -222,7 +228,7 @@ See [RELEASE_NOTES_v11.0.0.md](docs/releases/RELEASE_NOTES_v11.0.0.md).
 
 # Release Notes
 
-This repository keeps public release history from **11.0.0 through 12.5.0**.
+This repository keeps public release history from **11.0.0 through 12.6.0**.
 11.6.0 rebuilt the product server in Rust and reduced the Python package to an AI
 worker, so `SECURITY.md` supports only that era — 11.x and 12.x — and this index
 follows the same boundary. Sub-11 note files remain in the tree as history; they
@@ -230,6 +236,8 @@ are no longer listed here as supported releases.
 
 ## Current Release
 
+- [v12.6.0 - Hybrid Graph](docs/releases/RELEASE_NOTES_v12.6.0.md)
+- [v12.5.0 - Deep Vector](docs/releases/RELEASE_NOTES_v12.5.0.md)
 - [v12.4.0 - Sharp Weight](docs/releases/RELEASE_NOTES_v12.4.0.md)
 - [v12.3.0 - Live Wire](docs/releases/RELEASE_NOTES_v12.3.0.md)
 - [v12.2.1 - True Count](docs/releases/RELEASE_NOTES_v12.2.1.md)

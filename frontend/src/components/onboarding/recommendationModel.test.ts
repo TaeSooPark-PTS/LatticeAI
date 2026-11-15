@@ -6,6 +6,7 @@ import {
   estimateFirstResponseSeconds,
   evaluateAnalysis,
   fallbackModel,
+  formatStreamMetrics,
   friendlyModelName,
   parseDownloadMegabytes,
   parseParameterBillions,
@@ -481,5 +482,48 @@ describe("naming helpers", () => {
     // The smallest current catalog entry, so it runs on the widest range
     // of machines when the probes told us nothing about this one.
     expect(model.loadId).toBe("mlx-community/gemma-4-e2b-it-4bit");
+  });
+
+  it("formatStreamMetrics normalises speed, ETA, current file, and gated fallback fields", () => {
+    expect(formatStreamMetrics(null)).toEqual({
+      percent: 0,
+      speedMbps: null,
+      etaSeconds: null,
+      currentFile: "",
+      gatedFallback: false,
+      fallbackRepo: "",
+    });
+    expect(
+      formatStreamMetrics({
+        percent: 64.6,
+        speed_bps: 12.4 * 1024 * 1024,
+        eta_seconds: 18,
+        current_file: "model.safetensors",
+        gated_fallback: true,
+        fallback_repo: "mlx-community/embeddinggemma-2-4bit",
+      }),
+    ).toEqual({
+      percent: 65,
+      speedMbps: "12.4",
+      etaSeconds: 18,
+      currentFile: "model.safetensors",
+      gatedFallback: true,
+      fallbackRepo: "mlx-community/embeddinggemma-2-4bit",
+    });
+    expect(
+      formatStreamMetrics({
+        percent: 100,
+        speed_mbps: 8.25,
+        eta_seconds: 0,
+        file: "tokenizer.json",
+      }),
+    ).toEqual({
+      percent: 100,
+      speedMbps: "8.3",
+      etaSeconds: 0,
+      currentFile: "tokenizer.json",
+      gatedFallback: false,
+      fallbackRepo: "",
+    });
   });
 });

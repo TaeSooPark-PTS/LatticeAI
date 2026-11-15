@@ -38,8 +38,25 @@ jobs:
           echo 'Acquire::ForceIPv4 "true";' | sudo tee /etc/apt/apt.conf.d/99force-ipv4 || true
           echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/99retries || true
 
+      - name: Install Ubuntu 24.04 / 26.04 (t64) system libraries
+        # Ubuntu 24.04 and upcoming Ubuntu 26.04 (`ubuntu-latest` / `ubuntu-26.04`)
+        # transitioned 32-bit time_t packages to `t64` suffixes. Install with
+        # explicit fallback chains before Playwright's `--with-deps` runs.
+        run: |
+          sudo apt-get update -y || true
+          sudo apt-get install -y --no-install-recommends libasound2t64 || sudo apt-get install -y --no-install-recommends libasound2 || true
+          sudo apt-get install -y --no-install-recommends libatk1.0-0t64 || sudo apt-get install -y --no-install-recommends libatk1.0-0 || true
+          sudo apt-get install -y --no-install-recommends libatk-bridge2.0-0t64 || sudo apt-get install -y --no-install-recommends libatk-bridge2.0-0 || true
+          sudo apt-get install -y --no-install-recommends libcups2t64 || sudo apt-get install -y --no-install-recommends libcups2 || true
+          sudo apt-get install -y --no-install-recommends libgtk-3-0t64 || sudo apt-get install -y --no-install-recommends libgtk-3-0 || true
+          sudo apt-get install -y --no-install-recommends libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 || true
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-0 || sudo apt-get install -y --no-install-recommends webkit2gtk-4.1 || true
+
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium || npx playwright install chromium
+
+      - name: Verify Ubuntu 24.04 / 26.04 Chromium shared libraries
+        run: node scripts/check_ubuntu_runner_compat.mjs --diagnostic --verify-chromium
 
       - name: Run visual smoke tests
         run: npm run test:visual

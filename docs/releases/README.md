@@ -11,6 +11,8 @@ files. Historical notes keep their original filenames.
 
 | Version | Theme | Note |
 | --- | --- | --- |
+| 12.6.0 | Hybrid Graph | [RELEASE_NOTES_v12.6.0.md](RELEASE_NOTES_v12.6.0.md) |
+| 12.5.0 | Deep Vector | [RELEASE_NOTES_v12.5.0.md](RELEASE_NOTES_v12.5.0.md) |
 | 12.4.0 | Sharp Weight | [RELEASE_NOTES_v12.4.0.md](RELEASE_NOTES_v12.4.0.md) |
 | 12.3.0 | Live Wire | [RELEASE_NOTES_v12.3.0.md](RELEASE_NOTES_v12.3.0.md) |
 | 12.2.1 | True Count | [RELEASE_NOTES_v12.2.1.md](RELEASE_NOTES_v12.2.1.md) |

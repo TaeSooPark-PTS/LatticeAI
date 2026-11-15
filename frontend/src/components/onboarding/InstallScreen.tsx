@@ -6,7 +6,7 @@ import { asArray } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { DownloadConsentPanel } from "./DownloadConsentPanel";
-import { asRecord, type ApiData, type RecommendedModel } from "./recommendationModel";
+import { asRecord, formatStreamMetrics, type ApiData, type RecommendedModel } from "./recommendationModel";
 
 export type InstallStage = "idle" | "install" | "download" | "validate" | "load" | "done" | "error";
 
@@ -28,8 +28,11 @@ export function InstallScreen({
   const [percent, setPercent] = React.useState(0);
   const [message, setMessage] = React.useState(t(language, "flow.install.wait"));
   const [error, setError] = React.useState<string | null>(null);
+  const [metrics, setMetrics] = React.useState(() => formatStreamMetrics(null));
 
   const statusText = t(language, `flow.install.stage.${stage}`, { defaultValue: message });
+  const activeFallbackRepo = metrics.fallbackRepo || model.loadId;
+  const showFallbackNotice = Boolean(metrics.gatedFallback || model.gatedFallback);
 
   async function start() {
     setBusy(true);
@@ -45,6 +48,7 @@ export function InstallScreen({
           setStage(nextStage);
           setPercent(Number(event.percent || percentForStage(nextStage)));
           setMessage(friendlyInstallMessage(event, nextStage, language));
+          setMetrics(formatStreamMetrics(event));
         },
         onDone: () => {
           setStage("done");
@@ -93,6 +97,22 @@ export function InstallScreen({
           <div className="ritual-bar">
             <span className={`ritual-bar-fill ${progressClass(percent)}`} />
           </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground" data-testid="install-progress-metrics">
+            <span data-testid="install-percent">{t(language, "flow.install.metrics.percent", { percent: Math.round(percent) })}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              {metrics.speedMbps ? (
+                <span data-testid="install-speed">{t(language, "flow.install.metrics.speedMbps", { speed: metrics.speedMbps })}</span>
+              ) : null}
+              {metrics.etaSeconds !== null ? (
+                <span data-testid="install-eta">{t(language, "flow.install.metrics.etaSeconds", { seconds: metrics.etaSeconds })}</span>
+              ) : null}
+            </div>
+          </div>
+          {showFallbackNotice ? (
+            <div className="mt-2 text-xs text-muted-foreground" data-testid="install-fallback-notice">
+              {t(language, "flow.install.fallbackNotice", { repo: activeFallbackRepo })}
+            </div>
+          ) : null}
         </div>
 
         <div className="ritual-status">

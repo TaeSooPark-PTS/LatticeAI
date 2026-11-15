@@ -139,6 +139,11 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
                     <div className="mt-1 text-xs text-muted-foreground">
                       {embeddingModel.reason}
                     </div>
+                    <div className="mt-1 text-xs text-muted-foreground" data-testid="flow-embedding-mirror-notice">
+                      {t(language, "flow.recommend.embedding.mirrorNotice", {
+                        repo: String(embeddingModel.fallbackRepo),
+                      })}
+                    </div>
                   </div>
                   <button
                     type="button"

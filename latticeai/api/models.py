@@ -378,10 +378,19 @@ def create_models_router(
                 "role": "embedding",
                 "dimensions": 768,
             }
+        try:
+            from latticeai.services.model_runtime.download import (
+                get_download_progress_snapshot,
+            )
+
+            download_progress = get_download_progress_snapshot()
+        except Exception:
+            download_progress = {}
         return {
             "recommended": recommended,
             "embedding_model": embedding_rec.get("id") or "google/embeddinggemma-2",
             "embedding_recommendation": embedding_rec,
+            "download_progress": download_progress,
             "cloud": _router.detected_cloud_models(),
             "engines": engines,
             "loaded": _router.loaded_model_ids,

@@ -109,7 +109,15 @@ describe("InstallScreen", () => {
   it("walks the stages to done and enters the product after a breath", async () => {
     const prepare = vi.fn(async (body: Record<string, unknown>, handlers: Handlers) => {
       handlers.onProgress?.({}); // a frame with no stage still counts as installing
-      handlers.onProgress?.({ stage: "download_weights", percent: 42, user_message: "custom raw words" });
+      handlers.onProgress?.({
+        stage: "download_weights",
+        percent: 42,
+        speed_bps: 12.4 * 1024 * 1024,
+        eta_seconds: 18,
+        gated_fallback: true,
+        fallback_repo: "mlx-community/embeddinggemma-2-4bit",
+        user_message: "custom raw words",
+      });
       handlers.onProgress?.({ stage: "smoke_test", message: "verify pass" });
       handlers.onProgress?.({ stage: "load" });
       handlers.onProgress?.({ stage: "warmup" });
@@ -117,7 +125,10 @@ describe("InstallScreen", () => {
       handlers.onDone?.({ status: "done" });
       return ok({ status: "done" });
     });
-    const callbacks = renderInstall(model({ engine: "" }), { streamModelPrepare: prepare });
+    const callbacks = renderInstall(
+      model({ engine: "", gatedFallback: true, fallbackRepo: "mlx-community/embeddinggemma-2-4bit" }),
+      { streamModelPrepare: prepare },
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: t("ko", "flow.install.start") }));
@@ -156,11 +167,21 @@ describe("InstallScreen", () => {
     expect((screen.getByRole("button", { name: t("ko", "flow.install.later") }) as HTMLButtonElement).disabled).toBe(true);
 
     await act(async () => {
-      handlers.onProgress?.({ stage: "download_weights", user_message: "custom raw words" });
+      handlers.onProgress?.({
+        stage: "download_weights",
+        speed_bps: 12.4 * 1024 * 1024,
+        eta_seconds: 18,
+        gated_fallback: true,
+        fallback_repo: "mlx-community/embeddinggemma-2-4bit",
+        user_message: "custom raw words",
+      });
     });
     const download = stageItems()[1];
     expect(download.className).toContain("is-active");
     expect(stageItems()[0].className).toContain("is-done");
+    expect(screen.getByTestId("install-speed").textContent).toContain("12.4 MB/s");
+    expect(screen.getByTestId("install-eta").textContent).toContain("ETA 18s");
+    expect(screen.getByTestId("install-fallback-notice").textContent).toContain("mlx-community/embeddinggemma-2-4bit");
     // Percent fell back to the stage default (55) because the event named
     // none; the bar class rounds to the nearest ten.
     expect(document.querySelector(".ritual-bar-fill")?.className).toContain("progress-60");

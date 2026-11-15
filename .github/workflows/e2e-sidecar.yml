@@ -44,11 +44,27 @@ jobs:
         with:
           workspaces: rust
 
+      - name: Install Ubuntu 24.04 / 26.04 (t64) system libraries
+        # Ensure Chromium & Tauri system libraries install cleanly across both
+        # Ubuntu 24.04 and upcoming Ubuntu 26.04 (`ubuntu-latest` / `ubuntu-26.04`).
+        run: |
+          sudo apt-get update -y || true
+          sudo apt-get install -y --no-install-recommends libasound2t64 || sudo apt-get install -y --no-install-recommends libasound2 || true
+          sudo apt-get install -y --no-install-recommends libatk1.0-0t64 || sudo apt-get install -y --no-install-recommends libatk1.0-0 || true
+          sudo apt-get install -y --no-install-recommends libatk-bridge2.0-0t64 || sudo apt-get install -y --no-install-recommends libatk-bridge2.0-0 || true
+          sudo apt-get install -y --no-install-recommends libcups2t64 || sudo apt-get install -y --no-install-recommends libcups2 || true
+          sudo apt-get install -y --no-install-recommends libgtk-3-0t64 || sudo apt-get install -y --no-install-recommends libgtk-3-0 || true
+          sudo apt-get install -y --no-install-recommends libgbm1 libnss3 libxkbcommon0 libayatana-appindicator3-1 || true
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-0 || sudo apt-get install -y --no-install-recommends webkit2gtk-4.1 || true
+
       - name: Install dependencies
         run: |
           pip install -e "."
           npm ci
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium || npx playwright install chromium
+
+      - name: Verify Ubuntu 24.04 / 26.04 Chromium shared libraries
+        run: node scripts/check_ubuntu_runner_compat.mjs --diagnostic --verify-chromium
 
       - name: Build frontend assets
         run: npm run build:assets

@@ -112,6 +112,38 @@ pub struct SkillBrief {
     pub when: String,
 }
 
+/// Built-in Graph-aware skill guidance (GraphRAG hybrid BM25F+vector+graph search,
+/// 1-2 hop neighborhood exploration, and entity/concept subgraph extraction).
+pub const GRAPH_SKILL_BRIEFS: [(&str, &str, &str); 3] = [
+    (
+        "skill.hybrid_graphrag_search",
+        "Run 3-way BM25F + subword vector + Knowledge Graph RRF retrieval (mode='hybrid', hops=2)",
+        "answering questions across notes, Korean/English technical docs, or connected concepts",
+    ),
+    (
+        "skill.graph_neighborhood_explore",
+        "Traverse 1-hop and 2-hop Knowledge Graph edges (RELATES_TO, MENTIONS, PART_OF, wikilinks, tags)",
+        "expanding seed hits to discover structurally related decisions, entities, and linked notes",
+    ),
+    (
+        "skill.entity_subgraph_extract",
+        "Extract an entity/concept subgraph (mode='subgraph', include_graph=true) with nodes and edges",
+        "synthesizing multi-document architecture or relational context before drafting an answer",
+    ),
+];
+
+/// Return the built-in Graph-aware [`SkillBrief`] catalog entries.
+pub fn graph_skill_briefs() -> Vec<SkillBrief> {
+    GRAPH_SKILL_BRIEFS
+        .iter()
+        .map(|(name, brief, when)| SkillBrief {
+            name: (*name).to_string(),
+            brief: (*brief).to_string(),
+            when: (*when).to_string(),
+        })
+        .collect()
+}
+
 /// `name{args}` for one tool, or just `name` when no signature is known.
 ///
 /// An `mcp.`-qualified name is looked up under its bare form (v12.0.0): the

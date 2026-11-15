@@ -14,6 +14,7 @@ import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { asArray, humanizeModelId } from "@/lib/utils";
 import { navigateHash } from "@/features/brain/navigation";
+import { formatStreamMetrics } from "@/components/onboarding/recommendationModel";
 
 /** Say what the search engine can do, not which provider is wired in. */
 export function embeddingStateLabel(state: unknown, language: Language) {
@@ -281,8 +282,14 @@ function ModelsPanel() {
   const embeddingRecEngine = String(rawEmbeddingRec?.recommended_engine || "local_mlx");
   const embeddingRecName = String(rawEmbeddingRec?.name || t(language, "library.embedding.recommend.title"));
   const embeddingRecSize = String(rawEmbeddingRec?.size || "0.4GB");
+  const embeddingFallbackRepo = String(
+    asRecord(rawEmbeddingRec?.gated_fallback).fallback_repo
+      || rawEmbeddingRec?.mlx_repo_id
+      || "mlx-community/embeddinggemma-2-4bit",
+  );
   const embeddingLoaded = loadedIds.includes(embeddingRecId) || loadedIds.includes(embeddingRecLoadId) || currentId === embeddingRecId || currentId === embeddingRecLoadId;
   const latestProgress = progress[progress.length - 1] || null;
+  const latestMetrics = formatStreamMetrics(latestProgress);
 
   const modelMessage = React.useCallback((message: unknown, fallbackKey = "library.model.notReady") => {
     // Every caller pre-fills its own fallback (`x || t(...)`), so `message`
@@ -398,12 +405,28 @@ function ModelsPanel() {
                   </span>
                 </label>
                 {latestProgress ? (
-                  <div className="rounded-lg border border-border bg-background/55 p-3 text-sm">
-                    <div className="font-medium">{String(latestProgress.message || t(language, "library.preparing"))}</div>
+                  <div className="rounded-lg border border-border bg-background/55 p-3 text-sm" data-testid="library-download-progress">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium">{String(latestProgress.message || t(language, "library.preparing"))}</div>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span data-testid="library-progress-percent">{t(language, "library.progress.percent", { percent: latestMetrics.percent })}</span>
+                        {latestMetrics.speedMbps ? (
+                          <span data-testid="library-progress-speed">{t(language, "library.progress.speedMbps", { speed: latestMetrics.speedMbps })}</span>
+                        ) : null}
+                        {latestMetrics.etaSeconds !== null ? (
+                          <span data-testid="library-progress-eta">{t(language, "library.progress.etaSeconds", { seconds: latestMetrics.etaSeconds })}</span>
+                        ) : null}
+                      </div>
+                    </div>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                       <div className="h-full bg-primary" style={{ width: `${Number(latestProgress.percent || 8)}%` }} />
                     </div>
                     {latestProgress.detail ? <div className="mt-2 text-xs text-muted-foreground">{String(latestProgress.detail)}</div> : null}
+                    {latestMetrics.gatedFallback ? (
+                      <div className="mt-2 text-xs text-muted-foreground" data-testid="library-progress-fallback">
+                        {t(language, "library.progress.fallbackNotice", { repo: latestMetrics.fallbackRepo })}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 {lastError ? <ModelRecovery error={lastError} /> : null}
@@ -582,6 +605,9 @@ function ModelsPanel() {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t(language, "library.embedding.recommend.desc")}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground" data-testid="library-embedding-mirror-notice">
+                    {t(language, "library.embedding.recommend.mirrorNotice", { repo: embeddingFallbackRepo })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

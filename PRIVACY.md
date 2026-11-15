@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **12.5.0 — Deep Vector**.
+Current release: **12.6.0 — Hybrid Graph**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

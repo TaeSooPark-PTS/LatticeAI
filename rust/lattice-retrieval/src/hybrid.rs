@@ -158,7 +158,7 @@ pub fn hybrid_search(
         allowed,
         options.include_legacy_global,
     )?;
-    let lexical_matches: Vec<Map<String, Value>> = lexical_payload["matches"]
+    let mut lexical_matches: Vec<Map<String, Value>> = lexical_payload["matches"]
         .as_array()
         .map(|items| {
             items
@@ -246,6 +246,64 @@ pub fn hybrid_search(
             options.include_legacy_global,
             |item| item.get("node_id").map(py_str).unwrap_or_default(),
         )?;
+    }
+    if crate::bm25::bm25f_graphrag_enabled()
+        || (lexical_matches.is_empty()
+            && vector_matches.is_empty()
+            && !search_query.trim().is_empty())
+    {
+        let scope = crate::service::Scope {
+            allowed_workspaces: options.allowed_workspaces.clone(),
+            include_legacy_global: options.include_legacy_global,
+        };
+        if let Ok(bm25_hits) = crate::bm25::bm25f_search(
+            conn,
+            &search_query,
+            lex_fetch,
+            &scope,
+            &crate::bm25::Bm25fParams::default(),
+        ) {
+            let existing_ids: BTreeSet<String> = lexical_matches
+                .iter()
+                .map(parent_node_id)
+                .filter(|id| !id.is_empty())
+                .collect();
+            for hit in bm25_hits {
+                if existing_ids.contains(&hit.node.id) {
+                    continue;
+                }
+                let mut row = Map::new();
+                row.insert("id".into(), Value::String(hit.node.id.clone()));
+                row.insert("node_id".into(), Value::String(hit.node.id.clone()));
+                row.insert(
+                    "type".into(),
+                    hit.node.node_type.map(Value::String).unwrap_or(Value::Null),
+                );
+                row.insert(
+                    "title".into(),
+                    hit.node.title.map(Value::String).unwrap_or(Value::Null),
+                );
+                row.insert(
+                    "summary".into(),
+                    hit.node.summary.map(Value::String).unwrap_or(Value::Null),
+                );
+                row.insert(
+                    "metadata".into(),
+                    Value::Object(lattice_core::pytext::safe_loads(
+                        hit.node.metadata_json.as_deref(),
+                    )),
+                );
+                row.insert(
+                    "updated_at".into(),
+                    hit.node
+                        .updated_at
+                        .map(Value::String)
+                        .unwrap_or(Value::Null),
+                );
+                row.insert("score".into(), Value::from(hit.bm25_score));
+                lexical_matches.push(row);
+            }
+        }
     }
     let vector_total = vector_matches.len();
 

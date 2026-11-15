@@ -79,6 +79,24 @@ def _get_model_runtime_deps(runtime_state: Any):
     }
 
 
+def _apply_gated_fallback_result(
+    download_result: Any,
+    parsed_provider: str,
+    current_model: str,
+    current_model_id: str,
+) -> tuple[str, str]:
+    if isinstance(download_result, dict) and download_result.get("gated_fallback"):
+        fallback_repo = str(download_result.get("fallback_repo") or "").strip()
+        if fallback_repo:
+            next_id = (
+                fallback_repo
+                if parsed_provider == "local_mlx"
+                else f"{parsed_provider}:{fallback_repo}"
+            )
+            return fallback_repo, next_id
+    return current_model, current_model_id
+
+
 def _prepare_model_sources(
     deps: Any,
     parsed_provider: str,
@@ -104,12 +122,15 @@ def _prepare_model_sources(
             deps["_engine_install_block"](parsed_provider)
         install_result = deps["ensure_engine_ready"](parsed_provider)
 
-    if parsed_provider == "local_mlx":
+    if parsed_provider in {"local_mlx", "huggingface"}:
         explicit_path = Path(parsed_model).expanduser()
         if not explicit_path.exists() and not deps["hf_model_ready"](parsed_model, "local_mlx"):
             if not deps["_download_allowed"](allow_download):
                 deps["_download_block"](parsed_provider, parsed_model)
             download_result = deps["download_hf_model"](parsed_model, "local_mlx")
+            parsed_model, model_id = _apply_gated_fallback_result(
+                download_result, parsed_provider, parsed_model, model_id
+            )
     elif parsed_provider == "ollama":
         deps["ensure_ollama_server"]()
         ollama = deps["local_binary"]("ollama")
@@ -299,7 +320,7 @@ async def prepare_and_load_model_stream(
                     indeterminate=False,
                 ))
 
-            if parsed_provider == "local_mlx":
+            if parsed_provider in {"local_mlx", "huggingface"}:
                 explicit_path = Path(parsed_model).expanduser()
                 if explicit_path.exists():
                     download_result = {"model": parsed_model, "path": str(explicit_path), "cached": True}
@@ -314,6 +335,9 @@ async def prepare_and_load_model_stream(
                     if not deps["_download_allowed"](allow_download):
                         deps["_download_block"](parsed_provider, parsed_model)
                     download_result = deps["download_hf_model"](parsed_model, "local_mlx", progress_emit=emit_progress)
+                    prepared_model_name, prepared_model_id = _apply_gated_fallback_result(
+                        download_result, parsed_provider, prepared_model_name, prepared_model_id
+                    )
                 else:
                     download_result = {"model": parsed_model, "path": str(deps["hf_model_dir"](parsed_model)), "cached": True}
                     emit_progress(deps["model_download_progress_payload"](

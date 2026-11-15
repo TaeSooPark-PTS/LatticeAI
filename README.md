@@ -12,7 +12,7 @@
 [![CD Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml/badge.svg)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v12.5.0 Living Brain walkthrough](output/release/v12.5.0/gifs/v12.5.0-living-brain-walkthrough.gif)
+![v12.6.0 Living Brain walkthrough](output/release/v12.6.0/gifs/v12.6.0-living-brain-walkthrough.gif)
 
 Lattice AI is a Digital Brain that lives on your computer. Chat, files,
 folders, notes, and web pages all land in one knowledge graph you own.
@@ -42,19 +42,19 @@ LTCAI                    # then open http://127.0.0.1:4825/app
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v12.5.0/screenshots/01-login.png) | ![Model install](output/release/v12.5.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.5.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v12.6.0/screenshots/01-login.png) | ![Model install](output/release/v12.6.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v12.6.0/screenshots/07-model-library.png) |
 
 Screenshot index:
-[output/release/v12.5.0/SCREENSHOT_INDEX.md](output/release/v12.5.0/SCREENSHOT_INDEX.md)
+[output/release/v12.6.0/SCREENSHOT_INDEX.md](output/release/v12.6.0/SCREENSHOT_INDEX.md)
 
 ## What you can do
 
 | | |
 | --- | --- |
-| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.5.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.5.0/screenshots/04-brain-chat-home.png) |
-| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.5.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.5.0/screenshots/06-capture.png) |
-| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.5.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.5.0/screenshots/02-recommended-models.png) |
-| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.5.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.5.0/screenshots/08-system.png) |
+| **See your Brain's story in time** — a growth curve, an activity heatmap, and each day's story ![Brain Chronicle](output/release/v12.6.0/screenshots/13-chronicle.png) | **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v12.6.0/screenshots/04-brain-chat-home.png) |
+| **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v12.6.0/screenshots/05-memory-graph.png) | **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v12.6.0/screenshots/06-capture.png) |
+| **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v12.6.0/screenshots/12-review-center.png) | **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v12.6.0/screenshots/02-recommended-models.png) |
+| **Watch a file become memory** — three named steps, not a pipeline diagram ![Material to memory](output/release/v12.6.0/screenshots/11-knowledge-journey.png) | **Say how much it may do alone** — one dial in plain words ![Settings](output/release/v12.6.0/screenshots/08-system.png) |
 
 ## Why this is yours
 
@@ -70,27 +70,28 @@ Screenshot index:
 
 ## Current Release
 
-The current release is **12.5.0 — Deep Vector**:
+The current release is **12.6.0 — Hybrid Graph**:
 
-The embedding pipeline adds native **Google EmbeddingGemma 2** (`google/embeddinggemma-2`, 768-dim) support with Hugging Face mean-pooling and L2 normalization, adds **hardware-aware embedding model recommendations** that calculate host RAM/VRAM reservations before recommending LLMs, migrates screenshot pixel diffing to Pillow 13+ `get_flattened_data()`, upgrades GitHub Actions CI/CD to Node 24 native major versions, and automates full OpenAPI specification and fragment synchronization in `scripts/bump_version.py`. The door is still **422 operations / 41 families** over a **20-route worker**. Cloud is still optional and the default is still local.
+Hybrid Graph introduces **3-way BM25F + Vector + Knowledge Graph RRF Hybrid Indexing**, graph-aware agent skills and MCP search tools, a **multi-scale subword `FallbackTextEmbedder`**, **unauthenticated EmbeddingGemma 2 public mirrors & quantized GGUF/MLX/ONNX fallbacks**, **real-time SSE download progress streaming (`MB/s` & `ETA`)** in Onboarding and Model Library, **Pillow 13+ cleanup**, **Ubuntu 24.04/26.04 `t64` & Chromium CI resilience**, and a **modular `scripts/bump_version/` CLI**. The door is still **422 operations / 41 families** over a **20-route worker**. Cloud is still optional and the default is still local.
 
-- **Google EmbeddingGemma 2 native integration.** Native Hugging Face embedding provider support (`google/embeddinggemma-2`, `embeddinggemma-2`, `embeddinggemma-2-4bit`, `embeddinggemma-2-8bit`, `embeddinggemma-300m`, 768-dimensional vectors) in `latticeai/core/embedding_providers/text.py` with mean pooling, L2 normalization, task instruction prefixes, and automatic semantic activation. Hash embedding fallback remains preserved when offline.
-- **Hardware-aware PC-tailored embedding recommendations.** Modularized `recommend_embedding_for_host` in `lattice-platform` and `latticeai/services/embedding_recommendation.py`. Systems with >=8GB RAM receive `google/embeddinggemma-2` with a 0.5GB–1.5GB reserved RAM budget; smaller hosts receive `google/embeddinggemma-300m`. The host probe calculates `effective_ram_gb` before LLM tier selection.
-- **Onboarding and Model Library embedding UI.** Added the PC-tailored EmbeddingGemma 2 recommendation card in `ProductFlow.tsx` with full i18n support, and surfaced Google EmbeddingGemma 2 in the Model Library (`Library.tsx`) embedding section with 1-click install and activation.
-- **Pillow 13+ flattened data & CI/CD modernisation.** Replaced Pillow 14-deprecated `diff.getdata()` calls in `scripts/check_screenshot_pixel_delta.py` with `diff.get_flattened_data()`, and pinned GitHub Actions to Node 24 native versions with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"`.
-- **OpenAPI specification and fixture version automation.** Extended `scripts/bump_version.py` to synchronize `frontend/openapi.json`, `rust/fixtures/openapi/_envelope.json`, all 13 OpenAPI fragment files, and `rust/fixtures/openapi/_index.json` with recomputed SHA-256 digests across 49 targets.
+- **3-Way BM25F + Vector + Knowledge Graph RRF Hybrid Indexing & Graph Skills.** Field-weighted Okapi BM25F (`k1=1.2, b=0.75`, Korean particle stripping, CJK bigrams, identifier subwords), 1-hop/2-hop Knowledge Graph structural expansion (`RELATES_TO`, `MENTIONS`, `PART_OF`, shared concepts, `[[wikilinks]]`, `#tags`), and 3-way Reciprocal Rank Fusion (`hybrid_bm25_vector_graph_search`) with automatic zero-hit rescue on `/api/search/hybrid`. Agent/MCP tools (`knowledge_search`, `obsidian_search`, `knowledge_graph_search`, `knowledge_graph_context`) support `mode=hybrid|bm25f|graph|graphrag|subgraph`, `hops`, and `include_graph` subgraph extraction.
+- **Multi-Scale Subword `FallbackTextEmbedder` (#13.1).** Offline zero-download fallback embeddings (`768d`, `lattice-fallback-subword-v2:768`) in Python and Rust now extract `3..5`-gram subwords, CJK bigrams/trigrams, Korean particle-stripped syllables & Jamo lead pairs, and word bigrams with 2-probe signed Blake2b projection and L2 normalization.
+- **Unauthenticated EmbeddingGemma 2 Public Mirrors & Quantized Fallbacks (#14.2).** When `HF_TOKEN` is unset or Hugging Face returns gated `401`/`403` errors for `google/embeddinggemma-2`, Lattice AI automatically falls back to public unauthenticated mirrors and quantized GGUF/MLX/ONNX distributions (`mlx-community/embeddinggemma-2-4bit`, `mlx-community/embeddinggemma-2-8bit`, `ggml-org/embeddinggemma-2-GGUF`, `onnx-community/embeddinggemma-300m-ONNX`) and honors `HF_ENDPOINT` custom mirror URLs.
+  - Set `HF_TOKEN=<your_token>` to download gated upstream weights directly, or set `HF_ENDPOINT=https://hf-mirror.com` (or your internal mirror) to route Hugging Face downloads without manual repo overrides.
+- **Real-Time SSE Embedding Download Progress Streaming (#15.2).** Model download preparation streams live byte-level progress (`percent`, `speed_bps` / `MB/s`, `eta_seconds`, `current_file`, and `gated_fallback`) over `text/event-stream` SSE and `GET /models`, rendered in `ProductFlow.tsx` / `InstallScreen.tsx` and `Library.tsx` with 100% Vitest coverage.
+- **Pillow 13+ Cleanup, Ubuntu 24.04/26.04 `t64` CI Resilience & Modular `scripts/bump_version/` CLI.** Removed the Pillow `<=12` `getdata()` fallback in `scripts/check_screenshot_pixel_delta.py` (#13.2), added `scripts/check_ubuntu_runner_compat.mjs` and `t64` apt fallback chains across GitHub Actions workflows (#14.1), and decomposed `scripts/bump_version.py` into `scripts/bump_version/` with `all`, `openapi`, `cargo`, and `markers` subcommands (#15.1).
 
 Release notes live in [docs/releases/](docs/releases/). This version:
-[docs/releases/RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md).
+[docs/releases/RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md).
 Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.5.0 must use exact filenames:
+Expected artifacts for 12.6.0 must use exact filenames:
 
-- `dist/ltcai-12.5.0-py3-none-any.whl`
-- `dist/ltcai-12.5.0.tar.gz`
-- `ltcai-12.5.0.tgz`
-- `dist/ltcai-12.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.5.0_aarch64.dmg`
+- `dist/ltcai-12.6.0-py3-none-any.whl`
+- `dist/ltcai-12.6.0.tar.gz`
+- `ltcai-12.6.0.tgz`
+- `dist/ltcai-12.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.6.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -173,6 +174,7 @@ same boundary. Earlier notes live in [docs/releases/](docs/releases/).
 
 | Version | Theme |
 | --- | --- |
+| 12.5.0 | Deep Vector |
 | 12.4.0 | Sharp Weight |
 | 12.3.0 | Live Wire |
 | 12.2.1 | True Count |

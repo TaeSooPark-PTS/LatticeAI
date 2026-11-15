@@ -327,11 +327,7 @@ def _pixel_delta_pct(
         # Count on RGB get_flattened_data: a pixel is changed if any channel exceeds the
         # threshold. (A point()+convert("L") mask would average channels and
         # under-count single-channel diffs, so we do not use it.)
-        pixels = (
-            diff.get_flattened_data()
-            if hasattr(diff, "get_flattened_data")
-            else diff.getdata()
-        )
+        pixels = diff.get_flattened_data()
         changed = sum(1 for r, g, b in pixels if r > 8 or g > 8 or b > 8)
         total = w * h
         pct = (100.0 * changed / total) if total else 0.0

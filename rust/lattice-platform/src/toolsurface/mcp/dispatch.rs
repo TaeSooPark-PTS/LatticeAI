@@ -35,8 +35,8 @@ pub const NATIVE_TOOLS: &[NativeTool] = &[
     },
     NativeTool {
         name: "knowledge_search",
-        description: "Search the local knowledge garden for matching notes (workspace-scoped).",
-        input_schema: r#"{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","minimum":1,"maximum":20,"default":5}},"required":["query"]}"#,
+        description: "Search the local knowledge garden for matching notes (workspace-scoped). Supports hybrid BM25F+vector+graph ranking, 1-2 hop wikilink/tag neighborhood expansion, and subgraph extraction.",
+        input_schema: r#"{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","minimum":1,"maximum":20,"default":5},"mode":{"type":"string","enum":["hybrid","bm25","graph","subgraph"]},"hops":{"type":"integer","minimum":1,"maximum":2,"default":2},"include_graph":{"type":"boolean","default":false}},"required":["query"]}"#,
     },
     NativeTool {
         name: "knowledge_tree",

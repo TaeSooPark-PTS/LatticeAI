@@ -20,6 +20,20 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.6.0": {
+    "_why": [
+      "Hybrid Graph introduces 3-way BM25F + Vector + Knowledge Graph RRF",
+      "hybrid indexing, graph-aware agent skills, multi-scale subword",
+      "FallbackTextEmbedder, unauthenticated EmbeddingGemma 2 public mirror",
+      "fallbacks, real-time SSE download progress streaming (MB/s & ETA) in",
+      "ProductFlow and Library, Pillow 13+ cleanup, Ubuntu 24.04/26.04 t64",
+      "CI resilience, and the modular scripts/bump_version/ CLI.",
+      "",
+      "The SSE speed/ETA and gated mirror badges render dynamically during",
+      "active model downloads; static baseline screens were not redesigned.",
+      "Empty claim set on purpose."
+    ]
+  },
   "12.5.0": {
     "_why": [
       "Deep Vector integrates Google EmbeddingGemma 2 natively into Lattice AI,",

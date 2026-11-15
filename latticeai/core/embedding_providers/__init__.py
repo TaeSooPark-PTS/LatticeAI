@@ -98,10 +98,12 @@ from .profiles import RECOMMENDED_EMBEDDING_MODEL as RECOMMENDED_EMBEDDING_MODEL
 from .profiles import RECOMMENDED_EMBEDDING_PROFILE as RECOMMENDED_EMBEDDING_PROFILE
 from .profiles import embedding_provider_profiles as embedding_provider_profiles
 from .profiles import resolve_embedding_profile as resolve_embedding_profile
+from .text import DEFAULT_FALLBACK_DIM as DEFAULT_FALLBACK_DIM
 from .text import DEFAULT_HF_EMBEDDING_MODEL as DEFAULT_HF_EMBEDDING_MODEL
 from .text import EMBEDDINGGEMMA_PREFIXES as EMBEDDINGGEMMA_PREFIXES
 from .text import PROVIDER_TYPES as PROVIDER_TYPES
 from .text import CustomEmbeddingProvider as CustomEmbeddingProvider
+from .text import FallbackTextEmbedder as FallbackTextEmbedder
 from .text import HashEmbeddingProvider as HashEmbeddingProvider
 from .text import HuggingFaceEmbeddingProvider as HuggingFaceEmbeddingProvider
 from .text import MLXEmbeddingProvider as MLXEmbeddingProvider
@@ -163,6 +165,8 @@ __all__ = [
     "resolve_vision_captioner",
     "resolve_vision_embedder",
     "vision_caption_port",
+    "DEFAULT_FALLBACK_DIM",
+    "FallbackTextEmbedder",
     "HashEmbeddingProvider",
     "HuggingFaceEmbeddingProvider",
     "MLXEmbeddingProvider",

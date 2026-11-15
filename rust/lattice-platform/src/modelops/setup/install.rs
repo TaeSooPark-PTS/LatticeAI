@@ -422,6 +422,44 @@ fn spawn_allowlisted(cmd: &AllowlistedCommand) -> Result<RunnerOutput, String> {
     })
 }
 
+fn build_upstream_progress_frame(item_id: &str, text: &str) -> Vec<(&'static str, Value)> {
+    let mut frame = vec![
+        ("id", json!(item_id)),
+        ("status", json!("progress")),
+        ("msg", json!(text.trim())),
+    ];
+    for line in text.lines() {
+        let trimmed = line.trim();
+        let Some(raw_json) = trimmed.strip_prefix("data:") else {
+            continue;
+        };
+        let Ok(parsed) = serde_json::from_str::<Value>(raw_json.trim()) else {
+            continue;
+        };
+        for key in [
+            "stage",
+            "percent",
+            "downloaded_bytes",
+            "total_bytes",
+            "speed_bps",
+            "speed_mbps",
+            "eta_seconds",
+            "current_file",
+            "file",
+            "gated_fallback",
+            "fallback_repo",
+        ] {
+            if let Some(val) = parsed.get(key) {
+                if !val.is_null() {
+                    frame.push((key, val.clone()));
+                }
+            }
+        }
+        break;
+    }
+    frame
+}
+
 async fn prepare_model_item(
     state: &SetupState,
     item_id: &str,
@@ -465,11 +503,7 @@ async fn prepare_model_item(
                 if text.contains("\"error\"") || text.contains("\"status\":\"error\"") {
                     saw_error = true;
                 }
-                frames.push(vec![
-                    ("id", json!(item_id)),
-                    ("status", json!("progress")),
-                    ("msg", json!(text.trim())),
-                ]);
+                frames.push(build_upstream_progress_frame(item_id, &text));
             }
             if saw_error {
                 frames.push(vec![
@@ -580,5 +614,24 @@ mod tests {
             "stdout was {:?}",
             output.stdout
         );
+    }
+
+    #[test]
+    fn build_upstream_progress_frame_extracts_byte_speed_eta_and_fallback() {
+        let raw_sse = "event: progress\ndata: {\"stage\":\"download\",\"percent\":45.5,\"downloaded_bytes\":45500,\"total_bytes\":100000,\"speed_bps\":12500.0,\"speed_mbps\":0.01,\"eta_seconds\":4,\"current_file\":\"model.safetensors\",\"gated_fallback\":true,\"fallback_repo\":\"mlx-community/embeddinggemma-2-4bit\"}\n\n";
+        let frame = build_upstream_progress_frame("embed", raw_sse);
+        let map: serde_json::Map<String, Value> =
+            frame.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        assert_eq!(map["id"], "embed");
+        assert_eq!(map["status"], "progress");
+        assert_eq!(map["stage"], "download");
+        assert_eq!(map["percent"], 45.5);
+        assert_eq!(map["downloaded_bytes"], 45500);
+        assert_eq!(map["total_bytes"], 100000);
+        assert_eq!(map["speed_bps"], 12500.0);
+        assert_eq!(map["eta_seconds"], 4);
+        assert_eq!(map["current_file"], "model.safetensors");
+        assert_eq!(map["gated_fallback"], true);
+        assert_eq!(map["fallback_repo"], "mlx-community/embeddinggemma-2-4bit");
     }
 }

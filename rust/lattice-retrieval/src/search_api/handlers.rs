@@ -44,6 +44,8 @@ pub fn router(state: Arc<RetrievalApiState>) -> Router {
 pub(crate) const SEARCH_REQUEST: &[FieldSpec] = &[
     required("query", Kind::Str(1)),
     optional("limit", Kind::Int),
+    optional("mode", Kind::OptStr),
+    optional("bm25f", Kind::Bool),
 ];
 
 pub(crate) const HYBRID_REQUEST: &[FieldSpec] = &[
@@ -54,6 +56,10 @@ pub(crate) const HYBRID_REQUEST: &[FieldSpec] = &[
     optional("graph_limit", Kind::Int),
     optional("weights", Kind::Object),
     optional("image_fusion", Kind::Bool),
+    optional("mode", Kind::OptStr),
+    optional("fusion_strategy", Kind::OptStr),
+    optional("bm25f", Kind::Bool),
+    optional("expand_depth", Kind::Int),
 ];
 
 const VECTOR_REQUEST: &[FieldSpec] = &[
@@ -108,10 +114,20 @@ async fn hybrid_get(
         (Ok(q), Ok(limit), Ok(fusion)) => (q, limit, fusion),
         (Err(refusal), _, _) | (_, Err(refusal), _) | (_, _, Err(refusal)) => return refusal,
     };
+    let mode = query.str_or("mode", "");
+    let bm25f = query.bool_or("bm25f", false).unwrap_or(false);
     let (_identity, scope) = match state.guard(&headers) {
         Ok(pair) => pair,
         Err(refusal) => return refusal,
     };
+    if bm25f
+        || matches!(
+            mode.trim().to_ascii_lowercase().as_str(),
+            "graphrag" | "bm25_graph_rrf" | "bm25_vector_graph_rrf" | "bm25f"
+        )
+    {
+        return hybrid_graphrag(&state, scope, q, limit, 30, 30, 30, 2, image_fusion).await;
+    }
     hybrid(&state, scope, q, limit, 30, 30, 30, None, image_fusion).await
 }
 
@@ -128,6 +144,30 @@ async fn hybrid_post(
         Ok(pair) => pair,
         Err(refusal) => return refusal,
     };
+    let mode = model
+        .opt_str("mode")
+        .or_else(|| model.opt_str("fusion_strategy"))
+        .unwrap_or_default();
+    let bm25f = model.bool("bm25f", false);
+    if bm25f
+        || matches!(
+            mode.trim().to_ascii_lowercase().as_str(),
+            "graphrag" | "bm25_graph_rrf" | "bm25_vector_graph_rrf" | "bm25f"
+        )
+    {
+        return hybrid_graphrag(
+            &state,
+            scope,
+            model.str("query").to_string(),
+            model.int("limit", 30),
+            model.int("keyword_limit", 30),
+            model.int("vector_limit", 30),
+            model.int("graph_limit", 30),
+            model.int("expand_depth", 2),
+            model.bool("image_fusion", false),
+        )
+        .await;
+    }
     // `weights=req.weights or DEFAULT_HYBRID_WEIGHTS`: the POST form *always*
     // pins the weights, so it never consults the retrieval policy and its
     // `query_class` is always null. The GET form passes no weights and does.
@@ -145,6 +185,54 @@ async fn hybrid_post(
         model.bool("image_fusion", false),
     )
     .await
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn hybrid_graphrag(
+    state: &RetrievalApiState,
+    scope: Scope,
+    query: String,
+    limit: i64,
+    keyword_limit: i64,
+    vector_limit: i64,
+    graph_limit: i64,
+    expand_depth: i64,
+    image_fusion: bool,
+) -> Response {
+    let now = crate::routes::naive_local_now();
+    let graph_config = crate::bm25::GraphRagConfig {
+        max_hops: expand_depth.clamp(1, 2) as usize,
+        ..Default::default()
+    };
+    let options = crate::bm25::GraphRagOptions {
+        limit,
+        bm25_limit: keyword_limit,
+        vector_limit,
+        graph_limit,
+        graph_config,
+        scope,
+        now_secs: now,
+        ..crate::bm25::GraphRagOptions::default()
+    };
+    let engine_query = query.clone();
+    let outcome = run(state, move |conn| {
+        let model = LocalEmbeddingModel::from_env();
+        crate::bm25::hybrid_bm25_vector_graph_search(conn, &model, &engine_query, &options)
+    })
+    .await;
+    let mut report = match outcome {
+        Ok(value) => value,
+        Err(refusal) => return refusal,
+    };
+    if image_fusion {
+        if let Some(object) = report.as_object_mut() {
+            object.insert(
+                "multimodal".into(),
+                json!({ "image_fusion": image_report() }),
+            );
+        }
+    }
+    ok(&report)
 }
 
 /// `req.weights or DEFAULT_HYBRID_WEIGHTS` — an empty map is falsy in Python.
