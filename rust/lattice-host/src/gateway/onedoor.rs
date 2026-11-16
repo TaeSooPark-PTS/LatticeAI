@@ -138,6 +138,26 @@ impl OneDoorState {
         agent_root: &Path,
         loop_config: LoopConfig,
     ) -> Result<Self, GatewayError> {
+        Self::open_with_auth(
+            config,
+            worker_origin,
+            client,
+            agent_root,
+            loop_config,
+            AuthConfig::from_env().with_stored_sso(),
+        )
+    }
+
+    /// [`OneDoorState::open_with_config`] with an explicit [`AuthConfig`] so
+    /// tests can enable `require_auth` without mutating process env vars.
+    pub fn open_with_auth(
+        config: RuntimeConfig,
+        worker_origin: &str,
+        client: reqwest::Client,
+        agent_root: &Path,
+        loop_config: LoopConfig,
+        auth_config: AuthConfig,
+    ) -> Result<Self, GatewayError> {
         let data_dir = config.data_dir().to_path_buf();
         let store = Arc::new(
             config
@@ -149,7 +169,8 @@ impl OneDoorState {
         let graph = GraphWriter::open(Arc::clone(&store), data_dir.join(BLOB_DIR))
             .map_err(|err| GatewayError::State(format!("cannot open the graph writer: {err}")))?;
 
-        let auth = AuthState::new(AuthConfig::from_env().with_stored_sso());
+        let auth = AuthState::new(auth_config);
+        auth.set_audit_sink(Arc::new(super::sinks::PlatformAuthAudit::new(&data_dir)));
         let seam = WorkerSeamClient::with_client(client.clone(), worker_origin);
 
         let workspace = Workspace::new(agent_root).map_err(|err| {

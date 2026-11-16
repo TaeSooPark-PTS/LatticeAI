@@ -85,6 +85,7 @@ from pydantic import BaseModel, Field
 
 from latticeai.api.agent_worker_seam import SEAM_RATE_BUCKET
 from latticeai.api.agent_worker_seam import _seam_open as seam_open
+from latticeai.core.embedding_providers.base import EmbeddingIndexContract
 from latticeai.core.embedding_providers.profiles import (
     RECOMMENDED_EMBEDDING_MODEL,
     RECOMMENDED_EMBEDDING_PROFILE,
@@ -637,17 +638,46 @@ def create_worker_compute_router(
             if callable(role_aware)
             else await asyncio.to_thread(provider.embed_batch, texts)
         )
-        grade = getattr(provider, "grade", "fallback")
+        grade = getattr(provider, "grade", None)
+        if grade is None:
+            grade = "fallback" if embedder.active == "hash" else "production"
+        contract_fn = getattr(provider, "index_contract", None)
+        if callable(contract_fn):
+            contract = contract_fn().as_dict()
+        else:
+            model_id = str(getattr(provider, "model_id", "") or "")
+            is_semantic = (
+                grade != "fallback"
+                and embedder.active != "hash"
+                and not model_id.startswith("lattice-local-hash")
+                and not model_id.startswith("lattice-fallback-")
+            )
+            contract = EmbeddingIndexContract(
+                provider=str(embedder.active or "hash"),
+                model_id=model_id,
+                model_revision=getattr(provider, "model_revision", None),
+                dimension=int(getattr(provider, "dim", 0) or 0),
+                passage_mode=str(getattr(provider, "passage_mode", "raw") or "raw"),
+                query_mode=str(getattr(provider, "query_mode", "raw") or "raw"),
+                grade=str(grade),
+                semantic=is_semantic,
+            ).as_dict()
         return {
             "vectors": vectors,
             "dim": provider.dim,
             "provider": embedder.active,
             "model_id": provider.model_id,
+            "model_revision": contract["model_revision"],
+            "normalization": contract["normalization"],
+            "passage_mode": contract["passage_mode"],
+            "query_mode": contract["query_mode"],
+            "index_version": contract["index_version"],
             "kind": kind,
             # Additive (v12.0.0): `fallback` means these vectors are feature
             # hashes, not meaning. A caller that stores them can say so.
             "grade": grade,
-            "semantic": grade != "fallback",
+            "semantic": contract["semantic"],
+            "contract": contract,
             "recommended_model": RECOMMENDED_EMBEDDING_MODEL,
             "recommended_profile": RECOMMENDED_EMBEDDING_PROFILE,
         }

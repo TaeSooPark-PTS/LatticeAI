@@ -1,91 +1,101 @@
-# Security Audit — Static Scan Snapshot
+# Security Audit — Static Scan & Supply-Chain Snapshot
 
-> Status: audit snapshot 2026-07-21
+> Status: audit snapshot 2026-11-16
 
-This is a point-in-time static-analysis snapshot for release **v9.8.0**. It
-records exactly which scanners ran, the raw findings, and an honest per-finding
-real-risk assessment. It is not a guarantee of absence of vulnerabilities; it is
-evidence of what the listed tools saw on the listed date.
+This is a point-in-time static-analysis and dependency-audit snapshot over the
+current Rust-host + Python AI worker tree (`latticeai/`). It records exactly
+which scanners ran, the raw findings observed, remediation completed since the
+previous `v9.8.0` snapshot, and honest remaining items. It is not a guarantee of
+absence of vulnerabilities; it is evidence of what the listed tools saw on the
+listed date.
 
 Related: [CI & Release Gates](CI_AND_RELEASE_GATES.md) documents how these scans
-are wired into continuous integration (`.github/workflows/dependency-audit.yml`).
+are wired into continuous integration (`.github/workflows/dependency-audit.yml`
+and `.github/workflows/ci.yml`).
 
 ## Tooling & commands
 
-Scanners were installed into the project virtualenv only (`.venv`), never added
-to runtime dependencies:
+Scanners ran from the project virtualenv (`.venv`) and root npm workspace:
 
-```
-.venv/bin/python -m pip install pip-audit bandit
-```
+| Tool | Version | Command |
+|------|---------|---------|
+| `pip-audit` | 2.10.1 | `.venv/bin/pip-audit -r requirements.txt --strict` |
+| `bandit` | 1.9.4 | `.venv/bin/bandit -q -r latticeai -ll -f json` |
+| `npm audit` | npm | `npm audit --audit-level=high` |
 
-| Tool      | Version | Command |
-|-----------|---------|---------|
-| pip-audit | 2.10.1  | `.venv/bin/python -m pip_audit -r requirements.txt --strict` |
-| pip-audit | 2.10.1  | `.venv/bin/python -m pip_audit` (installed environment) |
-| bandit    | 1.9.4   | `.venv/bin/python -m bandit -r latticeai lattice_brain -ll` |
-| npm audit | (npm 10)| `npm audit --audit-level=high` |
+## Dependency vulnerabilities (`pip-audit` / `npm audit`)
 
-## Dependency vulnerabilities (pip-audit / npm audit)
+- `pip-audit -r requirements.txt --strict` → `No known vulnerabilities found` (exit 0).
+- `npm audit --audit-level=high` → `found 0 vulnerabilities` (exit 0).
 
-**Result: no known vulnerabilities.**
+No dependency pins required security overrides.
 
-- `pip-audit -r requirements.txt --strict` → `No known vulnerabilities found`.
-- `pip-audit` over the installed environment → `No known vulnerabilities found`.
-- `npm audit --audit-level=high` → `found 0 vulnerabilities`.
+## Static code analysis (`bandit`)
 
-No dependency version changes were required. Because there were no actual
-vulnerable pins to fix, no dependency files were modified (per the honest-fix
-rule: only fix a real, safe-to-fix issue).
-
-## Static code analysis (bandit)
-
-Scanned **54,795 lines** across `latticeai/` and `lattice_brain/`. With the
-`-ll` display filter (MEDIUM severity and above), bandit reported **80 findings**:
-1 HIGH and 79 MEDIUM. Breakdown by rule:
+Scanned **16,745 LOC** across `latticeai/` (`lattice_brain/` moved to Rust
+crates in `v11.6.0`). With the `-ll` display filter (MEDIUM severity and above),
+bandit reported **11 findings**: **0 HIGH** and **11 MEDIUM** (down from 80
+findings across 54,795 LOC in the `v9.8.0` monolith snapshot).
 
 | Count | Severity | Rule | What it flags |
 |------:|----------|------|---------------|
-| 1  | HIGH   | B324 hashlib | Weak MD5 hash "for security" |
-| 58 | MEDIUM | B608 hardcoded_sql_expressions | SQL built via string formatting |
-| 7  | MEDIUM | B310 blacklist (urlopen) | `urllib.request.urlopen` with unrestricted scheme |
-| 5  | MEDIUM | B604 shell=True | A function called with `shell=True` |
-| 3  | MEDIUM | B108 hardcoded_tmp_directory | Hardcoded `/tmp` path |
-| 3  | MEDIUM | B104 hardcoded_bind_all_interfaces | Bind to `0.0.0.0` |
-| 2  | MEDIUM | B306 blacklist (mktemp) | `tempfile.mktemp()` |
-| 1  | MEDIUM | B615 huggingface_unsafe_download | `hf_hub_download` without a pinned revision |
+| 4 | MEDIUM | `B615` `huggingface_unsafe_download` | `from_pretrained()` called without literal `revision=` kwarg |
+| 4 | MEDIUM | `B604` `any_other_function_with_shell_equals_true` | `ToolPolicy(..., shell=True)` dataclass declarations |
+| 2 | MEDIUM | `B310` `blacklist` (`urllib.request.urlopen`) | `urlopen` without explicit URL scheme check |
+| 1 | MEDIUM | `B608` `hardcoded_sql_expressions` | SQL `IN (%s)` placeholder formatting |
 
 ### Per-finding real-risk assessment
 
 | Rule | Location(s) | Verdict | Rationale |
 |------|-------------|---------|-----------|
-| **B324** MD5 | `lattice_brain/quality.py:44` | **False positive** | MD5 derives a deterministic *pseudo-label* for embedding clusters (`emb_cluster_<hash>`); not used for authentication, integrity, or secrets. Safe cosmetic fix would be `hashlib.md5(..., usedforsecurity=False)`; source is out of this task's edit scope, so documented only. |
-| **B604** shell=True | `latticeai/core/agent.py:539`, `latticeai/core/tool_registry.py:129/136/168/175` | **False positive** | These are `ToolPolicy(..., shell=True, ...)` dataclass *declarations* describing whether a tool is a shell tool — not `subprocess(..., shell=True)` calls. Bandit matches the keyword, not an actual shell invocation. |
-| **B108** /tmp | `lattice_brain/graph/_kg_constants.py:186/215`, `latticeai/core/agent_eval.py:240` | **False positive / benign** | The `_kg_constants` hits are `/tmp` entries in an **exclusion allowlist** of directories to skip during ingestion (a defensive list). The `agent_eval` hit is a test/eval default `agent_root`. No untrusted file is written to a predictable temp path here. |
-| **B104** 0.0.0.0 | `latticeai/cli/entrypoint.py:53/237/238` | **By design, low risk** | The bind switches to `0.0.0.0` only when the operator explicitly passes `--tunnel`; default remains `127.0.0.1`. Intentional and gated. |
-| **B310** urlopen | `latticeai/services/model_engines.py:120/234`, `latticeai/services/model_runtime.py:242` | **Low real risk** | Calls target operator-configured local inference engines (LM Studio / Ollama). URLs are not attacker-controlled in normal use. Recommendation: assert `http(s)` scheme before `urlopen` to close the `file:`/custom-scheme door. |
-| **B608** SQL f-strings | `lattice_brain/storage/postgres.py`, `.../migration.py`, `lattice_brain/graph/*.py`, `lattice_brain/conversations.py` | **Low real risk — review** | Interpolated fragments are overwhelmingly **schema/table identifiers** quoted through `lattice_brain.storage.postgres._quote_ident`, with row *values* passed as bound parameters. Not user-value injection. Standing recommendation: keep every interpolated identifier sourced from internal constants / allowlists, never from request input. |
-| **B306** mktemp | `latticeai/integrations/telegram_bot.py:450/568` | **Real, low severity** | `tempfile.mktemp()` has a documented create-time race; prefer `tempfile.mkstemp()` / `NamedTemporaryFile`. Impact is limited (local temp files for outbound Telegram media), but this is a genuine hardening item for a future source-owning change. |
-| **B615** HF download | `latticeai/services/model_runtime.py:601` | **Real, supply-chain relevant** | `hf_hub_download(...)` is called without `revision=`, so a mutated upstream model repo could serve a different artifact than expected. Recommendation: pin a commit/`revision` (or verify a hash) when fetching model weights. Ties directly into the P2 supply-chain theme. |
+| **`B615`** HF download | `latticeai/core/embedding_providers/text.py:471,472,474,475` (plus unflagged wrapper `_call_hf_hub_download` in `latticeai/services/model_runtime/download.py:294,303`) | **Real, supply-chain relevant** | `AutoTokenizer.from_pretrained` / `AutoModel.from_pretrained` (and `_call_hf_hub_download`) do not currently pass a pinned commit `revision=`. Local snapshot loading uses `local_files_only=True` when cached, and `EmbeddingIndexContract` now tracks `model_revision`, but explicit Hub commit/hash pinning on download remains a tracked hardening item. |
+| **`B604`** `shell=True` | `latticeai/core/tool_registry.py:129,136,161,168` | **False positive** | `ToolPolicy(..., shell=True)` declarative metadata specifying whether a tool policy represents a shell capability — not a `subprocess(..., shell=True)` invocation. |
+| **`B310`** `urlopen` | `latticeai/services/model_engines.py:123,240` | **Low real risk — harden** | Targets operator-configured local inference engines (LM Studio / Ollama). Asserting an `http`/`https` URL scheme before calling `urlopen` closes any `file:` / custom-scheme edge case. |
+| **`B608`** SQL `IN (%s)` | `latticeai/core/vector_index/sidecar.py:109` | **Low real risk (safe parameterized query)** | Formats only `"?"` placeholders matching `len(chunk)` (`IN (?,?,...)`) while passing `(model_id, int(dim), *chunk)` as bound SQLite parameters — no user data is interpolated. |
 
-## Actions taken vs deferred
+## Security & supply-chain remediation completed (since v9.8.0 snapshot)
 
-- **Fixed:** nothing — no dependency vulnerability existed to fix safely, and
-  the code-level findings live in source files outside this task's edit scope.
-- **Deferred (documented) hardening items**, for a future change that owns the
-  relevant source:
-  1. Pin a `revision` in `model_runtime.py` `hf_hub_download` (B615).
-  2. Replace `tempfile.mktemp()` in `integrations/telegram_bot.py` (B306).
-  3. Validate URL scheme before `urlopen` in the model engine paths (B310).
-  4. Optional cosmetic: `usedforsecurity=False` on the clustering MD5 (B324).
+1. **Legacy Python surface retired**: `lattice_brain/` and
+   `latticeai/integrations/telegram_bot.py` (`B306` `tempfile.mktemp()`) were
+   removed with the Rust host/worker split; static findings fell from 80 (1 HIGH)
+   to 11 (0 HIGH).
+2. **`.latticebrain` Archive Cryptography & Path Safety**: Completed in Rust
+   (`rust/lattice-platform/src/knowledge/portability/{archive, crypto}.rs`):
+   RFC 7914 `scrypt` key derivation, X25519 + HKDF-SHA256 recipient sealing,
+   encrypt-then-MAC (`SHA256-CTR` + `HMAC-SHA256`) with constant-time MAC check
+   (`ct_eq`), ZIP path-traversal rejection (`validate_zip_entries`), dry-run &
+   verified restore/import gates.
+3. **Per-User `AGENT_ROOT` Isolation**: Server-side workspace path derivation
+   (`IsolatedRootSpec`, `resolve_isolated_agent_root`,
+   `LoopRoutesState::isolated`) isolates agent execution per `(user_id,
+   tenant_id, workspace_id)` and fail-closes unauthorized shared workspaces.
+4. **Repository Hygiene & Token Cleanup**: Removed all 77 tracked verification
+   files under `scratchpad/` (including `n7_token.txt` and `verify*` dumps) from
+   git tracking and disk; added `/scratchpad/`, `*.db-wal`, and `*.db-shm` to
+   `.gitignore`.
+5. **CI/CD Supply-Chain & Release Asset Gates**: Pinned 100% of GitHub Actions
+   `uses:` entries to immutable commit SHAs, promoted retrieval sidecar/contract
+   tests + `cargo test -p lattice-retrieval --tests` to PR-blocking checks in
+   `.github/workflows/ci.yml`, and added Apple Silicon DMG build/sign/verify +
+   SHA-256 release asset uploads in `.github/workflows/release.yml` and
+   `publish.yml`.
+
+## Remaining hardening backlog
+
+1. Wire explicit commit `revision=` (and SHA-256 checksum verification where
+   published) into `latticeai/services/model_runtime/download.py`
+   (`_call_hf_hub_download`) and `latticeai/core/embedding_providers/text.py`
+   (`from_pretrained`), eliminating the 4 `B615` findings.
+2. Enforce `http`/`https` scheme validation before `urllib.request.urlopen` in
+   `latticeai/services/model_engines.py:123,240` (`B310`).
+3. Rotate any legacy external tokens if any file previously stored in
+   `scratchpad/` was ever valid outside local test verification.
 
 ## Limitations (honest)
 
-- Static analysis only. No dynamic/DAST, no fuzzing, no secret-scanning here.
-- bandit reasons syntactically; the false positives above were confirmed by
-  reading each site, not by suppression.
-- pip-audit resolves against the OSV/PyPI advisory database as of the snapshot
-  date; new advisories appear continuously — see the scheduled
-  `dependency-audit` workflow for the ongoing signal.
-- SBOMs (CycloneDX) for both ecosystems can be regenerated with
-  `.venv/bin/python scripts/generate_sbom.py`.
+- Static analysis and advisory database checks only here (`bandit`, `pip-audit`,
+  `npm audit`); no DAST or Rust `cargo-audit` run is recorded in this snapshot.
+- `pip-audit` and `npm audit` reflect upstream advisory databases as of
+  2026-11-16; ongoing checks run weekly via `.github/workflows/dependency-audit.yml`.
+- CycloneDX SBOMs (`sbom-python.json`, `sbom-npm.json`) can be regenerated
+  locally via `.venv/bin/python scripts/generate_sbom.py`.

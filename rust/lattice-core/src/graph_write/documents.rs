@@ -16,9 +16,143 @@ use serde_json::{json, Value};
 use crate::db::CoreError;
 use crate::pytext::safe_loads;
 
+use super::lifecycle::{update_lifecycle_in_txn, KnowledgeLifecycleUpdate};
 use super::primitives::delete_nodes_v2;
 use super::pyaux::{py_dumps_ordered, truthy};
 use super::GraphWriter;
+
+fn delete_node_subgraph(
+    txn: &Transaction<'_>,
+    node_id: &str,
+    clean_provenance: bool,
+) -> Result<(bool, usize), CoreError> {
+    let existed = txn
+        .query_row(
+            "SELECT 1 FROM nodes WHERE id=?",
+            rusqlite::params![node_id],
+            |_| Ok(()),
+        )
+        .is_ok();
+    let existed_v2 = txn
+        .query_row(
+            "SELECT 1 FROM nodes_v2 WHERE id=?",
+            rusqlite::params![node_id],
+            |_| Ok(()),
+        )
+        .is_ok();
+
+    let mut remove_ids: Vec<String> = vec![node_id.to_string()];
+    {
+        let mut statement = txn.prepare(
+            "SELECT id FROM nodes \
+             WHERE json_extract(metadata_json, '$.source_node') = ?",
+        )?;
+        let rows =
+            statement.query_map(rusqlite::params![node_id], |row| row.get::<_, String>(0))?;
+        for row in rows {
+            let owned = row?;
+            if !remove_ids.contains(&owned) {
+                remove_ids.push(owned);
+            }
+        }
+    }
+    let source_ids: Vec<String> = {
+        let mut statement = txn.prepare(
+            "SELECT to_node FROM edges \
+             WHERE from_node=? AND type IN ('indexed_from', 'INDEXED_FROM')",
+        )?;
+        let rows =
+            statement.query_map(rusqlite::params![node_id], |row| row.get::<_, String>(0))?;
+        rows.collect::<Result<Vec<_>, _>>()?
+    };
+
+    let placeholders = vec!["?"; remove_ids.len()].join(",");
+    let params: Vec<&dyn ToSql> = remove_ids.iter().map(|id| id as &dyn ToSql).collect();
+    let doubled: Vec<&dyn ToSql> = params.iter().chain(params.iter()).copied().collect();
+    txn.execute(
+        &format!("DELETE FROM chunks WHERE source_node IN ({placeholders})"),
+        params.as_slice(),
+    )?;
+    txn.execute(
+        &format!(
+            "DELETE FROM edges WHERE from_node IN ({placeholders}) \
+             OR to_node IN ({placeholders})"
+        ),
+        doubled.as_slice(),
+    )?;
+    txn.execute(
+        &format!(
+            "DELETE FROM edges_v2 WHERE source IN ({placeholders}) \
+             OR target IN ({placeholders})"
+        ),
+        doubled.as_slice(),
+    )?;
+    txn.execute(
+        &format!(
+            "DELETE FROM vector_embeddings WHERE item_id IN ({placeholders}) \
+             OR source_node IN ({placeholders})"
+        ),
+        doubled.as_slice(),
+    )?;
+    let removed_nodes = txn.execute(
+        &format!("DELETE FROM nodes WHERE id IN ({placeholders})"),
+        params.as_slice(),
+    )?;
+    delete_nodes_v2(txn, &remove_ids)?;
+    crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, &remove_ids)?;
+
+    if clean_provenance {
+        txn.execute(
+            &format!("DELETE FROM ingestion_provenance WHERE node_id IN ({placeholders})"),
+            params.as_slice(),
+        )?;
+    }
+
+    let mut removed_sources = 0usize;
+    for source_id in &source_ids {
+        let still_linked: Option<i64> = txn
+            .query_row(
+                "SELECT 1 FROM edges WHERE from_node=? OR to_node=? LIMIT 1",
+                rusqlite::params![source_id, source_id],
+                |row| row.get(0),
+            )
+            .ok();
+        if still_linked.is_some() {
+            continue;
+        }
+        txn.execute(
+            "DELETE FROM vector_embeddings WHERE item_id=?",
+            rusqlite::params![source_id],
+        )?;
+        txn.execute("DELETE FROM nodes WHERE id=?", rusqlite::params![source_id])?;
+        delete_nodes_v2(txn, std::slice::from_ref(source_id))?;
+        crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, std::slice::from_ref(source_id))?;
+        if clean_provenance {
+            txn.execute(
+                "DELETE FROM ingestion_provenance WHERE node_id=?",
+                rusqlite::params![source_id],
+            )?;
+        }
+        removed_sources += 1;
+    }
+
+    if clean_provenance {
+        // Sweep any pre-existing orphan edges (e.g., legacy PART_OF leftovers).
+        txn.execute(
+            "DELETE FROM edges WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = edges.from_node) \
+             OR NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = edges.to_node)",
+            [],
+        )?;
+        txn.execute(
+            "DELETE FROM edges_v2 WHERE NOT EXISTS (SELECT 1 FROM nodes_v2 n WHERE n.id = edges_v2.source) \
+             OR NOT EXISTS (SELECT 1 FROM nodes_v2 n WHERE n.id = edges_v2.target)",
+            [],
+        )?;
+    }
+
+    let any_removed = existed || existed_v2 || removed_nodes > 0;
+    Ok((any_removed, remove_ids.len() + removed_sources))
+}
 
 impl GraphWriter {
     /// `set_node_sensitivity` — mark (or unmark) one node as never-leaving.
@@ -133,111 +267,29 @@ impl GraphWriter {
                     "removed_nodes": 0,
                 }));
             }
-            let mut remove_ids: Vec<String> = vec![node_id.clone()];
-            {
-                let mut statement = txn.prepare(
-                    "SELECT id FROM nodes \
-                     WHERE json_extract(metadata_json, '$.source_node') = ?",
-                )?;
-                let rows = statement
-                    .query_map(rusqlite::params![node_id], |row| row.get::<_, String>(0))?;
-                for row in rows {
-                    let owned = row?;
-                    if !remove_ids.contains(&owned) {
-                        remove_ids.push(owned);
-                    }
-                }
-            }
-            let source_ids: Vec<String> = {
-                let mut statement = txn.prepare(
-                    "SELECT to_node FROM edges \
-                     WHERE from_node=? AND type IN ('indexed_from', 'INDEXED_FROM')",
-                )?;
-                let rows = statement
-                    .query_map(rusqlite::params![node_id], |row| row.get::<_, String>(0))?;
-                rows.collect::<Result<Vec<_>, _>>()?
-            };
-
-            let placeholders = vec!["?"; remove_ids.len()].join(",");
-            let params: Vec<&dyn ToSql> = remove_ids.iter().map(|id| id as &dyn ToSql).collect();
-            let doubled: Vec<&dyn ToSql> = params.iter().chain(params.iter()).copied().collect();
-            txn.execute(
-                &format!("DELETE FROM chunks WHERE source_node IN ({placeholders})"),
-                params.as_slice(),
-            )?;
-            txn.execute(
-                &format!(
-                    "DELETE FROM edges WHERE from_node IN ({placeholders}) \
-                     OR to_node IN ({placeholders})"
-                ),
-                doubled.as_slice(),
-            )?;
-            txn.execute(
-                &format!(
-                    "DELETE FROM vector_embeddings WHERE item_id IN ({placeholders}) \
-                     OR source_node IN ({placeholders})"
-                ),
-                doubled.as_slice(),
-            )?;
-            txn.execute(
-                &format!("DELETE FROM nodes WHERE id IN ({placeholders})"),
-                params.as_slice(),
-            )?;
-            delete_nodes_v2(txn, &remove_ids)?;
-            crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, &remove_ids)?;
-
-            let mut removed_sources = 0usize;
-            for source_id in &source_ids {
-                let still_linked: Option<i64> = txn
-                    .query_row(
-                        "SELECT 1 FROM edges WHERE from_node=? OR to_node=? LIMIT 1",
-                        rusqlite::params![source_id, source_id],
-                        |row| row.get(0),
-                    )
-                    .ok();
-                if still_linked.is_some() {
-                    continue;
-                }
-                txn.execute(
-                    "DELETE FROM vector_embeddings WHERE item_id=?",
-                    rusqlite::params![source_id],
-                )?;
-                txn.execute("DELETE FROM nodes WHERE id=?", rusqlite::params![source_id])?;
-                delete_nodes_v2(txn, std::slice::from_ref(source_id))?;
-                crate::bm25_stats::delete_bm25_node_stats_by_ids(
-                    txn,
-                    std::slice::from_ref(source_id),
-                )?;
-                removed_sources += 1;
-            }
+            let (_, removed_nodes) = delete_node_subgraph(txn, &node_id, false)?;
             Ok(json!({
                 "status": "ok",
                 "node_id": node_id,
-                "removed_nodes": remove_ids.len() + removed_sources,
+                "removed_nodes": removed_nodes,
             }))
         })
     }
 
-    /// Remove exactly one node — the legacy row and its `nodes_v2` projection.
+    /// Delete one node and its owned subgraph (`PART_OF`/touching edges,
+    /// chunks, vectors, orphan `Source` nodes, BM25 stats, and provenance).
     ///
-    /// `Ok(false)` means there was no such row. Deliberately narrower than
-    /// [`Self::delete_document_tree`]: it removes nothing the caller did not
-    /// name, and in particular it leaves the node's edges in place. That is
-    /// `delete_self_model_fact`'s Python behaviour verbatim
-    /// (`DELETE FROM nodes WHERE id=?` plus the v2 row, nothing else) — a
-    /// Self-Model fact's only edge is `PART_OF self:root`, and re-adding the
-    /// same fact re-upserts it.
+    /// Unified with [`Self::delete_document_tree`] so single-node deletion
+    /// never leaves dangling `PART_OF` edges, orphan chunks/vectors, or stale
+    /// provenance records behind.
     pub fn delete_node(&self, node_id: &str) -> Result<bool, CoreError> {
         let node_id = node_id.trim().to_string();
         if node_id.is_empty() {
             return Ok(false);
         }
         self.store.with_write_txn(|txn| {
-            let removed =
-                txn.execute("DELETE FROM nodes WHERE id=?", rusqlite::params![node_id])?;
-            delete_nodes_v2(txn, std::slice::from_ref(&node_id))?;
-            crate::bm25_stats::delete_bm25_node_stats_by_ids(txn, std::slice::from_ref(&node_id))?;
-            Ok(removed > 0)
+            let (removed, _) = delete_node_subgraph(txn, &node_id, true)?;
+            Ok(removed)
         })
     }
 
@@ -283,6 +335,19 @@ impl GraphWriter {
                 &format!("UPDATE nodes_v2 SET {assignments} WHERE id=?"),
                 params.as_slice(),
             )?;
+            if updated > 0 {
+                let _ = update_lifecycle_in_txn(
+                    self,
+                    txn,
+                    &node_id,
+                    &KnowledgeLifecycleUpdate {
+                        effective_from: valid_from.map(str::to_string),
+                        valid_until: valid_to.map(str::to_string),
+                        superseded_by: superseded_by.map(str::to_string),
+                        ..Default::default()
+                    },
+                )?;
+            }
             Ok(updated > 0)
         })
     }

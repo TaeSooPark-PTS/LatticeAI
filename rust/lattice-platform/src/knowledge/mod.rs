@@ -53,6 +53,7 @@
 //!    install already has. Changing a shape is a migration, and there is no
 //!    conversion step to hide it in.
 
+pub mod multimodal;
 pub mod network;
 pub mod network_boundary;
 pub mod portability;

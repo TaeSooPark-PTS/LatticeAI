@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v12.7.0)
+# Lattice AI — Operations Guide (v12.8.0)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -29,18 +29,23 @@ tar -czf ltcai-backup-$(date +%Y%m%d).tar.gz ~/.ltcai ~/ltcai-agent
 tar -xzf ltcai-backup-YYYYMMDD.tar.gz -C ~
 ```
 
-인앱 복원(`.latticebrain` / `VACUUM INTO` 스냅샷)은 원자적이고, **v12.0.0
-부터 즉시 반영됩니다 — 복원 뒤 재시작이 필요 없습니다.** 스토어가
+인앱 백업(`.latticebrain` / `VACUUM INTO` 스냅샷)은 암호화·무결성 검증이 완료된
+이식 경로이며(**RFC 7914 scrypt 또는 X25519 + HKDF-SHA256 + SHA256-CTR/HMAC-SHA256**,
+`export` / `inspect` / `verify` / `restore` dry-run·`confirm` / `import` 지원),
+**v12.0.0부터 즉시 반영됩니다 — 복원 뒤 재시작이 필요 없습니다.** 스토어가
 세대(generation) 에폭을 들고 있어서, 복원이 에폭을 올리면 이전 세대에서
 열린 풀 커넥션은 다음 체크아웃에서 낡은 것으로 판정되어 닫히고, 그다음
-읽기는 복원된 바이트를 봅니다. 11.9.0까지의 완화책이던 "복원 후 재시작"
-절차는 더 이상 필요하지 않습니다.
+읽기는 복원된 바이트를 봅니다.
 
-삭제된 파일 정리는 별개의 확인된 동작입니다: `POST
-/api/ingestion/folder/prune`가 `confirm` 없이는 dry-run(무엇이 지워질지와
-노드/엣지/청크/벡터 수)이고, `confirm`이 있을 때만 문서 서브트리를
-`delete_document_tree`로 제거합니다. 어느 경로도 디스크의 파일을 지우지
-않습니다.
+SQLite 라이브 DB 옆에 생성되는 일시 WAL/SHM 파일(`*.db-wal`, `*.db-shm`) 및
+`/scratchpad/` 검증 출력은 `.gitignore` 로 제외되어 저장소에 커밋되지 않습니다.
+
+삭제된 파일 정리 및 단건 노드 삭제도 일관되게 통합되었습니다:
+`POST /api/ingestion/folder/prune` 는 `confirm` 없이 dry-run을 반환하고,
+`confirm` 시 `delete_document_tree` 를 통해 서브트리를 제거합니다. 단건
+`GraphWriter::delete_node` 역시 동일한 `delete_node_subgraph` 경로를 사용해
+양방향 엣지(`PART_OF` 포함), 청크, 벡터, 고아 `Source` 노드, BM25 통계,
+프로비넌스를 함께 정리합니다. 어느 경로도 디스크의 원본 파일을 지우지 않습니다.
 
 ### 2.3 히스토리만 초기화
 ```bash
@@ -153,14 +158,34 @@ pip install --upgrade ltcai
 > 전환과 함께 제거되어 `LATTICEAI_TELEGRAM_*`는 더 이상 읽히지 않습니다.
 > 설정 표면은 남아 있고 패스워드 로그인은 네이티브(`lattice-auth`)입니다.
 
-## 8. 사용자 데이터 격리
+## 8. 사용자 데이터 격리 및 임베딩/모델 운영
 
 - 대화 히스토리는 `user_email` 필드로 필터링됩니다.
-- Agent workspace (`~/ltcai-agent/`)는 현재 단일 공유 디렉토리입니다.  
-  멀티 유저 환경에서는 `~/ltcai-agent/<email>/` 구조로 분리를 권장합니다.
+- **사용자별 `AGENT_ROOT` 격리**: 에이전트 작업 디렉터리는 더 이상 단일 공유
+  디렉터리가 아닙니다. Rust 호스트/에이전트 런타임(`IsolatedRootSpec`,
+  `resolve_isolated_agent_root`, `LoopRoutesState::isolated`)이 서버 측에서
+  `(user_id, tenant_id, workspace_id)` 단위로 격리된 `AGENT_ROOT`를 산출하며,
+  공유 워크스페이스는 멤버십 인가(`workspace_access_denied`)를 통과하지 못하면
+  fail-closed 로 거부됩니다.
 - Knowledge Graph는 `workspace_id`로 스코프됩니다. 알 수 없는 스코프의 노드는
   기본 비공개(fail-closed)이며, 레거시 글로벌 읽기는 명시적 호환성 옵트인이
-  있을 때만 허용됩니다.
+  있을 때만 허용됩니다. 지식 노드는 `KnowledgeLifecycleState`(`active`,
+  `superseded`, `deprecated`, `disputed`, `pending_verification`)를 추적하며
+  기본 검색에서는 `superseded`/`deprecated` 노드를 제외합니다.
+- **임베딩 계약 및 인제스트 상태**: Python(`latticeai.core.embedding_providers`)과
+  Rust(`lattice_core::embeddings`)는 동일한 `EmbeddingIndexContract`
+  (`provider`, `model_id`, `model_revision`, `dimension`, `normalization`,
+  `passage_mode`, `query_mode`, `index_version`, `grade`, `semantic`)를 공유합니다.
+  계약이 불일치하거나 인덱스 재구축이 필요하면 `IngestStatus::ReindexRequired`
+  (`complete` / `partial` / `pending` / `failed` / `reindex_required`)로 보고됩니다.
+- **Hugging Face 모델 카탈로그 및 캐시 검증**:
+  - `.venv/bin/python scripts/verify_hf_model_registry.py` 는 가중치 다운로드
+    없이 Hub 메타데이터/파일 크기를 정적 검증합니다.
+  - 운영/오프라인 환경에서는 `hf_hub_download` / `from_pretrained` 호출 경로에
+    대한 커밋 `revision` 고정 및 해시 검증 도입 전까지 로컬 사전 다운로드 캐시와
+    `EmbeddingIndexContract.model_revision` 기록을 점검하세요.
+  - PostgreSQL / pgvector 마이그레이션 경로는 `Planned` (사전 점검/드라이런)
+    상태이며 공식 라이브 스토어는 SQLite 입니다.
 
 ## 9. 서버 시작 / 종료
 

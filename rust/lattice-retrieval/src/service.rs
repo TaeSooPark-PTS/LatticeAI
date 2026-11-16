@@ -37,6 +37,16 @@ pub struct Scope {
 }
 
 impl Scope {
+    /// Construct a single-workspace scope excluding legacy NULL-workspace rows.
+    pub fn for_workspace(workspace_id: impl Into<String>) -> Self {
+        let mut allowed = BTreeSet::new();
+        allowed.insert(workspace_id.into());
+        Self {
+            allowed_workspaces: Some(allowed),
+            include_legacy_global: false,
+        }
+    }
+
     fn allowed(&self) -> Option<&BTreeSet<String>> {
         self.allowed_workspaces.as_ref()
     }
@@ -134,16 +144,12 @@ pub fn keyword_search(
     Ok(Value::Object(result))
 }
 
-/// `SearchService.vector_search` — the vector lane in the service contract.
-pub fn vector_search(
+fn format_vector_service_payload(
     conn: &Connection,
-    model: &LocalEmbeddingModel,
     query: &str,
-    limit: i64,
-    min_score: f64,
+    payload: &Value,
     scope: &Scope,
 ) -> Result<Value, CoreError> {
-    let payload = graph_vector_search(conn, model, query, limit, min_score)?;
     let mut matches = Vec::new();
     for (index, item) in payload["matches"]
         .as_array()
@@ -173,8 +179,20 @@ pub fn vector_search(
     let mut result = Map::new();
     result.insert("query".into(), Value::String(query.to_string()));
     result.insert("mode".into(), Value::String("vector".into()));
-    result.insert("embedding_model".into(), field(&payload, "embedding_model"));
-    result.insert("embedding_dim".into(), field(&payload, "embedding_dim"));
+    result.insert("embedding_model".into(), field(payload, "embedding_model"));
+    result.insert("embedding_dim".into(), field(payload, "embedding_dim"));
+    if let Some(status) = payload.get("provider_status").filter(|v| v.is_string()) {
+        result.insert("provider_status".into(), status.clone());
+    }
+    if let Some(reindex) = payload.get("reindex_required").filter(|v| v.is_boolean()) {
+        result.insert("reindex_required".into(), reindex.clone());
+    }
+    if let Some(models) = payload.get("stored_models").filter(|v| v.is_array()) {
+        result.insert("stored_models".into(), models.clone());
+    }
+    if let Some(note) = payload.get("alignment_note").filter(|v| v.is_string()) {
+        result.insert("alignment_note".into(), note.clone());
+    }
     result.insert(
         "matches".into(),
         Value::Array(scope_matches(conn, matches, scope)?),
@@ -186,6 +204,39 @@ pub fn vector_search(
         result.insert("recall".into(), recall.clone());
     }
     Ok(Value::Object(result))
+}
+
+/// `SearchService.vector_search` — the vector lane in the service contract.
+pub fn vector_search(
+    conn: &Connection,
+    model: &LocalEmbeddingModel,
+    query: &str,
+    limit: i64,
+    min_score: f64,
+    scope: &Scope,
+) -> Result<Value, CoreError> {
+    let payload = graph_vector_search(conn, model, query, limit, min_score)?;
+    format_vector_service_payload(conn, query, &payload, scope)
+}
+
+/// Provider-aligned, SQL-scoped vector search for service & HTTP endpoints.
+pub fn vector_search_aligned_service(
+    conn: &Connection,
+    query_input: crate::vector::VectorQueryInput<'_>,
+    query: &str,
+    limit: i64,
+    min_score: f64,
+    scope: &Scope,
+    include_historical: bool,
+) -> Result<Value, CoreError> {
+    let options = crate::vector::VectorSearchOptions {
+        limit,
+        min_score,
+        scope: Some(scope),
+        include_historical,
+    };
+    let payload = crate::vector::vector_search_aligned(conn, query_input, query, &options)?;
+    format_vector_service_payload(conn, query, &payload, scope)
 }
 
 /// Everything `graph_search` accepts beyond the query.

@@ -75,6 +75,7 @@ impl std::error::Error for ToolError {}
 #[derive(Debug, Clone)]
 pub struct Workspace {
     root: PathBuf,
+    confined: bool,
 }
 
 impl Workspace {
@@ -89,7 +90,68 @@ impl Workspace {
         std::fs::create_dir_all(root)?;
         Ok(Self {
             root: std::fs::canonicalize(root)?,
+            confined: false,
         })
+    }
+
+    /// Derive and canonicalise an isolated per-user or per-workspace root from
+    /// server-verified identity and authorization.
+    pub fn for_isolated_scope(spec: &IsolatedRootSpec) -> Result<Self, ToolError> {
+        let derived = resolve_isolated_agent_root(spec)?;
+        let ws = Self::new(&derived).map_err(|err| {
+            ToolError::tool(format!(
+                "Failed to initialize isolated agent workspace: {err}"
+            ))
+        })?;
+        // Verify after canonicalisation that no pre-existing symlink diverted
+        // the derived directory outside the base root.
+        let base_canon = std::fs::canonicalize(&spec.base_root)
+            .map_err(|err| ToolError::tool(format!("Invalid base agent root: {err}")))?;
+        if ws.root() != base_canon && !ws.root().starts_with(&base_canon) {
+            return Err(ToolError::tool(
+                "Isolated agent root escapes the base agent root.",
+            ));
+        }
+        Ok(ws.with_confined(true))
+    }
+
+    /// Derive a personal per-user workspace under `base_root/users/<sanitized>`.
+    pub fn user_personal(base_root: impl AsRef<Path>, user_id: &str) -> Result<Self, ToolError> {
+        Self::for_isolated_scope(&IsolatedRootSpec {
+            base_root: base_root.as_ref().to_path_buf(),
+            user_id: Some(user_id.to_string()),
+            tenant_id: None,
+            workspace_id: None,
+            shared_authorized: false,
+            require_user_isolation: true,
+        })
+    }
+
+    /// Derive an authorized shared workspace under `base_root/workspaces/<sanitized>`.
+    pub fn shared_workspace(
+        base_root: impl AsRef<Path>,
+        workspace_id: &str,
+        authorized: bool,
+    ) -> Result<Self, ToolError> {
+        Self::for_isolated_scope(&IsolatedRootSpec {
+            base_root: base_root.as_ref().to_path_buf(),
+            user_id: None,
+            tenant_id: None,
+            workspace_id: Some(workspace_id.to_string()),
+            shared_authorized: authorized,
+            require_user_isolation: true,
+        })
+    }
+
+    /// Mark whether all file tools (including `local_write`) must stay inside this root.
+    pub fn with_confined(mut self, confined: bool) -> Self {
+        self.confined = confined;
+        self
+    }
+
+    /// Whether this workspace enforces strict per-user/workspace confinement across all tools.
+    pub fn is_confined(&self) -> bool {
+        self.confined
     }
 
     /// The resolved root.
@@ -125,6 +187,138 @@ impl Workspace {
             .map(|rest| rest.to_string_lossy().into_owned())
             .unwrap_or_else(|_| path.to_string_lossy().into_owned())
     }
+}
+
+/// Inputs used to derive an isolated `AGENT_ROOT` on the server side.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IsolatedRootSpec {
+    pub base_root: PathBuf,
+    pub user_id: Option<String>,
+    pub tenant_id: Option<String>,
+    pub workspace_id: Option<String>,
+    /// True only after server-side membership/ACL verification succeeded.
+    pub shared_authorized: bool,
+    /// When false and `user_id` is empty (single-user desktop loopback),
+    /// falls back to `base_root` directly for backwards compatibility.
+    pub require_user_isolation: bool,
+}
+
+/// Sanitize a user, tenant, or workspace identifier into a deterministic,
+/// traversal-free single path segment (`<slug>-<sha256_12>`).
+pub fn sanitize_identity_segment(raw: &str) -> String {
+    use sha2::{Digest, Sha256};
+
+    let trimmed = raw.trim();
+    let mut slug = String::new();
+    let mut prev_dash = false;
+    for ch in trimmed.chars() {
+        let lower = ch.to_ascii_lowercase();
+        if lower.is_ascii_alphanumeric() || lower == '_' {
+            slug.push(lower);
+            prev_dash = false;
+        } else if !prev_dash && !slug.is_empty() {
+            slug.push('-');
+            prev_dash = true;
+        }
+        if slug.len() >= 32 {
+            break;
+        }
+    }
+    let slug = slug.trim_matches('-');
+    let prefix = if slug.is_empty() || slug == "." || slug == ".." {
+        "id"
+    } else {
+        slug
+    };
+    let mut hasher = Sha256::new();
+    hasher.update(trimmed.as_bytes());
+    let digest = hasher.finalize();
+    let mut hex = String::with_capacity(12);
+    for byte in &digest[..6] {
+        use std::fmt::Write;
+        let _ = write!(hex, "{byte:02x}");
+    }
+    format!("{prefix}-{hex}")
+}
+
+/// Returns true when `workspace_id` names a shared/non-personal workspace.
+pub fn is_shared_workspace_id(workspace_id: Option<&str>) -> bool {
+    let Some(ws) = workspace_id.map(str::trim).filter(|s| !s.is_empty()) else {
+        return false;
+    };
+    !ws.eq_ignore_ascii_case("personal") && !ws.eq_ignore_ascii_case("default")
+}
+
+/// Resolve the isolated `AGENT_ROOT` path on disk from server-verified inputs.
+pub fn resolve_isolated_agent_root(spec: &IsolatedRootSpec) -> Result<PathBuf, ToolError> {
+    if let Some(ws) = spec
+        .workspace_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        if ws.contains('\0') || ws.contains('/') || ws.contains('\\') || ws.contains("..") {
+            return Err(ToolError::tool("Invalid workspace identifier."));
+        }
+    }
+    if let Some(tenant) = spec
+        .tenant_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        if tenant.contains('\0')
+            || tenant.contains('/')
+            || tenant.contains('\\')
+            || tenant.contains("..")
+        {
+            return Err(ToolError::tool("Invalid tenant identifier."));
+        }
+    }
+
+    std::fs::create_dir_all(&spec.base_root)
+        .map_err(|err| ToolError::tool(format!("Failed to prepare base agent root: {err}")))?;
+    let mut scope_base = spec.base_root.clone();
+    if let Some(tenant) = spec
+        .tenant_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        scope_base = scope_base
+            .join("tenants")
+            .join(sanitize_identity_segment(tenant));
+    }
+
+    if is_shared_workspace_id(spec.workspace_id.as_deref()) {
+        if !spec.shared_authorized {
+            return Err(ToolError::tool(
+                "Unauthorized shared workspace access denied.",
+            ));
+        }
+        let ws = spec.workspace_id.as_deref().unwrap_or_default().trim();
+        return Ok(scope_base
+            .join("workspaces")
+            .join(sanitize_identity_segment(ws)));
+    }
+
+    if let Some(user) = spec
+        .user_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        return Ok(scope_base
+            .join("users")
+            .join(sanitize_identity_segment(user)));
+    }
+
+    if spec.require_user_isolation {
+        return Err(ToolError::tool(
+            "Authenticated user identity is required for isolated agent execution.",
+        ));
+    }
+    Ok(spec.base_root.clone())
 }
 
 /// `Path.resolve(strict=False)` / `os.path.realpath`: resolve symlinks and

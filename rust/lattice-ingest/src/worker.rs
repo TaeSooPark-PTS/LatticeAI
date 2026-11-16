@@ -41,14 +41,16 @@
 use std::path::Path;
 use std::time::Duration;
 
+use lattice_core::embeddings::EmbeddingIndexContract;
 use lattice_core::graph_write::types::{
     ChunkPiece, IngestContentRequest, IngestionRecord, SuppliedVector,
 };
 use lattice_core::graph_write::GraphWriter;
 use lattice_core::worker::WorkerSeamClient;
+use lattice_core::IngestStatus;
 use serde_json::{json, Map, Value};
 
-use crate::local_files_api::enrich;
+use crate::local_files_api::enrich::{self, SeamEmbedBatch, SeamEmbedOutcome};
 
 /// `IngestionPipeline(pipeline_name=…)` — the name the provenance row carries.
 pub const PIPELINE_NAME: &str = "unified-ingestion";
@@ -207,6 +209,16 @@ pub struct NoteReceipt {
     /// Zero is honest in both directions — a document with no headings, or an
     /// overlay the writer refused — which is why it is reported at all.
     pub sections: usize,
+    /// Granular lifecycle/enrichment status (`complete`, `partial`, `reindex_required`, ...).
+    pub ingest_status: IngestStatus,
+    /// Whether vectors came from a semantic provider, hash fallback, or none.
+    pub embedding_mode: String,
+    /// True only when real semantic embeddings landed.
+    pub semantic: bool,
+    /// Reasons ingestion degraded (e.g. `extract_seam_unavailable`, `embed_seam_unavailable`).
+    pub degraded_reasons: Vec<String>,
+    /// Active/supplied embedding index contract, if known.
+    pub contract: Option<EmbeddingIndexContract>,
 }
 
 impl NoteReceipt {
@@ -217,15 +229,24 @@ impl NoteReceipt {
     /// this is a value a caller embeds, not an HTTP body it renders, and
     /// `Value::Object` re-sorts an ordered map the moment it is converted.
     pub fn to_json(&self) -> Value {
-        json!({
-            "status": "ok",
-            "node_id": self.node_id,
-            "chunk_count": self.chunk_count,
-            "duplicate": self.duplicate,
-            "provenance_id": self.provenance_id,
-            "indexed": self.indexed,
-            "sections": self.sections,
-        })
+        let mut obj = Map::new();
+        obj.insert("status".into(), json!("ok"));
+        obj.insert("node_id".into(), json!(self.node_id));
+        obj.insert("chunk_count".into(), json!(self.chunk_count));
+        obj.insert("duplicate".into(), json!(self.duplicate));
+        obj.insert("provenance_id".into(), json!(self.provenance_id));
+        obj.insert("indexed".into(), json!(self.indexed));
+        obj.insert("sections".into(), json!(self.sections));
+        obj.insert("ingest_status".into(), json!(self.ingest_status.as_str()));
+        obj.insert("embedding_mode".into(), json!(self.embedding_mode));
+        obj.insert("semantic".into(), json!(self.semantic));
+        obj.insert("degraded_reasons".into(), json!(self.degraded_reasons));
+        if let Some(contract) = &self.contract {
+            if let Ok(value) = serde_json::to_value(contract) {
+                obj.insert("embedding_contract".into(), value);
+            }
+        }
+        Value::Object(obj)
     }
 }
 
@@ -293,13 +314,12 @@ impl NoteIngestor {
         let mut embed_texts = Vec::with_capacity(chunks.len() + 1);
         embed_texts.push(enrichment.clone());
         embed_texts.extend(chunks.iter().map(|piece| piece.text.clone()));
-        let (extracted, embed_batch) = tokio::join!(
-            enrich::extract_via_seam(self.seam.as_ref(), &enrichment, "document"),
-            enrich::embed_texts_via_seam(self.seam.as_ref(), &embed_texts),
+        let ((extracted, extract_ok), embed_outcome) = tokio::join!(
+            enrich::extract_via_seam_status(self.seam.as_ref(), &enrichment, "document"),
+            enrich::embed_texts_with_contract(self.seam.as_ref(), &embed_texts),
         );
-        let (embedding, chunk_batch, native_agrees) =
-            split_note_embed(embed_batch, chunks.len(), &self.graph);
-        let chunks = enrich::attach_chunk_embeddings(chunks, chunk_batch, native_agrees);
+        let (embedding, chunk_batch) = split_note_embed(&embed_outcome, chunks.len());
+        let chunks = enrich::attach_chunk_embeddings_from_batch(chunks, chunk_batch.as_ref(), true);
 
         let mut request = note.content_request(owner, workspace_id);
         request.concepts = extracted.concepts;
@@ -311,7 +331,7 @@ impl NoteIngestor {
         let graph = self.graph.clone();
         let title = note.title.clone();
         let source_uri = note.source.clone();
-        let metadata = note.metadata.clone();
+        let mut metadata = note.metadata.clone();
         let owner = request.owner.clone();
         let workspace_id = request.workspace_id.clone();
         // The chunker's own `heading_path` per piece, kept because `request`
@@ -319,6 +339,7 @@ impl NoteIngestor {
         // it *after* the writer has answered with the chunk ids.
         let outline_chunks = request.chunks.clone();
         let written = tokio::task::spawn_blocking(move || {
+            let prior_contract = graph.current_index_contract().ok().flatten();
             let outcome = graph.ingest_content(&request)?;
             // The document's own outline as graph structure (v12.0.0). Written
             // after the content so the sections can point at real chunk rows,
@@ -351,9 +372,35 @@ impl NoteIngestor {
                 &outcome.chunk_ids,
                 &request.chunks,
             );
-            let indexed = native_agrees
-                && !outcome.node_id.is_empty()
-                && graph.write_vectors_with(&outcome.node_id, &supplied).status != "failed";
+            let vec_outcome = if !outcome.node_id.is_empty() {
+                Some(graph.write_vectors_with(&outcome.node_id, &supplied))
+            } else {
+                None
+            };
+            let indexed = vec_outcome
+                .as_ref()
+                .is_some_and(|res| res.status != "failed");
+            let incoming_contract = embed_outcome.contract().cloned();
+            let prior_mismatch = prior_contract
+                .as_ref()
+                .zip(incoming_contract.as_ref())
+                .is_some_and(|(prev, next)| !prev.is_compatible_with(next));
+            let vec_reindex = vec_outcome.as_ref().is_some_and(|res| res.reindex_required);
+            let active_contract = graph
+                .current_index_contract()
+                .ok()
+                .flatten()
+                .or(incoming_contract);
+            let telemetry = enrich::build_enrichment_telemetry(
+                false,
+                extract_ok,
+                Some(&embed_outcome),
+                None,
+                prior_mismatch || vec_reindex,
+                indexed || !supplied.is_empty(),
+                active_contract,
+            );
+            telemetry.apply_to_metadata(&mut metadata);
             // Provenance must never turn an already-persisted note into a
             // failure: the node is in the Brain either way.
             let provenance = graph
@@ -382,6 +429,11 @@ impl NoteIngestor {
                 provenance_id: provenance,
                 indexed,
                 sections,
+                ingest_status: telemetry.ingest_status,
+                embedding_mode: telemetry.embedding_mode,
+                semantic: telemetry.semantic,
+                degraded_reasons: telemetry.degraded_reasons,
+                contract: telemetry.contract,
             })
         })
         .await;
@@ -393,33 +445,30 @@ impl NoteIngestor {
     }
 }
 
-/// One `/worker/embed` reply: model identity plus one row per text.
-type EmbedBatch = (String, usize, Vec<Vec<f64>>);
-
 /// Split the single embed reply into the document vector and the chunk batch.
 ///
 /// Index 0 is the document. The rest are chunks in the same order
-/// [`enrich::chunk_pieces_for`] produced them. A missing seam is `None` and
-/// agrees with the native hash model, so `write_vectors_with` still hashes.
+/// [`enrich::chunk_pieces_for`] produced them. Real semantic provider batches
+/// are preserved with their own `model_id` and dimension rather than filtered
+/// against the local hash embedder.
 fn split_note_embed(
-    batch: Option<EmbedBatch>,
+    outcome: &SeamEmbedOutcome,
     chunk_count: usize,
-    graph: &GraphWriter,
-) -> (Option<SuppliedVector>, Option<EmbedBatch>, bool) {
-    let Some((model_id, dim, mut rows)) = batch else {
-        return (None, None, true);
+) -> (Option<SuppliedVector>, Option<SeamEmbedBatch>) {
+    let SeamEmbedOutcome::Ready(batch) = outcome else {
+        return (None, None);
     };
-    let agrees = enrich::model_agrees(graph, &model_id, dim);
+    let mut rows = batch.rows.clone();
     let document = if rows.is_empty() {
         None
     } else {
         let values = rows.remove(0);
-        if values.is_empty() {
+        if values.is_empty() || batch.contract.validate_vector(&values).is_err() {
             None
         } else {
             Some(SuppliedVector {
-                model_id: model_id.clone(),
-                dim: if dim == 0 { values.len() } else { dim },
+                model_id: batch.contract.model_id.clone(),
+                dim: batch.contract.dimension,
                 values,
             })
         }
@@ -428,9 +477,12 @@ fn split_note_embed(
     let chunk_batch = if rows.iter().all(|row| row.is_empty()) {
         None
     } else {
-        Some((model_id, dim, rows))
+        Some(SeamEmbedBatch {
+            contract: batch.contract.clone(),
+            rows,
+        })
     };
-    (document, chunk_batch, agrees)
+    (document, chunk_batch)
 }
 
 /// `(item_id, vector)` pairs `write_vectors_with` should file without hashing.
@@ -638,24 +690,24 @@ mod tests {
 
     #[test]
     fn one_embed_reply_splits_into_the_document_and_its_chunks() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let graph = writer(dir.path());
-        let (document, chunks, agrees) = split_note_embed(
-            Some((
-                graph.embedder().model_id().to_string(),
-                graph.embedder().dim(),
-                vec![vec![1.0, 0.0], vec![0.0, 1.0], vec![0.5, 0.5]],
-            )),
+        let semantic_contract = EmbeddingIndexContract::from_semantic(
+            "huggingface",
+            "huggingface:google/embeddinggemma-2:768",
             2,
-            &graph,
         );
-        assert!(agrees);
-        assert_eq!(document.unwrap().values, vec![1.0, 0.0]);
-        let chunk_rows = chunks.expect("chunk batch").2;
+        let outcome = SeamEmbedOutcome::Ready(SeamEmbedBatch {
+            contract: semantic_contract,
+            rows: vec![vec![1.0, 0.0], vec![0.0, 1.0], vec![0.5, 0.5]],
+        });
+        let (document, chunks) = split_note_embed(&outcome, 2);
+        let doc = document.expect("semantic document vector");
+        assert_eq!(doc.model_id, "huggingface:google/embeddinggemma-2:768");
+        assert_eq!(doc.dim, 2);
+        assert_eq!(doc.values, vec![1.0, 0.0]);
+        let chunk_rows = chunks.expect("chunk batch").rows;
         assert_eq!(chunk_rows.len(), 2);
         assert_eq!(chunk_rows[0], vec![0.0, 1.0]);
-        let empty = split_note_embed(None, 2, &graph);
-        assert!(empty.2, "a missing seam still licenses the native hash");
+        let empty = split_note_embed(&SeamEmbedOutcome::Unavailable, 2);
         assert!(empty.0.is_none());
         assert!(empty.1.is_none());
         assert_eq!(INGEST_INFLIGHT, 4);

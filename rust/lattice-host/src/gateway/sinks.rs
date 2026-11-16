@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use lattice_agent::proposals::{NewReviewItem, ProposalStore};
+use lattice_auth::AuthAuditSink;
 use lattice_chat::{AuditSink, EgressAudit, ReviewSink};
 use lattice_platform::admin::{append_audit_event, audit_log_path};
 use serde_json::{json, Value};
@@ -117,6 +118,28 @@ impl PlatformAudit {
 
 impl AuditSink for PlatformAudit {
     fn append(&self, event: &str, fields: &Value) {
+        let payload = fields.as_object().cloned().unwrap_or_default();
+        append_audit_event(&self.path, event, payload);
+    }
+}
+
+/// Persists `lattice-auth` login, password-migration, tenant-denial, SSO, and
+/// SCIM security events into the shared `audit_log.json`.
+pub struct PlatformAuthAudit {
+    path: PathBuf,
+}
+
+impl PlatformAuthAudit {
+    /// Point at the audit file under `data_dir`.
+    pub fn new(data_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            path: audit_log_path(&data_dir.into()),
+        }
+    }
+}
+
+impl AuthAuditSink for PlatformAuthAudit {
+    fn record(&self, event: &str, fields: &Value) {
         let payload = fields.as_object().cloned().unwrap_or_default();
         append_audit_event(&self.path, event, payload);
     }

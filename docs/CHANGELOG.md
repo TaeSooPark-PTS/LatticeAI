@@ -4,6 +4,18 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.8.0] - 2026-11-16 — Trusted Brain
+
+### Added
+- Added canonical `EmbeddingIndexContract` (`rust/lattice-core/src/embedding_contract.rs`), granular `IngestStatus`, `KnowledgeLifecycleState`/`KnowledgeLifecycleMetadata` (`lifecycle.rs`), and unified `GraphWriter` deletion cascades across Rust core and Python embedding workers.
+- Added SQLite workspace/lifecycle pre-`LIMIT` filtering, `vector_search_aligned` (`rust/lattice-retrieval/src/vector_alignment.rs`), bounded `SidecarCachePool` (`DEFAULT_MAX_CACHE_BYTES`) with subword `Bm25SidecarIndex` caching, and `rag_eval.rs` retrieval gates.
+- Added server-derived fail-closed isolation (`IsolatedRootSpec`, `resolve_agent_scope`, `IsolationState`, `AgentBindState`) across `/agent`, `/tools/*`, `/mcp/*`, `/skills/*`, `/cu/*`, `/api/automation/*`, and `/api/browser/*` with `agent_isolation_e2e` and enterprise audit coverage.
+- Added AEAD-encrypted `.latticebrain` archive portability (`archive.rs`, `crypto.rs`) with path/symlink traversal rejection, X25519 share export/accept governance, pre-restore backup, and honest `planned` PostgreSQL reporting (`postgres.rs`).
+- Added automated PR retrieval/sidecar gates in `.github/workflows/ci.yml` and Apple Silicon Tauri DMG build, codesign/notarization hooks, and `SHA256SUMS` publishing in `.github/workflows/{release,publish}.yml`.
+
+### Changed
+- Refactored `Library.tsx`, `System.tsx`, and `Capture.tsx` into modular slices under `frontend/src/features/` while maintaining 100% Vitest coverage across 108 files, and removed obsolete `scratchpad/` files.
+
 ## [12.7.0] - 2026-11-16 — Fast Index
 
 ### Added

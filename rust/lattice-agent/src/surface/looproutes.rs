@@ -117,12 +117,28 @@ impl LoopConfig {
     }
 }
 
+/// Authorizes access to a shared workspace for `(user_email, workspace_id)`.
+pub type ScopeAuthorizer =
+    Arc<dyn Fn(Option<&str>, Option<&str>) -> Result<bool, String> + Send + Sync>;
+
 /// Shared state for the three loop routes.
-#[derive(Debug)]
 pub struct LoopState {
     workspace: Workspace,
     config: LoopConfig,
     store: AgentRunStore,
+    isolate_per_user: bool,
+    authorizer: Option<ScopeAuthorizer>,
+}
+
+impl std::fmt::Debug for LoopState {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("LoopState")
+            .field("workspace", &self.workspace)
+            .field("isolate_per_user", &self.isolate_per_user)
+            .field("has_authorizer", &self.authorizer.is_some())
+            .finish()
+    }
 }
 
 impl LoopState {
@@ -135,11 +151,74 @@ impl LoopState {
             workspace,
             config,
             store,
+            isolate_per_user: false,
+            authorizer: None,
         }
+    }
+
+    /// Derive a per-user/per-workspace `AGENT_ROOT` under `base_workspace` on
+    /// every request rather than sharing one directory across users.
+    pub fn isolated(base_workspace: Workspace, config: LoopConfig) -> Self {
+        let mut state = Self::new(base_workspace, config);
+        state.isolate_per_user = true;
+        state
+    }
+
+    /// Attach a workspace membership authorizer for shared workspaces.
+    pub fn with_authorizer(mut self, authorizer: ScopeAuthorizer) -> Self {
+        self.authorizer = Some(authorizer);
+        self
     }
 
     pub fn store(&self) -> &AgentRunStore {
         &self.store
+    }
+
+    fn resolve_workspace_for(&self, body: &RunBody) -> Result<Workspace, (StatusCode, Value)> {
+        if !self.isolate_per_user {
+            return Ok(self.workspace.clone());
+        }
+        let shared = crate::tools::sandbox::is_shared_workspace_id(body.workspace_id.as_deref());
+        let shared_authorized = if shared {
+            match &self.authorizer {
+                Some(auth) => auth(body.user_email.as_deref(), body.workspace_id.as_deref())
+                    .map_err(|msg| {
+                        (
+                            StatusCode::FORBIDDEN,
+                            json!({"error": "workspace_access_denied", "detail": msg}),
+                        )
+                    })?,
+                None => false,
+            }
+        } else {
+            false
+        };
+        if shared && !shared_authorized {
+            return Err((
+                StatusCode::FORBIDDEN,
+                json!({
+                    "error": "workspace_access_denied",
+                    "detail": "shared workspace access denied",
+                }),
+            ));
+        }
+        let spec = crate::tools::sandbox::IsolatedRootSpec {
+            base_root: self.workspace.root().to_path_buf(),
+            user_id: body.user_email.clone(),
+            tenant_id: body.tenant_id.clone(),
+            workspace_id: body.workspace_id.clone(),
+            shared_authorized,
+            require_user_isolation: true,
+        };
+        Workspace::for_isolated_scope(&spec).map_err(|err| {
+            (
+                StatusCode::FORBIDDEN,
+                json!({
+                    "error": "workspace_isolation_error",
+                    "detail": err.message,
+                }),
+            )
+        })
     }
 
     /// The ports one run needs: the body's, with the host's proposal store and
@@ -148,9 +227,17 @@ impl LoopState {
     /// Every `Runtime` these routes build comes through here, so neither
     /// injection can be forgotten on one of the four paths.
     fn deps_for(&self, body: &RunBody) -> crate::kernel::agentloop::LoopDeps {
+        self.deps_with_workspace(body, self.workspace.clone())
+    }
+
+    fn deps_with_workspace(
+        &self,
+        body: &RunBody,
+        workspace: Workspace,
+    ) -> crate::kernel::agentloop::LoopDeps {
         let mut deps = body.to_deps_with_ports(
             self.config.worker(),
-            self.workspace.clone(),
+            workspace,
             self.config.hooks.clone(),
             self.config.external.clone(),
         );
@@ -170,15 +257,33 @@ pub fn loop_router(workspace: Workspace, config: LoopConfig) -> Router {
         .with_state(Arc::new(LoopState::new(workspace, config)))
 }
 
+/// Mount the loop routes with per-user/per-workspace root isolation enabled.
+pub fn loop_router_isolated(
+    base_workspace: Workspace,
+    config: LoopConfig,
+    authorizer: Option<ScopeAuthorizer>,
+) -> Router {
+    let mut state = LoopState::isolated(base_workspace, config);
+    if let Some(auth) = authorizer {
+        state = state.with_authorizer(auth);
+    }
+    Router::new()
+        .route("/rust/agent/run", post(run))
+        .route("/rust/agent/resume", post(resume))
+        .route("/rust/agent/approvals", get(approvals))
+        .with_state(Arc::new(state))
+}
+
 fn refuse(status: StatusCode, detail: Value) -> Response {
     (status, Json(json!({"detail": detail}))).into_response()
 }
 
 /// A run either finished, or paused, or could not reach the reasoner.
 enum Outcome {
-    Finished(AgentRunContext, Vec<Value>),
+    Finished(AgentRunContext, Vec<Value>, Workspace),
     Paused(AgentRunContext, Value),
     Unreachable(String),
+    Denied(StatusCode, Value),
 }
 
 /// Plan, then either pause for approval or drive to a terminal state.
@@ -188,7 +293,11 @@ async fn drive(
     request: &RunRequest,
     observer: Option<crate::kernel::agentloop::StepObserver>,
 ) -> Outcome {
-    let deps = state.deps_for(body);
+    let workspace = match state.resolve_workspace_for(body) {
+        Ok(ws) => ws,
+        Err((status, detail)) => return Outcome::Denied(status, detail),
+    };
+    let deps = state.deps_with_workspace(body, workspace.clone());
     let mut runtime = Runtime::new(deps);
     if let Some(observer) = observer {
         runtime = runtime.with_observer(observer);
@@ -212,7 +321,7 @@ async fn drive(
     }
     runtime.approve(&mut ctx, request, false);
     match runtime.run_to_completion(&mut ctx, request).await {
-        Ok(()) => Outcome::Finished(ctx, runtime.audit),
+        Ok(()) => Outcome::Finished(ctx, runtime.audit, workspace),
         Err(error) => Outcome::Unreachable(error.0),
     }
 }
@@ -272,16 +381,17 @@ async fn run(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> Res
     let request = body.to_request();
     if !body.stream {
         return match drive(&state, &body, &request, None).await {
-            Outcome::Finished(ctx, audit) => Json(finish_payload(
+            Outcome::Finished(ctx, audit, workspace) => Json(finish_payload(
                 &ctx,
                 &body,
-                &state.workspace,
+                &workspace,
                 &state.deps_for(&body).file_create_actions,
                 &audit,
             ))
             .into_response(),
             Outcome::Paused(mut ctx, requirements) => pause(&state, &body, &mut ctx, &requirements),
             Outcome::Unreachable(detail) => refuse(StatusCode::BAD_GATEWAY, json!(detail)),
+            Outcome::Denied(status, detail) => refuse(status, detail),
         };
     }
 
@@ -299,21 +409,16 @@ async fn run(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> Res
     });
     tokio::spawn(async move {
         let payload = match drive(&state, &body, &request, Some(observer)).await {
-            Outcome::Finished(ctx, audit) => {
+            Outcome::Finished(ctx, audit, workspace) => {
                 let deps = state.deps_for(&body);
-                finish_payload(
-                    &ctx,
-                    &body,
-                    &state.workspace,
-                    &deps.file_create_actions,
-                    &audit,
-                )
+                finish_payload(&ctx, &body, &workspace, &deps.file_create_actions, &audit)
             }
             Outcome::Paused(mut ctx, requirements) => {
                 let response = pause(&state, &body, &mut ctx, &requirements);
                 body_json(response).await
             }
             Outcome::Unreachable(detail) => json!({"error": detail}),
+            Outcome::Denied(_status, detail) => json!({"error": detail}),
         };
         let answer = payload
             .get("response")
@@ -420,8 +525,12 @@ async fn resume(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> 
         .into_response();
     }
 
+    let workspace = match state.resolve_workspace_for(&stored_request) {
+        Ok(ws) => ws,
+        Err((status, detail)) => return refuse(status, detail),
+    };
     let request = stored_request.to_request();
-    let deps = state.deps_for(&stored_request);
+    let deps = state.deps_with_workspace(&stored_request, workspace.clone());
     let file_create_actions = deps.file_create_actions.clone();
     let mut runtime = Runtime::new(deps);
     let mut ctx = AgentRunContext::restore(&record["ctx"]);
@@ -449,7 +558,7 @@ async fn resume(State(state): State<Arc<LoopState>>, Json(raw): Json<Value>) -> 
         Ok(()) => Json(finish_payload(
             &ctx,
             &stored_request,
-            &state.workspace,
+            &workspace,
             &file_create_actions,
             &runtime.audit,
         ))
@@ -468,5 +577,15 @@ async fn approvals(
     State(state): State<Arc<LoopState>>,
     Query(query): Query<ApprovalsQuery>,
 ) -> Response {
+    if state.isolate_per_user
+        && query
+            .user
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or("")
+            .is_empty()
+    {
+        return Json(json!({"pending": []})).into_response();
+    }
     Json(json!({"pending": state.store.pending_summaries(query.user.as_deref())})).into_response()
 }

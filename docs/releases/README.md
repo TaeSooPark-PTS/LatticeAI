@@ -4,6 +4,7 @@ Per-version release notes for Lattice AI (`v12.0.0` and later). The rolling summ
 
 | Version | Theme | Note |
 | --- | --- | --- |
+| 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](RELEASE_NOTES_v12.8.0.md) |
 | 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](RELEASE_NOTES_v12.7.0.md) |
 | 12.6.0 | Hybrid Graph | [RELEASE_NOTES_v12.6.0.md](RELEASE_NOTES_v12.6.0.md) |
 | 12.5.0 | Deep Vector | [RELEASE_NOTES_v12.5.0.md](RELEASE_NOTES_v12.5.0.md) |

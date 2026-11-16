@@ -1,26 +1,26 @@
-"""The AI-Worker application profile (v11.6.0, plan §WP-I6).
+"""The AI-Worker application profile.
 
-``create_app`` builds the product server: 464 routes, the SPA, the whole
-platform. v11.6.0 moves 439 of those into ``lattice-host`` and leaves Python as
-what the system diagram has always drawn — the **AI Worker**: it infers with the
-loaded MLX model, it runs tool handlers, it is the single writer of the Brain,
-it stages proposals, it parses documents and it produces embeddings.
+``create_app`` builds the full FastAPI application surface, while
+``lattice-host`` owns the product gateway, knowledge-graph writes, and
+governance/proposal state. Python remains the loopback **AI Worker**: it runs
+local/provider LLM inference, tool handlers, document parsing/rendering, ASR,
+concept extraction, HNSW sidecar queries, and neural/fallback text embeddings.
 
-``create_worker_app`` is that process's entrypoint. It is deliberately *not* a
-second assembly: it runs the same construction ``create_app`` does and then
-applies the worker profile (:mod:`latticeai.runtime.build_phases.worker_profile`),
-which mounts the three v11.6.0 seams and reduces the route table to the 25
-KEEP_WORKER routes, the graph single-writer door and those seams. Two reasons
-for that shape rather than a slimmer phase list:
+``create_worker_app`` is that process's entrypoint. It runs ``build_context``
+and applies :func:`latticeai.runtime.build_phases.worker_profile.phase_worker_routes`,
+which mounts the loopback seams (``WORKER_SEAM_ROUTES`` and
+``WORKER_COMPUTE_ROUTES``) and filters the route table to the exact 20 routes
+declared in :func:`~latticeai.runtime.build_phases.worker_profile.worker_route_keys`
+(9 ``WORKER_ROUTES`` + 2 ``WORKER_SEAM_ROUTES`` + 9 ``WORKER_COMPUTE_ROUTES``,
+with ``GRAPH_WRITER_ROUTES`` retired after native write cutover). Two reasons
+for filtering the assembled app rather than maintaining a separate phase list:
 
-* the routers the worker keeps are constructed by the same phases as everything
-  else — the document tools and the model lifecycle come out of
-  ``phase_interaction``, the voice and index-drain surfaces out of
-  ``phase_platform_features`` — so a "worker phase list" would have to split
-  four modules that WP-P1 is about to delete outright;
-* the contract the Rust gateway needs *now* is the allowlist, and an allowlist
-  is a fact about the served surface, not about how it was assembled. Deleting
-  the complement (plan §Wave 3) leaves this function unchanged.
+* the kept product routes (model lifecycle, agent LLM/tool doors, embedding
+  status, and ``/health``) are wired by the same assembly phases as the rest of
+  the runtime, avoiding duplicated wiring;
+* ``rust/fixtures/worker_allowlist.json`` is generated directly from
+  ``worker_route_keys()``, so the allowlist and the worker surface stay a single
+  contract checked from both ends.
 
 The host launches it as an ASGI factory::
 
@@ -28,8 +28,7 @@ The host launches it as an ASGI factory::
 
 and gates the worker's readiness on ``GET /health``, whose ``access`` block —
 ``require_auth`` and ``externally_reachable`` — the supervisor reads to decide
-whether its own native lanes may talk to this process. That route is on the
-worker profile for exactly that reason.
+whether its own native lanes may talk to this process.
 """
 
 from __future__ import annotations

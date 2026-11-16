@@ -20,7 +20,7 @@ use super::*;
 use crate::workspaceos::project_sessions;
 
 const SNAPSHOT_KIND: &str = "vacuum-into";
-const BLOBS_PREFIX: &str = "knowledge_graph_blobs/";
+pub(super) const BLOBS_PREFIX: &str = "knowledge_graph_blobs/";
 
 fn export_artifact(state: &PortabilityState) -> OrderedMap {
     let (nodes, edges, chunks) = export_rows(&state.config.graph_db_path());
@@ -114,7 +114,7 @@ fn export_rows(path: &Path) -> (Vec<Value>, Vec<Value>, Vec<Value>) {
     )
 }
 
-fn query_values(
+pub(super) fn query_values(
     conn: &Connection,
     sql: &str,
     map: impl Fn(&rusqlite::Row<'_>) -> rusqlite::Result<Value>,
@@ -128,7 +128,7 @@ fn query_values(
     rows.flatten().collect()
 }
 
-fn table_count(conn: &Connection, table: &str) -> u64 {
+pub(super) fn table_count(conn: &Connection, table: &str) -> u64 {
     conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
         row.get::<_, i64>(0)
     })
@@ -136,7 +136,7 @@ fn table_count(conn: &Connection, table: &str) -> u64 {
     .unwrap_or(0)
 }
 
-fn snapshot_counts(path: &Path) -> (u64, u64, u64) {
+pub(super) fn snapshot_counts(path: &Path) -> (u64, u64, u64) {
     let Ok(conn) = lattice_core::db::open_read_only(path) else {
         return (0, 0, 0);
     };
@@ -262,7 +262,10 @@ pub(crate) async fn backup_graph(
     }
 }
 
-fn write_backup_zip(state: &PortabilityState, dest: Option<&str>) -> Result<OrderedMap, String> {
+pub(super) fn write_backup_zip(
+    state: &PortabilityState,
+    dest: Option<&str>,
+) -> Result<OrderedMap, String> {
     let dir = state.exports_dir();
     let _ = std::fs::create_dir_all(&dir);
     let dest = dest
@@ -326,7 +329,7 @@ fn write_backup_zip(state: &PortabilityState, dest: Option<&str>) -> Result<Orde
     Ok(map)
 }
 
-fn snapshot_live_db(
+pub(super) fn snapshot_live_db(
     db: &Path,
     graph: Option<&lattice_core::graph_write::GraphWriter>,
     dest: &Path,
@@ -349,15 +352,15 @@ fn snapshot_live_db(
     Ok(dest.exists())
 }
 
-fn blobs_dir(state: &PortabilityState) -> PathBuf {
+pub(super) fn blobs_dir(state: &PortabilityState) -> PathBuf {
     state
         .config
         .data_dir()
         .join(state_files::KNOWLEDGE_GRAPH_BLOBS)
 }
 
-fn add_dir_to_zip(
-    zip: &mut zip::ZipWriter<File>,
+pub(super) fn add_dir_to_zip<W: Write + std::io::Seek>(
+    zip: &mut zip::ZipWriter<W>,
     options: zip::write::SimpleFileOptions,
     root: &Path,
     prefix: &str,
@@ -367,8 +370,8 @@ fn add_dir_to_zip(
     Ok(count)
 }
 
-fn add_dir_to_zip_inner(
-    zip: &mut zip::ZipWriter<File>,
+fn add_dir_to_zip_inner<W: Write + std::io::Seek>(
+    zip: &mut zip::ZipWriter<W>,
     options: zip::write::SimpleFileOptions,
     root: &Path,
     current: &Path,
@@ -396,7 +399,7 @@ fn add_dir_to_zip_inner(
     Ok(())
 }
 
-fn sha256_file(path: &Path) -> String {
+pub(super) fn sha256_file(path: &Path) -> String {
     let Ok(bytes) = std::fs::read(path) else {
         return String::new();
     };
@@ -457,7 +460,7 @@ pub(crate) async fn restore_graph(
     }
 }
 
-fn restore_backup_zip(
+pub(super) fn restore_backup_zip(
     state: &PortabilityState,
     archive_path: &Path,
     dry_run: bool,
@@ -532,8 +535,8 @@ fn archive_has_blobs(archive: &zip::ZipArchive<File>) -> bool {
     })
 }
 
-fn extract_named_file(
-    archive: &mut zip::ZipArchive<File>,
+pub(super) fn extract_named_file<R: Read + std::io::Seek>(
+    archive: &mut zip::ZipArchive<R>,
     name: &str,
     dest: &Path,
 ) -> Result<bool, String> {
@@ -548,8 +551,8 @@ fn extract_named_file(
     Ok(true)
 }
 
-fn restore_blobs_from_archive(
-    archive: &mut zip::ZipArchive<File>,
+pub(super) fn restore_blobs_from_archive<R: Read + std::io::Seek>(
+    archive: &mut zip::ZipArchive<R>,
     dest: &Path,
 ) -> Result<usize, String> {
     let parent = dest.parent().unwrap_or_else(|| Path::new("."));
@@ -603,7 +606,7 @@ fn restore_blobs_from_archive(
 /// Same rename dance as `lattice_auth::atomic`: the live name only ever
 /// appears as a complete file. Sidecar WAL/SHM files from the previous
 /// generation are moved aside so they cannot be replayed onto the snapshot.
-fn replace_live_db(live: &Path, snapshot: &Path) -> Result<(), String> {
+pub(super) fn replace_live_db(live: &Path, snapshot: &Path) -> Result<(), String> {
     if !snapshot.exists() {
         return Err("restore snapshot is missing".into());
     }

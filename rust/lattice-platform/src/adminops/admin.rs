@@ -33,7 +33,10 @@ pub use config::{
     matches_workspace_scope, public_sso_config, save_sso_config, save_vpc_config,
 };
 pub use enterprise::{
-    default_product_hardening, default_product_hardening_probed, poc_overview, siem_export_stub,
+    default_product_hardening, default_product_hardening_probed, emit_sanitized_governance_audit,
+    load_org_governance_policy, normalize_tenant_scope, poc_overview, sanitize_audit_payload,
+    save_org_governance_policy, siem_export_stub, validate_tenant_scope,
+    OrganizationGovernancePolicy,
 };
 pub use http::{
     detail_status, json_ok, json_ok_value, json_status, language_from, message_error,

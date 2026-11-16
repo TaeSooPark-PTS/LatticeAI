@@ -63,6 +63,7 @@
 
 pub mod agentloop;
 pub mod breaker;
+pub mod eval;
 pub mod governor;
 pub mod mode;
 pub mod permission;

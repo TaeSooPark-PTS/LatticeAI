@@ -489,27 +489,24 @@ impl GraphWriter {
     /// Text shorter than two characters deletes the row instead of embedding
     /// noise, and an unchanged `(text_hash, dim, model)` is skipped: that skip
     /// is what makes an incremental rebuild cheap, and it is also why swapping
-    /// the embedder re-embeds everything.
-    pub(crate) fn upsert_vector_item(
-        &self,
-        txn: &Transaction<'_>,
-        item: &VectorItem,
-    ) -> Result<bool, CoreError> {
-        self.upsert_vector_item_with(txn, item, None)
-    }
-
-    /// [`Self::upsert_vector_item`], filing `supplied` instead of hashing.
-    ///
-    /// Empty values fall through to the native hash model so a caller that
-    /// asked for the door with nothing in hand still writes a row. The skip
-    /// key is `(text_hash, dim, model)` of whichever identity we are about to
-    /// write, so a provider vector is not "already there" just because a hash
-    /// row of the same text exists.
+    /// the embedder re-embeds everything. Empty `supplied` values fall through
+    /// to the native hash model so a caller that asked for the door with
+    /// nothing in hand still writes a row.
     pub(crate) fn upsert_vector_item_with(
         &self,
         txn: &Transaction<'_>,
         item: &VectorItem,
         supplied: Option<&super::types::SuppliedVector>,
+    ) -> Result<bool, CoreError> {
+        self.upsert_vector_item_with_precomputed(txn, item, supplied, None)
+    }
+
+    pub(crate) fn upsert_vector_item_with_precomputed(
+        &self,
+        txn: &Transaction<'_>,
+        item: &VectorItem,
+        supplied: Option<&super::types::SuppliedVector>,
+        precomputed_native: Option<&[f64]>,
     ) -> Result<bool, CoreError> {
         let text = clean_text(&item.text);
         if text.chars().count() < 2 {
@@ -520,8 +517,25 @@ impl GraphWriter {
             return Ok(false);
         }
         let text_hash = sha256_text(&text);
-        let (embedding, dim, model) = match supplied.filter(|vector| !vector.values.is_empty()) {
+        let mut metadata_buf;
+        let (embedding, dim, model, metadata_ref) = match supplied
+            .filter(|vector| !vector.values.is_empty())
+        {
             Some(vector) => {
+                if vector.dim > 0 && vector.values.len() != vector.dim {
+                    return Err(CoreError::InvalidRequest(format!(
+                        "supplied vector dimension mismatch for {}: expected {}, got {}",
+                        vector.model_id,
+                        vector.dim,
+                        vector.values.len()
+                    )));
+                }
+                if vector.values.iter().any(|value| !value.is_finite()) {
+                    return Err(CoreError::InvalidRequest(format!(
+                        "supplied vector for {} contains non-finite values",
+                        vector.model_id
+                    )));
+                }
                 let dim = if vector.dim > 0 {
                     vector.dim
                 } else {
@@ -532,14 +546,43 @@ impl GraphWriter {
                 } else {
                     vector.model_id.clone()
                 };
-                (self.embedder.encode(&vector.values), dim as i64, model)
+                let contract =
+                    crate::embeddings::EmbeddingIndexContract::from_parts(None, model.clone(), dim);
+                metadata_buf = item.metadata.clone();
+                metadata_buf.insert(
+                    "embedding_grade".into(),
+                    Value::String(contract.grade.clone()),
+                );
+                metadata_buf.insert("semantic".into(), Value::Bool(contract.is_semantic()));
+                metadata_buf.insert(
+                    "embedding_provider".into(),
+                    Value::String(contract.provider.clone()),
+                );
+                metadata_buf.insert(
+                    "embedding_normalization".into(),
+                    Value::String(contract.normalization.clone()),
+                );
+                (
+                    self.embedder.encode(&vector.values),
+                    dim as i64,
+                    model,
+                    &metadata_buf,
+                )
             }
-            None => (
-                self.embedder
-                    .encode(&self.embedder.embed(&truncate_chars(&text, 50_000))),
-                self.embedder.dim() as i64,
-                self.embedder.model_id().to_string(),
-            ),
+            None => {
+                let encoded = match precomputed_native {
+                    Some(values) if !values.is_empty() => self.embedder.encode(values),
+                    _ => self
+                        .embedder
+                        .encode(&self.embedder.embed(&truncate_chars(&text, 50_000))),
+                };
+                (
+                    encoded,
+                    self.embedder.dim() as i64,
+                    self.embedder.model_id().to_string(),
+                    &item.metadata,
+                )
+            }
         };
         let existing: Option<(String, i64, String)> = txn
             .query_row(
@@ -576,7 +619,7 @@ impl GraphWriter {
                 embedding,
                 dim,
                 model,
-                json_of(&item.metadata),
+                json_of(metadata_ref),
                 self.clock.now_iso(),
             ],
         )?;

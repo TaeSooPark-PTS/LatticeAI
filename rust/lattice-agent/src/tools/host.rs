@@ -277,12 +277,26 @@ impl NativeTools {
             "edit_file" => self.blocking(call.args, files::edit_file).await,
             "todo_write" => self.blocking(call.args, files::todo_write).await,
             "create_web_project" => self.blocking(call.args, scaffold::create_web_project).await,
-            "knowledge_save" => self.in_vault(call.args, vault::knowledge_save).await,
-            "obsidian_save" => self.in_vault(call.args, vault::obsidian_save).await,
+            "knowledge_save" => {
+                self.in_vault_scoped(call.args, call.scope, vault::knowledge_save)
+                    .await
+            }
+            "obsidian_save" => {
+                self.in_vault_scoped(call.args, call.scope, vault::obsidian_save)
+                    .await
+            }
             "local_write" => {
                 let prefixes = self.config.blocked_write_prefixes.clone();
                 let args = call.args.clone();
-                blocking(move || local::local_write(&prefixes, &args)).await
+                let workspace = self.workspace.clone();
+                blocking(move || {
+                    if workspace.is_confined() {
+                        local::local_write_confined(&workspace, &prefixes, &args)
+                    } else {
+                        local::local_write(&prefixes, &args)
+                    }
+                })
+                .await
             }
             "run_command" => shell::run_command(&self.workspace, call.args).await,
             "build_project" => shell::build_project(&self.workspace, call.args).await,
@@ -315,15 +329,31 @@ impl NativeTools {
         blocking(move || tool(&workspace, &args)).await
     }
 
-    /// The same, for the two tools rooted in the knowledge garden.
-    async fn in_vault<F>(&self, args: &Map<String, Value>, tool: F) -> Result<Value, ToolError>
+    /// The same, for the two tools rooted in the knowledge garden, pinning
+    /// server scope onto `args` so callers cannot spoof another user/workspace.
+    async fn in_vault_scoped<F>(
+        &self,
+        args: &Map<String, Value>,
+        scope: &CallScope,
+        tool: F,
+    ) -> Result<Value, ToolError>
     where
         F: FnOnce(&std::path::Path, &Map<String, Value>) -> Result<Value, ToolError>
             + Send
             + 'static,
     {
         let brain_dir = self.config.brain_dir.clone();
-        let args = args.clone();
+        let mut args = args.clone();
+        if let Some(ref user) = scope.user_email {
+            if !user.trim().is_empty() {
+                args.insert("user_email".into(), Value::String(user.clone()));
+            }
+        }
+        if let Some(ref ws) = scope.workspace_id {
+            if !ws.trim().is_empty() {
+                args.insert("workspace_id".into(), Value::String(ws.clone()));
+            }
+        }
         blocking(move || tool(&brain_dir, &args)).await
     }
 }

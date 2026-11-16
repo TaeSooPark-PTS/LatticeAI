@@ -11,10 +11,12 @@ use std::collections::BTreeSet;
 use lattice_core::pytext::safe_loads;
 use lattice_core::read::{filter_scoped_nodes, read_tables, NodeRow};
 use lattice_core::CoreError;
-use rusqlite::Connection;
+use rusqlite::{params_from_iter, types::Value as SqlValue, Connection};
 use serde_json::{Map, Value};
 
+use crate::bm25::scoring::{build_node_scope_sql, detect_nodes_v2_schema};
 use crate::concepts::topic_candidates;
+use crate::service::Scope;
 use crate::shape::{haystack, json_opt};
 
 /// Node types `search()` gives a +1 relevance boost. Fixed list, not a config.
@@ -33,7 +35,7 @@ pub const TYPE_BOOST: [&str; 12] = [
     "Slide",
 ];
 
-const NODE_COLUMNS: &str = "id, type, title, summary, metadata_json, updated_at";
+const NODE_COLUMNS_N: &str = "n.id, n.type, n.title, n.summary, n.metadata_json, n.updated_at";
 
 /// `projection.v2_schema._fts_match_ids` — ranked ids, `[]` on any failure.
 pub fn fts_match_ids(conn: &Connection, query: &str, limit: i64) -> Vec<String> {
@@ -57,10 +59,10 @@ pub fn fts_match_ids(conn: &Connection, query: &str, limit: i64) -> Vec<String> 
 fn query_nodes(
     conn: &Connection,
     sql: &str,
-    params: &[&dyn rusqlite::ToSql],
+    params: Vec<SqlValue>,
 ) -> Result<Vec<NodeRow>, CoreError> {
     let mut stmt = conn.prepare(sql)?;
-    let rows = stmt.query_map(params, |row| {
+    let rows = stmt.query_map(params_from_iter(params), |row| {
         Ok(NodeRow {
             id: row.get("id")?,
             node_type: row.get("type")?,
@@ -114,31 +116,66 @@ pub fn search(
     let like = format!("%{query}%");
     let limit = if limit == 0 { 30 } else { limit }.clamp(1, 100);
     let (nodes_table, _edges_table) = read_tables(conn);
+    let scope = Scope {
+        allowed_workspaces: allowed.cloned(),
+        include_legacy_global,
+    };
+    let schema = detect_nodes_v2_schema(conn)?;
+    let scope_parts = build_node_scope_sql(schema, "n", &scope, true);
+    let scope_cond = scope_parts
+        .where_clause
+        .strip_prefix("WHERE ")
+        .unwrap_or("")
+        .to_string();
+    let join_clause = scope_parts.join_clause;
 
     let mut rows: Vec<NodeRow> = Vec::new();
     if !query.is_empty() {
-        let fts_ids = fts_match_ids(conn, &query, limit);
+        let fts_limit = if allowed.is_some() {
+            (limit * 4).min(400)
+        } else {
+            limit
+        };
+        let fts_ids = fts_match_ids(conn, &query, fts_limit);
         if !fts_ids.is_empty() {
             let placeholders = vec!["?"; fts_ids.len()].join(",");
-            let sql =
-                format!("SELECT {NODE_COLUMNS} FROM {nodes_table} WHERE id IN ({placeholders})");
-            let params: Vec<&dyn rusqlite::ToSql> = fts_ids
-                .iter()
-                .map(|id| id as &dyn rusqlite::ToSql)
-                .collect();
-            let hydrated = query_nodes(conn, &sql, &params)?;
+            let extra_scope = if scope_cond.is_empty() {
+                String::new()
+            } else {
+                format!(" AND ({scope_cond})")
+            };
+            let sql = format!(
+                "SELECT {NODE_COLUMNS_N} FROM {nodes_table} n {join_clause} \
+                 WHERE n.id IN ({placeholders}){extra_scope}"
+            );
+            let mut params: Vec<SqlValue> = fts_ids.iter().cloned().map(SqlValue::Text).collect();
+            params.extend(scope_parts.params.iter().cloned());
+            let hydrated = query_nodes(conn, &sql, params)?;
             // Preserve the FTS rank order the ids arrived in.
             rows = fts_ids
                 .iter()
                 .filter_map(|id| hydrated.iter().find(|row| &row.id == id).cloned())
+                .take(limit as usize)
                 .collect();
         } else {
+            let extra_scope = if scope_cond.is_empty() {
+                String::new()
+            } else {
+                format!(" AND ({scope_cond})")
+            };
             let sql = format!(
-                "SELECT {NODE_COLUMNS} FROM {nodes_table} \
-                 WHERE title LIKE ? OR summary LIKE ? OR metadata_json LIKE ? \
-                 ORDER BY updated_at DESC, id ASC LIMIT ?"
+                "SELECT {NODE_COLUMNS_N} FROM {nodes_table} n {join_clause} \
+                 WHERE (n.title LIKE ? OR n.summary LIKE ? OR n.metadata_json LIKE ?){extra_scope} \
+                 ORDER BY n.updated_at DESC, n.id ASC LIMIT ?"
             );
-            rows = query_nodes(conn, &sql, rusqlite::params![like, like, like, limit])?;
+            let mut params = vec![
+                SqlValue::Text(like.clone()),
+                SqlValue::Text(like.clone()),
+                SqlValue::Text(like.clone()),
+            ];
+            params.extend(scope_parts.params.iter().cloned());
+            params.push(SqlValue::Integer(limit));
+            rows = query_nodes(conn, &sql, params)?;
         }
     }
 
@@ -146,21 +183,28 @@ pub fn search(
         let terms = topic_candidates(&query, 8);
         if !terms.is_empty() {
             let clauses =
-                vec!["(title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)"; terms.len()]
+                vec!["(n.title LIKE ? OR n.summary LIKE ? OR n.metadata_json LIKE ?)"; terms.len()]
                     .join(" OR ");
+            let extra_scope = if scope_cond.is_empty() {
+                String::new()
+            } else {
+                format!(" AND ({scope_cond})")
+            };
             let sql = format!(
-                "SELECT {NODE_COLUMNS} FROM {nodes_table} WHERE {clauses} \
-                 ORDER BY updated_at DESC, id ASC LIMIT ?"
+                "SELECT {NODE_COLUMNS_N} FROM {nodes_table} n {join_clause} \
+                 WHERE ({clauses}){extra_scope} \
+                 ORDER BY n.updated_at DESC, n.id ASC LIMIT ?"
             );
-            let mut owned: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+            let mut params: Vec<SqlValue> = Vec::with_capacity(terms.len() * 3 + 8);
             for term in &terms {
+                let pat = SqlValue::Text(format!("%{term}%"));
                 for _ in 0..3 {
-                    owned.push(Box::new(format!("%{term}%")));
+                    params.push(pat.clone());
                 }
             }
-            owned.push(Box::new(limit * 3));
-            let params: Vec<&dyn rusqlite::ToSql> = owned.iter().map(|p| p.as_ref()).collect();
-            let extra = query_nodes(conn, &sql, &params)?;
+            params.extend(scope_parts.params.iter().cloned());
+            params.push(SqlValue::Integer(limit * 3));
+            let extra = query_nodes(conn, &sql, params)?;
             // `by_id.setdefault` semantics: dedupe by id, existing rows win,
             // new ones append in their own order.
             let mut merged: Vec<NodeRow> = Vec::new();
@@ -179,15 +223,15 @@ pub fn search(
     // keeps the id order rather than whatever bm25 or SQLite happened to yield.
     rows.sort_by_key(|row| row.id.clone());
     rows.sort_by_key(|row| std::cmp::Reverse(score_key(row, &terms_for_score)));
-    rows.truncate(limit as usize);
 
     let matches: Vec<Map<String, Value>> = rows.iter().map(as_match).collect();
-    let matches = filter_scoped_nodes(conn, matches, allowed, include_legacy_global, |item| {
+    let mut matches = filter_scoped_nodes(conn, matches, allowed, include_legacy_global, |item| {
         item.get("id")
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_string()
     })?;
+    matches.truncate(limit as usize);
 
     let mut out = Map::new();
     out.insert("query".into(), Value::String(query));

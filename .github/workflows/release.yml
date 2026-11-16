@@ -1,7 +1,10 @@
 name: Release
 
-# Runs on semantic release tag pushes, with or without a leading v. Builds and
-# validates all release artifacts only.
+# Runs on semantic release tag pushes, with or without a leading v, and on
+# manual dispatch. Builds, signs, smoke-verifies, checksums, and attaches all
+# exact-version release assets (Python wheel/sdist, npm tarball, VS Code VSIX,
+# and macOS Apple Silicon Tauri DMG) to the GitHub Release.
+#
 # Package-store publication never happens here: pushing a tag can never publish
 # to PyPI / npm / VS Code Marketplace / Open VSX by accident. Publication is
 # publish.yml (CD), which runs when a GitHub Release is published.
@@ -17,6 +20,10 @@ on:
     tags:
       - 'v*'
       - '[0-9]*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -28,7 +35,7 @@ env:
 
 jobs:
   build:
-    name: Build and validate artifacts
+    name: Build and validate core artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 40
     outputs:
@@ -36,9 +43,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Extract version from tag
+      - name: Extract version
         id: meta
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Python 3.11
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -101,3 +113,244 @@ jobs:
         run: |
           python scripts/validate_release_artifacts.py \
             "${{ steps.meta.outputs.version }}" --require-vsix --require-tgz
+
+      - name: Stage exact-version core assets and checksums
+        run: |
+          V="${{ steps.meta.outputs.version }}"
+          mkdir -p release-core-assets
+          cp "dist/ltcai-${V}-py3-none-any.whl" \
+             "dist/ltcai-${V}.tar.gz" \
+             "ltcai-${V}.tgz" \
+             "dist/ltcai-${V}.vsix" \
+             release-core-assets/
+          (
+            cd release-core-assets
+            sha256sum "ltcai-${V}-py3-none-any.whl" > "ltcai-${V}-py3-none-any.whl.sha256"
+            sha256sum "ltcai-${V}.tar.gz" > "ltcai-${V}.tar.gz.sha256"
+            sha256sum "ltcai-${V}.tgz" > "ltcai-${V}.tgz.sha256"
+            sha256sum "ltcai-${V}.vsix" > "ltcai-${V}.vsix.sha256"
+          )
+
+      - name: Upload core release assets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-core-assets
+          path: release-core-assets/
+          retention-days: 7
+
+  macos-dmg:
+    name: Build & sign macOS Apple Silicon DMG
+    runs-on: macos-latest
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Extract version
+        id: meta
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify Apple Silicon runner architecture
+        run: |
+          ARCH="$(uname -m)"
+          echo "Runner arch: ${ARCH}"
+          test "${ARCH}" = "arm64"
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Node 20
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
+      - name: Cache Cargo registry and Tauri build output
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            rust
+            src-tauri
+
+      - name: Install dependencies & build frontend assets
+        run: |
+          pip install "."
+          npm ci
+          npm run build:assets
+
+      - name: Configure Apple Developer ID signing (when secrets exist)
+        id: signing
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY_SECRET: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          if [ -n "${APPLE_CERTIFICATE}" ] && [ -n "${APPLE_CERTIFICATE_PASSWORD}" ]; then
+            KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
+            CERT_PATH="${RUNNER_TEMP}/developer-cert.p12"
+            KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+            echo "${APPLE_CERTIFICATE}" | base64 --decode > "${CERT_PATH}"
+            security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+            security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+            security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+            security import "${CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${APPLE_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/security
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+            security list-keychains -d user -s "${KEYCHAIN_PATH}" $(security list-keychains -d user | tr -d '"')
+            IDENTITY="${APPLE_SIGNING_IDENTITY_SECRET}"
+            if [ -z "${IDENTITY}" ]; then
+              IDENTITY="$(security find-identity -v -p codesigning "${KEYCHAIN_PATH}" | awk -F'"' '/Developer ID Application/{print $2; exit}')"
+            fi
+            if [ -z "${IDENTITY}" ]; then
+              echo "::error::APPLE_CERTIFICATE provided, but no Developer ID Application identity found."
+              exit 1
+            fi
+            echo "APPLE_SIGNING_IDENTITY=${IDENTITY}" >> "$GITHUB_ENV"
+            echo "signing_mode=developer-id" >> "$GITHUB_OUTPUT"
+            rm -f "${CERT_PATH}"
+          else
+            echo "signing_mode=ad-hoc" >> "$GITHUB_OUTPUT"
+            echo "No Developer ID certificate secrets configured; falling back to ad-hoc codesign."
+          fi
+
+      - name: Build Tauri macOS bundle & DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run desktop:tauri:build
+
+      - name: Ensure ad-hoc signature & smoke-verify DMG
+        run: |
+          V="${{ steps.meta.outputs.version }}"
+          APP_PATH="src-tauri/target/release/bundle/macos/Lattice AI.app"
+          DMG_PATH="src-tauri/target/release/bundle/dmg/Lattice AI_${V}_aarch64.dmg"
+          test -d "${APP_PATH}"
+          test -f "${DMG_PATH}"
+
+          if [ "${{ steps.signing.outputs.signing_mode }}" = "ad-hoc" ]; then
+            if ! codesign --verify --deep --strict "${APP_PATH}" 2>/dev/null; then
+              codesign --force --deep --sign - "${APP_PATH}"
+              rm -f "${DMG_PATH}"
+              hdiutil create -volname "Lattice AI" -srcfolder "${APP_PATH}" -ov -format UDZO "${DMG_PATH}"
+            fi
+          fi
+
+          hdiutil verify "${DMG_PATH}"
+          MOUNT_DIR="${RUNNER_TEMP}/lattice-dmg-mount"
+          mkdir -p "${MOUNT_DIR}"
+          hdiutil attach "${DMG_PATH}" -nobrowse -readonly -mountpoint "${MOUNT_DIR}"
+          trap 'hdiutil detach "${MOUNT_DIR}" -force || true' EXIT
+
+          MOUNTED_APP="${MOUNT_DIR}/Lattice AI.app"
+          test -d "${MOUNTED_APP}"
+          codesign --verify --deep --strict --verbose=2 "${MOUNTED_APP}"
+          MAIN_BIN="$(find "${MOUNTED_APP}/Contents/MacOS" -maxdepth 1 -type f -perm +111 | head -n 1)"
+          test -n "${MAIN_BIN}"
+          file "${MAIN_BIN}" | grep -q "arm64"
+          python -c "import scripts.release_smoke as rs; rs.smoke_static_assets('${V}'); rs.smoke_tauri('${V}', launch=False)"
+
+      - name: Stage macOS DMG and checksum
+        run: |
+          V="${{ steps.meta.outputs.version }}"
+          DMG_NAME="Lattice AI_${V}_aarch64.dmg"
+          mkdir -p release-macos-assets
+          cp "src-tauri/target/release/bundle/dmg/${DMG_NAME}" "release-macos-assets/${DMG_NAME}"
+          (
+            cd release-macos-assets
+            shasum -a 256 "${DMG_NAME}" > "${DMG_NAME}.sha256"
+          )
+
+      - name: Upload macOS DMG artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-macos-assets
+          path: release-macos-assets/
+          retention-days: 7
+
+  github-release:
+    name: Publish GitHub Release assets
+    needs: [build, macos-dmg]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download core release assets
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-core-assets
+          path: release-assets
+
+      - name: Download macOS DMG assets
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-macos-assets
+          path: release-assets
+
+      - name: Verify exact assets and build unified SHA256SUMS
+        run: |
+          V="${{ needs.build.outputs.version }}"
+          cd release-assets
+          for f in \
+            "ltcai-${V}-py3-none-any.whl" \
+            "ltcai-${V}.tar.gz" \
+            "ltcai-${V}.tgz" \
+            "ltcai-${V}.vsix" \
+            "Lattice AI_${V}_aarch64.dmg"; do
+            test -f "${f}"
+          done
+          sha256sum \
+            "ltcai-${V}-py3-none-any.whl" \
+            "ltcai-${V}.tar.gz" \
+            "ltcai-${V}.tgz" \
+            "ltcai-${V}.vsix" \
+            "Lattice AI_${V}_aarch64.dmg" > "SHA256SUMS-${V}.txt"
+          sha256sum -c "SHA256SUMS-${V}.txt"
+
+      - name: Upload assets to GitHub Release (for pushed tags)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ needs.build.outputs.version }}"
+          TAG="v${V}"
+          if [ -z "$(git ls-remote --tags origin "refs/tags/${TAG}")" ] && [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "No tag ${TAG} on origin; skipping GitHub Release attachment."
+            exit 0
+          fi
+          TARGET_TAG="${{ github.ref_type == 'tag' && github.ref_name || '' }}"
+          if [ -z "${TARGET_TAG}" ]; then
+            TARGET_TAG="${TAG}"
+          fi
+          NOTES_FILE="docs/releases/RELEASE_NOTES_v${V}.md"
+          if ! gh release view "${TARGET_TAG}" >/dev/null 2>&1; then
+            if [ -f "${NOTES_FILE}" ]; then
+              gh release create "${TARGET_TAG}" --title "Lattice AI v${V}" --notes-file "${NOTES_FILE}"
+            else
+              gh release create "${TARGET_TAG}" --title "Lattice AI v${V}" --generate-notes
+            fi
+          fi
+          gh release upload "${TARGET_TAG}" --clobber \
+            "release-assets/ltcai-${V}-py3-none-any.whl" \
+            "release-assets/ltcai-${V}-py3-none-any.whl.sha256" \
+            "release-assets/ltcai-${V}.tar.gz" \
+            "release-assets/ltcai-${V}.tar.gz.sha256" \
+            "release-assets/ltcai-${V}.tgz" \
+            "release-assets/ltcai-${V}.tgz.sha256" \
+            "release-assets/ltcai-${V}.vsix" \
+            "release-assets/ltcai-${V}.vsix.sha256" \
+            "release-assets/Lattice AI_${V}_aarch64.dmg" \
+            "release-assets/Lattice AI_${V}_aarch64.dmg.sha256" \
+            "release-assets/SHA256SUMS-${V}.txt"

@@ -21,6 +21,14 @@ use lattice_core::{CoreError, LocalEmbeddingModel};
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
+use crate::vector_alignment::{
+    build_reindex_or_mismatch_response, inspect_stored_embedding_models, resolve_alignment_plan,
+};
+pub use crate::vector_alignment::{
+    canonical_model_family, is_hash_model_id, vector_search_aligned, StoredEmbeddingSummary,
+    VectorProviderStatus, VectorQueryInput, VectorSearchOptions,
+};
+
 /// `LATTICEAI_VECTOR_MAX_CANDIDATES`.
 pub const VECTOR_MAX_CANDIDATES_ENV: &str = "LATTICEAI_VECTOR_MAX_CANDIDATES";
 /// `LATTICEAI_VECTOR_INDEX`.
@@ -140,7 +148,7 @@ pub fn candidate_cap(limit: i64) -> Option<i64> {
     configured_max_candidates().map(|cap| cap.max(limit))
 }
 
-fn recall_report(
+pub(crate) fn recall_report(
     backend: &str,
     cap: Option<i64>,
     total: i64,
@@ -325,6 +333,23 @@ pub fn vector_search(
         |row| row.get(0),
     )?;
 
+    if candidates_total == 0 {
+        let stored_models = inspect_stored_embedding_models(conn)?;
+        if stored_models.iter().any(|s| s.row_count > 0) {
+            let plan =
+                resolve_alignment_plan(&stored_models, &model_id, dim, is_hash_model_id(&model_id));
+            return Ok(build_reindex_or_mismatch_response(
+                query,
+                model_id,
+                dim,
+                &plan,
+                &stored_models,
+                recall_report(&backend, cap, 0, 0, None),
+                selection.as_json(),
+            ));
+        }
+    }
+
     let mut index_block = selection.as_json();
     if should_try_hnsw(&selection, candidates_total) {
         match crate::vector_hnsw::try_hnsw(&query, &query_vector, conn, model, limit, min_score) {
@@ -389,7 +414,7 @@ pub fn vector_search(
 }
 
 /// `(score, updated_at or "")` — the sort key of `_vector_search_scan`.
-fn sort_key(item: &Map<String, Value>) -> (f64, String) {
+pub(crate) fn sort_key(item: &Map<String, Value>) -> (f64, String) {
     (
         item.get("score").and_then(Value::as_f64).unwrap_or(0.0),
         item.get("updated_at")

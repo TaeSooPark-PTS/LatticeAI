@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **12.7.0 — Fast Index**.
+Current release: **12.8.0 — Trusted Brain**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -620,6 +620,10 @@ Current UX rules:
   `asset-manifest.json`.
 - Critical API failures produce an explicit unavailable state and are never
   normalized into healthy empty Brain data.
+- Large pages (`Library.tsx`, `System.tsx`, `Capture.tsx`) follow a
+  `Page -> Feature Component -> Hook -> API/Domain` separation under
+  `frontend/src/features/` while preserving lazy chunk boundaries and keeping
+  initial static JS at 104.4 KiB gzip against the 150 KiB budget.
 
 ## Python AI Worker
 
@@ -1127,6 +1131,27 @@ incomparable score scales, and `LATTICEAI_GRAPH_EXPANSION=1` pulls the
 one-hop neighbours of the top hits into the candidate pool (capped, damped,
 and counted in the result's `graph_expansion` block).
 
+### Embedding Contract, Lifecycle & Sidecar Retrieval
+
+- **Unified `EmbeddingIndexContract`**: `lattice-core::embeddings` and
+  `latticeai.core.embedding_providers` share `provider`, `model`,
+  `model_revision`, `dimensions`, `normalized`, and `metric` metadata so
+  Python and Rust index pipelines agree on model identity and normalization,
+  paired with typed `IngestStatus` node states (`lattice-core::graph_write::types`).
+- **Knowledge Lifecycle**: `KnowledgeLifecycleState` (`active`, `superseded`,
+  `deprecated`, `disputed`, `pending_verification`) and
+  `KnowledgeLifecycleMetadata` (`lattice-core::graph_write::lifecycle`) track
+  superseded/historical memory states across writes, BM25 sidecar scoring,
+  and GraphRAG traversal.
+- **Rust BM25F Sidecar, Cache & GraphRAG**: `Bm25SidecarIndex` persists pre-tokenized
+  `bm25_node_stats` per workspace and filters out historical nodes by default
+  (`include_historical = false`). `SidecarCachePool` shares indexes behind
+  `RwLock<Arc<Bm25SidecarIndex>>` (`MAX_CACHED_SIDECARS = 64`,
+  `DEFAULT_MAX_CACHE_BYTES = 256 MiB`, configurable via
+  `LATTICEAI_SIDECAR_CACHE_MAX_BYTES`), while `GraphRagConfig` performs bounded
+  structural expansion (`max_hops = 2`, `max_seeds = 12`, `max_neighbors = 40`,
+  `hop1_decay = 0.68`, `hop2_decay = 0.38`, `MAX_CACHED_EDGES = 50_000`).
+
 ### Multi-modal memories (11.1.0)
 
 Pictures and recordings are ordinary graph citizens behind one flag:
@@ -1616,10 +1641,16 @@ knows nothing about its owner are exactly what they were.
 
 ## Storage And Portability
 
-SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
-scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 10.3.0. Backups and `.latticebrain`
-archives are user-controlled portability paths.
+SQLite is the official live local Brain store (with `*.db-wal` and `*.db-shm`
+ignored from git tracking). PostgreSQL/pgvector remains **Planned**
+(dry-run planning and opt-in compose/live CI verification only). Backups and
+`.latticebrain` archives are user-controlled portability paths backed by
+`lattice-platform::knowledge::portability` (`archive.rs` and `crypto.rs`) with
+`scrypt` passphrase or `X25519` + `HKDF-SHA256` recipient encryption,
+`SHA256-CTR` + `HMAC-SHA256` integrity verification, and safe ZIP member path
+checks. Multi-user and scoped agent runs enforce per-user `AGENT_ROOT`
+isolation via `IsolatedRootSpec`, `resolve_isolated_agent_root`, and
+`LoopRoutesState::isolated`.
 
 ### External vault interop (11.1.0)
 
@@ -1875,16 +1906,18 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-12.7.0 exact artifact names:
+12.8.0 exact artifact names:
 
-- `dist/ltcai-12.7.0-py3-none-any.whl`
-- `dist/ltcai-12.7.0.tar.gz`
-- `ltcai-12.7.0.tgz`
-- `dist/ltcai-12.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.7.0_aarch64.dmg`
+- `dist/ltcai-12.8.0-py3-none-any.whl`
+- `dist/ltcai-12.8.0.tar.gz`
+- `ltcai-12.8.0.tgz`
+- `dist/ltcai-12.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.8.0_aarch64.dmg`
 
-The dmg is **ad-hoc signed** — effectively unsigned — as in every release so
-far. First launch needs the usual Gatekeeper step.
+The macOS DMG is built, smoke-verified, checksummed, and attached to GitHub
+Releases by `.github/workflows/release.yml` and `publish.yml` — Developer ID
+signed when `APPLE_CERTIFICATE` secrets are configured, and ad-hoc signed
+(requiring the usual Gatekeeper first-launch step) otherwise.
 
 Do not document or use wildcard artifact upload commands.
 
@@ -1923,8 +1956,13 @@ Do not document or use wildcard artifact upload commands.
   the sidecar cannot answer. `LATTICEAI_VECTOR_INDEX=hnsw` is still the
   explicit opt-in.
 - **Watch prune is graph-only.** A vanished watched file is removed from
-  the Brain through `delete_document_tree`. Disk is never deleted. A
-  one-shot folder ingest still reports and waits for the prune door.
+  the Brain through `delete_document_tree` (unified with
+  `GraphWriter::delete_node` via `delete_node_subgraph`). Disk is never
+  deleted. A one-shot folder ingest still reports and waits for the prune door.
+- **Hugging Face runtime download pinning backlog.** `scripts/verify_hf_model_registry.py`
+  statically validates registry metadata, while `model_runtime/download.py` and
+  `embedding_providers/text.py` still perform unpinned runtime calls when no
+  explicit `model_revision` / SHA-256 manifest is configured.
 - **The crate regrouping is a move, not a decoupling.** Seven domains and six
   groups draw the lines; the four couplings that cross a domain line in
   `lattice-platform` are named in the relevant `mod.rs` rather than resolved.

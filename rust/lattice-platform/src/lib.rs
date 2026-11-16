@@ -137,7 +137,7 @@ pub use governance::{automation, change_proposals, hooks, review_queue, workflow
 // toolsurface/ — every capability the product can reach.
 pub use toolsurface::{agent_registry, agents, computer_use, marketplace, mcp, plugins, tools};
 // knowledge/ — how the graph's content crosses a trust boundary.
-pub use knowledge::{network, network_boundary, portability, voice};
+pub use knowledge::{multimodal, network, network_boundary, portability, voice};
 // modelops/ — which model runs here, and getting the machine ready for it.
 pub use modelops::{models_catalog, setup};
 // adminops/ — operating the install.

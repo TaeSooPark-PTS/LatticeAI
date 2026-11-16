@@ -21,6 +21,63 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
 
 from lattice_brain.embeddings import DEFAULT_EMBEDDING_DIM
 
+DEFAULT_INDEX_VERSION = 1
+NORMALIZATION_L2 = "l2"
+DEFAULT_EMBEDDING_MODE = "raw"
+
+
+@dataclass(frozen=True)
+class EmbeddingIndexContract:
+    """Explicit contract describing how vectors in an index were produced.
+
+    Aligned field-for-field with Rust ``lattice_core::embeddings::EmbeddingIndexContract``
+    so Python ``/worker/embed`` and Rust ``GraphWriter`` / retrieval agree on
+    model identity, revision, dimensionality, normalization, and asymmetric modes.
+    """
+
+    provider: str
+    model_id: str
+    model_revision: Optional[str] = None
+    dimension: int = DEFAULT_EMBEDDING_DIM
+    normalization: str = NORMALIZATION_L2
+    passage_mode: str = DEFAULT_EMBEDDING_MODE
+    query_mode: str = DEFAULT_EMBEDDING_MODE
+    index_version: int = DEFAULT_INDEX_VERSION
+    grade: str = "production"
+    semantic: bool = True
+
+    def is_hash_fallback(self) -> bool:
+        return (
+            self.provider == "hash"
+            or self.grade == "fallback"
+            or not self.semantic
+            or self.model_id.startswith("lattice-local-hash")
+            or self.model_id.startswith("lattice-fallback-")
+        )
+
+    def is_compatible_with(self, other: "EmbeddingIndexContract") -> bool:
+        if self.model_id != other.model_id or self.dimension != other.dimension:
+            return False
+        if self.normalization != other.normalization or self.index_version != other.index_version:
+            return False
+        if self.model_revision and other.model_revision and self.model_revision != other.model_revision:
+            return False
+        return True
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "provider": self.provider,
+            "model_id": self.model_id,
+            "model_revision": self.model_revision,
+            "dimension": self.dimension,
+            "normalization": self.normalization,
+            "passage_mode": self.passage_mode,
+            "query_mode": self.query_mode,
+            "index_version": self.index_version,
+            "grade": self.grade,
+            "semantic": self.semantic,
+        }
+
 
 class EmbeddingUnavailable(RuntimeError):
     """Raised when a configured provider cannot produce an embedding.
@@ -99,6 +156,14 @@ class EmbeddingProvider:
     provider: str = "hash"
     #: "fallback" (hash) | "production" (real semantic model)
     grade: str = "production"
+    #: optional model revision / checkpoint tag
+    model_revision: Optional[str] = None
+    #: instruction mode used for passages ("raw", "e5_passage", "embeddinggemma_passage")
+    passage_mode: str = DEFAULT_EMBEDDING_MODE
+    #: instruction mode used for queries ("raw", "e5_query", "embeddinggemma_query")
+    query_mode: str = DEFAULT_EMBEDDING_MODE
+    #: index contract version
+    index_version: int = DEFAULT_INDEX_VERSION
 
     # ── required ──────────────────────────────────────────────────────────
     def embed_batch(self, texts: Sequence[str]) -> List[List[float]]:
@@ -177,6 +242,30 @@ class EmbeddingProvider:
             "dim": self.dim,
             "grade": self.grade,
         }
+
+    def index_contract(self) -> EmbeddingIndexContract:
+        """Return the explicit :class:`EmbeddingIndexContract` for this provider."""
+        provider_name = str(getattr(self, "provider", "hash") or "hash")
+        grade = str(getattr(self, "grade", "production") or "production")
+        model_id = str(getattr(self, "model_id", "") or "")
+        is_semantic = (
+            grade != "fallback"
+            and provider_name != "hash"
+            and not model_id.startswith("lattice-local-hash")
+            and not model_id.startswith("lattice-fallback-")
+        )
+        return EmbeddingIndexContract(
+            provider=provider_name,
+            model_id=model_id,
+            model_revision=getattr(self, "model_revision", None),
+            dimension=int(getattr(self, "dim", DEFAULT_EMBEDDING_DIM) or DEFAULT_EMBEDDING_DIM),
+            normalization=NORMALIZATION_L2,
+            passage_mode=str(getattr(self, "passage_mode", DEFAULT_EMBEDDING_MODE) or DEFAULT_EMBEDDING_MODE),
+            query_mode=str(getattr(self, "query_mode", DEFAULT_EMBEDDING_MODE) or DEFAULT_EMBEDDING_MODE),
+            index_version=int(getattr(self, "index_version", DEFAULT_INDEX_VERSION) or DEFAULT_INDEX_VERSION),
+            grade=grade,
+            semantic=is_semantic,
+        )
 
 
 @dataclass

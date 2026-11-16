@@ -654,6 +654,26 @@ impl GraphWriter {
                 "UPDATE nodes_v2 SET superseded_by=?, updated_at=? WHERE id=?",
                 rusqlite::params![new_node_id, self.clock.now_iso(), old_node_id],
             )?;
+            let _ = super::lifecycle::update_lifecycle_in_txn(
+                self,
+                txn,
+                old_node_id,
+                &super::lifecycle::KnowledgeLifecycleUpdate {
+                    state: Some(super::lifecycle::KnowledgeLifecycleState::Superseded),
+                    superseded_by: Some(new_node_id.to_string()),
+                    reason: Some("superseded".to_string()),
+                    ..Default::default()
+                },
+            )?;
+            let _ = super::lifecycle::update_lifecycle_in_txn(
+                self,
+                txn,
+                new_node_id,
+                &super::lifecycle::KnowledgeLifecycleUpdate {
+                    supersedes: vec![old_node_id.to_string()],
+                    ..Default::default()
+                },
+            )?;
             Ok(json!({
                 "status": "ok",
                 "node_id": old_node_id,

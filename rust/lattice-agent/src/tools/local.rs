@@ -81,6 +81,51 @@ pub fn local_write(prefixes: &[String], args: &Map<String, Value>) -> Result<Val
     }))
 }
 
+/// `local_write` confined strictly inside an isolated user/workspace root.
+///
+/// Relative paths and `~/` resolve inside `workspace.root()`; any attempt to
+/// target an external absolute path, traverse with `..`, or follow a symlink
+/// outside the isolated root is rejected.
+pub fn local_write_confined(
+    workspace: &crate::tools::sandbox::Workspace,
+    prefixes: &[String],
+    args: &Map<String, Value>,
+) -> Result<Value, ToolError> {
+    let raw_path = args::required_str(args, "path")?;
+    let content = args::optional_str(args, "content", "")?;
+    let trimmed = raw_path.trim();
+    let candidate = if trimmed == "~" || trimmed.starts_with("~/") {
+        let rel = trimmed.trim_start_matches('~').trim_start_matches('/');
+        workspace.root().join(rel)
+    } else {
+        let p = std::path::Path::new(trimmed);
+        if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            workspace.root().join(p)
+        }
+    };
+    let target = resolve_soft(&candidate);
+    if !workspace.contains(&target) {
+        return Err(ToolError::tool("Path escapes the agent workspace."));
+    }
+    let normalized = target.display().to_string().replace('\\', "/");
+    if is_blocked(&normalized, prefixes) {
+        return Err(ToolError::tool("차단된 시스템 경로에는 쓸 수 없습니다."));
+    }
+    if content.len() as u64 > LOCAL_MAX_FILE_BYTES {
+        return Err(ToolError::tool("내용이 너무 큽니다."));
+    }
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent).map_err(permission_error)?;
+    }
+    std::fs::write(&target, &content).map_err(permission_error)?;
+    Ok(json!({
+        "path": target.display().to_string(),
+        "bytes": file_size(&target),
+    }))
+}
+
 /// `except PermissionError as exc: raise ToolError(f"쓰기 권한 없음: {exc}")`.
 fn permission_error(error: std::io::Error) -> ToolError {
     if error.kind() == std::io::ErrorKind::PermissionDenied {

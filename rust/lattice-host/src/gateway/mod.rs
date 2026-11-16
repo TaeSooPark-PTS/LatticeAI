@@ -8,6 +8,7 @@ pub mod agent_bind;
 pub mod agent_catalog;
 pub mod allowlist;
 pub mod identity;
+pub mod isolation;
 pub mod mounts;
 pub mod onedoor;
 pub mod params;
@@ -445,13 +446,14 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
         // (WP-I2 §1), including the proxy: a browser write that reaches the
         // worker through this hop was let through *here*, and the worker's own
         // guard is defence in depth rather than the decision.
-        let bind = agent_bind::AgentBindState::new(
-            Arc::clone(&product.auth),
-            product.workspace.clone(),
-            product.loop_config.clone(),
-        );
+        let bind = agent_bind::AgentBindState::from_product(product);
+        let iso = isolation::IsolationState::new(Arc::clone(product));
         app = app
             .merge(product::product_router(product))
+            .layer(axum::middleware::from_fn_with_state(
+                iso,
+                isolation::enforce_agent_isolation,
+            ))
             .layer(axum::middleware::from_fn_with_state(
                 bind,
                 agent_bind::bind_agent_run,

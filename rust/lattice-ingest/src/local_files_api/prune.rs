@@ -261,15 +261,24 @@ pub fn dangling_edge_count(conn: &Connection) -> i64 {
 }
 
 /// Nudge the HNSW sidecar so new vectors from this ingest are learned.
-pub async fn refresh_sidecar(seam: Option<&lattice_core::worker::WorkerSeamClient>) {
+pub async fn refresh_sidecar(
+    seam: Option<&lattice_core::worker::WorkerSeamClient>,
+    graph: Option<&GraphWriter>,
+) {
     let Some(seam) = seam else {
         return;
     };
-    let model = lattice_core::LocalEmbeddingModel::from_env();
-    let zeros = vec![0.0f32; model.dim()];
+    let (model_id, dim) = graph
+        .and_then(|g| g.current_index_contract().ok().flatten())
+        .map(|contract| (contract.model_id, contract.dimension))
+        .unwrap_or_else(|| {
+            let model = lattice_core::LocalEmbeddingModel::from_env();
+            (model.model_id().to_string(), model.dim())
+        });
+    let zeros = vec![0.0f32; dim];
     let body = json!({
-        "embedding_model": model.model_id(),
-        "embedding_dim": model.dim() as i64,
+        "embedding_model": model_id,
+        "embedding_dim": dim as i64,
         "vector": zeros,
         "k": 1,
     });

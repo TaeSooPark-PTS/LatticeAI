@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.8.0 — Trusted Brain (2026-11-16)
+
+**임베딩 계약·지식 라이프사이클 일원화**, **SQLite `LIMIT` 이전 워크스페이스 스코핑·벡터 차원 정렬·바운드 사이드카 캐시**, **사용자·워크스페이스·테넌트 fail-closed 게이트웨이 격리**, **암호화 `.latticebrain` 아카이브 및 정직한 PostgreSQL `planned` 보고**, **프론트엔드 기능 모듈 분리**, **PR 검색 게이트·macOS DMG CI/CD 자동화**를 통합한 릴리스.
+
+- **임베딩 계약 & 지식 라이프사이클:** `rust/lattice-core/src/embedding_contract.rs`, `graph_write/lifecycle.rs`, `latticeai/core/embedding_providers/`, `latticeai/worker_app.py`에서 `EmbeddingIndexContract`, 세분화된 `IngestStatus`, 통합 `GraphWriter` 삭제, `KnowledgeLifecycleState`를 강제한다.
+- **검색 스코핑·정렬·캐시 & 게이트웨이 격리:** `rust/lattice-retrieval`에서 `LIMIT` 전 SQL 필터링, `vector_search_aligned`, `SidecarCachePool` LRU 상한(`DEFAULT_MAX_CACHE_BYTES`)을 적용했고, `rust/lattice-agent`/`lattice-host`/`lattice-auth`에서 `IsolatedRootSpec`·`resolve_agent_scope`로 멀티유저·테넌트·워크스페이스 격리와 감사 로깅을 E2E 검증했다.
+- **포터빌리티 아카이브, UI 모듈화 & macOS DMG 자동화:** `rust/lattice-platform/src/knowledge/portability/`에서 AEAD 암호화 `.latticebrain` 검증·복원 및 X25519 공유를 제공하고, `Library.tsx`·`System.tsx`·`Capture.tsx`를 `frontend/src/features/`로 분할(Vitest 100%)했으며, `.github/workflows/{ci,release,publish}.yml`에 검색 게이트와 Apple Silicon DMG 빌드·서명·SHA256SUMS 업로드를 추가했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md).
+
+빌드 산출물은 `dist/ltcai-12.8.0-py3-none-any.whl`,
+`dist/ltcai-12.8.0.tar.gz`, `ltcai-12.8.0.tgz`, `dist/ltcai-12.8.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.8.0_aarch64.dmg` 입니다.
+
 ## v12.7.0 — Fast Index (2026-11-16)
 
 **Pre-Tokenized BM25F Sidecar (`Bm25SidecarIndex`)**, SQLite `bm25_node_stats` 영속화, **역색인 포스팅 리스트·GraphRAG 인접 캐시**, **제품 중심 `README.md` 개편 및 `v12.0.0+` 릴리스 히스토리 정리**를 포함한 릴리스. 문은 **422 오퍼레이션 / 41 패밀리**, 워커는 **20 라우트** (변동 없음). 쓰기는 계속 `GraphWriter` 하나다.

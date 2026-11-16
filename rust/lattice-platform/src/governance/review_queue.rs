@@ -38,7 +38,7 @@ use crate::workspaceos::workspace::store::{StoreError, WorkspaceOsStore};
 mod handlers;
 mod http;
 mod os;
-mod store;
+pub(crate) mod store;
 mod workflows;
 
 use handlers::{

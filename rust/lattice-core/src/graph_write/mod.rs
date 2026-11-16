@@ -48,6 +48,7 @@
 pub mod clock;
 pub mod curator;
 pub mod dump;
+pub mod lifecycle;
 pub mod pyaux;
 pub mod schema;
 pub mod taxonomy;
@@ -67,6 +68,11 @@ use crate::db::{CoreError, Store};
 use crate::embeddings::LocalEmbeddingModel;
 
 pub use clock::{Clock, FrozenClock, SystemClock};
+pub use lifecycle::{
+    read_lifecycle_from_metadata, KnowledgeLifecycleMetadata, KnowledgeLifecycleState,
+    KnowledgeLifecycleUpdate, LifecycleHistoryEntry,
+};
+pub use types::IngestStatus;
 
 /// The write side of the Brain store.
 ///

@@ -34,7 +34,7 @@ pub const MOUNTED: &[(&str, &str)] = &[
     ("POST", "/api/network-boundary/policy"),
 ];
 
-const HARD_BLOCK_NODE_TYPES: &[&str] = &[
+pub(crate) const HARD_BLOCK_NODE_TYPES: &[&str] = &[
     "ApiKey",
     "Credential",
     "Password",
@@ -42,7 +42,8 @@ const HARD_BLOCK_NODE_TYPES: &[&str] = &[
     "Secret",
     "Token",
 ];
-const HARD_BLOCK_METADATA_FLAGS: &[&str] = &["do_not_share", "local_only", "private", "sensitive"];
+pub(crate) const HARD_BLOCK_METADATA_FLAGS: &[&str] =
+    &["do_not_share", "local_only", "private", "sensitive"];
 
 /// Router state.
 #[derive(Clone)]

@@ -1,7 +1,9 @@
-//! Fast inverted-index BM25F scoring and process-wide sidecar cache pool.
+//! Fast inverted-index BM25F scoring and concurrent snapshot sidecar cache pool.
 
+use std::cmp::Reverse;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock, RwLock};
 
 use lattice_core::bm25_stats::QueryTerm;
 use lattice_core::{clean_text, CoreError};
@@ -9,15 +11,30 @@ use rusqlite::Connection;
 
 use crate::service::Scope;
 
-use super::scoring::{node_type_multiplier, Bm25fParams, Bm25fScoredNode};
+use super::scoring::{
+    accessibility_multiplier, importance_multiplier, node_type_multiplier, Bm25fParams,
+    Bm25fScoredNode,
+};
 use super::sidecar::{Bm25SidecarIndex, SidecarCacheStats};
 use super::tokenizer::extract_query_terms;
 
-const MAX_CACHED_SIDECARS: usize = 64;
+pub const MAX_CACHED_SIDECARS: usize = 64;
+pub const DEFAULT_MAX_CACHE_BYTES: usize = 256 * 1024 * 1024;
 
 impl Bm25SidecarIndex {
     /// Score `query` using the pre-tokenized inverted posting lists and O(1) field lengths.
+    /// Excludes `superseded` / `deprecated` nodes by default (`include_historical = false`).
     pub fn score(&self, query: &str, params: &Bm25fParams) -> Vec<Bm25fScoredNode> {
+        self.score_with_options(query, params, false)
+    }
+
+    /// Score `query` with explicit control over historical (`superseded`/`deprecated`) inclusion.
+    pub fn score_with_options(
+        &self,
+        query: &str,
+        params: &Bm25fParams,
+        include_historical: bool,
+    ) -> Vec<Bm25fScoredNode> {
         let raw_query_terms = extract_query_terms(query);
         if raw_query_terms.is_empty() || self.doc_count() == 0 {
             return Vec::new();
@@ -65,6 +82,9 @@ impl Bm25SidecarIndex {
                 let Some(doc) = self.doc_at(posting.doc_idx) else {
                     continue;
                 };
+                if !include_historical && doc.lifecycle_status.is_retired() {
+                    continue;
+                }
                 let norm_title =
                     (1.0 - params.b_title) + params.b_title * (doc.dl_title as f64 / avgdl_title);
                 let norm_tags = (1.0 - params.b_tags_headings)
@@ -155,6 +175,9 @@ impl Bm25SidecarIndex {
             }
 
             acc.score *= node_type_multiplier(doc.node.node_type.as_deref().unwrap_or_default());
+            acc.score *= doc.lifecycle_status.multiplier();
+            acc.score *= importance_multiplier(doc.importance_score);
+            acc.score *= accessibility_multiplier(doc.visibility.as_deref());
 
             let mut matched_fields = Vec::new();
             if acc.title_hit {
@@ -191,19 +214,243 @@ impl Bm25SidecarIndex {
 }
 
 struct CacheEntry {
-    last_used: u64,
-    index: Arc<Mutex<Bm25SidecarIndex>>,
+    last_used: AtomicU64,
+    read_hits: AtomicU64,
+    estimated_bytes: AtomicUsize,
+    snapshot: RwLock<Arc<Bm25SidecarIndex>>,
 }
 
-#[derive(Default)]
-struct GlobalSidecarStore {
-    tick: u64,
-    entries: HashMap<String, CacheEntry>,
+impl CacheEntry {
+    fn new(tick: u64) -> Self {
+        let idx = Bm25SidecarIndex::new();
+        let bytes = idx.estimated_memory_bytes();
+        Self {
+            last_used: AtomicU64::new(tick),
+            read_hits: AtomicU64::new(0),
+            estimated_bytes: AtomicUsize::new(bytes),
+            snapshot: RwLock::new(Arc::new(idx)),
+        }
+    }
 }
 
-static SIDECAR_CACHE: OnceLock<Mutex<GlobalSidecarStore>> = OnceLock::new();
+/// Concurrent snapshot pool with `RwLock` shared reads and both count (`max_entries`)
+/// and memory (`max_bytes`) LRU/cost-aware eviction.
+pub struct SidecarCachePool {
+    max_entries: usize,
+    max_bytes: usize,
+    tick: AtomicU64,
+    entries: RwLock<HashMap<String, Arc<CacheEntry>>>,
+}
 
-fn cache_key(conn: &Connection, scope: &Scope) -> String {
+impl SidecarCachePool {
+    pub fn new(max_entries: usize, max_bytes: usize) -> Self {
+        Self {
+            max_entries: max_entries.max(1),
+            max_bytes: max_bytes.max(1),
+            tick: AtomicU64::new(0),
+            entries: RwLock::new(HashMap::new()),
+        }
+    }
+
+    fn from_env() -> Self {
+        let max_bytes = std::env::var("LATTICEAI_SIDECAR_CACHE_MAX_BYTES")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .filter(|&v| v > 0)
+            .unwrap_or(DEFAULT_MAX_CACHE_BYTES);
+        Self::new(MAX_CACHED_SIDECARS, max_bytes)
+    }
+
+    fn next_tick(&self) -> u64 {
+        self.tick.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    pub fn entry_count(&self) -> usize {
+        self.entries.read().unwrap_or_else(|e| e.into_inner()).len()
+    }
+
+    pub fn total_estimated_bytes(&self) -> usize {
+        self.entries
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .map(|e| e.estimated_bytes.load(Ordering::Relaxed))
+            .sum()
+    }
+
+    fn acquire_entry(&self, key: &str) -> Arc<CacheEntry> {
+        let tick = self.next_tick();
+        {
+            let guard = self.entries.read().unwrap_or_else(|e| e.into_inner());
+            if let Some(entry) = guard.get(key) {
+                entry.last_used.store(tick, Ordering::Relaxed);
+                return Arc::clone(entry);
+            }
+        }
+        let mut guard = self.entries.write().unwrap_or_else(|e| e.into_inner());
+        if let Some(entry) = guard.get(key) {
+            entry.last_used.store(tick, Ordering::Relaxed);
+            return Arc::clone(entry);
+        }
+        let entry = Arc::new(CacheEntry::new(tick));
+        guard.insert(key.to_string(), Arc::clone(&entry));
+        Self::evict_locked(&mut guard, self.max_entries, self.max_bytes, Some(key));
+        entry
+    }
+
+    fn evict_locked(
+        entries: &mut HashMap<String, Arc<CacheEntry>>,
+        max_entries: usize,
+        max_bytes: usize,
+        protected_key: Option<&str>,
+    ) {
+        loop {
+            let total_bytes: usize = entries
+                .values()
+                .map(|e| e.estimated_bytes.load(Ordering::Relaxed))
+                .sum();
+            let over_count = entries.len() > max_entries;
+            let over_bytes = total_bytes > max_bytes && entries.len() > 1;
+            if !over_count && !over_bytes {
+                break;
+            }
+            let victim = entries
+                .iter()
+                .filter(|(k, _)| protected_key != Some(k.as_str()))
+                .min_by_key(|(_, entry)| {
+                    (
+                        entry.last_used.load(Ordering::Relaxed),
+                        Reverse(entry.estimated_bytes.load(Ordering::Relaxed)),
+                    )
+                })
+                .map(|(k, _)| k.clone());
+            match victim {
+                Some(k) => {
+                    entries.remove(&k);
+                }
+                None => break,
+            }
+        }
+    }
+
+    fn evict_if_over_budget(&self, protected_key: Option<&str>) {
+        let needs_eviction = {
+            let guard = self.entries.read().unwrap_or_else(|e| e.into_inner());
+            let total_bytes: usize = guard
+                .values()
+                .map(|e| e.estimated_bytes.load(Ordering::Relaxed))
+                .sum();
+            guard.len() > self.max_entries || (total_bytes > self.max_bytes && guard.len() > 1)
+        };
+        if needs_eviction {
+            let mut guard = self.entries.write().unwrap_or_else(|e| e.into_inner());
+            Self::evict_locked(&mut guard, self.max_entries, self.max_bytes, protected_key);
+        }
+    }
+
+    /// Return a lock-free immutable [`Arc<Bm25SidecarIndex>`] snapshot for `(conn, scope)`.
+    /// Concurrent readers acquire only shared read locks and drop all locks before scoring.
+    pub fn snapshot_for_conn(
+        &self,
+        conn: &Connection,
+        scope: &Scope,
+        max_rows: i64,
+        include_historical: bool,
+        ensure_edges: bool,
+        ensure_subword: bool,
+    ) -> Result<Arc<Bm25SidecarIndex>, CoreError> {
+        let key = cache_key(conn, scope, include_historical);
+        let tick = self.next_tick();
+
+        // Fast lock-free-for-scoring concurrent read path.
+        if let Some(entry) = {
+            let guard = self.entries.read().unwrap_or_else(|e| e.into_inner());
+            guard.get(&key).cloned()
+        } {
+            entry.last_used.store(tick, Ordering::Relaxed);
+            let snap = {
+                let snap_guard = entry.snapshot.read().unwrap_or_else(|e| e.into_inner());
+                Arc::clone(&*snap_guard)
+            };
+            let synced = snap.is_synced_with(conn, max_rows, include_historical)
+                && (!ensure_edges || snap.edges_synced_with(conn))
+                && (!ensure_subword || snap.subword_ready());
+            if synced {
+                entry.read_hits.fetch_add(1, Ordering::Relaxed);
+                return Ok(snap);
+            }
+        }
+
+        // Slow incremental write path: blocks only writers to this single cache key.
+        let entry = self.acquire_entry(&key);
+        let (cloned, bytes) = {
+            let mut snap_guard = entry.snapshot.write().unwrap_or_else(|e| e.into_inner());
+            let index = Arc::make_mut(&mut *snap_guard);
+            index.sync_from_conn_with_options(conn, scope, max_rows, include_historical)?;
+            if ensure_edges {
+                index.sync_edges_from_conn(conn)?;
+            }
+            if ensure_subword {
+                index.ensure_subword_embeddings();
+            }
+            let bytes = index.estimated_memory_bytes();
+            (Arc::clone(&*snap_guard), bytes)
+        };
+        entry.estimated_bytes.store(bytes, Ordering::Relaxed);
+        self.evict_if_over_budget(Some(&key));
+        Ok(cloned)
+    }
+
+    /// Acquire and incrementally sync a mutable sidecar index (via copy-on-write snapshot).
+    pub fn with_mut<R, F>(
+        &self,
+        conn: &Connection,
+        scope: &Scope,
+        max_rows: i64,
+        include_historical: bool,
+        f: F,
+    ) -> Result<R, CoreError>
+    where
+        F: FnOnce(&mut Bm25SidecarIndex) -> Result<R, CoreError>,
+    {
+        let key = cache_key(conn, scope, include_historical);
+        let entry = self.acquire_entry(&key);
+        let (out, bytes) = {
+            let mut snap_guard = entry.snapshot.write().unwrap_or_else(|e| e.into_inner());
+            let index = Arc::make_mut(&mut *snap_guard);
+            index.sync_from_conn_with_options(conn, scope, max_rows, include_historical)?;
+            let out = f(index)?;
+            let bytes = index.estimated_memory_bytes();
+            (out, bytes)
+        };
+        entry.estimated_bytes.store(bytes, Ordering::Relaxed);
+        self.evict_if_over_budget(Some(&key));
+        Ok(out)
+    }
+
+    pub fn stats_for(&self, conn: &Connection, scope: &Scope) -> Option<SidecarCacheStats> {
+        let key = cache_key(conn, scope, false);
+        let entry = {
+            let guard = self.entries.read().unwrap_or_else(|e| e.into_inner());
+            guard.get(&key)?.clone()
+        };
+        let snap = {
+            let snap_guard = entry.snapshot.read().unwrap_or_else(|e| e.into_inner());
+            Arc::clone(&*snap_guard)
+        };
+        let mut stats = snap.cache_stats().clone();
+        stats.cache_hits += entry.read_hits.load(Ordering::Relaxed);
+        Some(stats)
+    }
+}
+
+static SIDECAR_CACHE: OnceLock<SidecarCachePool> = OnceLock::new();
+
+fn global_pool() -> &'static SidecarCachePool {
+    SIDECAR_CACHE.get_or_init(SidecarCachePool::from_env)
+}
+
+fn cache_key(conn: &Connection, scope: &Scope, include_historical: bool) -> String {
     let db_path = conn
         .query_row(
             "SELECT file FROM pragma_database_list WHERE name='main'",
@@ -220,38 +467,31 @@ fn cache_key(conn: &Connection, scope: &Scope) -> String {
         None => "*".to_string(),
         Some(set) => set.iter().cloned().collect::<Vec<_>>().join(","),
     };
-    format!("{db_ident}|ws={ws}|legacy={}", scope.include_legacy_global)
+    format!(
+        "{db_ident}|ws={ws}|legacy={}|hist={include_historical}",
+        scope.include_legacy_global
+    )
 }
 
-fn acquire_sidecar_entry(conn: &Connection, scope: &Scope) -> Arc<Mutex<Bm25SidecarIndex>> {
-    let key = cache_key(conn, scope);
-    let store = SIDECAR_CACHE.get_or_init(|| Mutex::new(GlobalSidecarStore::default()));
-    let mut guard = store.lock().unwrap_or_else(|e| e.into_inner());
-    guard.tick += 1;
-    let tick = guard.tick;
-    if let Some(entry) = guard.entries.get_mut(&key) {
-        entry.last_used = tick;
-        return Arc::clone(&entry.index);
-    }
-    if guard.entries.len() >= MAX_CACHED_SIDECARS {
-        if let Some(oldest_key) = guard
-            .entries
-            .iter()
-            .min_by_key(|(_, v)| v.last_used)
-            .map(|(k, _)| k.clone())
-        {
-            guard.entries.remove(&oldest_key);
-        }
-    }
-    let idx = Arc::new(Mutex::new(Bm25SidecarIndex::new()));
-    guard.entries.insert(
-        key,
-        CacheEntry {
-            last_used: tick,
-            index: Arc::clone(&idx),
-        },
-    );
-    idx
+/// Obtain a lock-free immutable [`Arc<Bm25SidecarIndex>`] snapshot synced for `(conn, scope)`.
+pub fn with_bm25_sidecar_snapshot(
+    conn: &Connection,
+    scope: &Scope,
+    max_rows: i64,
+    include_historical: bool,
+) -> Result<Arc<Bm25SidecarIndex>, CoreError> {
+    global_pool().snapshot_for_conn(conn, scope, max_rows, include_historical, false, false)
+}
+
+/// Obtain a lock-free immutable [`Arc<Bm25SidecarIndex>`] snapshot with synced edges and
+/// incrementally precomputed subword embeddings.
+pub fn with_bm25_sidecar_full_snapshot(
+    conn: &Connection,
+    scope: &Scope,
+    max_rows: i64,
+    include_historical: bool,
+) -> Result<Arc<Bm25SidecarIndex>, CoreError> {
+    global_pool().snapshot_for_conn(conn, scope, max_rows, include_historical, true, true)
 }
 
 /// Acquire and incrementally sync the cached `Bm25SidecarIndex` for `(conn, scope)`,
@@ -265,19 +505,10 @@ pub fn with_bm25_sidecar<R, F>(
 where
     F: FnOnce(&mut Bm25SidecarIndex) -> Result<R, CoreError>,
 {
-    let arc = acquire_sidecar_entry(conn, scope);
-    let mut guard = arc.lock().unwrap_or_else(|e| e.into_inner());
-    guard.sync_from_conn(conn, scope, max_rows)?;
-    f(&mut guard)
+    global_pool().with_mut(conn, scope, max_rows, false, f)
 }
 
 /// Snapshot current cache stats for `(conn, scope)` if cached.
 pub fn cached_sidecar_stats(conn: &Connection, scope: &Scope) -> Option<SidecarCacheStats> {
-    let key = cache_key(conn, scope);
-    let store = SIDECAR_CACHE.get()?;
-    let guard = store.lock().unwrap_or_else(|e| e.into_inner());
-    let arc = guard.entries.get(&key)?.index.clone();
-    drop(guard);
-    let idx = arc.lock().unwrap_or_else(|e| e.into_inner());
-    Some(idx.cache_stats().clone())
+    global_pool().stats_for(conn, scope)
 }

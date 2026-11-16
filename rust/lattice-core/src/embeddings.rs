@@ -11,6 +11,9 @@ use blake2::digest::consts::U8;
 use blake2::{Blake2b, Digest};
 
 use crate::db::CoreError;
+pub use crate::embedding_contract::{
+    EmbeddingIndexContract, DEFAULT_EMBEDDING_MODE, DEFAULT_INDEX_VERSION, NORMALIZATION_L2,
+};
 
 /// `LATTICEAI_VECTOR_DIM`, read once per model construction.
 pub const VECTOR_DIM_ENV: &str = "LATTICEAI_VECTOR_DIM";
@@ -73,6 +76,11 @@ impl LocalEmbeddingModel {
     /// `lattice-local-hash-v1:{dim}` — the value stored in `embedding_model`.
     pub fn model_id(&self) -> &str {
         &self.model_id
+    }
+
+    /// Explicit offline hash fallback contract for this model.
+    pub fn contract(&self) -> EmbeddingIndexContract {
+        EmbeddingIndexContract::from_hash(self.model_id.clone(), self.dim)
     }
 
     /// `LocalEmbeddingModel.embed` — hashed bag of features, L2 normalized.
@@ -280,6 +288,11 @@ impl FallbackTextEmbedder {
 
     pub fn model_id(&self) -> &str {
         &self.model_id
+    }
+
+    /// Explicit offline subword fallback contract for this model.
+    pub fn contract(&self) -> EmbeddingIndexContract {
+        EmbeddingIndexContract::from_hash(self.model_id.clone(), self.dim)
     }
 
     /// Deterministically embed `text` into a unit-normalized `dim`-dimensional vector.

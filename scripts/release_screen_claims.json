@@ -20,6 +20,21 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.8.0": {
+    "_why": [
+      "Trusted Brain delivers full P1/P2/P3 remediation across the Rust host",
+      "and Python worker: unified EmbeddingIndexContract & lifecycle state,",
+      "fail-closed per-user/workspace/tenant isolation across gateway routes,",
+      "SQLite workspace-scoped pre-LIMIT retrieval + aligned vector search +",
+      "LRU-bounded sidecar caches, encrypted .latticebrain archive portability",
+      "with honest planned PostgreSQL reporting, frontend feature slices",
+      "(Library/System/Capture), and automated macOS Apple Silicon DMG",
+      "signing/notarization in CI/CD.",
+      "",
+      "UI refactoring preserved existing visual layout and interactions with",
+      "no screen redesign. Empty claim set on purpose."
+    ]
+  },
   "12.7.0": {
     "_why": [
       "Fast Index adds the Pre-Tokenized BM25F Sidecar (Bm25SidecarIndex),",

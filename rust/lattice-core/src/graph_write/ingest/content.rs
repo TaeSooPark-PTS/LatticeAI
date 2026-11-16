@@ -235,6 +235,31 @@ impl GraphWriter {
                     },
                 )?;
             }
+            if let Some(vector) = request
+                .embedding
+                .as_ref()
+                .filter(|v| !v.values.is_empty())
+                .or_else(|| {
+                    request
+                        .chunks
+                        .iter()
+                        .find_map(|c| c.embedding.as_ref().filter(|v| !v.values.is_empty()))
+                })
+            {
+                let dim = if vector.dim > 0 {
+                    vector.dim
+                } else {
+                    vector.values.len()
+                };
+                let model_id = if vector.model_id.is_empty() {
+                    self.embedder.model_id().to_string()
+                } else {
+                    vector.model_id.clone()
+                };
+                let contract =
+                    crate::embeddings::EmbeddingIndexContract::from_parts(None, model_id, dim);
+                let _ = Self::record_index_contract_in_txn(txn, &contract)?;
+            }
             Ok((source_node_id, duplicate))
         })?;
         Ok(IngestOutcome {

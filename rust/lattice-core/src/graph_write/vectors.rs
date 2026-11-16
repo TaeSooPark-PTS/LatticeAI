@@ -14,10 +14,11 @@
 //!   swapping the embedder silently yields zero vector rows; the fingerprint is
 //!   what turns that into the honest `stale_embedder` signal instead.
 
-use rusqlite::Transaction;
+use rusqlite::{Connection, Transaction};
 use serde_json::{json, Map, Value};
 
 use crate::db::CoreError;
+use crate::embeddings::EmbeddingIndexContract;
 use crate::pytext::{clean_text, round_to, safe_loads};
 
 use super::primitives::vector_text_for_node;
@@ -27,6 +28,8 @@ use super::GraphWriter;
 
 /// `graph_meta` key holding the embedder fingerprint.
 pub const EMBEDDER_FINGERPRINT_KEY: &str = "embedder_fingerprint";
+/// `graph_meta` key holding the full [`EmbeddingIndexContract`] JSON.
+pub const EMBEDDING_INDEX_CONTRACT_KEY: &str = "embedding_index_contract";
 
 /// What `rebuild_vector_index` returns.
 #[derive(Debug, Clone, PartialEq)]
@@ -70,6 +73,9 @@ pub struct IncrementalOutcome {
     pub detail: Option<String>,
     pub duration_ms: Option<f64>,
     pub embedding_model: Option<String>,
+    pub semantic: bool,
+    pub reindex_required: bool,
+    pub contract: Option<EmbeddingIndexContract>,
 }
 
 impl IncrementalOutcome {
@@ -93,6 +99,37 @@ impl IncrementalOutcome {
         }
         Value::Object(map)
     }
+
+    /// Extended status JSON including contract, semantic mode, and reindex signal.
+    pub fn to_status_json(&self) -> Value {
+        let mut value = self.to_json();
+        if let Some(map) = value.as_object_mut() {
+            map.insert("semantic".into(), json!(self.semantic));
+            map.insert("reindex_required".into(), json!(self.reindex_required));
+            if let Some(contract) = &self.contract {
+                map.insert(
+                    "contract".into(),
+                    serde_json::to_value(contract).unwrap_or(Value::Null),
+                );
+            }
+        }
+        value
+    }
+}
+
+struct WriteVectorsResult {
+    total: usize,
+    indexed: usize,
+    skipped: usize,
+    model_id: String,
+    contract: EmbeddingIndexContract,
+    reindex_required: bool,
+}
+
+struct PreparedVectorItem {
+    item: VectorItem,
+    supplied: Option<super::types::SuppliedVector>,
+    precomputed_native: Option<Vec<f64>>,
 }
 
 impl GraphWriter {
@@ -127,22 +164,28 @@ impl GraphWriter {
                 detail: Some("node_id required".into()),
                 duration_ms: None,
                 embedding_model: None,
+                semantic: false,
+                reindex_required: false,
+                contract: None,
             };
         }
         match self.write_vectors_inner(&node_id, supplied) {
-            Ok(Some((total, indexed, skipped))) => IncrementalOutcome {
+            Ok(Some(res)) => IncrementalOutcome {
                 node_id,
-                items_total: total,
-                items_indexed: indexed,
-                items_skipped: skipped,
-                status: if indexed > 0 {
+                items_total: res.total,
+                items_indexed: res.indexed,
+                items_skipped: res.skipped,
+                status: if res.indexed > 0 {
                     "indexed".into()
                 } else {
                     "noop".into()
                 },
                 detail: None,
                 duration_ms: Some(self.elapsed_ms(started)),
-                embedding_model: Some(self.embedder.model_id().to_string()),
+                embedding_model: Some(res.model_id),
+                semantic: res.contract.is_semantic(),
+                reindex_required: res.reindex_required,
+                contract: Some(res.contract),
             },
             Ok(None) => IncrementalOutcome {
                 node_id,
@@ -153,6 +196,9 @@ impl GraphWriter {
                 detail: Some("node not found".into()),
                 duration_ms: None,
                 embedding_model: None,
+                semantic: false,
+                reindex_required: false,
+                contract: None,
             },
             Err(error) => IncrementalOutcome {
                 node_id,
@@ -163,35 +209,109 @@ impl GraphWriter {
                 detail: Some(error.to_string()),
                 duration_ms: Some(self.elapsed_ms(started)),
                 embedding_model: None,
+                semantic: false,
+                reindex_required: false,
+                contract: None,
             },
         }
+    }
+
+    fn resolve_supplied_contract(
+        &self,
+        supplied: &[(String, super::types::SuppliedVector)],
+    ) -> Result<Option<EmbeddingIndexContract>, CoreError> {
+        let mut resolved: Option<EmbeddingIndexContract> = None;
+        for (_, vector) in supplied {
+            if vector.values.is_empty() {
+                continue;
+            }
+            let dim = if vector.dim > 0 {
+                vector.dim
+            } else {
+                vector.values.len()
+            };
+            let model_id = if vector.model_id.trim().is_empty() {
+                self.embedder.model_id().to_string()
+            } else {
+                vector.model_id.trim().to_string()
+            };
+            let contract = EmbeddingIndexContract::from_parts(None, model_id, dim);
+            contract.validate_vector(&vector.values)?;
+            if let Some(first) = &resolved {
+                if !first.is_compatible_with(&contract) {
+                    return Err(CoreError::InvalidRequest(format!(
+                        "supplied vectors mix incompatible embedding contracts: {} ({}) vs {} ({})",
+                        first.model_id, first.dimension, contract.model_id, contract.dimension
+                    )));
+                }
+            } else {
+                resolved = Some(contract);
+            }
+        }
+        Ok(resolved)
     }
 
     fn write_vectors_inner(
         &self,
         node_id: &str,
         supplied: &[(String, super::types::SuppliedVector)],
-    ) -> Result<Option<(usize, usize, usize)>, CoreError> {
+    ) -> Result<Option<WriteVectorsResult>, CoreError> {
         // Collect + embed *outside* the write txn. Hashing a 50 KB passage
         // inside BEGIN IMMEDIATE held the only SQLite writer for the whole
         // embed; `write_vectors_with` already accepted precomputed vectors,
         // so the default door now prepares them the same way. Goldens stay
         // identical: FrozenClock pins duration_ms at 0 and the filed bytes
         // are encode(embed(text)) either way.
+        let supplied_contract = self.resolve_supplied_contract(supplied)?;
         let items = self
             .store
             .with_read_conn(|conn| self.collect_vector_items(conn, node_id))?;
         let Some(items) = items else {
             return Ok(None);
         };
-        let prepared = self.embed_items_outside_txn(&items, supplied);
+        let allow_native_fallback = match &supplied_contract {
+            Some(contract) => {
+                contract.model_id == self.embedder.model_id()
+                    && contract.dimension == self.embedder.dim()
+            }
+            None => true,
+        };
+        let prepared = if allow_native_fallback {
+            self.embed_items_outside_txn(&items, supplied)
+        } else {
+            items
+                .iter()
+                .map(|item| {
+                    let found = supplied
+                        .iter()
+                        .find(|(id, v)| id == &item.item_id && !v.values.is_empty())
+                        .map(|(_, v)| v.clone());
+                    PreparedVectorItem {
+                        item: item.clone(),
+                        supplied: found,
+                        precomputed_native: None,
+                    }
+                })
+                .collect()
+        };
+        let effective_contract = supplied_contract
+            .clone()
+            .unwrap_or_else(|| self.embedder.contract());
+        let effective_model_id = effective_contract.model_id.clone();
+
         self.store.with_write_txn(|txn| {
             let mut indexed = 0usize;
             let mut skipped = 0usize;
-            for (item, offered) in &prepared {
-                let wrote = match offered.as_ref() {
-                    Some(vector) => self.upsert_vector_item_with(txn, item, Some(vector))?,
-                    None => self.upsert_vector_item(txn, item)?,
+            for entry in &prepared {
+                let wrote = if entry.supplied.is_some() || allow_native_fallback {
+                    self.upsert_vector_item_with_precomputed(
+                        txn,
+                        &entry.item,
+                        entry.supplied.as_ref(),
+                        entry.precomputed_native.as_deref(),
+                    )?
+                } else {
+                    false
                 };
                 if wrote {
                     indexed += 1;
@@ -199,13 +319,25 @@ impl GraphWriter {
                     skipped += 1;
                 }
             }
-            // The first successful vector write establishes the fingerprint;
-            // later incremental writes never overwrite it — only a full rebuild
-            // may flip it after an embedder swap.
-            if indexed > 0 && self.embedder_fingerprint(txn)?.is_none() {
+            let mut reindex_required = false;
+            if let Some(contract) = &supplied_contract {
+                if indexed > 0 {
+                    reindex_required = Self::record_index_contract_in_txn(txn, contract)?;
+                } else {
+                    reindex_required = Self::has_conflicting_vectors(txn, contract)?;
+                }
+            } else if indexed > 0 && self.embedder_fingerprint(txn)?.is_none() {
+                // Default parity path: preserve exact `graph_meta` keys.
                 self.write_embedder_fingerprint(txn)?;
             }
-            Ok(Some((items.len(), indexed, skipped)))
+            Ok(Some(WriteVectorsResult {
+                total: items.len(),
+                indexed,
+                skipped,
+                model_id: effective_model_id,
+                contract: effective_contract,
+                reindex_required,
+            }))
         })
     }
 
@@ -289,28 +421,32 @@ impl GraphWriter {
         &self,
         items: &[VectorItem],
         supplied: &[(String, super::types::SuppliedVector)],
-    ) -> Vec<(VectorItem, Option<super::types::SuppliedVector>)> {
-        use super::types::SuppliedVector;
+    ) -> Vec<PreparedVectorItem> {
         use crate::pytext::truncate_chars;
         items
             .iter()
             .map(|item| {
                 if let Some((_, vector)) = supplied.iter().find(|(id, _)| id == &item.item_id) {
-                    return (item.clone(), Some(vector.clone()));
+                    return PreparedVectorItem {
+                        item: item.clone(),
+                        supplied: Some(vector.clone()),
+                        precomputed_native: None,
+                    };
                 }
                 let text = clean_text(&item.text);
                 if text.chars().count() < 2 {
-                    return (item.clone(), None);
+                    return PreparedVectorItem {
+                        item: item.clone(),
+                        supplied: None,
+                        precomputed_native: None,
+                    };
                 }
                 let values = self.embedder.embed(&truncate_chars(&text, 50_000));
-                (
-                    item.clone(),
-                    Some(SuppliedVector {
-                        values,
-                        model_id: self.embedder.model_id().to_string(),
-                        dim: self.embedder.dim(),
-                    }),
-                )
+                PreparedVectorItem {
+                    item: item.clone(),
+                    supplied: None,
+                    precomputed_native: Some(values),
+                }
             })
             .collect()
     }
@@ -396,8 +532,13 @@ impl GraphWriter {
                 }
             }
             let mut indexed = 0usize;
-            for (item, offered) in &prepared {
-                if self.upsert_vector_item_with(txn, item, offered.as_ref())? {
+            for entry in &prepared {
+                if self.upsert_vector_item_with_precomputed(
+                    txn,
+                    &entry.item,
+                    entry.supplied.as_ref(),
+                    entry.precomputed_native.as_deref(),
+                )? {
                     indexed += 1;
                 } else {
                     skipped += 1;
@@ -571,6 +712,111 @@ impl GraphWriter {
             }
         }
         Ok(items)
+    }
+
+    /// Read the active [`EmbeddingIndexContract`] from `graph_meta` (or synthesize from `embedder_fingerprint`).
+    pub fn read_index_contract(conn: &Connection) -> Option<EmbeddingIndexContract> {
+        let contract_raw: Option<String> = conn
+            .query_row(
+                "SELECT value FROM graph_meta WHERE key=?",
+                rusqlite::params![EMBEDDING_INDEX_CONTRACT_KEY],
+                |row| row.get(0),
+            )
+            .ok();
+        if let Some(raw) = contract_raw {
+            if let Ok(parsed) = serde_json::from_str::<EmbeddingIndexContract>(&raw) {
+                if !parsed.model_id.is_empty() && parsed.dimension > 0 {
+                    return Some(parsed);
+                }
+            }
+        }
+        let fp_raw: Option<String> = conn
+            .query_row(
+                "SELECT value FROM graph_meta WHERE key=?",
+                rusqlite::params![EMBEDDER_FINGERPRINT_KEY],
+                |row| row.get(0),
+            )
+            .ok();
+        if let Some(raw) = fp_raw {
+            let payload = safe_loads(Some(&raw));
+            if let Some(model_id) = payload
+                .get("model_id")
+                .and_then(Value::as_str)
+                .filter(|v| !v.is_empty())
+            {
+                let dim = payload.get("dim").and_then(Value::as_u64).unwrap_or(0) as usize;
+                if dim > 0 {
+                    return Some(EmbeddingIndexContract::from_parts(None, model_id, dim));
+                }
+            }
+        }
+        None
+    }
+
+    /// Current [`EmbeddingIndexContract`] recorded in `graph_meta`, if any.
+    pub fn current_index_contract(&self) -> Result<Option<EmbeddingIndexContract>, CoreError> {
+        self.store
+            .with_read_conn(|conn| Ok(Self::read_index_contract(conn)))
+    }
+
+    /// Record a supplied provider's [`EmbeddingIndexContract`] and report whether existing vectors mismatch.
+    pub fn record_supplied_contract(
+        &self,
+        contract: &EmbeddingIndexContract,
+    ) -> Result<bool, CoreError> {
+        self.store
+            .with_write_txn(|txn| Self::record_index_contract_in_txn(txn, contract))
+    }
+
+    pub(crate) fn has_conflicting_vectors(
+        conn: &Connection,
+        contract: &EmbeddingIndexContract,
+    ) -> Result<bool, CoreError> {
+        let conflict: Option<i64> = conn
+            .query_row(
+                "SELECT 1 FROM vector_embeddings \
+                 WHERE (embedding_model <> ? OR embedding_dim <> ?) \
+                   AND ( \
+                     (embedding_model NOT LIKE 'lattice-local-hash%' \
+                      AND embedding_model NOT LIKE 'lattice-fallback-%') \
+                      OR item_type = 'chunk' \
+                      OR COALESCE(json_extract(metadata_json, '$.node_type'), '') IN ('Document', 'Note') \
+                    ) \
+                 LIMIT 1",
+                rusqlite::params![contract.model_id, contract.dimension as i64],
+                |row| row.get(0),
+            )
+            .ok();
+        Ok(conflict.is_some())
+    }
+
+    pub(crate) fn record_index_contract_in_txn(
+        txn: &Transaction<'_>,
+        contract: &EmbeddingIndexContract,
+    ) -> Result<bool, CoreError> {
+        let existing = Self::read_index_contract(txn);
+        let conflicting_rows = Self::has_conflicting_vectors(txn, contract)?;
+        let reindex_required = conflicting_rows
+            || existing
+                .as_ref()
+                .is_some_and(|stored| contract.requires_reindex(stored));
+
+        if existing.is_none() || !conflicting_rows {
+            let mut fingerprint = Map::new();
+            fingerprint.insert("model_id".into(), json!(contract.model_id));
+            fingerprint.insert("dim".into(), json!(contract.dimension));
+            txn.execute(
+                "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
+                rusqlite::params![EMBEDDER_FINGERPRINT_KEY, json_of(&fingerprint)],
+            )?;
+            let contract_json =
+                serde_json::to_string(contract).unwrap_or_else(|_| "{}".to_string());
+            txn.execute(
+                "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
+                rusqlite::params![EMBEDDING_INDEX_CONTRACT_KEY, contract_json],
+            )?;
+        }
+        Ok(reindex_required)
     }
 
     /// `_embedder_fingerprint_record`.

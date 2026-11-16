@@ -5,12 +5,15 @@
 
 use std::collections::{HashMap, HashSet};
 
-use lattice_core::{filter_scoped_nodes, CoreError, NodeRow};
-use rusqlite::Connection;
+use lattice_core::{CoreError, NodeRow};
+use rusqlite::{params_from_iter, types::Value as SqlValue, Connection};
 
 use crate::service::Scope;
 
-use super::scoring::row_to_node;
+use super::scoring::{
+    build_node_scope_sql, detect_nodes_v2_schema, extract_meta_from_json, row_to_node,
+    KnowledgeLifecycleStatus,
+};
 use super::sidecar::{detect_edge_columns, Bm25SidecarIndex};
 
 /// Configuration for Knowledge Graph structural neighborhood traversal & boosting.
@@ -26,6 +29,8 @@ pub struct GraphRagConfig {
     pub hop1_decay: f64,
     /// Decay factor for 2-hop neighbors (and shared concept/entity/wikilink/tag bridges).
     pub hop2_decay: f64,
+    /// Include `superseded`/`deprecated` neighbors (down-ranked when true; excluded when false).
+    pub include_historical: bool,
 }
 
 impl Default for GraphRagConfig {
@@ -36,6 +41,7 @@ impl Default for GraphRagConfig {
             max_neighbors: 40,
             hop1_decay: 0.68,
             hop2_decay: 0.38,
+            include_historical: false,
         }
     }
 }
@@ -157,10 +163,28 @@ fn record_implicit_link(
 }
 
 /// Expand seed nodes using the pre-tokenized [`Bm25SidecarIndex`] and cached graph adjacency.
+/// Expand seed nodes across 1-hop and 2-hop Knowledge Graph edges using a pre-synced
+/// [`Bm25SidecarIndex`] mutable cache.
 pub fn expand_knowledge_graph_with_sidecar(
     conn: &Connection,
     seeds: &[(String, f64)],
     sidecar: &mut Bm25SidecarIndex,
+    scope: &Scope,
+    cfg: &GraphRagConfig,
+) -> Result<Vec<GraphStructuralHit>, CoreError> {
+    if seeds.is_empty() {
+        return Ok(Vec::new());
+    }
+    sidecar.sync_edges_from_conn(conn)?;
+    expand_knowledge_graph_with_snapshot(conn, seeds, sidecar, scope, cfg)
+}
+
+/// Expand seed nodes across 1-hop and 2-hop Knowledge Graph edges using an immutable
+/// [`Bm25SidecarIndex`] snapshot (safe for concurrent readers without any write locks).
+pub fn expand_knowledge_graph_with_snapshot(
+    conn: &Connection,
+    seeds: &[(String, f64)],
+    sidecar: &Bm25SidecarIndex,
     scope: &Scope,
     cfg: &GraphRagConfig,
 ) -> Result<Vec<GraphStructuralHit>, CoreError> {
@@ -176,8 +200,6 @@ pub fn expand_knowledge_graph_with_sidecar(
     if active_seeds.is_empty() {
         return Ok(Vec::new());
     }
-
-    sidecar.sync_edges_from_conn(conn)?;
 
     let max_seed_score = active_seeds
         .iter()
@@ -292,38 +314,53 @@ pub fn expand_knowledge_graph_with_sidecar(
         frontier_ids = next_frontier;
     }
 
-    // Fetch only node rows referenced by edges that are not already in the sidecar cache
-    let mut fetched_nodes: HashMap<String, NodeRow> = HashMap::new();
+    // Fetch only node rows referenced by edges that are not already in the sidecar cache,
+    // applying SQL workspace and lifecycle filters before loading.
+    let mut fetched_nodes: HashMap<String, (NodeRow, KnowledgeLifecycleStatus)> = HashMap::new();
     let missing_ids: Vec<String> = raw_scores
         .keys()
         .filter(|id| sidecar.get_doc(id).is_none())
         .cloned()
         .collect();
     if !missing_ids.is_empty() {
-        let placeholders = (1..=missing_ids.len())
-            .map(|i| format!("?{i}"))
+        let schema = detect_nodes_v2_schema(conn)?;
+        let scope_parts = build_node_scope_sql(schema, "n", scope, cfg.include_historical);
+        let scope_cond = scope_parts
+            .where_clause
+            .strip_prefix("WHERE ")
+            .unwrap_or("")
+            .to_string();
+        let placeholders = std::iter::repeat_n("?", missing_ids.len())
             .collect::<Vec<_>>()
             .join(", ");
+        let extra_scope = if scope_cond.is_empty() {
+            String::new()
+        } else {
+            format!(" AND ({scope_cond})")
+        };
         let sql = format!(
-            "SELECT id, type, title, summary, metadata_json, updated_at
-             FROM nodes
-             WHERE id IN ({placeholders})"
+            "SELECT n.id, n.type, n.title, n.summary, n.metadata_json, n.updated_at, {}, {}
+             FROM nodes n
+             {}
+             WHERE n.id IN ({placeholders}){extra_scope}",
+            scope_parts.lifecycle_select, scope_parts.superseded_by_select, scope_parts.join_clause
         );
+        let mut params: Vec<SqlValue> = missing_ids.iter().cloned().map(SqlValue::Text).collect();
+        params.extend(scope_parts.params);
         let mut stmt = conn.prepare(&sql)?;
-        let iter = stmt.query_map(rusqlite::params_from_iter(missing_ids.iter()), row_to_node)?;
-        let mut fetched = Vec::new();
+        let iter = stmt.query_map(params_from_iter(params), |row| {
+            let node = row_to_node(row)?;
+            let lifecycle_raw: Option<String> = row.get("resolved_lifecycle")?;
+            let superseded_raw: Option<String> = row.get("resolved_superseded_by")?;
+            let lifecycle = KnowledgeLifecycleStatus::from_raw(
+                lifecycle_raw.as_deref(),
+                superseded_raw.as_deref(),
+            );
+            Ok((node, lifecycle))
+        })?;
         for item in iter {
-            fetched.push(item?);
-        }
-        let scoped_fetched = filter_scoped_nodes(
-            conn,
-            fetched,
-            scope.allowed_workspaces.as_ref(),
-            scope.include_legacy_global,
-            |r| r.id.clone(),
-        )?;
-        for node in scoped_fetched {
-            fetched_nodes.insert(node.id.clone(), node);
+            let (node, lifecycle) = item?;
+            fetched_nodes.insert(node.id.clone(), (node, lifecycle));
         }
     }
 
@@ -356,6 +393,9 @@ pub fn expand_knowledge_graph_with_sidecar(
     for (wl, origins) in &seed_wikilinks {
         for &doc_idx in sidecar.doc_idxs_by_title(wl) {
             if let Some(cand) = sidecar.doc_at(doc_idx) {
+                if !cfg.include_historical && cand.lifecycle_status.is_retired() {
+                    continue;
+                }
                 for (seed_id, strength) in origins {
                     record_implicit_link(
                         &cand.node.id,
@@ -373,6 +413,9 @@ pub fn expand_knowledge_graph_with_sidecar(
         }
         for &doc_idx in sidecar.doc_idxs_by_wikilink(wl) {
             if let Some(cand) = sidecar.doc_at(doc_idx) {
+                if !cfg.include_historical && cand.lifecycle_status.is_retired() {
+                    continue;
+                }
                 for (seed_id, strength) in origins {
                     record_implicit_link(
                         &cand.node.id,
@@ -393,6 +436,9 @@ pub fn expand_knowledge_graph_with_sidecar(
     for (tg, origins) in &seed_tags {
         for &doc_idx in sidecar.doc_idxs_by_tag(tg) {
             if let Some(cand) = sidecar.doc_at(doc_idx) {
+                if !cfg.include_historical && cand.lifecycle_status.is_retired() {
+                    continue;
+                }
                 for (seed_id, strength) in origins {
                     record_implicit_link(
                         &cand.node.id,
@@ -415,13 +461,21 @@ pub fn expand_knowledge_graph_with_sidecar(
         if base_score <= 0.0 {
             continue;
         }
-        let Some(node) = sidecar
-            .get_doc(&node_id)
-            .map(|d| d.node.clone())
-            .or_else(|| fetched_nodes.get(&node_id).cloned())
-        else {
+        let (node, lifecycle_status) = if let Some(doc) = sidecar.get_doc(&node_id) {
+            (doc.node.clone(), doc.lifecycle_status)
+        } else if let Some((node, lifecycle)) = fetched_nodes.get(&node_id) {
+            (node.clone(), *lifecycle)
+        } else {
             continue;
         };
+        let resolved_lifecycle = if lifecycle_status == KnowledgeLifecycleStatus::Active {
+            extract_meta_from_json(node.metadata_json.as_deref()).0
+        } else {
+            lifecycle_status
+        };
+        if !cfg.include_historical && resolved_lifecycle.is_retired() {
+            continue;
+        }
         let connected: Vec<String> = {
             let mut v: Vec<String> = seed_links
                 .remove(&node_id)
@@ -447,7 +501,8 @@ pub fn expand_knowledge_graph_with_sidecar(
             1.0
         };
         let centrality_boost = 1.0 + 0.08 * (1.0 + degree as f64).ln();
-        let final_graph_score = base_score * convergence_bonus * centrality_boost;
+        let final_graph_score =
+            base_score * convergence_bonus * centrality_boost * resolved_lifecycle.multiplier();
 
         hits.push(GraphStructuralHit {
             node,

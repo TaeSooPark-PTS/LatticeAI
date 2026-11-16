@@ -19,12 +19,15 @@ use lattice_core::bm25_stats::{
     compute_node_bm25_stats_from_row, extract_doc_field_strings, load_bm25_node_stats,
     NodeBm25Stats,
 };
-use lattice_core::{CoreError, NodeRow};
+use lattice_core::{CoreError, FallbackTextEmbedder, NodeRow};
 use rusqlite::Connection;
 
 use crate::service::Scope;
 
-use super::scoring::load_scoped_corpus;
+use super::scoring::{
+    extract_meta_from_json, load_scoped_corpus_records, CorpusLoadOptions,
+    KnowledgeLifecycleStatus, ScopedNodeRecord,
+};
 
 const MAX_CACHED_EDGES: usize = 50_000;
 
@@ -64,6 +67,7 @@ pub struct SidecarCacheStats {
     pub incremental_updates: u64,
     pub tokenized_nodes: u64,
     pub sidecar_table_hits: u64,
+    pub subword_computed_nodes: u64,
     pub total_docs: usize,
     pub unique_terms: usize,
 }
@@ -75,6 +79,7 @@ struct SyncToken {
     schema_version: i64,
     total_changes: i64,
     max_rows: i64,
+    include_historical: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -82,6 +87,9 @@ pub struct SidecarDoc {
     pub node: NodeRow,
     pub updated_at: String,
     pub content_hash: u64,
+    pub lifecycle_status: KnowledgeLifecycleStatus,
+    pub importance_score: Option<f64>,
+    pub visibility: Option<String>,
     pub dl_title: usize,
     pub dl_tags: usize,
     pub dl_body: usize,
@@ -97,10 +105,11 @@ pub struct SidecarDoc {
     pub tags: Vec<String>,
     pub title_norm: String,
     all_terms: Vec<String>,
+    subword_embedding: Option<Vec<f32>>,
 }
 
 /// Pre-tokenized BM25F sidecar & inverted index with incremental updates and graph caches.
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Bm25SidecarIndex {
     docs: Vec<Option<SidecarDoc>>,
     free_slots: Vec<usize>,
@@ -125,7 +134,7 @@ pub struct Bm25SidecarIndex {
     edges_sync_token: Option<SyncToken>,
     edge_layout: Option<EdgeColumnLayout>,
     last_sync_token: Option<SyncToken>,
-    stats: SidecarCacheStats,
+    pub(crate) stats: SidecarCacheStats,
 }
 
 fn node_content_hash(row: &NodeRow) -> u64 {
@@ -139,9 +148,15 @@ fn node_content_hash(row: &NodeRow) -> u64 {
     hasher.finish()
 }
 
-fn build_sidecar_doc(row: &NodeRow, precomputed: Option<&NodeBm25Stats>) -> (SidecarDoc, bool) {
+fn build_sidecar_doc(
+    row: &NodeRow,
+    precomputed: Option<&NodeBm25Stats>,
+    scoped_meta: Option<(KnowledgeLifecycleStatus, Option<f64>, Option<String>)>,
+) -> (SidecarDoc, bool) {
     let updated_at = row.updated_at.clone().unwrap_or_default();
     let content_hash = node_content_hash(row);
+    let (lifecycle_status, importance_score, visibility) =
+        scoped_meta.unwrap_or_else(|| extract_meta_from_json(row.metadata_json.as_deref()));
 
     let (stats, fields, used_table) = match precomputed {
         Some(st) if st.updated_at == updated_at => {
@@ -181,6 +196,9 @@ fn build_sidecar_doc(row: &NodeRow, precomputed: Option<&NodeBm25Stats>) -> (Sid
         node: row.clone(),
         updated_at,
         content_hash,
+        lifecycle_status,
+        importance_score,
+        visibility,
         dl_title: stats.dl_title.max(1),
         dl_tags: stats.dl_tags.max(1),
         dl_body: stats.dl_body.max(1),
@@ -196,8 +214,37 @@ fn build_sidecar_doc(row: &NodeRow, precomputed: Option<&NodeBm25Stats>) -> (Sid
         tags: stats.payload.tags,
         title_norm,
         all_terms,
+        subword_embedding: None,
     };
     (doc, used_table)
+}
+
+fn compute_doc_subword_embedding(embedder: &FallbackTextEmbedder, row: &NodeRow) -> Vec<f32> {
+    let doc_text = format!(
+        "{} {}",
+        row.title.as_deref().unwrap_or_default(),
+        row.summary.as_deref().unwrap_or_default()
+    );
+    if doc_text.trim().is_empty() {
+        return Vec::new();
+    }
+    let vec_f64 = embedder.embed(&doc_text);
+    if vec_f64.iter().all(|&v| v == 0.0) {
+        Vec::new()
+    } else {
+        vec_f64.into_iter().map(|v| v as f32).collect()
+    }
+}
+
+fn dot_f32_f64(doc_vec: &[f32], query_vec: &[f64]) -> f64 {
+    if doc_vec.len() != query_vec.len() || doc_vec.is_empty() {
+        return 0.0;
+    }
+    doc_vec
+        .iter()
+        .zip(query_vec.iter())
+        .map(|(&d, &q)| f64::from(d) * q)
+        .sum()
 }
 
 fn remove_idx_from_map(map: &mut HashMap<String, Vec<usize>>, key: &str, doc_idx: usize) {
@@ -215,7 +262,11 @@ fn remove_idx_from_map(map: &mut HashMap<String, Vec<usize>>, key: &str, doc_idx
     }
 }
 
-fn conn_sync_token(conn: &Connection, max_rows: i64) -> Result<SyncToken, CoreError> {
+fn conn_sync_token(
+    conn: &Connection,
+    max_rows: i64,
+    include_historical: bool,
+) -> Result<SyncToken, CoreError> {
     let data_version: i64 = conn
         .query_row("PRAGMA data_version", [], |r| r.get(0))
         .unwrap_or(0);
@@ -231,6 +282,7 @@ fn conn_sync_token(conn: &Connection, max_rows: i64) -> Result<SyncToken, CoreEr
         schema_version,
         total_changes,
         max_rows,
+        include_historical,
     })
 }
 
@@ -395,6 +447,163 @@ impl Bm25SidecarIndex {
             .collect()
     }
 
+    /// Clone only the requested `NodeRow` entries by id (O(|ids|), avoiding full-corpus clone).
+    pub fn clone_nodes_by_ids(&self, ids: &[String]) -> HashMap<String, NodeRow> {
+        let mut out = HashMap::with_capacity(ids.len());
+        for id in ids {
+            if let Some(doc) = self.get_doc(id) {
+                out.insert(id.clone(), doc.node.clone());
+            }
+        }
+        out
+    }
+
+    /// True if all active documents already have cached subword embeddings.
+    pub fn subword_ready(&self) -> bool {
+        self.docs
+            .iter()
+            .flatten()
+            .all(|doc| doc.subword_embedding.is_some())
+    }
+
+    /// Precompute subword fallback embeddings ONLY for nodes missing one (incremental on change).
+    /// Returns the number of newly computed node embeddings.
+    pub fn ensure_subword_embeddings(&mut self) -> usize {
+        if self.subword_ready() {
+            return 0;
+        }
+        let embedder = FallbackTextEmbedder::default();
+        let mut computed = 0usize;
+        for doc_opt in &mut self.docs {
+            let Some(doc) = doc_opt.as_mut() else {
+                continue;
+            };
+            if doc.subword_embedding.is_none() {
+                doc.subword_embedding = Some(compute_doc_subword_embedding(&embedder, &doc.node));
+                self.stats.subword_computed_nodes += 1;
+                computed += 1;
+            }
+        }
+        computed
+    }
+
+    /// Compute subword cosine similarities only for the specified seed `ids`.
+    pub fn subword_similarity_for_ids(
+        &self,
+        query_vec: &[f64],
+        ids: &[String],
+    ) -> HashMap<String, f64> {
+        let mut out = HashMap::new();
+        if query_vec.iter().all(|&v| v == 0.0) {
+            return out;
+        }
+        for id in ids {
+            let Some(doc) = self.get_doc(id) else {
+                continue;
+            };
+            if let Some(d_vec) = doc.subword_embedding.as_deref() {
+                let sim = dot_f32_f64(d_vec, query_vec);
+                if sim > 0.0 {
+                    out.insert(id.clone(), sim);
+                }
+            }
+        }
+        out
+    }
+
+    /// Score cached subword embeddings without cloning the corpus; clones only the top `limit` hits.
+    pub fn score_subword_query(
+        &self,
+        query_vec: &[f64],
+        min_sim: f64,
+        limit: usize,
+        include_historical: bool,
+    ) -> Vec<(NodeRow, f64)> {
+        if limit == 0 || query_vec.iter().all(|&v| v == 0.0) {
+            return Vec::new();
+        }
+        let mut scored_idxs: Vec<(usize, f64)> = Vec::new();
+        for (idx, doc_opt) in self.docs.iter().enumerate() {
+            let Some(doc) = doc_opt.as_ref() else {
+                continue;
+            };
+            if !include_historical && doc.lifecycle_status.is_retired() {
+                continue;
+            }
+            let Some(d_vec) = doc.subword_embedding.as_deref() else {
+                continue;
+            };
+            let raw_sim = dot_f32_f64(d_vec, query_vec);
+            let weighted = raw_sim * doc.lifecycle_status.multiplier();
+            if weighted >= min_sim {
+                scored_idxs.push((idx, weighted));
+            }
+        }
+        scored_idxs.sort_by(|a, b| b.1.total_cmp(&a.1));
+        scored_idxs.truncate(limit);
+        scored_idxs
+            .into_iter()
+            .filter_map(|(idx, score)| self.doc_at(idx).map(|doc| (doc.node.clone(), score)))
+            .collect()
+    }
+
+    /// Estimate approximate resident memory footprint in bytes for cache eviction accounting.
+    pub fn estimated_memory_bytes(&self) -> usize {
+        let mut bytes = std::mem::size_of::<Self>();
+        bytes += self.docs.capacity() * std::mem::size_of::<Option<SidecarDoc>>();
+        for doc in self.docs.iter().flatten() {
+            bytes += doc.node.id.len()
+                + doc.node.node_type.as_deref().map_or(0, str::len)
+                + doc.node.title.as_deref().map_or(0, str::len)
+                + doc.node.summary.as_deref().map_or(0, str::len)
+                + doc.node.metadata_json.as_deref().map_or(0, str::len)
+                + doc.updated_at.len()
+                + doc.title_lower.len()
+                + doc.tags_headings_lower.len()
+                + doc.body_lower.len()
+                + doc.title_norm.len();
+            bytes += doc.all_terms.iter().map(|t| t.len() + 24).sum::<usize>();
+            bytes += doc.wikilinks.iter().map(|t| t.len() + 24).sum::<usize>();
+            bytes += doc.tags.iter().map(|t| t.len() + 24).sum::<usize>();
+            let tf_entries =
+                doc.tf_title.len() + doc.tf_tags.len() + doc.tf_body.len() + doc.tf_meta.len();
+            bytes += tf_entries * 48;
+            if let Some(emb) = &doc.subword_embedding {
+                bytes += emb.capacity() * std::mem::size_of::<f32>();
+            }
+        }
+        for (term, list) in &self.postings {
+            bytes += term.len() + 32 + list.capacity() * std::mem::size_of::<PostingEntry>();
+            bytes += list.iter().map(|e| e.node_id.len()).sum::<usize>();
+        }
+        bytes += self.edges.capacity() * std::mem::size_of::<CachedEdge>();
+        for edge in &self.edges {
+            bytes += edge.src.len() + edge.dst.len() + edge.rel.len();
+        }
+        bytes
+    }
+
+    /// True if node index token still matches `conn` for `(max_rows, include_historical)`.
+    pub(crate) fn is_synced_with(
+        &self,
+        conn: &Connection,
+        max_rows: i64,
+        include_historical: bool,
+    ) -> bool {
+        let Ok(token) = conn_sync_token(conn, max_rows, include_historical) else {
+            return false;
+        };
+        self.last_sync_token.as_ref() == Some(&token)
+    }
+
+    /// True if graph edges token still matches `conn`.
+    pub(crate) fn edges_synced_with(&self, conn: &Connection) -> bool {
+        let Ok(token) = conn_sync_token(conn, 0, false) else {
+            return false;
+        };
+        self.edges_sync_token.as_ref() == Some(&token)
+    }
+
     fn remove_doc_by_id(&mut self, node_id: &str) {
         let Some(doc_idx) = self.id_to_idx.remove(node_id) else {
             return;
@@ -508,7 +717,30 @@ impl Bm25SidecarIndex {
         rows: &[NodeRow],
         precomputed: Option<&HashMap<String, NodeBm25Stats>>,
     ) {
-        let incoming_ids: HashSet<&str> = rows.iter().map(|r| r.id.as_str()).collect();
+        let records: Vec<ScopedNodeRecord> = rows
+            .iter()
+            .map(|row| {
+                let (lifecycle_status, importance_score, visibility) =
+                    extract_meta_from_json(row.metadata_json.as_deref());
+                ScopedNodeRecord {
+                    node: row.clone(),
+                    lifecycle_status,
+                    importance_score,
+                    visibility,
+                }
+            })
+            .collect();
+        self.sync_from_scoped_records(&records, precomputed);
+    }
+
+    /// Incrementally sync index from [`ScopedNodeRecord`] slices, preserving unchanged
+    /// tokenized fields and cached subword embeddings while updating changed/new docs.
+    pub fn sync_from_scoped_records(
+        &mut self,
+        records: &[ScopedNodeRecord],
+        precomputed: Option<&HashMap<String, NodeBm25Stats>>,
+    ) {
+        let incoming_ids: HashSet<&str> = records.iter().map(|r| r.node.id.as_str()).collect();
         let to_remove: Vec<String> = self
             .id_to_idx
             .keys()
@@ -522,7 +754,8 @@ impl Bm25SidecarIndex {
             self.stats.incremental_updates += 1;
         }
 
-        for row in rows {
+        for rec in records {
+            let row = &rec.node;
             let hash = node_content_hash(row);
             let updated_at = row.updated_at.as_deref().unwrap_or_default();
             let unchanged = self
@@ -530,13 +763,27 @@ impl Bm25SidecarIndex {
                 .get(&row.id)
                 .and_then(|&idx| self.docs.get(idx))
                 .and_then(|opt| opt.as_ref())
-                .is_some_and(|doc| doc.updated_at == updated_at && doc.content_hash == hash);
+                .is_some_and(|doc| {
+                    doc.updated_at == updated_at
+                        && doc.content_hash == hash
+                        && doc.lifecycle_status == rec.lifecycle_status
+                        && doc.importance_score == rec.importance_score
+                        && doc.visibility == rec.visibility
+                });
             if unchanged {
                 continue;
             }
             changed = true;
             let pre = precomputed.and_then(|m| m.get(&row.id));
-            let (doc, used_table) = build_sidecar_doc(row, pre);
+            let (doc, used_table) = build_sidecar_doc(
+                row,
+                pre,
+                Some((
+                    rec.lifecycle_status,
+                    rec.importance_score,
+                    rec.visibility.clone(),
+                )),
+            );
             if used_table {
                 self.stats.sidecar_table_hits += 1;
             } else {
@@ -556,23 +803,31 @@ impl Bm25SidecarIndex {
         }
     }
 
-    /// Sync index incrementally from SQLite, hydrating unchanged/precomputed nodes
-    /// from `bm25_node_stats` when available and never mutating read-only DBs.
-    pub fn sync_from_conn(
+    /// Sync index incrementally from SQLite with explicit `include_historical` lifecycle control.
+    pub fn sync_from_conn_with_options(
         &mut self,
         conn: &Connection,
         scope: &Scope,
         max_rows: i64,
+        include_historical: bool,
     ) -> Result<(), CoreError> {
-        let token = conn_sync_token(conn, max_rows)?;
+        let token = conn_sync_token(conn, max_rows, include_historical)?;
         if self.last_sync_token.as_ref() == Some(&token) {
             self.stats.cache_hits += 1;
             return Ok(());
         }
 
-        let rows = load_scoped_corpus(conn, scope, max_rows)?;
+        let records = load_scoped_corpus_records(
+            conn,
+            scope,
+            &CorpusLoadOptions {
+                max_rows,
+                include_historical,
+            },
+        )?;
         let mut stale_or_missing_ids: Vec<String> = Vec::new();
-        for row in &rows {
+        for rec in &records {
+            let row = &rec.node;
             let hash = node_content_hash(row);
             let updated_at = row.updated_at.as_deref().unwrap_or_default();
             let unchanged = self
@@ -580,14 +835,20 @@ impl Bm25SidecarIndex {
                 .get(&row.id)
                 .and_then(|&idx| self.docs.get(idx))
                 .and_then(|opt| opt.as_ref())
-                .is_some_and(|doc| doc.updated_at == updated_at && doc.content_hash == hash);
+                .is_some_and(|doc| {
+                    doc.updated_at == updated_at
+                        && doc.content_hash == hash
+                        && doc.lifecycle_status == rec.lifecycle_status
+                        && doc.importance_score == rec.importance_score
+                        && doc.visibility == rec.visibility
+                });
             if !unchanged {
                 stale_or_missing_ids.push(row.id.clone());
             }
         }
 
         let was_empty = self.active_docs == 0 && self.last_sync_token.is_none();
-        if was_empty && !rows.is_empty() {
+        if was_empty && !records.is_empty() {
             self.stats.cache_misses += 1;
         }
 
@@ -596,9 +857,9 @@ impl Bm25SidecarIndex {
         } else {
             load_bm25_node_stats(conn, &stale_or_missing_ids)
         };
-        let had_updates = !stale_or_missing_ids.is_empty() || rows.len() != self.active_docs;
+        let had_updates = !stale_or_missing_ids.is_empty() || records.len() != self.active_docs;
         if had_updates {
-            self.sync_from_nodes(&rows, Some(&precomputed));
+            self.sync_from_scoped_records(&records, Some(&precomputed));
         } else {
             self.stats.cache_hits += 1;
         }
@@ -606,9 +867,20 @@ impl Bm25SidecarIndex {
         Ok(())
     }
 
+    /// Sync index incrementally from SQLite, hydrating unchanged/precomputed nodes
+    /// from `bm25_node_stats` when available and never mutating read-only DBs.
+    pub fn sync_from_conn(
+        &mut self,
+        conn: &Connection,
+        scope: &Scope,
+        max_rows: i64,
+    ) -> Result<(), CoreError> {
+        self.sync_from_conn_with_options(conn, scope, max_rows, false)
+    }
+
     /// Sync in-memory graph edge adjacency cache from SQLite `edges` when changed.
     pub fn sync_edges_from_conn(&mut self, conn: &Connection) -> Result<(), CoreError> {
-        let token = conn_sync_token(conn, 0)?;
+        let token = conn_sync_token(conn, 0, false)?;
         if self.edges_sync_token.as_ref() == Some(&token) {
             return Ok(());
         }

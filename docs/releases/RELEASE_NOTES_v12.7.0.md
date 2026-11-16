@@ -1,6 +1,6 @@
 # Lattice AI 12.7.0 — Fast Index
 
-> **Status: canonical** — current release note.
+> **Status: historical** — point-in-time release note.
 
 2026-11-16
 

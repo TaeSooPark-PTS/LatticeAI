@@ -8,6 +8,7 @@
 
 pub mod bm25_stats;
 pub mod db;
+pub mod embedding_contract;
 pub mod embeddings;
 pub mod graph_write;
 pub mod messages;
@@ -17,7 +18,13 @@ pub mod read;
 pub mod worker;
 
 pub use db::{open_read_only, CoreError};
-pub use embeddings::{FallbackTextEmbedder, LocalEmbeddingModel, DEFAULT_FALLBACK_DIM};
+pub use embeddings::{
+    EmbeddingIndexContract, FallbackTextEmbedder, LocalEmbeddingModel, DEFAULT_FALLBACK_DIM,
+};
+pub use graph_write::{
+    read_lifecycle_from_metadata, IngestStatus, KnowledgeLifecycleMetadata,
+    KnowledgeLifecycleState, KnowledgeLifecycleUpdate, LifecycleHistoryEntry,
+};
 pub use paths::{data_dir, graph_db_path, resolve_data_dir, DB_FILE_NAME};
 pub use pytext::{clean_text, parse_iso, recency_score, round6, safe_loads, truncate_chars};
 pub use read::{

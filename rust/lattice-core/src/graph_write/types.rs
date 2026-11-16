@@ -18,6 +18,39 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+/// Granular ingest completion state reported across ingest endpoints and provenance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum IngestStatus {
+    /// Parse, extraction, embedding, and graph write all completed cleanly.
+    #[default]
+    Complete,
+    /// Raw text / node persisted, but parsing, extraction, or semantic embedding degraded or was omitted.
+    Partial,
+    /// Queued or awaiting worker recovery for enrichment/embedding.
+    Pending,
+    /// Persistence itself failed.
+    Failed,
+    /// Embedding model or index contract changed; reindexing is required for consistent vector search.
+    ReindexRequired,
+}
+
+impl IngestStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Complete => "complete",
+            Self::Partial => "partial",
+            Self::Pending => "pending",
+            Self::Failed => "failed",
+            Self::ReindexRequired => "reindex_required",
+        }
+    }
+
+    pub fn is_degraded(&self) -> bool {
+        !matches!(self, Self::Complete)
+    }
+}
+
 /// One node the way `_upsert_node` takes it.
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct NodeSpec {

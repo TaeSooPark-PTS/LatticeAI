@@ -12,6 +12,8 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
+**12.8.0 — Trusted Brain** unifies the `EmbeddingIndexContract` & knowledge lifecycle tracking, pushes workspace/lifecycle filtering before SQL `LIMIT` with aligned vector search & bounded sidecar caches, enforces fail-closed multi-user/workspace/tenant isolation across gateway routes, delivers AEAD-encrypted `.latticebrain` archive portability with honest `planned` PostgreSQL status, modularizes `Library`/`System`/`Capture` UI slices, and automates Apple Silicon DMG CI/CD releases. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.8.0.md`.
+
 **12.7.0 — Fast Index** adds a Pre-Tokenized BM25F Sidecar (`Bm25SidecarIndex`), SQLite `bm25_node_stats` persistence, and an inverted posting-list & GraphRAG adjacency cache for O(1) lookup without query-time re-tokenization, alongside a product-first `README.md` and `v12.0.0+` release-history polish. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.7.0.md`.
 
 **12.6.0 — Hybrid Graph** adds 3-way BM25F + Vector + Knowledge Graph RRF hybrid indexing & graph-aware agent skills, multi-scale subword `FallbackTextEmbedder`, unauthenticated EmbeddingGemma 2 public mirrors & quantized GGUF/MLX/ONNX fallbacks, real-time SSE download progress streaming (`MB/s` & `ETA`) in Onboarding and Model Library, Pillow 13+ cleanup, Ubuntu 24.04/26.04 `t64` CI resilience, and the modular `scripts/bump_version/` CLI. Full disclosure is in `docs/releases/RELEASE_NOTES_v12.6.0.md`.

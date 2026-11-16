@@ -335,3 +335,14 @@ print(json.dumps({
     assert set(result["access"]) == {"require_auth", "externally_reachable"}
     assert result["product_route_status"] == 404
     assert result["schema_paths"] == sorted(_schema_paths())
+
+
+def test_worker_app_module_docstring_matches_current_20_route_contract():
+    import latticeai.worker_app as worker_app
+
+    doc = worker_app.__doc__ or ""
+    assert "464" not in doc
+    assert "439" not in doc
+    assert "20 routes" in doc
+    assert "WORKER_ROUTES" in doc
+    assert "WORKER_COMPUTE_ROUTES" in doc

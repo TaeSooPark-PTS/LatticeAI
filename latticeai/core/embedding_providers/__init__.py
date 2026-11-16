@@ -79,6 +79,7 @@ from .autodetect import detect_local_mlx as detect_local_mlx
 from .autodetect import detect_ollama as detect_ollama
 from .autodetect import resolve_auto_provider as resolve_auto_provider
 from .base import _KNOWN_DIMS as _KNOWN_DIMS
+from .base import EmbeddingIndexContract as EmbeddingIndexContract
 from .base import EmbeddingProvider as EmbeddingProvider
 from .base import EmbeddingUnavailable as EmbeddingUnavailable
 from .base import _guess_dim as _guess_dim
@@ -154,6 +155,7 @@ __all__ = [
     "VISION_TARGET_ENV",
     "CustomVisionCaptioner",
     "CustomVisionEmbeddingProvider",
+    "EmbeddingIndexContract",
     "EmbeddingProvider",
     "EmbeddingUnavailable",
     "MLXVisionCaptioner",

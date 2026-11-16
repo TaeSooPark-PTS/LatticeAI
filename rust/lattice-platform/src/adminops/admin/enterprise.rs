@@ -347,3 +347,191 @@ fn which(name: &str) -> bool {
         })
         .unwrap_or(false)
 }
+
+// ── P3 Tenant Isolation & Organization Governance Contracts ──────────────────
+
+const ORG_POLICIES_FILE: &str = "org_governance_policies.json";
+const DEFAULT_TENANT_SCOPE: &str = "personal";
+const SENSITIVE_AUDIT_KEYS: &[&str] = &[
+    "passphrase",
+    "password",
+    "token",
+    "secret",
+    "api_key",
+    "private_key",
+    "encryption_key",
+];
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct OrganizationGovernancePolicy {
+    pub organization_id: String,
+    pub enforce_tenant_isolation: bool,
+    pub allow_cross_org_share: bool,
+    pub require_review_for_shares: bool,
+    pub allow_multimodal_capture: bool,
+    pub allowed_modalities: Vec<String>,
+    pub audit_retention_days: u32,
+    pub updated_at: Option<String>,
+}
+
+impl OrganizationGovernancePolicy {
+    pub fn default_for(org_id: &str) -> Self {
+        Self {
+            organization_id: normalize_tenant_scope(Some(org_id)).to_string(),
+            enforce_tenant_isolation: true,
+            allow_cross_org_share: false,
+            require_review_for_shares: true,
+            allow_multimodal_capture: true,
+            allowed_modalities: vec!["speech".into(), "vision".into(), "image_retrieval".into()],
+            audit_retention_days: 90,
+            updated_at: None,
+        }
+    }
+
+    pub fn permits_modality(&self, modality: &str) -> bool {
+        self.allow_multimodal_capture
+            && self
+                .allowed_modalities
+                .iter()
+                .any(|m| m.eq_ignore_ascii_case(modality))
+    }
+}
+
+pub fn normalize_tenant_scope(scope: Option<&str>) -> &str {
+    match scope.map(str::trim) {
+        Some(s) if !s.is_empty() => s,
+        _ => DEFAULT_TENANT_SCOPE,
+    }
+}
+
+pub fn load_org_governance_policy(data_dir: &Path, org_id: &str) -> OrganizationGovernancePolicy {
+    let normalized = normalize_tenant_scope(Some(org_id));
+    let path = data_dir.join(ORG_POLICIES_FILE);
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return OrganizationGovernancePolicy::default_for(normalized);
+    };
+    let Ok(map) = serde_json::from_str::<serde_json::Map<String, Value>>(&text) else {
+        return OrganizationGovernancePolicy::default_for(normalized);
+    };
+    map.get(normalized)
+        .and_then(|v| serde_json::from_value::<OrganizationGovernancePolicy>(v.clone()).ok())
+        .unwrap_or_else(|| OrganizationGovernancePolicy::default_for(normalized))
+}
+
+pub fn save_org_governance_policy(
+    data_dir: &Path,
+    org_id: &str,
+    policy: &OrganizationGovernancePolicy,
+    actor_email: Option<&str>,
+) -> Result<OrganizationGovernancePolicy, String> {
+    let normalized = normalize_tenant_scope(Some(org_id)).to_string();
+    if policy.audit_retention_days == 0 {
+        return Err("audit_retention_days must be at least 1.".into());
+    }
+    let mut stored = policy.clone();
+    stored.organization_id = normalized.clone();
+    stored.updated_at = Some(super::internal::now_iso());
+
+    let path = data_dir.join(ORG_POLICIES_FILE);
+    let mut all = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Map<String, Value>>(&t).ok())
+        .unwrap_or_default();
+    let encoded = serde_json::to_value(&stored).map_err(|e| e.to_string())?;
+    all.insert(normalized.clone(), encoded);
+    let json_text = serde_json::to_string_pretty(&all).map_err(|e| e.to_string())?;
+    lattice_auth::atomic::write_text(&path, &json_text);
+
+    let mut audit = serde_json::Map::new();
+    audit.insert("organization_id".into(), json!(normalized));
+    audit.insert(
+        "enforce_tenant_isolation".into(),
+        json!(stored.enforce_tenant_isolation),
+    );
+    audit.insert(
+        "allow_cross_org_share".into(),
+        json!(stored.allow_cross_org_share),
+    );
+    audit.insert(
+        "allow_multimodal_capture".into(),
+        json!(stored.allow_multimodal_capture),
+    );
+    audit.insert(
+        "audit_retention_days".into(),
+        json!(stored.audit_retention_days),
+    );
+    emit_sanitized_governance_audit(
+        data_dir,
+        "org_policy_updated",
+        actor_email,
+        Some(&stored.organization_id),
+        audit,
+    );
+    Ok(stored)
+}
+
+/// Enforce strict workspace/tenant isolation boundary and audit any violation.
+pub fn validate_tenant_scope(
+    data_dir: &Path,
+    actor_workspace: Option<&str>,
+    target_workspace: Option<&str>,
+    actor_email: Option<&str>,
+    operation: &str,
+) -> Result<(), String> {
+    let actor_scope = normalize_tenant_scope(actor_workspace);
+    let target_scope = normalize_tenant_scope(target_workspace);
+    let policy = load_org_governance_policy(data_dir, actor_scope);
+    if !policy.enforce_tenant_isolation || actor_scope == target_scope {
+        return Ok(());
+    }
+    let mut details = serde_json::Map::new();
+    details.insert("actor_workspace".into(), json!(actor_scope));
+    details.insert("target_workspace".into(), json!(target_scope));
+    details.insert("operation".into(), json!(operation));
+    emit_sanitized_governance_audit(
+        data_dir,
+        "tenant_isolation_denied",
+        actor_email,
+        Some(actor_scope),
+        details,
+    );
+    Err(format!(
+        "Cross-tenant access denied for operation '{operation}': actor scope '{actor_scope}' cannot access '{target_scope}'."
+    ))
+}
+
+pub fn sanitize_audit_payload(
+    payload: &serde_json::Map<String, Value>,
+) -> serde_json::Map<String, Value> {
+    let mut out = serde_json::Map::new();
+    for (k, v) in payload {
+        let lower = k.to_ascii_lowercase();
+        if SENSITIVE_AUDIT_KEYS.iter().any(|s| lower.contains(s)) {
+            out.insert(k.clone(), json!("[REDACTED]"));
+        } else {
+            out.insert(k.clone(), v.clone());
+        }
+    }
+    out
+}
+
+pub fn emit_sanitized_governance_audit(
+    data_dir: &Path,
+    event_type: &str,
+    actor_email: Option<&str>,
+    workspace_id: Option<&str>,
+    details: serde_json::Map<String, Value>,
+) {
+    let mut sanitized = sanitize_audit_payload(&details);
+    if let Some(actor) = actor_email.filter(|s| !s.is_empty()) {
+        sanitized.insert("actor_email".into(), json!(actor));
+    }
+    if let Some(ws) = workspace_id.filter(|s| !s.is_empty()) {
+        sanitized.insert("workspace_id".into(), json!(ws));
+    }
+    super::audit::append_audit_event(
+        &super::audit::audit_log_path(data_dir),
+        event_type,
+        sanitized,
+    );
+}

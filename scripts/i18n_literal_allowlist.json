@@ -11,7 +11,7 @@
     ],
     "reason": "Technical fallback language identifier for untyped code blocks"
   },
-  "frontend/src/pages/Capture.tsx": {
+  "frontend/src/features/capture/IntakePanels.tsx": {
     "findings": [
       "JSX text: KB ·"
     ],

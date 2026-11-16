@@ -77,6 +77,8 @@ pub struct RunBody {
     #[serde(default)]
     pub user_email: Option<String>,
     #[serde(default)]
+    pub tenant_id: Option<String>,
+    #[serde(default)]
     pub workspace_id: Option<String>,
     #[serde(default)]
     pub planning_model: Option<String>,

@@ -85,6 +85,32 @@ async fn capture_voice(
         base64::engine::general_purpose::STANDARD.encode(&body)
     };
 
+    if !audio_b64.is_empty() {
+        if let Some(auth) = &state.auth {
+            let mime = parsed
+                .as_ref()
+                .and_then(|v| v.get("mime_type").and_then(serde_json::Value::as_str))
+                .unwrap_or("audio/mp4");
+            let ws = headers
+                .get("x-lattice-workspace")
+                .and_then(|v| v.to_str().ok());
+            let decoded_estimate = (audio_b64.len() * 3) / 4;
+            if let Err(violation) = crate::knowledge::multimodal::validate_speech_audio_payload(
+                &auth.config().data_dir,
+                mime,
+                decoded_estimate.max(1),
+                None,
+                ws,
+            ) {
+                let err_json = serde_json::to_string(
+                    &json!({"detail": violation.message, "code": violation.code}),
+                )
+                .unwrap_or_else(|_| "{}".into());
+                return json_response(StatusCode::BAD_REQUEST, &err_json, None);
+            }
+        }
+    }
+
     let mut transcription = "unavailable".to_string();
     let mut asr_text = String::new();
     let mut provider = json!("");

@@ -3,7 +3,7 @@
 
 mod fusion;
 mod graph_rag;
-mod scoring;
+pub(crate) mod scoring;
 mod sidecar;
 mod sidecar_cache;
 mod tokenizer;
@@ -11,15 +11,24 @@ mod tokenizer;
 #[cfg(test)]
 mod tests;
 
-pub use fusion::{hybrid_bm25_vector_graph_search, score_and_expand_with_sidecar, GraphRagOptions};
+pub use fusion::{
+    hybrid_bm25_vector_graph_search, score_and_expand_with_sidecar, GraphRagOptions,
+    QueryVectorOverride,
+};
 pub use graph_rag::{
-    expand_knowledge_graph, expand_knowledge_graph_with_sidecar, GraphRagConfig, GraphStructuralHit,
+    expand_knowledge_graph, expand_knowledge_graph_with_sidecar,
+    expand_knowledge_graph_with_snapshot, GraphRagConfig, GraphStructuralHit,
 };
 pub use scoring::{
-    bm25f_score_nodes, bm25f_search, load_scoped_corpus, Bm25fParams, Bm25fScoredNode,
+    bm25f_score_nodes, bm25f_search, bm25f_search_with_options, load_scoped_corpus,
+    load_scoped_corpus_records, load_scoped_corpus_with_options, Bm25fParams, Bm25fScoredNode,
+    CorpusLoadOptions, KnowledgeLifecycleStatus, ScopedNodeRecord,
 };
 pub use sidecar::{Bm25SidecarIndex, PostingEntry, SidecarCacheStats};
-pub use sidecar_cache::{cached_sidecar_stats, with_bm25_sidecar};
+pub use sidecar_cache::{
+    cached_sidecar_stats, with_bm25_sidecar, with_bm25_sidecar_full_snapshot,
+    with_bm25_sidecar_snapshot, SidecarCachePool, DEFAULT_MAX_CACHE_BYTES, MAX_CACHED_SIDECARS,
+};
 pub use tokenizer::{
     extract_query_terms, extract_wikilinks_and_tags, tokenize_bm25_cjk, QueryTerm,
 };

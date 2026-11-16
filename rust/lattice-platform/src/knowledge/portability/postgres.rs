@@ -35,6 +35,10 @@ pub(crate) async fn postgres_docker(
         .get("consent")
         .and_then(Value::as_bool)
         .unwrap_or(false);
+    let dry_run = object
+        .get("dry_run")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let port = object.get("port").and_then(Value::as_i64).unwrap_or(5432);
     let compose_dir = state.config.data_dir().join("postgres");
     let _ = std::fs::create_dir_all(&compose_dir);
@@ -45,32 +49,40 @@ pub(crate) async fn postgres_docker(
             "services:\n  postgres:\n    image: pgvector/pgvector:pg16\n    restart: unless-stopped\n    environment:\n      POSTGRES_DB: lattice_brain\n      POSTGRES_USER: lattice\n      POSTGRES_PASSWORD: lattice-local-only\n    ports:\n      - \"127.0.0.1:{port}:5432\"\n    volumes:\n      - ./postgres-data:/var/lib/postgresql/data\n"
         ),
     );
+    let compose_str = compose_path.to_string_lossy().to_string();
+    let command = json!([
+        "docker",
+        "compose",
+        "-p",
+        "lattice-brain",
+        "-f",
+        compose_str,
+        "up",
+        "-d",
+        "postgres"
+    ]);
     if !consent {
         let mut map = OrderedMap::new();
         map.insert("status", json!("consent_required"));
         map.insert("started", json!(false));
-        map.insert(
-            "compose_path",
-            json!(compose_path.to_string_lossy().to_string()),
-        );
-        map.insert(
-            "command",
-            json!([
-                "docker",
-                "compose",
-                "-p",
-                "lattice-brain",
-                "-f",
-                compose_path.to_string_lossy().to_string(),
-                "up",
-                "-d",
-                "postgres"
-            ]),
-        );
+        map.insert("compose_path", json!(compose_str));
+        map.insert("command", command);
         return json_ok(map);
     }
     let mut map = OrderedMap::new();
     map.insert("status", json!("planned"));
+    map.insert("started", json!(false));
+    map.insert("executed", json!(false));
+    map.insert("dry_run", json!(dry_run));
+    map.insert("live_orchestration_supported", json!(false));
+    map.insert("compose_path", json!(compose_str));
+    map.insert("command", command);
+    map.insert(
+        "detail",
+        json!(
+            "PostgreSQL Docker compose manifest prepared; container startup is planned only and was not executed automatically."
+        ),
+    );
     json_ok(map)
 }
 
@@ -96,20 +108,40 @@ pub(crate) async fn migrate_postgres(
             "Postgres DSN is required for SQLite to Postgres migration.",
         );
     }
+    let requested_dry_run = object
+        .get("dry_run")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
     let schema = object
         .get("schema_name")
         .and_then(Value::as_str)
         .unwrap_or("lattice_brain");
     let tables = plan_sqlite_tables(&state.config.graph_db_path());
+    let total_rows: i64 = tables
+        .iter()
+        .filter_map(|t| t.get("rows").and_then(Value::as_i64))
+        .sum();
     let mut map = OrderedMap::new();
     map.insert("status", json!("planned"));
+    map.insert("executed", json!(false));
+    map.insert("migrated", json!(false));
+    map.insert("dry_run", json!(true));
+    map.insert("requested_dry_run", json!(requested_dry_run));
+    map.insert("live_migration_supported", json!(false));
     map.insert(
         "source",
         json!(state.config.graph_db_path().to_string_lossy().to_string()),
     );
     map.insert("target_engine", json!("postgres"));
     map.insert("target_schema", json!(schema));
+    map.insert("total_rows", json!(total_rows));
     map.insert("tables", json!(tables));
+    map.insert(
+        "detail",
+        json!(
+            "SQLite-to-PostgreSQL schema and row assessment completed in planned dry-run mode; live database migration is planned and was not executed."
+        ),
+    );
     json_ok(map)
 }
 

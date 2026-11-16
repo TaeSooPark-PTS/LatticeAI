@@ -190,3 +190,43 @@ def test_a_health_probe_that_raises_degrades_instead_of_crashing_startup(monkeyp
     assert resolved.active == "hash"
     assert resolved.health == {"status": "unavailable", "detail": "probe exploded"}
     assert "using hash fallback" in resolved.detail
+
+
+def test_embedding_index_contract_distinguishes_semantic_providers_from_hash_fallback():
+    from latticeai.core.embedding_providers import (
+        EmbeddingIndexContract,
+        HashEmbeddingProvider,
+    )
+
+    hash_provider = HashEmbeddingProvider(dim=384)
+    hash_contract = hash_provider.index_contract()
+    assert isinstance(hash_contract, EmbeddingIndexContract)
+    assert hash_contract.provider == "hash"
+    assert hash_contract.dimension == 384
+    assert hash_contract.grade == "fallback"
+    assert hash_contract.semantic is False
+    assert hash_contract.is_hash_fallback() is True
+
+    gemma_provider = build_embedding_provider(
+        "huggingface",
+        model="google/embeddinggemma-2",
+        dim=768,
+    )
+    gemma_contract = gemma_provider.index_contract()
+    assert gemma_contract.provider == "huggingface"
+    assert gemma_contract.dimension == 768
+    assert gemma_contract.grade == "production"
+    assert gemma_contract.semantic is True
+    assert gemma_contract.is_hash_fallback() is False
+    assert gemma_contract.passage_mode == "embeddinggemma_passage"
+    assert gemma_contract.query_mode == "embeddinggemma_query"
+    assert gemma_contract.is_compatible_with(gemma_contract) is True
+    assert gemma_contract.is_compatible_with(hash_contract) is False
+
+    mlx_contract = build_embedding_provider("mlx").index_contract()
+    assert mlx_contract.semantic is True
+    assert mlx_contract.provider == "mlx"
+
+    openai_contract = build_embedding_provider("openai").index_contract()
+    assert openai_contract.semantic is True
+    assert openai_contract.provider == "openai"

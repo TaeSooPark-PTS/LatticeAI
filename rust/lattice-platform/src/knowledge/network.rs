@@ -328,6 +328,18 @@ impl DeviceIdentity {
     pub fn sign(&self, payload: &[u8]) -> String {
         encode_b64(&self.signing.sign(payload).to_bytes())
     }
+
+    pub(crate) fn x25519_secret_scalar(&self) -> [u8; 32] {
+        self.signing.to_scalar_bytes()
+    }
+
+    pub fn x25519_public_bytes(&self) -> [u8; 32] {
+        self.signing.verifying_key().to_montgomery().to_bytes()
+    }
+
+    pub fn x25519_public_key_b64(&self) -> String {
+        encode_b64(&self.x25519_public_bytes())
+    }
 }
 
 /// `brain_peers.json` — the same pairing file Python writes.

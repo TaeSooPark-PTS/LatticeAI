@@ -3,11 +3,11 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **12.7.0 — Fast Index**.
+Current release: **12.8.0 — Trusted Brain**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **12.0.0 through 12.7.0** (the
+The public Git tree keeps release history from **12.0.0 through 12.8.0** (the
 modern `v12.x` Rust-host and domain-grouped architecture era). Security support
 follows that same product era: **only the 12.x line receives fixes.**
 
@@ -21,7 +21,7 @@ active release ledger.
 
 | Version | Support |
 | --- | --- |
-| 12.7.x (latest) | Supported |
+| 12.8.x (latest) | Supported |
 | 12.6.x | Supported |
 | 12.5.x | Supported |
 | 12.4.x | Supported |
@@ -121,13 +121,27 @@ handled only in `parse/`, and every byte a run is about to write passes
   literal `authorized=true` cookie does not grant access, and public mode will
   not start an invitation gate with a built-in default code.
 
-### File And Archive Safety
+### File, Workspace, And Archive Safety
 
 - Uploaded files are signature-checked where supported.
 - Uploaded blobs are stored under the local data directory.
-- `.latticebrain` archives are encrypted and integrity-checked.
-- Wrong passphrases, tampering, unsupported archive versions, and archive path
-  traversal fail closed.
+- **Per-user `AGENT_ROOT` isolation**: Agent workspace paths are derived
+  server-side via `IsolatedRootSpec` and `resolve_isolated_agent_root`
+  (`lattice-agent::tools::sandbox` and `LoopRoutesState::isolated`), separating
+  agent files by `(user_id, tenant_id, workspace_id)` rather than sharing a
+  single directory across users. Shared workspace paths fail closed
+  (`workspace_access_denied`) unless verified by the workspace membership
+  authorizer.
+- **`.latticebrain` archives are encrypted and integrity-verified** in Rust
+  (`lattice-platform::knowledge::portability::{archive, crypto}`): passphrase
+  archives derive keys with RFC 7914 `scrypt` (`SHA-256` PBKDF2 + Salsa20/8),
+  recipient-sealed subgraph bundles use X25519 + HKDF-SHA256, and payloads use
+  encrypt-then-MAC (`SHA256-CTR` + `HMAC-SHA256`) with constant-time MAC
+  verification (`ct_eq`).
+- Wrong passphrases, tampering, unsupported archive versions, and archive ZIP
+  path traversal (`validate_zip_entries`) fail closed. Export, inspect,
+  verify, dry-run restore, confirmed restore (`confirm: true`), and import paths
+  are gated and audit-logged.
 - **A restore takes effect immediately, in-process (12.0.0).** The store
   carries a generation epoch; a restore bumps it, every pooled connection
   opened under the previous generation is stale at its next checkout and is
@@ -137,9 +151,18 @@ handled only in `parse/`, and every byte a run is about to write passes
 - **Deleting knowledge is a separate, confirmed action.** Incremental ingest
   counts vanished files and leaves their nodes alone. `POST
   /api/ingestion/folder/prune` reports the plan without `confirm` and, with
-  it, removes the document subtree through `delete_document_tree` — which
-  clears edges in both directions rather than leaving them dangling. No prune
-  path deletes anything on disk.
+  it, removes the document subtree through `delete_document_tree` — which, now
+  unified with `GraphWriter::delete_node` (`delete_node_subgraph`), clears
+  edges in both directions (including `PART_OF`), chunks, vectors, orphan
+  `Source` nodes, BM25 stats, and provenance rather than leaving dangling
+  references. No prune path deletes anything on disk.
+- **Repository and artifact hygiene**: `/scratchpad/`, `*.db-wal`, and
+  `*.db-shm` are excluded in `.gitignore`, and tracked verification artifacts
+  under `scratchpad/` were purged from git tracking and the working tree.
+  GitHub Actions workflows pin third-party `uses:` references to immutable
+  commit SHAs, and macOS release builds support Developer ID signing and
+  notarization when signing secrets are configured (falling back to ad-hoc
+  signing plus SHA-256 checksum verification otherwise).
 
 ### Agent And Tool Safety
 
@@ -293,5 +316,13 @@ If exposing Lattice AI beyond localhost:
   chooses that provider.
 - A trusted local admin can inspect local files and process memory outside
   Lattice AI.
-- MLX/model file integrity depends on provider metadata and local download
-  controls.
+- MLX/Hugging Face model downloads: `scripts/verify_hf_model_registry.py`
+  statically verifies Hub metadata without fetching weights and
+  `EmbeddingIndexContract` records `model_revision`, while
+  `latticeai/services/model_runtime/download.py` (`_call_hf_hub_download`) and
+  `latticeai/core/embedding_providers/text.py` (`from_pretrained`) do not yet
+  pin immutable Hub commit `revision=` defaults across all download paths
+  (tracked as Bandit `B615` in [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)).
+- Repository hygiene rules exclude `/scratchpad/` and transient `*.db-wal` /
+  `*.db-shm` files from future commits; if historical verification tokens were
+  ever valid credentials in an external environment, rotate them independently.

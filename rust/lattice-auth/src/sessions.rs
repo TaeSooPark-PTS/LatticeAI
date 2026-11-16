@@ -145,6 +145,36 @@ impl SessionStore {
         self.persist(&guard);
     }
 
+    /// Revoke every live session belonging to `email`, returning how many were removed.
+    pub fn revoke_for_email(&self, email: &str) -> usize {
+        let needle = email.trim().to_ascii_lowercase();
+        if needle.is_empty() {
+            return 0;
+        }
+        let mut guard = self.sessions.lock().expect("session lock");
+        let keys: Vec<String> = guard
+            .iter()
+            .filter_map(|(key, value)| {
+                let matches = entry_email(value)
+                    .map(|candidate| candidate.trim().eq_ignore_ascii_case(&needle))
+                    .unwrap_or(false);
+                if matches {
+                    Some(key.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let count = keys.len();
+        if count > 0 {
+            for key in keys {
+                guard.remove(&key);
+            }
+            self.persist(&guard);
+        }
+        count
+    }
+
     /// How many sessions are live in memory (test/observability seam).
     pub fn len(&self) -> usize {
         self.sessions.lock().expect("session lock").len()

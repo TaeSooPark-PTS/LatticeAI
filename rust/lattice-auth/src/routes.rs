@@ -197,6 +197,7 @@ async fn login(State(state): State<Arc<AuthState>>, request: Request) -> Respons
     // passwordless one.
     let known = account(&users, &email).is_some();
     if !known || !verify_and_migrate(&state, &email, body.str("password"), &stored, &mut users) {
+        state.record_audit("auth.login.failed", json!({"email": email, "ip": ip}));
         return http_error(StatusCode::UNAUTHORIZED, "auth.bad_credentials", language);
     }
     let record = match account(&users, &email) {
@@ -204,6 +205,10 @@ async fn login(State(state): State<Arc<AuthState>>, request: Request) -> Respons
         None => return http_error(StatusCode::UNAUTHORIZED, "auth.bad_credentials", language),
     };
     if truthy(record.get("disabled")) {
+        state.record_audit(
+            "auth.login.disabled_denied",
+            json!({"email": email, "ip": ip}),
+        );
         return http_error(StatusCode::FORBIDDEN, "auth.account_disabled", language);
     }
 
@@ -212,6 +217,10 @@ async fn login(State(state): State<Arc<AuthState>>, request: Request) -> Respons
         .user_id_for_email(Some(&email))
         .unwrap_or_else(|| email.clone());
     let token = state.sessions().create(&subject, Some(&email));
+    state.record_audit(
+        "auth.login.success",
+        json!({"email": email, "role": role, "ip": ip}),
+    );
     let body = ok(vec![
         ("status", json!("ok")),
         ("nickname", json!(text_of(&record, "nickname"))),
@@ -423,6 +432,10 @@ fn verify_and_migrate(
             record.insert("password".into(), json!(hash_password(plain)));
             users.insert(email, record);
             state.users().save(users);
+            state.record_audit(
+                "auth.password.migrated_from_plaintext",
+                json!({"email": email}),
+            );
         }
         return true;
     }

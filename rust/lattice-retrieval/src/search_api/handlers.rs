@@ -18,7 +18,9 @@ use super::{
     IMAGE_FUSION_UNAVAILABLE, TEXT_IMAGE_FUSION_ENV,
 };
 use crate::service::Scope;
-use crate::service::{graph_search, keyword_search, vector_search, GraphSearchOptions};
+use crate::service::{
+    graph_search, keyword_search, vector_search_aligned_service, GraphSearchOptions,
+};
 use crate::service_hybrid::{service_hybrid_search, ServiceHybridOptions, DEFAULT_HYBRID_WEIGHTS};
 
 // ── the router ──────────────────────────────────────────────────────────────
@@ -430,7 +432,15 @@ async fn vector(
 ) -> Response {
     match run(state, move |conn| {
         let model = LocalEmbeddingModel::from_env();
-        vector_search(conn, &model, &query, limit, min_score, &scope)
+        vector_search_aligned_service(
+            conn,
+            crate::vector::VectorQueryInput::Model(&model),
+            &query,
+            limit,
+            min_score,
+            &scope,
+            false,
+        )
     })
     .await
     {

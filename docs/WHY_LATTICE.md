@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **12.7.0 — Fast Index**.
+Current release: **12.8.0 — Trusted Brain**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

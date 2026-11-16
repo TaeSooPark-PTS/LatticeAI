@@ -90,16 +90,23 @@ impl PortabilityState {
 }
 
 mod archive;
+mod archive_tables;
+mod crypto;
 mod graph;
+mod kdf;
 mod postgres;
+mod share;
 mod status;
+mod x25519;
 
 use archive::{
     archive_import, archive_inspect, archive_restore, archive_verify, encrypted_archive,
-    share_accept, share_archive, share_export, share_import, share_recipient_key, share_status,
 };
 use graph::{backup_graph, export_graph, export_graph_file, import_graph, restore_graph};
 use postgres::{migrate_postgres, postgres_docker};
+use share::{
+    share_accept, share_archive, share_export, share_import, share_recipient_key, share_status,
+};
 use status::{backup_health, brain_storage, portability_status, provenance};
 pub(crate) use status::{backup_health_payload, postgres_capabilities, sqlite_capabilities};
 

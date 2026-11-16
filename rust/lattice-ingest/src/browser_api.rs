@@ -266,68 +266,135 @@ async fn ingest_current_tab(
     } else {
         format!("{title}\n{text}")
     };
-    let extracted = crate::local_files_api::enrich::extract_via_seam(
+    let (extracted, extract_ok) = crate::local_files_api::enrich::extract_via_seam_status(
         state.seam.as_ref(),
         &extract_text,
         "document",
     )
     .await;
-    let embedding =
-        crate::local_files_api::enrich::embed_via_seam(state.seam.as_ref(), &extract_text).await;
-    let native_agrees = match embedding.as_ref() {
-        Some(vector) => {
-            vector.model_id == graph.embedder().model_id() && vector.dim == graph.embedder().dim()
-        }
-        None => true,
+    let doc_embed = if extract_text.trim().is_empty() {
+        None
+    } else {
+        Some(
+            crate::local_files_api::enrich::embed_texts_with_contract(
+                state.seam.as_ref(),
+                std::slice::from_ref(&extract_text),
+            )
+            .await,
+        )
     };
+    let embedding = crate::local_files_api::enrich::first_vector_from_batch(
+        doc_embed
+            .as_ref()
+            .and_then(crate::local_files_api::enrich::SeamEmbedOutcome::batch),
+    );
     let mut chunks = crate::local_files_api::enrich::chunk_pieces_for(&text, &title, "text/html");
     let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
-    let chunk_batch =
-        crate::local_files_api::enrich::embed_texts_via_seam(state.seam.as_ref(), &chunk_texts)
-            .await;
-    let chunk_agrees = match chunk_batch.as_ref() {
-        Some((model_id, dim, _)) => {
-            crate::local_files_api::enrich::model_agrees(&graph, model_id, *dim)
-        }
-        None => true,
+    let chunk_embed = if chunk_texts.is_empty() {
+        None
+    } else {
+        Some(
+            crate::local_files_api::enrich::embed_texts_with_contract(
+                state.seam.as_ref(),
+                &chunk_texts,
+            )
+            .await,
+        )
     };
-    chunks =
-        crate::local_files_api::enrich::attach_chunk_embeddings(chunks, chunk_batch, chunk_agrees);
-    let (outcome, title) = match tokio::task::spawn_blocking(move || {
-        let request = IngestContentRequest {
-            source_type: "browser_tab".into(),
-            title: title.clone(),
-            text,
-            source_uri: Some(url),
-            owner,
-            workspace_id,
-            captured_at,
-            metadata,
-            chunks,
-            concepts: extracted.concepts,
-            triples: extracted.triples,
-            semantic: extracted.semantic,
-            embedding,
-            node_type: Some("Document".into()),
-            ..Default::default()
+    chunks = crate::local_files_api::enrich::attach_chunk_embeddings_from_batch(
+        chunks,
+        chunk_embed
+            .as_ref()
+            .and_then(crate::local_files_api::enrich::SeamEmbedOutcome::batch),
+        true,
+    );
+    let incoming_contract = chunk_embed
+        .as_ref()
+        .and_then(crate::local_files_api::enrich::SeamEmbedOutcome::contract)
+        .or_else(|| {
+            doc_embed
+                .as_ref()
+                .and_then(crate::local_files_api::enrich::SeamEmbedOutcome::contract)
+        })
+        .cloned();
+    let (outcome, title, reindex_required, vectors_written, active_contract) =
+        match tokio::task::spawn_blocking(move || {
+            let prior_contract = graph.current_index_contract().ok().flatten();
+            let request = IngestContentRequest {
+                source_type: "browser_tab".into(),
+                title: title.clone(),
+                text,
+                source_uri: Some(url),
+                owner,
+                workspace_id,
+                captured_at,
+                metadata,
+                chunks,
+                concepts: extracted.concepts,
+                triples: extracted.triples,
+                semantic: extracted.semantic,
+                embedding,
+                node_type: Some("Document".into()),
+                ..Default::default()
+            };
+            let outcome = graph.ingest_content(&request)?;
+            let mut supplied = Vec::new();
+            if let Some(vector) = request.embedding.as_ref() {
+                if !vector.values.is_empty() && !outcome.node_id.is_empty() {
+                    supplied.push((outcome.node_id.clone(), vector.clone()));
+                }
+            }
+            for (chunk_id, piece) in outcome.chunk_ids.iter().zip(&request.chunks) {
+                if let Some(vector) = piece.embedding.as_ref() {
+                    if !vector.values.is_empty() {
+                        supplied.push((chunk_id.clone(), vector.clone()));
+                    }
+                }
+            }
+            let (vec_written, vec_reindex) = if !outcome.node_id.is_empty() {
+                let vec_outcome = graph.write_vectors_with(&outcome.node_id, &supplied);
+                (vec_outcome.status != "failed", vec_outcome.reindex_required)
+            } else {
+                (false, false)
+            };
+            let prior_mismatch = prior_contract
+                .as_ref()
+                .zip(incoming_contract.as_ref())
+                .is_some_and(|(prev, next)| !prev.is_compatible_with(next));
+            let active = graph
+                .current_index_contract()
+                .ok()
+                .flatten()
+                .or(incoming_contract);
+            Ok::<_, lattice_core::CoreError>((
+                outcome,
+                title,
+                prior_mismatch || vec_reindex,
+                vec_written || !supplied.is_empty(),
+                active,
+            ))
+        })
+        .await
+        {
+            Ok(Ok(res)) => res,
+            Ok(Err(error)) => return detail(500, &error.to_string()),
+            Err(error) => return detail(500, &error.to_string()),
         };
-        let outcome = graph.ingest_content(&request)?;
-        if native_agrees && !outcome.node_id.is_empty() {
-            let _ = graph.write_vectors(&outcome.node_id);
-        }
-        Ok::<_, lattice_core::CoreError>((outcome, title))
-    })
-    .await
-    {
-        Ok(Ok((outcome, title))) => (outcome, title),
-        Ok(Err(error)) => return detail(500, &error.to_string()),
-        Err(error) => return detail(500, &error.to_string()),
-    };
+    let telemetry = crate::local_files_api::enrich::build_enrichment_telemetry(
+        false,
+        extract_ok,
+        doc_embed.as_ref(),
+        chunk_embed.as_ref(),
+        reindex_required,
+        vectors_written,
+        active_contract,
+    );
     let mut payload = outcome.to_json();
     if let Some(object) = payload.as_object_mut() {
         object.insert("status".into(), json!("ok"));
         object.insert("source_type".into(), json!("browser_tab"));
         object.insert("title".into(), json!(title));
+        telemetry.apply_to_json(object);
         object
             .entry("capture_quality".to_string())
             .or_insert_with(|| {

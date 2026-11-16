@@ -15,7 +15,7 @@
 
 <br/>
 
-![v12.7.0 Living Brain walkthrough](output/release/v12.7.0/gifs/v12.7.0-living-brain-walkthrough.gif)
+![v12.8.0 Living Brain walkthrough](output/release/v12.8.0/gifs/v12.8.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -38,7 +38,7 @@ Lattice AI is a **local-first Digital Brain** that unifies your conversations, f
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_12.7.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_12.8.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -67,15 +67,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v12.7.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v12.7.0/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v12.8.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v12.8.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v12.7.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v12.7.0/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v12.8.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v12.8.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v12.7.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v12.7.0/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v12.8.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v12.8.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v12.7.0/screenshots/13-chronicle.png) | ![Settings](output/release/v12.7.0/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v12.8.0/screenshots/13-chronicle.png) | ![Settings](output/release/v12.8.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v12.7.0/SCREENSHOT_INDEX.md](output/release/v12.7.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v12.7.0/screenshots/01-login.png), [06-capture.png](output/release/v12.7.0/screenshots/06-capture.png), [07-model-library.png](output/release/v12.7.0/screenshots/07-model-library.png)).
+Full visual index: [output/release/v12.8.0/SCREENSHOT_INDEX.md](output/release/v12.8.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v12.8.0/screenshots/01-login.png), [06-capture.png](output/release/v12.8.0/screenshots/06-capture.png), [07-model-library.png](output/release/v12.8.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -97,24 +97,24 @@ Full visual index: [output/release/v12.7.0/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **12.7.0 — Fast Index**:
+The current release is **12.8.0 — Trusted Brain**:
 
-- **Pre-Tokenized BM25F Sidecar & SQLite `bm25_node_stats` Persistence** — `GraphWriter` persists pre-tokenized field lengths (`dl_title`, `dl_tags`, `dl_body`, `dl_meta`) and term frequencies (`tf_json`) into `bm25_node_stats`, while `Bm25SidecarIndex` hydrates incrementally by `(node_id, updated_at, content_hash)` for O(1) field-length/term-frequency lookup and inverted posting-list evaluation without query-time re-tokenization.
-- **Cached GraphRAG Adjacency & Wikilink/Tag Index** — `expand_knowledge_graph_with_sidecar` and `score_and_expand_with_sidecar` reuse cached `title_to_doc_idxs`, `wikilink_to_doc_idxs`, `tag_to_doc_idxs`, and `edge_adj` maps across `fusion.rs` and `service_hybrid.rs`.
-- **Product-First `README.md` & `v12.0.0+` Release-History Polish** — Rebuilt `README.md` around product pillars, quick start, and product tour, and pruned pre-v12 release notes/review snapshots locally and on GitHub Releases while enforcing the `v12.0.0+` floor in `scripts/check_current_release_docs.mjs`.
+- **Unified Embedding Contract & Knowledge Lifecycle** — `EmbeddingIndexContract` (`rust/lattice-core/src/embedding_contract.rs`) and `KnowledgeLifecycleState` (`lifecycle.rs`) enforce consistent model/dimension/normalization metadata, granular `IngestStatus` progress, and unified `GraphWriter` deletion cascades across Rust and Python.
+- **Fail-Closed Isolation, SQLite Pre-LIMIT Retrieval & Encrypted Portability** — Server-derived `IsolatedRootSpec` / `resolve_agent_scope` confine `/agent`, `/tools/*`, `/mcp/*`, `/skills/*`, `/cu/*`, `/api/automation/*`, and `/api/browser/*` across users/workspaces/tenants; SQLite retrieval scopes workspace & lifecycle before `LIMIT` with `vector_search_aligned` and bounded `SidecarCachePool`; `.latticebrain` archives support AEAD encryption, path/symlink rejection, and X25519 share acceptance alongside honest `planned` PostgreSQL reporting.
+- **Modular UI & Automated macOS DMG / CI Gates** — Decomposed `Library.tsx`, `System.tsx`, and `Capture.tsx` into `frontend/src/features/` (108 Vitest files at 100% coverage) and added PR retrieval/sidecar gates and macOS Apple Silicon DMG build/sign/notarization jobs in CI/CD.
 
 <details>
-<summary>Release notes & exact 12.7.0 distribution artifacts</summary>
+<summary>Release notes & exact 12.8.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.7.0 must use exact filenames:
+Expected artifacts for 12.8.0 must use exact filenames:
 
-- `dist/ltcai-12.7.0-py3-none-any.whl`
-- `dist/ltcai-12.7.0.tar.gz`
-- `ltcai-12.7.0.tgz`
-- `dist/ltcai-12.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.7.0_aarch64.dmg`
+- `dist/ltcai-12.8.0-py3-none-any.whl`
+- `dist/ltcai-12.8.0.tar.gz`
+- `ltcai-12.8.0.tgz`
+- `dist/ltcai-12.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.8.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -136,6 +136,7 @@ Public release history in this repository covers the `v12.0.0+` era (the Rust-ho
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md) |
 | 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md) |
 | 12.6.0 | Hybrid Graph | [RELEASE_NOTES_v12.6.0.md](docs/releases/RELEASE_NOTES_v12.6.0.md) |
 | 12.5.0 | Deep Vector | [RELEASE_NOTES_v12.5.0.md](docs/releases/RELEASE_NOTES_v12.5.0.md) |

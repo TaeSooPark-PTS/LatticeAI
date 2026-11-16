@@ -67,6 +67,7 @@ pub mod clock;
 pub mod config;
 pub mod cookies;
 pub mod csrf;
+pub mod enterprise;
 pub mod extract;
 pub mod messages;
 pub mod middleware;
@@ -87,6 +88,13 @@ pub use clock::Clock;
 pub use config::{AuthConfig, SsoSettings};
 pub use cookies::SESSION_COOKIE_NAME;
 pub use csrf::{CsrfDecision, CsrfOriginPolicy, CsrfRequest};
+pub use enterprise::{
+    allowed_tenants_of_user, apply_scim_user, authorize_scim_request, constant_time_eq,
+    is_valid_tenant_id, requested_tenant, tenant_denied_response, tenant_of_user,
+    validate_oidc_claims, validate_sso_settings, verify_tenant_boundary, AuthAuditSink,
+    MemoryAuditSink, OidcCallbackCheck, OidcClaims, OidcPolicy, OidcPolicyError, ScimConfig,
+    ScimPolicyError, ScimProvisionResult, ScimUserProvision, TenantError, TENANT_HEADER,
+};
 pub use extract::{AdminUser, ClientIp, CurrentUser, RequestedWorkspace};
 pub use middleware::csrf_guard;
 pub use policy::{capabilities_for_role, check_role, normalize_role, role_has_capability};

@@ -64,7 +64,7 @@ pub const NODE_TYPES: [&str; 43] = [
 ];
 
 /// Every `EdgeType` member value, in declaration order.
-pub const EDGE_TYPES: [&str; 37] = [
+pub const EDGE_TYPES: [&str; 39] = [
     "CONTAINS",
     "MENTIONS",
     "REFERENCES",
@@ -102,6 +102,8 @@ pub const EDGE_TYPES: [&str; 37] = [
     "DECIDED_BY",
     "GENERATED_BY",
     "USED_BY_AGENT",
+    "SUPERSEDES",
+    "CONFLICTS_WITH",
 ];
 
 /// `_LEGACY_NODE_MAP` — lowercase alias → canonical value.

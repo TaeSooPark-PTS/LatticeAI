@@ -463,9 +463,9 @@ async fn a_watched_note_is_written_here_and_never_posted_to_the_worker() {
 
 #[tokio::test]
 async fn a_divergent_embedder_supplies_its_vector_but_licenses_no_native_sync() {
-    // W2 §4: `similarity()` raises on a width mismatch, so a native re-embed
-    // under a model the provider does not use silently kills vector search.
-    // The supplied row is still filed; the incremental native sync is not run.
+    // Semantic provider batches with their own model_id/dimension land under
+    // their own EmbeddingIndexContract without falling back to the local hash
+    // embedder (`allow_native_fallback = false`), avoiding dimension mixing.
     let seams = SeamLog::default();
     let (origin, handle) = serve(fake_worker(
         seams.clone(),
@@ -473,7 +473,8 @@ async fn a_divergent_embedder_supplies_its_vector_but_licenses_no_native_sync() 
     ))
     .await;
     let dir = tempfile::tempdir().expect("tempdir");
-    let ingestor = NoteIngestor::new(writer(dir.path()))
+    let graph = writer(dir.path());
+    let ingestor = NoteIngestor::new(graph.clone())
         .with_worker_origin(&origin)
         .expect("seam");
     let note = NoteSubmission::from_watched_file(Path::new("/root"), "a.md", "본문", None);
@@ -482,8 +483,36 @@ async fn a_divergent_embedder_supplies_its_vector_but_licenses_no_native_sync() 
         .await
         .expect("the note still lands");
     assert!(
-        !receipt.indexed,
-        "a provider the native embedder cannot reproduce is backlog, not a write"
+        receipt.indexed,
+        "supplied semantic vectors land under their own contract"
+    );
+    assert!(receipt.semantic);
+    let contract = receipt.contract.as_ref().expect("contract recorded");
+    assert_eq!(contract.model_id, "other-model:8");
+    assert_eq!(contract.dimension, 8);
+    let models_and_dims: Vec<(String, i64)> = graph
+        .store()
+        .with_read_conn(|conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT embedding_model, embedding_dim FROM vector_embeddings
+                     WHERE item_id = ?1 OR item_id IN (SELECT id FROM chunks WHERE source_node = ?1)",
+                )
+                .expect("prepare");
+            let rows = stmt
+                .query_map([&receipt.node_id], |row| Ok((row.get(0)?, row.get(1)?)))
+                .expect("query")
+                .filter_map(Result::ok)
+                .collect();
+            Ok(rows)
+        })
+        .expect("read vectors");
+    assert!(!models_and_dims.is_empty());
+    assert!(
+        models_and_dims
+            .iter()
+            .all(|(model_id, dim)| model_id == "other-model:8" && *dim == 8),
+        "divergent provider must not mix native fallback dimensions: {models_and_dims:?}"
     );
     assert_eq!(seams.count("/knowledge-graph/ingest"), 0);
     handle.abort();

@@ -52,7 +52,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e "." pytest pytest-asyncio httpx ruff "mypy>=1.14,<2" "pytest-cov>=7,<8"
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ] && [ "${{ matrix.python-version }}" = "3.11" ]; then
+            pip install -e ".[ann]" pytest pytest-asyncio httpx ruff "mypy>=1.14,<2" "pytest-cov>=7,<8"
+            python -c "import hnswlib; print('hnswlib ok:', hnswlib.__file__)"
+          else
+            pip install -e "." pytest pytest-asyncio httpx ruff "mypy>=1.14,<2" "pytest-cov>=7,<8"
+          fi
           npm ci
           (cd vscode-extension && npm ci)
 
@@ -94,6 +99,19 @@ jobs:
         # on all four metrics, so a single uncovered line fails this step the
         # same way it fails locally.
         run: npm run test:frontend:coverage
+
+      - name: Retrieval sidecar & contract gates
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
+        run: |
+          python -c "import hnswlib"
+          python -m pytest \
+            tests/unit/test_vector_index_sidecar.py \
+            tests/unit/test_vector_index_hnsw.py \
+            tests/unit/test_cov_wp12_provider_contract.py \
+            tests/unit/test_worker_allowlist.py \
+            tests/unit/test_hybrid_graph_bm25.py \
+            tests/unit/test_worker_compute.py \
+            -v --tb=short
 
       - name: Run unit tests
         if: matrix.python-version != '3.14' || matrix.os != 'ubuntu-latest'
@@ -227,6 +245,10 @@ jobs:
       - name: Lint
         working-directory: rust
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Retrieval contract & parity tests
+        working-directory: rust
+        run: cargo test -p lattice-retrieval --tests
 
       - name: Test
         # Includes the retrieval parity suite: every committed golden re-run

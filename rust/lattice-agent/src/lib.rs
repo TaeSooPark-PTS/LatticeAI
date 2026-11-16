@@ -97,8 +97,8 @@ pub mod tools;
 
 // kernel/ — the loop and every decision that can refuse.
 pub use kernel::{
-    agentloop, breaker, governor, mode, permission, plan, policy, profile, proposals, runs, state,
-    trace, transcript,
+    agentloop, breaker, eval, governor, mode, permission, plan, policy, profile, proposals, runs,
+    state, trace, transcript,
 };
 // parse/ — untrusted model text in, typed values out.
 pub use parse::{action, channel, inference, pyjson, pyliteral, pyshlex, pystr};
@@ -119,11 +119,14 @@ pub use kernel::mode::{
 };
 pub use kernel::permission::{block_reason_for_tool, non_auto_plan_steps};
 pub use kernel::policy::{PolicyTable, ToolPolicy};
-pub use surface::looproutes::{loop_router, LoopConfig};
+pub use surface::looproutes::{loop_router, loop_router_isolated, LoopConfig, ScopeAuthorizer};
 pub use surface::router::router;
 pub use tools::command::{validate, Validated};
 pub use tools::exec::{execute, Execution, NATIVE_EXECUTABLES, SAFE_EXECUTABLE_PATH};
-pub use tools::sandbox::{ErrorKind, ToolError, Workspace, MAX_COMMAND_OUTPUT, MAX_FILE_BYTES};
+pub use tools::sandbox::{
+    resolve_isolated_agent_root, sanitize_identity_segment, ErrorKind, IsolatedRootSpec, ToolError,
+    Workspace, MAX_COMMAND_OUTPUT, MAX_FILE_BYTES,
+};
 pub use tools::{
     is_native, CallScope, HookSink, NativeCall, NativeTools, ToolConfig, ToolHost, MUTATING_TOOLS,
     RENDER_TOOLS,

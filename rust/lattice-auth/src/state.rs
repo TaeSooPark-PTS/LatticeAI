@@ -95,6 +95,7 @@ pub struct AuthState {
     csrf: CsrfOriginPolicy,
     clock: Clock,
     invite_gate: std::sync::OnceLock<InviteGate>,
+    audit_sink: std::sync::OnceLock<Arc<dyn crate::enterprise::AuthAuditSink>>,
 }
 
 impl std::fmt::Debug for AuthState {
@@ -135,8 +136,63 @@ impl AuthState {
             csrf,
             clock,
             invite_gate: std::sync::OnceLock::new(),
+            audit_sink: std::sync::OnceLock::new(),
             config,
         })
+    }
+
+    /// Attach an audit sink once per `AuthState` to capture auth, tenant, SSO,
+    /// and SCIM security events. Returns `false` if one is already set.
+    pub fn set_audit_sink(&self, sink: Arc<dyn crate::enterprise::AuthAuditSink>) -> bool {
+        self.audit_sink.set(sink).is_ok()
+    }
+
+    /// Emit a structured auth/enterprise audit event when an audit sink is wired.
+    pub fn record_audit(&self, event: &str, fields: Value) {
+        if let Some(sink) = self.audit_sink.get() {
+            sink.record(event, &fields);
+        }
+    }
+
+    /// Verify that an authenticated identity may operate in `requested_tenant`,
+    /// failing closed with `403 Forbidden` (and auditing `auth.tenant.denied`) on
+    /// cross-tenant access or unassigned tenant spoofing.
+    pub fn verify_tenant_access(
+        &self,
+        identity: &Identity,
+        requested_tenant: Option<&str>,
+    ) -> Result<Option<String>, Response> {
+        let users = self.users.load();
+        let record = if identity.email.is_empty() {
+            None
+        } else {
+            users.get(&identity.email)
+        };
+        match crate::enterprise::verify_tenant_boundary(&identity.email, record, requested_tenant) {
+            Ok(tenant) => Ok(tenant),
+            Err(err) => {
+                self.record_audit(
+                    "auth.tenant.denied",
+                    json!({
+                        "email": identity.email,
+                        "requested_tenant": requested_tenant,
+                        "reason": err.to_string(),
+                    }),
+                );
+                Err(crate::enterprise::tenant_denied_response(&err))
+            }
+        }
+    }
+
+    /// Resolve the primary tenant id assigned to `identity`, if any.
+    pub fn tenant_for_identity(&self, identity: &Identity) -> Option<String> {
+        if identity.email.is_empty() {
+            return None;
+        }
+        let users = self.users.load();
+        users
+            .get(&identity.email)
+            .and_then(crate::enterprise::tenant_of_user)
     }
 
     /// Attach the invite-cookie predicate. Returns `false` if one is already

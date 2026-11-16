@@ -1,3 +1,9 @@
+# [v12.8.0 - Trusted Brain] (2026-11-16)
+
+통합 `EmbeddingIndexContract`·지식 라이프사이클 상태(`KnowledgeLifecycleState`)·세분화된 `IngestStatus`, SQLite `LIMIT` 이전 워크스페이스 스코핑·벡터 차원 정렬(`vector_search_aligned`)·바운드 `SidecarCachePool`, 서버 측 `IsolatedRootSpec`/`resolve_agent_scope` 멀티유저·테넌트 fail-closed 격리, 암호화 `.latticebrain` 아카이브 및 정직한 PostgreSQL `planned` 보고, `frontend/src/features/` 모듈 분리, PR 검색 게이트·macOS DMG CI/CD 자동화를 적용했습니다.
+
+See [docs/releases/RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md).
+
 # [v12.7.0 - Fast Index] (2026-11-16)
 
 사전 토큰화 BM25F 사이드카(`Bm25SidecarIndex`), SQLite `bm25_node_stats` 영속화, 역색인 포스팅 리스트·GraphRAG 인접 캐시로 쿼리 시 재토큰화 없이 O(1) 조회를 제공하고, 제품 중심 `README.md` 개편 및 `v12.0.0+` 릴리스 히스토리 정리를 적용했습니다. 문은 422 / 41, 워커는 20. 쓰기는 GraphWriter 하나.
@@ -77,10 +83,11 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 12.7.0** (the modern `v12.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `12.x` era, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 12.8.0** (the modern `v12.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `12.x` era, and this index follows the same boundary.
 
 ## v12.x Releases
 
+- [v12.8.0 - Trusted Brain](docs/releases/RELEASE_NOTES_v12.8.0.md)
 - [v12.7.0 - Fast Index](docs/releases/RELEASE_NOTES_v12.7.0.md)
 - [v12.6.0 - Hybrid Graph](docs/releases/RELEASE_NOTES_v12.6.0.md)
 - [v12.5.0 - Deep Vector](docs/releases/RELEASE_NOTES_v12.5.0.md)

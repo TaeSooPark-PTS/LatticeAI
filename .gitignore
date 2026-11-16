@@ -90,3 +90,8 @@ htmlcov/
 # ignoring it also keeps the untracked-file scan in check_max_file_lines.mjs
 # from counting a generated copy.
 openapi-artifacts/
+
+# Local verification dumps and temporary SQLite WAL/SHM journals (never commit)
+/scratchpad/
+*.db-wal
+*.db-shm

@@ -700,12 +700,14 @@ pub(super) async fn upload_document(
     };
     let (filename, bytes) = super::enrich::unwrap_upload(&headers, &body);
     let mime = super::enrich::mime_hint(&filename);
-    let parsed = if super::enrich::needs_parse(&filename, &bytes) {
+    let needs_parse = super::enrich::needs_parse(&filename, &bytes);
+    let parsed = if needs_parse {
         super::enrich::parse_via_seam(state.seam(), &filename, &bytes).await
     } else {
         None
     };
-    let text = if super::enrich::needs_parse(&filename, &bytes) {
+    let parse_failed = needs_parse && parsed.is_none();
+    let text = if needs_parse {
         parsed
             .as_ref()
             .map(super::enrich::parsed_text)
@@ -718,17 +720,39 @@ pub(super) async fn upload_document(
     } else {
         format!("{filename}\n{text}")
     };
-    let extracted = super::enrich::extract_via_seam(state.seam(), &extract_text, "document").await;
-    let embedding = super::enrich::embed_via_seam(state.seam(), &extract_text).await;
+    let (extracted, extract_ok) =
+        super::enrich::extract_via_seam_status(state.seam(), &extract_text, "document").await;
+    let doc_embed = if extract_text.trim().is_empty() {
+        None
+    } else {
+        Some(
+            super::enrich::embed_texts_with_contract(
+                state.seam(),
+                std::slice::from_ref(&extract_text),
+            )
+            .await,
+        )
+    };
+    let embedding = super::enrich::first_vector_from_batch(
+        doc_embed
+            .as_ref()
+            .and_then(super::enrich::SeamEmbedOutcome::batch),
+    );
     let mut chunks =
         super::enrich::chunk_pieces_for(&text, &filename, mime.as_deref().unwrap_or(""));
     let chunk_texts: Vec<String> = chunks.iter().map(|piece| piece.text.clone()).collect();
-    let chunk_batch = super::enrich::embed_texts_via_seam(state.seam(), &chunk_texts).await;
-    let chunk_agrees = match chunk_batch.as_ref() {
-        Some((model_id, dim, _)) => super::enrich::model_agrees(&graph, model_id, *dim),
-        None => true,
+    let chunk_embed = if chunk_texts.is_empty() {
+        None
+    } else {
+        Some(super::enrich::embed_texts_with_contract(state.seam(), &chunk_texts).await)
     };
-    chunks = super::enrich::attach_chunk_embeddings(chunks, chunk_batch, chunk_agrees);
+    chunks = super::enrich::attach_chunk_embeddings_from_batch(
+        chunks,
+        chunk_embed
+            .as_ref()
+            .and_then(super::enrich::SeamEmbedOutcome::batch),
+        true,
+    );
     let mut extracted_map = serde_json::Map::new();
     if !text.is_empty() {
         extracted_map.insert("content".into(), json!(text));
@@ -750,6 +774,17 @@ pub(super) async fn upload_document(
     if let Err(error) = std::fs::write(&tmp, &bytes) {
         return detail(500, &error.to_string());
     }
+    let has_supplied_vectors =
+        embedding.is_some() || chunks.iter().any(|piece| piece.embedding.is_some());
+    let incoming_contract = chunk_embed
+        .as_ref()
+        .and_then(super::enrich::SeamEmbedOutcome::contract)
+        .or_else(|| {
+            doc_embed
+                .as_ref()
+                .and_then(super::enrich::SeamEmbedOutcome::contract)
+        })
+        .cloned();
     let request = lattice_core::graph_write::types::IngestFileRequest {
         path: tmp.clone(),
         original_filename: Some(filename),
@@ -762,17 +797,46 @@ pub(super) async fn upload_document(
         embedding,
         ..Default::default()
     };
-    let outcome = match tokio::task::spawn_blocking(move || graph.ingest_file(&request)).await {
-        Ok(Ok(outcome)) => outcome,
-        Ok(Err(error)) => {
-            let _ = std::fs::remove_file(&tmp);
-            return detail(500, &error.to_string());
-        }
-        Err(error) => {
-            let _ = std::fs::remove_file(&tmp);
-            return detail(500, &error.to_string());
-        }
-    };
+    let (outcome, reindex_required, active_contract) =
+        match tokio::task::spawn_blocking(move || {
+            let prior_contract = graph.current_index_contract().ok().flatten();
+            let reindex = prior_contract
+                .as_ref()
+                .zip(incoming_contract.as_ref())
+                .is_some_and(|(prev, next)| !prev.is_compatible_with(next));
+            let outcome = graph.ingest_file(&request)?;
+            let active = graph
+                .current_index_contract()
+                .ok()
+                .flatten()
+                .or(incoming_contract);
+            Ok::<_, lattice_core::CoreError>((outcome, reindex, active))
+        })
+        .await
+        {
+            Ok(Ok(res)) => res,
+            Ok(Err(error)) => {
+                let _ = std::fs::remove_file(&tmp);
+                return detail(500, &error.to_string());
+            }
+            Err(error) => {
+                let _ = std::fs::remove_file(&tmp);
+                return detail(500, &error.to_string());
+            }
+        };
     let _ = std::fs::remove_file(&tmp);
-    ok(&outcome.to_json())
+    let telemetry = super::enrich::build_enrichment_telemetry(
+        parse_failed,
+        extract_ok,
+        doc_embed.as_ref(),
+        chunk_embed.as_ref(),
+        reindex_required,
+        has_supplied_vectors || !parse_failed,
+        active_contract,
+    );
+    let mut payload = outcome.to_json();
+    if let Some(object) = payload.as_object_mut() {
+        telemetry.apply_to_json(object);
+    }
+    ok(&payload)
 }

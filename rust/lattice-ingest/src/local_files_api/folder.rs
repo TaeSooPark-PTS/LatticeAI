@@ -100,10 +100,11 @@ pub(super) async fn ingest_folder_native(
         ));
     }
 
+    let sidecar_graph = graph.clone();
     let outcome =
         run_folder_items(state, graph, &files, &job_id, root, owner, workspace_id).await?;
     if outcome.ingested > 0 {
-        super::prune::refresh_sidecar(state.seam()).await;
+        super::prune::refresh_sidecar(state.seam(), Some(&sidecar_graph)).await;
     }
     Ok(folder_payload(
         path,

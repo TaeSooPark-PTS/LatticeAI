@@ -10,12 +10,21 @@ use rusqlite::Connection;
 use serde_json::{json, Value};
 
 use crate::policy::{classify_query, rewrite_query};
-use crate::service::{vector_search as scoped_vector_search, Scope};
+use crate::service::Scope;
 use crate::shape::json_opt;
+use crate::vector::{vector_search_aligned, VectorQueryInput, VectorSearchOptions};
 
-use super::graph_rag::{expand_knowledge_graph_with_sidecar, GraphRagConfig, GraphStructuralHit};
+use super::graph_rag::{expand_knowledge_graph_with_snapshot, GraphRagConfig, GraphStructuralHit};
 use super::scoring::{Bm25fParams, Bm25fScoredNode};
-use super::sidecar_cache::with_bm25_sidecar;
+use super::sidecar_cache::with_bm25_sidecar_full_snapshot;
+
+/// Optional external semantic query embedding (e.g. from `/worker/embed` `embeddinggemma-2`).
+#[derive(Debug, Clone)]
+pub struct QueryVectorOverride {
+    pub model_id: String,
+    pub vector: Vec<f64>,
+    pub is_hash_fallback: bool,
+}
 
 /// Options for 3-Way Hybrid BM25F + Vector + Knowledge Graph RRF search.
 #[derive(Debug, Clone)]
@@ -32,6 +41,10 @@ pub struct GraphRagOptions {
     pub graph_config: GraphRagConfig,
     pub scope: Scope,
     pub now_secs: f64,
+    /// When false (default), retired (`superseded`/`deprecated`) nodes are excluded.
+    pub include_historical: bool,
+    /// Optional provider query embedding matching `vector_embeddings` semantic models.
+    pub query_embedding: Option<QueryVectorOverride>,
 }
 
 impl Default for GraphRagOptions {
@@ -49,6 +62,8 @@ impl Default for GraphRagOptions {
             graph_config: GraphRagConfig::default(),
             scope: Scope::default(),
             now_secs: 0.0,
+            include_historical: false,
+            query_embedding: None,
         }
     }
 }
@@ -83,14 +98,13 @@ pub fn hybrid_bm25_vector_graph_search(
         return Ok(serde_json::to_value(empty).unwrap_or(Value::Null));
     }
 
-    let (corpus, mut bm25_hits) = with_bm25_sidecar(conn, &options.scope, 5_000, |sidecar| {
-        let hits = sidecar.score(&effective_query, &options.bm25_params);
-        Ok((sidecar.corpus_nodes(), hits))
-    })?;
-    let corpus_map: HashMap<String, NodeRow> =
-        corpus.iter().map(|n| (n.id.clone(), n.clone())).collect();
+    let include_historical = options.include_historical || options.graph_config.include_historical;
+    let snapshot =
+        with_bm25_sidecar_full_snapshot(conn, &options.scope, 5_000, include_historical)?;
 
-    // 1. Channel 1: Calibrated Field-Weighted Okapi BM25F (via pre-tokenized sidecar)
+    // 1. Channel 1: Calibrated Field-Weighted Okapi BM25F (via lock-free sidecar snapshot)
+    let mut bm25_hits =
+        snapshot.score_with_options(&effective_query, &options.bm25_params, include_historical);
     bm25_hits.truncate(options.bm25_limit.max(1) as usize);
     let max_bm25 = bm25_hits
         .first()
@@ -98,16 +112,34 @@ pub fn hybrid_bm25_vector_graph_search(
         .unwrap_or(1.0)
         .max(1e-6);
 
-    // 2. Channel 2: Dense Vector Search + Upgraded Offline Subword FallbackTextEmbedder
+    // 2. Channel 2: Provider-Aligned Dense Vector Search + Cached Subword Fallback
+    let query_input = match options.query_embedding.as_ref() {
+        Some(ovr) => VectorQueryInput::Precomputed {
+            model_id: &ovr.model_id,
+            vector: &ovr.vector,
+            is_hash_fallback: ovr.is_hash_fallback,
+        },
+        None => VectorQueryInput::Model(model),
+    };
+    let vec_options = VectorSearchOptions {
+        limit: options.vector_limit.max(1),
+        min_score: 0.05,
+        scope: Some(&options.scope),
+        include_historical,
+    };
+    let mut vector_provider_status: Option<String> = None;
+    let mut vector_reindex_required = false;
     let mut vector_ranked: Vec<(String, f64, NodeRow)> = Vec::new();
-    if let Ok(vec_report) = scoped_vector_search(
-        conn,
-        model,
-        &effective_query,
-        options.vector_limit.max(1),
-        0.05,
-        &options.scope,
-    ) {
+    if let Ok(vec_report) = vector_search_aligned(conn, query_input, &effective_query, &vec_options)
+    {
+        vector_provider_status = vec_report
+            .get("provider_status")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        vector_reindex_required = vec_report
+            .get("reindex_required")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         if let Some(arr) = vec_report
             .get("matches")
             .or_else(|| vec_report.get("results"))
@@ -125,8 +157,8 @@ pub fn hybrid_bm25_vector_graph_search(
                         .and_then(Value::as_f64)
                         .unwrap_or(0.0);
                     if sim > 0.0 {
-                        if let Some(node) = corpus_map.get(id).cloned() {
-                            vector_ranked.push((id.to_string(), sim, node));
+                        if let Some(doc) = snapshot.get_doc(id) {
+                            vector_ranked.push((id.to_string(), sim, doc.node.clone()));
                         }
                     }
                 }
@@ -134,44 +166,36 @@ pub fn hybrid_bm25_vector_graph_search(
         }
     }
 
-    // Augment or fall back to upgraded `FallbackTextEmbedder` (multi-scale 3..5-grams + CJK bigrams)
+    // Augment or fall back using cached subword embeddings inside `snapshot` (zero corpus clone).
     let subword_embedder = FallbackTextEmbedder::default();
     let q_sub_vec = subword_embedder.embed(&effective_query);
     if q_sub_vec.iter().any(|v| *v != 0.0) {
-        let mut sub_scores: HashMap<String, f64> = HashMap::new();
-        for node in &corpus {
-            let doc_text = format!(
-                "{} {}",
-                node.title.as_deref().unwrap_or_default(),
-                node.summary.as_deref().unwrap_or_default()
-            );
-            let d_vec = subword_embedder.embed(&doc_text);
-            let sim = subword_embedder
-                .similarity(&q_sub_vec, &d_vec)
-                .unwrap_or(0.0);
-            if sim > 0.12 {
-                sub_scores.insert(node.id.clone(), sim);
-            }
-        }
+        let existing_ids: Vec<String> = vector_ranked.iter().map(|(id, _, _)| id.clone()).collect();
+        let existing_sub = snapshot.subword_similarity_for_ids(&q_sub_vec, &existing_ids);
         for (id, sim, _) in &mut vector_ranked {
-            if let Some(&sub_sim) = sub_scores.get(id) {
-                *sim = (*sim * 0.70 + sub_sim * 0.30).max(*sim);
+            if let Some(&sub_sim) = existing_sub.get(id) {
+                if sub_sim > 0.12 {
+                    *sim = (*sim * 0.70 + sub_sim * 0.30).max(*sim);
+                }
             }
         }
-        let existing_vec_ids: HashSet<String> =
-            vector_ranked.iter().map(|(id, _, _)| id.clone()).collect();
-        let mut extra_sub: Vec<(String, f64, NodeRow)> = sub_scores
-            .into_iter()
-            .filter(|(id, _)| !existing_vec_ids.contains(id))
-            .filter_map(|(id, sim)| corpus_map.get(&id).cloned().map(|n| (id, sim, n)))
-            .collect();
-        extra_sub.sort_by(|a, b| b.1.total_cmp(&a.1));
-        for item in extra_sub
-            .into_iter()
-            .take(options.vector_limit.max(1) as usize)
-        {
-            if vector_ranked.len() < options.vector_limit.max(1) as usize {
-                vector_ranked.push(item);
+
+        let target_limit = options.vector_limit.max(1) as usize;
+        if vector_ranked.len() < target_limit {
+            let existing_vec_ids: HashSet<String> = existing_ids.into_iter().collect();
+            let sub_hits = snapshot.score_subword_query(
+                &q_sub_vec,
+                0.12,
+                target_limit.saturating_add(existing_vec_ids.len()),
+                include_historical,
+            );
+            for (node, sub_sim) in sub_hits {
+                if vector_ranked.len() >= target_limit {
+                    break;
+                }
+                if !existing_vec_ids.contains(&node.id) {
+                    vector_ranked.push((node.id.clone(), sub_sim, node));
+                }
             }
         }
         vector_ranked.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
@@ -206,15 +230,15 @@ pub fn hybrid_bm25_vector_graph_search(
     let mut seed_list: Vec<(String, f64)> = seed_map.into_iter().collect();
     seed_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
-    let mut graph_hits = with_bm25_sidecar(conn, &options.scope, 5_000, |sidecar| {
-        expand_knowledge_graph_with_sidecar(
-            conn,
-            &seed_list,
-            sidecar,
-            &options.scope,
-            &options.graph_config,
-        )
-    })?;
+    let mut graph_cfg = options.graph_config.clone();
+    graph_cfg.include_historical = include_historical;
+    let mut graph_hits = expand_knowledge_graph_with_snapshot(
+        conn,
+        &seed_list,
+        &snapshot,
+        &options.scope,
+        &graph_cfg,
+    )?;
     graph_hits.truncate(options.graph_limit.max(1) as usize);
     let max_graph = graph_hits
         .first()
@@ -437,16 +461,23 @@ pub fn hybrid_bm25_vector_graph_search(
             "rrf_k": options.rrf_k,
             "bm25_k1": options.bm25_params.k1,
             "bm25_b": options.bm25_params.b,
-            "graph_max_hops": options.graph_config.max_hops,
+            "graph_max_hops": graph_cfg.max_hops,
+            "include_historical": include_historical,
+            "vector_provider_status": vector_provider_status,
+            "vector_reindex_required": vector_reindex_required,
         }),
     );
+    if let Some(status) = vector_provider_status {
+        out.insert("vector_provider_status", json!(status));
+    }
+    out.insert("vector_reindex_required", json!(vector_reindex_required));
     out.insert("matches", Value::Array(results.clone()));
     out.insert("results", Value::Array(results));
     out.insert("expanded_results", Value::Array(expanded_results));
     Ok(serde_json::to_value(out).unwrap_or(Value::Null))
 }
 
-/// Run inverted-index BM25F scoring and sidecar-cached GraphRAG expansion in one sidecar borrow.
+/// Run inverted-index BM25F scoring and sidecar-cached GraphRAG expansion using one lock-free snapshot.
 pub fn score_and_expand_with_sidecar(
     conn: &Connection,
     scope: &Scope,
@@ -455,20 +486,20 @@ pub fn score_and_expand_with_sidecar(
     bm25_params: &Bm25fParams,
     graph_cfg: &GraphRagConfig,
 ) -> Result<(Vec<Bm25fScoredNode>, Vec<GraphStructuralHit>), CoreError> {
-    with_bm25_sidecar(conn, scope, 5_000, |sidecar| {
-        let mut hits = sidecar.score(query, bm25_params);
-        hits.truncate(take.max(1));
-        let max_bm25 = hits.first().map(|h| h.bm25_score).unwrap_or(1.0).max(1e-6);
-        let seeds: Vec<(String, f64)> = hits
-            .iter()
-            .map(|hit| {
-                (
-                    hit.node.id.clone(),
-                    (hit.bm25_score / max_bm25).clamp(0.0, 1.0),
-                )
-            })
-            .collect();
-        let ghits = expand_knowledge_graph_with_sidecar(conn, &seeds, sidecar, scope, graph_cfg)?;
-        Ok((hits, ghits))
-    })
+    let snapshot =
+        with_bm25_sidecar_full_snapshot(conn, scope, 5_000, graph_cfg.include_historical)?;
+    let mut hits = snapshot.score_with_options(query, bm25_params, graph_cfg.include_historical);
+    hits.truncate(take.max(1));
+    let max_bm25 = hits.first().map(|h| h.bm25_score).unwrap_or(1.0).max(1e-6);
+    let seeds: Vec<(String, f64)> = hits
+        .iter()
+        .map(|hit| {
+            (
+                hit.node.id.clone(),
+                (hit.bm25_score / max_bm25).clamp(0.0, 1.0),
+            )
+        })
+        .collect();
+    let ghits = expand_knowledge_graph_with_snapshot(conn, &seeds, &snapshot, scope, graph_cfg)?;
+    Ok((hits, ghits))
 }
