@@ -13,7 +13,7 @@
 | `~/.ltcai/knowledge_graph_blobs/` | 업로드 원본/blob 저장소 |
 | `~/.ltcai/audit.json` | 감사 로그 (agent 실행, 사용자 변경 등) |
 | `~/.ltcai/chat_history.json` | 레거시 대화 히스토리 — 최초 1회 SQLite로 idempotent 임포트 후 미사용 |
-| `~/ltcai-agent/` | Agent workspace (agent가 생성한 파일) |
+| `~/ltcai-agent/` | Agent workspace 기본 베이스 경로 — 인증 시 서버 측 `IsolatedRootSpec` 으로 사용자/테넌트/워크스페이스별 격리 |
 | `~/.ltcai/agent_runs/` | 승인 대기 중인 에이전트 런 (재시작 생존, 토큰은 해시로만 저장) |
 | `~/.ltcai/project_sessions/` | 프로젝트 세션 (v9.9.6) — 프로젝트가 만든 파일, 남은 할 일, 마지막 검증 결과 |
 

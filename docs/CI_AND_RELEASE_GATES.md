@@ -42,9 +42,9 @@ Four legs. Job names are `Test (Python <ver> on <os>)`:
 
 On `3.11 + ubuntu-latest`, CI installs `.[ann]` and verifies `import hnswlib`
 before running the PR-blocking `Retrieval sidecar & contract gates` step
-(`tests/unit/test_vector_sidecar.py`, `tests/unit/test_hnsw_backend.py`,
-`tests/unit/test_embedding_provider_contract.py`,
-`tests/unit/test_worker_allowlist.py`, `tests/unit/test_hybrid_bm25_contract.py`,
+(`tests/unit/test_vector_index_sidecar.py`, `tests/unit/test_vector_index_hnsw.py`,
+`tests/unit/test_cov_wp12_provider_contract.py`,
+`tests/unit/test_worker_allowlist.py`, `tests/unit/test_hybrid_graph_bm25.py`,
 `tests/unit/test_worker_compute.py`).
 
 Downstream jobs (after `test`): `Integration smoke test` (25 min), then
