@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StaleEmbedderNotice, VectorFreshnessNotice } from "@/features/brain/BrainSignals";
+import { MultiHopSynthesisView } from "@/features/brain/MultiHopSynthesisView";
 import { SelfModelPanel } from "@/features/brain/SelfModelPanel";
 import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
@@ -213,12 +214,28 @@ export function MemoryStatus({ data }: { data: Record<string, unknown> }) {
 function HybridSearch() {
   const language = useAppStore((state) => state.language);
   const [query, setQuery] = React.useState("");
-  const search = useMutation({ mutationFn: () => latticeApi.hybridSearch(query) });
+  const [multiHop, setMultiHop] = React.useState(false);
+  const search = useMutation({
+    mutationFn: () => (multiHop ? latticeApi.hybridSearchGraphRag(query) : latticeApi.hybridSearch(query)),
+  });
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> {t(language, "brain.search.title")}</CardTitle>
-        <CardDescription>{t(language, "brain.search.detail")}</CardDescription>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
+        <div>
+          <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> {t(language, "brain.search.title")}</CardTitle>
+          <CardDescription>{t(language, "brain.search.detail")}</CardDescription>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant={multiHop ? "default" : "outline"}
+          aria-pressed={multiHop}
+          data-testid="toggle-multihop-search"
+          onClick={() => setMultiHop((prev) => !prev)}
+        >
+          <Sparkles className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+          {t(language, "brain.search.multiHop")}
+        </Button>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -227,7 +244,12 @@ function HybridSearch() {
         </div>
         {search.data ? (
           <DataPanel title={t(language, "brain.search.results")} result={search.data}>
-            {(data) => <EntityList items={(data as Record<string, unknown>).matches || data} titleKey="title" metaKey="type" limit={12} />}
+            {(data) => (
+              <div className="space-y-3">
+                {multiHop ? <MultiHopSynthesisView language={language} data={data as Record<string, unknown>} /> : null}
+                <EntityList items={(data as Record<string, unknown>).matches || data} titleKey="title" metaKey="type" limit={12} />
+              </div>
+            )}
           </DataPanel>
         ) : null}
       </CardContent>

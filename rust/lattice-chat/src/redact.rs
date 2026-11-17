@@ -29,79 +29,8 @@
 
 use std::sync::OnceLock;
 
-use fancy_regex::{Captures, Regex};
-
-/// The keyed and shaped secret patterns, in `SECRET_TEXT_PATTERNS` order.
-const SECRET_PATTERNS: &[&str] = &[
-    r"(?i)\b(api[_ -]?key|secret|token|password|passwd|authorization|bearer|client[_ -]?secret|webhook|dsn)\s*[:=]\s*['\x22]?([^\s'\x22,;]{8,})['\x22]?",
-    r"\b(sk-[A-Za-z0-9_\-]{16,})\b",
-    r"\b(xai-[A-Za-z0-9_\-]{16,})\b",
-    r"\b(gsk_[A-Za-z0-9_\-]{16,})\b",
-    r"\b(ghp_[A-Za-z0-9_]{30,})\b",
-    r"\b(xox[baprs]-[A-Za-z0-9-]{10,})\b",
-    r"\b(AKIA[0-9A-Z]{16})\b",
-    r"(?i)\b(postgres(?:ql)?://[^@\s]+:[^@\s]+@[^\s]+)",
-    r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----",
-];
-
-/// How many capture groups each pattern declares — the Python `repl` branches
-/// on `len(match.groups()) >= 2`, and a group count is a property of the
-/// pattern, not of the match.
-const TWO_GROUP_PATTERN: usize = 0;
-
-fn compiled() -> &'static Vec<Regex> {
-    static SET: OnceLock<Vec<Regex>> = OnceLock::new();
-    SET.get_or_init(|| {
-        SECRET_PATTERNS
-            .iter()
-            .map(|pattern| Regex::new(pattern).expect("ported pattern must compile"))
-            .collect()
-    })
-}
-
-fn telegram_with_bot() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"\bbot(\d{5,20}):[A-Za-z0-9_-]{8,}\b").expect("ported pattern must compile")
-    })
-}
-
-fn telegram_bare() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"(?<![A-Za-z0-9_:-])(\d{5,20}):[A-Za-z0-9_-]{8,}(?![A-Za-z0-9_-])")
-            .expect("ported pattern must compile")
-    })
-}
-
-/// `redact_secret_text(text)`.
-pub fn redact_secret_text(text: &str) -> String {
-    if text.is_empty() {
-        return String::new();
-    }
-    let mut redacted = telegram_with_bot()
-        .replace_all(text, |captures: &Captures| {
-            format!("bot{}:REDACTED", &captures[1])
-        })
-        .into_owned();
-    redacted = telegram_bare()
-        .replace_all(&redacted, |captures: &Captures| {
-            format!("bot{}:REDACTED", &captures[1])
-        })
-        .into_owned();
-    for (index, pattern) in compiled().iter().enumerate() {
-        redacted = pattern
-            .replace_all(&redacted, |captures: &Captures| {
-                if index == TWO_GROUP_PATTERN {
-                    format!("{}=[REDACTED_SECRET]", &captures[1])
-                } else {
-                    "[REDACTED_SECRET]".to_string()
-                }
-            })
-            .into_owned();
-    }
-    redacted
-}
+use fancy_regex::Regex;
+pub use lattice_core::redact::redact_secret_text;
 
 /// `models.router.branding.BRAND_NAME`.
 pub const BRAND_NAME: &str = "Lattice AI";

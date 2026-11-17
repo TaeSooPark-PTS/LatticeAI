@@ -30,7 +30,7 @@ use crate::kernel::policy::{risk_level, ToolPolicy};
 use crate::kernel::proposals::{Governor, Verdict};
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::parse::pystr::{is_truthy, py_str};
-use crate::surface::worker::ToolOutcome;
+use crate::seam::worker::ToolOutcome;
 use crate::tools::{CallScope, NativeCall};
 
 /// `{k: v for k, v in args.items() if k != "content"}` — the decision is worth

@@ -3,6 +3,7 @@
 
 mod fusion;
 mod graph_rag;
+pub mod reasoning_paths;
 pub(crate) mod scoring;
 mod sidecar;
 mod sidecar_cache;
@@ -19,6 +20,7 @@ pub use graph_rag::{
     expand_knowledge_graph, expand_knowledge_graph_with_sidecar,
     expand_knowledge_graph_with_snapshot, GraphRagConfig, GraphStructuralHit,
 };
+pub use reasoning_paths::{BridgeConcept, NeighborhoodConflict, ReasoningPath};
 pub use scoring::{
     bm25f_score_nodes, bm25f_search, bm25f_search_with_options, load_scoped_corpus,
     load_scoped_corpus_records, load_scoped_corpus_with_options, Bm25fParams, Bm25fScoredNode,

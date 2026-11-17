@@ -8,7 +8,7 @@ use super::*;
 use crate::kernel::agentloop::harness::harness;
 use crate::kernel::profile::GUIDED;
 use crate::kernel::state::AgentState;
-use crate::surface::worker::ToolOutcome;
+use crate::seam::worker::ToolOutcome;
 use crate::tools::catalog::{ArgSpec, CatalogEntry, EntryKind, ToolCatalog};
 use crate::tools::{CallScope, ToolFuture};
 

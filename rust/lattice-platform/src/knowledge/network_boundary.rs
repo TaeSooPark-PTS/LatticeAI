@@ -314,7 +314,7 @@ async fn preview(
         allowed_workspaces.as_ref(),
         &resolved_policy,
     );
-    let compact: String = crate::workspaceos::workspace::redact::redact_secret_text(
+    let compact: String = lattice_core::redact::redact_secret_text(
         &nodes
             .iter()
             .map(|n| {

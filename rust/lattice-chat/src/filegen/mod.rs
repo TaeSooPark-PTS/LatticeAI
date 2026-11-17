@@ -50,8 +50,8 @@ use std::collections::BTreeMap;
 use axum::body::Body;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
-use lattice_agent::inference::manifest_paths;
-use lattice_agent::sanitize::validate_file_content;
+use lattice_agent::content::sanitize::validate_file_content;
+use lattice_agent::parse::inference::manifest_paths;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 

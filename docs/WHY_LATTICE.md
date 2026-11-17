@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **12.10.0 — Grounded Self**.
+Current release: **13.0.0 — Sovereign Synthesis**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

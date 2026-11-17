@@ -3,25 +3,28 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **12.10.0 — Grounded Self**.
+Current release: **13.0.0 — Sovereign Synthesis**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from **12.0.0 through 12.10.0** (the
-modern `v12.x` Rust-host and domain-grouped architecture era). Security support
-follows that same product era: **only the 12.x line receives fixes.**
+The public Git tree keeps release history from **12.0.0 through 13.0.0** (the
+modern `v12.x`–`v13.x` Rust-host and domain-grouped architecture era). Security support
+follows that same product era: **the 13.x and 12.x lines receive fixes.**
 
 12.0.0 organized the Rust product server (`lattice-host` serving 422 native
 operations across 41 route families, single `GraphWriter`, and the 20-route
 loopback AI worker) into explicit domain modules where security-relevant rules
-have clear ownership (`lattice-agent::kernel/` for permission gates, `parse/` for
-untrusted model output, and `content/sanitize` for write sanitization). Pre-12
+have clear ownership (`lattice-agent::kernel/` for permission gates, `seam/` for
+outbound worker compute, `parse/` for untrusted model output, and `content/sanitize`
+for write sanitization). Pre-12
 releases belong to an earlier era and are no longer supported or kept in the
 active release ledger.
 
 | Version | Support |
 | --- | --- |
-| 12.10.x (latest) | Supported |
+| 13.0.x (latest) | Supported |
+| 12.10.x | Supported |
+| 12.9.x | Supported |
 | 12.8.x | Supported |
 | 12.7.x | Supported |
 | 12.6.x | Supported |

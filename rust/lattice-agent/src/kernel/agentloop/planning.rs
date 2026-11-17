@@ -14,7 +14,7 @@ use crate::kernel::plan::normalize_plan;
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::parse::action::extract_action_details;
 use crate::parse::pystr::{char_slice, is_truthy, py_str};
-use crate::surface::worker::{Completion, WorkerError};
+use crate::seam::worker::{Completion, WorkerError};
 
 impl Runtime {
     /// PLAN: the planner role produces a structured plan JSON.

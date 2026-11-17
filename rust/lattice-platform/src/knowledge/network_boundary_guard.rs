@@ -18,8 +18,8 @@ use rusqlite::Connection;
 use serde_json::Value;
 
 use super::network_boundary::{HARD_BLOCK_METADATA_FLAGS, HARD_BLOCK_NODE_TYPES};
-use crate::workspaceos::workspace::redact::redact_secret_text;
 use crate::workspaceos::workspace::WorkspaceService;
+use lattice_core::redact::redact_secret_text;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PreviewNode {

@@ -43,7 +43,7 @@ pub(crate) fn create_review_item(
 ) -> Value {
     let now = now_iso();
     let resolved = workspace_id.unwrap_or(DEFAULT_WORKSPACE_ID).to_string();
-    let created = state.update_state(|doc| {
+    state.update_state_with_review_event(REVIEW_ITEM_CREATED_EVENT, "create", |doc| {
         let existing: Vec<String> = doc
             .get("review_items")
             .and_then(Value::as_array)
@@ -89,10 +89,7 @@ pub(crate) fn create_review_item(
             rows.push(item.clone());
         }
         item
-    });
-    // After the save, never inside it: `record_timeline_event` mutates too.
-    state.record_review_event(REVIEW_ITEM_CREATED_EVENT, &created, "create");
-    created
+    })
 }
 
 pub(crate) fn list_review_items(
@@ -168,7 +165,7 @@ pub(crate) fn update_review_item(
     action: &str,
     patch: impl FnOnce(&mut Value),
 ) -> Result<Value, ReviewError> {
-    let updated = state.try_update_state(|doc| {
+    state.try_update_state_with_review_event(REVIEW_ITEM_UPDATED_EVENT, action, |doc| {
         let rows = doc
             .as_object_mut()
             .and_then(|obj| obj.get_mut("review_items"))
@@ -184,9 +181,7 @@ pub(crate) fn update_review_item(
         patch(item);
         item["updated_at"] = json!(now_iso());
         Ok(item.clone())
-    })?;
-    state.record_review_event(REVIEW_ITEM_UPDATED_EVENT, &updated, action);
-    Ok(updated)
+    })
 }
 
 pub(crate) fn transition(

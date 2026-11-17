@@ -155,3 +155,29 @@ pub(crate) fn message_detail(status: u16, id: &str, headers: &HeaderMap) -> Resp
         &body,
     )
 }
+
+pub(crate) fn message_error(status: u16, id: &str, lang: &str, args: &[(&str, &str)]) -> Response {
+    let err = messages::http_error(status, id, lang, args);
+    let body = serde_json::to_string(&err.body).unwrap_or_else(|_| "{\"detail\":\"\"}".into());
+    json_response(
+        StatusCode::from_u16(err.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+        &body,
+        None,
+    )
+}
+
+pub(crate) fn json_from_ordered(map: &OrderedMap) -> Value {
+    serde_json::to_value(map).unwrap_or(json!({}))
+}
+
+pub(crate) fn now_iso_offset() -> String {
+    let utc = now_iso_utc();
+    match utc.strip_suffix('Z') {
+        Some(prefix) => format!("{prefix}+00:00"),
+        None => utc,
+    }
+}
+
+pub(crate) fn workspace_from_headers(headers: &HeaderMap) -> Option<String> {
+    lattice_auth::workspace_scope_from_request(headers, None)
+}

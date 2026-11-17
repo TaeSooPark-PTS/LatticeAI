@@ -31,7 +31,7 @@ use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::kernel::transcript::{complete_counted_and_summarized, complete_created_files};
 use crate::parse::action::extract_action_details;
 use crate::parse::pystr::{char_slice, is_truthy, py_str, py_str_or_empty};
-use crate::surface::worker::{Completion, ToolOutcome, WorkerError};
+use crate::seam::worker::{Completion, ToolOutcome, WorkerError};
 
 mod repair;
 use repair::*;

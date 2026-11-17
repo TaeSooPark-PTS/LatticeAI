@@ -227,6 +227,7 @@ impl std::fmt::Debug for ChatState {
 impl ChatState {
     /// The minimum: identity and configuration, every optional seam unbound.
     pub fn new(auth: Arc<AuthState>, config: ChatConfig) -> Self {
+        let document_sessions = Arc::new(DocumentSessions::with_data_dir(&config.data_dir));
         Self {
             auth,
             config,
@@ -239,7 +240,7 @@ impl ChatState {
             notify: None,
             funnel: None,
             traces: None,
-            document_sessions: Arc::new(DocumentSessions::new()),
+            document_sessions,
             cloud_provider: None,
         }
     }

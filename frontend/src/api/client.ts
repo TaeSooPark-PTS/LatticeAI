@@ -1,14 +1,10 @@
 import type { components, operations } from "./openapi";
 import { chronicleApi } from "./chronicle";
 import {
-  apiBase,
   type ApiResult,
   del,
-  friendlyCaughtError,
-  friendlyError,
   get,
   openApiJson,
-  type OpenApiClient,
   patch,
   post,
   selectFolder,
@@ -16,8 +12,35 @@ import {
   workspaceHeaders,
 } from "./base";
 import { cloudStatus } from "./cloud";
-import { readEventStream } from "./eventStream";
 import { selfModelApi } from "./selfModel";
+import {
+  resumeAgentApproval,
+  streamChat,
+  streamModelPrepare,
+} from "./streaming";
+import {
+  type DemoCorpusStatus,
+  downloadWorkspaceFile,
+  installDemoCorpus,
+  readWorkspaceFile,
+  runAgent,
+  saveChatFile,
+  uploadDocument,
+} from "./transfers";
+
+export type {
+  AgentResumeBody,
+  ChatAgentPayload,
+  ChatCreatedFile,
+  ChatEventHandlers,
+  ModelPrepareHandlers,
+} from "./streaming";
+export type {
+  DemoCorpusDocument,
+  DemoCorpusInstallResult,
+  DemoCorpusQuestion,
+  DemoCorpusStatus,
+} from "./transfers";
 
 export type { CloudProviderMode, CloudProviderStatus } from "./cloud";
 export { normalizeCloudStatus, CLOUD_STATUS_UNCONFIGURED } from "./cloud";
@@ -260,303 +283,40 @@ function snoozeReview(id: string, until: string) {
   );
 }
 
-async function uploadDocument(file: File): Promise<ApiResult<Record<string, unknown> | null>> {
-  const base = await apiBase();
-  const form = new FormData();
-  form.append("file", file);
-  try {
-    const res = await fetch(`${base}/upload/document`, {
-      method: "POST",
-      credentials: "include",
-      headers: { Accept: "application/json", ...workspaceHeaders() } satisfies HeadersInit,
-      body: form,
-    });
-    const data = await res.json().catch(() => null);
-    return {
-      ok: res.ok,
-      status: res.status,
-      data,
-      source: res.ok ? "live" : "unavailable",
-      error: res.ok ? undefined : friendlyError(data, res.statusText || "Upload failed"),
-    };
-  } catch (err) {
-    return { ok: false, status: 0, data: null, source: "unavailable", error: String(err) };
-  }
-}
-
-export type ChatCreatedFile = {
-  path: string;
-  filename: string;
-  bytes: number;
-  action?: string;
+export type ReasoningPathItem = {
+  seed_id: string;
+  seed_title: string;
+  bridge_id?: string | null;
+  bridge_title?: string | null;
+  target_id: string;
+  target_title: string;
+  hops: number;
+  relations: string[];
+  path_score: number;
+  is_contradiction: boolean;
 };
 
-export type ChatAgentPayload = {
-  status?: string;
-  response?: string;
-  created_files?: ChatCreatedFile[];
-  routed_to_agent?: boolean;
-  action_route?: string;
-  // Terminal loop state (DONE | NEEDS_REVIEW | FAILED | ...): NEEDS_REVIEW and
-  // FAILED must never render like success.
-  final_state?: string;
-  // Honesty meta from the file-generation pipeline; `repaired` marks a
-  // deterministic fallback scaffold rather than clean model output.
-  generation?: { repaired?: boolean; attempts?: unknown[] };
-  artifacts?: Array<Record<string, unknown>>;
-  // status === "awaiting_approval": the run paused server-side behind a
-  // short-TTL single-use token until the user approves/edits/cancels the plan.
-  run_id?: string;
-  approval?: { token?: string; expires_at?: string; plan_summary?: string };
-  plan?: Record<string, unknown>;
-  // Loop transcript (parsed defensively into the step timeline for runs that
-  // did not stream `event: agent_step` frames, e.g. approval resumes).
-  steps?: unknown[];
-  // Loop honesty meta: deterministic repairs applied to model output.
-  loop?: {
-    repairs?: Record<string, number>;
-    parse_errors?: number;
-    parse_recovered?: number;
-  };
-  // Plain-language outcome (v9.9.6): why the run ended this way, localized
-  // server-side into {ko, en}. `ok` is true only for a verified DONE.
-  explanation?: {
-    code?: string;
-    ok?: boolean;
-    headline?: Record<string, string>;
-    details?: Array<Record<string, string>>;
-    model_strain?: Record<string, unknown>;
-  };
-  // Payload-level "Brain remembered" verdict for generated files: a single
-  // {status,...} dict on the one-file path, or a list of {path, status, ...}
-  // entries on the project-bundle path. Absent → unknown (no chip).
-  brain_ingest?: Record<string, unknown> | Array<Record<string, unknown>>;
+export type BridgeConceptItem = {
+  id: string;
+  title: string;
+  node_type: string;
+  bridged_targets: number;
 };
 
-export type ChatEventHandlers = {
-  onChunk?: (delta: string, fullText: string) => void;
-  onTrace?: (trace: unknown) => void;
-  onAgent?: (agent: ChatAgentPayload) => void;
-  // Live `event: agent_step` frames emitted before the final payload frames.
-  // Raw records — callers parse defensively and ignore unknown fields.
-  onAgentStep?: (step: Record<string, unknown>) => void;
-  // Hybrid cloud lane: which memories were sent, then the final cloud answer.
-  onHybridContext?: (frame: Record<string, unknown>) => void;
-  onHybridDone?: (frame: Record<string, unknown>) => void;
-  signal?: AbortSignal;
+export type NeighborhoodConflictItem = {
+  source_id: string;
+  source_title: string;
+  target_id: string;
+  target_title: string;
+  relation: string;
 };
 
-export type ModelPrepareHandlers = {
-  onProgress?: (data: Record<string, unknown>) => void;
-  onDone?: (data: Record<string, unknown>) => void;
-  onError?: (data: Record<string, unknown>) => void;
-  signal?: AbortSignal;
-};
-
-async function streamModelPrepare(
-  body: { model: string; engine?: string; allow_download?: boolean },
-  handlers: ModelPrepareHandlers = {},
-) {
-  const base = await apiBase();
-  const res = await fetch(`${base}/engines/prepare-model/stream`, {
-    method: "POST",
-    credentials: "include",
-    signal: handlers.signal,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-      ...workspaceHeaders(),
-    } satisfies HeadersInit,
-    body: JSON.stringify({ engine: null, allow_download: false, ...body }),
-  });
-  if (!res.ok || !res.body || !(res.headers.get("content-type") || "").includes("text/event-stream")) {
-    const payload = await res.json().catch(() => null);
-    const detail = payload?.detail && typeof payload.detail === "object" ? payload.detail : payload;
-    const message = friendlyError(payload, res.statusText);
-    handlers.onError?.({ status: "error", user_message: message, ...(detail || {}) });
-    return { source: "live" as const, ok: false, status: res.status, data: detail || {}, error: message, malformedFrames: 0 };
-  }
-  let finalData: Record<string, unknown> = {};
-  // Count-and-continue: a download-progress stream that hiccups once should
-  // still report "done", not strand the install screen on the last percentage.
-  let malformedFrames = 0;
-  for await (const frame of readEventStream(res.body)) {
-    if (frame.malformed) {
-      malformedFrames += 1;
-      continue;
-    }
-    const data = frame.data || {};
-    if (frame.event === "progress") handlers.onProgress?.(data);
-    if (frame.event === "error") {
-      const detail = typeof data.detail === "object" && data.detail !== null ? data.detail as Record<string, unknown> : data;
-      handlers.onError?.(detail);
-      return { source: "live" as const, ok: false, status: Number(data.status_code || 500), data: detail, error: friendlyError({ detail }, "Model setup failed"), malformedFrames };
-    }
-    if (frame.event === "done") {
-      finalData = data;
-      handlers.onDone?.(data);
-    }
-  }
-  return { source: "live" as const, ok: true, status: 200, data: finalData, malformedFrames };
-}
-
-async function streamChat(body: Record<string, unknown>, handlers: ChatEventHandlers = {}) {
-  const base = await apiBase();
-  const res = await fetch(`${base}/chat`, {
-    method: "POST",
-    credentials: "include",
-    signal: handlers.signal,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-      ...workspaceHeaders(),
-    } satisfies HeadersInit,
-    body: JSON.stringify({ stream: true, max_tokens: 2048, temperature: 0.2, ...body }),
-  });
-  if (!res.ok || !res.body || !(res.headers.get("content-type") || "").includes("text/event-stream")) {
-    const payload = await res.json().catch(() => null);
-    return { source: "live", text: "", trace: null, error: payload?.error || payload?.detail || res.statusText, malformedFrames: 0 };
-  }
-  let text = "";
-  let trace: unknown = null;
-  let agent: ChatAgentPayload | null = null;
-  // Additive answer meta ("context_quality" + "grounding") rides the same
-  // trailer as the trace; keep the raw values so the UI parses defensively.
-  let contextQuality: unknown = null;
-  let grounding: unknown = null;
-  let hybridContext: unknown = null;
-  let hybridDone: unknown = null;
-  // Frames the reader could not decode. Counted rather than thrown: half an
-  // answer already on screen is worth more than a strict parser.
-  let malformedFrames = 0;
-  for await (const frame of readEventStream(res.body)) {
-    // The terminator is a sentinel, not JSON, so it is matched before the
-    // malformed check — otherwise every healthy stream would count one.
-    if (frame.event === "message" && frame.raw === "[DONE]") {
-      return { source: "live", text, trace, agent, contextQuality, grounding, hybridContext, hybridDone, malformedFrames };
-    }
-    if (frame.malformed) {
-      malformedFrames += 1;
-      continue;
-    }
-    // Named frames (same `event:` convention as streamModelPrepare). The
-    // agent loop emits `event: agent_step` progress frames before the final
-    // plain data frames; unknown named events are ignored gracefully.
-    if (frame.event === "agent_step") {
-      if (frame.data) handlers.onAgentStep?.(frame.data);
-      continue;
-    }
-    const data = frame.data;
-    const frameType = frame.event !== "message"
-      ? frame.event
-      : typeof data?.type === "string" ? data.type : "";
-    if (frameType === "hybrid_context" && data) {
-      hybridContext = data;
-      handlers.onHybridContext?.(data);
-      continue;
-    }
-    if (frameType === "hybrid_done" && data) {
-      hybridDone = data;
-      if (typeof data.answer === "string" && data.answer) text = data.answer;
-      handlers.onHybridDone?.(data);
-      continue;
-    }
-    if (frame.event !== "message") continue;
-    if (!data) continue;
-    const delta = (data.chunk || data.text || "") as string;
-    if (delta) {
-      text += delta;
-      handlers.onChunk?.(delta, text);
-    }
-    if (data.trace) {
-      trace = data.trace;
-      handlers.onTrace?.(trace);
-    }
-    if (data.context_quality && typeof data.context_quality === "object") {
-      contextQuality = data.context_quality;
-    }
-    if (data.grounding && typeof data.grounding === "object") {
-      grounding = data.grounding;
-    }
-    if (data.agent && typeof data.agent === "object") {
-      agent = data.agent as ChatAgentPayload;
-      handlers.onAgent?.(agent);
-    }
-  }
-  return { source: "live", text, trace, agent, contextQuality, grounding, hybridContext, hybridDone, malformedFrames };
-}
-
-async function saveChatFile(path: string, content: string): Promise<ApiResult<{ path?: string; bytes?: number }>> {
-  return post("/tools/write_file", { path, content }, {});
-}
-
-export type AgentResumeBody = {
-  run_id: string;
-  approval_token: string;
-  approve: boolean;
-  edited_plan?: Record<string, unknown>;
-};
-
-// Resumes an awaiting_approval agent run. Uses a raw fetch (no client
-// timeout): approving executes the full plan, which can legitimately take
-// minutes on local models. The HTTP status matters to callers (410 = token
-// expired, 404 = run lost, 403 = wrong token/user), so it is passed through.
-async function resumeAgentApproval(body: AgentResumeBody): Promise<ApiResult<Record<string, unknown>>> {
-  const base = await apiBase();
-  try {
-    const res = await fetch(`${base}/agent/resume`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        ...workspaceHeaders(),
-      } satisfies HeadersInit,
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => null);
-    return {
-      ok: res.ok,
-      status: res.status,
-      data: (data && typeof data === "object" ? data : {}) as Record<string, unknown>,
-      source: res.ok ? "live" : "unavailable",
-      error: res.ok ? undefined : friendlyError(data, res.statusText || `HTTP ${res.status}`),
-    };
-  } catch (err) {
-    return { ok: false, status: 0, data: {}, source: "unavailable", error: friendlyCaughtError(err, "unreachable") };
-  }
-}
-
-export type DemoCorpusDocument = {
-  demo_id?: string;
-  title?: string;
-  source_uri?: string;
-  status?: string;
-  node_id?: string | null;
-  duplicate?: boolean;
-  chunk_count?: number;
-};
-
-export type DemoCorpusQuestion = {
-  question?: string;
-  expected_source_uri?: string;
-  expected_title?: string;
-};
-
-export type DemoCorpusStatus = {
-  installed: boolean;
-  documents: DemoCorpusDocument[];
-  document_count: number;
-  suggested_questions: DemoCorpusQuestion[];
-};
-
-export type DemoCorpusInstallResult = {
-  status: string;
-  ingested: number;
-  duplicates: number;
-  failed?: number;
-  documents: DemoCorpusDocument[];
-  suggested_questions: DemoCorpusQuestion[];
+export type MultiHopSynthesis = {
+  direct_hits: number;
+  multi_hop_hits: number;
+  reasoning_path_count: number;
+  bridge_concepts: BridgeConceptItem[];
+  contradictions: NeighborhoodConflictItem[];
 };
 
 export type EvidenceAction = {
@@ -574,113 +334,6 @@ export type EvidenceActionsPayload = {
   actions: EvidenceAction[];
   reason: string;
 };
-
-// One-click First Value Loop corpus install. Raw fetch without the 10s client
-// timeout: the three documents run through the real ingestion pipeline
-// (chunking + embedding), which can exceed it on first use.
-async function installDemoCorpus(): Promise<ApiResult<DemoCorpusInstallResult>> {
-  const base = await apiBase();
-  const shape: DemoCorpusInstallResult = {
-    status: "", ingested: 0, duplicates: 0, documents: [], suggested_questions: [],
-  };
-  try {
-    const res = await fetch(`${base}/api/setup/demo-corpus`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        ...workspaceHeaders(),
-      } satisfies HeadersInit,
-      body: JSON.stringify({}),
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      return {
-        ok: false,
-        status: res.status,
-        data: shape,
-        source: "unavailable",
-        error: friendlyError(data, res.statusText || `HTTP ${res.status}`),
-      };
-    }
-    return {
-      ok: true,
-      status: res.status,
-      data: { ...shape, ...(data && typeof data === "object" ? data : {}) },
-      source: "live",
-    };
-  } catch (err) {
-    return { ok: false, status: 0, data: shape, source: "unavailable", error: friendlyCaughtError(err, "unreachable") };
-  }
-}
-
-async function runAgent(goal: string, roles: string[]): Promise<ApiResult<Record<string, unknown>>> {
-  const result = await post<Record<string, unknown>>("/agents/api/run", { goal, roles }, {});
-  if (!result.ok) {
-    throw new Error(result.error || `Agent run failed with HTTP ${result.status}`);
-  }
-  return result;
-}
-
-// Reads a generated workspace file as text (same endpoint the download action
-// uses) so file cards can offer an inline preview without a second backend
-// surface. 404 keeps its status so callers can distinguish "file is gone".
-async function readWorkspaceFile(path: string): Promise<ApiResult<{ content: string }>> {
-  const base = await apiBase();
-  try {
-    const res = await fetch(`${base}/tools/download?path=${encodeURIComponent(path)}`, {
-      credentials: "include",
-      headers: workspaceHeaders(),
-    });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      return {
-        ok: false,
-        status: res.status,
-        data: { content: "" },
-        source: "unavailable",
-        error: friendlyError(payload, res.statusText || `HTTP ${res.status}`),
-      };
-    }
-    const content = await res.text();
-    return { ok: true, status: res.status, data: { content }, source: "live" };
-  } catch (err) {
-    return {
-      ok: false,
-      status: 0,
-      data: { content: "" },
-      source: "unavailable",
-      error: friendlyCaughtError(err, "unreachable"),
-    };
-  }
-}
-
-async function downloadWorkspaceFile(path: string, filename: string): Promise<{ ok: boolean; error?: string }> {
-  const base = await apiBase();
-  try {
-    const res = await fetch(`${base}/tools/download?path=${encodeURIComponent(path)}`, {
-      credentials: "include",
-      headers: workspaceHeaders(),
-    });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      return { ok: false, error: friendlyError(payload, res.statusText || "Download failed") };
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename || path.split("/").pop() || "download";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: friendlyCaughtError(err, "Download failed") };
-  }
-}
 
 export const latticeApi = {
   ...chronicleApi,
@@ -727,6 +380,12 @@ export const latticeApi = {
     }
     return res;
   },
+  hybridSearchGraphRag: (query: string, limit = 12) =>
+    post<Record<string, unknown>>(
+      "/api/search/hybrid",
+      { query, mode: "graphrag", limit },
+      { matches: [], reasoning_paths: [], synthesis: {} },
+    ),
   browserReadUrl: (url: string) => post("/api/browser/read-url", { url }, {}),
   ingestNote: (content: string, title = "Brain note") => post(
     "/knowledge-graph/ingest",

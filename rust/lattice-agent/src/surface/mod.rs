@@ -44,10 +44,10 @@
 //!    the kernel does not expose, the answer is a kernel change reviewed on its
 //!    own terms — not a shortcut taken in a handler.
 
+pub use crate::seam::worker;
 pub mod looproutes;
 pub mod router;
 pub mod runbody;
-pub mod worker;
 
 /// The 422-shaped 400 both routers answer for a body they cannot read.
 ///

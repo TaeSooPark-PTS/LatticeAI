@@ -15,6 +15,7 @@ pub mod messages;
 pub mod paths;
 pub mod pytext;
 pub mod read;
+pub mod redact;
 pub mod worker;
 
 pub use db::{open_read_only, CoreError};
@@ -31,3 +32,4 @@ pub use read::{
     column_json, filter_scoped_nodes, scoped_workspace_visible, sql_json, workspace_is_default,
     workspace_membership_sql, workspaces_of, NodeRow, VectorRow, DEFAULT_WORKSPACE_ID,
 };
+pub use redact::{is_secret_key, redact_secret_text, redact_secrets, redact_structure, REDACTION};

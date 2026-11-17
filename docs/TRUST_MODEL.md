@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **12.10.0 — Grounded Self**.
+Current release: **13.0.0 — Sovereign Synthesis**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

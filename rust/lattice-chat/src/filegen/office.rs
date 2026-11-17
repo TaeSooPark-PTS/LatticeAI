@@ -25,8 +25,8 @@
 
 use std::time::Duration;
 
-use lattice_agent::sanitize::ext_of;
-use lattice_agent::worker::WorkerClient;
+use lattice_agent::content::sanitize::ext_of;
+use lattice_agent::seam::worker::WorkerClient;
 
 use crate::state::ChatState;
 

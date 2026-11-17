@@ -410,6 +410,7 @@ const SPECIAL_CASES = new Set([
   "selectFolder",
   "desktopBackendStatus",
   "hybridSearch",
+  "hybridSearchGraphRag",
   "streamChat",
   "streamModelPrepare",
   "resumeAgentApproval",
@@ -574,5 +575,31 @@ describe("the chronicle reads", () => {
     expect(res.ok).toBe(true);
     expect(res.source).toBe("live");
     expect(res.data).toEqual(payload);
+  });
+
+  it("posts mode=graphrag for multi-hop hybridSearchGraphRag with default and custom limits", async () => {
+    const calls = recordFetch(() =>
+      jsonResponse({
+        matches: [{ id: "n1", title: "RFC" }],
+        reasoning_paths: [],
+        synthesis: { direct_hits: 1, multi_hop_hits: 0 },
+      }),
+    );
+
+    const defRes = await latticeApi.hybridSearchGraphRag("wal checkpointer");
+    expect(defRes.ok).toBe(true);
+    expect(calls[0].body).toEqual({
+      query: "wal checkpointer",
+      mode: "graphrag",
+      limit: 12,
+    });
+
+    const customRes = await latticeApi.hybridSearchGraphRag("wal checkpointer", 6);
+    expect(customRes.ok).toBe(true);
+    expect(calls[1].body).toEqual({
+      query: "wal checkpointer",
+      mode: "graphrag",
+      limit: 6,
+    });
   });
 });

@@ -4,6 +4,17 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [13.0.0] - 2026-11-18 — Sovereign Synthesis
+
+### Added
+- Added multi-hop Knowledge Graph reasoning chain & neighborhood contradiction/supersession synthesis (`rust/lattice-retrieval/src/bm25/reasoning_paths.rs`, `graph_rag.rs`, `fusion.rs`) plus interactive 2-Hop Synthesis UI (`frontend/src/features/brain/{MultiHopSynthesisView.tsx,MultiHopSynthesisView.test.tsx}`, `Brain.tsx`, `latticeApi.hybridSearchGraphRag`) with 100% Vitest coverage.
+- Added automatic reverse `folder_reorganization` undo staging (`is_undo`, `undo_proposal_id`) in `rust/lattice-platform/src/governance/change_proposals.rs` (`tests/reversible_reorganization.rs`) and 1-Click Undo + Rollback badge UI in `frontend/src/features/review/ReviewCard.tsx`.
+- Added durable conversation document session persistence (`chat_document_sessions.json`) in `rust/lattice-chat/src/{documents.rs,state.rs}` and static crate/domain layering enforcement (`rust/lattice-platform/tests/domain_boundaries.rs`).
+
+### Changed
+- Promoted canonical `OnceLock`-compiled secret redaction to `rust/lattice-core/src/redact.rs`, extracted `rust/lattice-agent/src/seam/worker.rs` so `kernel/` and `tools/` never import `surface/`, severed `modelops` → `adminops` coupling via `http_reply.rs`, and migrated `lattice-chat` to canonical `lattice_agent::{kernel,parse,content,tools,seam}` paths.
+- Collapsed `review_items` mutations and `timeline` appends into a single atomic `WorkspaceOsStore` transaction (`update_state_with_review_event`, `try_update_state_with_review_event`), unified `lattice-auth::messages` onto `lattice_core::messages` (`check_server_i18n.mjs` verifying 146 Rust messages), and split `frontend/src/api/client.ts` (`streaming.ts`, `transfers.ts`) and `src-tauri/src/backend.rs` (`backend_tests.rs`).
+
 ## [12.10.0] - 2026-11-17 — Grounded Self
 
 ### Added

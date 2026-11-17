@@ -24,7 +24,9 @@
 //! refusal or as commentary is **never** the source of a written file, on either
 //! attempt: it is the honest 400 instead.
 
-use lattice_agent::sanitize::{looks_like_refusal, sanitize_write_content, validate_file_content};
+use lattice_agent::content::sanitize::{
+    looks_like_refusal, sanitize_write_content, validate_file_content,
+};
 use serde_json::{json, Value};
 
 use crate::pipeline::model::collect_completion;

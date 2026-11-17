@@ -35,7 +35,7 @@ use crate::kernel::profile::{profile_for_model, AgentProfile};
 use crate::kernel::proposals::{JsonProposalStore, ProposalStore};
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::kernel::transcript::{PhaseBudgets, TranscriptBudget};
-use crate::surface::worker::WorkerClient;
+use crate::seam::worker::WorkerClient;
 use crate::tools::documents::document_output_target;
 use crate::tools::sandbox::Workspace;
 use crate::tools::{NativeTools, ToolConfig, ToolHost};
@@ -492,7 +492,7 @@ impl Runtime {
         &mut self,
         ctx: &mut AgentRunContext,
         req: &RunRequest,
-    ) -> Result<(), crate::surface::worker::WorkerError> {
+    ) -> Result<(), crate::seam::worker::WorkerError> {
         while !ctx.state.is_terminal() {
             ctx.state_history.push(ctx.state.as_str().to_string());
             if ctx.state_history.len() > 200 {

@@ -259,6 +259,35 @@ describe("ReviewCard decision panel", () => {
     expect(screen.queryByRole("button", { name: "승인" })).toBeNull();
   });
 
+  it("renders a Rollback badge on auto-staged reorganization undo proposals and triggers 1-click undo on settled cards", async () => {
+    render(
+      item({
+        source: "change_proposal",
+        kind: "folder_reorganization",
+        payload: { is_undo: true, root: "inbox", moves: [] },
+      }),
+      "basic",
+    );
+    expect(screen.getByText("원복 제안")).toBeTruthy();
+
+    const approvedReorg = item({
+      id: "review-forward-1",
+      source: "change_proposal",
+      kind: "folder_reorganization",
+      status: "approved",
+      effective_status: "approved",
+      provenance: { undo_proposal_id: "review-undo-99" },
+    });
+    const { onAction } = renderWithAction(approvedReorg, "basic");
+    await userEvent.click(screen.getByRole("button", { name: "원래 위치로 되돌리기" }));
+    await waitFor(() =>
+      expect(onAction).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "review-undo-99", status: "pending", effective_status: "pending" }),
+        "approve",
+      ),
+    );
+  });
+
   it("passes the typed reason along when a proposal is rejected", async () => {
     const { onAction } = renderWithAction(PROPOSAL);
     await userEvent.type(screen.getByLabelText(/사유/), "다시 검토 필요");

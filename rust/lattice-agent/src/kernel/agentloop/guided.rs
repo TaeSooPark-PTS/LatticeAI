@@ -49,7 +49,7 @@ use super::execution::{Chosen, StepFlow};
 use super::{RunRequest, Runtime};
 use crate::kernel::profile::AgentProfile;
 use crate::kernel::state::{AgentRunContext, AgentState};
-use crate::surface::worker::WorkerError;
+use crate::seam::worker::WorkerError;
 
 mod answers;
 mod args;

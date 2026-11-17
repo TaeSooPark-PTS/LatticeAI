@@ -98,6 +98,14 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   const diff = Array.isArray(payload.diff) ? (payload.diff as string[]) : [];
   const proposalTier = String(payload.tier || "small");
   const diffPath = typeof payload.path === "string" && payload.path.trim() ? payload.path : undefined;
+  const isUndoReorg = item.kind === "folder_reorganization" && payload.is_undo === true;
+  const undoProposalId =
+    item.kind === "folder_reorganization"
+    && item.effective_status === "approved"
+    && typeof provenance.undo_proposal_id === "string"
+    && provenance.undo_proposal_id.trim()
+      ? provenance.undo_proposal_id.trim()
+      : "";
   const riskLabel = reviewRiskLabel(language, provenance.risk);
   const changeLabel = reviewChangeClassLabel(language, provenance.change_class);
   const toolName = typeof provenance.tool === "string" && provenance.tool.trim() ? provenance.tool : "";
@@ -128,6 +136,9 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
         </div>
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           <Badge variant="muted" className="text-xs">{reviewSourceLabel(language, item.source)}</Badge>
+          {isUndoReorg ? (
+            <Badge variant="warning" className="text-xs">{t(language, "review.reorg.undoBadge")}</Badge>
+          ) : null}
           {isProposal ? (
             <Badge variant="muted" className="text-xs">
               {t(language, item.kind === "file_delete"
@@ -266,9 +277,28 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground italic">
-              {reviewStatusLabel(language, item.effective_status)}
-            </p>
+            <div className="space-y-2.5">
+              <p className="text-xs text-muted-foreground italic m-0">
+                {reviewStatusLabel(language, item.effective_status)}
+              </p>
+              {undoProposalId ? (
+                <div className="space-y-1.5 pt-1 border-t border-border/50">
+                  <p className="text-[11px] text-muted-foreground m-0">
+                    {t(language, "review.reorg.undoHint")}
+                  </p>
+                  <ActionButton
+                    label={t(language, "review.reorg.undoNow")}
+                    action={() =>
+                      onAction(
+                        { ...item, id: undoProposalId, status: "pending", effective_status: "pending" },
+                        "approve",
+                      )
+                    }
+                    invalidate={[]}
+                  />
+                </div>
+              ) : null}
+            </div>
           )}
 
           {feedback?.conflict && isProposal ? (

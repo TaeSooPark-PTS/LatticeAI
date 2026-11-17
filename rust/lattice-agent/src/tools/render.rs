@@ -20,7 +20,7 @@
 
 use serde_json::{json, Map, Value};
 
-use crate::surface::worker::WorkerClient;
+use crate::seam::worker::WorkerClient;
 use crate::tools::args;
 use crate::tools::files::{file_size, io_error};
 use crate::tools::sandbox::{ToolError, Workspace};

@@ -1,6 +1,6 @@
 # Lattice AI 12.10.0 — Grounded Self
 
-> **Status: canonical** — current release note.
+> **Status: historical** — point-in-time release note.
 
 2026-11-17
 

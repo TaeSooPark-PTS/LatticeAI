@@ -324,7 +324,7 @@ mod tests {
             crate::tools::sandbox::Workspace::new(dir.path().join("agent_workspace")).expect("ws");
         std::fs::write(dir.path().join("outside.txt"), b"secret").expect("outside");
         let runtime = Runtime::new(crate::kernel::agentloop::LoopDeps::new(
-            crate::surface::worker::WorkerClient::new("http://127.0.0.1:1"),
+            crate::seam::worker::WorkerClient::new("http://127.0.0.1:1"),
             workspace,
         ));
         assert_eq!(
@@ -352,7 +352,7 @@ mod tests {
         std::fs::write(&big, vec![b'a'; (SNAPSHOT_MAX_BYTES + 1) as usize]).expect("big");
         std::fs::create_dir_all(workspace.root().join("adir")).expect("dir");
         let runtime = Runtime::new(crate::kernel::agentloop::LoopDeps::new(
-            crate::surface::worker::WorkerClient::new("http://127.0.0.1:1"),
+            crate::seam::worker::WorkerClient::new("http://127.0.0.1:1"),
             workspace,
         ));
         assert_eq!(

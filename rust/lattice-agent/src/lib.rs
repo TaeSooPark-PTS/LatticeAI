@@ -80,6 +80,7 @@ pub mod content;
 pub mod kernel;
 pub mod parse;
 pub mod prompts;
+pub mod seam;
 pub mod surface;
 pub mod tools;
 
@@ -106,8 +107,10 @@ pub use parse::{action, channel, inference, pyjson, pyliteral, pyshlex, pystr};
 pub use content::{pydiff, sanitize};
 // tools/ — `tools` itself is unmoved; these three joined it from the root.
 pub use tools::{command, documents, exec, sandbox};
-// surface/ — both edges of the HTTP boundary.
-pub use surface::{looproutes, router, runbody, worker};
+// seam/ — outbound compute worker port.
+pub use seam::worker;
+// surface/ — inbound HTTP boundary.
+pub use surface::{looproutes, router, runbody};
 
 // The flat item re-exports the crate has always offered, unchanged.
 pub use content::sanitize::{sanitize_write_content, SanitizeMeta};

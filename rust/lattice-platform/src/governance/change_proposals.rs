@@ -337,11 +337,16 @@ pub async fn apply_proposal(
     let workspace = Workspace::new(&state.agent_root).map_err(|error| {
         ProposalConflict::Unavailable(format!("agent workspace is unavailable: {error}"))
     })?;
-    let moves = apply_staged_change(&workspace, &payload, &path, &kind)?;
+    let mut moves = apply_staged_change(&workspace, &payload, &path, &kind)?;
+    let undo_proposal_id = if kind == REORG_KIND {
+        stage_reorganization_undo(state, item_id, &path, &payload, moves.as_mut(), user, scope)
+    } else {
+        None
+    };
 
     // Status flip after the write landed — never before, so a conflict leaves
     // the proposal pending and re-approvable once the file is rebased.
-    let approved = mark_approved(state, item_id, scope)?;
+    let approved = mark_approved(state, item_id, scope, undo_proposal_id.as_deref())?;
     let view = review_item_raw_view(&approved);
     // `_audit("change_proposal_applied", …)` — the review timeline doubles as
     // the change audit log, and the applying half of it used to be recorded by
@@ -351,6 +356,9 @@ pub async fn apply_proposal(
     event.insert("proposal_id".into(), json!(item_id));
     event.insert("path".into(), json!(path));
     event.insert("kind".into(), json!(kind));
+    if let Some(ref undo_id) = undo_proposal_id {
+        event.insert("undo_proposal_id".into(), json!(undo_id));
+    }
     admin::append_audit_event(
         &admin::audit_log_path(&state.data_dir),
         "change_proposal_applied",
@@ -362,10 +370,87 @@ pub async fn apply_proposal(
         "path": path,
         "kind": kind,
     });
+    if let Some(ref undo_id) = undo_proposal_id {
+        result["undo_proposal_id"] = json!(undo_id);
+    }
     if let Some(moves) = moves {
         result["moves"] = moves;
     }
     Ok(result)
+}
+
+/// When a forward `folder_reorganization` moves ≥1 file, automatically stage a
+/// ready-to-approve reverse `folder_reorganization` proposal (`is_undo = true`)
+/// so the reviewer has 1-click sandboxed rollback.
+fn stage_reorganization_undo(
+    state: &GovernanceState,
+    original_item_id: &str,
+    path: &str,
+    payload: &Value,
+    moves_report: Option<&mut Value>,
+    user: &Identity,
+    scope: Option<&str>,
+) -> Option<String> {
+    if payload
+        .get("is_undo")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
+        return None;
+    }
+    let report = moves_report?;
+    let applied = report.get("applied")?.as_array()?;
+    if applied.is_empty() {
+        return None;
+    }
+    let reverse_moves: Vec<Value> = applied
+        .iter()
+        .rev()
+        .filter_map(|m| {
+            let src = m.get("source")?.as_str()?;
+            let dst = m.get("target")?.as_str()?;
+            Some(json!({
+                "source": dst,
+                "target": src,
+            }))
+        })
+        .collect();
+    if reverse_moves.is_empty() {
+        return None;
+    }
+    let root = payload
+        .get("root")
+        .and_then(Value::as_str)
+        .unwrap_or(path)
+        .to_string();
+    let label = if root.trim().is_empty() {
+        "."
+    } else {
+        root.as_str()
+    };
+    let count = reverse_moves.len();
+    let undo_item = create_review_item(
+        state,
+        &format!("폴더 재구성 되돌리기: {label}"),
+        &format!("이동된 파일 {count}개를 원래 위치로 되돌립니다."),
+        "change_proposal",
+        REORG_KIND,
+        json!({
+            "root": root,
+            "moves": reverse_moves,
+            "is_undo": true,
+            "undo_of": original_item_id,
+        }),
+        json!({
+            "undo_of": original_item_id,
+            "auto_staged_rollback": true,
+        }),
+        Some(user.email.as_str()),
+        scope,
+    );
+    let undo_id = undo_item.get("id").and_then(Value::as_str)?.to_string();
+    report["undo_proposal_id"] = json!(undo_id);
+    Some(undo_id)
 }
 
 /// Flip the item to `approved` — through the Review Center's write funnel, so
@@ -375,11 +460,18 @@ fn mark_approved(
     state: &GovernanceState,
     item_id: &str,
     scope: Option<&str>,
+    undo_proposal_id: Option<&str>,
 ) -> Result<Value, ProposalConflict> {
     review_queue::update_review_item(state, item_id, scope, "approve", |item| {
         item["status"] = json!("approved");
         if item.get("snoozed_until").is_some_and(|v| !v.is_null()) {
             item["snoozed_until"] = Value::Null;
+        }
+        if let Some(undo_id) = undo_proposal_id {
+            if !item.get("provenance").is_some_and(Value::is_object) {
+                item["provenance"] = json!({});
+            }
+            item["provenance"]["undo_proposal_id"] = json!(undo_id);
         }
     })
     .map_err(|error| match error {

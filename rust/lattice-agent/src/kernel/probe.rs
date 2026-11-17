@@ -47,7 +47,7 @@ use crate::kernel::profile::{
     profile_for_model, profile_named, AgentProfile, PROFILE_OVERRIDE_ENV,
 };
 use crate::parse::action::extract_action_details;
-use crate::surface::worker::{Completion, WorkerClient};
+use crate::seam::worker::{Completion, WorkerClient};
 
 /// Switch the probe off without pinning a dial: `0` / `false` / `off`.
 pub const PROBE_ENV: &str = "LATTICEAI_AGENT_PROBE";

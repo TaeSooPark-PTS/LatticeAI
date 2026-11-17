@@ -172,7 +172,7 @@ fn attempts_are_tagged_with_the_file_they_were_for() {
 
 #[test]
 fn the_manifest_briefs_are_read_by_path() {
-    let manifest = lattice_agent::inference::infer_project_manifest(
+    let manifest = lattice_agent::parse::inference::infer_project_manifest(
         "html css js 로 간단한 todo 웹페이지 만들어줘",
     )
     .expect("a web project");

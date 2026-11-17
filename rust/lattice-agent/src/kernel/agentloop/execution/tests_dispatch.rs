@@ -24,7 +24,7 @@ impl crate::tools::catalog::ToolCatalog for CountingCatalog {
     ) -> crate::tools::ToolFuture<'a> {
         Box::pin(async move {
             *self.calls.lock().expect("lock") += 1;
-            crate::surface::worker::ToolOutcome::Error("catalog must not run".into())
+            crate::seam::worker::ToolOutcome::Error("catalog must not run".into())
         })
     }
 }
@@ -102,7 +102,7 @@ impl crate::tools::ToolCatalog for NamingCatalog {
         _args: &'a Map<String, Value>,
         _scope: &'a crate::tools::CallScope,
     ) -> crate::tools::ToolFuture<'a> {
-        Box::pin(async move { crate::surface::worker::ToolOutcome::Error("not run".into()) })
+        Box::pin(async move { crate::seam::worker::ToolOutcome::Error("not run".into()) })
     }
 }
 
@@ -531,7 +531,7 @@ impl crate::tools::ToolCatalog for SkillCatalog {
     ) -> crate::tools::ToolFuture<'a> {
         Box::pin(async move {
             self.calls.lock().expect("lock").push(name.to_string());
-            crate::surface::worker::ToolOutcome::Result(json!({
+            crate::seam::worker::ToolOutcome::Result(json!({
                 "kind": "skill", "name": name,
                 "text": "# Skill: code_review\n\nCheck bugs, security, performance, style.",
                 "note": "A skill is guidance, not an executable.",

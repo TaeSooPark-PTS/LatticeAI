@@ -33,8 +33,7 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::adminops::admin;
-use crate::adminops::admin::{json_ok, language_from, message_error};
+use crate::http_reply::{json_from_ordered, json_ok, language_of, message_error};
 use crate::modelops::models_catalog::{fetch_worker_catalog, probe_host};
 
 mod demo;
@@ -172,11 +171,11 @@ async fn setup_scan(
     let zero = auto_state(&probe, &catalog);
     let mut env = scan_environment(&probe, &catalog);
     let recs = recommendations_from_zero(&zero, &catalog);
-    env.insert("zero_config", admin::json_from_ordered(&zero));
+    env.insert("zero_config", json_from_ordered(&zero));
     let mut out = OrderedMap::new();
-    out.insert("environment", admin::json_from_ordered(&env));
-    out.insert("recommendations", admin::json_from_ordered(&recs));
-    out.insert("zero_config", admin::json_from_ordered(&zero));
+    out.insert("environment", json_from_ordered(&env));
+    out.insert("recommendations", json_from_ordered(&recs));
+    out.insert("zero_config", json_from_ordered(&zero));
     Ok(json_ok(&out))
 }
 
@@ -187,7 +186,7 @@ async fn setup_auto(
     state.auth.require_user(&headers)?;
     let probe = probe_host(Some(&state.data_dir));
     let catalog = fetch_worker_catalog(state.worker.as_ref()).await;
-    Ok(json_ok(&auto_state(&probe, &catalog)))
+    Ok(json_ok(auto_state(&probe, &catalog)))
 }
 
 async fn setup_install(
@@ -285,7 +284,7 @@ async fn setup_open_auth(
         return Err(message_error(
             404,
             "mcp.unknown_id",
-            language_from(&headers),
+            language_of(&headers),
             &[("mcp_id", mcp_id.as_str())],
         ));
     };
@@ -307,7 +306,7 @@ async fn open_permission(
         return Err(message_error(
             404,
             "setup.unknown_permission",
-            language_from(&headers),
+            language_of(&headers),
             &[],
         ));
     };

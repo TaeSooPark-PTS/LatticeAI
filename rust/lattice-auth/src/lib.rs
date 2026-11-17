@@ -48,9 +48,8 @@
 //!
 //! # Messages
 //!
-//! Refusal bodies are byte-identical to the Python ones, which means the ko/en
-//! catalog is duplicated in [`messages`] for now. TODO(WP-I3): route it
-//! through `lattice_core::messages` — the ids are already the Python ids.
+//! Refusal bodies are byte-identical to the Python ones, routed directly
+//! through canonical [`lattice_core::messages`] via [`messages`].
 
 // Every guard answers `Result<T, axum::response::Response>`: the error *is* the
 // HTTP refusal, already rendered with the status and bytes the Python original

@@ -21,7 +21,7 @@ use crate::kernel::transcript::{
 };
 use crate::parse::action::extract_verdict_details;
 use crate::parse::pystr::py_str;
-use crate::surface::worker::{Completion, WorkerError};
+use crate::seam::worker::{Completion, WorkerError};
 
 /// The one strict re-ask, verbatim. Same contract the executor prompt holds
 /// this model to: one object, a worked example, no channel tags.

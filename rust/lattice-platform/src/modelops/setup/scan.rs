@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Map, Value};
 
-use crate::adminops::admin::json_from_ordered;
+use crate::http_reply::json_from_ordered;
 use crate::modelops::models_catalog::{
     command_exists, recommend_from_catalog, HostProbe, WorkerCatalog,
 };

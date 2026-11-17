@@ -81,7 +81,45 @@ if (failures.length) {
 const remaining = [...known].filter(
   (entry) => entry !== "__init__.py" && !LOCALIZED.includes(entry.replace(/\.py$/, "")),
 ).length;
+
+// Rust canonical catalog check (v13.0.0): `rust/lattice-core/src/messages.rs`
+// must keep sorted, non-empty `(id, ko, en)` entries and `lattice-auth` must
+// delegate to `lattice_core::messages` instead of carrying a duplicate CATALOG.
+const rustCoreMessages = readFileSync("rust/lattice-core/src/messages.rs", "utf8");
+const rustEntries = [];
+const tupleRegex = /^\s*\(\s*"([^"]+)"\s*,\s*"((?:\\.|[^"\\])*)"\s*,\s*"((?:\\.|[^"\\])*)"\s*\)\s*,/gm;
+let tupleMatch;
+while ((tupleMatch = tupleRegex.exec(rustCoreMessages)) !== null) {
+  rustEntries.push({ id: tupleMatch[1], ko: tupleMatch[2], en: tupleMatch[3] });
+}
+if (rustEntries.length === 0) {
+  failures.push("rust/lattice-core/src/messages.rs: failed to parse MESSAGES catalog entries");
+}
+for (let i = 0; i < rustEntries.length; i += 1) {
+  const { id, ko, en } = rustEntries[i];
+  if (!ko.trim() || !en.trim()) {
+    failures.push(`rust/lattice-core/src/messages.rs: '${id}' must have non-empty ko and en strings`);
+  }
+  if (i > 0 && rustEntries[i - 1].id >= id) {
+    failures.push(
+      `rust/lattice-core/src/messages.rs: catalog out of binary-search sort order (` +
+      `'${rustEntries[i - 1].id}' >= '${id}')`,
+    );
+  }
+}
+const rustAuthMessages = readFileSync("rust/lattice-auth/src/messages.rs", "utf8");
+if (/const\s+CATALOG\b/.test(rustAuthMessages)) {
+  failures.push(
+    "rust/lattice-auth/src/messages.rs: duplicate CATALOG detected — delegate to lattice_core::messages",
+  );
+}
+
+if (failures.length) {
+  console.error("Server i18n gate failed:\n");
+  for (const failure of failures) console.error("  " + failure);
+  process.exit(1);
+}
+
 console.log(
-  `Server i18n gate: ${LOCALIZED.length} router(s) localized and locked; `
-  + `${remaining} not yet claimed.`,
+  `Server i18n gate: ${LOCALIZED.length} Python router(s) + ${rustEntries.length} Rust catalog message(s) verified (${remaining} Python keep-set router(s) unclaimed).`,
 );

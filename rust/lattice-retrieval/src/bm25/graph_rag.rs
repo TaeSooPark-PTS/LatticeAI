@@ -10,6 +10,10 @@ use rusqlite::{params_from_iter, types::Value as SqlValue, Connection};
 
 use crate::service::Scope;
 
+use super::reasoning_paths::{
+    is_conflict_or_supersede_relation, record_best_chain, resolve_reasoning_path, CandidateChain,
+    ReasoningPath,
+};
 use super::scoring::{
     build_node_scope_sql, detect_nodes_v2_schema, extract_meta_from_json, row_to_node,
     KnowledgeLifecycleStatus,
@@ -55,6 +59,9 @@ pub struct GraphStructuralHit {
     pub connected_seeds: Vec<String>,
     pub relations: Vec<String>,
     pub degree: usize,
+    pub bridge_nodes: Vec<String>,
+    pub best_path: Option<ReasoningPath>,
+    pub conflicts: Vec<(String, String, String)>,
 }
 
 fn relation_type_weight(relation_type: &str) -> f64 {
@@ -143,6 +150,7 @@ fn record_implicit_link(
     min_hops: &mut HashMap<String, usize>,
     seed_links: &mut HashMap<String, HashSet<String>>,
     relation_kinds: &mut HashMap<String, HashSet<String>>,
+    best_chains: &mut HashMap<String, CandidateChain>,
 ) {
     if seed_id == cand_id {
         return;
@@ -159,7 +167,18 @@ fn record_implicit_link(
     relation_kinds
         .entry(cand_id.to_string())
         .or_default()
-        .insert(relation);
+        .insert(relation.clone());
+    record_best_chain(
+        best_chains,
+        CandidateChain {
+            seed_id: seed_id.to_string(),
+            bridge_id: None,
+            target_id: cand_id.to_string(),
+            hops: hop,
+            relations: vec![relation],
+            score: score_delta,
+        },
+    );
 }
 
 /// Expand seed nodes using the pre-tokenized [`Bm25SidecarIndex`] and cached graph adjacency.
@@ -211,6 +230,9 @@ pub fn expand_knowledge_graph_with_snapshot(
     let mut min_hops: HashMap<String, usize> = HashMap::new();
     let mut seed_links: HashMap<String, HashSet<String>> = HashMap::new();
     let mut relation_kinds: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut bridge_links: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut best_chains: HashMap<String, CandidateChain> = HashMap::new();
+    let mut conflict_edges: Vec<(String, String, String)> = Vec::new();
     let mut degree_map: HashMap<String, usize> = HashMap::new();
 
     let mut frontier_ids: Vec<String> = active_seeds.iter().map(|(id, _)| id.clone()).collect();
@@ -232,6 +254,9 @@ pub fn expand_knowledge_graph_with_snapshot(
         for (src, dst, rel, weight) in edges {
             *degree_map.entry(src.clone()).or_insert(0) += 1;
             *degree_map.entry(dst.clone()).or_insert(0) += 1;
+            if is_conflict_or_supersede_relation(&rel) {
+                conflict_edges.push((src.clone(), dst.clone(), rel.clone()));
+            }
 
             let rel_w = relation_type_weight(&rel) * weight.sqrt();
 
@@ -252,6 +277,17 @@ pub fn expand_knowledge_graph_with_snapshot(
                             .entry(to.clone())
                             .or_default()
                             .insert(rel.clone());
+                        record_best_chain(
+                            &mut best_chains,
+                            CandidateChain {
+                                seed_id: from.clone(),
+                                bridge_id: None,
+                                target_id: to.clone(),
+                                hops: 1,
+                                relations: vec![rel.clone()],
+                                score: contrib,
+                            },
+                        );
 
                         *raw_scores.entry(from.clone()).or_insert(0.0) += 0.22 * rel_w;
                         min_hops.entry(from.clone()).or_insert(0);
@@ -301,10 +337,25 @@ pub fn expand_knowledge_graph_with_snapshot(
                                 .entry(to.clone())
                                 .or_default()
                                 .insert(origin_seed.clone());
+                            bridge_links
+                                .entry(to.clone())
+                                .or_default()
+                                .insert(from.clone());
                             relation_kinds
                                 .entry(to.clone())
                                 .or_default()
                                 .insert(format!("{rel1}->{rel}"));
+                            record_best_chain(
+                                &mut best_chains,
+                                CandidateChain {
+                                    seed_id: origin_seed.clone(),
+                                    bridge_id: Some(from.clone()),
+                                    target_id: to.clone(),
+                                    hops: 2,
+                                    relations: vec![rel1.clone(), rel.clone()],
+                                    score: contrib,
+                                },
+                            );
                         }
                     }
                 }
@@ -407,6 +458,7 @@ pub fn expand_knowledge_graph_with_snapshot(
                         &mut min_hops,
                         &mut seed_links,
                         &mut relation_kinds,
+                        &mut best_chains,
                     );
                 }
             }
@@ -427,6 +479,7 @@ pub fn expand_knowledge_graph_with_snapshot(
                         &mut min_hops,
                         &mut seed_links,
                         &mut relation_kinds,
+                        &mut best_chains,
                     );
                 }
             }
@@ -450,11 +503,17 @@ pub fn expand_knowledge_graph_with_snapshot(
                         &mut min_hops,
                         &mut seed_links,
                         &mut relation_kinds,
+                        &mut best_chains,
                     );
                 }
             }
         }
     }
+
+    let extra_node_rows: HashMap<String, NodeRow> = fetched_nodes
+        .iter()
+        .map(|(k, (n, _))| (k.clone(), n.clone()))
+        .collect();
 
     let mut hits: Vec<GraphStructuralHit> = Vec::new();
     for (node_id, base_score) in raw_scores {
@@ -494,6 +553,15 @@ pub fn expand_knowledge_graph_with_snapshot(
             v.sort();
             v
         };
+        let bridge_nodes: Vec<String> = {
+            let mut v: Vec<String> = bridge_links
+                .remove(&node_id)
+                .unwrap_or_default()
+                .into_iter()
+                .collect();
+            v.sort();
+            v
+        };
         let degree = *degree_map.get(&node_id).unwrap_or(&1);
         let convergence_bonus = if connected.len() >= 2 {
             1.0 + 0.25 * (connected.len() as f64).ln()
@@ -503,6 +571,14 @@ pub fn expand_knowledge_graph_with_snapshot(
         let centrality_boost = 1.0 + 0.08 * (1.0 + degree as f64).ln();
         let final_graph_score =
             base_score * convergence_bonus * centrality_boost * resolved_lifecycle.multiplier();
+        let best_path = best_chains.get(&node_id).map(|chain| {
+            resolve_reasoning_path(chain, final_graph_score, sidecar, &extra_node_rows)
+        });
+        let node_conflicts: Vec<(String, String, String)> = conflict_edges
+            .iter()
+            .filter(|(s, d, _)| s == &node_id || d == &node_id)
+            .cloned()
+            .collect();
 
         hits.push(GraphStructuralHit {
             node,
@@ -511,6 +587,9 @@ pub fn expand_knowledge_graph_with_snapshot(
             connected_seeds: connected,
             relations,
             degree,
+            bridge_nodes,
+            best_path,
+            conflicts: node_conflicts,
         });
     }
 

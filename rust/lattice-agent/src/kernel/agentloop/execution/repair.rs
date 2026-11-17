@@ -8,7 +8,7 @@ use crate::kernel::profile::AgentProfile;
 use crate::kernel::state::AgentState;
 use crate::kernel::transcript::{compact_transcript, files_written};
 use crate::parse::pystr::{is_truthy, py_str};
-use crate::surface::worker::ToolOutcome;
+use crate::seam::worker::ToolOutcome;
 
 /// The sentence appended to a not-found error against the request's own output
 /// file. Also the idempotence marker: a step already carrying it is not steered

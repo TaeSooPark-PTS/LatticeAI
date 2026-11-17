@@ -15,7 +15,7 @@
 
 <br/>
 
-![v12.10.0 Living Brain walkthrough](output/release/v12.10.0/gifs/v12.10.0-living-brain-walkthrough.gif)
+![v13.0.0 Living Brain walkthrough](output/release/v13.0.0/gifs/v13.0.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -38,7 +38,7 @@ Lattice AI is a **local-first Digital Brain** that unifies your conversations, f
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_12.10.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_13.0.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -67,15 +67,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v12.10.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v12.10.0/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v13.0.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v13.0.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v12.10.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v12.10.0/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v13.0.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v13.0.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v12.10.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v12.10.0/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v13.0.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v13.0.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v12.10.0/screenshots/13-chronicle.png) | ![Settings](output/release/v12.10.0/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v13.0.0/screenshots/13-chronicle.png) | ![Settings](output/release/v13.0.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v12.10.0/SCREENSHOT_INDEX.md](output/release/v12.10.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v12.10.0/screenshots/01-login.png), [06-capture.png](output/release/v12.10.0/screenshots/06-capture.png), [07-model-library.png](output/release/v12.10.0/screenshots/07-model-library.png)).
+Full visual index: [output/release/v13.0.0/SCREENSHOT_INDEX.md](output/release/v13.0.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v13.0.0/screenshots/01-login.png), [06-capture.png](output/release/v13.0.0/screenshots/06-capture.png), [07-model-library.png](output/release/v13.0.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -97,24 +97,24 @@ Full visual index: [output/release/v12.10.0/SCREENSHOT_INDEX.md](output/release/
 
 ## Current Release
 
-The current release is **12.10.0 — Grounded Self**:
+The current release is **13.0.0 — Sovereign Synthesis**:
 
-- **Transcript Grounding Guard & Answer Proof** — `transcript/grounding.rs` deterministically prevents small local models from answering about unread files or fabricating `path:line` / backticked symbol citations, paired with interactive provenance proof chips (`AnswerProof.tsx`) and browser-extension language sync (`popup.js`).
-- **Brain Self-Model Panel & Cascade Parity** — Dedicated `SelfModelPanel.tsx` in Brain manages durable preferences, habits, decisions, traits, relationships, and pending Review Center self-model proposals (100% Vitest coverage), backed by verified `PART_OF` edge cascade cleanup across `edges` and `edges_v2`.
-- **Cooperative Download Cancel, Semantic Embedding Auto-Transition & Chained CD** — Cooperative `499` download cancellation (`download.py`), automatic semantic embedding activation + hardware-sized reindex drain (`embedding_recommendation.py`, `index_api/engine.rs`), crate-internal `http_reply.rs` transport decoupling, 100% locked Python server i18n (`6/6` routers), parallel `cargo nextest`, and chained `release.yml` -> `publish.yml` CD publication.
+- **Enforced Domain-Boundary Architecture & Unified Rust i18n** — Canonical `lattice_core::redact` secret redaction, `lattice_agent::seam` outbound compute port (`kernel/` and `tools/` never import inbound `surface/`), zero sideways `modelops -> adminops` or `knowledge -> workspaceos::redact` coupling enforced by `domain_boundaries.rs`, and unified `lattice_core::messages` server i18n across `lattice-auth` and `check_server_i18n.mjs`.
+- **Multi-Hop Knowledge Graph Reasoning & Contradiction Synthesis** — GraphRAG (`reasoning_paths.rs`, `fusion.rs`, `MultiHopSynthesisView.tsx`) surfaces explicit 1-hop/2-hop reasoning chains (`Seed → Bridge Concept → Target`), bridge concepts, and neighborhood `CONTRADICTS` / `SUPERSEDES` alerts directly in Brain Hybrid Search.
+- **Atomic Governance, One-Click Reorganization Undo & Durable Sessions** — Single-transaction `WorkspaceOsStore` review + timeline commits, automatic reverse `folder_reorganization` rollback proposals with 1-click Undo in `ReviewCard.tsx`, durable `DocumentSessions` persistence across restarts, and modularized `frontend/src/api/{client,streaming,transfers}.ts` at 100% Vitest coverage.
 
 <details>
-<summary>Release notes & exact 12.10.0 distribution artifacts</summary>
+<summary>Release notes & exact 13.0.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.10.0 must use exact filenames:
+Expected artifacts for 13.0.0 must use exact filenames:
 
-- `dist/ltcai-12.10.0-py3-none-any.whl`
-- `dist/ltcai-12.10.0.tar.gz`
-- `ltcai-12.10.0.tgz`
-- `dist/ltcai-12.10.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.10.0_aarch64.dmg`
+- `dist/ltcai-13.0.0-py3-none-any.whl`
+- `dist/ltcai-13.0.0.tar.gz`
+- `ltcai-13.0.0.tgz`
+- `dist/ltcai-13.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_13.0.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -132,10 +132,11 @@ Do not use wildcard artifact uploads. Package registry publishing runs via `.git
 
 ## Release History
 
-Public release history in this repository covers the `v12.0.0+` era (the Rust-host + domain-grouped architecture). Full per-release notes live in [RELEASE_NOTES.md](RELEASE_NOTES.md) and [docs/releases/](docs/releases/).
+Public release history in this repository covers `v12.0.0+` (the Rust-host + domain-grouped architecture). Full per-release notes live in [RELEASE_NOTES.md](RELEASE_NOTES.md) and [docs/releases/](docs/releases/).
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 13.0.0 | Sovereign Synthesis | [RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0.md) |
 | 12.10.0 | Grounded Self | [RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md) |
 | 12.9.0 | Semantic Guard | [RELEASE_NOTES_v12.9.0.md](docs/releases/RELEASE_NOTES_v12.9.0.md) |
 | 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md) |

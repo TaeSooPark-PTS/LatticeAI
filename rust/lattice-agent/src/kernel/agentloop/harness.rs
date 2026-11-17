@@ -24,7 +24,7 @@ use serde_json::{json, Value};
 use super::{LoopDeps, RunRequest, Runtime};
 use crate::kernel::state::AgentRunContext;
 use crate::kernel::trace::LoopTrace;
-use crate::surface::worker::WorkerClient;
+use crate::seam::worker::WorkerClient;
 use crate::tools::sandbox::Workspace;
 use crate::tools::{NativeCall, NativeTools, ToolConfig, ToolFuture, ToolHost};
 

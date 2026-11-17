@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **12.10.0 — Grounded Self**.
+Current release: **13.0.0 — Sovereign Synthesis**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `lattice_brain/graph/schema.py`

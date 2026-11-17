@@ -211,6 +211,42 @@ describe("BrainPage", () => {
     render({}, {}, { initialTab: "memory" });
     await waitFor(() => expect(screen.getByRole("tab", { name: "내 자료" }).getAttribute("aria-selected")).toBe("true"));
   });
+
+  it("toggles 2-hop multi-hop synthesis mode in hybrid search and renders reasoning chains", async () => {
+    const hybridSearchGraphRag = vi.fn().mockResolvedValue(
+      ok({
+        matches: [{ id: "m1", title: "October Postmortem", type: "Document" }],
+        reasoning_paths: [
+          {
+            seed_id: "s1",
+            seed_title: "WAL RFC",
+            bridge_id: "b1",
+            bridge_title: "Reader Lock",
+            target_id: "m1",
+            target_title: "October Postmortem",
+            hops: 2,
+            relations: ["MENTIONS", "RELATES_TO"],
+            path_score: 0.77,
+            is_contradiction: false,
+          },
+        ],
+        synthesis: { direct_hits: 1, multi_hop_hits: 1, bridge_concepts: [], contradictions: [] },
+      }),
+    );
+    render({ hybridSearchGraphRag });
+    const toggle = await screen.findByTestId("toggle-multihop-search");
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+
+    const input = screen.getByPlaceholderText("사람, 문서, 주제로 검색");
+    await userEvent.type(input, "WAL checkpointer");
+    await userEvent.click(screen.getByRole("button", { name: "기억에서 찾기" }));
+
+    await waitFor(() => expect(hybridSearchGraphRag).toHaveBeenCalledWith("WAL checkpointer"));
+    expect(await screen.findByTestId("multihop-synthesis-panel")).toBeTruthy();
+    expect(screen.getByText("Reader Lock")).toBeTruthy();
+  });
 });
 
 describe("standalone status panels (kept for future advanced views)", () => {

@@ -18,7 +18,7 @@
 //!   the user typed the content: a reply that never generated anything must not
 //!   report a generation.
 
-use lattice_agent::state::AgentState;
+use lattice_agent::kernel::state::AgentState;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 

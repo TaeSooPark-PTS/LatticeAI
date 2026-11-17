@@ -326,9 +326,9 @@ impl WorkspaceOsStore {
 
     // ── timeline ─────────────────────────────────────────────────────────
 
-    /// `record_timeline_event` — append one event and keep the list bounded.
-    pub fn record_timeline_event(
-        &self,
+    /// Append one bounded timeline entry directly into an already-locked state document.
+    pub fn append_timeline_to_state(
+        state: &mut Value,
         area: &str,
         event_type: &str,
         payload: Value,
@@ -343,21 +343,45 @@ impl WorkspaceOsStore {
         if let Some(workspace) = workspace_id.filter(|value| !value.is_empty()) {
             entry["workspace_id"] = json!(workspace);
         }
-        let stored = entry.clone();
-        let _ = self.mutate(|state| {
-            let mut events = listify(state.get("timeline"));
-            events.push(stored);
-            if events.len() > TIMELINE_CAP {
-                events = events.split_off(events.len() - TIMELINE_TRIM_TO);
-            }
-            state["timeline"] = Value::Array(events);
-            Ok(())
-        });
+        let mut events = listify(state.get("timeline"));
+        events.push(entry.clone());
+        if events.len() > TIMELINE_CAP {
+            events = events.split_off(events.len() - TIMELINE_TRIM_TO);
+        }
+        state["timeline"] = Value::Array(events);
+        entry
+    }
+
+    /// Broadcast a committed timeline entry to the live SSE event sink, if bound.
+    pub fn notify_timeline_entry(&self, entry: &Value) {
         if let Some(sink) = &self.event_sink {
             let mut echoed = entry.clone();
             echoed["type"] = json!("timeline");
             sink(&echoed);
         }
+    }
+
+    /// `record_timeline_event` — append one event and keep the list bounded.
+    pub fn record_timeline_event(
+        &self,
+        area: &str,
+        event_type: &str,
+        payload: Value,
+        workspace_id: Option<&str>,
+    ) -> Value {
+        let mut produced: Option<Value> = None;
+        let _ = self.mutate(|state| {
+            produced = Some(Self::append_timeline_to_state(
+                state,
+                area,
+                event_type,
+                payload,
+                workspace_id,
+            ));
+            Ok(())
+        });
+        let entry = produced.unwrap_or_else(|| json!({}));
+        self.notify_timeline_entry(&entry);
         entry
     }
 

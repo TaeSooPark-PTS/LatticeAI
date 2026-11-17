@@ -1,86 +1,19 @@
-//! The ko/en strings this crate answers with, and how a request picks one.
+//! Auth HTTP error localization — unified onto canonical [`lattice_core::messages`].
 //!
-//! Port of the `auth.*` slice of `latticeai/core/messages.py` plus the three
-//! refusals that live as literals in the Python source rather than in the
-//! catalog (`access_runtime`'s two and `core/security`'s rate-limit text).
-//!
-//! TODO(WP-I3): `lattice_core::messages` becomes the one catalog for the whole
-//! Rust side. When it lands, delete `CATALOG` and route `translate` through it;
-//! the ids below are already the Python ids, so nothing outside this file has
-//! to change. Until then the wording is duplicated deliberately — an id that
-//! resolves to nothing is worse than an id that resolves twice.
+//! Resolves WP-I3 (v13.0.0): `lattice-auth` no longer maintains a duplicate
+//! `auth.*` table; `translate` and `resolve_language` delegate directly to
+//! `lattice_core::messages`, while preserving the four Python compatibility
+//! literals pinned by frozen auth replay fixtures.
 
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
+pub use lattice_core::messages::{DEFAULT_LANGUAGE, LANGUAGE_HEADER};
 use serde_json::json;
 
 use crate::response::json_response;
 
-/// The language a message falls back to, matching `DEFAULT_LANGUAGE`.
-pub const DEFAULT_LANGUAGE: &str = "ko";
 /// The languages the catalog is complete in.
 pub const SUPPORTED_LANGUAGES: [&str; 2] = ["ko", "en"];
-/// The explicit override the frontend sends on every request.
-pub const LANGUAGE_HEADER: &str = "x-lattice-language";
-
-/// `(id, ko, en)` for every message this crate can answer with.
-const CATALOG: &[(&str, &str, &str)] = &[
-    (
-        "auth.password_too_weak",
-        "비밀번호는 8자 이상이며 영문자와 숫자를 모두 포함해야 합니다.",
-        "Your password needs at least 8 characters, including letters and numbers.",
-    ),
-    (
-        "auth.invitation_required",
-        "유효한 서명 초대 권한이 필요합니다.",
-        "A valid signed invitation is required.",
-    ),
-    (
-        "auth.registration_disabled",
-        "회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.",
-        "Sign-up is turned off. Ask an administrator to enable it.",
-    ),
-    (
-        "auth.email_taken",
-        "이미 존재하는 이메일입니다.",
-        "That email address is already registered.",
-    ),
-    (
-        "auth.bad_credentials",
-        "이메일 또는 비밀번호가 틀렸습니다.",
-        "That email address or password is not correct.",
-    ),
-    (
-        "auth.account_disabled",
-        "비활성화된 계정입니다.",
-        "This account has been disabled.",
-    ),
-    (
-        "auth.login_required",
-        "인증이 필요합니다.",
-        "You need to sign in first.",
-    ),
-    (
-        "auth.user_not_found",
-        "사용자를 찾을 수 없습니다.",
-        "No such user.",
-    ),
-    (
-        "auth.current_password_wrong",
-        "현재 비밀번호가 틀렸습니다.",
-        "Your current password is not correct.",
-    ),
-    (
-        "auth.name_required",
-        "이름을 입력해주세요.",
-        "Please enter a name.",
-    ),
-    (
-        "auth.nickname_required",
-        "닉네임을 입력해주세요.",
-        "Please enter a nickname.",
-    ),
-];
 
 /// `require_user`'s refusal. A literal in `access_runtime.py`, Korean in both
 /// languages there, so it is Korean in both languages here.
@@ -92,55 +25,17 @@ pub const IP_RATE_LIMITED_LITERAL: &str = "요청이 너무 많습니다. 잠시
 /// `requested_workspace`'s 403 detail (`api/workspace_scope.py`).
 pub const WORKSPACE_MISMATCH_LITERAL: &str = "Workspace selectors must match.";
 
-/// Localized text for `key`; an unknown id returns the id, as Python does.
+/// Localized text for `key` via canonical [`lattice_core::messages::text`];
+/// an unknown id returns the id verbatim.
 pub fn translate(key: &str, language: &str) -> String {
-    match CATALOG.iter().find(|(id, _, _)| *id == key) {
-        Some((_, ko, en)) => {
-            if language == "en" {
-                (*en).to_string()
-            } else {
-                (*ko).to_string()
-            }
-        }
-        None => key.to_string(),
-    }
+    lattice_core::messages::text(key, language, &[])
 }
 
 /// The language for this request: the product's choice, then the browser's.
-///
-/// Never fails and never returns an unsupported tag — the Python contract.
 pub fn resolve_language(headers: &HeaderMap) -> &'static str {
-    if let Some(explicit) = headers
-        .get(LANGUAGE_HEADER)
-        .and_then(|value| value.to_str().ok())
-        .and_then(normalize_tag)
-    {
-        return explicit;
-    }
-    let accept = headers
-        .get("accept-language")
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("");
-    for part in accept.split(',') {
-        let head = part.split(';').next().unwrap_or("");
-        if let Some(tag) = normalize_tag(head) {
-            return tag;
-        }
-    }
-    DEFAULT_LANGUAGE
-}
-
-/// `"en-GB"` → `"en"` when supported, else `None`.
-fn normalize_tag(value: &str) -> Option<&'static str> {
-    let tag = value.trim().to_ascii_lowercase().replace('_', "-");
-    if tag.is_empty() {
-        return None;
-    }
-    let base = tag.split('-').next().unwrap_or("").to_string();
-    SUPPORTED_LANGUAGES
-        .iter()
-        .copied()
-        .find(|supported| *supported == base)
+    let explicit = headers.get(LANGUAGE_HEADER).and_then(|v| v.to_str().ok());
+    let accept = headers.get("accept-language").and_then(|v| v.to_str().ok());
+    lattice_core::messages::resolve_language(explicit, accept)
 }
 
 /// A FastAPI-shaped `HTTPException` response: `{"detail": "<localized>"}`.
@@ -157,6 +52,20 @@ pub fn detail_error(status: StatusCode, detail: &str) -> Response {
 mod tests {
     use super::*;
 
+    const AUTH_IDS: &[&str] = &[
+        "auth.account_disabled",
+        "auth.bad_credentials",
+        "auth.current_password_wrong",
+        "auth.email_taken",
+        "auth.invitation_required",
+        "auth.login_required",
+        "auth.name_required",
+        "auth.nickname_required",
+        "auth.password_too_weak",
+        "auth.registration_disabled",
+        "auth.user_not_found",
+    ];
+
     fn headers(pairs: &[(&str, &str)]) -> HeaderMap {
         let mut map = HeaderMap::new();
         for (name, value) in pairs {
@@ -169,10 +78,14 @@ mod tests {
     }
 
     #[test]
-    fn catalog_has_both_languages_for_every_id() {
-        for (id, ko, en) in CATALOG {
-            assert!(!ko.is_empty(), "{id} missing ko");
-            assert!(!en.is_empty(), "{id} missing en");
+    fn canonical_core_catalog_resolves_every_auth_id_in_both_languages() {
+        for id in AUTH_IDS {
+            let ko = translate(id, "ko");
+            let en = translate(id, "en");
+            assert_ne!(ko, *id, "{id} missing ko in lattice_core::messages");
+            assert_ne!(en, *id, "{id} missing en in lattice_core::messages");
+            assert!(!ko.is_empty());
+            assert!(!en.is_empty());
         }
     }
 

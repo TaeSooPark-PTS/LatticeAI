@@ -216,12 +216,17 @@ pub fn hybrid_bm25_vector_graph_search(
         let norm = (hit.bm25_score / max_bm25) * (1.0 / (1.0 + 0.12 * rank as f64));
         seed_map.insert(hit.node.id.clone(), norm);
     }
+    let has_lexical_seeds = !bm25_hits.is_empty();
     for (rank, (id, sim, _)) in vector_ranked
         .iter()
         .take(options.graph_config.max_seeds)
         .enumerate()
     {
-        let norm = (*sim / max_vec) * (1.0 / (1.0 + 0.15 * rank as f64));
+        let rel = *sim / max_vec;
+        if has_lexical_seeds && !seed_map.contains_key(id) && (*sim < 0.35 || rel < 0.55) {
+            continue;
+        }
+        let norm = rel * (1.0 / (1.0 + 0.15 * rank as f64));
         seed_map
             .entry(id.clone())
             .and_modify(|v| *v = (*v + norm * 0.85).min(1.5))
@@ -246,6 +251,25 @@ pub fn hybrid_bm25_vector_graph_search(
         .unwrap_or(1.0)
         .max(1e-6);
 
+    let mut extra_graph_nodes: HashMap<String, NodeRow> = HashMap::new();
+    let mut raw_conflicts: Vec<(String, String, String)> = Vec::new();
+    for ghit in &graph_hits {
+        if snapshot.get_doc(&ghit.node.id).is_none() {
+            extra_graph_nodes.insert(ghit.node.id.clone(), ghit.node.clone());
+        }
+        raw_conflicts.extend(ghit.conflicts.iter().cloned());
+    }
+    let direct_seed_count = seed_list.len();
+    let multi_hop_hit_count = graph_hits.iter().filter(|h| h.min_hop >= 1).count();
+    let (reasoning_paths, synthesis_block) = super::reasoning_paths::build_multi_hop_synthesis(
+        direct_seed_count,
+        multi_hop_hit_count,
+        &graph_hits,
+        &raw_conflicts,
+        &snapshot,
+        &extra_graph_nodes,
+    );
+
     // 4. 3-Way Reciprocal Rank Fusion (RRF) + Calibrated Normalized Score Blend
     let k = options.rrf_k.max(1) as f64;
     let w_sum = (options.bm25_weight + options.vector_weight + options.graph_weight).max(1e-6);
@@ -269,6 +293,8 @@ pub fn hybrid_bm25_vector_graph_search(
         graph_hop: Option<usize>,
         graph_relations: Vec<String>,
         connected_seeds: Vec<String>,
+        bridge_nodes: Vec<String>,
+        reasoning_path: Option<super::reasoning_paths::ReasoningPath>,
     }
 
     let mut fused_map: HashMap<String, CandidateFusion> = HashMap::new();
@@ -294,6 +320,8 @@ pub fn hybrid_bm25_vector_graph_search(
                 graph_hop: None,
                 graph_relations: Vec::new(),
                 connected_seeds: Vec::new(),
+                bridge_nodes: Vec::new(),
+                reasoning_path: None,
             },
         );
     }
@@ -316,6 +344,8 @@ pub fn hybrid_bm25_vector_graph_search(
             graph_hop: None,
             graph_relations: Vec::new(),
             connected_seeds: Vec::new(),
+            bridge_nodes: Vec::new(),
+            reasoning_path: None,
         });
         entry.vec_rank = Some(idx + 1);
         entry.vec_raw = sim;
@@ -341,6 +371,8 @@ pub fn hybrid_bm25_vector_graph_search(
             graph_hop: None,
             graph_relations: Vec::new(),
             connected_seeds: Vec::new(),
+            bridge_nodes: Vec::new(),
+            reasoning_path: None,
         });
         entry.graph_rank = Some(idx + 1);
         entry.graph_raw = ghit.graph_score;
@@ -348,6 +380,8 @@ pub fn hybrid_bm25_vector_graph_search(
         entry.graph_hop = Some(ghit.min_hop);
         entry.graph_relations = ghit.relations;
         entry.connected_seeds = ghit.connected_seeds;
+        entry.bridge_nodes = ghit.bridge_nodes;
+        entry.reasoning_path = ghit.best_path;
     }
 
     let mut ranked_items: Vec<(f64, f64, String, Value, bool)> = Vec::new();
@@ -411,6 +445,8 @@ pub fn hybrid_bm25_vector_graph_search(
         item.insert("matched_fields", json!(c.matched_fields));
         item.insert("graph_relations", json!(c.graph_relations));
         item.insert("connected_seeds", json!(c.connected_seeds));
+        item.insert("bridge_nodes", json!(c.bridge_nodes));
+        item.insert("reasoning_path", json!(c.reasoning_path));
         item.insert("graph_hop", json!(c.graph_hop));
         item.insert("sources", json!(sources));
 
@@ -471,6 +507,8 @@ pub fn hybrid_bm25_vector_graph_search(
         out.insert("vector_provider_status", json!(status));
     }
     out.insert("vector_reindex_required", json!(vector_reindex_required));
+    out.insert("reasoning_paths", json!(reasoning_paths));
+    out.insert("synthesis", synthesis_block);
     out.insert("matches", Value::Array(results.clone()));
     out.insert("results", Value::Array(results));
     out.insert("expanded_results", Value::Array(expanded_results));

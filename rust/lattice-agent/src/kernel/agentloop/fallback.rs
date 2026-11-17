@@ -30,7 +30,7 @@ use crate::kernel::profile::AgentProfile;
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::parse::inference::infer_file_target;
 use crate::parse::pystr::{char_slice, is_truthy, py_str};
-use crate::surface::worker::{Completion, WorkerError};
+use crate::seam::worker::{Completion, WorkerError};
 use crate::tools::catalog::EntryKind;
 
 /// The fixed part of the correction hint a format slip earns.

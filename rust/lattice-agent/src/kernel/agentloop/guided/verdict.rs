@@ -5,7 +5,7 @@ use crate::kernel::agentloop::{RunRequest, Runtime};
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::kernel::transcript::result_digest;
 use crate::parse::pystr::py_str;
-use crate::surface::worker::{Completion, WorkerError};
+use crate::seam::worker::{Completion, WorkerError};
 
 impl Runtime {
     /// VERIFY, decomposed: one closed question, then one line of reason.

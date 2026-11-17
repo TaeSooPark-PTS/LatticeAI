@@ -5,7 +5,7 @@ use crate::kernel::agentloop::{RunRequest, Runtime};
 use crate::kernel::profile::AgentProfile;
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::parse::pystr::{is_truthy, py_str};
-use crate::surface::worker::{Completion, WorkerError};
+use crate::seam::worker::{Completion, WorkerError};
 use crate::tools::catalog::{ArgKind, CatalogEntry};
 
 /// One micro-turn's raw reply, made readable (v12.0.0).

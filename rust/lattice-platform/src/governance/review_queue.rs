@@ -184,8 +184,6 @@ impl GovernanceState {
     }
 
     /// Load, mutate, save — under the store's lock, as one step.
-    ///
-    /// The body cannot refuse; [`Self::try_update_state`] is the one that can.
     pub(crate) fn update_state<T>(&self, f: impl FnOnce(&mut Value) -> T) -> T {
         let mut produced: Option<T> = None;
         let _: Result<(), StoreError> = self.os.mutate(|doc| {
@@ -195,35 +193,8 @@ impl GovernanceState {
         produced.expect("mutate always runs the body it was given")
     }
 
-    /// [`Self::update_state`] for a body that can refuse: on `Err` the
-    /// document is left exactly as it was, rather than re-saved unchanged.
-    pub(crate) fn try_update_state<T, E>(
-        &self,
-        f: impl FnOnce(&mut Value) -> Result<T, E>,
-    ) -> Result<T, E> {
-        let mut refusal: Option<E> = None;
-        let outcome = self.os.mutate(|doc| match f(doc) {
-            Ok(value) => Ok(value),
-            Err(error) => {
-                refusal = Some(error);
-                // The payload is never read: `mutate` only distinguishes
-                // "saved" from "left alone", and the caller's own error is
-                // what comes back out.
-                Err(StoreError::Value(String::new()))
-            }
-        });
-        match outcome {
-            Ok(value) => Ok(value),
-            Err(_) => Err(refusal.expect("a refusal is the only way mutate fails here")),
-        }
-    }
-
-    /// Record one review-item timeline event — the single payload shape every
-    /// review-mutating route ends up emitting.
-    ///
-    /// Called **after** the mutation has been saved, never from inside a
-    /// `mutate` body: `record_timeline_event` takes the same lock.
-    pub(crate) fn record_review_event(&self, event_type: &str, item: &Value, action: &str) {
+    /// Build the canonical review timeline payload for `item` and `action`.
+    fn build_review_event_payload(item: &Value, action: &str) -> (String, Value) {
         let workspace = item
             .get("workspace_id")
             .and_then(Value::as_str)
@@ -237,12 +208,69 @@ impl GovernanceState {
             "source": item.get("source").cloned().unwrap_or(Value::Null),
             "workspace_id": workspace,
         });
-        self.os.record_timeline_event(
-            REVIEW_TIMELINE_AREA,
-            event_type,
-            payload,
-            Some(workspace.as_str()),
-        );
+        (workspace, payload)
+    }
+
+    /// Mutate `review_items` and append the matching timeline event in a single
+    /// atomic `WorkspaceOsStore` transaction, firing the live SSE sink once after save.
+    pub(crate) fn update_state_with_review_event(
+        &self,
+        event_type: &str,
+        action: &str,
+        f: impl FnOnce(&mut Value) -> Value,
+    ) -> Value {
+        let mut produced: Option<(Value, Value)> = None;
+        let _: Result<(), StoreError> = self.os.mutate(|doc| {
+            let item = f(doc);
+            let (workspace, payload) = Self::build_review_event_payload(&item, action);
+            let entry = WorkspaceOsStore::append_timeline_to_state(
+                doc,
+                REVIEW_TIMELINE_AREA,
+                event_type,
+                payload,
+                Some(workspace.as_str()),
+            );
+            produced = Some((item, entry));
+            Ok(())
+        });
+        let (item, entry) = produced.expect("mutate always runs the body it was given");
+        self.os.notify_timeline_entry(&entry);
+        item
+    }
+
+    /// Fallible counterpart to [`Self::update_state_with_review_event`]: on `Err`,
+    /// neither `review_items` nor `timeline` is modified or persisted.
+    pub(crate) fn try_update_state_with_review_event<E>(
+        &self,
+        event_type: &str,
+        action: &str,
+        f: impl FnOnce(&mut Value) -> Result<Value, E>,
+    ) -> Result<Value, E> {
+        let mut refusal: Option<E> = None;
+        let outcome = self.os.mutate(|doc| match f(doc) {
+            Ok(item) => {
+                let (workspace, payload) = Self::build_review_event_payload(&item, action);
+                let entry = WorkspaceOsStore::append_timeline_to_state(
+                    doc,
+                    REVIEW_TIMELINE_AREA,
+                    event_type,
+                    payload,
+                    Some(workspace.as_str()),
+                );
+                Ok((item, entry))
+            }
+            Err(error) => {
+                refusal = Some(error);
+                Err(StoreError::Value(String::new()))
+            }
+        });
+        match outcome {
+            Ok((item, entry)) => {
+                self.os.notify_timeline_entry(&entry);
+                Ok(item)
+            }
+            Err(_) => Err(refusal.expect("a refusal is the only way mutate fails here")),
+        }
     }
 
     /// Seed a Daily Memory Digest recipe workflow (test / fixture setup).

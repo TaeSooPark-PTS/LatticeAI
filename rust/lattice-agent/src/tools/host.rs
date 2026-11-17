@@ -58,7 +58,7 @@ use serde_json::{Map, Value};
 
 use super::{authorize, desktop, files, local, render, scaffold, shell, vault};
 use crate::kernel::policy::ToolPolicy;
-use crate::surface::worker::{ToolOutcome, WorkerClient};
+use crate::seam::worker::{ToolOutcome, WorkerClient};
 use crate::tools::sandbox::{ToolError, Workspace};
 
 /// The eighteen mutating handlers, sorted.

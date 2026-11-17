@@ -472,3 +472,83 @@ fn sidecar_works_on_readonly_db_without_bm25_node_stats_table() {
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0].node.id, "f1");
 }
+
+#[test]
+fn multi_hop_reasoning_paths_and_contradiction_synthesis_surface_2hop_bridges() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("multihop.sqlite");
+    let conn = Connection::open(&db_path).unwrap();
+    conn.execute_batch(
+        "CREATE TABLE nodes (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT '2026-04-01T00:00:00Z',
+            updated_at TEXT NOT NULL DEFAULT '2026-04-01T00:00:00Z'
+        );
+        CREATE TABLE edges (
+            id TEXT PRIMARY KEY,
+            from_node TEXT NOT NULL,
+            to_node TEXT NOT NULL,
+            type TEXT NOT NULL,
+            weight REAL NOT NULL DEFAULT 1.0,
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT '2026-04-01T00:00:00Z'
+        );
+        CREATE TABLE vector_embeddings (
+            item_id TEXT PRIMARY KEY,
+            item_type TEXT NOT NULL,
+            source_node TEXT NOT NULL,
+            embedding BLOB NOT NULL,
+            embedding_dim INTEGER NOT NULL,
+            embedding_model TEXT NOT NULL,
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            indexed_at TEXT NOT NULL DEFAULT '2026-04-01T00:00:00Z'
+        );
+        INSERT INTO nodes (id, type, title, summary) VALUES
+            ('seed-rfc', 'Document', 'Zero-Copy Wal Checkpointer RFC', 'Design of async wal checkpoint cadence'),
+            ('bridge-concept', 'Concept', 'Shared Reader Lock Contention', 'Shared lock behavior under bursty readers'),
+            ('hop2-incident', 'Document', 'October Tail Latency Postmortem', 'Root cause traced to long reader transactions'),
+            ('conflict-note', 'Decision', 'Disable Auto-Checkpoint Policy', 'Legacy recommendation superseded by async cadence');
+        INSERT INTO edges (id, from_node, to_node, type, weight) VALUES
+            ('e1', 'seed-rfc', 'bridge-concept', 'MENTIONS', 1.0),
+            ('e2', 'bridge-concept', 'hop2-incident', 'RELATES_TO', 1.0),
+            ('e3', 'seed-rfc', 'conflict-note', 'CONTRADICTS', 1.0);",
+    )
+    .unwrap();
+
+    let model = LocalEmbeddingModel::new(384);
+    let report = hybrid_bm25_vector_graph_search(
+        &conn,
+        &model,
+        "Zero-Copy Wal Checkpointer",
+        &GraphRagOptions::default(),
+    )
+    .unwrap();
+
+    let paths = report["reasoning_paths"]
+        .as_array()
+        .expect("reasoning_paths array");
+    let two_hop = paths
+        .iter()
+        .find(|p| p["target_id"] == "hop2-incident")
+        .expect("2-hop reasoning path to hop2-incident");
+    assert_eq!(two_hop["seed_id"], "seed-rfc");
+    assert_eq!(two_hop["bridge_id"], "bridge-concept");
+    assert_eq!(two_hop["bridge_title"], "Shared Reader Lock Contention");
+    assert_eq!(two_hop["hops"], 2);
+
+    let bridges = report["synthesis"]["bridge_concepts"]
+        .as_array()
+        .expect("bridge_concepts");
+    assert!(bridges.iter().any(|b| b["id"] == "bridge-concept"));
+
+    let conflicts = report["synthesis"]["contradictions"]
+        .as_array()
+        .expect("contradictions");
+    assert!(conflicts
+        .iter()
+        .any(|c| c["relation"] == "CONTRADICTS" && c["target_id"] == "conflict-note"));
+}

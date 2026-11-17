@@ -17,10 +17,16 @@
 //! the shipped behaviour.
 
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use fancy_regex::Regex;
-use serde_json::Value;
+use serde_json::{json, Value};
+
+/// Maximum persisted conversation document sessions kept on disk.
+const MAX_PERSISTED_SESSIONS: usize = 256;
+/// State file persisted inside `<data_dir>` when bound.
+pub const SESSIONS_FILE_NAME: &str = "chat_document_sessions.json";
 
 /// `DOCUMENT_GENERATION_SYSTEM_PROMPT`, `{graph_context}` still in place.
 pub const DOCUMENT_SYSTEM_PROMPT: &str = "당신은 사용자의 개인 AI 지식 어시스턴트 Lattice AI입니다.
@@ -143,12 +149,104 @@ type SessionValue = (String, String);
 #[derive(Debug, Default)]
 pub struct DocumentSessions {
     sessions: Mutex<HashMap<SessionKey, SessionValue>>,
+    persist_path: Option<PathBuf>,
 }
 
 impl DocumentSessions {
-    /// An empty store.
+    /// An empty in-memory store (tests and ephemeral runtimes).
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Durable session store backed by `<data_dir>/chat_document_sessions.json`.
+    /// Falls back cleanly to in-memory when `data_dir` is empty.
+    pub fn with_data_dir(data_dir: &Path) -> Self {
+        if data_dir.as_os_str().is_empty() {
+            return Self::new();
+        }
+        let path = data_dir.join(SESSIONS_FILE_NAME);
+        let loaded = Self::load_from_disk(&path);
+        Self {
+            sessions: Mutex::new(loaded),
+            persist_path: Some(path),
+        }
+    }
+
+    fn load_from_disk(path: &Path) -> HashMap<SessionKey, SessionValue> {
+        let Ok(raw) = std::fs::read_to_string(path) else {
+            return HashMap::new();
+        };
+        let Ok(parsed) = serde_json::from_str::<Value>(&raw) else {
+            return HashMap::new();
+        };
+        let Some(entries) = parsed.get("entries").and_then(Value::as_array) else {
+            return HashMap::new();
+        };
+        let mut map = HashMap::new();
+        for entry in entries.iter().take(MAX_PERSISTED_SESSIONS) {
+            let Some(user) = entry.get("user").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(workspace) = entry.get("workspace").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(conversation) = entry.get("conversation").and_then(Value::as_str) else {
+                continue;
+            };
+            let context = entry
+                .get("context")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            let document = entry
+                .get("document")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            map.insert(
+                (
+                    user.to_string(),
+                    workspace.to_string(),
+                    conversation.to_string(),
+                ),
+                (context, document),
+            );
+        }
+        map
+    }
+
+    fn persist_snapshot(&self, map: &HashMap<SessionKey, SessionValue>) {
+        let Some(path) = &self.persist_path else {
+            return;
+        };
+        let mut keys: Vec<&SessionKey> = map.keys().collect();
+        keys.sort();
+        if keys.len() > MAX_PERSISTED_SESSIONS {
+            keys.truncate(MAX_PERSISTED_SESSIONS);
+        }
+        let entries: Vec<Value> = keys
+            .into_iter()
+            .filter_map(|k| {
+                let (ctx, doc) = map.get(k)?;
+                Some(json!({
+                    "user": k.0,
+                    "workspace": k.1,
+                    "conversation": k.2,
+                    "context": ctx,
+                    "document": doc,
+                }))
+            })
+            .collect();
+        let body = json!({
+            "version": 1,
+            "entries": entries,
+        });
+        if let Ok(serialized) = serde_json::to_string(&body) {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            lattice_auth::atomic::write_text(path, &serialized);
+        }
     }
 
     fn key(
@@ -199,10 +297,14 @@ impl DocumentSessions {
         document: &str,
     ) {
         let key = Self::key(user_email, workspace_id, conversation_id);
-        self.sessions
-            .lock()
-            .expect("document session lock")
-            .insert(key, (graph_context.to_string(), document.to_string()));
+        let mut guard = self.sessions.lock().expect("document session lock");
+        if guard.len() >= MAX_PERSISTED_SESSIONS && !guard.contains_key(&key) {
+            if let Some(evict_key) = guard.keys().next().cloned() {
+                guard.remove(&evict_key);
+            }
+        }
+        guard.insert(key, (graph_context.to_string(), document.to_string()));
+        self.persist_snapshot(&guard);
     }
 
     /// How many conversations are remembered — for a caller that wants to know.
@@ -463,6 +565,32 @@ mod tests {
         assert!(sessions
             .system_prompt(None, None, Some(""), "K")
             .contains("D"));
+    }
+
+    #[test]
+    fn document_sessions_persist_and_reload_across_restarts() {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let first = DocumentSessions::with_data_dir(dir.path());
+            first.update(
+                Some("alice@lattice.local"),
+                Some("ws-alpha"),
+                Some("conv-42"),
+                "## Graph Context A",
+                "# Draft v1\nInitial quarterly plan",
+            );
+            assert_eq!(first.len(), 1);
+        }
+        let reloaded = DocumentSessions::with_data_dir(dir.path());
+        assert_eq!(reloaded.len(), 1);
+        let prompt = reloaded.system_prompt(
+            Some("alice@lattice.local"),
+            Some("ws-alpha"),
+            Some("conv-42"),
+            "",
+        );
+        assert!(prompt.contains("## Graph Context A"));
+        assert!(prompt.contains("# Draft v1\nInitial quarterly plan"));
     }
 
     #[test]

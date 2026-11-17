@@ -19,7 +19,7 @@
 //! the persona asks for a conversational answer. So the mode is not an
 //! optimisation, it is what makes these words the only instruction the model has.
 
-use lattice_agent::sanitize::ext_of;
+use lattice_agent::content::sanitize::ext_of;
 
 /// The rules every file-generation call carries, whatever the file type is.
 pub const SYSTEM: &str = "You are writing one file, not a chat reply.

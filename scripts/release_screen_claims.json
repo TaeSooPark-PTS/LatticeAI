@@ -20,6 +20,26 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "13.0.0": {
+    "_why": [
+      "Sovereign Synthesis enforces cross-domain crate decoupling",
+      "(lattice_core::redact, lattice_agent::seam, domain_boundaries.rs),",
+      "unified Rust server i18n (lattice_core::messages), 2-Hop Knowledge Graph",
+      "reasoning chains & contradiction synthesis (reasoning_paths.rs,",
+      "MultiHopSynthesisView.tsx), single-transaction review store mutations,",
+      "one-click reversible folder reorganization undo (ReviewCard.tsx), and",
+      "durable conversation document sessions across restarts.",
+      "",
+      "On 05-memory-graph.png (/brain), the HybridSearch card header adds the",
+      "interactive 2-Hop Multi-Hop Synthesis toggle button (measured ~2.43%).",
+      "The 1-Click Reorganization Undo action on ReviewCard renders conditionally",
+      "on settled folder_reorganization proposals not present in the static",
+      "baseline capture fixture; other baseline shells were not redesigned."
+    ],
+    "05-memory-graph.png": {
+      "min_pct": 1.5
+    }
+  },
   "12.10.0": {
     "_why": [
       "Grounded Self adds deterministic agent transcript grounding",

@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v13.0.0 — Sovereign Synthesis (2026-11-18)
+
+**크로스 도메인 아키텍처 분리 강제(`lattice_core::redact`, `lattice_agent::seam`, `domain_boundaries.rs`) 및 통합 Rust 서버 i18n(`lattice-auth`→`lattice-core::messages`)**, **다단계(2-Hop) 지식 그래프 추론 경로·매개 개념·상충 감지 합성(`reasoning_paths.rs`, `MultiHopSynthesisView.tsx`)**, **단일 트랜잭션 리뷰 스토어·폴더 재구성 원클릭 되돌리기(`reversible_reorganization.rs`, `ReviewCard.tsx`) 및 대화 문서 세션 영속화(`DocumentSessions::with_data_dir`)**, **프론트엔드 API 모듈 분할(`streaming.ts`, `transfers.ts`, Vitest 100%) 및 Tauri 백엔드 모듈화**를 통합한 메이저 릴리스.
+
+- **크로스 도메인 분리 & 정적 경계 검증:** `lattice_core::redact`로 비밀 마스킹을 일원화하고 `lattice_agent::seam::worker`를 분리해 `kernel/`·`tools/`가 상위 HTTP `surface/`를 참조하지 않도록 강제했으며, `modelops`→`adminops` 측면 결합 제거와 `domain_boundaries.rs` 정적 레이어링 테스트를 구축했다.
+- **다단계(2-Hop) GraphRAG 추론 합성:** `bm25/reasoning_paths.rs`와 `fusion.rs`가 `Seed → Bridge → Target` 2-hop 추론 체인, 매개 개념(`bridge_concepts`), 상충·대체 관계(`CONTRADICTS`·`SUPERSEDES`)를 산출하고 Brain 하이브리드 검색(`MultiHopSynthesisView.tsx`)에서 즉시 시각화한다.
+- **원자적 거버넌스·원클릭 폴더 되돌리기·세션 영속화 & 모듈화:** `WorkspaceOsStore` 단일 트랜잭션 리뷰+타임라인 기록, `folder_reorganization` 승인 시 자동 역방향 원복 제안 생성 및 원클릭 되돌리기 UI, `chat_document_sessions.json` 재시작 복원, `lattice-auth` 메시지 카탈로그 단일화(`check_server_i18n.mjs` 146개 Rust 메시지 검증), `client.ts`·`src-tauri/src/backend.rs` 분할을 완료했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v13.0.0.md](docs/releases/RELEASE_NOTES_v13.0.0.md).
+
+빌드 산출물은 `dist/ltcai-13.0.0-py3-none-any.whl`,
+`dist/ltcai-13.0.0.tar.gz`, `ltcai-13.0.0.tgz`, `dist/ltcai-13.0.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_13.0.0_aarch64.dmg` 입니다.
+
 ## v12.10.0 — Grounded Self (2026-11-17)
 
 **결정론적 에이전트 트랜스크립트 근거 검증(`grounding.rs`) 및 답변 인용 증빙(`AnswerProof.tsx`)**, **Brain 자기 모델 패널(`SelfModelPanel.tsx`) 및 지식 그래프 `PART_OF` 엣지(`edges`·`edges_v2`) 연쇄 삭제 보장**, **협력적 모델 다운로드 취소(`499`) 및 다운로드 직후 시맨틱 임베딩 자동 전환·리인덱싱 드레인**, **`http_reply.rs` 도메인 간 결합 제거·서버 i18n 6/6 라우터 잠금·병렬 `cargo nextest`·`release.yml`→`publish.yml` CD 체이닝**을 통합한 릴리스.

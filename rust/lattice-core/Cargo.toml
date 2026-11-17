@@ -32,6 +32,7 @@ futures-core = { workspace = true }
 # its own opinion about what "now" means.
 sha2 = { workspace = true }
 libc = { workspace = true }
+fancy-regex = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
