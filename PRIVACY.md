@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **12.9.0 — Semantic Guard**.
+Current release: **12.10.0 — Grounded Self**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

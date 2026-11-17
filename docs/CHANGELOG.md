@@ -4,6 +4,16 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [12.10.0] - 2026-11-17 — Grounded Self
+
+### Added
+- Added deterministic agent transcript grounding (`rust/lattice-agent/src/kernel/transcript/grounding.rs`, `agentloop/verification.rs`, `probe.rs`) catching unread target-file answers and hallucinated `path:line` citations or backticked identifiers on 2B/8GB-tier local models without per-model branches, plus interactive citation proof badges in `frontend/src/features/brain/AnswerProof.tsx` and browser-extension server language sync (`browser-extension/popup.js`).
+- Added Brain `SelfModelPanel` (`frontend/src/features/brain/{SelfModelPanel.tsx,SelfModelPanel.test.tsx}`, `frontend/src/api/{selfModel.ts,selfModel.test.ts}`, `rust/lattice-retrieval/src/memory_api/self_model_write.rs`) with 100% Vitest coverage for preferences, habits, decisions, traits, relationships, and inline `self_model_fact` proposal approval/dismissal, plus `PART_OF` edge cascade verification across `edges` and `edges_v2` (`rust/lattice-core/tests/graph_write_schema.rs`) and expanded `cloud_lane.rs` / `rag_eval.rs` suites.
+- Added cooperative `499` model download cancellation and automatic post-download semantic embedding activation + adaptive batch reindex drain (`latticeai/services/{model_runtime/download.py,model_loading.py,embedding_recommendation.py}`, `rust/lattice-jobs/src/index_api/engine.rs`, `tests/unit/test_download_cancel_and_embedding_transition.py`).
+
+### Changed
+- Extracted crate-internal `rust/lattice-platform/src/http_reply.rs` so `knowledge/` and `toolsurface/` never reach sideways into `workspaceos::project_sessions`, locked all 6 Python worker routers in `scripts/check_server_i18n.mjs` (`0 not yet claimed`), added parallel `cargo nextest` runner (`scripts/run_rust_tests.mjs`), and chained `.github/workflows/publish.yml` (`workflow_call`) from `.github/workflows/release.yml`.
+
 ## [12.9.0] - 2026-11-17 — Semantic Guard
 
 ### Added

@@ -7,7 +7,7 @@ use axum::response::Response;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
-use crate::workspaceos::project_sessions::{detail, json_ok, parse_json_object};
+use crate::http_reply::{detail, json_ok, now_iso_utc, parse_json_object};
 
 use super::status::require_graph;
 use super::*;
@@ -194,7 +194,7 @@ fn plan_sqlite_tables(path: &Path) -> Vec<OrderedMap> {
 }
 
 pub(crate) fn stamp() -> String {
-    crate::workspaceos::project_sessions::now_iso_utc()
+    now_iso_utc()
         .replace([':', '-', '.'], "")
         .chars()
         .take(15)

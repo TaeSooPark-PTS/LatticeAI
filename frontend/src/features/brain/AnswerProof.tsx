@@ -137,6 +137,12 @@ export function AnswerProofCard({
 // The caption is shown only when a vision-language model actually wrote one.
 // With no model there is no caption line, because "photo.png (PNG 3024x4032)"
 // dressed up as a description is exactly the thing this release removed.
+export function isLocalImageLocator(locator?: string): boolean {
+  const raw = (locator || "").trim();
+  if (!raw || /^https?:\/\//i.test(raw) || raw.startsWith("data:")) return false;
+  return /\.(png|jpe?g|webp|gif)$/i.test(raw);
+}
+
 export function CitationVisual({
   language,
   citation,
@@ -144,9 +150,33 @@ export function CitationVisual({
   language: Language;
   citation: Citation;
 }) {
+  const [origState, setOrigState] = React.useState<
+    | { status: "closed" }
+    | { status: "loading" }
+    | { status: "open"; url: string }
+    | { status: "error" }
+  >({ status: "closed" });
+
   const isImage = citation.kind === "Image" || citation.kind === "ImageText";
   if (!isImage) return null;
   const hasThumbnail = Boolean(citation.thumbnail);
+  const canOpenOriginal = isLocalImageLocator(citation.locator);
+
+  const toggleOriginal = () => {
+    if (origState.status === "open") {
+      setOrigState({ status: "closed" });
+      return;
+    }
+    setOrigState({ status: "loading" });
+    void latticeApi.resolveApprovedLocalServeUrl(citation.locator).then((res) => {
+      if (res.ok && res.data.url) {
+        setOrigState({ status: "open", url: res.data.url });
+      } else {
+        setOrigState({ status: "error" });
+      }
+    });
+  };
+
   return (
     <span className="brain-citation-visual" data-testid="citation-visual">
       {hasThumbnail ? (
@@ -171,7 +201,35 @@ export function CitationVisual({
             {t(language, "brain.answerProof.noCaption")}
           </em>
         )}
+        {canOpenOriginal ? (
+          <button
+            type="button"
+            className="ml-2 underline text-xs"
+            data-testid="citation-open-original"
+            disabled={origState.status === "loading"}
+            onClick={toggleOriginal}
+          >
+            {origState.status === "loading"
+              ? t(language, "brain.answerProof.originalLoading")
+              : origState.status === "open"
+                ? t(language, "brain.answerProof.closeOriginal")
+                : t(language, "brain.answerProof.openOriginal")}
+          </button>
+        ) : null}
+        {origState.status === "error" ? (
+          <small className="ml-2 text-destructive" data-testid="citation-original-error">
+            {t(language, "brain.answerProof.originalFailed")}
+          </small>
+        ) : null}
       </span>
+      {origState.status === "open" ? (
+        <img
+          className="mt-2 max-h-96 rounded border border-border"
+          data-testid="citation-original-image"
+          src={origState.url}
+          alt={citation.caption || t(language, "brain.answerProof.imageAlt", { title: citation.title })}
+        />
+      ) : null}
     </span>
   );
 }

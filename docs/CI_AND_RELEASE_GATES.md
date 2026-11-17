@@ -1,6 +1,6 @@
 # CI & Release Gates
 
-> Status: canonical (updated 2026-11-17) — Current release: **12.9.0**
+> Status: canonical (updated 2026-11-17) — Current release: **12.10.0**
 
 Reference for the GitHub Actions workflows that guard `main` and releases, the
 supply-chain hardening applied to them, and the recommended branch-protection
@@ -12,8 +12,8 @@ configuration. Companion to [SECURITY_AUDIT.md](SECURITY_AUDIT.md) and
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
 | CI | `.github/workflows/ci.yml` | push/PR to `main` | Lint, typecheck, unit + coverage + retrieval sidecar/contract gates + integration tests, product-readiness, build + wheel smoke, Rust workspace |
-| Release | `.github/workflows/release.yml` | tags `v*` / `[0-9]*` | Build & smoke-verify Linux assets + Apple Silicon macOS DMG, generate checksums, and attach exact-version assets to the GitHub Release (no package registry publish) |
-| CD | `.github/workflows/publish.yml` | GitHub Release `published`, dispatch | Publish npm / PyPI / Marketplace / Open VSX (idempotent; never on a bare tag) and verify/backfill `Lattice AI_<v>_aarch64.dmg` + checksums on the GitHub Release |
+| Release | `.github/workflows/release.yml` | tags `v*` / `[0-9]*` | Build & smoke-verify Linux assets + Apple Silicon macOS DMG, generate checksums, attach exact-version assets to the GitHub Release, and chain CD via `workflow_call` |
+| CD | `.github/workflows/publish.yml` | GitHub Release `published`, `workflow_call`, dispatch | Publish npm / PyPI / Marketplace / Open VSX (idempotent) and verify/backfill `Lattice AI_<v>_aarch64.dmg` + checksums on the GitHub Release |
 | Visual Smoke | `.github/workflows/visual.yml` | push to `main`, nightly cron, dispatch | Playwright visual smoke (not on PRs) |
 | Sidecar E2E | `.github/workflows/e2e-sidecar.yml` | nightly cron, dispatch | Live sidecar Playwright first-value loop |
 | Dependency Audit | `.github/workflows/dependency-audit.yml` | weekly cron, dispatch | pip-audit + npm audit + CycloneDX SBOMs |

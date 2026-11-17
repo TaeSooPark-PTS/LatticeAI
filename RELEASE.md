@@ -15,6 +15,20 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v12.10.0 — Grounded Self (2026-11-17)
+
+**결정론적 에이전트 트랜스크립트 근거 검증(`grounding.rs`) 및 답변 인용 증빙(`AnswerProof.tsx`)**, **Brain 자기 모델 패널(`SelfModelPanel.tsx`) 및 지식 그래프 `PART_OF` 엣지(`edges`·`edges_v2`) 연쇄 삭제 보장**, **협력적 모델 다운로드 취소(`499`) 및 다운로드 직후 시맨틱 임베딩 자동 전환·리인덱싱 드레인**, **`http_reply.rs` 도메인 간 결합 제거·서버 i18n 6/6 라우터 잠금·병렬 `cargo nextest`·`release.yml`→`publish.yml` CD 체이닝**을 통합한 릴리스.
+
+- **트랜스크립트 근거 검증 & 인용 증빙:** `rust/lattice-agent/src/kernel/transcript/grounding.rs`가 미열람 파일 기반 추측 응답과 환각 `path:line`·심볼 인용을 모델별 분기 없이 차단하고, `AnswerProof.tsx`와 브라우저 확장(`popup.js`)이 인용 근거 배지와 서버 언어 동기화를 제공한다.
+- **자기 모델(Self-Model) 패널 & `PART_OF` 연쇄 삭제:** `SelfModelPanel.tsx`(Vitest 100%)와 `self_model_write.rs`로 선호·습관·결정·특성·관계 관리 및 제안 즉시 승인/거절을 연결하고, `graph_write_schema.rs`·`native_hnsw.rs`·`vector_alignment.rs`·`cloud_lane.rs`로 v1/v2 엣지 연쇄 삭제와 정렬된 벡터 검색·클라우드 경계 E2E를 검증했다.
+- **협력적 다운로드 취소, 자동 시맨틱 전환 & 병렬 Rust 테스트/체인 CD:** `download.py`·`embedding_recommendation.py`·`index_api/engine.rs`에서 다운로드 취소(`499`)와 임베딩 모델 설치 직후 자동 전환·배치 리인덱싱을 지원하며, `http_reply.rs` 분리, Python 워커 라우터 6개 전수 i18n 잠금, `scripts/run_rust_tests.mjs` 병렬 `cargo nextest`, `.github/workflows/{release,publish}.yml` 자동 CD 체이닝을 완료했다.
+
+릴리스 노트는 [docs/releases/RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md).
+
+빌드 산출물은 `dist/ltcai-12.10.0-py3-none-any.whl`,
+`dist/ltcai-12.10.0.tar.gz`, `ltcai-12.10.0.tgz`, `dist/ltcai-12.10.0.vsix`,
+`src-tauri/target/release/bundle/dmg/Lattice AI_12.10.0_aarch64.dmg` 입니다.
+
 ## v12.9.0 — Semantic Guard (2026-11-17)
 
 **시맨틱 쿼리 임베딩 계약 정렬(`query_embed.rs`) 및 순수 Rust 네이티브 HNSW(`NativeHnswIndex`)·스코프 Python HNSW 사이드카**, **네트워크 경계·클라우드 컨텍스트 fail-closed 격리(`network_boundary_guard.rs`, `lattice-chat/src/boundary.rs`)**, **데스크톱(Tauri)·CLI·호스트 슈퍼바이저·멀티스테이지 Docker 가드레일**, **실시간 Workspace OS SSE(`/api/realtime/stream`) 및 `useAppBootstrap` 분리**, **`.latticebrain` v2 아카이브 KDF 강화 및 CI 게이트 확장**을 통합한 릴리스.

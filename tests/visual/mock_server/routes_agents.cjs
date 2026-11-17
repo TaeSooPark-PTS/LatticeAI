@@ -212,6 +212,19 @@ module.exports = function handleAgents({ req, res, url, pathname }) {
     generated_at: "2026-06-07T10:05:00Z",
   });
   if (pathname === "/api/memory/inspect") return json(res, { source: url.searchParams.get("source"), items: [{ id: "mem-demo", kind: "workspace", title: "Demo memory", content: "Release memory" }], count: 1, available: true, stats: workspaceOs.graph, index: { status: "ready" } });
+  if (pathname === "/api/memory/self-model" && req.method === "GET") return json(res, {
+    available: true,
+    count: 2,
+    summary: "- 선호: 로컬 우선 아키텍처와 간결한 한국어 요약\n- 습관·루틴: 매일 아침 작업공간 브리핑 확인",
+    summary_tokens: 28,
+    kinds: ["trait", "preference", "habit", "decision", "relationship"],
+    by_kind: {},
+    facts: [
+      { id: "self:preference:local", kind: "preference", text: "로컬 우선 아키텍처와 간결한 한국어 요약", origin: "user" },
+      { id: "self:habit:briefing", kind: "habit", text: "매일 아침 작업공간 브리핑 확인", origin: "proposal" },
+    ],
+  });
+  if (pathname.startsWith("/api/memory/self-model") && req.method !== "GET") return json(res, { ok: true });
   if (pathname === "/api/hooks/run" && req.method === "POST") return json(res, {
     hook_id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run",
     status: "ok", detail: "", output: "redacted 1 field(s)", duration_ms: 1, blocked: false,

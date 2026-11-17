@@ -19,12 +19,18 @@ on:
   release:
     types: [published]
   workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. v12.10.0)"
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: cd-${{ github.event.release.tag_name || github.ref }}
+  group: cd-${{ inputs.tag || github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
 
 env:
@@ -40,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.tag_name || github.ref }}
+          ref: ${{ inputs.tag || github.event.release.tag_name || github.ref }}
 
       - name: Refuse to publish an unreleased version
         id: meta
@@ -145,8 +151,9 @@ jobs:
           V="${{ needs.publish.outputs.version }}"
           TAG="${{ needs.publish.outputs.tag }}"
           DMG_NAME="Lattice AI_${V}_aarch64.dmg"
+          DMG_DOT_NAME="Lattice.AI_${V}_aarch64.dmg"
           ASSETS="$(gh release view "${TAG}" --repo "${{ github.repository }}" --json assets --jq '.assets[].name' 2>/dev/null || true)"
-          if echo "${ASSETS}" | grep -Fxq "${DMG_NAME}" && echo "${ASSETS}" | grep -Fxq "SHA256SUMS-${V}.txt"; then
+          if (echo "${ASSETS}" | grep -Fxq "${DMG_NAME}" || echo "${ASSETS}" | grep -Fxq "${DMG_DOT_NAME}") && echo "${ASSETS}" | grep -Fxq "SHA256SUMS-${V}.txt"; then
             echo "need_build=false" >> "$GITHUB_OUTPUT"
             echo "${DMG_NAME} and SHA256SUMS-${V}.txt already present on ${TAG}."
           else

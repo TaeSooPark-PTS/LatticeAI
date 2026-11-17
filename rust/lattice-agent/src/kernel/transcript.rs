@@ -3,13 +3,7 @@
 //! Ports of `latticeai.core.agent_helpers`: `_truncate_strings`,
 //! `compact_transcript`, `files_written`, `artifact_checklist`,
 //! `requirement_coverage`, `filter_learnings`, plus the two budget records.
-//!
-//! One thing worth naming, because the brief for this port assumed otherwise:
-//! **none of these functions touch the filesystem.** `requirement_coverage`
-//! answers "was every requested file written?" from the *transcript*, matching
-//! declared manifest paths against the basenames of successful write steps. The
-//! loop's only real disk reads are the pre-write snapshot and the fail-closed
-//! overwrite guard's existence check, and both live in `execution`.
+//! None of these functions touch the filesystem: all checks read `transcript`.
 
 use std::collections::BTreeSet;
 use std::sync::OnceLock;
@@ -22,6 +16,8 @@ use crate::parse::pystr::{char_len, char_slice, is_truthy, py_str};
 
 mod counts;
 pub use counts::*;
+mod grounding;
+pub use grounding::*;
 mod summaries;
 pub use summaries::*;
 

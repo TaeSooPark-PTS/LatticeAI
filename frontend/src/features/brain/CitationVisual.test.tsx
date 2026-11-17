@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CitationVisual } from "./AnswerProof";
+import { latticeApi } from "@/api/client";
+import { CitationVisual, isLocalImageLocator } from "./AnswerProof";
 import { buildBrainProof } from "./brainData";
 import type { Message } from "./types";
 
@@ -125,5 +126,95 @@ describe("evidence payload parsing", () => {
     // A remote src would make an evidence card phone home; a non-string is junk.
     expect(proof.recall.items[0].thumbnail).toBe("");
     expect(proof.recall.items[1].thumbnail).toBe("");
+  });
+});
+
+describe("consent-gated original image serving", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("recognizes local raster paths and rejects remote or non-image locators", () => {
+    expect(isLocalImageLocator("")).toBe(false);
+    expect(isLocalImageLocator("https://example.com/a.png")).toBe(false);
+    expect(isLocalImageLocator("data:image/png;base64,AAA")).toBe(false);
+    expect(isLocalImageLocator("/tmp/notes.md")).toBe(false);
+    expect(isLocalImageLocator("/Users/alice/whiteboard.webp")).toBe(true);
+  });
+
+  it("requests approval on click, displays /local/serve image, and closes on second click", async () => {
+    let resolveServe: (v: unknown) => void = () => {};
+    vi.spyOn(latticeApi, "resolveApprovedLocalServeUrl").mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveServe = resolve;
+      }) as never,
+    );
+
+    render(
+      <CitationVisual
+        language="ko"
+        citation={citation({
+          kind: "Image",
+          caption: "다이어그램",
+          thumbnail: PIXEL,
+          locator: "/tmp/diagram.png",
+        })}
+      />,
+    );
+
+    const btn = screen.getByTestId("citation-open-original");
+    expect(btn).toHaveTextContent("원본 보기");
+    fireEvent.click(btn);
+    expect(screen.getByTestId("citation-open-original")).toHaveTextContent("승인 확인 중…");
+
+    resolveServe({
+      ok: true,
+      status: 200,
+      source: "live",
+      data: { url: "/local/serve?path=%2Ftmp%2Fdiagram.png&approval_token=t1" },
+    });
+
+    const fullImg = await screen.findByTestId("citation-original-image");
+    expect(fullImg).toHaveAttribute("src", "/local/serve?path=%2Ftmp%2Fdiagram.png&approval_token=t1");
+    expect(fullImg).toHaveAttribute("alt", "다이어그램");
+    expect(screen.getByTestId("citation-open-original")).toHaveTextContent("원본 닫기");
+
+    // Fallback alt when caption is absent
+    fireEvent.click(screen.getByTestId("citation-open-original"));
+    await waitFor(() => expect(screen.queryByTestId("citation-original-image")).toBeNull());
+  });
+
+  it("shows localized error message and fallback alt when approval or caption is missing", async () => {
+    vi.spyOn(latticeApi, "resolveApprovedLocalServeUrl")
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        source: "unavailable",
+        data: { url: "" },
+        error: "denied",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        source: "live",
+        data: { url: "/local/serve?path=%2Ftmp%2Fplain.jpg&approval_token=t2" },
+      });
+
+    render(
+      <CitationVisual
+        language="en"
+        citation={citation({
+          kind: "Image",
+          locator: "/tmp/plain.jpg",
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("citation-open-original"));
+    expect(await screen.findByTestId("citation-original-error")).toHaveTextContent(
+      "Could not load original image.",
+    );
+
+    fireEvent.click(screen.getByTestId("citation-open-original"));
+    const fullImg = await screen.findByTestId("citation-original-image");
+    expect(fullImg).toHaveAttribute("alt", "Preview of whiteboard.png");
   });
 });

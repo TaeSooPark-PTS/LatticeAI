@@ -13,9 +13,10 @@ import importlib.util
 import json
 import logging
 import os
+import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Set
 
 from latticeai.core.quiet import quiet
 from latticeai.models.router import hf_cache_model_dir, hf_model_dir
@@ -29,6 +30,55 @@ from latticeai.services.model_errors import ModelRuntimeError
 _AUXILIARY_GGUF_PREFIXES = ("mmproj-", "mtp-", "dflash-", "eagle3-")
 GGUF_QUANT_PREFERENCE = ("q4_k_m", "q4_0", "mxfp4", "q4_k_s", "q3_k_m", "q2_k", "q8_0")
 _LATEST_DOWNLOAD_PROGRESS: Dict[str, Dict[str, Any]] = {}
+_CANCEL_LOCK = threading.Lock()
+_CANCELLED_DOWNLOADS: Set[str] = set()
+
+
+def _normalize_cancel_key(model_id: Optional[str]) -> str:
+    raw = str(model_id or "").strip().lower()
+    if ":" in raw and raw.split(":", 1)[0] in {"local_mlx", "mlx", "huggingface", "ollama", "vllm", "llamacpp"}:
+        return raw.split(":", 1)[1].strip()
+    return raw
+
+
+def request_download_cancel(model_id: Optional[str] = None) -> None:
+    """Signal cooperative cancellation for ``model_id`` (or ``*`` for all in-flight downloads)."""
+    key = _normalize_cancel_key(model_id) or "*"
+    with _CANCEL_LOCK:
+        _CANCELLED_DOWNLOADS.add(key)
+        if model_id:
+            _CANCELLED_DOWNLOADS.add(str(model_id).strip().lower())
+
+
+def clear_download_cancel(model_id: Optional[str] = None) -> None:
+    """Clear cancellation state before starting a fresh download."""
+    with _CANCEL_LOCK:
+        if not model_id:
+            _CANCELLED_DOWNLOADS.clear()
+            return
+        _CANCELLED_DOWNLOADS.discard(_normalize_cancel_key(model_id))
+        _CANCELLED_DOWNLOADS.discard(str(model_id).strip().lower())
+        _CANCELLED_DOWNLOADS.discard("*")
+
+
+def is_download_cancelled(*candidates: Optional[str]) -> bool:
+    with _CANCEL_LOCK:
+        if "*" in _CANCELLED_DOWNLOADS:
+            return True
+        for item in candidates:
+            if not item:
+                continue
+            if str(item).strip().lower() in _CANCELLED_DOWNLOADS:
+                return True
+            norm = _normalize_cancel_key(item)
+            if norm and norm in _CANCELLED_DOWNLOADS:
+                return True
+    return False
+
+
+def check_download_cancelled(*candidates: Optional[str]) -> None:
+    if is_download_cancelled(*candidates):
+        raise ModelRuntimeError(status_code=499, detail="모델 다운로드가 취소되었습니다.")
 
 
 def is_gated_or_auth_error_text(text: str) -> bool:
@@ -417,6 +467,7 @@ def _download_single_hf_repo(
         ))
 
     for index, item in enumerate(selected_files, start=1):
+        check_download_cancelled(requested_repo, active_repo)
         filename = str(item["name"])
         size = int(item.get("size") or 0)
         tqdm_class = None
@@ -503,11 +554,24 @@ def _download_single_hf_repo(
 
                 class ProgressTqdm(base_tqdm):
                     def update(self, n=1):
+                        check_download_cancelled(requested_repo, active_repo)
                         result = super().update(n)
                         emit_byte_progress(float(getattr(self, "n", 0) or 0))
                         return result
 
                 tqdm_class = ProgressTqdm
+            except Exception:
+                tqdm_class = None
+        else:
+            try:
+                from tqdm.auto import tqdm as base_tqdm
+
+                class CancelOnlyTqdm(base_tqdm):
+                    def update(self, n=1):
+                        check_download_cancelled(requested_repo, active_repo)
+                        return super().update(n)
+
+                tqdm_class = CancelOnlyTqdm
             except Exception:
                 tqdm_class = None
 
@@ -651,6 +715,11 @@ def download_hf_model(
             if used_fallback and mirrors:
                 download_result["public_mirror_repos"] = mirrors
             last_error = None
+            break
+        except ModelRuntimeError as exc:
+            if exc.status_code == 499:
+                raise
+            last_error = exc
             break
         except Exception as exc:
             last_error = exc

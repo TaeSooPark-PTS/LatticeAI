@@ -25,7 +25,7 @@ use lattice_core::db::RuntimeConfig;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-use crate::workspaceos::project_sessions::{detail, json_ok, missing_fields, parse_json_object};
+use crate::http_reply::{detail, json_ok, missing_fields, now_iso_utc, parse_json_object};
 
 /// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[
@@ -411,10 +411,7 @@ impl PeerRegistry {
         peer.insert("base_url", json!(base_url));
         peer.insert("public_key", json!(public_key));
         peer.insert("fingerprint", json!(fingerprint));
-        peer.insert(
-            "added_at",
-            json!(crate::workspaceos::project_sessions::now_iso_utc()),
-        );
+        peer.insert("added_at", json!(now_iso_utc()));
         peers.push(peer.clone());
         self.save(&peers);
         Ok(peer)

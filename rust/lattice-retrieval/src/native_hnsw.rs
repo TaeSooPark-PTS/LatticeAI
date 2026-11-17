@@ -12,8 +12,8 @@ use std::sync::{Mutex, OnceLock};
 use rusqlite::Connection;
 use serde_json::Value;
 
-const MAX_NEIGHBORS: usize = 16;
-const EF_CONSTRUCTION: usize = 48;
+const MAX_NEIGHBORS: usize = 24;
+const EF_CONSTRUCTION: usize = 64;
 const TOMBSTONE_REBUILD_RATIO: f64 = 0.20;
 
 /// Parsed `.hnsw.meta.json` sidecar metadata when present alongside SQLite.
@@ -48,6 +48,25 @@ pub fn read_sidecar_meta(db_path: &Path) -> Option<SidecarMeta> {
         active_count: labels.saturating_sub(deleted),
         deleted_count: deleted,
     })
+}
+
+/// Validate on-disk `.hnsw.meta.json` alignment when present; absent disk meta is valid
+/// because `NativeHnswGraph` synchronizes directly from `vector_embeddings`.
+pub fn check_disk_sidecar_alignment(
+    db_path: &Path,
+    model_id: &str,
+    dim: i64,
+) -> Result<(), String> {
+    let Some(meta) = read_sidecar_meta(db_path) else {
+        return Ok(());
+    };
+    if meta.embedding_dim != dim || meta.embedding_model != model_id {
+        return Err(format!(
+            "disk HNSW sidecar mismatch ({} / {}d vs active {} / {}d)",
+            meta.embedding_model, meta.embedding_dim, model_id, dim
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -142,28 +161,49 @@ impl NativeHnswGraph {
         raw.iter().map(|x| *x * inv).collect()
     }
 
-    fn entry_slot(&self) -> Option<usize> {
-        self.nodes.iter().position(|n| !n.deleted)
+    fn entry_slots(&self) -> Vec<usize> {
+        let n = self.nodes.len();
+        if n == 0 {
+            return Vec::new();
+        }
+        let mut seeds = Vec::new();
+        for probe in [0, n / 4, n / 2, (n * 3) / 4, n.saturating_sub(1)] {
+            if let Some(idx) = (probe..n)
+                .chain(0..probe)
+                .find(|&slot| !self.nodes[slot].deleted)
+            {
+                if !seeds.contains(&idx) {
+                    seeds.push(idx);
+                }
+            }
+        }
+        seeds
     }
 
     fn beam_search(&self, query: &[f32], ef: usize) -> Vec<ScoredSlot> {
-        let Some(entry) = self.entry_slot() else {
+        let seeds = self.entry_slots();
+        if seeds.is_empty() {
             return Vec::new();
-        };
+        }
         let ef = ef.max(1);
         let mut visited = vec![false; self.nodes.len()];
         let mut candidates = BinaryHeap::new();
         let mut results: BinaryHeap<MinScored> = BinaryHeap::new();
 
-        visited[entry] = true;
-        let entry_score = Self::dot(query, &self.nodes[entry].unit_vec);
-        let start = ScoredSlot {
-            score: entry_score,
-            slot: entry,
-        };
-        candidates.push(start);
-        if !self.nodes[entry].deleted {
-            results.push(MinScored(start));
+        for entry in seeds {
+            visited[entry] = true;
+            let entry_score = Self::dot(query, &self.nodes[entry].unit_vec);
+            let start = ScoredSlot {
+                score: entry_score,
+                slot: entry,
+            };
+            candidates.push(start);
+            if !self.nodes[entry].deleted {
+                results.push(MinScored(start));
+                if results.len() > ef {
+                    results.pop();
+                }
+            }
         }
 
         while let Some(curr) = candidates.pop() {
@@ -279,7 +319,7 @@ impl NativeHnswGraph {
         }
         let q32: Vec<f32> = raw_query.iter().map(|v| *v as f32).collect();
         let unit_q = Self::normalize(&q32);
-        let ef = (k.saturating_mul(2)).max(64);
+        let ef = (k.saturating_mul(4)).max(128);
         self.beam_search(&unit_q, ef)
             .into_iter()
             .take(k)
@@ -335,6 +375,9 @@ pub fn query_native_hnsw(
     query_vector: &[f64],
     k: usize,
 ) -> Result<(Vec<String>, usize), String> {
+    if let Some(p) = conn.path().filter(|p| !p.is_empty()) {
+        check_disk_sidecar_alignment(Path::new(p), model_id, dim as i64)?;
+    }
     let db_key = conn
         .path()
         .filter(|p| !p.is_empty())

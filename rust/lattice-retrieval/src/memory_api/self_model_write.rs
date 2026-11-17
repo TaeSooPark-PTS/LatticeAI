@@ -1,29 +1,10 @@
-//! The Self-Model's write side — native (v11.7.0).
+//! The Self-Model's write side — native (v11.7.0+).
 //!
-//! Port of the write half of `lattice_brain/self_model.py`, plus
-//! `synthesis._stamp_resolution`. Until v11.7.0 these five operations were
-//! posted to `POST /worker/graph/mutate`; the Python worker stopped serving
-//! that door in v11.6.0, so **every one of them answered 404 on a live
-//! install** — a Self-Model fact could not be added, corrected, proposed,
-//! approved or deleted, and a resolved contradiction always reported
-//! `stamps: []`. Nothing was lost, because nothing was written.
-//!
-//! The governance shape is Python's, unchanged:
-//!
-//! * **Extraction never writes.** [`propose`] reads text and raises one review
-//!   proposal per candidate through the same desk synthesis uses
-//!   ([`crate::brain_api::desk`]).
-//! * **[`apply`] is the only path from a proposal to a node**, and it writes
-//!   nothing until the approve has returned.
-//! * **The user writes directly.** [`upsert`] and [`delete`] are
-//!   user-initiated edits: ownership means a person can correct their own
-//!   profile without asking a queue for permission.
-//! * **Deterministic.** The extractor is a table of first-person patterns; the
-//!   same text always yields the same candidates in the same order.
-//!
-//! Refusals carry `SelfModelError.code` in the detail, which is what
-//! `self_model::seam_error` reads to pick the catalog sentence — the codes are
-//! the contract, not the English text beside them.
+//! Governance invariants:
+//! * **Extraction never writes.** [`propose`] raises review proposals via [`crate::brain_api::desk`].
+//! * **[`apply`] is the only path from proposal to node**, writing only after approval.
+//! * **Direct user ownership.** [`upsert`] and [`delete`] edit the user's own profile directly.
+//! * **Deterministic.** Ordered first-person pattern table; refusals carry `SelfModelError.code`.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -87,7 +68,7 @@ fn patterns() -> &'static [(&'static str, Regex, f64, &'static str)] {
     static TABLE: std::sync::OnceLock<Vec<(&'static str, Regex, f64, &'static str)>> =
         std::sync::OnceLock::new();
     TABLE.get_or_init(|| {
-        let rows: [(&'static str, &'static str, f64, &'static str); 12] = [
+        let rows: [(&'static str, &'static str, f64, &'static str); 18] = [
             (
                 "decision",
                 r"결정\s*[:：]\s*(?P<v>[^\n]+)",
@@ -120,39 +101,63 @@ fn patterns() -> &'static [(&'static str, Regex, f64, &'static str)] {
             ),
             (
                 "preference",
-                r"(?i)\bI\s+(?:prefer|like|love|hate|dislike|avoid)\s+(?P<v>[^\n.!?]+)",
+                r"(?:답변은|설명은|코드는)\s*(?P<v>[^\n.。!?]+?)\s*(?:해\s*주세요|작성해\s*주세요|부탁합니다|좋겠습니다)",
+                0.72,
+                "ko_style_preference",
+            ),
+            (
+                "preference",
+                r"(?i)\bI\s+(?:prefer|like|love|hate|dislike|avoid|would\s+rather)\s+(?P<v>[^\n.!?]+)",
                 0.7,
                 "en_first_person_preference",
+            ),
+            (
+                "preference",
+                r"(?i)\bPlease\s+always\s+(?P<v>[^\n.!?]+)",
+                0.72,
+                "en_always_preference",
             ),
             (
                 // The frequency word stays inside the capture: "회고를 씁니다"
                 // is a sentence, "매일 회고를 씁니다" is a habit.
                 "habit",
-                r"(?P<v>(?:매일|매주|매달|아침마다|항상|늘)\s*[^\n.。!?]+)",
+                r"(?P<v>(?:매일|매주|매달|아침마다|항상|늘|평소)\s*[^\n.。!?]+)",
                 0.65,
                 "ko_routine",
             ),
             (
                 "habit",
-                r"(?i)\bI\s+(?P<v>(?:always|usually|every\s+(?:morning|day|week))\s+[^\n.!?]+)",
+                r"(?:나는|저는)\s*(?P<v>주로\s*[^\n.。!?]+?(?:사용합니다|씁니다|활용합니다|일합니다))",
+                0.68,
+                "ko_primary_tool_habit",
+            ),
+            (
+                "habit",
+                r"(?i)\bI\s+(?P<v>(?:always|usually|normally|every\s+(?:morning|day|week))\s+[^\n.!?]+)",
                 0.65,
                 "en_routine",
             ),
             (
+                "habit",
+                r"(?i)\bI\s+(?P<v>primarily\s+(?:use|work\s+with)\s+[^\n.!?]+)",
+                0.68,
+                "en_primary_tool_habit",
+            ),
+            (
                 "relationship",
-                r"(?:내|제)\s*(?P<v>(?:동료|팀장|매니저|친구|파트너|상사|멘토)\s+\S+)",
+                r"(?:내|제)\s*(?P<v>(?:동료|팀장|매니저|친구|파트너|상사|멘토|공동창업자)\s+\S+)",
                 0.6,
                 "ko_relationship",
             ),
             (
                 "relationship",
-                r"(?i)\bmy\s+(?P<v>(?:colleague|manager|teammate|friend|partner|mentor|boss)\s+[^\n.!?,]+)",
+                r"(?i)\bmy\s+(?P<v>(?:colleague|manager|teammate|friend|partner|mentor|boss|cofounder)\s+[^\n.!?,]+)",
                 0.6,
                 "en_relationship",
             ),
             (
                 "trait",
-                r"(?:나는|저는)\s*(?P<v>[^\n.。]*?(?:개발자|디자이너|엔지니어|연구원|학생|기획자))\s*(?:입니다|이다|다|예요)",
+                r"(?:나는|저는)\s*(?P<v>[^\n.。]*?(?:개발자|디자이너|엔지니어|연구원|학생|기획자|아키텍트|창업자|데이터\s*사이언티스트|교수))\s*(?:입니다|이다|다|예요)",
                 0.6,
                 "ko_role",
             ),
@@ -161,6 +166,18 @@ fn patterns() -> &'static [(&'static str, Regex, f64, &'static str)] {
                 r"(?i)\bI\s+am\s+an?\s+(?P<v>[^\n.!?]+)",
                 0.6,
                 "en_role",
+            ),
+            (
+                "trait",
+                r"(?i)\bI\s+work\s+as\s+an?\s+(?P<v>[^\n.!?]+)",
+                0.65,
+                "en_work_as_role",
+            ),
+            (
+                "decision",
+                r"(?i)\bI\s+never\s+(?P<v>[^\n.!?]+)",
+                0.68,
+                "en_never_constraint",
             ),
         ];
         rows.into_iter()

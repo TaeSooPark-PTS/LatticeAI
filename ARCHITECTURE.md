@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **12.9.0 — Semantic Guard**.
+Current release: **12.10.0 — Grounded Self**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -1906,13 +1906,13 @@ reach any of it from the app; that gap is what 10.1.1 closes.
 
 ## Release Artifact Map
 
-12.9.0 exact artifact names:
+12.10.0 exact artifact names:
 
-- `dist/ltcai-12.9.0-py3-none-any.whl`
-- `dist/ltcai-12.9.0.tar.gz`
-- `ltcai-12.9.0.tgz`
-- `dist/ltcai-12.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.9.0_aarch64.dmg`
+- `dist/ltcai-12.10.0-py3-none-any.whl`
+- `dist/ltcai-12.10.0.tar.gz`
+- `ltcai-12.10.0.tgz`
+- `dist/ltcai-12.10.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.10.0_aarch64.dmg`
 
 The macOS DMG is built, smoke-verified, checksummed, and attached to GitHub
 Releases by `.github/workflows/release.yml` and `publish.yml` — Developer ID

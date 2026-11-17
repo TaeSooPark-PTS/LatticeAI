@@ -721,23 +721,6 @@ pub(crate) fn parse_json_object(bytes: &[u8]) -> Result<serde_json::Map<String, 
     })
 }
 
-pub(crate) fn language_of(headers: &HeaderMap) -> &'static str {
-    messages::resolve_language_from_headers(
-        headers
-            .iter()
-            .filter_map(|(k, v)| v.to_str().ok().map(|v| (k.as_str(), v))),
-    )
-}
-
-pub(crate) fn message_detail(status: u16, id: &str, headers: &HeaderMap) -> Response {
-    let err = messages::http_error(status, id, language_of(headers), &[]);
-    let (code, body) = err.into_response_parts();
-    json_status(
-        StatusCode::from_u16(code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-        &body,
-    )
-}
-
 pub(crate) fn now_iso_utc() -> String {
     now_iso()
 }

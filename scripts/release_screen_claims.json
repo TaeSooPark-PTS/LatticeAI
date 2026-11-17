@@ -20,6 +20,21 @@
     "whole-image delta: naming where the change is makes the claim more",
     "specific, not less."
   ],
+  "12.10.0": {
+    "_why": [
+      "Grounded Self adds deterministic agent transcript grounding",
+      "(grounding.rs), interactive citation proof details (AnswerProof.tsx),",
+      "the Brain SelfModelPanel card (mounted below the graph fold on /brain),",
+      "PART_OF edge cascade parity across edges and edges_v2, cooperative 499",
+      "download cancellation + post-download semantic embedding activation,",
+      "crate-internal http_reply.rs decoupling, 6/6 worker server-i18n lock,",
+      "parallel cargo nextest, and chained release.yml -> publish.yml CD.",
+      "",
+      "Above-the-fold baseline screen shells were not redesigned (05-memory-graph",
+      "carries normal ~2-3% Cytoscape layout jitter and below-fold SelfModelPanel).",
+      "Empty claim set on purpose."
+    ]
+  },
   "12.9.0": {
     "_why": [
       "Semantic Guard completes contract-aligned semantic query embedding",

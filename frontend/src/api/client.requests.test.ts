@@ -397,6 +397,11 @@ const ENDPOINT_TABLE: EndpointCase[] = [
   // carrying a slash must not be able to address a different route.
   { name: "chronicleDay", invoke: () => api.chronicleDay("../overview"), method: "GET", path: "/api/chronicle/day/..%2Foverview" },
   { name: "chronicleAsOf", invoke: () => api.chronicleAsOf("2026-06-06T23:59:59"), method: "GET", path: "/api/chronicle/as-of", query: { ts: "2026-06-06T23:59:59" } },
+  { name: "selfModel", invoke: () => api.selfModel(), method: "GET", path: "/api/memory/self-model" },
+  { name: "upsertSelfModelFact", invoke: () => api.upsertSelfModelFact("preference", "간결함"), method: "POST", path: "/api/memory/self-model", body: { kind: "preference", text: "간결함" } },
+  { name: "deleteSelfModelFact", invoke: () => api.deleteSelfModelFact("self:preference:1"), method: "DELETE", path: "/api/memory/self-model/self%3Apreference%3A1" },
+  { name: "proposeSelfModel", invoke: () => api.proposeSelfModel("매일 아침 회고"), method: "POST", path: "/api/memory/self-model/propose", body: { text: "매일 아침 회고", source: "ui" } },
+  { name: "applySelfModelProposal", invoke: () => api.applySelfModelProposal("rev-1"), method: "POST", path: "/api/memory/self-model/apply", body: { item_id: "rev-1" } },
 ];
 
 // Wrappers whose behavior is not "one request, one envelope": each has its own
@@ -414,6 +419,7 @@ const SPECIAL_CASES = new Set([
   "readWorkspaceFile",
   "downloadWorkspaceFile",
   "uploadDocument",
+  "resolveApprovedLocalServeUrl",
 ]);
 
 describe("every endpoint wrapper", () => {

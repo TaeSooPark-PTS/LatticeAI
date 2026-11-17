@@ -19,8 +19,8 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
+use crate::http_reply;
 use crate::knowledge::network::DeviceIdentity;
-use crate::workspaceos::project_sessions;
 
 pub(super) use super::kdf::{
     ct_eq, hkdf_sha256, hmac_sha256, pbkdf2_hmac_sha256, scrypt_kdf, sha256_hex,
@@ -215,7 +215,7 @@ pub(crate) fn seal_and_write_archive(
     mode: EncryptionMode<'_>,
     identity: &DeviceIdentity,
 ) -> Result<(Value, Value), String> {
-    let created_at = project_sessions::now_iso_utc();
+    let created_at = http_reply::now_iso_utc();
     let plaintext_sha = sha256_hex(plaintext);
 
     // Ensure manifest carries checksums + metadata cleanly.

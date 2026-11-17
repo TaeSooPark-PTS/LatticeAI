@@ -17,14 +17,13 @@ import {
 } from "./base";
 import { cloudStatus } from "./cloud";
 import { readEventStream } from "./eventStream";
+import { selfModelApi } from "./selfModel";
 
 export type { CloudProviderMode, CloudProviderStatus } from "./cloud";
 export { normalizeCloudStatus, CLOUD_STATUS_UNCONFIGURED } from "./cloud";
+export type { SelfModelFact, SelfModelKind, SelfModelSnapshot } from "./selfModel";
 
 export type { ApiResult } from "./base";
-// The chronicle reads live in their own module (they are one cohesive
-// surface, and this file has a line budget); callers keep importing them
-// from "@/api/client" as they do every other endpoint type.
 export type {
   ChronicleAsOf,
   ChronicleChangeCard,
@@ -991,4 +990,5 @@ export const latticeApi = {
   pipelineStatus: () => get("/knowledge-graph/pipeline/status", {}),
   activityRuns: (limit = 20) => get("/api/activity/runs", { runs: [] }, { limit }),
   adminHealthSummary: () => get("/admin/health-summary", { status: "ok", issue_count: 0, issues: [] }),
+  ...selfModelApi,
 };

@@ -96,6 +96,23 @@ function resolveLanguage(stored, uiLanguage) {
   );
 }
 
+/** Extract server-configured language from `/api/features` or profile/settings payloads. */
+function extractServerLanguage(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  if (typeof payload.language === "string") {
+    const direct = normalizeLanguage(payload.language);
+    if (direct) return direct;
+  }
+  const features = Array.isArray(payload.features) ? payload.features : [];
+  for (const item of features) {
+    if (item && (item.id === "language" || item.id === "ui_language")) {
+      const candidate = normalizeLanguage(item.current || item.default);
+      if (candidate) return candidate;
+    }
+  }
+  return null;
+}
+
 function t(language, key, params) {
   const table = COPY[language] || COPY[DEFAULT_LANGUAGE];
   let text = table[key] || COPY[DEFAULT_LANGUAGE][key] || key;
@@ -181,15 +198,20 @@ function initializePopup() {
     statusEl.className = "status" + (kind ? " " + kind : "");
   }
 
-  const language = resolveLanguage(
-    null,
-    chrome.i18n?.getUILanguage?.() || navigator.language,
-  );
+  const browserUiLang = chrome.i18n?.getUILanguage?.() || navigator.language;
+  let language = resolveLanguage(null, browserUiLang);
   document.documentElement.lang = language;
 
-  // Remember the last-used valid port.
-  chrome.storage?.local.get(["latticePort"], (result) => {
+  function applyLanguage(next) {
+    const resolved = resolveLanguage(next, browserUiLang);
+    language = resolved;
+    document.documentElement.lang = resolved;
+  }
+
+  // Remember the last-used valid port and synced language preference.
+  chrome.storage?.local.get(["latticePort", "latticeLanguage"], (result) => {
     portInput.value = String(normalizePort(result?.latticePort));
+    if (result?.latticeLanguage) applyLanguage(result.latticeLanguage);
   });
 
   /** Headers every local call carries, so the server answers in this language too. */
@@ -302,11 +324,26 @@ function initializePopup() {
     }
   });
 
-  // ── Pending approvals (v9.9.7) ────────────────────────────────────────────
+  // ── Pending approvals & server language sync ──────────────────────────────
   const approvalsEl = document.getElementById("approvals");
   (async () => {
-    if (!approvalsEl) return;
     const port = normalizePort(portInput.value);
+    try {
+      const featResp = await fetchWithTimeout(
+        `http://127.0.0.1:${port}/api/features`,
+        { credentials: "include", headers: localHeaders() },
+      );
+      if (featResp.ok) {
+        const synced = extractServerLanguage(await featResp.json());
+        if (synced && synced !== language) {
+          applyLanguage(synced);
+          chrome.storage?.local.set({ latticeLanguage: synced });
+        }
+      }
+    } catch {
+      // Optional sync: popup keeps stored/browser language when runtime is offline.
+    }
+    if (!approvalsEl) return;
     try {
       const resp = await fetchWithTimeout(
         `http://127.0.0.1:${port}/agent/approvals`,
@@ -328,6 +365,7 @@ if (typeof module !== "undefined" && module.exports) {
     COPY,
     DEFAULT_LANGUAGE,
     DEFAULT_PORT,
+    extractServerLanguage,
     normalizeLanguage,
     resolveLanguage,
     t,

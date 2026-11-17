@@ -1,3 +1,9 @@
+# [v12.10.0 - Grounded Self] (2026-11-17)
+
+결정론적 에이전트 트랜스크립트 근거 검증(`grounding.rs`)·답변 인용 증빙(`AnswerProof.tsx`)·브라우저 확장 언어 동기화, Brain 자기 모델 패널(`SelfModelPanel.tsx`, Vitest 100%) 및 지식 그래프 `PART_OF` 엣지(`edges`·`edges_v2`) 연쇄 삭제 보장, 협력적 모델 다운로드 취소(`499`)와 임베딩 모델 설치 직후 시맨틱 임베딩 자동 전환·배치 리인덱싱 드레인, `http_reply.rs` 도메인 간 결합 제거·Python 워커 라우터 6/6 전수 i18n 잠금·병렬 `cargo nextest`(`scripts/run_rust_tests.mjs`) 및 `release.yml`→`publish.yml` 자동 CD 체이닝을 적용했습니다.
+
+See [docs/releases/RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md).
+
 # [v12.9.0 - Semantic Guard] (2026-11-17)
 
 시맨틱 쿼리 임베딩 계약 정렬(`query_embed.rs`)·순수 Rust `NativeHnswIndex`·워크스페이스/모델 스코프 Python HNSW 사이드카, `network_boundary_guard.rs` 및 `lattice-chat` 클라우드 경계 fail-closed 격리, 데스크톱(Tauri)·`LTCAI` CLI·호스트 슈퍼바이저·멀티스테이지 Docker 런타임 가드레일, 실시간 Workspace OS SSE(`/api/realtime/stream`, `useRealtimeStream.ts`) 및 `useAppBootstrap.ts` 분리, `.latticebrain` v2 아카이브 KDF 강화와 CI/Sidecar/Audit 게이트 보강을 적용했습니다.
@@ -89,10 +95,11 @@ See [docs/releases/RELEASE_NOTES_v12.0.0.md](docs/releases/RELEASE_NOTES_v12.0.0
 
 # Release Notes
 
-This repository keeps public release history from **12.0.0 through 12.9.0** (the modern `v12.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `12.x` era, and this index follows the same boundary.
+This repository keeps public release history from **12.0.0 through 12.10.0** (the modern `v12.x` Rust-host + domain-grouped architecture era). `SECURITY.md` supports the `12.x` era, and this index follows the same boundary.
 
 ## v12.x Releases
 
+- [v12.10.0 - Grounded Self](docs/releases/RELEASE_NOTES_v12.10.0.md)
 - [v12.9.0 - Semantic Guard](docs/releases/RELEASE_NOTES_v12.9.0.md)
 - [v12.8.0 - Trusted Brain](docs/releases/RELEASE_NOTES_v12.8.0.md)
 - [v12.7.0 - Fast Index](docs/releases/RELEASE_NOTES_v12.7.0.md)

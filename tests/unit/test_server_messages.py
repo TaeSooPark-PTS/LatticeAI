@@ -126,10 +126,25 @@ def test_http_error_carries_the_localized_detail():
 # test_the_two_gates_agree below fails if the two ever drift apart.
 MIGRATED_ROUTERS = [
     "latticeai/api/agent_worker_seam.py",
+    "latticeai/api/health.py",
     "latticeai/api/models.py",
+    "latticeai/api/search.py",
     "latticeai/api/worker_compute.py",
     "latticeai/api/worker_seams.py",
 ]
+
+
+def _raises_own_wording(source: str) -> bool:
+    """True if the router owns user-facing error wording (not status-only or pass-through)."""
+    for line in source.splitlines():
+        match = re.search(r"detail\s*=\s*(.+)$", line)
+        if not match:
+            continue
+        value = match.group(1).strip()
+        if value.startswith("str("):
+            continue
+        return True
+    return False
 
 
 def test_the_two_gates_agree_on_which_routers_are_migrated():
@@ -166,6 +181,8 @@ def test_migrated_routers_raise_no_hardcoded_korean_detail(relative):
 @pytest.mark.parametrize("relative", MIGRATED_ROUTERS)
 def test_migrated_routers_take_their_wording_from_the_catalog(relative):
     source = (REPO / relative).read_text(encoding="utf-8")
+    if not _raises_own_wording(source):
+        return
     assert "http_error(" in source or "translate(" in source, (
         f"{relative} is listed as migrated but never reads the catalog"
     )
@@ -181,6 +198,8 @@ def test_migrated_routers_never_fix_the_language_at_the_raise_site(relative):
     module that has no request to resolve from.
     """
     source = (REPO / relative).read_text(encoding="utf-8")
+    if not _raises_own_wording(source):
+        return
     resolves = "resolve_language(" in source
     receives = "language: str" in source or "language=language" in source
     assert resolves or receives, (

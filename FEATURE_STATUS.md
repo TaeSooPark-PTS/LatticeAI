@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v12.9.0)
+# Lattice AI Feature Status (v12.10.0)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **12.9.0 — Semantic Guard**.
+Current release: **12.10.0 — Grounded Self**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 12.0.0 and later in `RELEASE.md` and

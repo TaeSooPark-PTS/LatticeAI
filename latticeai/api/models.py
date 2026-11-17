@@ -440,7 +440,10 @@ def create_models_router(
 
     @router.delete("/models/unload/{model_id:path}")
     async def unload_model(model_id: str, request: Request):
+        from latticeai.services.model_runtime.download import request_download_cancel
+
         _authorize_model_admin(request)
+        request_download_cancel(model_id)
         _router.unload_model(model_id)
         return {"status": "ok", "unloaded": model_id}
 

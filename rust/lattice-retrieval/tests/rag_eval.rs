@@ -566,3 +566,100 @@ fn quantitative_rag_evaluation_suite_meets_quality_and_latency_gates() {
     assert!(report.ingest_latency.p50_ms >= 0.0 && report.ingest_latency.p95_ms >= 0.0);
     assert!(report.search_latency.p50_ms >= 0.0 && report.search_latency.p95_ms >= 0.0);
 }
+
+#[test]
+fn default_native_hnsw_achieves_high_recall_at_10_with_bruteforce_rollback() {
+    let conn = setup_scoped_db();
+    conn.execute_batch("ALTER TABLE vector_embeddings ADD COLUMN text_hash TEXT DEFAULT '';")
+        .expect("add text_hash");
+    let model = LocalEmbeddingModel::default();
+
+    let topics = [
+        "quantum error correction stabilizer surface code",
+        "sqlite wal checkpoint busy timeout concurrency",
+        "rust async tokio channel backpressure cancellation",
+        "apple silicon mlx unified memory 4bit quantization",
+        "knowledge graph reciprocal rank fusion bm25f",
+        "zero trust loopback session csrf network boundary",
+        "tauri macos dmg notarization codesign bundle",
+        "hnsw navigable small world cosine rescore recall",
+    ];
+    // Populate 600 nodes (>= HNSW_AUTO_MIN_ROWS = 512) so default unset env uses NativeHnsw!
+    for idx in 0..600 {
+        let topic = topics[idx % topics.len()];
+        let nid = format!("doc:bench:{idx:04}");
+        let title = format!("Bench {idx:04} {topic}");
+        let summary = format!("Detailed notes on {topic} variant {idx} with keyword marker_{idx}");
+        let vec = model.embed(&format!("{title} {summary}"));
+        let mut blob = Vec::with_capacity(vec.len() * 4);
+        for v in &vec {
+            blob.extend_from_slice(&(*v as f32).to_le_bytes());
+        }
+        conn.execute(
+            "INSERT INTO nodes (id, type, title, summary, metadata_json) VALUES (?1, 'Document', ?2, ?3, '{\"workspace_id\":\"ws-bench\"}')",
+            params![nid, title, summary],
+        )
+        .expect("insert node");
+        conn.execute(
+            "INSERT INTO vector_embeddings (item_id, item_type, source_node, embedding, embedding_dim, embedding_model, text_hash)
+             VALUES (?1, 'node', ?1, ?2, ?3, ?4, ?5)",
+            params![nid, blob, model.dim() as i64, model.model_id(), format!("h{idx}")],
+        )
+        .expect("insert vec");
+    }
+
+    let opts = VectorSearchOptions {
+        limit: 10,
+        min_score: -1.0,
+        scope: None,
+        include_historical: false,
+    };
+
+    let queries = [
+        "quantum stabilizer surface code error correction",
+        "sqlite wal concurrency busy timeout",
+        "tokio async channel backpressure",
+        "mlx unified memory 4bit quantization",
+        "knowledge graph bm25f reciprocal rank fusion",
+        "hnsw cosine rescore recall",
+    ];
+
+    let mut recall_sum = 0.0f64;
+    for q in &queries {
+        std::env::set_var("LATTICEAI_VECTOR_INDEX", "bruteforce");
+        let exact = vector_search_aligned(&conn, VectorQueryInput::Model(&model), q, &opts)
+            .expect("exact search");
+        assert_eq!(exact["index"]["name"], "brute");
+        assert_eq!(exact["recall"]["candidates_scanned"], 600);
+        let exact_ids: BTreeSet<String> = exact["matches"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|m| m["id"].as_str().map(str::to_string))
+            .collect();
+
+        std::env::remove_var("LATTICEAI_VECTOR_INDEX");
+        let hnsw = vector_search_aligned(&conn, VectorQueryInput::Model(&model), q, &opts)
+            .expect("default hnsw search");
+        assert_eq!(hnsw["index"]["name"], "hnsw+rescore");
+        assert_eq!(hnsw["index"]["honored"], true);
+        let evaluated = hnsw["recall"]["candidates_scanned"].as_i64().unwrap();
+        assert!(
+            (1..=256).contains(&evaluated),
+            "native HNSW must prune candidate evaluations (got {evaluated})"
+        );
+        let hnsw_ids: BTreeSet<String> = hnsw["matches"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|m| m["id"].as_str().map(str::to_string))
+            .collect();
+        let overlap = exact_ids.intersection(&hnsw_ids).count() as f64;
+        recall_sum += overlap / (exact_ids.len().max(1) as f64);
+    }
+    let mean_recall_at_10 = recall_sum / (queries.len() as f64);
+    assert!(
+        mean_recall_at_10 >= 0.98,
+        "default native HNSW Recall@10 ({mean_recall_at_10:.4}) fell below 0.98 floor"
+    );
+}

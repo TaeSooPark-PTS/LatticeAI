@@ -200,7 +200,26 @@ pub fn score_action(reply: &str) -> ActionScore {
             if action.get("action").and_then(Value::as_str) != Some("write_file") {
                 return ActionScore::Failed;
             }
-            if repairs.is_empty() {
+            let args = action
+                .get("args")
+                .or_else(|| action.get("params"))
+                .filter(|v| v.is_object());
+            let path = args
+                .and_then(|a| a.get("path").or_else(|| a.get("file_path")))
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim();
+            let content = args
+                .and_then(|a| a.get("content"))
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            if !path.ends_with("probe.txt") || content.trim().is_empty() {
+                return ActionScore::Failed;
+            }
+            let full_content_ok = content.contains("hello")
+                && content.contains('\n')
+                && content.contains("she said \"hi\"");
+            if repairs.is_empty() && full_content_ok {
                 ActionScore::Clean
             } else {
                 ActionScore::Repaired
@@ -450,6 +469,18 @@ mod tests {
         // A parsed object naming a different action is a guess, not a contract.
         assert_eq!(
             score_action(r#"{"action": "final", "message": "done"}"#),
+            ActionScore::Failed
+        );
+        // Clean JSON that drops the escaped quote or second line is demoted to
+        // Repaired (`compact`), while missing path/content fails to `guided`.
+        assert_eq!(
+            score_action(
+                r#"{"thoughts": "w", "action": "write_file", "args": {"path": "probe.txt", "content": "hello"}}"#
+            ),
+            ActionScore::Repaired
+        );
+        assert_eq!(
+            score_action(r#"{"thoughts": "w", "action": "write_file", "args": {}}"#),
             ActionScore::Failed
         );
         assert_eq!(score_action(""), ActionScore::Failed);

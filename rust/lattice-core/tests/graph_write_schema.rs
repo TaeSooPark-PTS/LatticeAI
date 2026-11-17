@@ -206,3 +206,69 @@ fn row_counts(store: &Store) -> Vec<(String, i64)> {
         })
         .expect("count rows")
 }
+
+#[test]
+fn delete_node_cascades_part_of_edges_across_v1_and_v2() {
+    use lattice_core::graph_write::types::{EdgeSpec, NodeSpec};
+    use serde_json::Map;
+
+    let work = tempfile::tempdir().expect("temp dir");
+    let path = work.path().join("knowledge_graph.sqlite");
+    let (store, writer) = open_writer(&path);
+
+    let root = NodeSpec {
+        id: "self:root".into(),
+        node_type: "Self".into(),
+        title: "Root".into(),
+        summary: "Root".into(),
+        metadata: Map::new(),
+        raw: Map::new(),
+        owner: None,
+        workspace_id: None,
+        visibility: None,
+    };
+    let fact = NodeSpec {
+        id: "self:preference:1".into(),
+        node_type: "Preference".into(),
+        title: "Dark mode".into(),
+        summary: "Dark mode".into(),
+        metadata: Map::new(),
+        raw: Map::new(),
+        owner: None,
+        workspace_id: None,
+        visibility: None,
+    };
+    writer.upsert_nodes(&[root, fact]).expect("upsert nodes");
+    writer
+        .upsert_edges(&[EdgeSpec {
+            from_node: "self:preference:1".into(),
+            to_node: "self:root".into(),
+            edge_type: "PART_OF".into(),
+            weight: 1.0,
+            metadata: Map::new(),
+            legacy_label: None,
+        }])
+        .expect("upsert PART_OF edge");
+
+    assert!(writer
+        .delete_node("self:preference:1")
+        .expect("delete_node"));
+
+    store
+        .with_read_conn(|conn| {
+            let v1_edges: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM edges WHERE from_node='self:preference:1' OR to_node='self:preference:1'",
+                [],
+                |r| r.get(0),
+            )?;
+            let v2_edges: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM edges_v2 WHERE source='self:preference:1' OR target='self:preference:1'",
+                [],
+                |r| r.get(0),
+            )?;
+            assert_eq!(v1_edges, 0, "PART_OF edge must be deleted from edges");
+            assert_eq!(v2_edges, 0, "PART_OF edge must be deleted from edges_v2");
+            Ok(())
+        })
+        .expect("verify PART_OF cascade");
+}

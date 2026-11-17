@@ -7,7 +7,7 @@ use lattice_auth::OrderedMap;
 use lattice_core::db::RuntimeConfig;
 use serde_json::{json, Value};
 
-use crate::workspaceos::project_sessions::{json_ok, message_detail};
+use crate::http_reply::{json_ok, message_detail};
 
 use super::*;
 

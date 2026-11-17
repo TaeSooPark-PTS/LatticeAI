@@ -87,6 +87,18 @@ fn graph_stats() -> serde_json::Value {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn admin_fixtures_replay() {
+    for key in [
+        "LATTICEAI_TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_BOT_TOKEN",
+        "LATTICEAI_ENABLE_TELEGRAM",
+        "LATTICEAI_ENABLE_EXTERNAL_CONNECTORS",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GOOGLE_API_KEY",
+        "GEMINI_API_KEY",
+    ] {
+        std::env::remove_var(key);
+    }
     let fixture = load_fixture("admin.json");
     let mut checked = 0usize;
     for case in fixture["fixtures"].as_array().unwrap() {

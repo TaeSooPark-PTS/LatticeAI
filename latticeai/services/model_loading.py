@@ -460,26 +460,65 @@ async def prepare_and_load_model_stream(
                 "detail": deps["_friendly_model_runtime_error"](exc, model_id=model_id, engine=parsed_provider),
             })
 
+    from latticeai.services.model_runtime.download import clear_download_cancel
+
+    clear_download_cancel(model_id)
+    clear_download_cancel(parsed_model)
+
     worker = threading.Thread(target=blocking_prepare, daemon=True)
     worker.start()
 
-    while True:
-        item = await asyncio.to_thread(work_queue.get)
-        kind = item.get("kind")
-        if kind == "progress":
-            yield sse_event("progress", item["data"])
-        elif kind == "error":
-            raise ModelRuntimeError(
-                status_code=int(item.get("status_code") or 500),
-                detail=item.get("detail") or "모델 준비에 실패했습니다.",
-            )
-        elif kind == "done":
+    cancelled = False
+    async for ev in _iter_prepare_queue_events(work_queue, request, model_id, parsed_model):
+        if ev == "__cancelled__":
+            cancelled = True
             break
+        yield ev
+    if cancelled:
+        return
 
     prepared_model_id = str(work_result.get("model_id") or model_id)
     prepared_provider = str(work_result.get("parsed_provider") or parsed_provider)
+    prepared_model_name = str(work_result.get("parsed_model") or parsed_model)
     install_result = work_result.get("install_result") or {}
     download_result = work_result.get("download_result")
+
+    async for ev in _finalize_loaded_stream_events(
+        deps,
+        request=request,
+        user_email=user_email,
+        prepared_model_id=prepared_model_id,
+        prepared_provider=prepared_provider,
+        prepared_model_name=prepared_model_name,
+        install_result=install_result,
+        download_result=download_result,
+    ):
+        yield ev
+
+
+async def _finalize_loaded_stream_events(
+    deps: Dict[str, Any],
+    *,
+    request: Any,
+    user_email: Optional[str],
+    prepared_model_id: str,
+    prepared_provider: str,
+    prepared_model_name: str,
+    install_result: Any,
+    download_result: Any,
+) -> AsyncIterator[str]:
+    embed_done = _maybe_build_embedding_done_payload(
+        deps,
+        prepared_model_id=prepared_model_id,
+        prepared_provider=prepared_provider,
+        prepared_model_name=prepared_model_name,
+        install_result=install_result,
+        download_result=download_result,
+    )
+    if embed_done is not None:
+        for ev in embed_done:
+            yield ev
+        return
 
     yield sse_event("progress", deps["model_download_progress_payload"](
         "load",
@@ -542,6 +581,90 @@ async def prepare_and_load_model_stream(
         eta_seconds=0,
     ))
     yield sse_event("done", result)
+
+
+async def _iter_prepare_queue_events(
+    work_queue: "queue.Queue[Dict[str, Any]]",
+    request: Any,
+    model_id: str,
+    parsed_model: str,
+) -> AsyncIterator[str]:
+    from latticeai.services.model_runtime.download import request_download_cancel
+
+    def _poll() -> Optional[Dict[str, Any]]:
+        try:
+            return work_queue.get(timeout=0.25)
+        except queue.Empty:
+            return None
+
+    while True:
+        item = await asyncio.to_thread(_poll)
+        if item is None:
+            if request is not None and hasattr(request, "is_disconnected"):
+                if await request.is_disconnected():
+                    request_download_cancel(model_id)
+                    request_download_cancel(parsed_model)
+                    yield "__cancelled__"
+                    return
+            continue
+        kind = item.get("kind")
+        if kind == "progress":
+            yield sse_event("progress", item["data"])
+        elif kind == "error":
+            raise ModelRuntimeError(
+                status_code=int(item.get("status_code") or 500),
+                detail=item.get("detail") or "모델 준비에 실패했습니다.",
+            )
+        elif kind == "done":
+            return
+
+
+def _maybe_build_embedding_done_payload(
+    deps: Dict[str, Any],
+    *,
+    prepared_model_id: str,
+    prepared_provider: str,
+    prepared_model_name: str,
+    install_result: Any,
+    download_result: Any,
+) -> Optional[list[str]]:
+    from latticeai.services.embedding_recommendation import (
+        activate_downloaded_embedding_model,
+        is_embedding_model_id,
+    )
+
+    if not is_embedding_model_id(prepared_model_name):
+        return None
+    transition = activate_downloaded_embedding_model(
+        prepared_model_name, provider=prepared_provider
+    )
+    is_cached = isinstance(download_result, dict) and bool(download_result.get("cached"))
+    result = {
+        "status": "ok",
+        "message": f"임베딩 모델 준비 및 시맨틱 전환 완료: {prepared_model_name}",
+        "model": prepared_model_id,
+        "current": deps["router"].current_model_id,
+        "engine": prepared_provider,
+        "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
+        "download": download_result,
+        "downloaded": bool(download_result and not is_cached),
+        "loaded": True,
+        "ready_to_chat": False,
+        "compatibility_status": "ok",
+        "embedding_transition": transition,
+    }
+    return [
+        sse_event(
+            "progress",
+            deps["model_download_progress_payload"](
+                "done",
+                "시맨틱 임베딩 전환이 준비되었습니다.",
+                percent=100,
+                eta_seconds=0,
+            ),
+        ),
+        sse_event("done", result),
+    ]
 
 
 # To maintain exact public API, model_runtime will re-export these.

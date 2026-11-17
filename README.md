@@ -15,7 +15,7 @@
 
 <br/>
 
-![v12.9.0 Living Brain walkthrough](output/release/v12.9.0/gifs/v12.9.0-living-brain-walkthrough.gif)
+![v12.10.0 Living Brain walkthrough](output/release/v12.10.0/gifs/v12.10.0-living-brain-walkthrough.gif)
 
 </div>
 
@@ -38,7 +38,7 @@ Lattice AI is a **local-first Digital Brain** that unifies your conversations, f
 
 ### 1. Desktop App (macOS)
 
-Download `Lattice AI_12.9.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
+Download `Lattice AI_12.10.0_aarch64.dmg` from [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases) and launch the app.
 
 ### 2. One-Command CLI & Web Studio
 
@@ -67,15 +67,15 @@ Install [`parktaesoo.ltcai`](https://marketplace.visualstudio.com/items?itemName
 
 | Onboarding & Hardware Fit | Live Model Library & SSE Progress |
 | --- | --- |
-| ![Recommended Models](output/release/v12.9.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v12.9.0/screenshots/03-install-load-progress.png) |
+| ![Recommended Models](output/release/v12.10.0/screenshots/02-recommended-models.png) | ![Install & Load Progress](output/release/v12.10.0/screenshots/03-install-load-progress.png) |
 | **Brain Chat Home** — grounded answers with source proof | **Memory Graph** — explore 2-hop concept & file links |
-| ![Brain Chat Home](output/release/v12.9.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v12.9.0/screenshots/05-memory-graph.png) |
+| ![Brain Chat Home](output/release/v12.10.0/screenshots/04-brain-chat-home.png) | ![Memory Graph](output/release/v12.10.0/screenshots/05-memory-graph.png) |
 | **Capture & Knowledge Journey** — watch material become memory | **Review Center** — inspect diffs before any edit applies |
-| ![Material to Memory](output/release/v12.9.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v12.9.0/screenshots/12-review-center.png) |
+| ![Material to Memory](output/release/v12.10.0/screenshots/11-knowledge-journey.png) | ![Review Center](output/release/v12.10.0/screenshots/12-review-center.png) |
 | **Brain Chronicle** — growth curve, heatmap & daily story | **Autonomy Dial & System** — plain-language permission controls |
-| ![Brain Chronicle](output/release/v12.9.0/screenshots/13-chronicle.png) | ![Settings](output/release/v12.9.0/screenshots/08-system.png) |
+| ![Brain Chronicle](output/release/v12.10.0/screenshots/13-chronicle.png) | ![Settings](output/release/v12.10.0/screenshots/08-system.png) |
 
-Full visual index: [output/release/v12.9.0/SCREENSHOT_INDEX.md](output/release/v12.9.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v12.9.0/screenshots/01-login.png), [06-capture.png](output/release/v12.9.0/screenshots/06-capture.png), [07-model-library.png](output/release/v12.9.0/screenshots/07-model-library.png)).
+Full visual index: [output/release/v12.10.0/SCREENSHOT_INDEX.md](output/release/v12.10.0/SCREENSHOT_INDEX.md) (login & library views: [01-login.png](output/release/v12.10.0/screenshots/01-login.png), [06-capture.png](output/release/v12.10.0/screenshots/06-capture.png), [07-model-library.png](output/release/v12.10.0/screenshots/07-model-library.png)).
 
 ---
 
@@ -97,24 +97,24 @@ Full visual index: [output/release/v12.9.0/SCREENSHOT_INDEX.md](output/release/v
 
 ## Current Release
 
-The current release is **12.9.0 — Semantic Guard**:
+The current release is **12.10.0 — Grounded Self**:
 
-- **Contract-Aligned Query Embedding & Native HNSW** — `query_embed.rs` aligns query vectors with the store's active `EmbeddingIndexContract` across `/api/search/hybrid`, `/memory/recall`, and `/chat`, paired with a pure-Rust `NativeHnswIndex` (`native_hnsw.rs`) and workspace/model-scoped Python HNSW sidecars (`latticeai/core/vector_index/`).
-- **Fail-Closed Network Boundary, Desktop/CLI/Supervisor Guardrails & v2 Archive KDF** — `network_boundary_guard.rs` and `lattice-chat/src/boundary.rs` enforce `local_only` / `cloud_allowed` consent and sensitivity boundaries; Tauri desktop (`src-tauri/src/backend.rs`), `LTCAI` CLI (`bin/ltcai.js`), `lattice-host` supervisor, and multi-stage `Dockerfile` harden process lifecycles; `.latticebrain` v2 archives upgrade KDF parameters (`portability/kdf.rs`).
-- **Live Workspace OS Realtime SSE & Bootstrap Modularization** — Authenticated `/api/realtime/stream` (`workspaceos/realtime.rs`) and `useRealtimeStream.ts` stream live workspace updates with reconnect backoff (100% Vitest coverage), alongside `useAppBootstrap.ts` extraction.
+- **Transcript Grounding Guard & Answer Proof** — `transcript/grounding.rs` deterministically prevents small local models from answering about unread files or fabricating `path:line` / backticked symbol citations, paired with interactive provenance proof chips (`AnswerProof.tsx`) and browser-extension language sync (`popup.js`).
+- **Brain Self-Model Panel & Cascade Parity** — Dedicated `SelfModelPanel.tsx` in Brain manages durable preferences, habits, decisions, traits, relationships, and pending Review Center self-model proposals (100% Vitest coverage), backed by verified `PART_OF` edge cascade cleanup across `edges` and `edges_v2`.
+- **Cooperative Download Cancel, Semantic Embedding Auto-Transition & Chained CD** — Cooperative `499` download cancellation (`download.py`), automatic semantic embedding activation + hardware-sized reindex drain (`embedding_recommendation.py`, `index_api/engine.rs`), crate-internal `http_reply.rs` transport decoupling, 100% locked Python server i18n (`6/6` routers), parallel `cargo nextest`, and chained `release.yml` -> `publish.yml` CD publication.
 
 <details>
-<summary>Release notes & exact 12.9.0 distribution artifacts</summary>
+<summary>Release notes & exact 12.10.0 distribution artifacts</summary>
 
-Release notes: [docs/releases/RELEASE_NOTES_v12.9.0.md](docs/releases/RELEASE_NOTES_v12.9.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Release notes: [docs/releases/RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md) · Guide: [RELEASE.md](RELEASE.md) · History: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Expected artifacts for 12.9.0 must use exact filenames:
+Expected artifacts for 12.10.0 must use exact filenames:
 
-- `dist/ltcai-12.9.0-py3-none-any.whl`
-- `dist/ltcai-12.9.0.tar.gz`
-- `ltcai-12.9.0.tgz`
-- `dist/ltcai-12.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.9.0_aarch64.dmg`
+- `dist/ltcai-12.10.0-py3-none-any.whl`
+- `dist/ltcai-12.10.0.tar.gz`
+- `ltcai-12.10.0.tgz`
+- `dist/ltcai-12.10.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.10.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing runs via `.github/workflows/publish.yml` (CD) when the GitHub Release is published.
 
@@ -136,6 +136,7 @@ Public release history in this repository covers the `v12.0.0+` era (the Rust-ho
 
 | Version | Theme | Release Note |
 | --- | --- | --- |
+| 12.10.0 | Grounded Self | [RELEASE_NOTES_v12.10.0.md](docs/releases/RELEASE_NOTES_v12.10.0.md) |
 | 12.9.0 | Semantic Guard | [RELEASE_NOTES_v12.9.0.md](docs/releases/RELEASE_NOTES_v12.9.0.md) |
 | 12.8.0 | Trusted Brain | [RELEASE_NOTES_v12.8.0.md](docs/releases/RELEASE_NOTES_v12.8.0.md) |
 | 12.7.0 | Fast Index | [RELEASE_NOTES_v12.7.0.md](docs/releases/RELEASE_NOTES_v12.7.0.md) |

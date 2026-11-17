@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StaleEmbedderNotice, VectorFreshnessNotice } from "@/features/brain/BrainSignals";
+import { SelfModelPanel } from "@/features/brain/SelfModelPanel";
 import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
 import { asArray, fmtNumber, titleize } from "@/lib/utils";
@@ -290,6 +291,8 @@ function UnifiedMemoryPanel() {
           ]} />
         </CardContent>
       </Card>
+
+      <SelfModelPanel />
 
       {/* Section 1 — Memory Recall */}
       <Card>

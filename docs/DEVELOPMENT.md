@@ -3,7 +3,7 @@
 > **Status: canonical** — current contributor guidance, kept in sync with the
 > current release.
 
-Current release: **12.9.0 — Semantic Guard**.
+Current release: **12.10.0 — Grounded Self**.
 
 This document is the contributor onboarding path: how to boot the tree, where
 a change belongs, which gates will go red, and the house rules that keep the
@@ -80,7 +80,7 @@ worker interpreter with `LTCAI_PYTHON` when both exist.
 `rust/target/release/lattice-host`, then `rust/target/debug/lattice-host`. If
 none exist it runs `cargo build -p lattice-host` (debug). A stale
 `rust/target/release/lattice-host` wins over a current debug binary — pin or
-rebuild (`cargo build -p lattice-host --release`) if `-V` is not 12.9.0.
+rebuild (`cargo build -p lattice-host --release`) if `-V` is not 12.10.0.
 
 Do not run `npm start` and `npm run dev` on the same port. The worker
 entrypoint defaults to `LATTICEAI_PORT` or **4825**, the same port as the
@@ -185,7 +185,7 @@ npm run release:validate
 5. `scripts/check_i18n_literals.mjs` — no user-facing string literals in `frontend/src` TS/TSX. Move the words into the matching `frontend/src/i18n/` namespace (both `ko` and `en`).
 6. `check:i18n-namespaces` — a lazy chunk may only read keys whose namespace it imports. Import the namespace module from the route, do not reach into a sibling dictionary.
 7. `check:bundle` — initial JS gzip closure stays under 150 KiB. Heavy UI belongs behind `React.lazy`. Do not raise the budget to hide a sync import.
-8. `check:server-i18n` — routers listed in `scripts/check_server_i18n.mjs` must raise through `http_error` / `translate`, never a quoted `detail=`. Adding a name to `LOCALIZED` is how a migration is declared finished. Today it locks 4 worker routers and reports 2 unclaimed (`health`, `search`).
+8. `check:server-i18n` — routers listed in `scripts/check_server_i18n.mjs` must raise through `http_error` / `translate`, never a quoted `detail=`. Adding a name to `LOCALIZED` is how a migration is declared finished. Today it locks all 6 worker routers (`0 not yet claimed`).
 9. `scripts/check_release_evidence_bound.mjs` — see the binding paragraph below.
 10. `check:max-file-lines` — see the line-limit paragraph below.
 
@@ -222,13 +222,20 @@ generated paths (`frontend/src/api/openapi.ts`, `static/app/`,
 `static/vendor/`, `src-tauri/gen/`). A new exemption for a hand-written file
 is not a fix.
 
-### Clippy `-D warnings`
+### Clippy `-D warnings` & parallel `cargo nextest`
 
 `npm run rust:lint` is `cargo fmt --all -- --check` then
 `cargo clippy --workspace --all-targets -- -D warnings` inside `rust/`. CI
 runs the same. The workspace no longer carries blanket `#![allow]`. Fix the
 diagnostic at the source; do not re-allow it. Format drift is `cargo fmt`
 in `rust/`.
+
+`npm run rust:test` (`scripts/run_rust_tests.mjs`) runs
+`cargo nextest run --manifest-path rust/Cargo.toml --workspace` in parallel
+(plus doctests) whenever `cargo-nextest` is installed, scrubbing ambient
+connector env vars (`LATTICEAI_TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_TOKEN`) so
+fixture parity tests stay deterministic, and falls back to
+`cargo test --workspace` when `cargo-nextest` is absent.
 
 ### Docs gates
 
@@ -237,7 +244,7 @@ in `rust/`.
 Markdown) and `scripts/check_doc_status.mjs` (every relative link under the
 root canonical docs and `docs/**`). A red line is a broken relative path —
 fix the href or put the file where the href says. Canonical docs (this one
-included) must carry `Current release: **12.9.0 — …**` matching
+included) must carry `Current release: **12.10.0 — …**` matching
 `package.json`; do not bump that marker here ahead of the release lane.
 `npm run docs:check-current` is the release-set version pin
 ([`scripts/check_current_release_docs.mjs`](../scripts/check_current_release_docs.mjs)).
@@ -248,7 +255,7 @@ changelog entries that mention old versions stay.
 ### Release-evidence binding
 
 `scripts/check_release_evidence_bound.mjs` (lint member 9) checks that
-`output/release/v12.9.0/SCREENSHOT_INDEX.md` still names the live
+`output/release/v12.10.0/SCREENSHOT_INDEX.md` still names the live
 `static/app/asset-manifest.json` digest and the visual mock-server
 fingerprint. It exists so a later `npm run build:assets` cannot ship
 screenshots of an older UI, and so a mock-server edit cannot leave the
@@ -317,19 +324,19 @@ For user-facing, API, runtime, release, or packaging changes, check:
   appears
 
 The release-docs lane owns README / ARCHITECTURE / FEATURE_STATUS version
-bumps. Do not move this file's `Current release` marker off 12.9.0 ahead of
+bumps. Do not move this file's `Current release` marker off 12.10.0 ahead of
 that lane.
 
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 12.9.0 release work, exact artifacts are:
+For 12.10.0 release work, exact artifacts are:
 
-- `dist/ltcai-12.9.0-py3-none-any.whl`
-- `dist/ltcai-12.9.0.tar.gz`
-- `ltcai-12.9.0.tgz`
-- `dist/ltcai-12.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_12.9.0_aarch64.dmg`
+- `dist/ltcai-12.10.0-py3-none-any.whl`
+- `dist/ltcai-12.10.0.tar.gz`
+- `ltcai-12.10.0.tgz`
+- `dist/ltcai-12.10.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_12.10.0_aarch64.dmg`
 
 The dmg is ad-hoc signed (effectively unsigned); `npm run release:validate`
 checks the names and presence, not a Developer ID signature.

@@ -21,6 +21,7 @@ const {
   COPY,
   DEFAULT_LANGUAGE,
   DEFAULT_PORT,
+  extractServerLanguage,
   normalizeLanguage,
   resolveLanguage,
   t,
@@ -279,4 +280,21 @@ test("every local request tells the server which language to answer in", () => {
   assert.match(popupSource, /X-Lattice-Language/);
   const localHeaderUses = popupSource.match(/localHeaders\(/g) || [];
   assert.ok(localHeaderUses.length >= 4, "some local call still sends bare headers");
+});
+
+test("extractServerLanguage syncs supported language from server settings or features", () => {
+  assert.equal(extractServerLanguage(null), null);
+  assert.equal(extractServerLanguage({ language: "en-US" }), "en");
+  assert.equal(
+    extractServerLanguage({
+      features: [{ id: "ui_language", current: "ko-KR", default: "en" }],
+    }),
+    "ko",
+  );
+  assert.equal(
+    extractServerLanguage({
+      features: [{ id: "ui_language", current: "fr-FR" }],
+    }),
+    null,
+  );
 });

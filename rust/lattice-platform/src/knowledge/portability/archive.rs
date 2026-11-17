@@ -8,7 +8,7 @@ use axum::response::Response;
 use lattice_auth::OrderedMap;
 use serde_json::{json, Value};
 
-use crate::workspaceos::project_sessions::{detail, json_ok, parse_json_object};
+use crate::http_reply::{detail, json_ok, parse_json_object};
 
 use super::archive_tables::{
     apply_decrypted_payload, check_sqlite_integrity, export_counts_json, export_full_tables,

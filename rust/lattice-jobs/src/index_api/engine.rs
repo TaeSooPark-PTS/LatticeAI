@@ -26,9 +26,12 @@ pub(crate) async fn drain_once(
     };
     let claimed = {
         let db = db.clone();
-        tokio::task::spawn_blocking(move || claim_pending(&db, limit))
-            .await
-            .map_err(|error| error.to_string())?
+        tokio::task::spawn_blocking(move || {
+            let _ = enqueue_fallback_upgrade_jobs(&db, limit.saturating_mul(2).max(32));
+            claim_pending(&db, limit)
+        })
+        .await
+        .map_err(|error| error.to_string())?
     };
     if claimed.is_empty() {
         return Ok(crate::tick::DrainOutcome::default());
@@ -140,6 +143,82 @@ fn release_claim(db: &std::path::Path, ids: &[String]) {
             [node_id],
         );
     }
+}
+
+/// Enqueue `vector_jobs` for nodes still backed by the offline hash fallback
+/// (`lattice-local-hash-v1` or mismatched model) once a semantic
+/// `EmbeddingIndexContract` is active in `graph_meta`.
+///
+/// Keeps existing fallback vectors intact until each node's semantic vectors
+/// commit via `write_vectors_with`, so hybrid recall never drops to zero hits
+/// mid-transition.
+pub fn enqueue_fallback_upgrade_jobs(db: &std::path::Path, batch_cap: usize) -> usize {
+    if batch_cap == 0 || !db.exists() {
+        return 0;
+    }
+    let Ok(conn) = rusqlite::Connection::open(db) else {
+        return 0;
+    };
+    let _ = conn.busy_timeout(std::time::Duration::from_secs(5));
+    let raw_contract: Option<String> = conn
+        .query_row(
+            "SELECT value FROM graph_meta WHERE key='embedding_index_contract'",
+            [],
+            |row| row.get(0),
+        )
+        .ok();
+    let Some(contract) = raw_contract.and_then(|s| {
+        serde_json::from_str::<lattice_core::embedding_contract::EmbeddingIndexContract>(&s).ok()
+    }) else {
+        return 0;
+    };
+    if !contract.is_semantic() {
+        return 0;
+    }
+    let target_model = contract.model_id.trim();
+    if target_model.is_empty() {
+        return 0;
+    }
+    let sql = "SELECT DISTINCT COALESCE(NULLIF(ve.source_node, ''), ve.item_id) AS nid
+        FROM vector_embeddings ve
+        JOIN nodes n ON n.id = COALESCE(NULLIF(ve.source_node, ''), ve.item_id)
+        LEFT JOIN vector_jobs vj ON vj.node_id = n.id
+        WHERE COALESCE(ve.embedding_model, '') != ?1
+          AND (vj.node_id IS NULL OR vj.status = 'done')
+        LIMIT ?2";
+    let Ok(mut stmt) = conn.prepare(sql) else {
+        return 0;
+    };
+    let candidates: Vec<String> = stmt
+        .query_map(rusqlite::params![target_model, batch_cap as i64], |r| {
+            r.get(0)
+        })
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .collect();
+    if candidates.is_empty() {
+        return 0;
+    }
+    let now = SystemClock.now_iso();
+    let mut enqueued = 0usize;
+    for node_id in candidates {
+        let changed = conn
+            .execute(
+                "INSERT INTO vector_jobs(node_id, status, attempts, detail, created_at, updated_at)
+                 VALUES (?1, 'pending', 0, 'semantic_upgrade', ?2, ?2)
+                 ON CONFLICT(node_id) DO UPDATE SET
+                   status='pending',
+                   detail='semantic_upgrade',
+                   updated_at=excluded.updated_at
+                 WHERE vector_jobs.status = 'done'",
+                rusqlite::params![node_id, now],
+            )
+            .unwrap_or(0);
+        enqueued += changed;
+    }
+    enqueued
 }
 
 /// One native drain tick: claim pending `vector_jobs`, `write_vectors` each.
@@ -414,5 +493,45 @@ mod tests {
             shift_iso_seconds("2026-08-17T00:00:30", -120).as_deref(),
             Some("2026-08-17T00:00:00")
         );
+    }
+
+    #[test]
+    fn semantic_contract_enqueues_hash_fallback_nodes_for_upgrade() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = dir.path().join("knowledge_graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE graph_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+             CREATE TABLE nodes(id TEXT PRIMARY KEY, type TEXT, title TEXT, summary TEXT, metadata_json TEXT);
+             CREATE TABLE vector_embeddings(item_id TEXT PRIMARY KEY, item_type TEXT, source_node TEXT,
+               embedding BLOB, embedding_dim INT, embedding_model TEXT, text_hash TEXT, metadata_json TEXT, indexed_at TEXT);
+             CREATE TABLE vector_jobs(node_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending',
+               attempts INTEGER NOT NULL DEFAULT 0, detail TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+             INSERT INTO nodes VALUES ('n1', 'Note', 'Alpha', 'body', '{}');
+             INSERT INTO nodes VALUES ('n2', 'Note', 'Beta', 'body', '{}');
+             INSERT INTO vector_embeddings VALUES ('n1','node','n1',x'00',384,'lattice-local-hash-v1','h1','{}','2026-11-17T00:00:00');
+             INSERT INTO vector_embeddings VALUES ('n2','node','n2',x'00',768,'huggingface:google/embeddinggemma-2:768','h2','{}','2026-11-17T00:00:00');
+             INSERT INTO vector_jobs VALUES ('n1', 'done', 0, NULL, '2026-11-17T00:00:00', '2026-11-17T00:00:00');",
+        )
+        .unwrap();
+        // Offline contract -> 0 queued
+        assert_eq!(enqueue_fallback_upgrade_jobs(&db, 16), 0);
+
+        let semantic = lattice_core::embedding_contract::EmbeddingIndexContract::from_semantic(
+            "huggingface",
+            "huggingface:google/embeddinggemma-2:768",
+            768,
+        );
+        conn.execute(
+            "INSERT INTO graph_meta(key, value) VALUES ('embedding_index_contract', ?1)",
+            [serde_json::to_string(&semantic).unwrap()],
+        )
+        .unwrap();
+        drop(conn);
+
+        assert_eq!(enqueue_fallback_upgrade_jobs(&db, 16), 1);
+        // Second call is idempotent while n1 is already pending.
+        assert_eq!(enqueue_fallback_upgrade_jobs(&db, 16), 0);
+        assert_eq!(claim_pending(&db, 10), vec!["n1".to_string()]);
     }
 }

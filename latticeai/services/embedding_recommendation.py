@@ -302,6 +302,7 @@ def recommend_embedding_for_hardware(
     if effective_ram >= 8.0:
         use_mlx = bool(apple_silicon and mlx_cap is not None)
         footprint_gb = 0.5 if use_mlx else 1.5
+        batch_size = 64 if (effective_ram >= 24.0 and (apple_silicon or cuda)) else 32
         chosen_cap = cap or mlx_cap
         base = chosen_cap.to_legacy_dict() if chosen_cap is not None else {}
         rec_engine = "local_mlx" if use_mlx else "huggingface"
@@ -336,6 +337,9 @@ def recommend_embedding_for_hardware(
             "tag": "local-embedding",
             "modality": "text",
             "dimensions": 768,
+            "recommended_batch_size": batch_size,
+            "auto_drain_on_ready": True,
+            "transition_from_fallback": True,
             "size": "0.4GB" if use_mlx else "1.5GB",
             "download_size": "0.4GB" if use_mlx else "1.5GB",
             "download_size_gb": 0.42 if use_mlx else 1.48,
@@ -389,6 +393,9 @@ def recommend_embedding_for_hardware(
         "tag": "local-embedding",
         "modality": "text",
         "dimensions": 768,
+        "recommended_batch_size": 16,
+        "auto_drain_on_ready": True,
+        "transition_from_fallback": True,
         "size": "0.3GB" if use_mlx else "0.6GB",
         "download_size": "0.3GB" if use_mlx else "0.6GB",
         "download_size_gb": 0.30 if use_mlx else 0.60,
@@ -401,3 +408,101 @@ def recommend_embedding_for_hardware(
         "display_priority": 72,
         "reason": f"저사양 PC ({int(round(effective_ram))}GB RAM) 맞춤 초경량 시맨틱 임베딩 모델 (Google EmbeddingGemma 300M, 768차원)",
     }
+
+
+def is_embedding_model_id(model_id: str) -> bool:
+    """Return True when ``model_id`` identifies an embedding model rather than a chat LLM."""
+    lower = (model_id or "").strip().lower()
+    if not lower:
+        return False
+    return any(
+        marker in lower
+        for marker in (
+            "embeddinggemma",
+            "bge-",
+            "/bge",
+            "nomic-embed",
+            "text-embedding",
+            "multilingual-e5",
+            "gte-",
+            "snowflake-arctic-embed",
+        )
+    )
+
+
+def activate_downloaded_embedding_model(
+    model_id: str,
+    *,
+    provider: str = "huggingface",
+    dim: int = 768,
+    data_dir: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Persist the semantic embedding contract and enqueue fallback upgrade vector_jobs."""
+    import json
+    import sqlite3
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    norm_provider = "mlx" if provider in {"local_mlx", "mlx"} else (provider or "huggingface")
+    clean_model = (model_id or "").strip()
+    if ":" in clean_model and clean_model.split(":", 1)[0] in {"local_mlx", "mlx", "huggingface", "ollama"}:
+        clean_model = clean_model.split(":", 1)[1]
+    canonical_model_id = f"{norm_provider}:{clean_model}:{dim}"
+    resolved_dir = Path(
+        data_dir or os.environ.get("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai")
+    ).expanduser()
+    db_path = resolved_dir / "knowledge_graph.sqlite"
+    contract = {
+        "schema_version": 1,
+        "provider": norm_provider,
+        "model_id": canonical_model_id,
+        "dim": int(dim),
+        "normalized": True,
+        "is_fallback": False,
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    enqueued = 0
+    if db_path.exists():
+        conn = sqlite3.connect(str(db_path), timeout=5.0)
+        try:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS graph_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+            conn.execute(
+                "INSERT INTO graph_meta(key, value) VALUES ('embedding_index_contract', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (json.dumps(contract),),
+            )
+            has_jobs = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='vector_jobs'"
+            ).fetchone()
+            has_vecs = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='vector_embeddings'"
+            ).fetchone()
+            if has_jobs and has_vecs:
+                now = contract["updated_at"]
+                rows = conn.execute(
+                    "SELECT DISTINCT COALESCE(NULLIF(source_node, ''), item_id) "
+                    "FROM vector_embeddings WHERE COALESCE(embedding_model, '') != ?",
+                    (canonical_model_id,),
+                ).fetchall()
+                for (nid,) in rows:
+                    if not nid:
+                        continue
+                    cur = conn.execute(
+                        "INSERT INTO vector_jobs(node_id, status, attempts, detail, created_at, updated_at) "
+                        "VALUES (?, 'pending', 0, 'semantic_upgrade', ?, ?) "
+                        "ON CONFLICT(node_id) DO UPDATE SET status='pending', detail='semantic_upgrade', updated_at=excluded.updated_at "
+                        "WHERE vector_jobs.status = 'done'",
+                        (str(nid), now, now),
+                    )
+                    enqueued += max(0, cur.rowcount)
+            conn.commit()
+        finally:
+            conn.close()
+    return {
+        "activated": True,
+        "contract": contract,
+        "enqueued_upgrade_jobs": enqueued,
+    }
+

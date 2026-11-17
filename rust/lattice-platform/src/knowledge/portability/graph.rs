@@ -12,12 +12,11 @@ use rusqlite::Connection;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-use crate::workspaceos::project_sessions::{detail, json_ok, parse_json_object};
+use crate::http_reply::{self, detail, json_ok, parse_json_object};
 
 use super::postgres::stamp;
 use super::status::{require_graph, schema_versions};
 use super::*;
-use crate::workspaceos::project_sessions;
 
 const SNAPSHOT_KIND: &str = "vacuum-into";
 pub(super) const BLOBS_PREFIX: &str = "knowledge_graph_blobs/";
@@ -33,7 +32,7 @@ fn export_artifact(state: &PortabilityState) -> OrderedMap {
     for (k, v) in schema_versions().iter() {
         ordered.insert(k, v.clone());
     }
-    ordered.insert("exported_at", json!(project_sessions::now_iso_utc()));
+    ordered.insert("exported_at", json!(http_reply::now_iso_utc()));
     ordered.insert("workspace_id", Value::Null);
     ordered.insert("include_legacy_global", json!(false));
     let mut counts = OrderedMap::new();
@@ -299,7 +298,7 @@ pub(super) fn write_backup_zip(
     let mut manifest = schema_versions();
     manifest.insert("format", json!("latticeai.kg.backup"));
     manifest.insert("format_version", json!(FORMAT_VERSION));
-    manifest.insert("created_at", json!(project_sessions::now_iso_utc()));
+    manifest.insert("created_at", json!(http_reply::now_iso_utc()));
     manifest.insert(
         "db_sha256",
         json!(if snapshot_written {

@@ -105,6 +105,7 @@
 
 pub mod adminops;
 pub mod governance;
+pub(crate) mod http_reply;
 pub mod knowledge;
 pub mod modelops;
 pub mod shell;

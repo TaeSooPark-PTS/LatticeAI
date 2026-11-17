@@ -101,4 +101,8 @@ change in those crates.
 
 New code inside this crate uses the real path (`crate::adminops::admin`, not
 `crate::admin`), so a reader of any file sees which domain it is borrowing from.
-The aliases exist for the consumers, not for us.
+Shared HTTP JSON reply, FastAPI 422 validation envelope, localized message
+detail, and UTC timestamp helpers live in crate-internal `crate::http_reply`
+(`src/http_reply.rs`) so `knowledge/` and `toolsurface/` never reach sideways
+into `workspaceos::project_sessions` for transport formatting. The aliases in
+`src/lib.rs` exist for external consumers, not for internal modules.

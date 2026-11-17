@@ -31,10 +31,10 @@ from latticeai.core.vector_index.sidecar import (  # noqa: E402
 
 MODEL_ID = "huggingface:google/embeddinggemma-2:32"
 DIM = 32
-CORPUS_SIZE = 240
+CORPUS_SIZE = 600
 QUERIES = 25
 TOP_K = 10
-MIN_RECALL_AT_10 = 0.90
+MIN_RECALL_AT_10 = 0.95
 MAX_QUERY_P95_MS = 50.0
 MAX_INCREMENTAL_REFRESH_MS = 250.0
 

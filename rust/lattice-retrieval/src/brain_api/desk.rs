@@ -31,23 +31,38 @@ use super::pyutil;
 /// `SYNTHESIS_REVIEW_SOURCE` — every proposal this crate raises carries it.
 pub const SYNTHESIS_SOURCE: &str = "kg_change_digest";
 
-/// `ProposalDesk.open_keys` — proposal keys still awaiting a decision.
+/// `ProposalDesk.open_keys` — proposal keys still awaiting a decision (pending or snoozed).
 pub fn open_keys(state: &BrainState, workspace_id: Option<&str>) -> BTreeSet<String> {
     let doc = wsos::load(state.store(), state.data_dir());
-    pending_synthesis(&doc, workspace_id)
-        .iter()
-        .filter_map(|item| {
-            item.get("payload")
-                .and_then(|p| p.get("proposal_key").or_else(|| p.get("key")))
-                .and_then(Value::as_str)
-                .map(str::to_string)
-                .or_else(|| {
-                    item.get("kind")
-                        .and_then(Value::as_str)
-                        .map(|kind| format!("{kind}:{}", pyutil::text_of(item.get("title"))))
-                })
-        })
-        .collect()
+    wsos::scoped(
+        doc.get("review_items")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default(),
+        workspace_id,
+    )
+    .into_iter()
+    .filter(|item| item.get("source").and_then(Value::as_str) == Some(SYNTHESIS_SOURCE))
+    .filter(|item| {
+        let status = item
+            .get("effective_status")
+            .or_else(|| item.get("status"))
+            .and_then(Value::as_str)
+            .unwrap_or("pending");
+        matches!(status, "pending" | "snoozed")
+    })
+    .filter_map(|item| {
+        item.get("payload")
+            .and_then(|p| p.get("proposal_key").or_else(|| p.get("key")))
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .or_else(|| {
+                item.get("kind")
+                    .and_then(Value::as_str)
+                    .map(|kind| format!("{kind}:{}", pyutil::text_of(item.get("title"))))
+            })
+    })
+    .collect()
 }
 
 /// Pending proposals this crate raised, scoped to one workspace.

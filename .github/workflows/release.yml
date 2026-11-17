@@ -354,3 +354,14 @@ jobs:
             "release-assets/Lattice AI_${V}_aarch64.dmg" \
             "release-assets/Lattice AI_${V}_aarch64.dmg.sha256" \
             "release-assets/SHA256SUMS-${V}.txt"
+
+  cd:
+    name: Chain CD package publication
+    needs: [build, github-release]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

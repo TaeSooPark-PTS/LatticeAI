@@ -80,6 +80,8 @@ function render(overrides = {}, options = {}, props: { initialTab?: string } = {
       hybridSearch: ok({ matches: [], mode: "hybrid" }),
       brainHealth: ok({ overall_score: 0.8, grade: "good", dimensions: {}, recommended_actions: [] }),
       brainVectorFreshness: ok({ status: "ok", pending_items: 0, total_items: 291, detail: "" }),
+      selfModel: ok({ available: true, count: 0, facts: [], by_kind: {}, summary: "", kinds: [] }),
+      automationReviews: ok({ items: [] }),
       ...overrides,
     },
     ...options,

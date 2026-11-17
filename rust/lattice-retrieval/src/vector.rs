@@ -88,10 +88,19 @@ fn brute(requested: &str, detail: Option<String>) -> BackendSelection {
     }
 }
 
+/// True when the operator explicitly pinned exact scan (`LATTICEAI_VECTOR_INDEX=brute` or `bruteforce`).
+pub fn explicit_bruteforce_pinned() -> bool {
+    let raw = std::env::var(VECTOR_INDEX_ENV).unwrap_or_default();
+    matches!(
+        raw.trim().to_ascii_lowercase().as_str(),
+        "brute" | "bruteforce"
+    )
+}
+
 /// `vector_index.resolve_vector_index`.
 ///
-/// `hnsw` is honoured only when the worker sidecar answers; the scan below
-/// still falls back to brute and says why. `quantized` stays unimplemented.
+/// `hnsw` is honoured via worker sidecar or native Rust HNSW; `brute`/`bruteforce`
+/// pins the exact scan. `quantized` stays unimplemented.
 pub fn resolve_vector_index() -> BackendSelection {
     let raw = std::env::var(VECTOR_INDEX_ENV).unwrap_or_default();
     let name = raw.trim().to_lowercase();
@@ -101,7 +110,7 @@ pub fn resolve_vector_index() -> BackendSelection {
         name
     };
     match name.as_str() {
-        "brute" => brute("brute", None),
+        "brute" | "bruteforce" => brute("brute", None),
         "hnsw" => BackendSelection {
             requested: "hnsw".into(),
             name: "hnsw".into(),

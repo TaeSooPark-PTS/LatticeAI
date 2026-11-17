@@ -24,10 +24,8 @@ use crate::governance::review_queue::store::{
     create_review_item, load_review_item, transition_approve, ReviewError,
 };
 use crate::governance::review_queue::GovernanceState;
+use crate::http_reply::{self, detail, json_ok, message_detail, missing_body, parse_json_object};
 use crate::knowledge::network_boundary::{HARD_BLOCK_METADATA_FLAGS, HARD_BLOCK_NODE_TYPES};
-use crate::workspaceos::project_sessions::{
-    self, detail, json_ok, message_detail, missing_body, parse_json_object,
-};
 
 use super::archive::missing_archive;
 use super::archive_tables::{array_rows, export_full_tables};
@@ -79,7 +77,7 @@ pub(crate) async fn share_status(
     } else {
         let detail = lattice_core::messages::text(
             "portability.brain_network_disabled",
-            project_sessions::language_of(&headers),
+            http_reply::language_of(&headers),
             &[],
         );
         map.insert("detail", json!(detail));
@@ -429,7 +427,7 @@ pub(crate) async fn share_import(
         "sender_fingerprint": sender_fp,
         "signature_verified": signature_verified,
         "format": bundle.get("format").cloned().unwrap_or_else(|| json!(SUBGRAPH_FORMAT)),
-        "received_at": project_sessions::now_iso_utc(),
+        "received_at": http_reply::now_iso_utc(),
         "workspace_id": workspace_id,
     });
     let user_email = if identity.email.is_empty() {
@@ -778,7 +776,7 @@ fn build_subgraph_bundle(
     let mut header = schema_versions();
     header.insert("format", json!(SUBGRAPH_FORMAT));
     header.insert("format_version", json!(1));
-    header.insert("exported_at", json!(project_sessions::now_iso_utc()));
+    header.insert("exported_at", json!(http_reply::now_iso_utc()));
     header.insert("workspace_id", json!(workspace_id));
     header.insert("redact_provenance", json!(redact_provenance));
     header.insert("counts", counts.clone());

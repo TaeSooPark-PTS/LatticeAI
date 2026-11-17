@@ -52,6 +52,16 @@
 //! 4. **On-disk formats are the Python formats.** Every file here is one a live
 //!    install already has. Changing a shape is a migration, and there is no
 //!    conversion step to hide it in.
+//!
+//! ## Cross-domain edges (explicit)
+//!
+//! Generic HTTP/JSON/UTC envelope formatting lives in [`crate::http_reply`], so
+//! `knowledge/` no longer borrows from `workspaceos::project_sessions`. The
+//! remaining deliberate cross-domain calls are:
+//! * [`network_boundary`] / [`network_boundary_guard`] read workspace policy and
+//!   secret redaction from [`crate::workspaceos::workspace`].
+//! * [`portability`] stages inbound share proposals into [`crate::governance::review_queue`]
+//!   and emits governance audit events via [`crate::adminops::admin::enterprise`].
 
 pub mod multimodal;
 pub mod network;

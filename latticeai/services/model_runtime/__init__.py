@@ -70,6 +70,12 @@ from latticeai.services.model_catalog import (
 )
 from latticeai.services.model_errors import ModelRuntimeError as ModelRuntimeError
 from latticeai.services.model_runtime.download import (
+    check_download_cancelled as check_download_cancelled,
+)
+from latticeai.services.model_runtime.download import (
+    clear_download_cancel as clear_download_cancel,
+)
+from latticeai.services.model_runtime.download import (
     clear_download_progress_snapshots as clear_download_progress_snapshots,
 )
 from latticeai.services.model_runtime.download import (
@@ -91,6 +97,9 @@ from latticeai.services.model_runtime.download import (
     hf_repo_files_with_sizes as hf_repo_files_with_sizes,
 )
 from latticeai.services.model_runtime.download import (
+    is_download_cancelled as is_download_cancelled,
+)
+from latticeai.services.model_runtime.download import (
     is_gated_or_auth_error as is_gated_or_auth_error,
 )
 from latticeai.services.model_runtime.download import (
@@ -98,6 +107,9 @@ from latticeai.services.model_runtime.download import (
 )
 from latticeai.services.model_runtime.download import (
     record_download_progress_snapshot as record_download_progress_snapshot,
+)
+from latticeai.services.model_runtime.download import (
+    request_download_cancel as request_download_cancel,
 )
 from latticeai.services.model_runtime.download import (
     resolve_download_candidates as resolve_download_candidates,

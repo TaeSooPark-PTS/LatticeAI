@@ -14,8 +14,8 @@ use serde_json::{json, Map, Value};
 use super::{RunRequest, Runtime};
 use crate::kernel::state::{AgentRunContext, AgentState};
 use crate::kernel::transcript::{
-    answer_owes_a_count, answer_owes_a_summary, artifact_checklist, attributed_count,
-    attributed_summary, complete_counted_and_summarized, complete_created_files,
+    answer_has_ungrounded_claims, answer_owes_a_count, answer_owes_a_summary, artifact_checklist,
+    attributed_count, attributed_summary, complete_counted_and_summarized, complete_created_files,
     contains_ascii_word, delivered_answer, format_artifact_checklist, format_requirement_coverage,
     request_asks_for_a_count, request_asks_for_a_summary, requirement_coverage, truncate_strings,
 };
@@ -642,6 +642,20 @@ impl Runtime {
             const CAVEAT: &str = "요청하신 요약을 파일 내용으로 확인하지 못해 완료로 처리하지 \
 않았습니다. 결과를 직접 확인해 주세요.";
             Self::hold_for_review(ctx, req, file_create_actions, CAVEAT);
+            return true;
+        }
+        if let Some(reason) =
+            answer_has_ungrounded_claims(&ctx.final_message, &req.message, &ctx.transcript)
+        {
+            ctx.trace.decision(
+                "verify",
+                "needs_review_ungrounded_claim",
+                &[("reason", json!(reason))],
+            );
+            let caveat = format!(
+                "답변의 파일/식별자 주장이 실행 기록으로 확인되지 않아 완료로 처리하지 않았습니다 ({reason}). 결과를 직접 확인해 주세요."
+            );
+            Self::hold_for_review(ctx, req, file_create_actions, &caveat);
             return true;
         }
         false

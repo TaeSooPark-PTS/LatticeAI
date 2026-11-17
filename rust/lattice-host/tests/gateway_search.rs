@@ -47,7 +47,8 @@ fn manifest() -> &'static Value {
 fn data_dir() -> &'static Path {
     static DIR: OnceLock<PathBuf> = OnceLock::new();
     DIR.get_or_init(|| {
-        let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("gateway_search");
+        let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+            .join(format!("gateway_search_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("test data dir");
         for suffix in ["-wal", "-shm"] {
             let _ = std::fs::remove_file(dir.join(format!("knowledge_graph.sqlite{suffix}")));

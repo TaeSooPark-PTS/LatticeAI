@@ -390,3 +390,207 @@ async fn an_unconfigured_status_is_none() {
     assert_eq!(body["configured"], false);
     assert_eq!(body["mode"], "none");
 }
+
+#[tokio::test]
+async fn disk_configured_api_key_e2e_verifies_bearer_and_strips_local_only_nodes() {
+    use axum::extract::State as AxumState;
+    use axum::http::{HeaderMap, StatusCode};
+    use axum::routing::{get, post};
+    use std::sync::Mutex;
+
+    #[derive(Clone, Default)]
+    struct Recorded {
+        auth_headers: Arc<Mutex<Vec<String>>>,
+        outbound_bodies: Arc<Mutex<Vec<Value>>>,
+    }
+
+    let rec = Recorded::default();
+    let app =
+        axum::Router::new()
+            .route(
+                "/v1/models",
+                get(
+                    |AxumState(r): AxumState<Recorded>, headers: HeaderMap| async move {
+                        let auth = headers
+                            .get("authorization")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or("")
+                            .to_string();
+                        r.auth_headers.lock().unwrap().push(auth.clone());
+                        if auth != "Bearer sk-e2e-valid" {
+                            return (
+                                StatusCode::UNAUTHORIZED,
+                                json!({"error":"bad key"}).to_string(),
+                            );
+                        }
+                        (
+                            StatusCode::OK,
+                            json!({"data":[{"id":"gpt-4o-mini"}]}).to_string(),
+                        )
+                    },
+                ),
+            )
+            .route(
+                "/v1/chat/completions",
+                post(
+                    |AxumState(r): AxumState<Recorded>,
+                     headers: HeaderMap,
+                     body: axum::body::Bytes| async move {
+                        let auth = headers
+                            .get("authorization")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or("")
+                            .to_string();
+                        r.auth_headers.lock().unwrap().push(auth.clone());
+                        if auth != "Bearer sk-e2e-valid" {
+                            return (
+                                StatusCode::UNAUTHORIZED,
+                                [("content-type", "application/json")],
+                                json!({"error":"unauthorized"}).to_string(),
+                            );
+                        }
+                        let parsed: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+                        r.outbound_bodies.lock().unwrap().push(parsed);
+                        let sse = format!(
+                            "data: {}\n\ndata: [DONE]\n\n",
+                            json!({"choices":[{"delta":{"content":"검증완료"}}]})
+                        );
+                        (StatusCode::OK, [("content-type", "text/event-stream")], sse)
+                    },
+                ),
+            )
+            .with_state(rec.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let mock_base = format!("http://{}/v1", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        let _ = axum::serve(listener, app).await;
+    });
+
+    let data = tempfile::tempdir().expect("data");
+    seed_users(data.path());
+    std::fs::write(
+        data.path().join("cloud_provider.json"),
+        json!({
+            "mode": "api_key",
+            "provider": "openai",
+            "api_key": "sk-e2e-valid",
+            "base_url": mock_base,
+            "model": "gpt-4o-mini"
+        })
+        .to_string(),
+    )
+    .unwrap();
+    std::fs::write(
+        data.path().join("network_boundary.json"),
+        json!({"default": "cloud_allowed"}).to_string(),
+    )
+    .unwrap();
+
+    let graph_db = data.path().join("knowledge_graph.sqlite");
+    let store = Arc::new(lattice_core::db::Store::open(&graph_db).expect("store"));
+    let graph = lattice_core::graph_write::GraphWriter::open(
+        store,
+        data.path().join("knowledge_graph_blobs"),
+    )
+    .expect("graph");
+    // Seed one shareable node and one sensitive local_only node.
+    let _ = graph
+        .upsert_nodes(&[
+            lattice_core::graph_write::types::NodeSpec {
+                id: "doc:public".into(),
+                node_type: "Note".into(),
+                title: "Public roadmap alpha".into(),
+                summary: "alpha architecture notes".into(),
+                metadata: json!({"workspace_id": "default"})
+                    .as_object()
+                    .cloned()
+                    .unwrap(),
+                raw: serde_json::Map::new(),
+                owner: None,
+                workspace_id: Some("default".into()),
+                visibility: None,
+            },
+            lattice_core::graph_write::types::NodeSpec {
+                id: "doc:secret".into(),
+                node_type: "Note".into(),
+                title: "Secret payroll alpha".into(),
+                summary: "TOP_SECRET_PAYROLL_9911".into(),
+                metadata: json!({
+                    "workspace_id": "default",
+                    "local_only": true,
+                    "sensitivity": "local_only"
+                })
+                .as_object()
+                .cloned()
+                .unwrap(),
+                raw: serde_json::Map::new(),
+                owner: None,
+                workspace_id: Some("default".into()),
+                visibility: None,
+            },
+        ])
+        .expect("seed nodes");
+
+    let worker_origin = spawn_worker(empty_models_worker()).await;
+    let worker = lattice_chat::ChatWorker::new(&worker_origin).expect("worker");
+    let auth = auth_for(data.path());
+    let state = ChatState::new(
+        Arc::clone(&auth),
+        ChatConfig {
+            data_dir: data.path().to_path_buf(),
+            graph_db: Some(graph_db),
+            agent_root: data.path().join("agent"),
+            ..ChatConfig::default()
+        },
+    )
+    .with_worker(worker)
+    .with_graph(graph);
+    let (origin, token) = serve_chat(state, &auth).await;
+
+    // 1. Live /api/cloud/status probes GET /v1/models with Bearer key.
+    let status_body: Value = serde_json::from_str(
+        &client()
+            .get(format!("{origin}/api/cloud/status"))
+            .header("cookie", format!("session_token={token}"))
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(status_body["configured"], true);
+    assert_eq!(status_body["verified"], true);
+    assert_eq!(status_body["mode"], "api_key");
+
+    // 2. End-to-end /chat completion streams via api_key and never leaks local_only nodes.
+    let chat_body: Value = serde_json::from_str(
+        &client()
+            .post(format!("{origin}/chat"))
+            .header("cookie", format!("session_token={token}"))
+            .header("content-type", "application/json")
+            .body(json!({"message": "alpha 요약해줘", "stream": false}).to_string())
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(chat_body["response"], "검증완료");
+    let bodies = rec.outbound_bodies.lock().unwrap().clone();
+    assert_eq!(bodies.len(), 1);
+    let serialized = bodies[0].to_string();
+    assert!(
+        !serialized.contains("TOP_SECRET_PAYROLL_9911") && !serialized.contains("Secret payroll"),
+        "local_only node leaked to api_key cloud payload: {serialized}"
+    );
+    assert!(rec
+        .auth_headers
+        .lock()
+        .unwrap()
+        .iter()
+        .all(|h| h == "Bearer sk-e2e-valid"));
+}

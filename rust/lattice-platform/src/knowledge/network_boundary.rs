@@ -20,7 +20,7 @@ use lattice_auth::{AuthState, OrderedMap};
 use lattice_core::db::RuntimeConfig;
 use serde_json::{json, Value};
 
-use crate::workspaceos::project_sessions::{detail, json_ok, missing_fields, parse_json_object};
+use crate::http_reply::{detail, json_ok, missing_fields, parse_json_object};
 
 /// Mounted (method, path) pairs.
 pub const MOUNTED: &[(&str, &str)] = &[

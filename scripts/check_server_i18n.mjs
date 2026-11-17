@@ -31,7 +31,9 @@ const API_DIR = "latticeai/api";
 // routes had no caller anywhere in the tree.
 const LOCALIZED = [
   "agent_worker_seam",
+  "health",
   "models",
+  "search",
   "worker_compute",
   "worker_seams",
 ];

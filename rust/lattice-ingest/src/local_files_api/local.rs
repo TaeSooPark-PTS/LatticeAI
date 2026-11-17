@@ -274,6 +274,12 @@ pub(super) async fn serve(
     }
     let target = PathBuf::from(expand_user(&path));
     let target = std::fs::canonicalize(&target).unwrap_or(target);
+    let slash = target.to_string_lossy().replace('\\', "/");
+    for prefix in super::WRITE_BLOCKED_PREFIXES {
+        if slash == prefix.trim_end_matches('/') || slash.starts_with(prefix) {
+            return http_error(403, "common.forbidden", language(&headers));
+        }
+    }
     if !target.is_file() {
         return http_error(404, "common.file_not_found", language(&headers));
     }
@@ -286,6 +292,16 @@ pub(super) async fn serve(
                 axum::http::header::CONTENT_TYPE,
                 mime.parse()
                     .unwrap_or_else(|_| "application/octet-stream".parse().expect("mime")),
+            );
+            response.headers_mut().insert(
+                axum::http::header::HeaderName::from_static("x-content-type-options"),
+                axum::http::HeaderValue::from_static("nosniff"),
+            );
+            response.headers_mut().insert(
+                axum::http::header::CONTENT_SECURITY_POLICY,
+                axum::http::HeaderValue::from_static(
+                    "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'",
+                ),
             );
             response
         }
@@ -438,6 +454,8 @@ fn mime_of(path: &std::path::Path) -> &'static str {
         "html" => "text/html; charset=utf-8",
         "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
         "pdf" => "application/pdf",
         _ => "application/octet-stream",
     }

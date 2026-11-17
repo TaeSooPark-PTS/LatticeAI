@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "12.9.0",
+  "version": "12.10.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -48,7 +48,7 @@
     "desktop:tauri": "tauri dev",
     "desktop:tauri:build": "tauri build",
     "desktop:tauri:check": "cd src-tauri && cargo check",
-    "rust:test": "cd rust && cargo test --workspace",
+    "rust:test": "node scripts/run_rust_tests.mjs",
     "rust:lint": "cd rust && cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings",
     "package:vsix": "node scripts/build_vsix.mjs",
     "check:screenshot-delta": "node scripts/run_python.mjs scripts/check_screenshot_pixel_delta.py",

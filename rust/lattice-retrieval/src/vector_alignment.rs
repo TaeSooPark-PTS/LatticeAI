@@ -479,13 +479,91 @@ pub fn vector_search_aligned(
 
     let candidates_total: i64 =
         conn.query_row(&count_sql, params_from_iter(count_params), |row| row.get(0))?;
+
+    let want_native_hnsw = !crate::vector::explicit_bruteforce_pinned()
+        && selection.detail.is_none()
+        && plan.matched_models.len() == 1
+        && (selection.requested == "hnsw" || candidates_total >= crate::vector::HNSW_AUTO_MIN_ROWS);
+
+    let mut index_json = selection.as_json();
+    let mut hnsw_candidate_ids: Option<std::collections::HashSet<String>> = None;
+    let mut hnsw_store_active: Option<usize> = None;
+
+    if want_native_hnsw {
+        let fetch_k = ((limit as usize).saturating_mul(8)).clamp(64, 256);
+        match crate::native_hnsw::query_native_hnsw(
+            conn,
+            &plan.matched_models[0],
+            active_dim.max(1) as usize,
+            &query_vector,
+            fetch_k,
+        ) {
+            Ok((ids, active_cnt)) if !ids.is_empty() => {
+                hnsw_candidate_ids = Some(ids.into_iter().collect());
+                hnsw_store_active = Some(active_cnt);
+                let mut idx = Map::new();
+                idx.insert(
+                    "requested".into(),
+                    Value::String(selection.requested.clone()),
+                );
+                idx.insert(
+                    "backend".into(),
+                    Value::String("native-hnsw+rescore".into()),
+                );
+                idx.insert("name".into(), Value::String("hnsw+rescore".into()));
+                idx.insert("approx".into(), Value::Bool(true));
+                idx.insert("exhaustive".into(), Value::Bool(false));
+                idx.insert("honored".into(), Value::Bool(true));
+                idx.insert("detail".into(), Value::Null);
+                index_json = Value::Object(idx);
+            }
+            Ok(_) => {}
+            Err(reason) => {
+                if selection.requested == "hnsw" {
+                    index_json = crate::vector_hnsw::fallback_selection(&reason).as_json();
+                }
+            }
+        }
+    }
+
     let mut stmt = conn.prepare(&select_sql)?;
-    let rows: Vec<VectorRow> = stmt
+    let all_rows: Vec<VectorRow> = stmt
         .query_map(params_from_iter(select_params), vector_row_from)?
         .filter_map(Result::ok)
         .collect();
 
-    let recall = recall_report(&backend, cap, candidates_total, rows.len() as i64, None);
+    let rows: Vec<VectorRow> = if let Some(ref allow_ids) = hnsw_candidate_ids {
+        let filtered: Vec<VectorRow> = all_rows
+            .iter()
+            .filter(|r| allow_ids.contains(&r.item_id))
+            .cloned()
+            .collect();
+        if filtered.is_empty() {
+            // Workspace/lifecycle filter eliminated top ANN candidates; fall back cleanly to exact scan.
+            index_json = selection.as_json();
+            all_rows
+        } else {
+            filtered
+        }
+    } else {
+        all_rows
+    };
+
+    let effective_backend = if hnsw_store_active.is_some()
+        && index_json.get("name").and_then(Value::as_str) == Some("hnsw+rescore")
+    {
+        "native-hnsw+rescore"
+    } else {
+        backend.as_str()
+    };
+    let recall = crate::vector::recall_report_custom(
+        effective_backend,
+        cap,
+        candidates_total,
+        rows.len() as i64,
+        None,
+        effective_backend != "native-hnsw+rescore",
+    );
     let decoder = LocalEmbeddingModel::new(active_dim.max(1) as usize);
 
     let mut scored: Vec<Map<String, Value>> = Vec::new();
@@ -496,7 +574,7 @@ pub fn vector_search_aligned(
         };
         if score < options.min_score {
             continue;
-        }
+        };
         scored.push(vector_match(row, score));
     }
     scored.sort_by(|a, b| {
@@ -533,6 +611,6 @@ pub fn vector_search_aligned(
         Value::Array(scored.into_iter().map(Value::Object).collect()),
     );
     out.insert("recall".into(), recall);
-    out.insert("index".into(), selection.as_json());
+    out.insert("index".into(), index_json);
     Ok(Value::Object(out))
 }
