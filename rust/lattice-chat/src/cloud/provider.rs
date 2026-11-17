@@ -614,6 +614,19 @@ fn substitute(template: &str, prompt: &str, model: &str, effort: &str) -> String
         .replace("{effort}", effort)
 }
 
+async fn spawn_retrying_etxtbsy(cmd: &mut Command) -> std::io::Result<tokio::process::Child> {
+    for attempt in 0..10 {
+        match cmd.spawn() {
+            Ok(child) => return Ok(child),
+            Err(err) if err.raw_os_error() == Some(26) && attempt < 9 => {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            Err(err) => return Err(err),
+        }
+    }
+    cmd.spawn()
+}
+
 async fn run_cli(spec: &CliSpec, prompt: &str, model: &str) -> Result<String, String> {
     let cwd = tempfile::tempdir().map_err(|error| format!("cloud CLI temp dir: {error}"))?;
     let args: Vec<String> = spec
@@ -621,14 +634,15 @@ async fn run_cli(spec: &CliSpec, prompt: &str, model: &str) -> Result<String, St
         .iter()
         .map(|arg| substitute(arg, prompt, model, &spec.effort))
         .collect();
-    let mut child = Command::new(&spec.bin)
-        .args(&args)
+    let mut cmd = Command::new(&spec.bin);
+    cmd.args(&args)
         .current_dir(cwd.path())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
+        .kill_on_drop(true);
+    let mut child = spawn_retrying_etxtbsy(&mut cmd)
+        .await
         .map_err(|error| format!("cloud CLI could not start {}: {error}", spec.bin.display()))?;
     let mut stdout = child.stdout.take();
     let mut stderr = child.stderr.take();
@@ -686,14 +700,13 @@ async fn run_cli(spec: &CliSpec, prompt: &str, model: &str) -> Result<String, St
 
 async fn cli_version_line(bin: &Path) -> Option<String> {
     let name = bin.file_name()?.to_string_lossy().into_owned();
-    let mut child = Command::new(bin)
-        .arg("--version")
+    let mut cmd = Command::new(bin);
+    cmd.arg("--version")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-        .ok()?;
+        .kill_on_drop(true);
+    let mut child = spawn_retrying_etxtbsy(&mut cmd).await.ok()?;
     let mut stdout = child.stdout.take();
     let read = tokio::spawn(async move {
         let mut buf = Vec::new();
